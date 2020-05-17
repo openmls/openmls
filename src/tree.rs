@@ -717,11 +717,6 @@ impl Tree {
                 unmerged_leaves: vec![],
                 parent_hash: vec![],
             };
-            println!(
-                "Merging node {} with key {:?}",
-                path[i].as_usize(),
-                keypairs[i].public_key.clone()
-            );
             self.nodes[path[i].as_usize()].node = Some(node);
         }
     }
