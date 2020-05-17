@@ -180,7 +180,6 @@ impl Group {
         )
         .unwrap();
         let group_info = GroupInfo::decode_detached(&group_info_bytes).unwrap();
-        //let group_info = GroupInfo::decode(&mut Cursor::new(&group_info_bytes)).unwrap();
         let signer_node = group_info.tree[TreeIndex::from(group_info.signer_index).as_usize()]
             .clone()
             .unwrap();
@@ -357,8 +356,6 @@ impl Group {
             key_package: kpb.key_package.clone(),
             path,
         };
-
-        new_tree.print("Create commit: tree after update_own_leaf");
 
         let mut new_epoch = self.group_context.epoch;
         new_epoch.increment();
@@ -543,7 +540,6 @@ impl Group {
             // TODO no need to encrypt to copath
             let (_path, _path_secrets, commit_secret, _kpb) =
                 new_tree.update_own_leaf(&self.identity, None, Some(own_kpb.clone()));
-            new_tree.print("Process commit: tree after update_own_leaf");
             commit_secret
         } else {
             new_tree.update_direct_path(sender, commit.path.clone(), commit.key_package.clone())
@@ -582,8 +578,6 @@ impl Group {
             &mls_plaintext,
             &confirmed_transcript_hash,
         );
-
-        new_tree.print("Process commit: ");
 
         assert_eq!(
             Confirmation::new(
@@ -864,12 +858,12 @@ fn group_operations() {
     let _bob_credential = BasicCredential::from(&bob_identity);
     let _charlie_credential = BasicCredential::from(&bob_identity);
 
-    // Generate UserInitKeys
-    let bob_init_key_bundle = KeyPackageBundle::new(ciphersuite, &bob_identity, None);
-    let bob_init_key = bob_init_key_bundle.key_package.clone();
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackageBundle::new(ciphersuite, &bob_identity, None);
+    let bob_key_package = bob_key_package_bundle.key_package.clone();
 
-    let charlie_init_key_bundle = KeyPackageBundle::new(ciphersuite, &charlie_identity, None);
-    let charlie_init_key = charlie_init_key_bundle.key_package.clone();
+    let charlie_key_package_bundle = KeyPackageBundle::new(ciphersuite, &charlie_identity, None);
+    let charlie_key_package = charlie_key_package_bundle.key_package.clone();
 
     // Create a group with Alice
     let mut config = GROUP_CONFIG_DEFAULT;
@@ -885,17 +879,17 @@ fn group_operations() {
     assert_eq!(mls_plaintext, decrypted_mls_plaintext);
 
     // Alice adds Bob
-    let _bob_add_proposal = group_alice.create_add_proposal(&bob_init_key, None);
+    let _bob_add_proposal = group_alice.create_add_proposal(&bob_key_package, None);
 
     let (commit1, welcome_alice_bob, ms1) = group_alice.create_commit(None);
-    println!("{:?}", ms1);
 
     group_alice.process_commit(commit1);
 
     let mut group_bob =
-        Group::new_from_welcome(bob_identity, welcome_alice_bob, bob_init_key_bundle);
+        Group::new_from_welcome(bob_identity, welcome_alice_bob, bob_key_package_bundle);
 
     assert_eq!(group_alice.tree.nodes, group_bob.tree.nodes);
+    group_alice.tree.print(&format!("\n{:?}", ms1));
 
     // Alice sends a message to Bob
     let message_alice = [1, 2, 3];
@@ -907,51 +901,56 @@ fn group_operations() {
     // Bob updates and commits
     let update_proposal_bob = group_bob.create_update_proposal(None);
     let (commit2, _welcome, ms2) = group_bob.create_commit(None);
-    println!("{:?}", ms2);
 
     group_alice.process_proposal(update_proposal_bob);
     group_alice.process_commit(commit2.clone());
     group_bob.process_commit(commit2);
 
+    group_alice.tree.print(&format!("\n{:?}", ms2));
+
     // Alice updates and commits
     let update_proposal_alice = group_alice.create_update_proposal(None);
     let (commit3, _welcome, ms3) = group_alice.create_commit(None);
-    println!("{:?}", ms3);
 
     group_bob.process_proposal(update_proposal_alice);
     group_alice.process_commit(commit3.clone());
     group_bob.process_commit(commit3);
 
+    group_alice.tree.print(&format!("\n{:?}", ms3));
+
     // Alice updates and Bob commits
     let update_proposal_alice = group_alice.create_update_proposal(None);
     group_bob.process_proposal(update_proposal_alice);
     let (commit4, _welcome, ms4) = group_bob.create_commit(None);
-    println!("{:?}", ms4);
 
     group_bob.process_commit(commit4.clone());
     group_alice.process_commit(commit4);
+
+    group_alice.tree.print(&format!("\n{:?}", ms4));
 
     // Bob updates and Alice commits
     let update_proposal_bob = group_bob.create_update_proposal(None);
     group_alice.process_proposal(update_proposal_bob);
     let (commit5, _welcome, ms5) = group_alice.create_commit(None);
-    println!("{:?}", ms5);
 
     group_alice.process_commit(commit5.clone());
     group_bob.process_commit(commit5);
 
+    group_alice.tree.print(&format!("\n{:?}", ms5));
+
     // Bob adds Charlie
-    let add_proposal = group_bob.create_add_proposal(&charlie_init_key, None);
+    let add_proposal = group_bob.create_add_proposal(&charlie_key_package, None);
     group_alice.process_proposal(add_proposal);
 
     let (commit6, welcome, ms6) = group_bob.create_commit(None);
-    println!("{:?}", ms6);
 
     group_alice.process_commit(commit6.clone());
     group_bob.process_commit(commit6);
 
     let mut group_charlie =
-        Group::new_from_welcome(charlie_identity, welcome, charlie_init_key_bundle);
+        Group::new_from_welcome(charlie_identity, welcome, charlie_key_package_bundle);
+
+    group_alice.tree.print(&format!("\n{:?}", ms6));
 
     // Charlie updates
     let update_proposal_charlie = group_charlie.create_update_proposal(None);
@@ -960,11 +959,12 @@ fn group_operations() {
     group_bob.process_proposal(update_proposal_charlie);
 
     let (commit7, _welcome, ms7) = group_charlie.create_commit(None);
-    println!("{:?}", ms7);
 
     group_alice.process_commit(commit7.clone());
     group_bob.process_commit(commit7.clone());
     group_charlie.process_commit(commit7);
+
+    group_alice.tree.print(&format!("\n{:?}", ms7));
 
     // Alice updates
     let update_proposal_alice = group_alice.create_update_proposal(None);
@@ -973,11 +973,12 @@ fn group_operations() {
     group_charlie.process_proposal(update_proposal_alice);
 
     let (commit8, _welcome, ms8) = group_alice.create_commit(None);
-    println!("{:?}", ms8);
 
     group_alice.process_commit(commit8.clone());
     group_bob.process_commit(commit8.clone());
     group_charlie.process_commit(commit8);
+
+    group_alice.tree.print(&format!("\n{:?}", ms8));
 
     // Charlie removes Bob
     let remove_proposal_charlie = group_charlie.create_remove_proposal(2, None);
@@ -986,9 +987,10 @@ fn group_operations() {
     group_bob.process_proposal(remove_proposal_charlie);
 
     let (commit9, _welcome, ms9) = group_charlie.create_commit(None);
-    println!("{:?}", ms9);
 
     group_alice.process_commit(commit9.clone());
     group_bob.process_commit(commit9.clone());
     group_charlie.process_commit(commit9);
+
+    group_alice.tree.print(&format!("\n{:?}", ms9));
 }

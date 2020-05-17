@@ -60,7 +60,7 @@ impl KeyPackage {
         extensions: Vec<Extension>,
     ) -> Self {
         let credential = Credential::Basic(identity.into());
-        let mut init_key = Self {
+        let mut key_package = Self {
             protocol_version: CURRENT_PROTOCOL_VERSION,
             cipher_suite: ciphersuite,
             hpke_init_key: hpke_init_key.to_owned(),
@@ -68,8 +68,8 @@ impl KeyPackage {
             extensions,
             signature: Signature::new_empty(),
         };
-        init_key.signature = identity.sign(&init_key.unsigned_payload().unwrap());
-        init_key
+        key_package.signature = identity.sign(&key_package.unsigned_payload().unwrap());
+        key_package
     }
     pub fn self_verify(&self) -> bool {
         self.credential
