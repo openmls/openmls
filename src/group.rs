@@ -334,7 +334,7 @@ impl Group {
     pub fn create_commit(
         &mut self,
         authenticated_data: Option<&[u8]>,
-    ) -> (MLSPlaintext, Welcome, MembershipChanges) {
+    ) -> (MLSPlaintext, MembershipChanges, Option<Welcome>) {
         let ciphersuite = self.config.ciphersuite;
         // TODO Dedup proposals
         let proposal_id_list = self.public_queue.clone().get_commit_lists();
@@ -406,96 +406,102 @@ impl Group {
             &confirmed_transcript_hash,
         );
 
-        let mut group_info = GroupInfo {
-            group_id: new_group_context.group_id.clone(),
-            epoch: new_group_context.epoch,
-            tree: new_tree.public_key_tree(),
-            confirmed_transcript_hash,
-            interim_transcript_hash,
-            extensions: vec![],
-            confirmation: confirmation.0,
-            signer_index: self.get_sender_index(),
-            signature: Signature::new_empty(),
-        };
-        group_info.signature = group_info.sign(&self.identity);
-
-        let welcome_secret = hkdf::expand(
-            ciphersuite.into(),
-            &epoch_secret,
-            b"mls 1.0 welcome",
-            hash::hash_length(ciphersuite.into()),
-        )
-        .unwrap();
-        let welcome_nonce = aead::Nonce::from_slice(
-            &hkdf::expand(
-                ciphersuite.into(),
-                &welcome_secret,
-                b"nonce",
-                aead::Nonce::nonce_length(ciphersuite.into()).unwrap(),
-            )
-            .unwrap(),
-        )
-        .unwrap();
-        let welcome_key = aead::AEADKey::from_slice(
-            ciphersuite.into(),
-            &hkdf::expand(
-                ciphersuite.into(),
-                &welcome_secret,
-                b"key",
-                aead::AEADKey::key_length(ciphersuite.into()).unwrap(),
-            )
-            .unwrap(),
-        )
-        .unwrap();
-
-        let encrypted_group_info = aead::aead_seal(
-            ciphersuite.into(),
-            &group_info.encode_detached().unwrap(),
-            &[],
-            &welcome_key,
-            &welcome_nonce,
-        )
-        .unwrap();
-
-        let mut secrets = vec![];
-        for (index, add_proposal) in invited_members.clone() {
-            let key_package = add_proposal.key_package;
-            let key_package_hash =
-                hash::hash(ciphersuite.into(), &key_package.encode_detached().unwrap());
-            let common_ancestor = treemath::common_ancestor(index, self.tree.own_leaf.leaf_index);
-            let dirpath =
-                treemath::dirpath_root(self.tree.own_leaf.leaf_index, new_tree.leaf_count());
-            let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();
-            let path_secret = path_secrets[position].clone();
-            let group_secrets = GroupSecrets {
-                epoch_secret: epoch_secret.clone(),
-                path_secret,
-            };
-            let group_secrets_bytes = group_secrets.encode_detached().unwrap();
-            let encrypted_group_secrets = HpkeCiphertext::seal(
-                ciphersuite,
-                &key_package.hpke_init_key,
-                &group_secrets_bytes,
-                None,
-                None,
-            )
-            .unwrap();
-            let encrypted_group_secrets = EncryptedGroupSecrets {
-                key_package_hash,
-                encrypted_group_secrets,
-            };
-            secrets.push(encrypted_group_secrets);
-        }
-        let welcome = Welcome {
-            version: ProtocolVersion::Mls10,
-            cipher_suite: ciphersuite,
-            secrets,
-            encrypted_group_info,
-        };
-
         self.pending_kpbs.push(kpb);
 
-        (mls_plaintext, welcome, membership_changes)
+        // Create welcome
+
+        if membership_changes.adds.len() > 0 {
+            let mut group_info = GroupInfo {
+                group_id: new_group_context.group_id.clone(),
+                epoch: new_group_context.epoch,
+                tree: new_tree.public_key_tree(),
+                confirmed_transcript_hash,
+                interim_transcript_hash,
+                extensions: vec![],
+                confirmation: confirmation.0,
+                signer_index: self.get_sender_index(),
+                signature: Signature::new_empty(),
+            };
+            group_info.signature = group_info.sign(&self.identity);
+
+            let welcome_secret = hkdf::expand(
+                ciphersuite.into(),
+                &epoch_secret,
+                b"mls 1.0 welcome",
+                hash::hash_length(ciphersuite.into()),
+            )
+            .unwrap();
+            let welcome_nonce = aead::Nonce::from_slice(
+                &hkdf::expand(
+                    ciphersuite.into(),
+                    &welcome_secret,
+                    b"nonce",
+                    aead::Nonce::nonce_length(ciphersuite.into()).unwrap(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            let welcome_key = aead::AEADKey::from_slice(
+                ciphersuite.into(),
+                &hkdf::expand(
+                    ciphersuite.into(),
+                    &welcome_secret,
+                    b"key",
+                    aead::AEADKey::key_length(ciphersuite.into()).unwrap(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+
+            let encrypted_group_info = aead::aead_seal(
+                ciphersuite.into(),
+                &group_info.encode_detached().unwrap(),
+                &[],
+                &welcome_key,
+                &welcome_nonce,
+            )
+            .unwrap();
+
+            let mut secrets = vec![];
+            for (index, add_proposal) in invited_members.clone() {
+                let key_package = add_proposal.key_package;
+                let key_package_hash =
+                    hash::hash(ciphersuite.into(), &key_package.encode_detached().unwrap());
+                let common_ancestor =
+                    treemath::common_ancestor(index, self.tree.own_leaf.leaf_index);
+                let dirpath =
+                    treemath::dirpath_root(self.tree.own_leaf.leaf_index, new_tree.leaf_count());
+                let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();
+                let path_secret = path_secrets[position].clone();
+                let group_secrets = GroupSecrets {
+                    epoch_secret: epoch_secret.clone(),
+                    path_secret,
+                };
+                let group_secrets_bytes = group_secrets.encode_detached().unwrap();
+                let encrypted_group_secrets = HpkeCiphertext::seal(
+                    ciphersuite,
+                    &key_package.hpke_init_key,
+                    &group_secrets_bytes,
+                    None,
+                    None,
+                )
+                .unwrap();
+                let encrypted_group_secrets = EncryptedGroupSecrets {
+                    key_package_hash,
+                    encrypted_group_secrets,
+                };
+                secrets.push(encrypted_group_secrets);
+            }
+            let welcome = Welcome {
+                version: ProtocolVersion::Mls10,
+                cipher_suite: ciphersuite,
+                secrets,
+                encrypted_group_info,
+            };
+            (mls_plaintext, membership_changes, Some(welcome))
+        } else {
+            (mls_plaintext, membership_changes, None)
+        }
     }
     pub fn process_commit(&mut self, mls_plaintext: MLSPlaintext) -> MembershipChanges {
         let ciphersuite = self.config.ciphersuite;
@@ -881,12 +887,15 @@ fn group_operations() {
     // Alice adds Bob
     let _bob_add_proposal = group_alice.create_add_proposal(&bob_key_package, None);
 
-    let (commit1, welcome_alice_bob, ms1) = group_alice.create_commit(None);
+    let (commit1, ms1, welcome_alice_bob) = group_alice.create_commit(None);
 
     group_alice.process_commit(commit1);
 
-    let mut group_bob =
-        Group::new_from_welcome(bob_identity, welcome_alice_bob, bob_key_package_bundle);
+    let mut group_bob = Group::new_from_welcome(
+        bob_identity,
+        welcome_alice_bob.unwrap(),
+        bob_key_package_bundle,
+    );
 
     assert_eq!(group_alice.tree.nodes, group_bob.tree.nodes);
     group_alice.tree.print(&format!("\n{:?}", ms1));
@@ -900,7 +909,7 @@ fn group_operations() {
 
     // Bob updates and commits
     let update_proposal_bob = group_bob.create_update_proposal(None);
-    let (commit2, _welcome, ms2) = group_bob.create_commit(None);
+    let (commit2, ms2, _) = group_bob.create_commit(None);
 
     group_alice.process_proposal(update_proposal_bob);
     group_alice.process_commit(commit2.clone());
@@ -910,7 +919,7 @@ fn group_operations() {
 
     // Alice updates and commits
     let update_proposal_alice = group_alice.create_update_proposal(None);
-    let (commit3, _welcome, ms3) = group_alice.create_commit(None);
+    let (commit3, ms3, _) = group_alice.create_commit(None);
 
     group_bob.process_proposal(update_proposal_alice);
     group_alice.process_commit(commit3.clone());
@@ -921,7 +930,7 @@ fn group_operations() {
     // Alice updates and Bob commits
     let update_proposal_alice = group_alice.create_update_proposal(None);
     group_bob.process_proposal(update_proposal_alice);
-    let (commit4, _welcome, ms4) = group_bob.create_commit(None);
+    let (commit4, ms4, _) = group_bob.create_commit(None);
 
     group_bob.process_commit(commit4.clone());
     group_alice.process_commit(commit4);
@@ -931,7 +940,7 @@ fn group_operations() {
     // Bob updates and Alice commits
     let update_proposal_bob = group_bob.create_update_proposal(None);
     group_alice.process_proposal(update_proposal_bob);
-    let (commit5, _welcome, ms5) = group_alice.create_commit(None);
+    let (commit5, ms5, _) = group_alice.create_commit(None);
 
     group_alice.process_commit(commit5.clone());
     group_bob.process_commit(commit5);
@@ -942,13 +951,16 @@ fn group_operations() {
     let add_proposal = group_bob.create_add_proposal(&charlie_key_package, None);
     group_alice.process_proposal(add_proposal);
 
-    let (commit6, welcome, ms6) = group_bob.create_commit(None);
+    let (commit6, ms6, welcome_bob_charlie) = group_bob.create_commit(None);
 
     group_alice.process_commit(commit6.clone());
     group_bob.process_commit(commit6);
 
-    let mut group_charlie =
-        Group::new_from_welcome(charlie_identity, welcome, charlie_key_package_bundle);
+    let mut group_charlie = Group::new_from_welcome(
+        charlie_identity,
+        welcome_bob_charlie.unwrap(),
+        charlie_key_package_bundle,
+    );
 
     group_alice.tree.print(&format!("\n{:?}", ms6));
 
@@ -958,7 +970,7 @@ fn group_operations() {
     group_alice.process_proposal(update_proposal_charlie.clone());
     group_bob.process_proposal(update_proposal_charlie);
 
-    let (commit7, _welcome, ms7) = group_charlie.create_commit(None);
+    let (commit7, ms7, _) = group_charlie.create_commit(None);
 
     group_alice.process_commit(commit7.clone());
     group_bob.process_commit(commit7.clone());
@@ -972,7 +984,7 @@ fn group_operations() {
     group_bob.process_proposal(update_proposal_alice.clone());
     group_charlie.process_proposal(update_proposal_alice);
 
-    let (commit8, _welcome, ms8) = group_alice.create_commit(None);
+    let (commit8, ms8, _) = group_alice.create_commit(None);
 
     group_alice.process_commit(commit8.clone());
     group_bob.process_commit(commit8.clone());
@@ -986,7 +998,7 @@ fn group_operations() {
     group_alice.process_proposal(remove_proposal_charlie.clone());
     group_bob.process_proposal(remove_proposal_charlie);
 
-    let (commit9, _welcome, ms9) = group_charlie.create_commit(None);
+    let (commit9, ms9, _) = group_charlie.create_commit(None);
 
     group_alice.process_commit(commit9.clone());
     group_bob.process_commit(commit9.clone());
