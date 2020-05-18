@@ -125,11 +125,7 @@ impl Group {
         if ciphersuite != kpb.key_package.cipher_suite {
             panic!("Ciphersuite mismatch"); // TODO error handling
         }
-        // TODO do this in kp.rs
-        let key_package_hash = hash::hash(
-            ciphersuite.into(),
-            &kpb.key_package.encode_detached().unwrap(),
-        );
+        let key_package_hash = kpb.key_package.hash();
         let secret_option = welcome
             .secrets
             .iter()
@@ -408,9 +404,7 @@ impl Group {
 
         self.pending_kpbs.push(kpb);
 
-        // Create welcome
-
-        if membership_changes.adds.len() > 0 {
+        if !membership_changes.adds.is_empty() {
             let mut group_info = GroupInfo {
                 group_id: new_group_context.group_id.clone(),
                 epoch: new_group_context.epoch,
