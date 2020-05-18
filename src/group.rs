@@ -343,8 +343,12 @@ impl Group {
         );
 
         let keypair = HPKEKeyPair::new(self.config.ciphersuite.into()).unwrap();
-        let (path, path_secrets, commit_secret, kpb) =
-            new_tree.update_own_leaf(&self.identity, Some(&keypair), None);
+        let (path, path_secrets, commit_secret, kpb) = new_tree.update_own_leaf(
+            &self.identity,
+            Some(&keypair),
+            None,
+            &self.group_context.serialize(),
+        );
         let commit = Commit {
             updates: proposal_id_list.updates,
             removes: proposal_id_list.removes,
@@ -538,11 +542,20 @@ impl Group {
                 .find(|&kpb| kpb.key_package == kp)
                 .unwrap();
             // TODO no need to encrypt to copath
-            let (_path, _path_secrets, commit_secret, _kpb) =
-                new_tree.update_own_leaf(&self.identity, None, Some(own_kpb.clone()));
+            let (_path, _path_secrets, commit_secret, _kpb) = new_tree.update_own_leaf(
+                &self.identity,
+                None,
+                Some(own_kpb.clone()),
+                &self.group_context.serialize(),
+            );
             commit_secret
         } else {
-            new_tree.update_direct_path(sender, commit.path.clone(), commit.key_package.clone())
+            new_tree.update_direct_path(
+                sender,
+                commit.path.clone(),
+                commit.key_package.clone(),
+                &self.group_context.serialize(),
+            )
         };
 
         let mut new_epoch = self.group_context.epoch;
