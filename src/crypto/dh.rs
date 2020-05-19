@@ -17,11 +17,9 @@
 use crate::codec::*;
 use crate::kp::*;
 use rand::rngs::OsRng;
-use secp256k1;
 use sha2::*;
 use std::fmt;
 use std::hash::*;
-use x25519_dalek;
 
 // TODO replace secp256k1 by secp256r1
 

@@ -560,6 +560,7 @@ impl Tree {
         sender: RosterIndex,
         direct_path: DirectPath,
         key_package: KeyPackage,
+        group_context: &[u8],
     ) -> CommitSecret {
         let own_index = self.own_leaf.leaf_index;
         // TODO check that the direct path is long enough
@@ -594,7 +595,7 @@ impl Tree {
         };
         let common_path = treemath::dirpath_long(common_ancestor, self.leaf_count());
         let secret = hpke_ciphertext
-            .open(self.ciphersuite, &private_key, None, None)
+            .open(self.ciphersuite, &private_key, Some(group_context), None)
             .unwrap();
         let (path_secrets, commit_secret) =
             OwnLeaf::continue_path_secrets(self.own_leaf.ciphersuite, &secret, common_path.len());
@@ -621,6 +622,7 @@ impl Tree {
         identity: &Identity,
         keypair_option: Option<&HPKEKeyPair>,
         kpb_option: Option<KeyPackageBundle>,
+        group_context: &[u8],
     ) -> (DirectPath, Vec<Vec<u8>>, CommitSecret, KeyPackageBundle) {
         let own_index = self.own_leaf.leaf_index;
         let private_key = if let Some(keypair) = keypair_option {
@@ -656,7 +658,7 @@ impl Tree {
         self.own_leaf = own_leaf;
         let copath = treemath::copath(own_index, self.leaf_count());
         (
-            self.encrypt_to_copath(path_secrets.clone(), keypairs, copath),
+            self.encrypt_to_copath(path_secrets.clone(), keypairs, copath, group_context),
             path_secrets,
             confirmation,
             kpb,
@@ -667,6 +669,7 @@ impl Tree {
         path_secrets: Vec<Vec<u8>>,
         keypairs: Vec<HPKEKeyPair>,
         copath: Vec<TreeIndex>,
+        group_context: &[u8],
     ) -> DirectPath {
         assert_eq!(path_secrets.len(), copath.len()); // TODO return error
         assert_eq!(keypairs.len(), copath.len());
@@ -679,7 +682,14 @@ impl Tree {
                 .iter()
                 .map(|&x| {
                     let pk = self.nodes[x.as_usize()].get_public_hpke_key().unwrap();
-                    HpkeCiphertext::seal(self.ciphersuite, &pk, &path_secret, None, None).unwrap()
+                    HpkeCiphertext::seal(
+                        self.ciphersuite,
+                        &pk,
+                        &path_secret,
+                        Some(group_context),
+                        None,
+                    )
+                    .unwrap()
                 })
                 .collect();
             // TODO Check that all public keys are non-empty
@@ -717,11 +727,6 @@ impl Tree {
                 unmerged_leaves: vec![],
                 parent_hash: vec![],
             };
-            println!(
-                "Merging node {} with key {:?}",
-                path[i].as_usize(),
-                keypairs[i].public_key.clone()
-            );
             self.nodes[path[i].as_usize()].node = Some(node);
         }
     }
