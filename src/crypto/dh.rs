@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use kp::*;
+use crate::codec::*;
+use crate::kp::*;
 use rand::rngs::OsRng;
 use secp256k1;
 use sha2::*;

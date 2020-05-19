@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use messages::*;
+use crate::messages::*;
 use std::cmp::Ordering;
 
 pub fn log2(x: usize) -> usize {
@@ -172,10 +172,10 @@ pub fn common_ancestor(x: TreeIndex, y: TreeIndex) -> TreeIndex {
 
 #[test]
 fn verify_binary_test_vector_treemath() {
-    use codec::*;
+    use crate::codec::*;
+    use crate::treemath;
     use std::fs::File;
     use std::io::Read;
-    use treemath;
 
     let mut file = File::open("test_vectors/tree_math.bin").unwrap();
     let mut buffer = Vec::new();

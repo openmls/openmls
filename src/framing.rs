@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use astree::*;
-use codec::*;
-use creds::*;
-use crypto::aead::*;
-use crypto::signatures::*;
-use group::*;
-use messages::*;
-use schedule::*;
-use utils::*;
+use crate::astree::*;
+use crate::codec::*;
+use crate::creds::*;
+use crate::crypto::aead::*;
+use crate::crypto::signatures::*;
+use crate::group::*;
+use crate::messages::*;
+use crate::schedule::*;
+use crate::utils::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
@@ -863,8 +863,8 @@ fn codec() {
 
 #[test]
 fn padding() {
-    use kp::*;
-    use utils::*;
+    use crate::kp::*;
+    use crate::utils::*;
 
     let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
     let alice_identity = Identity::new(ciphersuite, vec![1, 2, 3]);

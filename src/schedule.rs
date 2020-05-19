@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use crypto::hash;
-use crypto::hkdf;
-use kp::*;
-use messages::*;
+use crate::codec::*;
+use crate::crypto::hash;
+use crate::crypto::hkdf;
+use crate::kp::*;
+use crate::messages::*;
 
 pub fn derive_secret(
     ciphersuite: CipherSuite,

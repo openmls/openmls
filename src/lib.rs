@@ -14,19 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-extern crate aead;
-extern crate aes_gcm;
-extern crate byteorder;
-extern crate chacha20poly1305;
-extern crate ed25519_dalek;
-extern crate hmac;
-extern crate rand;
-extern crate secp256k1;
-extern crate sha2;
-extern crate uuid;
-extern crate x25519_dalek;
-extern crate zeroize;
-
 pub mod astree;
 pub mod codec;
 pub mod creds;

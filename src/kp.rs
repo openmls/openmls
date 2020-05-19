@@ -14,17 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use creds::*;
-use crypto::dh::*;
-use crypto::hash::*;
-use crypto::hpke::*;
-use crypto::signatures::*;
+use crate::codec::*;
+use crate::creds::*;
+use crate::crypto::dh::*;
+use crate::crypto::hash::*;
+use crate::crypto::hpke::*;
+use crate::crypto::signatures::*;
+use crate::utils::*;
+use uuid::*;
 use std::cmp::Ordering;
 use std::mem;
 use std::time::{SystemTime, UNIX_EPOCH};
-use utils::*;
-use uuid::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct KeyPackage {

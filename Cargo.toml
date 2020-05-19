@@ -2,6 +2,7 @@
 name = "maelstrom"
 version = "0.1.0"
 authors = ["Raphael Robert"]
+edition = "2018"
 
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }

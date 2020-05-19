@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use framing::*;
-use group::*;
-use messages::*;
+use crate::framing::*;
+use crate::group::*;
+use crate::messages::*;
 
 pub struct Validator<'a, Group> {
     group: &'a Group,

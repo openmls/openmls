@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use creds::*;
-use crypto::hash::*;
-use crypto::hpke::*;
-use kp::*;
-use messages::*;
-use schedule::*;
-use treemath;
+use crate::codec::*;
+use crate::creds::*;
+use crate::crypto::hash::*;
+use crate::crypto::hpke::*;
+use crate::kp::*;
+use crate::messages::*;
+use crate::schedule::*;
+use crate::treemath;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
@@ -483,7 +483,7 @@ impl Tree {
         None
     }
     pub fn print(&self, message: &str) {
-        use utils::*;
+        use crate::utils::*;
         let factor = 3;
         println!("{}", message);
         for (i, node) in self.nodes.iter().enumerate() {

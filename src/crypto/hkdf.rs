@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crypto::hmac::*;
+use crate::crypto::hmac::*;
 
 #[derive(Debug)]
 pub enum HKDFError {
@@ -65,7 +65,7 @@ pub fn expand(
 
 #[test]
 fn test_case_1() {
-    use utils::*;
+    use crate::utils::*;
 
     let algorithm = HMACAlgorithm::SHA256;
 
@@ -89,7 +89,7 @@ fn test_case_1() {
 
 #[test]
 fn test_case_2() {
-    use utils::*;
+    use crate::utils::*;
 
     let algorithm = HMACAlgorithm::SHA256;
 
@@ -111,7 +111,7 @@ fn test_case_2() {
 
 #[test]
 fn test_case_3() {
-    use utils::*;
+    use crate::utils::*;
 
     let algorithm = HMACAlgorithm::SHA256;
 

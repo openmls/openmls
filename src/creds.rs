@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use crypto::signatures::*;
-use kp::*;
+use crate::codec::*;
+use crate::crypto::signatures::*;
+use crate::kp::*;
 
 pub struct Identity {
     pub id: Vec<u8>,
@@ -167,7 +167,7 @@ impl Codec for BasicCredential {
 
 #[test]
 fn generate_key_package() {
-    use kp::*;
+    use crate::kp::*;
     let identity = Identity::new(
         CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
         vec![1, 2, 3],
@@ -182,7 +182,7 @@ fn generate_key_package() {
 
 #[test]
 fn test_protocol_version() {
-    use kp::*;
+    use crate::kp::*;
     let mls10_version = ProtocolVersion::Mls10;
     let default_version = ProtocolVersion::Default;
     let mls10_e = mls10_version.encode_detached().unwrap();

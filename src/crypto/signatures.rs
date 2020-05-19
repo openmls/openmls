@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use creds::*;
-use crypto::hash::*;
+use crate::codec::*;
+use crate::creds::*;
+use crate::crypto::hash::*;
+use crate::kp::*;
 use ed25519_dalek;
-use kp::*;
 use rand::rngs::OsRng;
 
 // TODO replace secp256k1 by secp256r1
@@ -752,7 +752,7 @@ impl Codec for P256Keypair {
 
 #[test]
 fn test_signature() {
-    use utils::*;
+    use crate::utils::*;
 
     let payload = vec![0, 1, 2, 3];
     let pk = SignaturePublicKey::from_bytes(

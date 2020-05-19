@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use crypto::aead;
-use crypto::hash::*;
-use kp::*;
-use messages::*;
-use schedule::*;
-use treemath::*;
+use crate::codec::*;
+use crate::crypto::aead;
+use crate::crypto::hash::*;
+use crate::kp::*;
+use crate::messages::*;
+use crate::schedule::*;
+use crate::treemath::*;
 
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
