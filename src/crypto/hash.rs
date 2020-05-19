@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use kp::*;
+use crate::kp::*;
 use sha2::{Digest, Sha256, Sha512};
 
 #[derive(Copy, Clone)]

@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::codec::*;
+use crate::crypto::aead::*;
+use crate::crypto::dh::*;
+use crate::crypto::hkdf;
+use crate::kp::*;
 use byteorder::{BigEndian, WriteBytesExt};
-use codec::*;
-use crypto::aead::*;
-use crypto::dh::*;
-use crypto::hkdf;
-use kp::*;
 use std::*;
 
 #[derive(Debug)]
@@ -474,11 +474,7 @@ fn encode_u16(value: u16) -> Vec<u8> {
 }
 
 fn concat(values: &[Vec<u8>]) -> Vec<u8> {
-    let mut result: Vec<u8> = vec![];
-    for v in values.iter() {
-        result.append(&mut v.clone());
-    }
-    result
+    values.join(&[][..])
 }
 
 fn encode_big_endian(value: u64, length: usize) -> Vec<u8> {
@@ -528,7 +524,7 @@ fn hpke_seal_open_x25519_aes() {
 
 #[test]
 fn hpke_seal_open_x25519_chacha_random() {
-    use utils::*;
+    use crate::utils::*;
     for _ in 0..10 {
         let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
         let kp = DHKeyPair::new(ciphersuite.into()).unwrap();
@@ -546,7 +542,7 @@ fn hpke_seal_open_x25519_chacha_random() {
 
 #[test]
 fn hpke_test_vectors() {
-    use utils::*;
+    use crate::utils::*;
 
     /*
     mode: 0

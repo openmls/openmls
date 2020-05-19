@@ -14,19 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use codec::*;
-use creds::*;
-use crypto::hash::*;
-use crypto::hmac::*;
-use crypto::hpke::*;
-use crypto::signatures::*;
-use framing::*;
-use group::*;
-use kp::*;
+use crate::codec::*;
+use crate::creds::*;
+use crate::crypto::hash::*;
+use crate::crypto::hmac::*;
+use crate::crypto::hpke::*;
+use crate::crypto::signatures::*;
+use crate::framing::*;
+use crate::group::*;
+use crate::kp::*;
+use crate::tree::*;
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
-use tree::*;
 
 #[derive(Debug)]
 pub enum MessageError {

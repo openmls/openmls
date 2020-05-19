@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::kp::*;
+use crate::utils::*;
 use aead::{generic_array::GenericArray, Aead, NewAead};
 use aes_gcm::*;
 use chacha20poly1305::ChaCha20Poly1305;
-use kp::*;
 use std::*;
-use utils::*;
 use zeroize::Zeroize;
 
 #[derive(Copy, Clone)]
