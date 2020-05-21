@@ -34,6 +34,14 @@ pub fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
+pub fn zero(length: usize) -> Vec<u8> {
+    let mut result: Vec<u8> = vec![];
+    for _ in 0..length {
+        result.push(0u8);
+    }
+    result
+}
+
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
     let mut hex = String::new();
     for b in bytes {
