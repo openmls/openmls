@@ -209,17 +209,19 @@ impl Group {
         let common_ancestor =
             treemath::common_ancestor(index, TreeIndex::from(group_info.signer_index));
         let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
-        let (path_secrets, _commit_secret) = OwnLeaf::continue_path_secrets(
-            ciphersuite,
-            &group_secrets.path_secret,
-            common_path.len(),
-        );
-        let keypairs = OwnLeaf::generate_path_keypairs(ciphersuite, path_secrets);
-        tree.merge_keypairs(keypairs.clone(), common_path.clone());
+        if let Some(path_secret) = group_secrets.path_secret {
+            let (path_secrets, _commit_secret) = OwnLeaf::continue_path_secrets(
+                ciphersuite,
+                &path_secret.path_secret,
+                common_path.len(),
+            );
+            let keypairs = OwnLeaf::generate_path_keypairs(ciphersuite, path_secrets);
+            tree.merge_keypairs(keypairs.clone(), common_path.clone());
 
-        let mut path_keypairs = PathKeypairs::new();
-        path_keypairs.add(keypairs, common_path);
-        tree.own_leaf.path_keypairs = path_keypairs;
+            let mut path_keypairs = PathKeypairs::new();
+            path_keypairs.add(keypairs, common_path);
+            tree.own_leaf.path_keypairs = path_keypairs;
+        }
 
         let config = GroupConfig {
             ciphersuite,
@@ -342,18 +344,35 @@ impl Group {
             self.pending_kpbs.clone(),
         );
 
-        let keypair = HPKEKeyPair::new(self.config.ciphersuite.into()).unwrap();
-        let (path, path_secrets, commit_secret, kpb) = new_tree.update_own_leaf(
-            &self.identity,
-            Some(&keypair),
-            None,
-            &self.group_context.serialize(),
-        );
+        let have_updates = !membership_changes.updates.is_empty();
+        let have_removes = !membership_changes.removes.is_empty();
+        let have_adds = !membership_changes.adds.is_empty();
+
+        let have_update_or_remove = have_updates || have_removes;
+        let have_no_proposals_at_all = !have_update_or_remove && !have_adds;
+
+        let path_required = have_update_or_remove || have_no_proposals_at_all;
+
+        let (path, path_secrets_option, commit_secret) = if path_required {
+            let keypair = HPKEKeyPair::new(self.config.ciphersuite.into()).unwrap();
+            let (path, path_secrets, commit_secret, kpb) = new_tree.update_own_leaf(
+                &self.identity,
+                Some(&keypair),
+                None,
+                &self.group_context.serialize(),
+            );
+            self.pending_kpbs.push(kpb);
+            (Some(path), Some(path_secrets), commit_secret)
+        } else {
+            let commit_secret =
+                CommitSecret(zero(hash::hash_length(self.config.ciphersuite.into())));
+            (None, None, commit_secret)
+        };
+
         let commit = Commit {
             updates: proposal_id_list.updates,
             removes: proposal_id_list.removes,
             adds: proposal_id_list.adds,
-            key_package: kpb.key_package.clone(),
             path,
         };
 
@@ -406,9 +425,7 @@ impl Group {
             &confirmed_transcript_hash,
         );
 
-        self.pending_kpbs.push(kpb);
-
-        if !membership_changes.adds.is_empty() {
+        if have_adds {
             let mut group_info = GroupInfo {
                 group_id: new_group_context.group_id.clone(),
                 epoch: new_group_context.epoch,
@@ -465,12 +482,21 @@ impl Group {
                 let key_package = add_proposal.key_package;
                 let key_package_hash =
                     hash::hash(ciphersuite.into(), &key_package.encode_detached().unwrap());
-                let common_ancestor =
-                    treemath::common_ancestor(index, self.tree.own_leaf.leaf_index);
-                let dirpath =
-                    treemath::dirpath_root(self.tree.own_leaf.leaf_index, new_tree.leaf_count());
-                let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();
-                let path_secret = path_secrets[position].clone();
+                let path_secret = if path_required {
+                    let common_ancestor =
+                        treemath::common_ancestor(index, self.tree.own_leaf.leaf_index);
+                    let dirpath = treemath::dirpath_root(
+                        self.tree.own_leaf.leaf_index,
+                        new_tree.leaf_count(),
+                    );
+                    let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();
+                    let path_secrets = path_secrets_option.clone().unwrap();
+                    let path_secret = path_secrets[position].clone();
+                    Some(PathSecret { path_secret })
+                } else {
+                    None
+                };
+
                 let group_secrets = GroupSecrets {
                     epoch_secret: epoch_secret.clone(),
                     path_secret,
@@ -511,10 +537,10 @@ impl Group {
             MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
             _ => panic!("No Commit in MLSPlaintext"),
         };
-        let kp = commit.key_package.clone();
+        //let kp = commit.key_package.clone();
         // TODO return an error in case of failure
-        assert!(kp.self_verify());
-        assert!(mls_plaintext.verify(&self.group_context, &kp.credential));
+        //assert!(kp.self_verify());
+        //assert!(mls_plaintext.verify(&self.group_context, &kp.credential));
 
         let mut new_tree = self.tree.clone();
 
@@ -535,27 +561,35 @@ impl Group {
             return membership_changes;
         }
 
-        let commit_secret = if is_own_commit {
-            let own_kpb = self
-                .pending_kpbs
-                .iter()
-                .find(|&kpb| kpb.key_package == kp)
-                .unwrap();
-            // TODO no need to encrypt to copath
-            let (_path, _path_secrets, commit_secret, _kpb) = new_tree.update_own_leaf(
-                &self.identity,
-                None,
-                Some(own_kpb.clone()),
-                &self.group_context.serialize(),
-            );
-            commit_secret
+        let commit_secret = if let Some(path) = commit.path.clone() {
+            let kp = path.leaf_key_package.clone();
+            // TODO return an error in case of failure
+            assert!(kp.self_verify());
+            assert!(mls_plaintext.verify(&self.group_context, &kp.credential));
+            if is_own_commit {
+                let own_kpb = self
+                    .pending_kpbs
+                    .iter()
+                    .find(|&kpb| kpb.key_package == kp)
+                    .unwrap();
+                // TODO no need to encrypt to copath
+                let (_path, _path_secrets, commit_secret, _kpb) = new_tree.update_own_leaf(
+                    &self.identity,
+                    None,
+                    Some(own_kpb.clone()),
+                    &self.group_context.serialize(),
+                );
+                commit_secret
+            } else {
+                new_tree.update_direct_path(
+                    sender,
+                    path.clone(),
+                    path.leaf_key_package,
+                    &self.group_context.serialize(),
+                )
+            }
         } else {
-            new_tree.update_direct_path(
-                sender,
-                commit.path.clone(),
-                commit.key_package.clone(),
-                &self.group_context.serialize(),
-            )
+            CommitSecret(zero(hash::hash_length(self.config.ciphersuite.into())))
         };
 
         let mut new_epoch = self.group_context.epoch;
@@ -566,7 +600,7 @@ impl Group {
             &MLSPlaintextCommitContent::new(
                 &self.group_context,
                 mls_plaintext.sender.sender,
-                commit,
+                commit.clone(),
             ),
             &self.interim_transcript_hash,
         );
@@ -601,17 +635,22 @@ impl Group {
             confirmation
         );
 
-        if !is_own_commit {
-            let parent_hash = new_tree.compute_parent_hash(TreeIndex::from(sender));
+        if let Some(path) = commit.path {
+            if !is_own_commit {
+                let parent_hash = new_tree.compute_parent_hash(TreeIndex::from(sender));
 
-            if let Some(received_parent_hash) = kp.get_extension(ExtensionType::ParentHash) {
-                if let ExtensionPayload::ParentHash(parent_hash_inner) = received_parent_hash {
-                    assert_eq!(parent_hash, parent_hash_inner.parent_hash);
+                if let Some(received_parent_hash) = path
+                    .leaf_key_package
+                    .get_extension(ExtensionType::ParentHash)
+                {
+                    if let ExtensionPayload::ParentHash(parent_hash_inner) = received_parent_hash {
+                        assert_eq!(parent_hash, parent_hash_inner.parent_hash);
+                    } else {
+                        panic!("Wrong extension type: expected ParentHashExtension");
+                    };
                 } else {
-                    panic!("Wrong extension type: expected ParentHashExtension");
-                };
-            } else {
-                panic!("Commit didn't contain a ParentHash extension");
+                    panic!("Commit didn't contain a ParentHash extension");
+                }
             }
         }
 

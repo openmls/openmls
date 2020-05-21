@@ -19,6 +19,7 @@ use crate::crypto::aead::*;
 use crate::crypto::dh::*;
 use crate::crypto::hkdf;
 use crate::kp::*;
+use crate::utils::*;
 use byteorder::{BigEndian, WriteBytesExt};
 use std::*;
 
@@ -459,14 +460,6 @@ fn aead_id(ciphersuite: CipherSuite) -> u16 {
         CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0003,
         CipherSuite::Default => panic!("Invalid ciphersuite"),
     }
-}
-
-fn zero(length: usize) -> Vec<u8> {
-    let mut result: Vec<u8> = vec![];
-    for _ in 0..length {
-        result.push(0u8);
-    }
-    result
 }
 
 fn encode_u16(value: u16) -> Vec<u8> {

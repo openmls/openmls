@@ -21,10 +21,10 @@ use crate::crypto::hash::*;
 use crate::crypto::hpke::*;
 use crate::crypto::signatures::*;
 use crate::utils::*;
-use uuid::*;
 use std::cmp::Ordering;
 use std::mem;
 use std::time::{SystemTime, UNIX_EPOCH};
+use uuid::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct KeyPackage {
@@ -44,12 +44,11 @@ impl KeyPackage {
             CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519,
             CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
         ]);
-        let expiration_extension =
-            ExpirationExtension::new(ExpirationExtension::EXPIRATION_4_WEEKS);
+        let lifetime_extension = LifetimeExtension::new(LifetimeExtension::LIFETIME_4_WEEKS);
         let extensions = vec![
             supported_version_extension.to_extension(),
             supported_ciphersuites_extension.to_extension(),
-            expiration_extension.to_extension(),
+            lifetime_extension.to_extension(),
         ];
         KeyPackage::new_with_extensions(ciphersuite, init_key, identity, extensions)
     }
@@ -105,10 +104,10 @@ impl KeyPackage {
                             supported_ciphersuites_extension,
                         ));
                     }
-                    ExtensionType::Expiration => {
-                        let expiration_extension =
-                            ExpirationExtension::new_from_bytes(&e.extension_data);
-                        return Some(ExtensionPayload::Expiration(expiration_extension));
+                    ExtensionType::Lifetime => {
+                        let lifetime_extension =
+                            LifetimeExtension::new_from_bytes(&e.extension_data);
+                        return Some(ExtensionPayload::Lifetime(lifetime_extension));
                     }
                     ExtensionType::KeyID => {
                         let key_id_extension = KeyIDExtension::new_from_bytes(&e.extension_data);
@@ -191,10 +190,9 @@ impl Codec for KeyPackage {
                         return Err(CodecError::DecodingError);
                     }
                 }
-                ExtensionType::Expiration => {
-                    let expiration_extension =
-                        ExpirationExtension::new_from_bytes(&e.extension_data);
-                    if expiration_extension.is_expired() {
+                ExtensionType::Lifetime => {
+                    let lifetime_extension = LifetimeExtension::new_from_bytes(&e.extension_data);
+                    if lifetime_extension.is_expired() {
                         return Err(CodecError::DecodingError);
                     }
                 }
@@ -330,7 +328,7 @@ pub enum ExtensionType {
     Invalid = 0,
     SupportedVersions = 1,
     SupportedCiphersuites = 2,
-    Expiration = 3,
+    Lifetime = 3,
     KeyID = 4,
     ParentHash = 5,
     Default = 65535,
@@ -358,7 +356,7 @@ impl Codec for ExtensionType {
 pub enum ExtensionPayload {
     SupportedVersions(SupportedVersionsExtension),
     SupportCiphersuites(SupportedCiphersuitesExtension),
-    Expiration(ExpirationExtension),
+    Lifetime(LifetimeExtension),
     KeyID(KeyIDExtension),
     ParentHash(ParentHashExtension),
 }
@@ -417,30 +415,43 @@ impl SupportedCiphersuitesExtension {
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct ExpirationExtension {
-    expiration: u64,
+pub struct LifetimeExtension {
+    not_before: u64,
+    not_after: u64,
 }
 
-impl ExpirationExtension {
-    pub const EXPIRATION_1_DAY: u64 = 24 * 60 * 60;
-    pub const EXPIRATION_1_WEEK: u64 = 7 * ExpirationExtension::EXPIRATION_1_DAY;
-    pub const EXPIRATION_4_WEEKS: u64 = 4 * ExpirationExtension::EXPIRATION_1_WEEK;
+impl LifetimeExtension {
+    pub const LIFETIME_1_MINUTE: u64 = 60;
+    pub const LIFETIME_1_HOUR: u64 = 60 * LifetimeExtension::LIFETIME_1_MINUTE;
+    pub const LIFETIME_1_DAY: u64 = 24 * LifetimeExtension::LIFETIME_1_HOUR;
+    pub const LIFETIME_1_WEEK: u64 = 7 * LifetimeExtension::LIFETIME_1_DAY;
+    pub const LIFETIME_4_WEEKS: u64 = 4 * LifetimeExtension::LIFETIME_1_WEEK;
+    pub const LIFETIME_MARGIN: u64 = LifetimeExtension::LIFETIME_1_HOUR;
     pub fn new(t: u64) -> Self {
-        let epoch = SystemTime::now()
+        let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let expiration = epoch + t;
-        Self { expiration }
+        let not_before = now - LifetimeExtension::LIFETIME_MARGIN;
+        let not_after = now + t + LifetimeExtension::LIFETIME_MARGIN;
+        Self {
+            not_before,
+            not_after,
+        }
     }
     pub fn new_from_bytes(bytes: &[u8]) -> Self {
         let mut cursor = Cursor::new(bytes);
-        let expiration = u64::decode(&mut cursor).unwrap();
-        Self { expiration }
+        let not_before = u64::decode(&mut cursor).unwrap();
+        let not_after = u64::decode(&mut cursor).unwrap();
+        Self {
+            not_before,
+            not_after,
+        }
     }
     pub fn to_extension(&self) -> Extension {
         let mut extension_data: Vec<u8> = vec![];
-        self.expiration.encode(&mut extension_data).unwrap();
+        self.not_before.encode(&mut extension_data).unwrap();
+        self.not_after.encode(&mut extension_data).unwrap();
         let extension_type = ExtensionType::SupportedCiphersuites;
         Extension {
             extension_type,
@@ -452,7 +463,7 @@ impl ExpirationExtension {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        self.expiration > now
+        self.not_before < now && self.not_after > now
     }
 }
 

@@ -658,7 +658,13 @@ impl Tree {
         self.own_leaf = own_leaf;
         let copath = treemath::copath(own_index, self.leaf_count());
         (
-            self.encrypt_to_copath(path_secrets.clone(), keypairs, copath, group_context),
+            self.encrypt_to_copath(
+                path_secrets.clone(),
+                keypairs,
+                copath,
+                group_context,
+                kpb.key_package.clone(),
+            ),
             path_secrets,
             confirmation,
             kpb,
@@ -670,6 +676,7 @@ impl Tree {
         keypairs: Vec<HPKEKeyPair>,
         copath: Vec<TreeIndex>,
         group_context: &[u8],
+        leaf_key_package: KeyPackage,
     ) -> DirectPath {
         assert_eq!(path_secrets.len(), copath.len()); // TODO return error
         assert_eq!(keypairs.len(), copath.len());
@@ -704,6 +711,7 @@ impl Tree {
             });
         }
         DirectPath {
+            leaf_key_package,
             nodes: direct_path_nodes,
         }
     }
@@ -1052,12 +1060,12 @@ pub struct DirectPathNode {
 impl Codec for DirectPathNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU16, buffer, &self.encrypted_path_secret)?;
+        encode_vec(VecSize::VecU32, buffer, &self.encrypted_path_secret)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let public_key = HPKEPublicKey::decode(cursor)?;
-        let encrypted_path_secret = decode_vec(VecSize::VecU16, cursor)?;
+        let encrypted_path_secret = decode_vec(VecSize::VecU32, cursor)?;
         Ok(DirectPathNode {
             public_key,
             encrypted_path_secret,
@@ -1067,16 +1075,22 @@ impl Codec for DirectPathNode {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct DirectPath {
+    pub leaf_key_package: KeyPackage,
     pub nodes: Vec<DirectPathNode>,
 }
 
 impl Codec for DirectPath {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.leaf_key_package.encode(buffer)?;
         encode_vec(VecSize::VecU16, buffer, &self.nodes)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let leaf_key_package = KeyPackage::decode(cursor)?;
         let nodes = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(DirectPath { nodes })
+        Ok(DirectPath {
+            leaf_key_package,
+            nodes,
+        })
     }
 }

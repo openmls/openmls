@@ -364,8 +364,7 @@ pub struct Commit {
     pub updates: Vec<ProposalID>,
     pub removes: Vec<ProposalID>,
     pub adds: Vec<ProposalID>,
-    pub key_package: KeyPackage,
-    pub path: DirectPath,
+    pub path: Option<DirectPath>,
 }
 
 impl Codec for Commit {
@@ -373,7 +372,6 @@ impl Codec for Commit {
         encode_vec(VecSize::VecU16, buffer, &self.updates)?;
         encode_vec(VecSize::VecU16, buffer, &self.removes)?;
         encode_vec(VecSize::VecU16, buffer, &self.adds)?;
-        self.key_package.encode(buffer)?;
         self.path.encode(buffer)?;
         Ok(())
     }
@@ -381,13 +379,11 @@ impl Codec for Commit {
         let updates = decode_vec(VecSize::VecU16, cursor)?;
         let removes = decode_vec(VecSize::VecU16, cursor)?;
         let adds = decode_vec(VecSize::VecU16, cursor)?;
-        let key_package = KeyPackage::decode(cursor)?;
-        let path = DirectPath::decode(cursor)?;
+        let path = Option::<DirectPath>::decode(cursor)?;
         Ok(Commit {
             updates,
             removes,
             adds,
-            key_package,
             path,
         })
     }
@@ -541,20 +537,35 @@ impl Signable for GroupInfo {
     }
 }
 
+pub struct PathSecret {
+    pub path_secret: Vec<u8>,
+}
+
+impl Codec for PathSecret {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        encode_vec(VecSize::VecU8, buffer, &self.path_secret)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let path_secret = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(PathSecret { path_secret })
+    }
+}
+
 pub struct GroupSecrets {
     pub epoch_secret: Vec<u8>,
-    pub path_secret: Vec<u8>,
+    pub path_secret: Option<PathSecret>,
 }
 
 impl Codec for GroupSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.epoch_secret)?;
-        encode_vec(VecSize::VecU8, buffer, &self.path_secret)?;
+        self.path_secret.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let epoch_secret = decode_vec(VecSize::VecU8, cursor)?;
-        let path_secret = decode_vec(VecSize::VecU8, cursor)?;
+        let path_secret = Option::<PathSecret>::decode(cursor)?;
         Ok(GroupSecrets {
             epoch_secret,
             path_secret,
