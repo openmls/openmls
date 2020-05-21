@@ -1052,12 +1052,12 @@ pub struct DirectPathNode {
 impl Codec for DirectPathNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU16, buffer, &self.encrypted_path_secret)?;
+        encode_vec(VecSize::VecU32, buffer, &self.encrypted_path_secret)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let public_key = HPKEPublicKey::decode(cursor)?;
-        let encrypted_path_secret = decode_vec(VecSize::VecU16, cursor)?;
+        let encrypted_path_secret = decode_vec(VecSize::VecU32, cursor)?;
         Ok(DirectPathNode {
             public_key,
             encrypted_path_secret,
