@@ -344,18 +344,19 @@ impl Group {
             self.pending_kpbs.clone(),
         );
 
-        let path_required = !membership_changes.path_required();
+        let path_required = membership_changes.path_required();
 
         let (path, path_secrets_option, commit_secret) = if path_required {
             let keypair = HPKEKeyPair::new(self.config.ciphersuite.into()).unwrap();
-            let (path, path_secrets, commit_secret, kpb) = new_tree.update_own_leaf(
+            let (commit_secret, kpb, path, path_secrets) = new_tree.update_own_leaf(
                 &self.identity,
                 Some(&keypair),
                 None,
                 &self.group_context.serialize(),
+                true,
             );
             self.pending_kpbs.push(kpb);
-            (Some(path), Some(path_secrets), commit_secret)
+            (path, path_secrets, commit_secret)
         } else {
             let commit_secret =
                 CommitSecret(zero(hash::hash_length(self.config.ciphersuite.into())));
@@ -561,12 +562,12 @@ impl Group {
                     .iter()
                     .find(|&kpb| kpb.key_package == kp)
                     .unwrap();
-                // TODO no need to encrypt to copath
-                let (_path, _path_secrets, commit_secret, _kpb) = new_tree.update_own_leaf(
+                let (commit_secret, _, _, _) = new_tree.update_own_leaf(
                     &self.identity,
                     None,
                     Some(own_kpb.clone()),
                     &self.group_context.serialize(),
+                    false,
                 );
                 commit_secret
             } else {
