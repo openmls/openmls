@@ -1,6 +1,6 @@
 [package]
 name = "maelstrom"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Raphael Robert"]
 edition = "2018"
 
