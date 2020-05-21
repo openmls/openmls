@@ -339,6 +339,12 @@ pub struct MembershipChanges {
     pub adds: Vec<Credential>,
 }
 
+impl MembershipChanges {
+    pub fn path_required(&self) -> bool {
+        !self.updates.is_empty() || !self.removes.is_empty() || self.adds.is_empty()
+    }
+}
+
 impl fmt::Debug for MembershipChanges {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn list_members(f: &mut fmt::Formatter<'_>, members: &[Credential]) -> fmt::Result {
