@@ -623,7 +623,13 @@ impl Tree {
         keypair_option: Option<&HPKEKeyPair>,
         kpb_option: Option<KeyPackageBundle>,
         group_context: &[u8],
-    ) -> (DirectPath, Vec<Vec<u8>>, CommitSecret, KeyPackageBundle) {
+        with_direct_path: bool,
+    ) -> (
+        CommitSecret,
+        KeyPackageBundle,
+        Option<DirectPath>,
+        Option<Vec<Vec<u8>>>,
+    ) {
         let own_index = self.own_leaf.leaf_index;
         let private_key = if let Some(keypair) = keypair_option {
             keypair.private_key.clone()
@@ -656,28 +662,30 @@ impl Tree {
         path_keypairs.add(keypairs.clone(), dirpath_root);
         let own_leaf = OwnLeaf::new(self.ciphersuite, kpb.clone(), own_index, path_keypairs);
         self.own_leaf = own_leaf;
-        let copath = treemath::copath(own_index, self.leaf_count());
-        (
-            self.encrypt_to_copath(
-                path_secrets.clone(),
-                keypairs,
-                copath,
-                group_context,
-                kpb.key_package.clone(),
-            ),
-            path_secrets,
-            confirmation,
-            kpb,
-        )
+        if with_direct_path {
+            (
+                confirmation,
+                kpb.clone(),
+                Some(self.encrypt_to_copath(
+                    path_secrets.clone(),
+                    keypairs,
+                    group_context,
+                    kpb.key_package,
+                )),
+                Some(path_secrets),
+            )
+        } else {
+            (confirmation, kpb, None, None)
+        }
     }
     pub fn encrypt_to_copath(
         &self,
         path_secrets: Vec<Vec<u8>>,
         keypairs: Vec<HPKEKeyPair>,
-        copath: Vec<TreeIndex>,
         group_context: &[u8],
         leaf_key_package: KeyPackage,
     ) -> DirectPath {
+        let copath = treemath::copath(self.own_leaf.leaf_index, self.leaf_count());
         assert_eq!(path_secrets.len(), copath.len()); // TODO return error
         assert_eq!(keypairs.len(), copath.len());
         let mut direct_path_nodes = vec![];

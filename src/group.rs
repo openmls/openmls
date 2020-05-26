@@ -344,25 +344,19 @@ impl Group {
             self.pending_kpbs.clone(),
         );
 
-        let have_updates = !membership_changes.updates.is_empty();
-        let have_removes = !membership_changes.removes.is_empty();
-        let have_adds = !membership_changes.adds.is_empty();
-
-        let have_update_or_remove = have_updates || have_removes;
-        let have_no_proposals_at_all = !have_update_or_remove && !have_adds;
-
-        let path_required = have_update_or_remove || have_no_proposals_at_all;
+        let path_required = membership_changes.path_required();
 
         let (path, path_secrets_option, commit_secret) = if path_required {
             let keypair = HPKEKeyPair::new(self.config.ciphersuite.into()).unwrap();
-            let (path, path_secrets, commit_secret, kpb) = new_tree.update_own_leaf(
+            let (commit_secret, kpb, path, path_secrets) = new_tree.update_own_leaf(
                 &self.identity,
                 Some(&keypair),
                 None,
                 &self.group_context.serialize(),
+                true,
             );
             self.pending_kpbs.push(kpb);
-            (Some(path), Some(path_secrets), commit_secret)
+            (path, path_secrets, commit_secret)
         } else {
             let commit_secret =
                 CommitSecret(zero(hash::hash_length(self.config.ciphersuite.into())));
@@ -425,7 +419,7 @@ impl Group {
             &confirmed_transcript_hash,
         );
 
-        if have_adds {
+        if !membership_changes.adds.is_empty() {
             let mut group_info = GroupInfo {
                 group_id: new_group_context.group_id.clone(),
                 epoch: new_group_context.epoch,
@@ -537,10 +531,6 @@ impl Group {
             MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
             _ => panic!("No Commit in MLSPlaintext"),
         };
-        //let kp = commit.key_package.clone();
-        // TODO return an error in case of failure
-        //assert!(kp.self_verify());
-        //assert!(mls_plaintext.verify(&self.group_context, &kp.credential));
 
         let mut new_tree = self.tree.clone();
 
@@ -572,12 +562,12 @@ impl Group {
                     .iter()
                     .find(|&kpb| kpb.key_package == kp)
                     .unwrap();
-                // TODO no need to encrypt to copath
-                let (_path, _path_secrets, commit_secret, _kpb) = new_tree.update_own_leaf(
+                let (commit_secret, _, _, _) = new_tree.update_own_leaf(
                     &self.identity,
                     None,
                     Some(own_kpb.clone()),
                     &self.group_context.serialize(),
+                    false,
                 );
                 commit_secret
             } else {
@@ -589,6 +579,8 @@ impl Group {
                 )
             }
         } else {
+            let path_required = membership_changes.path_required();
+            assert!(!path_required); // TODO: error handling
             CommitSecret(zero(hash::hash_length(self.config.ciphersuite.into())))
         };
 
