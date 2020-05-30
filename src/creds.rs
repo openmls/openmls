@@ -18,6 +18,7 @@ use crate::codec::*;
 use crate::crypto::signatures::*;
 use crate::kp::*;
 
+#[derive(Clone)]
 pub struct Identity {
     pub id: Vec<u8>,
     pub algorithm: SignatureAlgorithm,
