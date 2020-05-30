@@ -375,16 +375,16 @@ pub struct Commit {
 
 impl Codec for Commit {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU16, buffer, &self.updates)?;
-        encode_vec(VecSize::VecU16, buffer, &self.removes)?;
-        encode_vec(VecSize::VecU16, buffer, &self.adds)?;
+        encode_vec(VecSize::VecU32, buffer, &self.updates)?;
+        encode_vec(VecSize::VecU32, buffer, &self.removes)?;
+        encode_vec(VecSize::VecU32, buffer, &self.adds)?;
         self.path.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let updates = decode_vec(VecSize::VecU16, cursor)?;
-        let removes = decode_vec(VecSize::VecU16, cursor)?;
-        let adds = decode_vec(VecSize::VecU16, cursor)?;
+        let updates = decode_vec(VecSize::VecU32, cursor)?;
+        let removes = decode_vec(VecSize::VecU32, cursor)?;
+        let adds = decode_vec(VecSize::VecU32, cursor)?;
         let path = Option::<DirectPath>::decode(cursor)?;
         Ok(Commit {
             updates,
