@@ -266,7 +266,7 @@ fn key_schedule(
         psk.unwrap_or(&zero(nh)),
     );
 
-    let secret = labeled_extract(ciphersuite, &psk_hash, b"zz", zz);
+    let secret = labeled_extract(ciphersuite, &psk_hash, b"secret", zz);
     let key = labeled_expand(ciphersuite, &secret, b"key", &context, nk(ciphersuite));
     let nonce = labeled_expand(ciphersuite, &secret, b"nonce", &context, nn(ciphersuite));
     let exporter_secret = labeled_expand(ciphersuite, &secret, b"exp", &context, nh);
