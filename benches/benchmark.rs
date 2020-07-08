@@ -23,6 +23,7 @@ use criterion::Criterion;
 use maelstrom::creds::*;
 use maelstrom::crypto::aead::*;
 use maelstrom::crypto::dh::*;
+use maelstrom::crypto::hash::*;
 use maelstrom::crypto::hkdf::*;
 use maelstrom::crypto::hmac::*;
 use maelstrom::crypto::hpke::*;
@@ -32,6 +33,19 @@ use maelstrom::utils::*;
 const DATA: &[u8; 1024] = &[1u8; 1024];
 
 // Crypto
+
+fn criterion_hash(c: &mut Criterion) {
+    c.bench_function("Hash SHA256", |b| {
+        b.iter(|| {
+            let _prk_h = hash(HashAlgorithm::SHA256, DATA);
+        });
+    });
+    c.bench_function("Hash SHA512", |b| {
+        b.iter(|| {
+            let _prk_h = hash(HashAlgorithm::SHA512, DATA);
+        });
+    });
+}
 
 fn criterion_hkdf(c: &mut Criterion) {
     const ALGORITHM: HMACAlgorithm = HMACAlgorithm::SHA256;
@@ -197,6 +211,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
+    criterion_hash(c);
     criterion_hkdf(c);
     criterion_hpke(c);
     criterion_chacha(c);

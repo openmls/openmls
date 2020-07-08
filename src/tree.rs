@@ -22,6 +22,7 @@ use crate::kp::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::treemath;
+use rayon::prelude::*;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
@@ -482,6 +483,16 @@ impl Tree {
         }
         None
     }
+    pub fn free_leaves(&self) -> Vec<TreeIndex> {
+        let mut free_leaves = vec![];
+        for i in 0..self.leaf_count().as_usize() {
+            // TODO use an iterator instead
+            if self.nodes[TreeIndex::from(RosterIndex::from(i)).as_usize()].is_blank() {
+                free_leaves.push(TreeIndex::from(i));
+            }
+        }
+        free_leaves
+    }
     pub fn print(&self, message: &str) {
         use crate::utils::*;
         let factor = 3;
@@ -694,7 +705,7 @@ impl Tree {
             let (path_secret, copath_node) = pair;
             let node_ciphertexts: Vec<HpkeCiphertext> = self
                 .resolve(*copath_node)
-                .iter()
+                .par_iter()
                 .map(|&x| {
                     let pk = self.nodes[x.as_usize()].get_public_hpke_key().unwrap();
                     HpkeCiphertext::seal(
@@ -754,8 +765,8 @@ impl Tree {
     ) -> (MembershipChanges, Vec<(TreeIndex, AddProposal)>, bool) {
         let mut updated_members = vec![];
         let mut removed_members = vec![];
-        let mut added_members = vec![];
-        let mut invited_members = vec![];
+        let mut added_members = Vec::with_capacity(proposal_id_list.adds.len());
+        let mut invited_members = Vec::with_capacity(proposal_id_list.adds.len());
 
         let mut self_removed = false;
 
@@ -800,42 +811,59 @@ impl Tree {
             removed_members.push(removed_member.credential);
             self.blank_member(removed);
         }
-        for a in proposal_id_list.adds.iter() {
-            let (_proposal_id, queued_proposal) = proposal_queue.get(&a).unwrap();
-            let proposal = queued_proposal.proposal.clone();
-            let add_proposal = proposal.as_add().unwrap();
-            let index = match self.first_free_leaf() {
-                Some(i) => i,
-                None => {
-                    let blank_parent_node = Node::new_blank_parent_node();
-                    assert_eq!(blank_parent_node.node_type, NodeType::Parent);
-                    self.nodes.push(Node::new_blank_parent_node());
-                    self.nodes.push(Node::new_leaf(None));
-                    TreeIndex::from(self.nodes.len() - 1)
-                }
-            };
 
-            let dirpath = treemath::dirpath_root(index, self.leaf_count());
-            for d in dirpath.iter() {
-                let node = self.nodes[d.as_usize()].clone();
-                if !node.is_blank() {
-                    let index = d.as_u32();
-                    // TODO handle error
-                    let mut parent_node = node.node.unwrap();
-                    if !parent_node.unmerged_leaves.contains(&index) {
-                        parent_node.unmerged_leaves.push(index);
-                    }
-                    self.nodes[d.as_usize()].node = Some(parent_node);
-                }
+        if !proposal_id_list.adds.is_empty() {
+            if proposal_id_list.adds.len() > (2 * self.leaf_count().as_usize()) {
+                self.nodes.reserve_exact(
+                    (2 * proposal_id_list.adds.len()) - (2 * self.leaf_count().as_usize()),
+                );
             }
+            let add_proposals: Vec<AddProposal> = proposal_id_list
+                .adds
+                .par_iter()
+                .map(|a| {
+                    let (_proposal_id, queued_proposal) = proposal_queue.get(&a).unwrap();
+                    let proposal = queued_proposal.proposal.clone();
+                    proposal.as_add().unwrap()
+                })
+                .collect();
 
-            added_members.push(add_proposal.key_package.credential.clone());
-            invited_members.push((index, add_proposal.clone()));
-            let leaf_node = Node::new_leaf(Some(add_proposal.key_package));
-            self.blank_member(index);
-            self.nodes[index.as_usize()] = leaf_node;
+            let free_leaves = self.free_leaves();
+            // TODO make sure intermediary nodes are updated with unmerged_leaves
+            let (add_in_place, add_append) = add_proposals.split_at(free_leaves.len());
+            for (add_proposal, leaf_index) in add_in_place.iter().zip(free_leaves) {
+                self.nodes[leaf_index.as_usize()] =
+                    Node::new_leaf(Some(add_proposal.key_package.clone()));
+                let dirpath = treemath::dirpath_root(leaf_index, self.leaf_count());
+                for d in dirpath.iter() {
+                    if !self.nodes[d.as_usize()].is_blank() {
+                        let node = self.nodes[d.as_usize()].clone();
+                        let index = d.as_u32();
+                        // TODO handle error
+                        let mut parent_node = node.node.unwrap();
+                        if !parent_node.unmerged_leaves.contains(&index) {
+                            parent_node.unmerged_leaves.push(index);
+                        }
+                        self.nodes[d.as_usize()].node = Some(parent_node);
+                    }
+                }
+                added_members.push(add_proposal.key_package.credential.clone());
+                invited_members.push((leaf_index, add_proposal.clone()));
+            }
+            let mut new_nodes = Vec::with_capacity(proposal_id_list.adds.len() * 2);
+            let mut leaf_index = self.nodes.len() + 1;
+            for add_proposal in add_append.iter() {
+                new_nodes.extend(vec![
+                    Node::new_blank_parent_node(),
+                    Node::new_leaf(Some(add_proposal.key_package.clone())),
+                ]);
+                added_members.push(add_proposal.key_package.credential.clone());
+                invited_members.push((TreeIndex::from(leaf_index), add_proposal.clone()));
+                leaf_index += 2;
+            }
+            self.nodes.extend(new_nodes);
+            self.trim_tree();
         }
-        self.trim_tree();
         (
             MembershipChanges {
                 updates: updated_members,

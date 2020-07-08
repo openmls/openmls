@@ -168,7 +168,7 @@ impl Codec for SignaturePrivateKeyType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum SignatureKeypairType {
     Ed25519(Ed25519Keypair),
     P256(P256Keypair),
@@ -311,6 +311,7 @@ impl Codec for SignaturePrivateKey {
     }
 }
 
+#[derive(Clone)]
 pub struct SignatureKeypair {
     keypair: SignatureKeypairType,
 }
@@ -587,6 +588,14 @@ impl Ed25519Keypair {
     }
 }
 
+impl Clone for Ed25519Keypair {
+    fn clone(&self) -> Self {
+        let bytes = self.keypair.to_bytes();
+        let keypair = ed25519_dalek::Keypair::from_bytes(&bytes).unwrap();
+        Self { keypair }
+    }
+}
+
 impl Codec for Ed25519Keypair {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.keypair.to_bytes())?;
@@ -718,6 +727,21 @@ impl P256Keypair {
     pub fn get_public_key(&self) -> P256PublicKey {
         P256PublicKey {
             key: self.public_key.clone(),
+        }
+    }
+}
+
+impl Clone for P256Keypair {
+    fn clone(&self) -> Self {
+        let sk_bytes = self.secret_key.serialize();
+        let secret_key = secp256k1::SecretKey::parse_slice(&sk_bytes).unwrap();
+        let pk_bytes = self.public_key.serialize();
+        let public_key =
+            secp256k1::PublicKey::parse_slice(&pk_bytes, Some(secp256k1::PublicKeyFormat::Full))
+                .unwrap();
+        Self {
+            secret_key,
+            public_key,
         }
     }
 }
