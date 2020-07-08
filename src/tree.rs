@@ -892,7 +892,7 @@ impl Tree {
             let node: Node = tree.nodes[index.as_usize()].clone();
             match node.node_type {
                 NodeType::Leaf => {
-                    let leaf_node_hash = LeafNodeHashInput::new(index.as_u32(), node.key_package);
+                    let leaf_node_hash = LeafNodeHashInput::new(index, node.key_package);
                     leaf_node_hash.hash(ciphersuite)
                 }
                 NodeType::Parent => {
@@ -1054,14 +1054,14 @@ impl Codec for ParentNodeHashInput {
 }
 
 pub struct LeafNodeHashInput {
-    leaf_index: u32,
+    node_index: TreeIndex,
     key_package: Option<KeyPackage>,
 }
 
 impl LeafNodeHashInput {
-    pub fn new(leaf_index: u32, key_package: Option<KeyPackage>) -> Self {
+    pub fn new(node_index: TreeIndex, key_package: Option<KeyPackage>) -> Self {
         Self {
-            leaf_index,
+            node_index,
             key_package,
         }
     }
@@ -1073,15 +1073,15 @@ impl LeafNodeHashInput {
 
 impl Codec for LeafNodeHashInput {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.leaf_index.encode(buffer)?;
+        self.node_index.as_u32().encode(buffer)?;
         self.key_package.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let leaf_index = u32::decode(cursor)?;
+        let node_index = TreeIndex::from(u32::decode(cursor)?);
         let key_package = Option::<KeyPackage>::decode(cursor)?;
         Ok(LeafNodeHashInput {
-            leaf_index,
+            node_index,
             key_package,
         })
     }
