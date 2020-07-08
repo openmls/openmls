@@ -30,6 +30,7 @@ use crate::tree::*;
 use crate::treemath;
 use crate::utils::*;
 use crate::validator::*;
+use rayon::prelude::*;
 
 pub struct Group {
     pub config: GroupConfig,
@@ -120,6 +121,29 @@ impl Group {
             interim_transcript_hash,
         }
     }
+    pub fn new_with_members(
+        identity: Identity,
+        group_id: GroupId,
+        config: GroupConfig,
+        kps: &[KeyPackage],
+    ) -> (Self, Welcome) {
+        let mut group = Group::new(identity, group_id, config);
+        let proposals: Vec<Proposal> = kps
+            .par_iter()
+            .map(|kp| {
+                let add_proposal = AddProposal {
+                    key_package: kp.clone(), // TODO Check kp
+                };
+                Proposal::Add(add_proposal)
+            })
+            .collect();
+        for proposal in proposals {
+            group.add_own_proposal(proposal);
+        }
+        let (commit, _mc, welcome_option) = group.create_commit(None);
+        group.process_commit(commit);
+        (group, welcome_option.unwrap())
+    }
     pub fn new_from_welcome(identity: Identity, welcome: Welcome, kpb: KeyPackageBundle) -> Group {
         let ciphersuite = welcome.cipher_suite;
         if ciphersuite != kpb.key_package.cipher_suite {
@@ -206,10 +230,10 @@ impl Group {
             panic!("Own key package not found in welcome tree");
         };
         let mut tree = Tree::new_from_nodes(ciphersuite, kpb, &nodes, index);
-        let common_ancestor =
-            treemath::common_ancestor(index, TreeIndex::from(group_info.signer_index));
-        let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
         if let Some(path_secret) = group_secrets.path_secret {
+            let common_ancestor =
+                treemath::common_ancestor(index, TreeIndex::from(group_info.signer_index));
+            let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
             let (path_secrets, _commit_secret) = OwnLeaf::continue_path_secrets(
                 ciphersuite,
                 &path_secret.path_secret,
@@ -471,7 +495,7 @@ impl Group {
             )
             .unwrap();
 
-            let mut secrets = vec![];
+            let mut plaintext_secrets = vec![];
             for (index, add_proposal) in invited_members.clone() {
                 let key_package = add_proposal.key_package;
                 let key_package_hash =
@@ -496,20 +520,23 @@ impl Group {
                     path_secret,
                 };
                 let group_secrets_bytes = group_secrets.encode_detached().unwrap();
-                let encrypted_group_secrets = HpkeCiphertext::seal(
-                    ciphersuite,
-                    &key_package.hpke_init_key,
-                    &group_secrets_bytes,
-                    None,
-                    None,
-                )
-                .unwrap();
-                let encrypted_group_secrets = EncryptedGroupSecrets {
+                plaintext_secrets.push((
+                    key_package.hpke_init_key,
+                    group_secrets_bytes,
                     key_package_hash,
-                    encrypted_group_secrets,
-                };
-                secrets.push(encrypted_group_secrets);
+                ));
             }
+            let secrets = plaintext_secrets
+                .par_iter()
+                .map(|(init_key, bytes, key_package_hash)| {
+                    let encrypted_group_secrets =
+                        HpkeCiphertext::seal(ciphersuite, init_key, bytes, None, None).unwrap();
+                    EncryptedGroupSecrets {
+                        key_package_hash: key_package_hash.clone(),
+                        encrypted_group_secrets,
+                    }
+                })
+                .collect();
             let welcome = Welcome {
                 version: ProtocolVersion::Mls10,
                 cipher_suite: ciphersuite,
