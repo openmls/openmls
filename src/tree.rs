@@ -948,9 +948,9 @@ impl Tree {
                         let own_hash = node.hash(ciphersuite.into()).unwrap();
                         if let Some(right) = right_option {
                             if let Some(left) = left_option {
-                                let left_parent_hash = left.parent_hash().unwrap_or_else(|| vec![]);
+                                let left_parent_hash = left.parent_hash().unwrap_or_else(Vec::new);
                                 let right_parent_hash =
-                                    right.parent_hash().unwrap_or_else(|| vec![]);
+                                    right.parent_hash().unwrap_or_else(Vec::new);
                                 if (left_parent_hash != own_hash) && (right_parent_hash != own_hash)
                                 {
                                     return false;
@@ -977,7 +977,8 @@ impl Tree {
                             }
                         }
                     }
-                    _ => {}
+
+                    NodeType::Default => {}
                 }
             }
         }

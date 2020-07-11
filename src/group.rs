@@ -697,7 +697,7 @@ impl Group {
         };
         assert!(proposal_option.is_some());
         if let Some(proposal) = proposal_option {
-            assert!(validator.validate_proposal(&proposal.clone(), mls_plaintext.sender));
+            assert!(validator.validate_proposal(&proposal, mls_plaintext.sender));
             let queued_proposal = QueuedProposal {
                 proposal,
                 sender: mls_plaintext.sender,
