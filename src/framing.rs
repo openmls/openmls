@@ -863,7 +863,7 @@ fn codec() {
 
 #[test]
 fn padding() {
-    use crate::kp::*;
+    use crate::extensions::*;
     use crate::utils::*;
 
     let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;

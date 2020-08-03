@@ -18,7 +18,7 @@ use crate::codec::*;
 use crate::crypto::aead::*;
 use crate::crypto::dh::*;
 use crate::crypto::hkdf;
-use crate::kp::*;
+use crate::extensions::*;
 use crate::utils::*;
 use byteorder::{BigEndian, WriteBytesExt};
 use std::*;

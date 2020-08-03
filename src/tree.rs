@@ -18,6 +18,7 @@ use crate::codec::*;
 use crate::creds::*;
 use crate::crypto::hash::*;
 use crate::crypto::hpke::*;
+use crate::extensions::*;
 use crate::kp::*;
 use crate::messages::*;
 use crate::schedule::*;

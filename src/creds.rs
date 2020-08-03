@@ -16,7 +16,7 @@
 
 use crate::codec::*;
 use crate::crypto::signatures::*;
-use crate::kp::*;
+use crate::extensions::*;
 
 #[derive(Clone)]
 pub struct Identity {
@@ -183,7 +183,7 @@ fn generate_key_package() {
 
 #[test]
 fn test_protocol_version() {
-    use crate::kp::*;
+    use crate::extensions::*;
     let mls10_version = ProtocolVersion::Mls10;
     let default_version = ProtocolVersion::Default;
     let mls10_e = mls10_version.encode_detached().unwrap();

@@ -20,6 +20,7 @@ use crate::crypto::hash::*;
 use crate::crypto::hmac::*;
 use crate::crypto::hpke::*;
 use crate::crypto::signatures::*;
+use crate::extensions::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::kp::*;

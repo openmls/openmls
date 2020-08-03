@@ -22,6 +22,7 @@ use crate::crypto::hash;
 use crate::crypto::hkdf;
 use crate::crypto::hpke::*;
 use crate::crypto::signatures::*;
+use crate::extensions::*;
 use crate::framing::*;
 use crate::kp::*;
 use crate::messages::*;

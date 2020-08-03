@@ -15,7 +15,7 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::codec::*;
-use crate::kp::*;
+use crate::extensions::*;
 use rand::rngs::OsRng;
 use sha2::*;
 use std::fmt;

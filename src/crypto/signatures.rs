@@ -17,7 +17,7 @@
 use crate::codec::*;
 use crate::creds::*;
 use crate::crypto::hash::*;
-use crate::kp::*;
+use crate::extensions::*;
 use rand::rngs::OsRng;
 
 // TODO replace secp256k1 by secp256r1
