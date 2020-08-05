@@ -19,6 +19,7 @@ use crate::codec::*;
 use crate::creds::*;
 use crate::crypto::aead;
 use crate::crypto::hash;
+use crate::crypto::hash::*;
 use crate::crypto::hkdf;
 use crate::crypto::hpke::*;
 use crate::crypto::signatures::*;
@@ -127,7 +128,7 @@ impl Group {
         group_id: GroupId,
         config: GroupConfig,
         kps: &[KeyPackage],
-    ) -> (Self, Welcome) {
+    ) -> (Self, (Welcome, Extension)) {
         let mut group = Group::new(identity, group_id, config);
         let proposals: Vec<Proposal> = kps
             .par_iter()
@@ -145,7 +146,12 @@ impl Group {
         group.process_commit(commit);
         (group, welcome_option.unwrap())
     }
-    pub fn new_from_welcome(identity: Identity, welcome: Welcome, kpb: KeyPackageBundle) -> Group {
+    pub fn new_from_welcome(
+        identity: Identity,
+        welcome_bundle: WelcomeBundle,
+        kpb: KeyPackageBundle,
+    ) -> Group {
+        let (welcome, ratchet_tree_extension) = welcome_bundle;
         let ciphersuite = welcome.cipher_suite;
         if ciphersuite != kpb.key_package.cipher_suite {
             panic!("Ciphersuite mismatch"); // TODO error handling
@@ -201,7 +207,15 @@ impl Group {
         )
         .unwrap();
         let group_info = GroupInfo::decode_detached(&group_info_bytes).unwrap();
-        let signer_node = group_info.tree[TreeIndex::from(group_info.signer_index).as_usize()]
+        let tree_hash = group_info.tree_hash.clone();
+        assert_eq!(
+            tree_hash,
+            hash(ciphersuite.into(), &ratchet_tree_extension.extension_data)
+        );
+        let ratchet_tree =
+            RatchetTreeExtension::new_from_bytes(&ratchet_tree_extension.extension_data);
+        let tree = ratchet_tree.tree;
+        let signer_node = tree[TreeIndex::from(group_info.signer_index).as_usize()]
             .clone()
             .unwrap();
         assert_eq!(signer_node.node_type, NodeType::Leaf);
@@ -211,7 +225,7 @@ impl Group {
         assert!(signer_key_package
             .credential
             .verify(&payload, &group_info.signature));
-        let nodes = group_info.tree;
+        let nodes = tree;
         assert!(Tree::verify_integrity(ciphersuite, &nodes));
         let mut index_option = None;
         for (i, node_option) in nodes.iter().enumerate() {
@@ -357,7 +371,7 @@ impl Group {
     pub fn create_commit(
         &mut self,
         authenticated_data: Option<&[u8]>,
-    ) -> (MLSPlaintext, MembershipChanges, Option<Welcome>) {
+    ) -> (MLSPlaintext, MembershipChanges, Option<WelcomeBundle>) {
         let ciphersuite = self.config.ciphersuite;
         // TODO Dedup proposals
         let proposal_id_list = self.public_queue.clone().get_commit_lists();
@@ -445,10 +459,17 @@ impl Group {
         );
 
         if !membership_changes.adds.is_empty() {
+            let public_tree = RatchetTreeExtension::new(new_tree.public_key_tree());
+            let ratchet_tree_extension = public_tree.to_extension();
+            let tree_hash = hash(
+                self.config.ciphersuite.into(),
+                &ratchet_tree_extension.extension_data,
+            );
+
             let mut group_info = GroupInfo {
                 group_id: new_group_context.group_id.clone(),
                 epoch: new_group_context.epoch,
-                tree: new_tree.public_key_tree(),
+                tree_hash,
                 confirmed_transcript_hash,
                 interim_transcript_hash,
                 extensions: vec![],
@@ -544,7 +565,11 @@ impl Group {
                 secrets,
                 encrypted_group_info,
             };
-            (mls_plaintext, membership_changes, Some(welcome))
+            (
+                mls_plaintext,
+                membership_changes,
+                Some((welcome, ratchet_tree_extension)),
+            )
         } else {
             (mls_plaintext, membership_changes, None)
         }
@@ -953,13 +978,13 @@ fn group_operations() {
     // Alice adds Bob
     let _bob_add_proposal = group_alice.create_add_proposal(&bob_key_package, None);
 
-    let (commit1, ms1, welcome_alice_bob) = group_alice.create_commit(None);
+    let (commit1, ms1, welcome_bundle_alice_bob) = group_alice.create_commit(None);
 
     group_alice.process_commit(commit1);
 
     let mut group_bob = Group::new_from_welcome(
         bob_identity,
-        welcome_alice_bob.unwrap(),
+        welcome_bundle_alice_bob.unwrap(),
         bob_key_package_bundle,
     );
 
@@ -1017,14 +1042,14 @@ fn group_operations() {
     let add_proposal = group_bob.create_add_proposal(&charlie_key_package, None);
     group_alice.process_proposal(add_proposal);
 
-    let (commit6, ms6, welcome_bob_charlie) = group_bob.create_commit(None);
+    let (commit6, ms6, welcome_bundle_bob_charlie) = group_bob.create_commit(None);
 
     group_alice.process_commit(commit6.clone());
     group_bob.process_commit(commit6);
 
     let mut group_charlie = Group::new_from_welcome(
         charlie_identity,
-        welcome_bob_charlie.unwrap(),
+        welcome_bundle_bob_charlie.unwrap(),
         charlie_key_package_bundle,
     );
 

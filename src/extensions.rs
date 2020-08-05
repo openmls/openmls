@@ -255,12 +255,12 @@ impl RatchetTreeExtension {
     }
     pub fn new_from_bytes(bytes: &[u8]) -> Self {
         let cursor = &mut Cursor::new(bytes);
-        let tree = decode_vec(VecSize::VecU8, cursor).unwrap();
+        let tree = decode_vec(VecSize::VecU32, cursor).unwrap();
         Self { tree }
     }
     pub fn to_extension(&self) -> Extension {
         let mut extension_data: Vec<u8> = vec![];
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.tree).unwrap();
+        encode_vec(VecSize::VecU32, &mut extension_data, &self.tree).unwrap();
         let extension_type = ExtensionType::RatchetTree;
         Extension {
             extension_type,
