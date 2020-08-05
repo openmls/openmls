@@ -20,6 +20,7 @@ use crate::crypto::hash::*;
 use crate::crypto::hmac::*;
 use crate::crypto::hpke::*;
 use crate::crypto::signatures::*;
+use crate::extensions::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::kp::*;
@@ -489,7 +490,7 @@ impl Codec for RemoveProposal {
 pub struct GroupInfo {
     pub group_id: GroupId,
     pub epoch: GroupEpoch,
-    pub tree: Vec<Option<Node>>,
+    pub tree_hash: Vec<u8>,
     pub confirmed_transcript_hash: Vec<u8>,
     pub interim_transcript_hash: Vec<u8>,
     pub extensions: Vec<Extension>,
@@ -507,7 +508,7 @@ impl Codec for GroupInfo {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let group_id = GroupId::decode(cursor)?;
         let epoch = GroupEpoch::decode(cursor)?;
-        let tree = decode_vec(VecSize::VecU32, cursor)?;
+        let tree_hash = decode_vec(VecSize::VecU8, cursor)?;
         let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = decode_vec(VecSize::VecU16, cursor)?;
@@ -517,7 +518,7 @@ impl Codec for GroupInfo {
         Ok(GroupInfo {
             group_id,
             epoch,
-            tree,
+            tree_hash,
             confirmed_transcript_hash,
             interim_transcript_hash,
             extensions,
@@ -533,7 +534,7 @@ impl Signable for GroupInfo {
         let buffer = &mut vec![];
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.tree)?;
+        encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         encode_vec(VecSize::VecU16, buffer, &self.extensions)?;
@@ -630,3 +631,5 @@ impl Codec for Welcome {
         })
     }
 }
+
+pub type WelcomeBundle = (Welcome, Extension);

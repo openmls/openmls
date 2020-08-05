@@ -17,7 +17,7 @@
 use crate::codec::*;
 use crate::crypto::aead;
 use crate::crypto::hash::*;
-use crate::kp::*;
+use crate::extensions::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::treemath::*;

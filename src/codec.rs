@@ -56,8 +56,7 @@ impl<'a> Cursor {
     }
 
     pub fn sub_cursor(&mut self, length: usize) -> Result<Cursor, CodecError> {
-        self.consume(length)
-            .and_then(|buffer| Ok(Cursor::new(buffer)))
+        self.consume(length).map(|buffer| Cursor::new(buffer))
     }
 
     pub fn is_empty(&self) -> bool {

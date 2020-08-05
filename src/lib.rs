@@ -18,6 +18,7 @@ pub mod astree;
 pub mod codec;
 pub mod creds;
 pub mod crypto;
+pub mod extensions;
 pub mod framing;
 pub mod group;
 pub mod kp;

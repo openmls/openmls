@@ -17,7 +17,7 @@
 use crate::codec::*;
 use crate::crypto::hash;
 use crate::crypto::hkdf;
-use crate::kp::*;
+use crate::extensions::*;
 use crate::messages::*;
 
 pub fn derive_secret(
