@@ -201,8 +201,8 @@ impl PathKeypairs {
     pub fn new() -> Self {
         PathKeypairs { keypairs: vec![] }
     }
-    pub fn add(&mut self, keypairs: Vec<HPKEKeyPair>, path: Vec<TreeIndex>) {
-        fn extend_vec(tree_keypairs: &mut PathKeypairs, max_index: TreeIndex) {
+    pub fn add(&mut self, keypairs: Vec<HPKEKeyPair>, path: Vec<NodeIndex>) {
+        fn extend_vec(tree_keypairs: &mut PathKeypairs, max_index: NodeIndex) {
             while tree_keypairs.keypairs.len() <= max_index.as_usize() {
                 tree_keypairs.keypairs.push(None);
             }
@@ -214,7 +214,7 @@ impl PathKeypairs {
             self.keypairs[index.as_usize()] = Some(keypairs[i].clone());
         }
     }
-    pub fn get(&self, index: TreeIndex) -> Option<HPKEKeyPair> {
+    pub fn get(&self, index: NodeIndex) -> Option<HPKEKeyPair> {
         if index.as_usize() >= self.keypairs.len() {
             return None;
         }
@@ -237,7 +237,7 @@ impl Codec for PathKeypairs {
 pub struct OwnLeaf {
     pub ciphersuite: CipherSuite,
     pub kpb: KeyPackageBundle,
-    pub leaf_index: TreeIndex,
+    pub leaf_index: NodeIndex,
     pub path_keypairs: PathKeypairs,
 }
 
@@ -245,7 +245,7 @@ impl OwnLeaf {
     pub fn new(
         ciphersuite: CipherSuite,
         kpb: KeyPackageBundle,
-        leaf_index: TreeIndex,
+        leaf_index: NodeIndex,
         path_keypairs: PathKeypairs,
     ) -> Self {
         Self {
@@ -324,7 +324,7 @@ impl Codec for OwnLeaf {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let ciphersuite = CipherSuite::decode(cursor)?;
         let kpb = KeyPackageBundle::decode(cursor)?;
-        let leaf_index = TreeIndex::from(u32::decode(cursor)?);
+        let leaf_index = NodeIndex::from(u32::decode(cursor)?);
         let path_keypairs = PathKeypairs::decode(cursor)?;
         Ok(OwnLeaf {
             ciphersuite,
@@ -347,7 +347,7 @@ impl Tree {
         let own_leaf = OwnLeaf::new(
             ciphersuite,
             kpb.clone(),
-            TreeIndex::from(0u32),
+            NodeIndex::from(0u32),
             PathKeypairs::new(),
         );
         let nodes = vec![Node {
@@ -365,7 +365,7 @@ impl Tree {
         ciphersuite: CipherSuite,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
-        index: TreeIndex,
+        index: NodeIndex,
     ) -> Tree {
         let mut nodes = Vec::with_capacity(node_options.len());
         for (i, node_option) in node_options.iter().enumerate() {
@@ -378,8 +378,7 @@ impl Tree {
             }
         }
         let secret = kpb.private_key.as_slice();
-        let dirpath =
-            treemath::dirpath_root(index, RosterIndex::from(TreeIndex::from(nodes.len())));
+        let dirpath = treemath::dirpath_root(index, LeafIndex::from(NodeIndex::from(nodes.len())));
         let (path_secrets, _commit_secret) =
             OwnLeaf::generate_path_secrets(ciphersuite, &secret, dirpath.len());
         let keypairs = OwnLeaf::generate_path_keypairs(ciphersuite, path_secrets);
@@ -392,8 +391,8 @@ impl Tree {
             own_leaf,
         }
     }
-    pub fn tree_size(&self) -> TreeIndex {
-        TreeIndex::from(self.nodes.len())
+    pub fn tree_size(&self) -> NodeIndex {
+        NodeIndex::from(self.nodes.len())
     }
 
     pub fn root(&self) -> Node {
@@ -434,11 +433,11 @@ impl Tree {
         self.nodes[self.own_leaf.leaf_index.as_usize()].clone()
     }
 
-    pub fn leaf_count(&self) -> RosterIndex {
-        RosterIndex::from(self.tree_size())
+    pub fn leaf_count(&self) -> LeafIndex {
+        LeafIndex::from(self.tree_size())
     }
 
-    fn resolve(&self, index: TreeIndex) -> Vec<TreeIndex> {
+    fn resolve(&self, index: NodeIndex) -> Vec<NodeIndex> {
         let size = self.leaf_count();
 
         if self.nodes[index.as_usize()].node_type == NodeType::Leaf {
@@ -458,7 +457,7 @@ impl Tree {
                     .unwrap()
                     .unmerged_leaves
                     .iter()
-                    .map(|n| TreeIndex::from(*n)),
+                    .map(|n| NodeIndex::from(*n)),
             );
             return nodes;
         }
@@ -468,7 +467,7 @@ impl Tree {
         left.extend(right);
         left
     }
-    pub fn blank_member(&mut self, index: TreeIndex) {
+    pub fn blank_member(&mut self, index: NodeIndex) {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
         self.nodes[treemath::root(size).as_usize()].blank();
@@ -476,20 +475,20 @@ impl Tree {
             self.nodes[index.as_usize()].blank();
         }
     }
-    pub fn first_free_leaf(&self) -> Option<TreeIndex> {
+    pub fn first_free_leaf(&self) -> Option<NodeIndex> {
         for i in 0..self.leaf_count().as_usize() {
-            if self.nodes[TreeIndex::from(RosterIndex::from(i)).as_usize()].is_blank() {
-                return Some(TreeIndex::from(i));
+            if self.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].is_blank() {
+                return Some(NodeIndex::from(i));
             }
         }
         None
     }
-    pub fn free_leaves(&self) -> Vec<TreeIndex> {
+    pub fn free_leaves(&self) -> Vec<NodeIndex> {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
-            if self.nodes[TreeIndex::from(RosterIndex::from(i)).as_usize()].is_blank() {
-                free_leaves.push(TreeIndex::from(i));
+            if self.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].is_blank() {
+                free_leaves.push(NodeIndex::from(i));
             }
         }
         free_leaves
@@ -499,7 +498,7 @@ impl Tree {
         let factor = 3;
         println!("{}", message);
         for (i, node) in self.nodes.iter().enumerate() {
-            let level = treemath::level(TreeIndex::from(i));
+            let level = treemath::level(NodeIndex::from(i));
             print!("{:04}", i);
             if !node.is_blank() {
                 let key_bytes;
@@ -569,7 +568,7 @@ impl Tree {
     }
     pub fn update_direct_path(
         &mut self,
-        sender: RosterIndex,
+        sender: LeafIndex,
         direct_path: DirectPath,
         key_package: KeyPackage,
         group_context: &[u8],
@@ -577,9 +576,9 @@ impl Tree {
         let own_index = self.own_leaf.leaf_index;
         // TODO check that the direct path is long enough
         let common_ancestor =
-            treemath::common_ancestor(TreeIndex::from(sender), self.own_leaf.leaf_index);
-        let sender_dirpath = treemath::dirpath_root(TreeIndex::from(sender), self.leaf_count());
-        let sender_copath = treemath::copath(TreeIndex::from(sender), self.leaf_count());
+            treemath::common_ancestor(NodeIndex::from(sender), self.own_leaf.leaf_index);
+        let sender_dirpath = treemath::dirpath_root(NodeIndex::from(sender), self.leaf_count());
+        let sender_copath = treemath::copath(NodeIndex::from(sender), self.leaf_count());
         let common_ancestor_sender_dirpath_index = sender_dirpath
             .iter()
             .position(|x| *x == common_ancestor)
@@ -625,8 +624,8 @@ impl Tree {
             .path_keypairs
             .add(keypairs.clone(), common_path.clone());
         self.merge_keypairs(keypairs, common_path);
-        self.nodes[TreeIndex::from(sender).as_usize()] = Node::new_leaf(Some(key_package));
-        self.compute_parent_hash(TreeIndex::from(sender));
+        self.nodes[NodeIndex::from(sender).as_usize()] = Node::new_leaf(Some(key_package));
+        self.compute_parent_hash(NodeIndex::from(sender));
         commit_secret
     }
     pub fn update_own_leaf(
@@ -735,7 +734,7 @@ impl Tree {
             nodes: direct_path_nodes,
         }
     }
-    pub fn merge_public_keys(&mut self, direct_path: DirectPath, path: Vec<TreeIndex>) {
+    pub fn merge_public_keys(&mut self, direct_path: DirectPath, path: Vec<NodeIndex>) {
         assert_eq!(direct_path.nodes.len(), path.len()); // TODO return error
         for (i, p) in path.iter().enumerate() {
             let public_key = direct_path.nodes[i].clone().public_key;
@@ -747,7 +746,7 @@ impl Tree {
             self.nodes[p.as_usize()].node = Some(node);
         }
     }
-    pub fn merge_keypairs(&mut self, keypairs: Vec<HPKEKeyPair>, path: Vec<TreeIndex>) {
+    pub fn merge_keypairs(&mut self, keypairs: Vec<HPKEKeyPair>, path: Vec<NodeIndex>) {
         assert_eq!(keypairs.len(), path.len()); // TODO return error
         for i in 0..path.len() {
             let node = ParentNode {
@@ -763,7 +762,7 @@ impl Tree {
         proposal_id_list: ProposalIDList,
         proposal_queue: ProposalQueue,
         pending_kpbs: Vec<KeyPackageBundle>,
-    ) -> (MembershipChanges, Vec<(TreeIndex, AddProposal)>, bool) {
+    ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {
         let mut updated_members = vec![];
         let mut removed_members = vec![];
         let mut added_members = Vec::with_capacity(proposal_id_list.adds.len());
@@ -798,7 +797,7 @@ impl Tree {
             let (_proposal_id, queued_proposal) = proposal_queue.get(&r).unwrap();
             let proposal = queued_proposal.proposal.clone();
             let remove_proposal = proposal.as_remove().unwrap();
-            let removed = TreeIndex::from(remove_proposal.removed);
+            let removed = NodeIndex::from(remove_proposal.removed);
             if removed == self.own_leaf.leaf_index {
                 self_removed = true;
             }
@@ -859,7 +858,7 @@ impl Tree {
                     Node::new_leaf(Some(add_proposal.key_package.clone())),
                 ]);
                 added_members.push(add_proposal.key_package.credential.clone());
-                invited_members.push((TreeIndex::from(leaf_index), add_proposal.clone()));
+                invited_members.push((NodeIndex::from(leaf_index), add_proposal.clone()));
                 leaf_index += 2;
             }
             self.nodes.extend(new_nodes);
@@ -889,7 +888,7 @@ impl Tree {
         }
     }
     pub fn compute_tree_hash(&self) -> Vec<u8> {
-        fn node_hash(ciphersuite: CipherSuite, tree: &Tree, index: TreeIndex) -> Vec<u8> {
+        fn node_hash(ciphersuite: CipherSuite, tree: &Tree, index: NodeIndex) -> Vec<u8> {
             let node: Node = tree.nodes[index.as_usize()].clone();
             match node.node_type {
                 NodeType::Leaf => {
@@ -911,7 +910,7 @@ impl Tree {
         let root = treemath::root(self.leaf_count());
         node_hash(self.ciphersuite, &self, root)
     }
-    pub fn compute_parent_hash(&mut self, index: TreeIndex) -> Vec<u8> {
+    pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Vec<u8> {
         let parent = treemath::parent(index, self.leaf_count());
         let parent_hash = if parent == treemath::root(self.leaf_count()) {
             let root_node = self.nodes[parent.as_usize()].clone();
@@ -932,15 +931,15 @@ impl Tree {
         }
     }
     pub fn verify_integrity(ciphersuite: CipherSuite, nodes: &[Option<Node>]) -> bool {
-        let node_count = TreeIndex::from(nodes.len());
-        let size = RosterIndex::from(node_count);
+        let node_count = NodeIndex::from(nodes.len());
+        let size = LeafIndex::from(node_count);
         for i in 0..node_count.as_usize() {
             let node_option = nodes[i].clone();
             if let Some(node) = node_option {
                 match node.node_type {
                     NodeType::Parent => {
-                        let left_index = treemath::left(TreeIndex::from(i));
-                        let right_index = treemath::right(TreeIndex::from(i), size);
+                        let left_index = treemath::left(NodeIndex::from(i));
+                        let right_index = treemath::right(NodeIndex::from(i), size);
                         if right_index >= node_count {
                             return false;
                         }
@@ -1056,12 +1055,12 @@ impl Codec for ParentNodeHashInput {
 }
 
 pub struct LeafNodeHashInput {
-    node_index: TreeIndex,
+    node_index: NodeIndex,
     key_package: Option<KeyPackage>,
 }
 
 impl LeafNodeHashInput {
-    pub fn new(node_index: TreeIndex, key_package: Option<KeyPackage>) -> Self {
+    pub fn new(node_index: NodeIndex, key_package: Option<KeyPackage>) -> Self {
         Self {
             node_index,
             key_package,
@@ -1080,7 +1079,7 @@ impl Codec for LeafNodeHashInput {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let node_index = TreeIndex::from(u32::decode(cursor)?);
+        let node_index = NodeIndex::from(u32::decode(cursor)?);
         let key_package = Option::<KeyPackage>::decode(cursor)?;
         Ok(LeafNodeHashInput {
             node_index,

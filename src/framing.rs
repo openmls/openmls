@@ -37,7 +37,7 @@ pub struct MLSPlaintext {
 
 impl MLSPlaintext {
     pub fn new(
-        sender: RosterIndex,
+        sender: LeafIndex,
         authenticated_data: &[u8],
         content: MLSPlaintextContentType,
         key_pair: &SignatureKeypair,
@@ -412,18 +412,18 @@ impl Codec for SenderType {
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct Sender {
     pub sender_type: SenderType,
-    pub sender: RosterIndex,
+    pub sender: LeafIndex,
 }
 
 impl Sender {
-    pub fn member(sender: RosterIndex) -> Self {
+    pub fn member(sender: LeafIndex) -> Self {
         Sender {
             sender_type: SenderType::Member,
             sender,
         }
     }
-    pub fn as_tree_index(self) -> TreeIndex {
-        TreeIndex::from(self.sender)
+    pub fn as_tree_index(self) -> NodeIndex {
+        NodeIndex::from(self.sender)
     }
 }
 
@@ -435,7 +435,7 @@ impl Codec for Sender {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let sender_type = SenderType::decode(cursor)?;
-        let sender = RosterIndex::from(u32::decode(cursor)?);
+        let sender = LeafIndex::from(u32::decode(cursor)?);
         Ok(Sender {
             sender_type,
             sender,
@@ -537,7 +537,7 @@ pub struct MLSPlaintextTBS {
     pub context: GroupContext,
     pub group_id: GroupId,
     pub epoch: GroupEpoch,
-    pub sender: RosterIndex,
+    pub sender: LeafIndex,
     pub authenticated_data: Vec<u8>,
     pub content_type: ContentType,
     pub payload: MLSPlaintextContentType,
@@ -580,7 +580,7 @@ impl Codec for MLSPlaintextTBS {
         let context = GroupContext::decode(cursor)?;
         let group_id = GroupId::decode(cursor)?;
         let epoch = GroupEpoch::decode(cursor)?;
-        let sender = RosterIndex::from(u32::decode(cursor)?);
+        let sender = LeafIndex::from(u32::decode(cursor)?);
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
         let content_type = ContentType::decode(cursor)?;
         let payload = MLSPlaintextContentType::decode(cursor)?;
@@ -599,7 +599,7 @@ impl Codec for MLSPlaintextTBS {
 
 #[derive(Clone)]
 pub struct MLSSenderData {
-    pub sender: RosterIndex,
+    pub sender: LeafIndex,
     pub generation: u32,
     pub reuse_guard: u32,
 }
@@ -613,7 +613,7 @@ impl Codec for MLSSenderData {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let sender = RosterIndex::from(u32::decode(cursor)?);
+        let sender = LeafIndex::from(u32::decode(cursor)?);
         let generation = u32::decode(cursor)?;
         let reuse_guard = u32::decode(cursor)?;
 
@@ -626,7 +626,7 @@ impl Codec for MLSSenderData {
 }
 
 impl MLSSenderData {
-    pub fn new(sender: RosterIndex, generation: u32) -> Self {
+    pub fn new(sender: LeafIndex, generation: u32) -> Self {
         MLSSenderData {
             sender,
             generation,
@@ -745,7 +745,7 @@ pub struct MLSPlaintextCommitContent {
 }
 
 impl MLSPlaintextCommitContent {
-    pub fn new(group_context: &GroupContext, sender: RosterIndex, commit: Commit) -> Self {
+    pub fn new(group_context: &GroupContext, sender: LeafIndex, commit: Commit) -> Self {
         MLSPlaintextCommitContent {
             group_id: group_context.group_id.clone(),
             epoch: group_context.epoch,
@@ -836,7 +836,7 @@ fn codec() {
     let keypair = SignatureKeypair::new(SignatureAlgorithm::Ed25519).unwrap();
     let sender = Sender {
         sender_type: SenderType::Member,
-        sender: RosterIndex::from(2u32),
+        sender: LeafIndex::from(2u32),
     };
     let mut orig = MLSPlaintext {
         group_id: GroupId::random(),

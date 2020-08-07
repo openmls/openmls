@@ -35,9 +35,9 @@ pub enum MessageError {
 }
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
-pub struct TreeIndex(u32);
+pub struct NodeIndex(u32);
 
-impl TreeIndex {
+impl NodeIndex {
     pub fn as_u32(self) -> u32 {
         self.0
     }
@@ -46,28 +46,28 @@ impl TreeIndex {
     }
 }
 
-impl From<u32> for TreeIndex {
-    fn from(i: u32) -> TreeIndex {
-        TreeIndex(i)
+impl From<u32> for NodeIndex {
+    fn from(i: u32) -> NodeIndex {
+        NodeIndex(i)
     }
 }
 
-impl From<usize> for TreeIndex {
-    fn from(i: usize) -> TreeIndex {
-        TreeIndex(i as u32)
+impl From<usize> for NodeIndex {
+    fn from(i: usize) -> NodeIndex {
+        NodeIndex(i as u32)
     }
 }
 
-impl From<RosterIndex> for TreeIndex {
-    fn from(roster_index: RosterIndex) -> TreeIndex {
-        TreeIndex(roster_index.as_u32() * 2)
+impl From<LeafIndex> for NodeIndex {
+    fn from(roster_index: LeafIndex) -> NodeIndex {
+        NodeIndex(roster_index.as_u32() * 2)
     }
 }
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
-pub struct RosterIndex(u32);
+pub struct LeafIndex(u32);
 
-impl RosterIndex {
+impl LeafIndex {
     pub fn as_u32(self) -> u32 {
         self.0
     }
@@ -76,21 +76,21 @@ impl RosterIndex {
     }
 }
 
-impl From<u32> for RosterIndex {
-    fn from(i: u32) -> RosterIndex {
-        RosterIndex(i)
+impl From<u32> for LeafIndex {
+    fn from(i: u32) -> LeafIndex {
+        LeafIndex(i)
     }
 }
 
-impl From<usize> for RosterIndex {
-    fn from(i: usize) -> RosterIndex {
-        RosterIndex(i as u32)
+impl From<usize> for LeafIndex {
+    fn from(i: usize) -> LeafIndex {
+        LeafIndex(i as u32)
     }
 }
 
-impl From<TreeIndex> for RosterIndex {
-    fn from(tree_index: TreeIndex) -> RosterIndex {
-        RosterIndex((tree_index.as_u32() + 1) / 2)
+impl From<NodeIndex> for LeafIndex {
+    fn from(tree_index: NodeIndex) -> LeafIndex {
+        LeafIndex((tree_index.as_u32() + 1) / 2)
     }
 }
 
@@ -243,7 +243,7 @@ pub struct QueuedProposal {
 }
 
 impl QueuedProposal {
-    pub fn new(proposal: Proposal, sender: RosterIndex, own_kpb: Option<KeyPackageBundle>) -> Self {
+    pub fn new(proposal: Proposal, sender: LeafIndex, own_kpb: Option<KeyPackageBundle>) -> Self {
         Self {
             proposal,
             sender: Sender::member(sender),
@@ -495,7 +495,7 @@ pub struct GroupInfo {
     pub interim_transcript_hash: Vec<u8>,
     pub extensions: Vec<Extension>,
     pub confirmation: Vec<u8>,
-    pub signer_index: RosterIndex,
+    pub signer_index: LeafIndex,
     pub signature: Signature,
 }
 
@@ -513,7 +513,7 @@ impl Codec for GroupInfo {
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = decode_vec(VecSize::VecU16, cursor)?;
         let confirmation = decode_vec(VecSize::VecU8, cursor)?;
-        let signer_index = RosterIndex::from(u32::decode(cursor)?);
+        let signer_index = LeafIndex::from(u32::decode(cursor)?);
         let signature = Signature::decode(cursor)?;
         Ok(GroupInfo {
             group_id,
