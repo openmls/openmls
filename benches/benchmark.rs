@@ -27,6 +27,7 @@ use maelstrom::crypto::hash::*;
 use maelstrom::crypto::hkdf::*;
 use maelstrom::crypto::hmac::*;
 use maelstrom::crypto::hpke::*;
+use maelstrom::extensions::*;
 use maelstrom::kp::*;
 use maelstrom::utils::*;
 
