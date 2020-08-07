@@ -93,7 +93,7 @@ impl Codec for ASTreeNode {
 
 struct SenderRatchet {
     ciphersuite: CipherSuite,
-    index: RosterIndex,
+    index: LeafIndex,
     generation: u32,
     past_secrets: Vec<Vec<u8>>,
 }
@@ -112,7 +112,7 @@ impl Codec for SenderRatchet {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let ciphersuite = CipherSuite::decode(cursor)?;
-        let index = RosterIndex::from(u32::decode(cursor)?);
+        let index = LeafIndex::from(u32::decode(cursor)?);
         let generation = u32::decode(cursor)?;
         let len = u32::decode(cursor)? as usize;
         let mut past_secrets = vec![];
@@ -130,7 +130,7 @@ impl Codec for SenderRatchet {
 }
 
 impl SenderRatchet {
-    pub fn new(index: RosterIndex, secret: &[u8], ciphersuite: CipherSuite) -> Self {
+    pub fn new(index: LeafIndex, secret: &[u8], ciphersuite: CipherSuite) -> Self {
         Self {
             ciphersuite,
             index,
@@ -205,7 +205,7 @@ pub struct ASTree {
     ciphersuite: CipherSuite,
     nodes: Vec<Option<ASTreeNode>>,
     sender_ratchets: Vec<Option<SenderRatchet>>,
-    size: RosterIndex,
+    size: LeafIndex,
 }
 
 impl Codec for ASTree {
@@ -220,7 +220,7 @@ impl Codec for ASTree {
         let ciphersuite = CipherSuite::decode(cursor)?;
         let nodes = decode_vec(VecSize::VecU32, cursor)?;
         let sender_ratchets = decode_vec(VecSize::VecU32, cursor)?;
-        let size = RosterIndex::from(u32::decode(cursor)?);
+        let size = LeafIndex::from(u32::decode(cursor)?);
         Ok(ASTree {
             ciphersuite,
             nodes,
@@ -231,9 +231,9 @@ impl Codec for ASTree {
 }
 
 impl ASTree {
-    pub fn new(ciphersuite: CipherSuite, application_secret: &[u8], size: RosterIndex) -> Self {
+    pub fn new(ciphersuite: CipherSuite, application_secret: &[u8], size: LeafIndex) -> Self {
         let root = root(size);
-        let num_indices = TreeIndex::from(size).as_usize() - 1;
+        let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes: Vec<Option<ASTreeNode>> = Vec::with_capacity(num_indices);
         for _ in 0..(num_indices) {
             nodes.push(None);
@@ -252,7 +252,7 @@ impl ASTree {
             size,
         }
     }
-    pub fn get_generation(&self, sender: RosterIndex) -> u32 {
+    pub fn get_generation(&self, sender: LeafIndex) -> u32 {
         if let Some(sender_ratchet) = &self.sender_ratchets[sender.as_usize()] {
             sender_ratchet.generation
         } else {
@@ -261,10 +261,10 @@ impl ASTree {
     }
     pub fn get_secret(
         &mut self,
-        index: RosterIndex,
+        index: LeafIndex,
         generation: u32,
     ) -> Result<ApplicationSecrets, ASError> {
-        let index_in_tree = TreeIndex::from(index);
+        let index_in_tree = NodeIndex::from(index);
         if index >= self.size {
             return Err(ASError::IndexOutOfBounds);
         }
@@ -276,7 +276,7 @@ impl ASTree {
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(dirpath(index_in_tree, self.size));
         dir_path.push(root(self.size));
-        let mut empty_nodes: Vec<TreeIndex> = vec![];
+        let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
             empty_nodes.push(n);
             if self.nodes[n.as_usize()].is_some() {
@@ -295,7 +295,7 @@ impl ASTree {
         self.sender_ratchets[index.as_usize()] = Some(sender_ratchet);
         application_secret
     }
-    fn hash_down(&mut self, index_in_tree: TreeIndex) {
+    fn hash_down(&mut self, index_in_tree: NodeIndex) {
         let hash_len = hash_length(self.ciphersuite.into());
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
         let left_index = left(index_in_tree);
@@ -329,34 +329,32 @@ impl ASTree {
 #[test]
 fn test_boundaries() {
     let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
-    let mut astree = ASTree::new(ciphersuite, &[0u8; 32], RosterIndex::from(2u32));
-    assert!(astree.get_secret(RosterIndex::from(0u32), 0).is_ok());
-    assert!(astree.get_secret(RosterIndex::from(1u32), 0).is_ok());
-    assert!(astree.get_secret(RosterIndex::from(0u32), 1).is_ok());
-    assert!(astree.get_secret(RosterIndex::from(0u32), 1_000).is_ok());
+    let mut astree = ASTree::new(ciphersuite, &[0u8; 32], LeafIndex::from(2u32));
+    assert!(astree.get_secret(LeafIndex::from(0u32), 0).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(1u32), 0).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(0u32), 1).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(0u32), 1_000).is_ok());
     assert_eq!(
-        astree.get_secret(RosterIndex::from(1u32), 1001),
+        astree.get_secret(LeafIndex::from(1u32), 1001),
         Err(ASError::TooDistantInTheFuture)
     );
-    assert!(astree.get_secret(RosterIndex::from(0u32), 996).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(0u32), 996).is_ok());
     assert_eq!(
-        astree.get_secret(RosterIndex::from(0u32), 995),
+        astree.get_secret(LeafIndex::from(0u32), 995),
         Err(ASError::TooDistantInThePast)
     );
     assert_eq!(
-        astree.get_secret(RosterIndex::from(2u32), 0),
+        astree.get_secret(LeafIndex::from(2u32), 0),
         Err(ASError::IndexOutOfBounds)
     );
-    let mut largetree = ASTree::new(ciphersuite, &[0u8; 32], RosterIndex::from(100_000u32));
-    assert!(largetree.get_secret(RosterIndex::from(0u32), 0).is_ok());
+    let mut largetree = ASTree::new(ciphersuite, &[0u8; 32], LeafIndex::from(100_000u32));
+    assert!(largetree.get_secret(LeafIndex::from(0u32), 0).is_ok());
+    assert!(largetree.get_secret(LeafIndex::from(99_999u32), 0).is_ok());
     assert!(largetree
-        .get_secret(RosterIndex::from(99_999u32), 0)
-        .is_ok());
-    assert!(largetree
-        .get_secret(RosterIndex::from(99_999u32), 1_000)
+        .get_secret(LeafIndex::from(99_999u32), 1_000)
         .is_ok());
     assert_eq!(
-        largetree.get_secret(RosterIndex::from(100_000u32), 0),
+        largetree.get_secret(LeafIndex::from(100_000u32), 0),
         Err(ASError::IndexOutOfBounds)
     );
 }

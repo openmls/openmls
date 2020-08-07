@@ -99,7 +99,7 @@ impl Group {
         let astree = ASTree::new(
             config.ciphersuite,
             &epoch_secrets.application_secret,
-            RosterIndex::from(1u32),
+            LeafIndex::from(1u32),
         );
         let tree = Tree::new(config.ciphersuite, kpb);
         let group_context = GroupContext {
@@ -215,7 +215,7 @@ impl Group {
         let ratchet_tree =
             RatchetTreeExtension::new_from_bytes(&ratchet_tree_extension.extension_data);
         let tree = ratchet_tree.tree;
-        let signer_node = tree[TreeIndex::from(group_info.signer_index).as_usize()]
+        let signer_node = tree[NodeIndex::from(group_info.signer_index).as_usize()]
             .clone()
             .unwrap();
         assert_eq!(signer_node.node_type, NodeType::Leaf);
@@ -232,7 +232,7 @@ impl Group {
             if let Some(node) = node_option {
                 if let Some(kp) = node.key_package.clone() {
                     if kp == kpb.key_package {
-                        index_option = Some(TreeIndex::from(i));
+                        index_option = Some(NodeIndex::from(i));
                         break;
                     }
                 }
@@ -247,7 +247,7 @@ impl Group {
         let mut tree = Tree::new_from_nodes(ciphersuite, kpb, &nodes, index);
         if let Some(path_secret) = group_secrets.path_secret {
             let common_ancestor =
-                treemath::common_ancestor(index, TreeIndex::from(group_info.signer_index));
+                treemath::common_ancestor(index, NodeIndex::from(group_info.signer_index));
             let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
             let (path_secrets, _commit_secret) = OwnLeaf::continue_path_secrets(
                 ciphersuite,
@@ -682,7 +682,7 @@ impl Group {
 
         if let Some(path) = commit.path {
             if !is_own_commit {
-                let parent_hash = new_tree.compute_parent_hash(TreeIndex::from(sender));
+                let parent_hash = new_tree.compute_parent_hash(NodeIndex::from(sender));
 
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
@@ -801,14 +801,14 @@ impl Group {
     pub fn roster(&self) -> Vec<Credential> {
         let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
         for i in 0..self.tree.leaf_count().as_usize() {
-            let node = self.tree.nodes[TreeIndex::from(RosterIndex::from(i)).as_usize()].clone();
+            let node = self.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
             let credential = node.key_package.unwrap().credential;
             roster.push(credential);
         }
         roster
     }
-    pub fn get_sender_index(&self) -> RosterIndex {
-        RosterIndex::from(self.tree.own_leaf.leaf_index)
+    pub fn get_sender_index(&self) -> LeafIndex {
+        LeafIndex::from(self.tree.own_leaf.leaf_index)
     }
     fn get_context(&self) -> GroupContext {
         self.group_context.clone()

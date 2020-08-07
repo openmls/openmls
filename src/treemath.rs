@@ -35,7 +35,7 @@ pub fn pow2(x: usize) -> usize {
     }
 }
 
-pub fn level(index: TreeIndex) -> usize {
+pub fn level(index: NodeIndex) -> usize {
     let x = index.as_usize();
     if (x & 0x01) == 0 {
         return 0;
@@ -51,42 +51,42 @@ pub fn node_width(n: usize) -> usize {
     2 * (n - 1) + 1
 }
 
-pub fn root(size: RosterIndex) -> TreeIndex {
+pub fn root(size: LeafIndex) -> NodeIndex {
     let n = size.as_usize();
     let w = node_width(n);
-    TreeIndex::from((1usize << log2(w)) - 1)
+    NodeIndex::from((1usize << log2(w)) - 1)
 }
 
-pub fn left(index: TreeIndex) -> TreeIndex {
+pub fn left(index: NodeIndex) -> NodeIndex {
     let x = index.as_usize();
-    let k = level(TreeIndex::from(x));
+    let k = level(NodeIndex::from(x));
     if k == 0 {
-        return TreeIndex::from(x);
+        return NodeIndex::from(x);
     }
-    TreeIndex::from(x ^ (0x01 << (k - 1)))
+    NodeIndex::from(x ^ (0x01 << (k - 1)))
 }
 
-pub fn right(index: TreeIndex, size: RosterIndex) -> TreeIndex {
+pub fn right(index: NodeIndex, size: LeafIndex) -> NodeIndex {
     let x = index.as_usize();
     let n = size.as_usize();
-    let k = level(TreeIndex::from(x));
+    let k = level(NodeIndex::from(x));
     if k == 0 {
-        return TreeIndex::from(x);
+        return NodeIndex::from(x);
     }
     let mut r = x ^ (0x03 << (k - 1));
     while r >= node_width(n) {
-        r = left(TreeIndex::from(r)).as_usize();
+        r = left(NodeIndex::from(r)).as_usize();
     }
-    TreeIndex::from(r)
+    NodeIndex::from(r)
 }
 
 pub fn parent_step(x: usize) -> usize {
-    let k = level(TreeIndex::from(x));
+    let k = level(NodeIndex::from(x));
     let b = (x >> (k + 1)) & 0x01;
     (x | (1 << k)) ^ (b << (k + 1))
 }
 
-pub fn parent(index: TreeIndex, size: RosterIndex) -> TreeIndex {
+pub fn parent(index: NodeIndex, size: LeafIndex) -> NodeIndex {
     let x = index.as_usize();
     let n = size.as_usize();
     if index == root(size) {
@@ -96,10 +96,10 @@ pub fn parent(index: TreeIndex, size: RosterIndex) -> TreeIndex {
     while p >= node_width(n) {
         p = parent_step(p)
     }
-    TreeIndex::from(p)
+    NodeIndex::from(p)
 }
 
-pub fn sibling(index: TreeIndex, size: RosterIndex) -> TreeIndex {
+pub fn sibling(index: NodeIndex, size: LeafIndex) -> NodeIndex {
     let p = parent(index, size);
     match index.cmp(&p) {
         Ordering::Less => right(p, size),
@@ -110,7 +110,7 @@ pub fn sibling(index: TreeIndex, size: RosterIndex) -> TreeIndex {
 
 // Ordered from leaf to root
 // Includes neither leaf nor root
-pub fn dirpath(index: TreeIndex, size: RosterIndex) -> Vec<TreeIndex> {
+pub fn dirpath(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let mut d = vec![];
     let mut p = parent(index, size);
     let r = root(size);
@@ -123,7 +123,7 @@ pub fn dirpath(index: TreeIndex, size: RosterIndex) -> Vec<TreeIndex> {
 
 // Ordered from leaf to root
 // Includes leaf and root
-pub fn dirpath_long(index: TreeIndex, size: RosterIndex) -> Vec<TreeIndex> {
+pub fn dirpath_long(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let mut d = vec![index];
     let mut p = parent(index, size);
     let r = root(size);
@@ -140,7 +140,7 @@ pub fn dirpath_long(index: TreeIndex, size: RosterIndex) -> Vec<TreeIndex> {
 
 // Ordered from leaf to root
 // Includes root but not leaf
-pub fn dirpath_root(index: TreeIndex, size: RosterIndex) -> Vec<TreeIndex> {
+pub fn dirpath_root(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let mut d = vec![];
     let mut p = parent(index, size);
     let r = root(size);
@@ -153,13 +153,13 @@ pub fn dirpath_root(index: TreeIndex, size: RosterIndex) -> Vec<TreeIndex> {
 }
 
 // Ordered from leaf to root
-pub fn copath(index: TreeIndex, size: RosterIndex) -> Vec<TreeIndex> {
+pub fn copath(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let mut d = vec![index];
     d.append(&mut dirpath(index, size));
     d.iter().map(|&index| sibling(index, size)).collect()
 }
 
-pub fn common_ancestor(x: TreeIndex, y: TreeIndex) -> TreeIndex {
+pub fn common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     let (mut xn, mut yn) = (x.as_usize(), y.as_usize());
     let mut k = 0;
     while xn != yn {
@@ -167,7 +167,7 @@ pub fn common_ancestor(x: TreeIndex, y: TreeIndex) -> TreeIndex {
         yn >>= 1;
         k += 1;
     }
-    TreeIndex::from((xn << k) + (1 << (k - 1)) - 1)
+    NodeIndex::from((xn << k) + (1 << (k - 1)) - 1)
 }
 
 #[test]
@@ -183,7 +183,7 @@ fn verify_binary_test_vector_treemath() {
 
     let cursor = &mut Cursor::new(&buffer);
 
-    let tree_size = RosterIndex::from(u32::decode(cursor).unwrap());
+    let tree_size = LeafIndex::from(u32::decode(cursor).unwrap());
 
     let root: Vec<u32> = decode_vec(VecSize::VecU32, cursor).unwrap();
     let left: Vec<u32> = decode_vec(VecSize::VecU32, cursor).unwrap();
@@ -192,30 +192,27 @@ fn verify_binary_test_vector_treemath() {
     let sibling: Vec<u32> = decode_vec(VecSize::VecU32, cursor).unwrap();
 
     for (i, r) in root.iter().enumerate() {
-        assert_eq!(
-            TreeIndex::from(*r),
-            treemath::root(RosterIndex::from(i + 1))
-        );
+        assert_eq!(NodeIndex::from(*r), treemath::root(LeafIndex::from(i + 1)));
     }
     for (i, l) in left.iter().enumerate() {
-        assert_eq!(TreeIndex::from(*l), treemath::left(TreeIndex::from(i)));
+        assert_eq!(NodeIndex::from(*l), treemath::left(NodeIndex::from(i)));
     }
     for (i, r) in right.iter().enumerate() {
         assert_eq!(
-            TreeIndex::from(*r),
-            treemath::right(TreeIndex::from(i), tree_size)
+            NodeIndex::from(*r),
+            treemath::right(NodeIndex::from(i), tree_size)
         );
     }
     for (i, p) in parent.iter().enumerate() {
         assert_eq!(
-            TreeIndex::from(*p),
-            treemath::parent(TreeIndex::from(i), tree_size)
+            NodeIndex::from(*p),
+            treemath::parent(NodeIndex::from(i), tree_size)
         );
     }
     for (i, s) in sibling.iter().enumerate() {
         assert_eq!(
-            TreeIndex::from(*s),
-            treemath::sibling(TreeIndex::from(i), tree_size)
+            NodeIndex::from(*s),
+            treemath::sibling(NodeIndex::from(i), tree_size)
         );
     }
     assert_eq!(cursor.has_more(), false);
