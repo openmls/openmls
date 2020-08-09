@@ -261,9 +261,6 @@ impl Codec for HPKEKeyPair {
     }
 }
 
-pub type DHPublicKey2 = [u8];
-pub type DHPrivateKey2 = [u8];
-
 pub const NONCEBYTES: usize = 12;
 pub const CHACHAKEYBYTES: usize = 32;
 pub const AES128KEYBYTES: usize = 16;
