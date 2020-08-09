@@ -25,17 +25,17 @@ pub enum HashAlgorithm {
 }
 
 impl From<CipherSuite> for HashAlgorithm {
-    fn from(value: CipherSuite) -> Self {
+    fn from(value: Ciphersuite) -> Self {
         match value {
-            CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => HashAlgorithm::SHA256,
-            CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => HashAlgorithm::SHA256,
-            CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => HashAlgorithm::SHA256,
+            Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => HashAlgorithm::SHA256,
+            Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 HashAlgorithm::SHA256
             }
-            CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => HashAlgorithm::SHA512,
-            CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => HashAlgorithm::SHA512,
-            CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => HashAlgorithm::SHA512,
-            CipherSuite::Default => HashAlgorithm::INVALID,
+            Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => HashAlgorithm::SHA512,
+            Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => HashAlgorithm::SHA512,
+            Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => HashAlgorithm::SHA512,
+            Ciphersuite::Default => HashAlgorithm::INVALID,
         }
     }
 }

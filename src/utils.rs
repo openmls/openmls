@@ -14,16 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use evercrypt::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;
 
 pub fn randombytes(n: usize) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(n);
-    for _ in 0..n {
-        bytes.push(0);
-    }
-    OsRng.fill_bytes(&mut bytes);
-    bytes
+    get_random_vec(n)
 }
 
 pub fn random_usize() -> usize {

@@ -80,7 +80,7 @@ impl Codec for HpkeCiphertext {
 
 impl HpkeCiphertext {
     pub fn seal(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         public_key: &DHPublicKey,
         payload: &[u8],
         aad: Option<&[u8]>,
@@ -95,7 +95,7 @@ impl HpkeCiphertext {
     }
     pub fn open(
         &self,
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         skr: &DHPrivateKey,
         aad: Option<&[u8]>,
         info: Option<&[u8]>,
@@ -106,7 +106,7 @@ impl HpkeCiphertext {
 }
 
 pub struct AEADContext {
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     key: Vec<u8>,
     nonce: Vec<u8>,
     exporter_secret: Vec<u8>,
@@ -115,7 +115,7 @@ pub struct AEADContext {
 
 impl AEADContext {
     pub fn new(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         key: Vec<u8>,
         nonce: Vec<u8>,
         exporter_secret: Vec<u8>,
@@ -186,27 +186,27 @@ impl AEADContext {
     }
 }
 
-fn nk(ciphersuite: CipherSuite) -> usize {
+fn nk(ciphersuite: Ciphersuite) -> usize {
     match ciphersuite {
-        CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 16,
-        CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 16,
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 32,
-        CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 32,
-        CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 32,
-        CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 32,
-        CipherSuite::Default => panic!("Invalid ciphersuite"),
+        Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 16,
+        Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 16,
+        Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 32,
+        Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 32,
+        Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 32,
+        Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 32,
+        Ciphersuite::Default => panic!("Invalid ciphersuite"),
     }
 }
 
-fn nn(ciphersuite: CipherSuite) -> usize {
+fn nn(ciphersuite: Ciphersuite) -> usize {
     match ciphersuite {
-        CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 12,
-        CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 12,
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 12,
-        CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 12,
-        CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 12,
-        CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 12,
-        CipherSuite::Default => panic!("Invalid ciphersuite"),
+        Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 12,
+        Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 12,
+        Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 12,
+        Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 12,
+        Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 12,
+        Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 12,
+        Ciphersuite::Default => panic!("Invalid ciphersuite"),
     }
 }
 
@@ -242,7 +242,7 @@ def KeySchedule(mode, zz, info, psk, pskID, pkSm):
 */
 
 fn key_schedule(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     mode: HPKEMode,
     zz: &[u8],
     info: &[u8],
@@ -282,7 +282,7 @@ fn key_schedule(
 */
 
 fn setup_base_s(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     pkr: &DHPublicKey,
     info: &[u8],
 ) -> (Vec<u8>, AEADContext) {
@@ -300,7 +300,7 @@ fn setup_base_s(
 */
 
 fn setup_base_r(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     enc: &[u8],
     skr: &DHPrivateKey,
     info: &[u8],
@@ -322,7 +322,7 @@ fn setup_base_r(
      return zz, enc
 */
 
-fn encap(ciphersuite: CipherSuite, pkr: &DHPublicKey) -> Result<(Vec<u8>, Vec<u8>), DHError> {
+fn encap(ciphersuite: Ciphersuite, pkr: &DHPublicKey) -> Result<(Vec<u8>, Vec<u8>), DHError> {
     let keypair = DHKeyPair::new(ciphersuite.into())?;
     let ske = keypair.private_key;
     let pke = keypair.public_key;
@@ -330,7 +330,7 @@ fn encap(ciphersuite: CipherSuite, pkr: &DHPublicKey) -> Result<(Vec<u8>, Vec<u8
 }
 
 fn encap_with_keypair(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     pkr: &DHPublicKey,
     ske: &DHPrivateKey,
     pke: &DHPublicKey,
@@ -355,7 +355,7 @@ fn encap_with_keypair(
 
 */
 
-fn decap(ciphersuite: CipherSuite, enc: &[u8], skr: &DHPrivateKey) -> Result<Vec<u8>, DHError> {
+fn decap(ciphersuite: Ciphersuite, enc: &[u8], skr: &DHPrivateKey) -> Result<Vec<u8>, DHError> {
     let pke = DHPublicKey::from_slice(enc, ciphersuite.into())?;
     let dh = skr.shared_secret(&pke)?;
     let pkrm = skr.derive_public_key().unwrap().as_slice(); // TODO improve performance by passing keypair
@@ -370,7 +370,7 @@ fn decap(ciphersuite: CipherSuite, enc: &[u8], skr: &DHPrivateKey) -> Result<Vec
      return LabeledExpand(prk, "prk", kemContext, Nzz)
 */
 
-fn extract_and_expand(ciphersuite: CipherSuite, dh: &[u8], kem_context: &[u8]) -> Vec<u8> {
+fn extract_and_expand(ciphersuite: Ciphersuite, dh: &[u8], kem_context: &[u8]) -> Vec<u8> {
     let prk = labeled_extract(
         ciphersuite,
         &zero(shared_secret_length(ciphersuite.into())),
@@ -386,7 +386,7 @@ fn extract_and_expand(ciphersuite: CipherSuite, dh: &[u8], kem_context: &[u8]) -
      return Extract(salt, labeledIKM)
 */
 
-fn labeled_extract(ciphersuite: CipherSuite, salt: &[u8], label: &[u8], ikm: &[u8]) -> Vec<u8> {
+fn labeled_extract(ciphersuite: Ciphersuite, salt: &[u8], label: &[u8], ikm: &[u8]) -> Vec<u8> {
     let labeled_ikm = concat(&[b"RFCXXXX ".to_vec(), label.to_vec(), ikm.to_vec()]);
     hkdf::extract(ciphersuite.into(), salt, &labeled_ikm)
 }
@@ -399,7 +399,7 @@ fn labeled_extract(ciphersuite: CipherSuite, salt: &[u8], label: &[u8], ikm: &[u
 */
 
 fn labeled_expand(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     prk: &[u8],
     label: &[u8],
     info: &[u8],
@@ -414,51 +414,51 @@ fn labeled_expand(
     hkdf::expand(ciphersuite.into(), prk, &labeled_info, l).unwrap()
 }
 
-fn nzz(ciphersuite: CipherSuite) -> usize {
+fn nzz(ciphersuite: Ciphersuite) -> usize {
     match ciphersuite {
-        CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 32,
-        CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 32,
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 32,
-        CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 64,
-        CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 64,
-        CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 64,
-        CipherSuite::Default => panic!("Invalid ciphersuite"),
+        Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 32,
+        Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 32,
+        Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 32,
+        Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 64,
+        Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 64,
+        Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 64,
+        Ciphersuite::Default => panic!("Invalid ciphersuite"),
     }
 }
 
-fn kem_id(ciphersuite: CipherSuite) -> u16 {
+fn kem_id(ciphersuite: Ciphersuite) -> u16 {
     match ciphersuite {
-        CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 0x0010,
-        CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 0x0020,
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0020,
-        CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 0x0012,
-        CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 0x0021,
-        CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0021,
-        CipherSuite::Default => panic!("Invalid ciphersuite"),
+        Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 0x0010,
+        Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 0x0020,
+        Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0020,
+        Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 0x0012,
+        Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 0x0021,
+        Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0021,
+        Ciphersuite::Default => panic!("Invalid ciphersuite"),
     }
 }
 
-fn kdf_id(ciphersuite: CipherSuite) -> u16 {
+fn kdf_id(ciphersuite: Ciphersuite) -> u16 {
     match ciphersuite {
-        CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 0x0001,
-        CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 0x0001,
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0001,
-        CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 0x0003,
-        CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 0x0003,
-        CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0003,
-        CipherSuite::Default => panic!("Invalid ciphersuite"),
+        Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 0x0001,
+        Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 0x0001,
+        Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0001,
+        Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 0x0003,
+        Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 0x0003,
+        Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0003,
+        Ciphersuite::Default => panic!("Invalid ciphersuite"),
     }
 }
 
-fn aead_id(ciphersuite: CipherSuite) -> u16 {
+fn aead_id(ciphersuite: Ciphersuite) -> u16 {
     match ciphersuite {
-        CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 0x0001,
-        CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 0x0001,
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0003,
-        CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 0x0002,
-        CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 0x0002,
-        CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0003,
-        CipherSuite::Default => panic!("Invalid ciphersuite"),
+        Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => 0x0001,
+        Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => 0x0001,
+        Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0003,
+        Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => 0x0002,
+        Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => 0x0002,
+        Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0003,
+        Ciphersuite::Default => panic!("Invalid ciphersuite"),
     }
 }
 
@@ -492,7 +492,7 @@ fn xor(slice1: &[u8], slice2: &[u8]) -> Vec<u8> {
 
 #[test]
 fn encap_decap() {
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
     let algorithm = DHAlgorithm::X25519;
     let keypair = DHKeyPair::new(algorithm).unwrap();
     let (zz1, enc) = encap(ciphersuite, &keypair.public_key).unwrap();
@@ -502,7 +502,7 @@ fn encap_decap() {
 
 #[test]
 fn hpke_seal_open_x25519_aes() {
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
     let kp = DHKeyPair::new(ciphersuite.into()).unwrap();
     let cleartext = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -519,7 +519,7 @@ fn hpke_seal_open_x25519_aes() {
 fn hpke_seal_open_x25519_chacha_random() {
     use crate::utils::*;
     for _ in 0..10 {
-        let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
+        let ciphersuite = Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
         let kp = DHKeyPair::new(ciphersuite.into()).unwrap();
         let cleartext = randombytes(1000);
 
@@ -559,7 +559,7 @@ fn hpke_test_vectors() {
     eb9570b621c3894a182c40ee67ed9d71bcfb114e2315b2ceaaade6454fa21291
     */
 
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
     assert_eq!(kem_id(ciphersuite), 32);
     assert_eq!(kdf_id(ciphersuite), 1);
     assert_eq!(aead_id(ciphersuite), 1);
@@ -745,7 +745,7 @@ fn hpke_test_vectors() {
     2e9eb4e338775bc70dd4f5bf1b6f2d0d4565472456cc8b70baa631841e6085e2
     */
 
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
     assert_eq!(kem_id(ciphersuite), 32);
     assert_eq!(kdf_id(ciphersuite), 1);
     assert_eq!(aead_id(ciphersuite), 3);
@@ -911,7 +911,7 @@ fn hpke_test_vectors() {
 
     #[allow(clippy::too_many_arguments)]
     fn test_vector(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         skr: &DHPrivateKey,
         pkr: &DHPublicKey,
         ske: &DHPrivateKey,

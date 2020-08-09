@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::extensions::*;
+use crate::ciphersuite::*;
 use crate::utils::*;
 use aead::{generic_array::GenericArray, Aead, NewAead};
 use aes_gcm::*;
 use chacha20poly1305::ChaCha20Poly1305;
+use evercrypt::prelude::*;
 use std::*;
 use zeroize::Zeroize;
 
@@ -31,19 +32,19 @@ pub enum AEADAlgorithm {
 }
 
 impl From<CipherSuite> for AEADAlgorithm {
-    fn from(value: CipherSuite) -> Self {
+    fn from(value: Ciphersuite) -> Self {
         match value {
-            CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => AEADAlgorithm::AES128GCM,
-            CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => AEADAlgorithm::AES128GCM,
-            CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => AEADAlgorithm::AES128GCM,
+            Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => AEADAlgorithm::AES128GCM,
+            Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 AEADAlgorithm::CHACHA20POLY1305
             }
-            CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => AEADAlgorithm::AES256GCM,
-            CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => AEADAlgorithm::AES256GCM,
-            CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => AEADAlgorithm::AES256GCM,
+            Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => AEADAlgorithm::AES256GCM,
+            Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 AEADAlgorithm::CHACHA20POLY1305
             }
-            CipherSuite::Default => AEADAlgorithm::INVALID,
+            Ciphersuite::Default => AEADAlgorithm::INVALID,
         }
     }
 }

@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::crypto::hash::*;
-use crate::extensions::*;
 use rand::rngs::OsRng;
 
 // TODO replace secp256k1 by secp256r1
@@ -51,21 +50,21 @@ impl From<u8> for SignatureAlgorithm {
 }
 
 impl From<CipherSuite> for SignatureAlgorithm {
-    fn from(value: CipherSuite) -> Self {
+    fn from(value: Ciphersuite) -> Self {
         match value {
-            CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => SignatureAlgorithm::P256,
-            CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256 => SignatureAlgorithm::P256,
+            Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 => {
                 SignatureAlgorithm::Ed25519
             }
-            CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 SignatureAlgorithm::Ed25519
             }
-            CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => SignatureAlgorithm::P521,
-            CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => SignatureAlgorithm::Ed448,
-            CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521 => SignatureAlgorithm::P521,
+            Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448 => SignatureAlgorithm::Ed448,
+            Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 SignatureAlgorithm::Ed448
             }
-            CipherSuite::Default => SignatureAlgorithm::INVALID,
+            Ciphersuite::Default => SignatureAlgorithm::INVALID,
         }
     }
 }
