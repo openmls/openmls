@@ -14,49 +14,48 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::crypto::signatures::*;
-use crate::extensions::*;
 
 #[derive(Clone)]
 pub struct Identity {
     pub id: Vec<u8>,
-    pub algorithm: SignatureAlgorithm,
+    pub ciphersuite: Ciphersuite,
     pub keypair: SignatureKeypair,
 }
 
 impl Identity {
-    pub fn new(ciphersuite: CipherSuite, id: Vec<u8>) -> Self {
-        let algorithm: SignatureAlgorithm = ciphersuite.into();
-        let keypair = SignatureKeypair::new(algorithm).unwrap();
+    pub fn new(ciphersuite: Ciphersuite, id: Vec<u8>) -> Self {
+        let keypair = ciphersuite.new_signature_keypair();
         Self {
             id,
-            algorithm,
+            ciphersuite,
             keypair,
         }
     }
     pub fn sign(&self, payload: &[u8]) -> Signature {
-        self.keypair.sign(payload)
+        self.ciphersuite.sign(&self.keypair.private_key, payload)
     }
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.keypair.verify(payload, signature)
+        self.ciphersuite
+            .verify(signature, &self.keypair.public_key, payload)
     }
 }
 
 impl Codec for Identity {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.id)?;
-        self.algorithm.encode(buffer)?;
+        self.ciphersuite.encode(buffer)?;
         self.keypair.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let id = decode_vec(VecSize::VecU8, cursor)?;
-        let algorithm = SignatureAlgorithm::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let keypair = SignatureKeypair::decode(cursor)?;
         Ok(Identity {
             id,
-            algorithm,
+            ciphersuite,
             keypair,
         })
     }
@@ -98,9 +97,11 @@ pub enum Credential {
 impl Credential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         match self {
-            Credential::Basic(basic_credential) => {
-                basic_credential.public_key.verify(payload, signature)
-            }
+            Credential::Basic(basic_credential) => basic_credential.ciphersuite.verify(
+                signature,
+                &basic_credential.public_key,
+                payload,
+            ),
         }
     }
 }
@@ -124,16 +125,18 @@ impl Codec for Credential {
     }
 }
 
+// TODO: Drop ciphersuite
 #[derive(Debug, Clone, PartialEq)]
 pub struct BasicCredential {
     pub identity: Vec<u8>,
-    pub algorithm: SignatureAlgorithm,
+    pub ciphersuite: Ciphersuite,
     pub public_key: SignaturePublicKey,
 }
 
 impl BasicCredential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.public_key.verify(payload, signature)
+        self.ciphersuite
+            .verify(signature, &self.public_key, payload)
     }
 }
 
@@ -141,8 +144,8 @@ impl From<&Identity> for BasicCredential {
     fn from(identity: &Identity) -> Self {
         BasicCredential {
             identity: identity.id.clone(),
-            algorithm: identity.algorithm,
-            public_key: identity.keypair.get_public_key(),
+            ciphersuite: identity.ciphersuite,
+            public_key: identity.keypair.public_key.clone(),
         }
     }
 }
@@ -150,17 +153,17 @@ impl From<&Identity> for BasicCredential {
 impl Codec for BasicCredential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
-        self.algorithm.encode(buffer)?;
+        self.ciphersuite.encode(buffer)?;
         self.public_key.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let identity = decode_vec(VecSize::VecU16, cursor)?;
-        let algorithm = SignatureAlgorithm::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let public_key = SignaturePublicKey::decode(cursor)?;
         Ok(BasicCredential {
             identity,
-            algorithm,
+            ciphersuite,
             public_key,
         })
     }
@@ -170,11 +173,11 @@ impl Codec for BasicCredential {
 fn generate_key_package() {
     use crate::kp::*;
     let identity = Identity::new(
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         vec![1, 2, 3],
     );
     let kp_bundle = KeyPackageBundle::new(
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         &identity,
         None,
     );

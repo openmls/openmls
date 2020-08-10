@@ -14,24 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::crypto::hash;
-use crate::crypto::hkdf;
-use crate::extensions::*;
 use crate::messages::*;
 
 pub fn derive_secret(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     secret: &[u8],
     label: &str,
     context: &[u8],
 ) -> Vec<u8> {
-    let hash_len = hash::hash_length(ciphersuite.into());
-    hkdf_expand_label(ciphersuite, secret, label, context, hash_len)
+    hkdf_expand_label(
+        ciphersuite,
+        secret,
+        label,
+        context,
+        ciphersuite.hash_length(),
+    )
 }
 
 pub fn mls_exporter(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     epoch_secrets: &EpochSecrets,
     label: &str,
     context: &[u8],
@@ -48,7 +51,7 @@ pub fn mls_exporter(
 }
 
 pub fn hkdf_expand_label(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     secret: &[u8],
     label: &str,
     context: &[u8],
@@ -56,7 +59,7 @@ pub fn hkdf_expand_label(
 ) -> Vec<u8> {
     let hkdf_label = HkdfLabel::new(context, label, length);
     let info = &hkdf_label.serialize();
-    hkdf::expand(ciphersuite.into(), &secret, &info, length).unwrap()
+    ciphersuite.hkdf_expand(&secret, &info, length).unwrap()
 }
 
 pub struct HkdfLabel {
@@ -116,7 +119,7 @@ impl EpochSecrets {
     }
     pub fn get_new_epoch_secrets(
         &mut self,
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         commit_secret: CommitSecret,
         psk: Option<&[u8]>,
         group_state: &[u8],
@@ -125,11 +128,11 @@ impl EpochSecrets {
         let welcome_secret = derive_secret(ciphersuite, &current_init_secret, "group info", &[]);
         let salt = &psk.unwrap_or(&[]);
         let ikm = &current_init_secret;
-        let early_secret = hkdf::extract(ciphersuite.into(), salt, ikm);
+        let early_secret = ciphersuite.hkdf_extract(salt, ikm);
         let derived_secret = derive_secret(ciphersuite, &early_secret, "derived", &[]);
         let salt = &derived_secret;
         let ikm = &commit_secret.0;
-        let epoch_secret = hkdf::extract(ciphersuite.into(), salt, ikm);
+        let epoch_secret = ciphersuite.hkdf_extract(salt, ikm);
         let epoch_secrets =
             Self::derive_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret, group_state);
         self.welcome_secret = epoch_secrets.welcome_secret;
@@ -143,7 +146,7 @@ impl EpochSecrets {
     }
 
     pub fn derive_epoch_secrets(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         epoch_secret: &[u8],
         welcome_secret: Vec<u8>,
         group_state: &[u8],

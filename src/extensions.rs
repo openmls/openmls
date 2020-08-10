@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::tree::*;
 use crate::utils::*;
@@ -103,14 +104,14 @@ pub enum ExtensionPayload {
 #[derive(PartialEq, Clone, Debug)]
 pub struct CapabilitiesExtension {
     pub versions: Vec<ProtocolVersion>,
-    pub ciphersuites: Vec<CipherSuite>,
+    pub ciphersuites: Vec<Name>,
     pub extensions: Vec<ExtensionType>,
 }
 
 impl CapabilitiesExtension {
     pub fn new(
         versions: Vec<ProtocolVersion>,
-        ciphersuites: Vec<CipherSuite>,
+        ciphersuites: Vec<Name>,
         extensions: Vec<ExtensionType>,
     ) -> Self {
         CapabilitiesExtension {
@@ -331,6 +332,8 @@ impl Codec for KeyPackageId {
     }
 }
 
+/*
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
@@ -347,13 +350,13 @@ pub enum CipherSuite {
 impl From<u16> for CipherSuite {
     fn from(value: u16) -> Self {
         match value {
-            1 => CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519,
-            2 => CipherSuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256,
-            3 => CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            4 => CipherSuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448,
-            5 => CipherSuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521,
-            6 => CipherSuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448,
-            _ => CipherSuite::Default,
+            1 => Ciphersuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519,
+            2 => Ciphersuite::MLS10_128_HPKEP256_AES128GCM_SHA256_P256,
+            3 => Ciphersuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            4 => Ciphersuite::MLS10_256_HPKEX448_AES256GCM_SHA512_Ed448,
+            5 => Ciphersuite::MLS10_256_HPKEP521_AES256GCM_SHA512_P521,
+            6 => Ciphersuite::MLS10_256_HPKEX448_CHACHA20POLY1305_SHA512_Ed448,
+            _ => Ciphersuite::Default,
         }
     }
 }
@@ -364,9 +367,10 @@ impl Codec for CipherSuite {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(CipherSuite::from(u16::decode(cursor)?))
+        Ok(Ciphersuite::from(u16::decode(cursor)?))
     }
 }
+*/
 
 #[test]
 fn test_protocol_version() {

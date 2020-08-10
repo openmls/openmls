@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::crypto::hash::*;
-use crate::crypto::hmac::*;
-use crate::crypto::hpke::*;
-use crate::crypto::signatures::*;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::*;
@@ -35,9 +32,9 @@ pub enum MessageError {
 }
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
-pub struct TreeIndex(u32);
+pub struct NodeIndex(u32);
 
-impl TreeIndex {
+impl NodeIndex {
     pub fn as_u32(self) -> u32 {
         self.0
     }
@@ -46,28 +43,28 @@ impl TreeIndex {
     }
 }
 
-impl From<u32> for TreeIndex {
-    fn from(i: u32) -> TreeIndex {
-        TreeIndex(i)
+impl From<u32> for NodeIndex {
+    fn from(i: u32) -> NodeIndex {
+        NodeIndex(i)
     }
 }
 
-impl From<usize> for TreeIndex {
-    fn from(i: usize) -> TreeIndex {
-        TreeIndex(i as u32)
+impl From<usize> for NodeIndex {
+    fn from(i: usize) -> NodeIndex {
+        NodeIndex(i as u32)
     }
 }
 
-impl From<RosterIndex> for TreeIndex {
-    fn from(roster_index: RosterIndex) -> TreeIndex {
-        TreeIndex(roster_index.as_u32() * 2)
+impl From<LeafIndex> for NodeIndex {
+    fn from(roster_index: LeafIndex) -> NodeIndex {
+        NodeIndex(roster_index.as_u32() * 2)
     }
 }
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
-pub struct RosterIndex(u32);
+pub struct LeafIndex(u32);
 
-impl RosterIndex {
+impl LeafIndex {
     pub fn as_u32(self) -> u32 {
         self.0
     }
@@ -76,21 +73,21 @@ impl RosterIndex {
     }
 }
 
-impl From<u32> for RosterIndex {
-    fn from(i: u32) -> RosterIndex {
-        RosterIndex(i)
+impl From<u32> for LeafIndex {
+    fn from(i: u32) -> LeafIndex {
+        LeafIndex(i)
     }
 }
 
-impl From<usize> for RosterIndex {
-    fn from(i: usize) -> RosterIndex {
-        RosterIndex(i as u32)
+impl From<usize> for LeafIndex {
+    fn from(i: usize) -> LeafIndex {
+        LeafIndex(i as u32)
     }
 }
 
-impl From<TreeIndex> for RosterIndex {
-    fn from(tree_index: TreeIndex) -> RosterIndex {
-        RosterIndex((tree_index.as_u32() + 1) / 2)
+impl From<NodeIndex> for LeafIndex {
+    fn from(tree_index: NodeIndex) -> LeafIndex {
+        LeafIndex((tree_index.as_u32() + 1) / 2)
     }
 }
 
@@ -135,7 +132,7 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub fn to_proposal_id(&self, ciphersuite: CipherSuite) -> ProposalID {
+    pub fn to_proposal_id(&self, ciphersuite: Ciphersuite) -> ProposalID {
         ProposalID::from_proposal(ciphersuite, self)
     }
     pub fn as_add(&self) -> Option<AddProposal> {
@@ -193,9 +190,9 @@ pub struct ProposalID {
 }
 
 impl ProposalID {
-    pub fn from_proposal(ciphersuite: CipherSuite, proposal: &Proposal) -> Self {
+    pub fn from_proposal(ciphersuite: Ciphersuite, proposal: &Proposal) -> Self {
         let encoded = proposal.encode_detached().unwrap();
-        let value = hash(ciphersuite.into(), &encoded);
+        let value = ciphersuite.hash(&encoded);
         Self { value }
     }
 }
@@ -243,7 +240,7 @@ pub struct QueuedProposal {
 }
 
 impl QueuedProposal {
-    pub fn new(proposal: Proposal, sender: RosterIndex, own_kpb: Option<KeyPackageBundle>) -> Self {
+    pub fn new(proposal: Proposal, sender: LeafIndex, own_kpb: Option<KeyPackageBundle>) -> Self {
         Self {
             proposal,
             sender: Sender::member(sender),
@@ -273,12 +270,12 @@ impl Codec for QueuedProposal {
 
 #[derive(Clone)]
 pub struct ProposalQueue {
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     tuples: HashMap<ShortProposalID, (ProposalID, QueuedProposal)>,
 }
 
 impl ProposalQueue {
-    pub fn new(ciphersuite: CipherSuite) -> Self {
+    pub fn new(ciphersuite: Ciphersuite) -> Self {
         ProposalQueue {
             ciphersuite,
             tuples: HashMap::new(),
@@ -319,7 +316,7 @@ impl Codec for ProposalQueue {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = CipherSuite::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let tuples = HashMap::<ShortProposalID, (ProposalID, QueuedProposal)>::decode(cursor)?;
         Ok(ProposalQueue {
             ciphersuite,
@@ -401,13 +398,11 @@ pub struct Confirmation(pub Vec<u8>);
 
 impl Confirmation {
     pub fn new(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         confirmation_key: &[u8],
         confirmed_transcript_hash: &[u8],
     ) -> Self {
-        let mut mac = HMAC::new(ciphersuite.into(), confirmation_key).unwrap();
-        mac.input(confirmed_transcript_hash);
-        Confirmation(mac.result())
+        Confirmation(ciphersuite.hmac(confirmation_key, confirmed_transcript_hash))
     }
     pub fn new_empty() -> Self {
         Confirmation(vec![])
@@ -495,7 +490,7 @@ pub struct GroupInfo {
     pub interim_transcript_hash: Vec<u8>,
     pub extensions: Vec<Extension>,
     pub confirmation: Vec<u8>,
-    pub signer_index: RosterIndex,
+    pub signer_index: LeafIndex,
     pub signature: Signature,
 }
 
@@ -513,7 +508,7 @@ impl Codec for GroupInfo {
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = decode_vec(VecSize::VecU16, cursor)?;
         let confirmation = decode_vec(VecSize::VecU8, cursor)?;
-        let signer_index = RosterIndex::from(u32::decode(cursor)?);
+        let signer_index = LeafIndex::from(u32::decode(cursor)?);
         let signature = Signature::decode(cursor)?;
         Ok(GroupInfo {
             group_id,
@@ -605,7 +600,7 @@ impl Codec for EncryptedGroupSecrets {
 #[derive(Clone)]
 pub struct Welcome {
     pub version: ProtocolVersion,
-    pub cipher_suite: CipherSuite,
+    pub cipher_suite: Ciphersuite,
     pub secrets: Vec<EncryptedGroupSecrets>,
     pub encrypted_group_info: Vec<u8>,
 }
@@ -620,7 +615,7 @@ impl Codec for Welcome {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let version = ProtocolVersion::decode(cursor)?;
-        let cipher_suite = CipherSuite::decode(cursor)?;
+        let cipher_suite = Ciphersuite::decode(cursor)?;
         let secrets = decode_vec(VecSize::VecU32, cursor)?;
         let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
         Ok(Welcome {

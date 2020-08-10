@@ -15,10 +15,9 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::astree::*;
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::crypto::aead::*;
-use crate::crypto::signatures::*;
 use crate::group::*;
 use crate::messages::*;
 use crate::schedule::*;
@@ -37,7 +36,7 @@ pub struct MLSPlaintext {
 
 impl MLSPlaintext {
     pub fn new(
-        sender: RosterIndex,
+        sender: LeafIndex,
         authenticated_data: &[u8],
         content: MLSPlaintextContentType,
         key_pair: &SignatureKeypair,
@@ -152,7 +151,7 @@ impl MLSCiphertext {
         context: &GroupContext,
         config: GroupConfig,
     ) -> MLSCiphertext {
-        //
+        let ciphersuite = config.ciphersuite;
         let generation = astree.get_generation(mls_plaintext.sender.sender);
         let application_secrets = astree
             .get_secret(mls_plaintext.sender.sender, generation)
@@ -165,38 +164,37 @@ impl MLSCiphertext {
         }
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
         let sender_data_key_bytes = hkdf_expand_label(
-            config.ciphersuite,
+            ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
-            AEADKey::key_length(config.ciphersuite.into()).unwrap(),
+            ciphersuite.aead_key_length(),
         );
-        let sender_data_nonce = Nonce::new_random();
-        let sender_data_key =
-            AEADKey::from_slice(config.ciphersuite.into(), &sender_data_key_bytes).unwrap();
+        let sender_data_nonce = ciphersuite.new_aead_nonce_random();
+        let sender_data_key = ciphersuite.new_aead_key(&sender_data_key_bytes).unwrap();
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD {
             group_id: context.group_id.clone(),
             epoch: context.epoch,
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.to_vec(),
+            sender_data_nonce: sender_data_nonce.as_slice(),
         };
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap(); // TODO: error handling
-        let encrypted_sender_data = aead_seal(
-            config.ciphersuite.into(),
-            &sender_data.encode_detached().unwrap(),
-            &mls_ciphertext_sender_data_aad_bytes,
-            &sender_data_key,
-            &sender_data_nonce,
-        )
-        .unwrap();
+        let encrypted_sender_data = ciphersuite
+            .aead_seal(
+                &sender_data.encode_detached().unwrap(),
+                &mls_ciphertext_sender_data_aad_bytes,
+                &sender_data_key,
+                &sender_data_nonce,
+            )
+            .unwrap();
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: context.group_id.clone(),
             epoch: context.epoch,
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.to_vec(),
+            sender_data_nonce: sender_data_nonce.as_slice(),
             encrypted_sender_data: encrypted_sender_data.clone(),
         };
         let mls_ciphertext_content_aad_bytes =
@@ -207,14 +205,14 @@ impl MLSCiphertext {
             + mls_plaintext.content_type.encode_detached().unwrap().len()
             + mls_plaintext.authenticated_data.len()
             + 4
-            + sender_data_nonce.to_vec().len()
+            + sender_data_nonce.as_slice().len()
             + 1
             + encrypted_sender_data.len()
             + 1
             + mls_plaintext.content.encode_detached().unwrap().len()
             + mls_plaintext.signature.encode_detached().unwrap().len()
             + 2
-            + CHACHATAGBYTES
+            + TAGBYTES
             + 4;
         let mut padding_length = (config.padding_block_size as usize)
             - (padding_offset % (config.padding_block_size as usize));
@@ -241,33 +239,32 @@ impl MLSCiphertext {
                 for i in 0..4 {
                     handshake_nonce_input[i] ^= reuse_guard[i];
                 }
-                let handshake_nonce = Nonce::from_slice(&handshake_nonce_input).unwrap();
+                let handshake_nonce = ciphersuite.new_aead_nonce(&handshake_nonce_input).unwrap();
                 let handshake_key_input = hkdf_expand_label(
-                    config.ciphersuite,
+                    ciphersuite,
                     &epoch_secrets.handshake_secret,
                     "hs key",
                     &mls_plaintext.sender.encode_detached().unwrap(),
                     CHACHAKEYBYTES,
                 );
-                let handshake_key =
-                    AEADKey::from_slice(config.ciphersuite.into(), &handshake_key_input).unwrap();
+                let handshake_key = ciphersuite.new_aead_key(&handshake_key_input).unwrap();
                 (handshake_key, handshake_nonce)
             }
         };
-        let ciphertext = aead_seal(
-            config.ciphersuite.into(),
-            &mls_ciphertext_content.encode_detached().unwrap(),
-            &mls_ciphertext_content_aad_bytes,
-            &key,
-            &nonce,
-        )
-        .unwrap();
+        let ciphertext = ciphersuite
+            .aead_seal(
+                &mls_ciphertext_content.encode_detached().unwrap(),
+                &mls_ciphertext_content_aad_bytes,
+                &key,
+                &nonce,
+            )
+            .unwrap();
         MLSCiphertext {
             group_id: context.group_id.clone(),
             epoch: context.epoch,
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.to_vec(),
+            sender_data_nonce: sender_data_nonce.as_slice(),
             encrypted_sender_data,
             ciphertext,
         }
@@ -280,33 +277,33 @@ impl MLSCiphertext {
         context: &GroupContext,
         config: GroupConfig,
     ) -> MLSPlaintext {
-        let sender_data_nonce = Nonce::from_slice(&self.sender_data_nonce).unwrap();
+        let ciphersuite = config.ciphersuite;
+        let sender_data_nonce = ciphersuite.new_aead_nonce(&self.sender_data_nonce).unwrap();
         let sender_data_key_bytes = hkdf_expand_label(
             config.ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
-            AEADKey::key_length(config.ciphersuite.into()).unwrap(),
+            ciphersuite.aead_key_length(),
         );
-        let sender_data_key =
-            AEADKey::from_slice(config.ciphersuite.into(), &sender_data_key_bytes).unwrap();
+        let sender_data_key = ciphersuite.new_aead_key(&sender_data_key_bytes).unwrap();
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             content_type: self.content_type,
             authenticated_data: self.authenticated_data.clone(),
-            sender_data_nonce: sender_data_nonce.to_vec(),
+            sender_data_nonce: sender_data_nonce.as_slice(),
         };
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap();
-        let sender_data_bytes = aead_open(
-            config.ciphersuite.into(),
-            &self.encrypted_sender_data,
-            &mls_ciphertext_sender_data_aad_bytes,
-            &sender_data_key,
-            &sender_data_nonce,
-        )
-        .unwrap();
+        let sender_data_bytes = ciphersuite
+            .aead_open(
+                &self.encrypted_sender_data,
+                &mls_ciphertext_sender_data_aad_bytes,
+                &sender_data_key,
+                &sender_data_nonce,
+            )
+            .unwrap();
         let sender_data = MLSSenderData::decode_detached(&sender_data_bytes).unwrap();
         let application_secrets = astree
             .get_secret(sender_data.sender, sender_data.generation)
@@ -316,7 +313,7 @@ impl MLSCiphertext {
             epoch: self.epoch,
             content_type: self.content_type,
             authenticated_data: self.authenticated_data.clone(),
-            sender_data_nonce: sender_data_nonce.to_vec(),
+            sender_data_nonce: sender_data_nonce.as_slice(),
             encrypted_sender_data: self.encrypted_sender_data.clone(),
         };
         let mls_ciphertext_content_aad_bytes =
@@ -335,7 +332,7 @@ impl MLSCiphertext {
                 for i in 0..4 {
                     handshake_nonce_input[i] ^= reuse_guard[i];
                 }
-                let handshake_nonce = Nonce::from_slice(&handshake_nonce_input).unwrap();
+                let handshake_nonce = ciphersuite.new_aead_nonce(&handshake_nonce_input).unwrap();
                 let handshake_key_input = hkdf_expand_label(
                     config.ciphersuite,
                     &epoch_secrets.handshake_secret,
@@ -343,19 +340,18 @@ impl MLSCiphertext {
                     &sender_data.sender.as_u32().encode_detached().unwrap(),
                     CHACHAKEYBYTES,
                 );
-                let handshake_key =
-                    AEADKey::from_slice(config.ciphersuite.into(), &handshake_key_input).unwrap();
+                let handshake_key = ciphersuite.new_aead_key(&handshake_key_input).unwrap();
                 (handshake_key, handshake_nonce)
             }
         };
-        let mls_ciphertext_content_bytes = aead_open(
-            config.ciphersuite.into(),
-            &self.ciphertext,
-            &mls_ciphertext_content_aad_bytes,
-            &key,
-            &nonce,
-        )
-        .unwrap();
+        let mls_ciphertext_content_bytes = ciphersuite
+            .aead_open(
+                &self.ciphertext,
+                &mls_ciphertext_content_aad_bytes,
+                &key,
+                &nonce,
+            )
+            .unwrap();
         let mls_ciphertext_content =
             MLSCiphertextContent::decode_detached(&mls_ciphertext_content_bytes).unwrap();
         let sender = Sender {
@@ -412,18 +408,18 @@ impl Codec for SenderType {
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct Sender {
     pub sender_type: SenderType,
-    pub sender: RosterIndex,
+    pub sender: LeafIndex,
 }
 
 impl Sender {
-    pub fn member(sender: RosterIndex) -> Self {
+    pub fn member(sender: LeafIndex) -> Self {
         Sender {
             sender_type: SenderType::Member,
             sender,
         }
     }
-    pub fn as_tree_index(self) -> TreeIndex {
-        TreeIndex::from(self.sender)
+    pub fn as_tree_index(self) -> NodeIndex {
+        NodeIndex::from(self.sender)
     }
 }
 
@@ -435,7 +431,7 @@ impl Codec for Sender {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let sender_type = SenderType::decode(cursor)?;
-        let sender = RosterIndex::from(u32::decode(cursor)?);
+        let sender = LeafIndex::from(u32::decode(cursor)?);
         Ok(Sender {
             sender_type,
             sender,
@@ -537,7 +533,7 @@ pub struct MLSPlaintextTBS {
     pub context: GroupContext,
     pub group_id: GroupId,
     pub epoch: GroupEpoch,
-    pub sender: RosterIndex,
+    pub sender: LeafIndex,
     pub authenticated_data: Vec<u8>,
     pub content_type: ContentType,
     pub payload: MLSPlaintextContentType,
@@ -580,7 +576,7 @@ impl Codec for MLSPlaintextTBS {
         let context = GroupContext::decode(cursor)?;
         let group_id = GroupId::decode(cursor)?;
         let epoch = GroupEpoch::decode(cursor)?;
-        let sender = RosterIndex::from(u32::decode(cursor)?);
+        let sender = LeafIndex::from(u32::decode(cursor)?);
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
         let content_type = ContentType::decode(cursor)?;
         let payload = MLSPlaintextContentType::decode(cursor)?;
@@ -599,7 +595,7 @@ impl Codec for MLSPlaintextTBS {
 
 #[derive(Clone)]
 pub struct MLSSenderData {
-    pub sender: RosterIndex,
+    pub sender: LeafIndex,
     pub generation: u32,
     pub reuse_guard: u32,
 }
@@ -613,7 +609,7 @@ impl Codec for MLSSenderData {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let sender = RosterIndex::from(u32::decode(cursor)?);
+        let sender = LeafIndex::from(u32::decode(cursor)?);
         let generation = u32::decode(cursor)?;
         let reuse_guard = u32::decode(cursor)?;
 
@@ -626,7 +622,7 @@ impl Codec for MLSSenderData {
 }
 
 impl MLSSenderData {
-    pub fn new(sender: RosterIndex, generation: u32) -> Self {
+    pub fn new(sender: LeafIndex, generation: u32) -> Self {
         MLSSenderData {
             sender,
             generation,
@@ -745,7 +741,7 @@ pub struct MLSPlaintextCommitContent {
 }
 
 impl MLSPlaintextCommitContent {
-    pub fn new(group_context: &GroupContext, sender: RosterIndex, commit: Commit) -> Self {
+    pub fn new(group_context: &GroupContext, sender: LeafIndex, commit: Commit) -> Self {
         MLSPlaintextCommitContent {
             group_id: group_context.group_id.clone(),
             epoch: group_context.epoch,
@@ -810,7 +806,7 @@ impl From<MLSPlaintext> for MLSPlaintextCommitAuthData {
         };
         MLSPlaintextCommitAuthData {
             confirmation: confirmation.0,
-            signature: mls_plaintext.signature.to_bytes().unwrap(),
+            signature: mls_plaintext.signature.as_slice(),
         }
     }
 }
@@ -833,10 +829,11 @@ impl Codec for MLSPlaintextCommitAuthData {
 
 #[test]
 fn codec() {
-    let keypair = SignatureKeypair::new(SignatureAlgorithm::Ed25519).unwrap();
+    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let keypair = ciphersuite.new_signature_keypair();
     let sender = Sender {
         sender_type: SenderType::Member,
-        sender: RosterIndex::from(2u32),
+        sender: LeafIndex::from(2u32),
     };
     let mut orig = MLSPlaintext {
         group_id: GroupId::random(),
@@ -863,10 +860,10 @@ fn codec() {
 
 #[test]
 fn padding() {
-    use crate::extensions::*;
+    use crate::ciphersuite::*;
     use crate::utils::*;
 
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519);
     let alice_identity = Identity::new(ciphersuite, vec![1, 2, 3]);
 
     let config = GROUP_CONFIG_DEFAULT;

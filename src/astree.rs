@@ -14,10 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::crypto::aead;
-use crate::crypto::hash::*;
-use crate::extensions::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::treemath::*;
@@ -33,7 +31,7 @@ pub enum ASError {
 }
 
 fn derive_app_secret(
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     secret: &[u8],
     label: &str,
     node: u32,
@@ -53,8 +51,8 @@ fn derive_app_secret(
 
 #[derive(Debug, PartialEq)]
 pub struct ApplicationSecrets {
-    pub nonce: aead::Nonce,
-    pub key: aead::AEADKey,
+    pub nonce: Nonce,
+    pub key: AEADKey,
 }
 
 struct ApplicationContext {
@@ -92,8 +90,8 @@ impl Codec for ASTreeNode {
 }
 
 struct SenderRatchet {
-    ciphersuite: CipherSuite,
-    index: RosterIndex,
+    ciphersuite: Ciphersuite,
+    index: LeafIndex,
     generation: u32,
     past_secrets: Vec<Vec<u8>>,
 }
@@ -111,8 +109,8 @@ impl Codec for SenderRatchet {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = CipherSuite::decode(cursor)?;
-        let index = RosterIndex::from(u32::decode(cursor)?);
+        let ciphersuite = Ciphersuite::decode(cursor)?;
+        let index = LeafIndex::from(u32::decode(cursor)?);
         let generation = u32::decode(cursor)?;
         let len = u32::decode(cursor)? as usize;
         let mut past_secrets = vec![];
@@ -130,7 +128,7 @@ impl Codec for SenderRatchet {
 }
 
 impl SenderRatchet {
-    pub fn new(index: RosterIndex, secret: &[u8], ciphersuite: CipherSuite) -> Self {
+    pub fn new(index: LeafIndex, secret: &[u8], ciphersuite: Ciphersuite) -> Self {
         Self {
             ciphersuite,
             index,
@@ -167,14 +165,13 @@ impl SenderRatchet {
         }
     }
     fn ratchet_secret(&self, secret: &[u8]) -> Vec<u8> {
-        let hash_len = hash_length(self.ciphersuite.into());
         derive_app_secret(
             self.ciphersuite,
             secret,
             "app-secret",
             self.index.as_u32(),
             self.generation,
-            hash_len,
+            self.ciphersuite.hash_length(),
         )
     }
     fn derive_key_nonce(&self, secret: &[u8], generation: u32) -> ApplicationSecrets {
@@ -184,7 +181,7 @@ impl SenderRatchet {
             "app-nonce",
             self.index.as_u32(),
             generation,
-            aead::Nonce::nonce_length(self.ciphersuite.into()).unwrap(),
+            self.ciphersuite.aead_nonce_length(),
         );
         let key = derive_app_secret(
             self.ciphersuite,
@@ -192,20 +189,20 @@ impl SenderRatchet {
             "app-key",
             self.index.as_u32(),
             generation,
-            aead::AEADKey::key_length(self.ciphersuite.into()).unwrap(),
+            self.ciphersuite.aead_key_length(),
         );
         ApplicationSecrets {
-            nonce: aead::Nonce::from_slice(&nonce).unwrap(),
-            key: aead::AEADKey::from_slice(self.ciphersuite.into(), &key).unwrap(),
+            nonce: self.ciphersuite.new_aead_nonce(&nonce).unwrap(),
+            key: self.ciphersuite.new_aead_key(&key).unwrap(),
         }
     }
 }
 
 pub struct ASTree {
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     nodes: Vec<Option<ASTreeNode>>,
     sender_ratchets: Vec<Option<SenderRatchet>>,
-    size: RosterIndex,
+    size: LeafIndex,
 }
 
 impl Codec for ASTree {
@@ -217,10 +214,10 @@ impl Codec for ASTree {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = CipherSuite::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let nodes = decode_vec(VecSize::VecU32, cursor)?;
         let sender_ratchets = decode_vec(VecSize::VecU32, cursor)?;
-        let size = RosterIndex::from(u32::decode(cursor)?);
+        let size = LeafIndex::from(u32::decode(cursor)?);
         Ok(ASTree {
             ciphersuite,
             nodes,
@@ -231,9 +228,9 @@ impl Codec for ASTree {
 }
 
 impl ASTree {
-    pub fn new(ciphersuite: CipherSuite, application_secret: &[u8], size: RosterIndex) -> Self {
+    pub fn new(ciphersuite: Ciphersuite, application_secret: &[u8], size: LeafIndex) -> Self {
         let root = root(size);
-        let num_indices = TreeIndex::from(size).as_usize() - 1;
+        let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes: Vec<Option<ASTreeNode>> = Vec::with_capacity(num_indices);
         for _ in 0..(num_indices) {
             nodes.push(None);
@@ -252,7 +249,7 @@ impl ASTree {
             size,
         }
     }
-    pub fn get_generation(&self, sender: RosterIndex) -> u32 {
+    pub fn get_generation(&self, sender: LeafIndex) -> u32 {
         if let Some(sender_ratchet) = &self.sender_ratchets[sender.as_usize()] {
             sender_ratchet.generation
         } else {
@@ -261,10 +258,10 @@ impl ASTree {
     }
     pub fn get_secret(
         &mut self,
-        index: RosterIndex,
+        index: LeafIndex,
         generation: u32,
     ) -> Result<ApplicationSecrets, ASError> {
-        let index_in_tree = TreeIndex::from(index);
+        let index_in_tree = NodeIndex::from(index);
         if index >= self.size {
             return Err(ASError::IndexOutOfBounds);
         }
@@ -276,7 +273,7 @@ impl ASTree {
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(dirpath(index_in_tree, self.size));
         dir_path.push(root(self.size));
-        let mut empty_nodes: Vec<TreeIndex> = vec![];
+        let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
             empty_nodes.push(n);
             if self.nodes[n.as_usize()].is_some() {
@@ -295,8 +292,8 @@ impl ASTree {
         self.sender_ratchets[index.as_usize()] = Some(sender_ratchet);
         application_secret
     }
-    fn hash_down(&mut self, index_in_tree: TreeIndex) {
-        let hash_len = hash_length(self.ciphersuite.into());
+    fn hash_down(&mut self, index_in_tree: NodeIndex) {
+        let hash_len = self.ciphersuite.hash_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree, self.size);
@@ -328,35 +325,33 @@ impl ASTree {
 
 #[test]
 fn test_boundaries() {
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519;
-    let mut astree = ASTree::new(ciphersuite, &[0u8; 32], RosterIndex::from(2u32));
-    assert!(astree.get_secret(RosterIndex::from(0u32), 0).is_ok());
-    assert!(astree.get_secret(RosterIndex::from(1u32), 0).is_ok());
-    assert!(astree.get_secret(RosterIndex::from(0u32), 1).is_ok());
-    assert!(astree.get_secret(RosterIndex::from(0u32), 1_000).is_ok());
+    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519);
+    let mut astree = ASTree::new(ciphersuite, &[0u8; 32], LeafIndex::from(2u32));
+    assert!(astree.get_secret(LeafIndex::from(0u32), 0).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(1u32), 0).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(0u32), 1).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(0u32), 1_000).is_ok());
     assert_eq!(
-        astree.get_secret(RosterIndex::from(1u32), 1001),
+        astree.get_secret(LeafIndex::from(1u32), 1001),
         Err(ASError::TooDistantInTheFuture)
     );
-    assert!(astree.get_secret(RosterIndex::from(0u32), 996).is_ok());
+    assert!(astree.get_secret(LeafIndex::from(0u32), 996).is_ok());
     assert_eq!(
-        astree.get_secret(RosterIndex::from(0u32), 995),
+        astree.get_secret(LeafIndex::from(0u32), 995),
         Err(ASError::TooDistantInThePast)
     );
     assert_eq!(
-        astree.get_secret(RosterIndex::from(2u32), 0),
+        astree.get_secret(LeafIndex::from(2u32), 0),
         Err(ASError::IndexOutOfBounds)
     );
-    let mut largetree = ASTree::new(ciphersuite, &[0u8; 32], RosterIndex::from(100_000u32));
-    assert!(largetree.get_secret(RosterIndex::from(0u32), 0).is_ok());
+    let mut largetree = ASTree::new(ciphersuite, &[0u8; 32], LeafIndex::from(100_000u32));
+    assert!(largetree.get_secret(LeafIndex::from(0u32), 0).is_ok());
+    assert!(largetree.get_secret(LeafIndex::from(99_999u32), 0).is_ok());
     assert!(largetree
-        .get_secret(RosterIndex::from(99_999u32), 0)
-        .is_ok());
-    assert!(largetree
-        .get_secret(RosterIndex::from(99_999u32), 1_000)
+        .get_secret(LeafIndex::from(99_999u32), 1_000)
         .is_ok());
     assert_eq!(
-        largetree.get_secret(RosterIndex::from(100_000u32), 0),
+        largetree.get_secret(LeafIndex::from(100_000u32), 0),
         Err(ASError::IndexOutOfBounds)
     );
 }

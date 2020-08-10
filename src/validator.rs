@@ -48,7 +48,7 @@ impl<'a> Validator<'a, Group> {
                 kp.self_verify()
             }
             Proposal::Remove(remove_proposal) => {
-                let removed = TreeIndex::from(remove_proposal.removed);
+                let removed = NodeIndex::from(remove_proposal.removed);
                 if removed.as_usize() % 2 != 0 {
                     return false;
                 }

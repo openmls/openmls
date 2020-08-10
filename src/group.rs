@@ -15,14 +15,9 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::astree::*;
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::crypto::aead;
-use crate::crypto::hash;
-use crate::crypto::hash::*;
-use crate::crypto::hkdf;
-use crate::crypto::hpke::*;
-use crate::crypto::signatures::*;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::kp::*;
@@ -99,7 +94,7 @@ impl Group {
         let astree = ASTree::new(
             config.ciphersuite,
             &epoch_secrets.application_secret,
-            RosterIndex::from(1u32),
+            LeafIndex::from(1u32),
         );
         let tree = Tree::new(config.ciphersuite, kpb);
         let group_context = GroupContext {
@@ -165,57 +160,52 @@ impl Group {
             panic!("No secret found in Welcome"); // TODO error handling
         }
         let secret = secret_option.unwrap();
-        let group_secrets_bytes = secret
-            .encrypted_group_secrets
-            .open(ciphersuite, &kpb.private_key, None, None)
-            .unwrap();
-        let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
-        let welcome_secret = hkdf::expand(
-            ciphersuite.into(),
-            &group_secrets.epoch_secret,
-            b"mls 1.0 welcome",
-            hash::hash_length(ciphersuite.into()),
-        )
-        .unwrap();
-        let welcome_nonce = aead::Nonce::from_slice(
-            &hkdf::expand(
-                ciphersuite.into(),
-                &welcome_secret,
-                b"nonce",
-                aead::Nonce::nonce_length(ciphersuite.into()).unwrap(),
-            )
-            .unwrap(),
-        )
-        .unwrap();
-        let welcome_key = aead::AEADKey::from_slice(
-            ciphersuite.into(),
-            &hkdf::expand(
-                ciphersuite.into(),
-                &welcome_secret,
-                b"key",
-                aead::AEADKey::key_length(ciphersuite.into()).unwrap(),
-            )
-            .unwrap(),
-        )
-        .unwrap();
-        let group_info_bytes = aead::aead_open(
-            ciphersuite.into(),
-            &welcome.encrypted_group_info,
+        let group_secrets_bytes = ciphersuite.hpke_open(
+            secret.encrypted_group_secrets.clone(),
+            &kpb.private_key,
             &[],
-            &welcome_key,
-            &welcome_nonce,
-        )
-        .unwrap();
+            &[],
+        );
+        let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
+        let welcome_secret = ciphersuite
+            .hkdf_expand(
+                &group_secrets.epoch_secret,
+                b"mls 1.0 welcome",
+                ciphersuite.hash_length(),
+            )
+            .unwrap();
+        let welcome_nonce = ciphersuite
+            .new_aead_nonce(
+                &ciphersuite
+                    .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
+                    .unwrap(),
+            )
+            .unwrap();
+        let welcome_key = ciphersuite
+            .new_aead_key(
+                &ciphersuite
+                    .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
+                    .unwrap(),
+            )
+            .unwrap();
+        let group_info_bytes = ciphersuite
+            .aead_open(
+                &welcome.encrypted_group_info,
+                &[],
+                &welcome_key,
+                &welcome_nonce,
+            )
+            .unwrap();
         let group_info = GroupInfo::decode_detached(&group_info_bytes).unwrap();
         let tree_hash = group_info.tree_hash.clone();
         assert_eq!(
             tree_hash,
-            hash(ciphersuite.into(), &ratchet_tree_extension.extension_data)
+            ciphersuite.hash(&ratchet_tree_extension.extension_data)
         );
         let ratchet_tree =
             RatchetTreeExtension::new_from_bytes(&ratchet_tree_extension.extension_data);
         let tree = ratchet_tree.tree;
-        let signer_node = tree[TreeIndex::from(group_info.signer_index).as_usize()]
+        let signer_node = tree[NodeIndex::from(group_info.signer_index).as_usize()]
             .clone()
             .unwrap();
         assert_eq!(signer_node.node_type, NodeType::Leaf);
@@ -232,7 +222,7 @@ impl Group {
             if let Some(node) = node_option {
                 if let Some(kp) = node.key_package.clone() {
                     if kp == kpb.key_package {
-                        index_option = Some(TreeIndex::from(i));
+                        index_option = Some(NodeIndex::from(i));
                         break;
                     }
                 }
@@ -247,7 +237,7 @@ impl Group {
         let mut tree = Tree::new_from_nodes(ciphersuite, kpb, &nodes, index);
         if let Some(path_secret) = group_secrets.path_secret {
             let common_ancestor =
-                treemath::common_ancestor(index, TreeIndex::from(group_info.signer_index));
+                treemath::common_ancestor(index, NodeIndex::from(group_info.signer_index));
             let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
             let (path_secrets, _commit_secret) = OwnLeaf::continue_path_secrets(
                 ciphersuite,
@@ -386,7 +376,7 @@ impl Group {
         let path_required = membership_changes.path_required();
 
         let (path, path_secrets_option, commit_secret) = if path_required {
-            let keypair = HPKEKeyPair::new(self.config.ciphersuite.into()).unwrap();
+            let keypair = ciphersuite.new_hpke_keypair();
             let (commit_secret, kpb, path, path_secrets) = new_tree.update_own_leaf(
                 &self.identity,
                 Some(&keypair),
@@ -397,8 +387,7 @@ impl Group {
             self.pending_kpbs.push(kpb);
             (path, path_secrets, commit_secret)
         } else {
-            let commit_secret =
-                CommitSecret(zero(hash::hash_length(self.config.ciphersuite.into())));
+            let commit_secret = CommitSecret(zero(self.config.ciphersuite.hash_length()));
             (None, None, commit_secret)
         };
 
@@ -461,10 +450,7 @@ impl Group {
         if !membership_changes.adds.is_empty() {
             let public_tree = RatchetTreeExtension::new(new_tree.public_key_tree());
             let ratchet_tree_extension = public_tree.to_extension();
-            let tree_hash = hash(
-                self.config.ciphersuite.into(),
-                &ratchet_tree_extension.extension_data,
-            );
+            let tree_hash = ciphersuite.hash(&ratchet_tree_extension.extension_data);
 
             let mut group_info = GroupInfo {
                 group_id: new_group_context.group_id.clone(),
@@ -479,49 +465,37 @@ impl Group {
             };
             group_info.signature = group_info.sign(&self.identity);
 
-            let welcome_secret = hkdf::expand(
-                ciphersuite.into(),
-                &epoch_secret,
-                b"mls 1.0 welcome",
-                hash::hash_length(ciphersuite.into()),
-            )
-            .unwrap();
-            let welcome_nonce = aead::Nonce::from_slice(
-                &hkdf::expand(
-                    ciphersuite.into(),
-                    &welcome_secret,
-                    b"nonce",
-                    aead::Nonce::nonce_length(ciphersuite.into()).unwrap(),
+            let welcome_secret = ciphersuite
+                .hkdf_expand(&epoch_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
+                .unwrap();
+            let welcome_nonce = ciphersuite
+                .new_aead_nonce(
+                    &ciphersuite
+                        .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
+                        .unwrap(),
                 )
-                .unwrap(),
-            )
-            .unwrap();
-            let welcome_key = aead::AEADKey::from_slice(
-                ciphersuite.into(),
-                &hkdf::expand(
-                    ciphersuite.into(),
-                    &welcome_secret,
-                    b"key",
-                    aead::AEADKey::key_length(ciphersuite.into()).unwrap(),
+                .unwrap();
+            let welcome_key = ciphersuite
+                .new_aead_key(
+                    &ciphersuite
+                        .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
+                        .unwrap(),
                 )
-                .unwrap(),
-            )
-            .unwrap();
+                .unwrap();
 
-            let encrypted_group_info = aead::aead_seal(
-                ciphersuite.into(),
-                &group_info.encode_detached().unwrap(),
-                &[],
-                &welcome_key,
-                &welcome_nonce,
-            )
-            .unwrap();
+            let encrypted_group_info = ciphersuite
+                .aead_seal(
+                    &group_info.encode_detached().unwrap(),
+                    &[],
+                    &welcome_key,
+                    &welcome_nonce,
+                )
+                .unwrap();
 
             let mut plaintext_secrets = vec![];
             for (index, add_proposal) in invited_members.clone() {
                 let key_package = add_proposal.key_package;
-                let key_package_hash =
-                    hash::hash(ciphersuite.into(), &key_package.encode_detached().unwrap());
+                let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
                 let path_secret = if path_required {
                     let common_ancestor =
                         treemath::common_ancestor(index, self.tree.own_leaf.leaf_index);
@@ -551,8 +525,7 @@ impl Group {
             let secrets = plaintext_secrets
                 .par_iter()
                 .map(|(init_key, bytes, key_package_hash)| {
-                    let encrypted_group_secrets =
-                        HpkeCiphertext::seal(ciphersuite, init_key, bytes, None, None).unwrap();
+                    let encrypted_group_secrets = ciphersuite.hpke_seal(init_key, &[], &[], bytes);
                     EncryptedGroupSecrets {
                         key_package_hash: key_package_hash.clone(),
                         encrypted_group_secrets,
@@ -634,7 +607,7 @@ impl Group {
         } else {
             let path_required = membership_changes.path_required();
             assert!(!path_required); // TODO: error handling
-            CommitSecret(zero(hash::hash_length(self.config.ciphersuite.into())))
+            CommitSecret(zero(self.config.ciphersuite.hash_length()))
         };
 
         let mut new_epoch = self.group_context.epoch;
@@ -682,7 +655,7 @@ impl Group {
 
         if let Some(path) = commit.path {
             if !is_own_commit {
-                let parent_hash = new_tree.compute_parent_hash(TreeIndex::from(sender));
+                let parent_hash = new_tree.compute_parent_hash(NodeIndex::from(sender));
 
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
@@ -769,19 +742,16 @@ impl Group {
         )
     }
     pub fn update_confirmed_transcript_hash(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         mls_plaintext_commit_content: &MLSPlaintextCommitContent,
         interim_transcript_hash: &[u8],
     ) -> Vec<u8> {
         let mls_plaintext_commit_content_bytes =
             mls_plaintext_commit_content.encode_detached().unwrap();
-        hash::hash(
-            ciphersuite.into(),
-            &[interim_transcript_hash, &mls_plaintext_commit_content_bytes].concat(),
-        )
+        ciphersuite.hash(&[interim_transcript_hash, &mls_plaintext_commit_content_bytes].concat())
     }
     pub fn update_interim_transcript_hash(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         mls_plaintext: &MLSPlaintext,
         confirmed_transcript_hash: &[u8],
     ) -> Vec<u8> {
@@ -789,8 +759,7 @@ impl Group {
             &MLSPlaintextCommitAuthData::from(mls_plaintext.clone())
                 .encode_detached()
                 .unwrap();
-        hash::hash(
-            ciphersuite.into(),
+        ciphersuite.hash(
             &[
                 &confirmed_transcript_hash,
                 &mls_plaintext_auth_data_bytes[..],
@@ -801,14 +770,14 @@ impl Group {
     pub fn roster(&self) -> Vec<Credential> {
         let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
         for i in 0..self.tree.leaf_count().as_usize() {
-            let node = self.tree.nodes[TreeIndex::from(RosterIndex::from(i)).as_usize()].clone();
+            let node = self.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
             let credential = node.key_package.unwrap().credential;
             roster.push(credential);
         }
         roster
     }
-    pub fn get_sender_index(&self) -> RosterIndex {
-        RosterIndex::from(self.tree.own_leaf.leaf_index)
+    pub fn get_sender_index(&self) -> LeafIndex {
+        LeafIndex::from(self.tree.own_leaf.leaf_index)
     }
     fn get_context(&self) -> GroupContext {
         self.group_context.clone()
@@ -912,7 +881,7 @@ impl Codec for GroupContext {
 
 #[derive(Clone, Copy)]
 pub struct GroupConfig {
-    pub ciphersuite: CipherSuite,
+    pub ciphersuite: Ciphersuite,
     pub padding_block_size: u32,
     pub update_policy: u8, // FIXME
 }
@@ -925,7 +894,7 @@ impl Codec for GroupConfig {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = CipherSuite::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let padding_block_size = u32::decode(cursor)?;
         let update_policy = u8::decode(cursor)?;
         Ok(GroupConfig {
@@ -937,14 +906,16 @@ impl Codec for GroupConfig {
 }
 
 pub const GROUP_CONFIG_DEFAULT: GroupConfig = GroupConfig {
-    ciphersuite: CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519,
+    ciphersuite: Ciphersuite {
+        name: Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    },
     padding_block_size: 10,
     update_policy: 0,
 };
 
 #[test]
 fn group_operations() {
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
 
     // Define identities
     let alice_identity = Identity::new(ciphersuite, "Alice".into());
