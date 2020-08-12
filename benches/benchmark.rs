@@ -22,7 +22,7 @@ extern crate rand;
 use criterion::Criterion;
 use maelstrom::ciphersuite::*;
 use maelstrom::creds::*;
-use maelstrom::kp::*;
+use maelstrom::key_packages::*;
 
 fn criterion_kp_bundle(c: &mut Criterion) {
     c.bench_function("KeyPackage create bundle", |b| {

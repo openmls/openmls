@@ -18,7 +18,7 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::extensions::*;
-use crate::kp::*;
+use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 
@@ -603,7 +603,8 @@ impl Tree {
                 .path_keypairs
                 .get(common_ancestor_copath_index)
                 .unwrap()
-                .private_key
+                .get_private_key()
+                .clone()
         };
         let common_path = treemath::dirpath_long(common_ancestor, self.leaf_count());
         let secret = self
@@ -617,7 +618,7 @@ impl Tree {
             // TODO return an error if public keys don't match
             assert_eq!(
                 &direct_path.nodes[sender_path_offset + i].public_key,
-                &keypair.public_key
+                keypair.get_public_key()
             );
         }
         self.merge_public_keys(direct_path, sender_dirpath);
@@ -632,8 +633,8 @@ impl Tree {
     pub fn update_own_leaf(
         &mut self,
         identity: &Identity,
-        keypair_option: Option<&HPKEKeyPair>,
-        kpb_option: Option<KeyPackageBundle>,
+        key_pair: Option<&HPKEKeyPair>,
+        kpb: Option<KeyPackageBundle>,
         group_context: &[u8],
         with_direct_path: bool,
     ) -> (
@@ -642,11 +643,18 @@ impl Tree {
         Option<DirectPath>,
         Option<Vec<Vec<u8>>>,
     ) {
+        if key_pair.is_none() && kpb.is_none() {
+            // TODO: Error handling.
+            panic!("This must not happen.");
+        }
+
         let own_index = self.own_leaf.leaf_index;
-        let private_key = if let Some(keypair) = keypair_option {
-            keypair.private_key.clone()
-        } else {
-            kpb_option.clone().unwrap().private_key
+        let private_key = match key_pair {
+            Some(k) => k.get_private_key().clone(),
+            None => {
+                debug_assert!(kpb.is_some());
+                kpb.clone().unwrap().private_key
+            },
         };
         let dirpath_root = treemath::dirpath_root(own_index, self.leaf_count());
         let node_secret = private_key.as_slice();
@@ -657,16 +665,18 @@ impl Tree {
         self.merge_keypairs(keypairs.clone(), dirpath_root.clone());
 
         let parent_hash = self.compute_parent_hash(own_index);
-        let kpb = if let Some(kpb) = kpb_option {
-            kpb
-        } else {
-            let parent_hash_extension = ParentHashExtension::new(&parent_hash);
-            KeyPackageBundle::new_with_keypair(
-                self.ciphersuite,
-                identity,
-                Some(vec![parent_hash_extension.to_extension()]),
-                keypair_option.unwrap(),
-            )
+        let kpb = match kpb {
+            Some(k) => k,
+            None => {
+                debug_assert!(key_pair.is_some());
+                let parent_hash_extension = ParentHashExtension::new(&parent_hash);
+                KeyPackageBundle::new_with_keypair(
+                    self.ciphersuite,
+                    identity,
+                    Some(vec![parent_hash_extension.to_extension()]),
+                    key_pair.unwrap(),
+                )
+            }
         };
 
         self.nodes[own_index.as_usize()] = Node::new_leaf(Some(kpb.key_package.clone()));
@@ -720,7 +730,7 @@ impl Tree {
         for pair in keypairs.iter().zip(ciphertexts.iter()) {
             let (keypair, node_ciphertexts) = pair;
             direct_path_nodes.push(DirectPathNode {
-                public_key: keypair.public_key.clone(),
+                public_key: keypair.get_public_key().clone(),
                 encrypted_path_secret: node_ciphertexts.clone(),
             });
         }
@@ -745,7 +755,7 @@ impl Tree {
         assert_eq!(keypairs.len(), path.len()); // TODO return error
         for i in 0..path.len() {
             let node = ParentNode {
-                public_key: keypairs[i].public_key.clone(),
+                public_key: keypairs[i].get_public_key().clone(),
                 unmerged_leaves: vec![],
                 parent_hash: vec![],
             };

@@ -20,7 +20,7 @@ use crate::codec::*;
 use crate::creds::*;
 use crate::extensions::*;
 use crate::framing::*;
-use crate::kp::*;
+use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::tree::*;

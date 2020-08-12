@@ -21,7 +21,7 @@ pub mod creds;
 pub mod extensions;
 pub mod framing;
 pub mod group;
-pub mod kp;
+pub mod key_packages;
 pub mod messages;
 pub mod schedule;
 mod tree;

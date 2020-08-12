@@ -19,6 +19,8 @@ use crate::codec::*;
 use crate::creds::*;
 use crate::extensions::*;
 
+mod codec;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct KeyPackage {
     protocol_version: ProtocolVersion,
@@ -29,37 +31,10 @@ pub struct KeyPackage {
     signature: Signature,
 }
 
-// This implementation currently supports the following
-// const CIPHERSUITES: &[CiphersuiteName] = &[
-//     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-//     CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-// ];
-// const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] = &[CURRENT_PROTOCOL_VERSION];
-// const SUPPORTED_EXTENSIONS: &[ExtensionType] = &[ExtensionType::Lifetime];
-
 impl KeyPackage {
-    /// Create a new key package for the given `ciphersuite` and `identity`,
-    /// and the initial HPKE key pair `init_key`.
-    // pub(crate) fn new(
-    //     ciphersuite: Ciphersuite,
-    //     init_key: &HPKEPublicKey,
-    //     identity: &Identity,
-    // ) -> Self {
-    //     let extensions = [
-    //         CapabilitiesExtension::new(
-    //             SUPPORTED_PROTOCOL_VERSIONS.to_vec(),
-    //             CIPHERSUITES.to_vec(),
-    //             SUPPORTED_EXTENSIONS.to_vec(),
-    //         )
-    //         .to_extension(),
-    //         LifetimeExtension::new(LifetimeExtension::LIFETIME_4_WEEKS).to_extension(),
-    //     ];
-    //     Self::new_with_extensions(ciphersuite, init_key, identity, &extensions)
-    // }
-
-    /// Create a new key package but only with the given `extensions`.
-    /// See `new` for more details.
-    pub(crate) fn new_with_extensions(
+    /// Create a new key package but only with the given `extensions` for the
+    /// given `ciphersuite` and `identity`, and the initial HPKE key pair `init_key`.
+    fn new(
         ciphersuite: Ciphersuite,
         hpke_init_key: &HPKEPublicKey,
         identity: &Identity,
@@ -89,17 +64,6 @@ impl KeyPackage {
         let bytes = self.encode_detached().unwrap();
         self.cipher_suite.hash(&bytes)
     }
-
-    /// Check if the `extension_type` is in this key package.
-    /// Returns `true` if the extension is present, and `false` otherwise.
-    // pub(crate) fn has_extension(&self, extension_type: ExtensionType) -> bool {
-    //     for e in &self.extensions {
-    //         if e.get_type() == extension_type {
-    //             return true;
-    //         }
-    //     }
-    //     false
-    // }
 
     /// Get the extension of `extension_type`.
     /// Returns `Some(extension)` if present and `None` if the extension is not present.
@@ -161,83 +125,6 @@ impl Signable for KeyPackage {
     }
 }
 
-impl Codec for KeyPackage {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        buffer.append(&mut self.unsigned_payload()?);
-        self.signature.encode(buffer)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        // FIXME
-        let protocol_version = ProtocolVersion::decode(cursor)?;
-        let cipher_suite = Ciphersuite::decode(cursor)?;
-        let hpke_init_key = HPKEPublicKey::decode(cursor)?;
-        let credential = Credential::decode(cursor)?;
-        let extensions = decode_vec(VecSize::VecU16, cursor)?;
-        let signature = Signature::decode(cursor)?;
-        let kp = KeyPackage {
-            protocol_version,
-            cipher_suite,
-            hpke_init_key,
-            credential,
-            extensions,
-            signature,
-        };
-
-        // TODO: check extensions
-
-        let mut extensions = kp.extensions.clone();
-        extensions.dedup();
-        if kp.extensions.len() != extensions.len() {
-            return Err(CodecError::DecodingError);
-        }
-
-        for e in extensions.iter() {
-            match e.extension_type {
-                ExtensionType::Capabilities => {
-                    let capabilities_extension =
-                        CapabilitiesExtension::new_from_bytes(&e.extension_data);
-                    for v in capabilities_extension.versions.iter() {
-                        if *v > CURRENT_PROTOCOL_VERSION {
-                            return Err(CodecError::DecodingError);
-                        }
-                    }
-                    if !capabilities_extension
-                        .ciphersuites
-                        .contains(&CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
-                    {
-                        return Err(CodecError::DecodingError);
-                    }
-                }
-                ExtensionType::Lifetime => {
-                    let lifetime_extension = LifetimeExtension::new_from_bytes(&e.extension_data);
-                    if lifetime_extension.is_expired() {
-                        return Err(CodecError::DecodingError);
-                    }
-                }
-                ExtensionType::KeyID => {
-                    let _key_id_extension = KeyIDExtension::new_from_bytes(&e.extension_data);
-                }
-                ExtensionType::ParentHash => {
-                    let _parent_hash_extension =
-                        ParentHashExtension::new_from_bytes(&e.extension_data);
-                }
-                ExtensionType::RatchetTree => {}
-                ExtensionType::Invalid => {}
-                ExtensionType::Default => {}
-            }
-        }
-
-        for _ in 0..kp.extensions.len() {}
-
-        if !kp.verify() {
-            return Err(CodecError::DecodingError);
-        }
-        Ok(kp)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct KeyPackageBundle {
     pub key_package: KeyPackage,
@@ -245,21 +132,30 @@ pub struct KeyPackageBundle {
 }
 
 impl KeyPackageBundle {
+    /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
+    /// and `extensions`.
+    /// This generates a fresh HPKE key pair for this bundle.
+    ///
+    /// Returns a new `KeyPackageBundle`.
     pub fn new(
         ciphersuite: Ciphersuite,
         identity: &Identity,
-        extensions_option: Option<Vec<Extension>>,
+        extensions: Option<Vec<Extension>>,
     ) -> Self {
         let keypair = ciphersuite.new_hpke_keypair();
-        Self::new_with_keypair(ciphersuite, identity, extensions_option, &keypair)
+        Self::new_with_keypair(ciphersuite, identity, extensions, &keypair)
     }
+
+    /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
+    /// and `extensions`, using the given HPKE `key_pair`.
+    ///
+    /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuite: Ciphersuite,
         identity: &Identity,
-        extensions_option: Option<Vec<Extension>>,
-        keypair: &HPKEKeyPair,
+        extensions: Option<Vec<Extension>>,
+        key_pair: &HPKEKeyPair,
     ) -> Self {
-        let private_key = keypair.private_key.clone();
         let capabilities_extension = CapabilitiesExtension::new(
             vec![CURRENT_PROTOCOL_VERSION],
             vec![
@@ -269,18 +165,18 @@ impl KeyPackageBundle {
             vec![ExtensionType::Lifetime],
         );
         let mut final_extensions = vec![capabilities_extension.to_extension()];
-        if let Some(mut extensions) = extensions_option {
+        if let Some(mut extensions) = extensions {
             final_extensions.append(&mut extensions);
         }
-        let key_package = KeyPackage::new_with_extensions(
+        let key_package = KeyPackage::new(
             ciphersuite,
-            &keypair.public_key,
+            &key_pair.get_public_key(),
             identity,
             &final_extensions,
         );
         KeyPackageBundle {
             key_package,
-            private_key,
+            private_key: key_pair.get_private_key().clone(),
         }
     }
 }

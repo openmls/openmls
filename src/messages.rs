@@ -20,7 +20,7 @@ use crate::creds::*;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::*;
-use crate::kp::*;
+use crate::key_packages::*;
 use crate::tree::*;
 use std::collections::HashMap;
 use std::convert::From;
