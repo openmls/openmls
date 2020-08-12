@@ -29,28 +29,35 @@ pub struct KeyPackage {
     pub signature: Signature,
 }
 
+// This implementation currently supports the following
+const CIPHERSUITES: &[CiphersuiteName] = &[
+    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+];
+const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] = &[CURRENT_PROTOCOL_VERSION];
+const SUPPORTED_EXTENSIONS: &[ExtensionType] = &[ExtensionType::Lifetime];
+
 impl KeyPackage {
+    /// Create a new key package for the given `ciphersuite` and `identity`,
+    /// and the initial HPKE key pair `init_key`.
     pub fn new(ciphersuite: Ciphersuite, init_key: &HPKEPublicKey, identity: &Identity) -> Self {
         let capabilities_extension = CapabilitiesExtension::new(
-            vec![CURRENT_PROTOCOL_VERSION],
-            vec![
-                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            ],
-            vec![ExtensionType::Lifetime],
+            SUPPORTED_PROTOCOL_VERSIONS.to_vec(),
+            CIPHERSUITES.to_vec(),
+            SUPPORTED_EXTENSIONS.to_vec(),
         );
         let lifetime_extension = LifetimeExtension::new(LifetimeExtension::LIFETIME_4_WEEKS);
-        let extensions = vec![
+        let extensions = [
             capabilities_extension.to_extension(),
             lifetime_extension.to_extension(),
         ];
-        KeyPackage::new_with_extensions(ciphersuite, init_key, identity, extensions)
+        KeyPackage::new_with_extensions(ciphersuite, init_key, identity, &extensions)
     }
     pub fn new_with_extensions(
         ciphersuite: Ciphersuite,
         hpke_init_key: &HPKEPublicKey,
         identity: &Identity,
-        extensions: Vec<Extension>,
+        extensions: &[Extension],
     ) -> Self {
         let credential = Credential::Basic(identity.into());
         let mut key_package = Self {
@@ -58,7 +65,7 @@ impl KeyPackage {
             cipher_suite: ciphersuite,
             hpke_init_key: hpke_init_key.to_owned(),
             credential,
-            extensions,
+            extensions: extensions.to_vec(),
             signature: Signature::new_empty(),
         };
         key_package.signature = identity.sign(&key_package.unsigned_payload().unwrap());
@@ -238,7 +245,7 @@ impl KeyPackageBundle {
             ciphersuite,
             &keypair.public_key,
             identity,
-            final_extensions,
+            &final_extensions,
         );
         KeyPackageBundle {
             key_package,
@@ -280,7 +287,8 @@ fn generate_key_package() {
 
 #[test]
 fn test_codec() {
-    let ciphersuite = Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let identity = Identity::new(ciphersuite, vec![1, 2, 3]);
     let kpb = KeyPackageBundle::new(ciphersuite, &identity, None);
     let enc = kpb.encode_detached().unwrap();
