@@ -21,6 +21,14 @@ use crate::extensions::*;
 
 mod codec;
 
+// This implementation currently supports the following
+const CIPHERSUITES: &[CiphersuiteName] = &[
+    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+];
+const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] = &[CURRENT_PROTOCOL_VERSION];
+const SUPPORTED_EXTENSIONS: &[ExtensionType] = &[ExtensionType::Lifetime];
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct KeyPackage {
     protocol_version: ProtocolVersion,
@@ -127,8 +135,8 @@ impl Signable for KeyPackage {
 
 #[derive(Debug, Clone)]
 pub struct KeyPackageBundle {
-    pub key_package: KeyPackage,
-    pub private_key: HPKEPrivateKey,
+    key_package: KeyPackage,
+    private_key: HPKEPrivateKey,
 }
 
 impl KeyPackageBundle {
@@ -157,12 +165,9 @@ impl KeyPackageBundle {
         key_pair: &HPKEKeyPair,
     ) -> Self {
         let capabilities_extension = CapabilitiesExtension::new(
-            vec![CURRENT_PROTOCOL_VERSION],
-            vec![
-                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            ],
-            vec![ExtensionType::Lifetime],
+            SUPPORTED_PROTOCOL_VERSIONS.to_vec(),
+            CIPHERSUITES.to_vec(),
+            SUPPORTED_EXTENSIONS.to_vec(),
         );
         let mut final_extensions = vec![capabilities_extension.to_extension()];
         if let Some(mut extensions) = extensions {
@@ -179,22 +184,15 @@ impl KeyPackageBundle {
             private_key: key_pair.get_private_key().clone(),
         }
     }
-}
 
-impl Codec for KeyPackageBundle {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.key_package.encode(buffer)?;
-        self.private_key.encode(buffer)?;
-        Ok(())
+    /// Get a reference to the `KeyPackage`.
+    pub fn get_key_package(&self) -> &KeyPackage {
+        &self.key_package
     }
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_package = KeyPackage::decode(cursor)?;
-        let private_key = HPKEPrivateKey::decode(cursor)?;
-        Ok(KeyPackageBundle {
-            key_package,
-            private_key,
-        })
+    /// Get a reference to the `HPKEPrivateKey`.
+    pub(crate) fn get_private_key(&self) -> &HPKEPrivateKey {
+        &self.private_key
     }
 }
 

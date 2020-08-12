@@ -18,10 +18,10 @@ fn group_operations() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(ciphersuite, &bob_identity, None);
-    let bob_key_package = bob_key_package_bundle.key_package.clone();
+    let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let charlie_key_package_bundle = KeyPackageBundle::new(ciphersuite, &charlie_identity, None);
-    let charlie_key_package = charlie_key_package_bundle.key_package.clone();
+    let charlie_key_package = charlie_key_package_bundle.get_key_package();
 
     // Create a group with Alice
     let mut config = GROUP_CONFIG_DEFAULT;

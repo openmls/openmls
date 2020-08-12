@@ -148,10 +148,10 @@ impl Group {
     ) -> Group {
         let (welcome, ratchet_tree_extension) = welcome_bundle;
         let ciphersuite = welcome.cipher_suite;
-        if &ciphersuite != kpb.key_package.get_cipher_suite() {
+        if &ciphersuite != kpb.get_key_package().get_cipher_suite() {
             panic!("Ciphersuite mismatch"); // TODO error handling
         }
-        let key_package_hash = kpb.key_package.hash();
+        let key_package_hash = kpb.get_key_package().hash();
         let secret_option = welcome
             .secrets
             .iter()
@@ -162,7 +162,7 @@ impl Group {
         let secret = secret_option.unwrap();
         let group_secrets_bytes = ciphersuite.hpke_open(
             secret.encrypted_group_secrets.clone(),
-            &kpb.private_key,
+            kpb.get_private_key(),
             &[],
             &[],
         );
@@ -221,7 +221,7 @@ impl Group {
         for (i, node_option) in nodes.iter().enumerate() {
             if let Some(node) = node_option {
                 if let Some(kp) = node.key_package.clone() {
-                    if kp == kpb.key_package {
+                    if &kp == kpb.get_key_package() {
                         index_option = Some(NodeIndex::from(i));
                         break;
                     }
@@ -321,7 +321,7 @@ impl Group {
     pub fn create_update_proposal(&mut self, authenticated_data: Option<&[u8]>) -> MLSPlaintext {
         let kpb = KeyPackageBundle::new(self.config.ciphersuite, &self.identity, None);
         let update_proposal = UpdateProposal {
-            key_package: kpb.key_package.clone(), // TODO Check KP
+            key_package: kpb.get_key_package().clone(), // TODO Check KP
         };
         let proposal = Proposal::Update(update_proposal);
         self.add_own_proposal(proposal.clone());
@@ -586,7 +586,7 @@ impl Group {
                 let own_kpb = self
                     .pending_kpbs
                     .iter()
-                    .find(|&kpb| kpb.key_package == kp)
+                    .find(|&kpb| kpb.get_key_package() == &kp)
                     .unwrap();
                 let (commit_secret, _, _, _) = new_tree.update_own_leaf(
                     &self.identity,

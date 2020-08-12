@@ -353,7 +353,7 @@ impl Tree {
         );
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
-            key_package: Some(kpb.key_package),
+            key_package: Some(kpb.get_key_package().clone()),
             node: None,
         }];
         Tree {
@@ -378,10 +378,10 @@ impl Tree {
                 nodes.push(Node::new_blank_parent_node());
             }
         }
-        let secret = kpb.private_key.as_slice();
+        let secret = kpb.get_private_key().as_slice();
         let dirpath = treemath::dirpath_root(index, LeafIndex::from(NodeIndex::from(nodes.len())));
         let (path_secrets, _commit_secret) =
-            OwnLeaf::generate_path_secrets(ciphersuite, &secret, dirpath.len());
+            OwnLeaf::generate_path_secrets(ciphersuite, secret, dirpath.len());
         let keypairs = OwnLeaf::generate_path_keypairs(ciphersuite, path_secrets);
         let mut path_keypairs = PathKeypairs::new();
         path_keypairs.add(keypairs, dirpath);
@@ -597,14 +597,15 @@ impl Tree {
             .clone();
 
         let private_key = if resolution[position_in_resolution] == own_index {
-            self.own_leaf.kpb.private_key.clone()
+            self.own_leaf.kpb.get_private_key().clone()
         } else {
-            self.own_leaf
+            match self.own_leaf
                 .path_keypairs
-                .get(common_ancestor_copath_index)
-                .unwrap()
-                .get_private_key()
-                .clone()
+                .get(common_ancestor_copath_index) {
+                    // FIXME: don't clone
+                    Some(key_pair) => key_pair.get_private_key().clone(),
+                    None => panic!("TODO: handle this."),
+                }
         };
         let common_path = treemath::dirpath_long(common_ancestor, self.leaf_count());
         let secret = self
@@ -650,10 +651,11 @@ impl Tree {
 
         let own_index = self.own_leaf.leaf_index;
         let private_key = match key_pair {
+            // FIXME: don't clone
             Some(k) => k.get_private_key().clone(),
             None => {
                 debug_assert!(kpb.is_some());
-                kpb.clone().unwrap().private_key
+                kpb.clone().unwrap().get_private_key().clone()
             },
         };
         let dirpath_root = treemath::dirpath_root(own_index, self.leaf_count());
@@ -679,7 +681,7 @@ impl Tree {
             }
         };
 
-        self.nodes[own_index.as_usize()] = Node::new_leaf(Some(kpb.key_package.clone()));
+        self.nodes[own_index.as_usize()] = Node::new_leaf(Some(kpb.get_key_package().clone()));
         let mut path_keypairs = PathKeypairs::new();
         path_keypairs.add(keypairs.clone(), dirpath_root);
         let own_leaf = OwnLeaf::new(self.ciphersuite, kpb.clone(), own_index, path_keypairs);
@@ -692,7 +694,7 @@ impl Tree {
                     path_secrets.clone(),
                     keypairs,
                     group_context,
-                    kpb.key_package,
+                    kpb.get_key_package().clone(),
                 )),
                 Some(path_secrets),
             )
@@ -788,7 +790,7 @@ impl Tree {
             if index == self.own_leaf.leaf_index {
                 let own_kpb = pending_kpbs
                     .iter()
-                    .find(|&kpb| kpb.key_package == update_proposal.key_package)
+                    .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
                     .unwrap();
                 self.own_leaf = OwnLeaf::new(
                     self.ciphersuite,
