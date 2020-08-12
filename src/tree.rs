@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::crypto::hash::*;
-use crate::crypto::hpke::*;
 use crate::extensions::*;
 use crate::kp::*;
 use crate::messages::*;
@@ -101,10 +100,10 @@ impl Node {
     pub fn is_blank(&self) -> bool {
         self.key_package.is_none() && self.node.is_none()
     }
-    pub fn hash(&self, algorithm: HashAlgorithm) -> Option<Vec<u8>> {
+    pub fn hash(&self, ciphersuite: Ciphersuite) -> Option<Vec<u8>> {
         if let Some(parent_node) = self.node.clone() {
             let payload = parent_node.encode_detached().unwrap();
-            let node_hash = hash(algorithm, &payload);
+            let node_hash = ciphersuite.hash(&payload);
             Some(node_hash)
         } else {
             None
@@ -235,7 +234,7 @@ impl Codec for PathKeypairs {
 
 #[derive(Debug, Clone)]
 pub struct OwnLeaf {
-    pub ciphersuite: CipherSuite,
+    pub ciphersuite: Ciphersuite,
     pub kpb: KeyPackageBundle,
     pub leaf_index: NodeIndex,
     pub path_keypairs: PathKeypairs,
@@ -243,7 +242,7 @@ pub struct OwnLeaf {
 
 impl OwnLeaf {
     pub fn new(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         kpb: KeyPackageBundle,
         leaf_index: NodeIndex,
         path_keypairs: PathKeypairs,
@@ -256,11 +255,11 @@ impl OwnLeaf {
         }
     }
     pub fn generate_path_secrets(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         start_secret: &[u8],
         n: usize,
     ) -> (Vec<Vec<u8>>, CommitSecret) {
-        let hash_len = hash_length(ciphersuite.into());
+        let hash_len = ciphersuite.hash_length();
         let leaf_node_secret = hkdf_expand_label(ciphersuite, start_secret, "path", &[], hash_len);
         let mut path_secrets = vec![leaf_node_secret];
         for i in 0..n - 1 {
@@ -278,11 +277,11 @@ impl OwnLeaf {
         (path_secrets, commit_secret)
     }
     pub fn continue_path_secrets(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         intermediate_secret: &[u8],
         n: usize,
     ) -> (Vec<Vec<u8>>, CommitSecret) {
-        let hash_len = hash_length(ciphersuite.into());
+        let hash_len = ciphersuite.hash_length();
         let mut path_secrets = vec![intermediate_secret.to_vec()];
         for i in 0..n - 1 {
             let path_secret =
@@ -299,14 +298,14 @@ impl OwnLeaf {
         (path_secrets, commit_secret)
     }
     pub fn generate_path_keypairs(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         path_secrets: Vec<Vec<u8>>,
     ) -> Vec<HPKEKeyPair> {
-        let hash_len = hash_length(ciphersuite.into());
+        let hash_len = ciphersuite.hash_length();
         let mut keypairs = vec![];
         for path_secret in path_secrets {
             let node_secret = hkdf_expand_label(ciphersuite, &path_secret, "node", &[], hash_len);
-            let keypair = HPKEKeyPair::from_slice(&node_secret, ciphersuite.into()).unwrap();
+            let keypair = HPKEKeyPair::from_slice(&node_secret);
             keypairs.push(keypair);
         }
         keypairs
@@ -322,7 +321,7 @@ impl Codec for OwnLeaf {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = CipherSuite::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let kpb = KeyPackageBundle::decode(cursor)?;
         let leaf_index = NodeIndex::from(u32::decode(cursor)?);
         let path_keypairs = PathKeypairs::decode(cursor)?;
@@ -337,13 +336,13 @@ impl Codec for OwnLeaf {
 
 #[derive(Debug, Clone)]
 pub struct Tree {
-    ciphersuite: CipherSuite,
+    ciphersuite: Ciphersuite,
     pub nodes: Vec<Node>,
     pub own_leaf: OwnLeaf,
 }
 
 impl Tree {
-    pub fn new(ciphersuite: CipherSuite, kpb: KeyPackageBundle) -> Tree {
+    pub fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> Tree {
         let own_leaf = OwnLeaf::new(
             ciphersuite,
             kpb.clone(),
@@ -362,7 +361,7 @@ impl Tree {
         }
     }
     pub fn new_from_nodes(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
         index: NodeIndex,
@@ -605,9 +604,9 @@ impl Tree {
                 .private_key
         };
         let common_path = treemath::dirpath_long(common_ancestor, self.leaf_count());
-        let secret = hpke_ciphertext
-            .open(self.ciphersuite, &private_key, Some(group_context), None)
-            .unwrap();
+        let secret = self
+            .ciphersuite
+            .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
         let (path_secrets, commit_secret) =
             OwnLeaf::continue_path_secrets(self.own_leaf.ciphersuite, &secret, common_path.len());
         let keypairs = OwnLeaf::generate_path_keypairs(self.own_leaf.ciphersuite, path_secrets);
@@ -708,14 +707,8 @@ impl Tree {
                 .par_iter()
                 .map(|&x| {
                     let pk = self.nodes[x.as_usize()].get_public_hpke_key().unwrap();
-                    HpkeCiphertext::seal(
-                        self.ciphersuite,
-                        &pk,
-                        &path_secret,
-                        Some(group_context),
-                        None,
-                    )
-                    .unwrap()
+                    self.ciphersuite
+                        .hpke_seal(&pk, group_context, &[], &path_secret)
                 })
                 .collect();
             // TODO Check that all public keys are non-empty
@@ -888,7 +881,7 @@ impl Tree {
         }
     }
     pub fn compute_tree_hash(&self) -> Vec<u8> {
-        fn node_hash(ciphersuite: CipherSuite, tree: &Tree, index: NodeIndex) -> Vec<u8> {
+        fn node_hash(ciphersuite: Ciphersuite, tree: &Tree, index: NodeIndex) -> Vec<u8> {
             let node: Node = tree.nodes[index.as_usize()].clone();
             match node.node_type {
                 NodeType::Leaf => {
@@ -914,7 +907,7 @@ impl Tree {
         let parent = treemath::parent(index, self.leaf_count());
         let parent_hash = if parent == treemath::root(self.leaf_count()) {
             let root_node = self.nodes[parent.as_usize()].clone();
-            root_node.hash(self.own_leaf.ciphersuite.into()).unwrap()
+            root_node.hash(self.own_leaf.ciphersuite).unwrap()
         } else {
             self.compute_parent_hash(parent)
         };
@@ -923,14 +916,12 @@ impl Tree {
             parent_node.parent_hash = parent_hash;
             self.nodes[index.as_usize()].node = Some(parent_node);
             let updated_parent_node = self.nodes[index.as_usize()].clone();
-            updated_parent_node
-                .hash(self.own_leaf.ciphersuite.into())
-                .unwrap()
+            updated_parent_node.hash(self.own_leaf.ciphersuite).unwrap()
         } else {
             parent_hash
         }
     }
-    pub fn verify_integrity(ciphersuite: CipherSuite, nodes: &[Option<Node>]) -> bool {
+    pub fn verify_integrity(ciphersuite: Ciphersuite, nodes: &[Option<Node>]) -> bool {
         let node_count = NodeIndex::from(nodes.len());
         let size = LeafIndex::from(node_count);
         for i in 0..node_count.as_usize() {
@@ -945,7 +936,7 @@ impl Tree {
                         }
                         let left_option = nodes[left_index.as_usize()].clone();
                         let right_option = nodes[right_index.as_usize()].clone();
-                        let own_hash = node.hash(ciphersuite.into()).unwrap();
+                        let own_hash = node.hash(ciphersuite).unwrap();
                         if let Some(right) = right_option {
                             if let Some(left) = left_option {
                                 let left_parent_hash = left.parent_hash().unwrap_or_else(Vec::new);
@@ -994,7 +985,7 @@ impl Codec for Tree {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = CipherSuite::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let nodes = decode_vec(VecSize::VecU32, cursor)?;
         let own_leaf = OwnLeaf::decode(cursor)?;
         Ok(Tree {
@@ -1026,9 +1017,9 @@ impl ParentNodeHashInput {
             right_hash,
         }
     }
-    pub fn hash(&self, ciphersuite: CipherSuite) -> Vec<u8> {
+    pub fn hash(&self, ciphersuite: Ciphersuite) -> Vec<u8> {
         let payload = self.encode_detached().unwrap();
-        hash(ciphersuite.into(), &payload)
+        ciphersuite.hash(&payload)
     }
 }
 
@@ -1066,9 +1057,9 @@ impl LeafNodeHashInput {
             key_package,
         }
     }
-    pub fn hash(&self, ciphersuite: CipherSuite) -> Vec<u8> {
+    pub fn hash(&self, ciphersuite: Ciphersuite) -> Vec<u8> {
         let payload = self.encode_detached().unwrap();
-        hash(ciphersuite.into(), &payload)
+        ciphersuite.hash(&payload)
     }
 }
 

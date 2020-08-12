@@ -14,18 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::crypto::dh::*;
-use crate::crypto::hash::*;
-use crate::crypto::hpke::*;
-use crate::crypto::signatures::*;
 use crate::extensions::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct KeyPackage {
     pub protocol_version: ProtocolVersion,
-    pub cipher_suite: CipherSuite,
+    pub cipher_suite: Ciphersuite,
     pub hpke_init_key: HPKEPublicKey,
     pub credential: Credential,
     pub extensions: Vec<Extension>,
@@ -33,12 +30,12 @@ pub struct KeyPackage {
 }
 
 impl KeyPackage {
-    pub fn new(ciphersuite: CipherSuite, init_key: &HPKEPublicKey, identity: &Identity) -> Self {
+    pub fn new(ciphersuite: Ciphersuite, init_key: &HPKEPublicKey, identity: &Identity) -> Self {
         let capabilities_extension = CapabilitiesExtension::new(
             vec![CURRENT_PROTOCOL_VERSION],
             vec![
-                CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519,
-                CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             ],
             vec![ExtensionType::Lifetime],
         );
@@ -50,7 +47,7 @@ impl KeyPackage {
         KeyPackage::new_with_extensions(ciphersuite, init_key, identity, extensions)
     }
     pub fn new_with_extensions(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         hpke_init_key: &HPKEPublicKey,
         identity: &Identity,
         extensions: Vec<Extension>,
@@ -73,7 +70,7 @@ impl KeyPackage {
     }
     pub fn hash(&self) -> Vec<u8> {
         let bytes = self.encode_detached().unwrap();
-        hash(HashAlgorithm::SHA256, &bytes)
+        self.cipher_suite.hash(&bytes)
     }
     pub fn has_extension(&self, extension_type: ExtensionType) -> bool {
         for e in &self.extensions {
@@ -136,8 +133,8 @@ impl Codec for KeyPackage {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         // FIXME
         let protocol_version = ProtocolVersion::decode(cursor)?;
-        let cipher_suite = CipherSuite::decode(cursor)?;
-        let hpke_init_key = DHPublicKey::decode(cursor)?;
+        let cipher_suite = Ciphersuite::decode(cursor)?;
+        let hpke_init_key = HPKEPublicKey::decode(cursor)?;
         let credential = Credential::decode(cursor)?;
         let extensions = decode_vec(VecSize::VecU16, cursor)?;
         let signature = Signature::decode(cursor)?;
@@ -170,7 +167,7 @@ impl Codec for KeyPackage {
                     }
                     if !capabilities_extension
                         .ciphersuites
-                        .contains(&CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519)
+                        .contains(&Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
                     {
                         return Err(CodecError::DecodingError);
                     }
@@ -211,15 +208,15 @@ pub struct KeyPackageBundle {
 
 impl KeyPackageBundle {
     pub fn new(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         identity: &Identity,
         extensions_option: Option<Vec<Extension>>,
     ) -> Self {
-        let keypair = HPKEKeyPair::new(ciphersuite.into()).unwrap();
+        let keypair = ciphersuite.new_hpke_keypair();
         Self::new_with_keypair(ciphersuite, identity, extensions_option, &keypair)
     }
     pub fn new_with_keypair(
-        ciphersuite: CipherSuite,
+        ciphersuite: Ciphersuite,
         identity: &Identity,
         extensions_option: Option<Vec<Extension>>,
         keypair: &HPKEKeyPair,
@@ -228,8 +225,8 @@ impl KeyPackageBundle {
         let capabilities_extension = CapabilitiesExtension::new(
             vec![CURRENT_PROTOCOL_VERSION],
             vec![
-                CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519,
-                CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             ],
             vec![ExtensionType::Lifetime],
         );
@@ -270,11 +267,11 @@ impl Codec for KeyPackageBundle {
 #[test]
 fn generate_key_package() {
     let identity = Identity::new(
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         vec![1, 2, 3],
     );
     let kp_bundle = KeyPackageBundle::new(
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         &identity,
         None,
     );
@@ -283,11 +280,8 @@ fn generate_key_package() {
 
 #[test]
 fn test_codec() {
-    let ciphersuite = CipherSuite::MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519;
-    let identity = Identity::new(
-        CipherSuite::MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519,
-        vec![1, 2, 3],
-    );
+    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let identity = Identity::new(ciphersuite, vec![1, 2, 3]);
     let kpb = KeyPackageBundle::new(ciphersuite, &identity, None);
     let enc = kpb.encode_detached().unwrap();
     let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
