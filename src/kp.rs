@@ -21,39 +21,45 @@ use crate::extensions::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct KeyPackage {
-    pub protocol_version: ProtocolVersion,
-    pub cipher_suite: Ciphersuite,
-    pub hpke_init_key: HPKEPublicKey,
-    pub credential: Credential,
-    pub extensions: Vec<Extension>,
-    pub signature: Signature,
+    protocol_version: ProtocolVersion,
+    cipher_suite: Ciphersuite,
+    hpke_init_key: HPKEPublicKey,
+    credential: Credential,
+    extensions: Vec<Extension>,
+    signature: Signature,
 }
 
 // This implementation currently supports the following
-const CIPHERSUITES: &[CiphersuiteName] = &[
-    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-];
-const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] = &[CURRENT_PROTOCOL_VERSION];
-const SUPPORTED_EXTENSIONS: &[ExtensionType] = &[ExtensionType::Lifetime];
+// const CIPHERSUITES: &[CiphersuiteName] = &[
+//     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+//     CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+// ];
+// const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] = &[CURRENT_PROTOCOL_VERSION];
+// const SUPPORTED_EXTENSIONS: &[ExtensionType] = &[ExtensionType::Lifetime];
 
 impl KeyPackage {
     /// Create a new key package for the given `ciphersuite` and `identity`,
     /// and the initial HPKE key pair `init_key`.
-    pub fn new(ciphersuite: Ciphersuite, init_key: &HPKEPublicKey, identity: &Identity) -> Self {
-        let capabilities_extension = CapabilitiesExtension::new(
-            SUPPORTED_PROTOCOL_VERSIONS.to_vec(),
-            CIPHERSUITES.to_vec(),
-            SUPPORTED_EXTENSIONS.to_vec(),
-        );
-        let lifetime_extension = LifetimeExtension::new(LifetimeExtension::LIFETIME_4_WEEKS);
-        let extensions = [
-            capabilities_extension.to_extension(),
-            lifetime_extension.to_extension(),
-        ];
-        KeyPackage::new_with_extensions(ciphersuite, init_key, identity, &extensions)
-    }
-    pub fn new_with_extensions(
+    // pub(crate) fn new(
+    //     ciphersuite: Ciphersuite,
+    //     init_key: &HPKEPublicKey,
+    //     identity: &Identity,
+    // ) -> Self {
+    //     let extensions = [
+    //         CapabilitiesExtension::new(
+    //             SUPPORTED_PROTOCOL_VERSIONS.to_vec(),
+    //             CIPHERSUITES.to_vec(),
+    //             SUPPORTED_EXTENSIONS.to_vec(),
+    //         )
+    //         .to_extension(),
+    //         LifetimeExtension::new(LifetimeExtension::LIFETIME_4_WEEKS).to_extension(),
+    //     ];
+    //     Self::new_with_extensions(ciphersuite, init_key, identity, &extensions)
+    // }
+
+    /// Create a new key package but only with the given `extensions`.
+    /// See `new` for more details.
+    pub(crate) fn new_with_extensions(
         ciphersuite: Ciphersuite,
         hpke_init_key: &HPKEPublicKey,
         identity: &Identity,
@@ -71,22 +77,32 @@ impl KeyPackage {
         key_package.signature = identity.sign(&key_package.unsigned_payload().unwrap());
         key_package
     }
-    pub fn self_verify(&self) -> bool {
+
+    /// Verify that the signature on this key package is valid.
+    pub(crate) fn verify(&self) -> bool {
         self.credential
             .verify(&self.unsigned_payload().unwrap(), &self.signature)
     }
-    pub fn hash(&self) -> Vec<u8> {
+
+    /// Compute the hash of the encoding of this key package.
+    pub(crate) fn hash(&self) -> Vec<u8> {
         let bytes = self.encode_detached().unwrap();
         self.cipher_suite.hash(&bytes)
     }
-    pub fn has_extension(&self, extension_type: ExtensionType) -> bool {
-        for e in &self.extensions {
-            if e.get_type() == extension_type {
-                return true;
-            }
-        }
-        false
-    }
+
+    /// Check if the `extension_type` is in this key package.
+    /// Returns `true` if the extension is present, and `false` otherwise.
+    // pub(crate) fn has_extension(&self, extension_type: ExtensionType) -> bool {
+    //     for e in &self.extensions {
+    //         if e.get_type() == extension_type {
+    //             return true;
+    //         }
+    //     }
+    //     false
+    // }
+
+    /// Get the extension of `extension_type`.
+    /// Returns `Some(extension)` if present and `None` if the extension is not present.
     pub fn get_extension(&self, extension_type: ExtensionType) -> Option<ExtensionPayload> {
         for e in &self.extensions {
             if e.get_type() == extension_type {
@@ -115,6 +131,21 @@ impl KeyPackage {
             }
         }
         None
+    }
+
+    /// Get a reference to the credential.
+    pub(crate) fn get_credential(&self) -> &Credential {
+        &self.credential
+    }
+
+    /// Get a reference to the HPKE init key.
+    pub(crate) fn get_hpke_init_key(&self) -> &HPKEPublicKey {
+        &self.hpke_init_key
+    }
+
+    /// Get a reference to the `Ciphersuite`.
+    pub(crate) fn get_cipher_suite(&self) -> &Ciphersuite {
+        &self.cipher_suite
     }
 }
 
@@ -200,7 +231,7 @@ impl Codec for KeyPackage {
 
         for _ in 0..kp.extensions.len() {}
 
-        if !kp.self_verify() {
+        if !kp.verify() {
             return Err(CodecError::DecodingError);
         }
         Ok(kp)
@@ -282,7 +313,7 @@ fn generate_key_package() {
         &identity,
         None,
     );
-    assert!(kp_bundle.key_package.self_verify());
+    assert!(kp_bundle.key_package.verify());
 }
 
 #[test]

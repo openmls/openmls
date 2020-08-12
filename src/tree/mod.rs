@@ -80,7 +80,7 @@ impl Node {
         match self.node_type {
             NodeType::Leaf => {
                 if let Some(ref kp) = self.key_package {
-                    Some(kp.hpke_init_key.clone())
+                    Some(kp.get_hpke_init_key().clone())
                 } else {
                     None
                 }
@@ -508,7 +508,7 @@ impl Tree {
                     NodeType::Leaf => {
                         print!("\tL");
                         key_bytes = if let Some(kp) = &node.key_package {
-                            kp.hpke_init_key.as_slice()
+                            kp.get_hpke_init_key().as_slice()
                         } else {
                             &[]
                         };
@@ -772,7 +772,7 @@ impl Tree {
             let sender = queued_proposal.sender;
             let index = sender.as_tree_index();
             let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
-            updated_members.push(update_proposal.key_package.credential.clone());
+            updated_members.push(update_proposal.key_package.get_credential().clone());
             self.blank_member(index);
             self.nodes[index.as_usize()] = leaf_node;
             if index == self.own_leaf.leaf_index {
@@ -803,7 +803,7 @@ impl Tree {
                 // TODO check it's really a leaf node
                 panic!("Cannot remove a parent/empty node")
             };
-            removed_members.push(removed_member.credential);
+            removed_members.push(removed_member.get_credential().clone());
             self.blank_member(removed);
         }
 
@@ -842,7 +842,7 @@ impl Tree {
                         self.nodes[d.as_usize()].node = Some(parent_node);
                     }
                 }
-                added_members.push(add_proposal.key_package.credential.clone());
+                added_members.push(add_proposal.key_package.get_credential().clone());
                 invited_members.push((leaf_index, add_proposal.clone()));
             }
             let mut new_nodes = Vec::with_capacity(proposal_id_list.adds.len() * 2);
@@ -852,7 +852,7 @@ impl Tree {
                     Node::new_blank_parent_node(),
                     Node::new_leaf(Some(add_proposal.key_package.clone())),
                 ]);
-                added_members.push(add_proposal.key_package.credential.clone());
+                added_members.push(add_proposal.key_package.get_credential().clone());
                 invited_members.push((NodeIndex::from(leaf_index), add_proposal.clone()));
                 leaf_index += 2;
             }
@@ -965,7 +965,7 @@ impl Tree {
                             if i % 2 != 0 {
                                 return false;
                             }
-                            if !kp.self_verify() {
+                            if !kp.verify() {
                                 return false;
                             }
                         }

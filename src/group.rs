@@ -148,7 +148,7 @@ impl Group {
     ) -> Group {
         let (welcome, ratchet_tree_extension) = welcome_bundle;
         let ciphersuite = welcome.cipher_suite;
-        if ciphersuite != kpb.key_package.cipher_suite {
+        if &ciphersuite != kpb.key_package.get_cipher_suite() {
             panic!("Ciphersuite mismatch"); // TODO error handling
         }
         let key_package_hash = kpb.key_package.hash();
@@ -198,7 +198,7 @@ impl Group {
             .unwrap();
         let group_info = GroupInfo::decode_detached(&group_info_bytes).unwrap();
         let tree_hash = group_info.tree_hash.clone();
-        assert_eq!(
+        debug_assert_eq!(
             tree_hash,
             ciphersuite.hash(&ratchet_tree_extension.extension_data)
         );
@@ -208,15 +208,15 @@ impl Group {
         let signer_node = tree[NodeIndex::from(group_info.signer_index).as_usize()]
             .clone()
             .unwrap();
-        assert_eq!(signer_node.node_type, NodeType::Leaf);
+        debug_assert_eq!(signer_node.node_type, NodeType::Leaf);
         let signer_key_package = signer_node.key_package.unwrap();
-        assert!(signer_key_package.self_verify());
+        debug_assert!(signer_key_package.verify());
         let payload = group_info.unsigned_payload().unwrap();
-        assert!(signer_key_package
-            .credential
+        debug_assert!(signer_key_package
+            .get_credential()
             .verify(&payload, &group_info.signature));
         let nodes = tree;
-        assert!(Tree::verify_integrity(ciphersuite, &nodes));
+        debug_assert!(Tree::verify_integrity(ciphersuite, &nodes));
         let mut index_option = None;
         for (i, node_option) in nodes.iter().enumerate() {
             if let Some(node) = node_option {
@@ -228,7 +228,7 @@ impl Group {
                 }
             }
         }
-        assert!(index_option.is_some());
+        debug_assert!(index_option.is_some());
         let index = if let Some(index) = index_option {
             index
         } else {
@@ -276,7 +276,7 @@ impl Group {
             tree.leaf_count(),
         );
 
-        assert_eq!(
+        debug_assert_eq!(
             Confirmation::new(
                 ciphersuite,
                 &epoch_secrets.confirmation_key,
@@ -517,7 +517,7 @@ impl Group {
                 };
                 let group_secrets_bytes = group_secrets.encode_detached().unwrap();
                 plaintext_secrets.push((
-                    key_package.hpke_init_key,
+                    key_package.get_hpke_init_key().clone(),
                     group_secrets_bytes,
                     key_package_hash,
                 ));
@@ -552,7 +552,7 @@ impl Group {
         let sender = mls_plaintext.sender.sender;
         let is_own_commit = mls_plaintext.sender.as_tree_index() == self.tree.own_leaf.leaf_index;
         // TODO return an error in case of failure
-        assert_eq!(mls_plaintext.epoch, self.group_context.epoch);
+        debug_assert_eq!(mls_plaintext.epoch, self.group_context.epoch);
         let (commit, confirmation) = match mls_plaintext.content.clone() {
             MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
             _ => panic!("No Commit in MLSPlaintext"),
@@ -580,8 +580,8 @@ impl Group {
         let commit_secret = if let Some(path) = commit.path.clone() {
             let kp = path.leaf_key_package.clone();
             // TODO return an error in case of failure
-            assert!(kp.self_verify());
-            assert!(mls_plaintext.verify(&self.group_context, &kp.credential));
+            debug_assert!(kp.verify());
+            debug_assert!(mls_plaintext.verify(&self.group_context, kp.get_credential()));
             if is_own_commit {
                 let own_kpb = self
                     .pending_kpbs
@@ -606,7 +606,7 @@ impl Group {
             }
         } else {
             let path_required = membership_changes.path_required();
-            assert!(!path_required); // TODO: error handling
+            debug_assert!(!path_required); // TODO: error handling
             CommitSecret(zero(self.config.ciphersuite.hash_length()))
         };
 
@@ -644,7 +644,7 @@ impl Group {
             &confirmed_transcript_hash,
         );
 
-        assert_eq!(
+        debug_assert_eq!(
             Confirmation::new(
                 ciphersuite,
                 &new_epoch_secrets.confirmation_key,
@@ -662,7 +662,7 @@ impl Group {
                     .get_extension(ExtensionType::ParentHash)
                 {
                     if let ExtensionPayload::ParentHash(parent_hash_inner) = received_parent_hash {
-                        assert_eq!(parent_hash, parent_hash_inner.parent_hash);
+                        debug_assert_eq!(parent_hash, parent_hash_inner.parent_hash);
                     } else {
                         panic!("Wrong extension type: expected ParentHashExtension");
                     };
@@ -689,14 +689,14 @@ impl Group {
     }
     pub fn process_proposal(&mut self, mls_plaintext: MLSPlaintext) {
         let validator = Validator::new(&self);
-        assert_eq!(mls_plaintext.content_type, ContentType::Proposal);
+        debug_assert_eq!(mls_plaintext.content_type, ContentType::Proposal);
         let proposal_option = match mls_plaintext.content {
             MLSPlaintextContentType::Proposal(proposal) => Some(proposal),
             _ => None,
         };
-        assert!(proposal_option.is_some());
+        debug_assert!(proposal_option.is_some());
         if let Some(proposal) = proposal_option {
-            assert!(validator.validate_proposal(&proposal, mls_plaintext.sender));
+            debug_assert!(validator.validate_proposal(&proposal, mls_plaintext.sender));
             let queued_proposal = QueuedProposal {
                 proposal,
                 sender: mls_plaintext.sender,
@@ -771,7 +771,7 @@ impl Group {
         let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
         for i in 0..self.tree.leaf_count().as_usize() {
             let node = self.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
-            let credential = node.key_package.unwrap().credential;
+            let credential = node.key_package.unwrap().get_credential().clone();
             roster.push(credential);
         }
         roster

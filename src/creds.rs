@@ -181,7 +181,7 @@ fn generate_key_package() {
         &identity,
         None,
     );
-    assert!(kp_bundle.key_package.self_verify());
+    assert!(kp_bundle.key_package.verify());
 }
 
 #[test]
