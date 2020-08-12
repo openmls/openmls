@@ -26,8 +26,9 @@ use maelstrom::kp::*;
 
 fn criterion_kp_bundle(c: &mut Criterion) {
     c.bench_function("KeyPackage create bundle", |b| {
-        let ciphersuite =
-            Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519);
+        let ciphersuite = Ciphersuite::new(
+            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        );
         b.iter_with_setup(
             || Identity::new(ciphersuite, vec![1, 2, 3]),
             |identity| KeyPackageBundle::new(ciphersuite, &identity, None),

@@ -18,19 +18,15 @@ use evercrypt::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;
 
-pub fn randombytes(n: usize) -> Vec<u8> {
+pub(crate) fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
 }
 
-pub fn random_usize() -> usize {
-    OsRng.next_u64() as usize
-}
-
-pub fn random_u32() -> u32 {
+pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
-pub fn zero(length: usize) -> Vec<u8> {
+pub(crate) fn zero(length: usize) -> Vec<u8> {
     let mut result: Vec<u8> = vec![];
     for _ in 0..length {
         result.push(0u8);
@@ -38,19 +34,10 @@ pub fn zero(length: usize) -> Vec<u8> {
     result
 }
 
-pub fn bytes_to_hex(bytes: &[u8]) -> String {
+pub(crate) fn bytes_to_hex(bytes: &[u8]) -> String {
     let mut hex = String::new();
     for b in bytes {
         hex += &format!("{:02X}", *b);
     }
     hex
-}
-
-pub fn hex_to_bytes(hex: &str) -> Vec<u8> {
-    let mut bytes = Vec::new();
-    for i in 0..(hex.len() / 2) {
-        let b = u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap();
-        bytes.push(b);
-    }
-    bytes
 }

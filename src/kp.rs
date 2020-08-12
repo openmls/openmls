@@ -34,8 +34,8 @@ impl KeyPackage {
         let capabilities_extension = CapabilitiesExtension::new(
             vec![CURRENT_PROTOCOL_VERSION],
             vec![
-                Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             ],
             vec![ExtensionType::Lifetime],
         );
@@ -167,7 +167,7 @@ impl Codec for KeyPackage {
                     }
                     if !capabilities_extension
                         .ciphersuites
-                        .contains(&Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
+                        .contains(&CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
                     {
                         return Err(CodecError::DecodingError);
                     }
@@ -225,8 +225,8 @@ impl KeyPackageBundle {
         let capabilities_extension = CapabilitiesExtension::new(
             vec![CURRENT_PROTOCOL_VERSION],
             vec![
-                Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             ],
             vec![ExtensionType::Lifetime],
         );
@@ -267,11 +267,11 @@ impl Codec for KeyPackageBundle {
 #[test]
 fn generate_key_package() {
     let identity = Identity::new(
-        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         vec![1, 2, 3],
     );
     let kp_bundle = KeyPackageBundle::new(
-        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         &identity,
         None,
     );
@@ -280,7 +280,7 @@ fn generate_key_package() {
 
 #[test]
 fn test_codec() {
-    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let ciphersuite = Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let identity = Identity::new(ciphersuite, vec![1, 2, 3]);
     let kpb = KeyPackageBundle::new(ciphersuite, &identity, None);
     let enc = kpb.encode_detached().unwrap();

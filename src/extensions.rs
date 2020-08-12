@@ -104,14 +104,14 @@ pub enum ExtensionPayload {
 #[derive(PartialEq, Clone, Debug)]
 pub struct CapabilitiesExtension {
     pub versions: Vec<ProtocolVersion>,
-    pub ciphersuites: Vec<Name>,
+    pub ciphersuites: Vec<CiphersuiteName>,
     pub extensions: Vec<ExtensionType>,
 }
 
 impl CapabilitiesExtension {
     pub fn new(
         versions: Vec<ProtocolVersion>,
-        ciphersuites: Vec<Name>,
+        ciphersuites: Vec<CiphersuiteName>,
         extensions: Vec<ExtensionType>,
     ) -> Self {
         CapabilitiesExtension {

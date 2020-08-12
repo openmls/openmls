@@ -21,7 +21,9 @@ use crate::extensions::*;
 use crate::kp::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::treemath;
+
+pub(crate) mod treemath;
+
 use rayon::prelude::*;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -505,10 +507,10 @@ impl Tree {
                 match node.node_type {
                     NodeType::Leaf => {
                         print!("\tL");
-                        key_bytes = if let Some(kp) = node.key_package.clone() {
+                        key_bytes = if let Some(kp) = &node.key_package {
                             kp.hpke_init_key.as_slice()
                         } else {
-                            vec![]
+                            &[]
                         };
                         parent_hash_bytes = if let Some(kp) = node.key_package.clone() {
                             if let Some(phe) = kp.get_extension(ExtensionType::ParentHash) {
@@ -526,10 +528,10 @@ impl Tree {
                     }
                     NodeType::Parent => {
                         print!("\tP");
-                        key_bytes = if let Some(n) = node.node.clone() {
+                        key_bytes = if let Some(n) = &node.node {
                             n.public_key.as_slice()
                         } else {
-                            vec![]
+                            &[]
                         };
                         parent_hash_bytes = if let Some(ph) = node.parent_hash() {
                             ph

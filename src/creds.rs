@@ -173,11 +173,11 @@ impl Codec for BasicCredential {
 fn generate_key_package() {
     use crate::kp::*;
     let identity = Identity::new(
-        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         vec![1, 2, 3],
     );
     let kp_bundle = KeyPackageBundle::new(
-        Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
         &identity,
         None,
     );
