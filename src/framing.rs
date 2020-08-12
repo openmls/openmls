@@ -177,7 +177,7 @@ impl MLSCiphertext {
             epoch: context.epoch,
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.as_slice(),
+            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
         };
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap(); // TODO: error handling
@@ -194,7 +194,7 @@ impl MLSCiphertext {
             epoch: context.epoch,
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.as_slice(),
+            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
             encrypted_sender_data: encrypted_sender_data.clone(),
         };
         let mls_ciphertext_content_aad_bytes =
@@ -212,7 +212,7 @@ impl MLSCiphertext {
             + mls_plaintext.content.encode_detached().unwrap().len()
             + mls_plaintext.signature.encode_detached().unwrap().len()
             + 2
-            + TAGBYTES
+            + TAG_BYTES
             + 4;
         let mut padding_length = (config.padding_block_size as usize)
             - (padding_offset % (config.padding_block_size as usize));
@@ -228,12 +228,13 @@ impl MLSCiphertext {
         let (key, nonce) = match mls_plaintext.content_type {
             ContentType::Application => (application_secrets.key, application_secrets.nonce),
             _ => {
+                // TODO: Add crypto agility
                 let mut handshake_nonce_input = hkdf_expand_label(
                     config.ciphersuite,
                     &epoch_secrets.handshake_secret,
                     "hs nonce",
                     &mls_plaintext.sender.encode_detached().unwrap(),
-                    NONCEBYTES,
+                    NONCE_BYTES,
                 );
                 let reuse_guard = sender_data.reuse_guard.encode_detached().unwrap();
                 for i in 0..4 {
@@ -245,7 +246,7 @@ impl MLSCiphertext {
                     &epoch_secrets.handshake_secret,
                     "hs key",
                     &mls_plaintext.sender.encode_detached().unwrap(),
-                    CHACHAKEYBYTES,
+                    CHACHA_KEY_BYTES,
                 );
                 let handshake_key = ciphersuite.new_aead_key(&handshake_key_input).unwrap();
                 (handshake_key, handshake_nonce)
@@ -264,7 +265,7 @@ impl MLSCiphertext {
             epoch: context.epoch,
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.as_slice(),
+            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
             encrypted_sender_data,
             ciphertext,
         }
@@ -292,7 +293,7 @@ impl MLSCiphertext {
             epoch: self.epoch,
             content_type: self.content_type,
             authenticated_data: self.authenticated_data.clone(),
-            sender_data_nonce: sender_data_nonce.as_slice(),
+            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
         };
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap();
@@ -313,7 +314,7 @@ impl MLSCiphertext {
             epoch: self.epoch,
             content_type: self.content_type,
             authenticated_data: self.authenticated_data.clone(),
-            sender_data_nonce: sender_data_nonce.as_slice(),
+            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
             encrypted_sender_data: self.encrypted_sender_data.clone(),
         };
         let mls_ciphertext_content_aad_bytes =
@@ -326,7 +327,7 @@ impl MLSCiphertext {
                     &epoch_secrets.handshake_secret,
                     "hs nonce",
                     &sender_data.sender.as_u32().encode_detached().unwrap(),
-                    NONCEBYTES,
+                    NONCE_BYTES,
                 );
                 let reuse_guard = sender_data.reuse_guard.encode_detached().unwrap();
                 for i in 0..4 {
@@ -338,7 +339,7 @@ impl MLSCiphertext {
                     &epoch_secrets.handshake_secret,
                     "hs key",
                     &sender_data.sender.as_u32().encode_detached().unwrap(),
-                    CHACHAKEYBYTES,
+                    CHACHA_KEY_BYTES,
                 );
                 let handshake_key = ciphersuite.new_aead_key(&handshake_key_input).unwrap();
                 (handshake_key, handshake_nonce)
@@ -806,7 +807,7 @@ impl From<MLSPlaintext> for MLSPlaintextCommitAuthData {
         };
         MLSPlaintextCommitAuthData {
             confirmation: confirmation.0,
-            signature: mls_plaintext.signature.as_slice(),
+            signature: mls_plaintext.signature.as_slice().to_vec(),
         }
     }
 }
@@ -829,7 +830,7 @@ impl Codec for MLSPlaintextCommitAuthData {
 
 #[test]
 fn codec() {
-    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let ciphersuite = Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let keypair = ciphersuite.new_signature_keypair();
     let sender = Sender {
         sender_type: SenderType::Member,
@@ -856,31 +857,4 @@ fn codec() {
     let enc = orig.encode_detached().unwrap();
     let copy = MLSPlaintext::decode_detached(&enc).unwrap();
     assert_eq!(orig, copy);
-}
-
-#[test]
-fn padding() {
-    use crate::ciphersuite::*;
-    use crate::utils::*;
-
-    let ciphersuite = Ciphersuite::new(Name::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519);
-    let alice_identity = Identity::new(ciphersuite, vec![1, 2, 3]);
-
-    let config = GROUP_CONFIG_DEFAULT;
-    let mut group_alice = Group::new(alice_identity, GroupId::random(), config);
-
-    for _ in 0..100 {
-        let message = randombytes(random_usize() % 1000);
-        let aad = randombytes(random_usize() % 1000);
-        let mls_plaintext = group_alice.create_application_message(&message, Some(&aad));
-        let encrypted_message = group_alice.encrypt(&mls_plaintext);
-        let length = encrypted_message.len();
-        let overflow = length % (config.padding_block_size as usize);
-        if overflow != 0 {
-            panic!(
-                "Error: padding overflow of {} bytes, message length: {}, padding block size: {}",
-                overflow, length, config.padding_block_size
-            );
-        }
-    }
 }

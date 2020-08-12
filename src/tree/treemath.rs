@@ -28,13 +28,6 @@ pub fn log2(x: usize) -> usize {
     k - 1
 }
 
-pub fn pow2(x: usize) -> usize {
-    match x {
-        0 => 1,
-        _ => 2 << (x - 1),
-    }
-}
-
 pub fn level(index: NodeIndex) -> usize {
     let x = index.as_usize();
     if (x & 0x01) == 0 {
@@ -173,7 +166,7 @@ pub fn common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
 #[test]
 fn verify_binary_test_vector_treemath() {
     use crate::codec::*;
-    use crate::treemath;
+    use crate::tree::treemath;
     use std::fs::File;
     use std::io::Read;
 
