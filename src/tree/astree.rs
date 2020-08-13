@@ -67,7 +67,7 @@ impl ApplicationSecrets {
     }
 }
 
-struct ApplicationContext {
+pub struct ApplicationContext {
     node: u32,
     generation: u32,
 }
@@ -85,23 +85,13 @@ impl Codec for ApplicationContext {
     }
 }
 
+
 #[derive(Clone)]
-struct ASTreeNode {
+pub struct ASTreeNode {
     pub secret: Vec<u8>,
 }
 
-impl Codec for ASTreeNode {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.secret)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let secret = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ASTreeNode { secret })
-    }
-}
-
-struct SenderRatchet {
+pub struct SenderRatchet {
     ciphersuite: Ciphersuite,
     index: LeafIndex,
     generation: u32,
