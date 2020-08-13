@@ -252,11 +252,7 @@ impl Group {
             tree.own_leaf.path_keypairs = path_keypairs;
         }
 
-        let config = GroupConfig {
-            ciphersuite,
-            padding_block_size: GROUP_CONFIG_DEFAULT.padding_block_size,
-            update_policy: GROUP_CONFIG_DEFAULT.update_policy,
-        };
+        let config = GroupConfig::new(ciphersuite);
         let group_context = GroupContext {
             group_id: group_info.group_id,
             epoch: group_info.epoch,
@@ -881,9 +877,37 @@ impl Codec for GroupContext {
 
 #[derive(Clone, Copy)]
 pub struct GroupConfig {
-    pub ciphersuite: Ciphersuite,
-    pub padding_block_size: u32,
-    pub update_policy: u8, // FIXME
+    pub(crate) ciphersuite: Ciphersuite,
+    pub(crate) padding_block_size: u32,
+    pub(crate) update_policy: u8, // FIXME
+}
+
+impl GroupConfig {
+    /// Create a new `GroupConfig` with the given ciphersuite.
+    pub fn new(ciphersuite: Ciphersuite) -> Self {
+        Self {
+            ciphersuite,
+            padding_block_size: 10,
+            update_policy: 0,
+        }
+    }
+
+    /// Get the padding block size used in this config.
+    pub fn get_padding_block_size(&self) -> u32 {
+        self.padding_block_size
+    }
+}
+
+impl Default for GroupConfig {
+    fn default() -> Self {
+        Self {
+            ciphersuite: Ciphersuite::new(
+                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            ),
+            padding_block_size: 10,
+            update_policy: 0,
+        }
+    }
 }
 
 impl Codec for GroupConfig {
@@ -904,11 +928,3 @@ impl Codec for GroupConfig {
         })
     }
 }
-
-pub const GROUP_CONFIG_DEFAULT: GroupConfig = GroupConfig {
-    ciphersuite: Ciphersuite {
-        name: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-    },
-    padding_block_size: 10,
-    update_policy: 0,
-};

@@ -24,8 +24,7 @@ fn group_operations() {
     let charlie_key_package = charlie_key_package_bundle.get_key_package();
 
     // Create a group with Alice
-    let mut config = GROUP_CONFIG_DEFAULT;
-    config.ciphersuite = ciphersuite;
+    let config = GroupConfig::new(ciphersuite);
 
     let mut group_alice = Group::new(alice_identity, GroupId::random(), config);
 

@@ -52,13 +52,13 @@ pub enum HKDFError {
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct Ciphersuite {
-    pub name: CiphersuiteName,
+    name: CiphersuiteName,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct HpkeCiphertext {
-    pub kem_output: Vec<u8>,
-    pub ciphertext: Vec<u8>,
+    kem_output: Vec<u8>,
+    ciphertext: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -81,12 +81,14 @@ pub enum AEADError {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct AEADKey {
+pub struct AeadKey {
     value: Vec<u8>,
 }
 
 #[derive(PartialEq, Debug)]
-pub struct Nonce([u8; NONCE_BYTES]);
+pub struct AeadNonce {
+    value: [u8; NONCE_BYTES],
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Signature {
@@ -95,28 +97,37 @@ pub struct Signature {
 
 #[derive(Clone)]
 pub struct SignaturePrivateKey {
-    pub value: Vec<u8>,
+    value: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SignaturePublicKey {
-    pub value: Vec<u8>,
+    value: Vec<u8>,
 }
 
 #[derive(Clone)]
 pub struct SignatureKeypair {
-    pub ciphersuite: Ciphersuite,
-    pub private_key: SignaturePrivateKey,
-    pub public_key: SignaturePublicKey,
+    ciphersuite: Ciphersuite,
+    private_key: SignaturePrivateKey,
+    public_key: SignaturePublicKey,
 }
 
+/// The `Signable` trait is implemented by all struct that are being signed.
+/// The implementation has to provide the `unsigned_payload` function.
 pub trait Signable: Sized {
     fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError>;
 
+    /// Sign the payload with the given `id`.
+    /// 
+    /// Returns a `Signature`.
     fn sign(&mut self, id: &Identity) -> Signature {
         let payload = self.unsigned_payload().unwrap();
         id.sign(&payload)
     }
+
+    /// Verifies the payload against the given `id` and `signature`.
+    /// 
+    /// Returns a `true` if the signature is valid and `false` otherwise.
     fn verify(&self, id: &Identity, signature: &Signature) -> bool {
         let payload = self.unsigned_payload().unwrap();
         id.verify(&payload, signature)
@@ -196,14 +207,14 @@ impl Ciphersuite {
         &self,
         msg: &[u8],
         aad: &[u8],
-        key: &AEADKey,
-        nonce: &Nonce,
+        key: &AeadKey,
+        nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AEADError> {
         let (ct, tag) = match aead_encrypt(
             get_aead_from_suite(&self.name),
             &key.as_slice(),
             msg,
-            &nonce.0,
+            &nonce.value,
             aad,
         ) {
             Ok((ct, tag)) => (ct, tag),
@@ -217,8 +228,8 @@ impl Ciphersuite {
         &self,
         ciphertext: &[u8],
         aad: &[u8],
-        key: &AEADKey,
-        nonce: &Nonce,
+        key: &AeadKey,
+        nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AEADError> {
         if ciphertext.len() < TAG_BYTES {
             return Err(AEADError::DecryptionError);
@@ -230,7 +241,7 @@ impl Ciphersuite {
             &key.as_slice(),
             ct,
             tag,
-            &nonce.0,
+            &nonce.value,
             aad,
         ) {
             Ok(pt) => Ok(pt),
@@ -238,11 +249,11 @@ impl Ciphersuite {
         }
     }
 
-    pub(crate) fn new_aead_key(&self, bytes: &[u8]) -> Result<AEADKey, AEADError> {
+    pub(crate) fn new_aead_key(&self, bytes: &[u8]) -> Result<AeadKey, AEADError> {
         if bytes.len() != self.aead_key_length() {
             Err(AEADError::WrongKeyLength)
         } else {
-            Ok(AEADKey {
+            Ok(AeadKey {
                 value: bytes.to_vec(),
             })
         }
@@ -256,16 +267,16 @@ impl Ciphersuite {
         }
     }
 
-    pub(crate) fn new_aead_nonce(&self, bytes: &[u8]) -> Result<Nonce, AEADError> {
+    pub(crate) fn new_aead_nonce(&self, bytes: &[u8]) -> Result<AeadNonce, AEADError> {
         if bytes.len() != NONCE_BYTES {
             return Err(AEADError::WrongKeyLength);
         }
         let mut value = [0u8; NONCE_BYTES];
         value.copy_from_slice(bytes);
-        Ok(Nonce(value))
+        Ok(AeadNonce { value })
     }
 
-    pub(crate) fn new_aead_nonce_random(&self) -> Nonce {
+    pub(crate) fn new_aead_nonce_random(&self) -> AeadNonce {
         self.new_aead_nonce(&randombytes(NONCE_BYTES)).unwrap()
     }
 
@@ -373,15 +384,15 @@ impl HPKEKeyPair {
     }
 }
 
-impl AEADKey {
+impl AeadKey {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.value.as_slice()
     }
 }
 
-impl Nonce {
+impl AeadNonce {
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.0
+        &self.value
     }
 }
 
@@ -397,5 +408,15 @@ impl Signature {
 impl SignatureKeypair {
     pub(crate) fn sign(&self, payload: &[u8]) -> Signature {
         self.ciphersuite.sign(&self.private_key, payload)
+    }
+
+    /// Get a reference to the private key.
+    pub(crate) fn get_private_key(&self) -> &SignaturePrivateKey {
+        &self.private_key
+    }
+
+    /// Get a reference to the public key.
+    pub(crate) fn get_public_key(&self) -> &SignaturePublicKey {
+        &self.public_key
     }
 }

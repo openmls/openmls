@@ -150,7 +150,7 @@ impl MLSCiphertext {
         sender_data: &MLSSenderData,
         mls_plaintext: Option<&MLSPlaintext>,
         ciphersuite: &Ciphersuite,
-    ) -> (AEADKey, Nonce) {
+    ) -> (AeadKey, AeadNonce) {
         let sender_id = match mls_plaintext {
             Some(mls_plaintext) => mls_plaintext.sender.encode_detached().unwrap(),
             None => sender_data.sender.as_u32().encode_detached().unwrap(),
@@ -205,13 +205,13 @@ impl MLSCiphertext {
         );
         let sender_data_nonce = ciphersuite.new_aead_nonce_random();
         let sender_data_key = ciphersuite.new_aead_key(&sender_data_key_bytes).unwrap();
-        let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD {
-            group_id: context.group_id.clone(),
-            epoch: context.epoch,
-            content_type: mls_plaintext.content_type,
-            authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
-        };
+        let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
+            context.group_id.clone(),
+            context.epoch,
+            mls_plaintext.content_type,
+            mls_plaintext.authenticated_data.to_vec(),
+            sender_data_nonce.as_slice().to_vec(),
+        );
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap(); // TODO: error handling
         let encrypted_sender_data = ciphersuite
@@ -309,13 +309,13 @@ impl MLSCiphertext {
             ciphersuite.aead_key_length(),
         );
         let sender_data_key = ciphersuite.new_aead_key(&sender_data_key_bytes).unwrap();
-        let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD {
-            group_id: self.group_id.clone(),
-            epoch: self.epoch,
-            content_type: self.content_type,
-            authenticated_data: self.authenticated_data.clone(),
-            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
-        };
+        let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
+            self.group_id.clone(),
+            self.epoch,
+            self.content_type,
+            self.authenticated_data.clone(),
+            sender_data_nonce.as_slice().to_vec(),
+        );
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap();
         let sender_data_bytes = ciphersuite
@@ -637,12 +637,30 @@ impl MLSSenderData {
 }
 
 #[derive(Clone)]
-pub struct MLSCiphertextSenderDataAAD {
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub content_type: ContentType,
-    pub authenticated_data: Vec<u8>,
-    pub sender_data_nonce: Vec<u8>,
+struct MLSCiphertextSenderDataAAD {
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    content_type: ContentType,
+    authenticated_data: Vec<u8>,
+    sender_data_nonce: Vec<u8>,
+}
+
+impl MLSCiphertextSenderDataAAD {
+    fn new(
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        content_type: ContentType,
+        authenticated_data: Vec<u8>,
+        sender_data_nonce: Vec<u8>,
+    ) -> Self {
+        Self {
+            group_id,
+            epoch,
+            content_type,
+            authenticated_data,
+            sender_data_nonce,
+        }
+    }
 }
 
 impl Codec for MLSCiphertextSenderDataAAD {
@@ -661,7 +679,7 @@ impl Codec for MLSCiphertextSenderDataAAD {
         let content_type = ContentType::decode(cursor)?;
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
         let sender_data_nonce = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(MLSCiphertextSenderDataAAD {
+        Ok(Self {
             group_id,
             epoch,
             content_type,

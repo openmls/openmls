@@ -34,11 +34,11 @@ impl Identity {
         }
     }
     pub fn sign(&self, payload: &[u8]) -> Signature {
-        self.ciphersuite.sign(&self.keypair.private_key, payload)
+        self.ciphersuite.sign(self.keypair.get_private_key(), payload)
     }
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         self.ciphersuite
-            .verify(signature, &self.keypair.public_key, payload)
+            .verify(signature, self.keypair.get_public_key(), payload)
     }
 }
 
@@ -145,7 +145,7 @@ impl From<&Identity> for BasicCredential {
         BasicCredential {
             identity: identity.id.clone(),
             ciphersuite: identity.ciphersuite,
-            public_key: identity.keypair.public_key.clone(),
+            public_key: identity.keypair.get_public_key().clone(),
         }
     }
 }
