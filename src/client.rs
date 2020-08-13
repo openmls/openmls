@@ -14,17 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-pub mod astree;
-pub mod ciphersuite;
-pub mod client;
-pub mod codec;
-pub mod creds;
-pub mod extensions;
-pub mod framing;
-pub mod group;
-pub mod kp;
-pub mod messages;
-pub mod schedule;
-mod tree;
-mod utils;
-pub mod validator;
+use crate::ciphersuite::*;
+use crate::creds::*;
+use crate::kp::*;
+pub struct Client {
+    pub key_packages: Vec<(KeyPackage, HPKEPrivateKey)>,
+    pub identity: Identity,
+}
