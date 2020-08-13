@@ -51,8 +51,20 @@ fn derive_app_secret(
 
 #[derive(Debug, PartialEq)]
 pub struct ApplicationSecrets {
-    pub nonce: Nonce,
-    pub key: AEADKey,
+    nonce: Nonce,
+    key: AEADKey,
+}
+
+impl ApplicationSecrets {
+    /// Get a reference to the key.
+    pub(crate) fn get_key(&self) -> &AEADKey {
+        &self.key
+    }
+
+    /// Get a reference to the nonce.
+    pub(crate) fn get_nonce(&self) -> &Nonce {
+        &self.nonce
+    }
 }
 
 struct ApplicationContext {

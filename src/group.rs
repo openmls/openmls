@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::astree::*;
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
@@ -23,8 +22,9 @@ use crate::framing::*;
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::*;
+use crate::tree::astree::*;
 use crate::tree::treemath;
+use crate::tree::*;
 use crate::utils::*;
 use crate::validator::*;
 use rayon::prelude::*;

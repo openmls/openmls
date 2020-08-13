@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use rayon::prelude::*;
+
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
@@ -22,9 +24,14 @@ use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 
+// Tree modules
+pub(crate) mod astree;
+pub(crate) mod codec;
 pub(crate) mod treemath;
 
-use rayon::prelude::*;
+// Internal tree tests
+mod test_astree;
+mod test_treemath;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
@@ -41,16 +48,6 @@ impl From<u8> for NodeType {
             1 => NodeType::Parent,
             _ => NodeType::Default,
         }
-    }
-}
-
-impl Codec for NodeType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(NodeType::from(u8::decode(cursor)?))
     }
 }
 
@@ -147,49 +144,11 @@ impl Node {
     }
 }
 
-impl Codec for Node {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_type.encode(buffer)?;
-        self.key_package.encode(buffer)?;
-        self.node.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let node_type = NodeType::decode(cursor)?;
-        let key_package = Option::<KeyPackage>::decode(cursor)?;
-        let node = Option::<ParentNode>::decode(cursor)?;
-        Ok(Node {
-            node_type,
-            key_package,
-            node,
-        })
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParentNode {
     public_key: HPKEPublicKey,
     unmerged_leaves: Vec<u32>,
     parent_hash: Vec<u8>,
-}
-
-impl Codec for ParentNode {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.unmerged_leaves)?;
-        encode_vec(VecSize::VecU8, buffer, &self.parent_hash)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let public_key = HPKEPublicKey::decode(cursor)?;
-        let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;
-        let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ParentNode {
-            public_key,
-            unmerged_leaves,
-            parent_hash,
-        })
-    }
 }
 
 // TODO improve the storage memory footprint
@@ -220,17 +179,6 @@ impl PathKeypairs {
             return None;
         }
         self.keypairs.get(index.as_usize()).unwrap().clone()
-    }
-}
-
-impl Codec for PathKeypairs {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.keypairs)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let keypairs = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(PathKeypairs { keypairs })
     }
 }
 
@@ -311,28 +259,6 @@ impl OwnLeaf {
             keypairs.push(keypair);
         }
         keypairs
-    }
-}
-
-impl Codec for OwnLeaf {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
-        self.kpb.encode(buffer)?;
-        self.leaf_index.as_u32().encode(buffer)?;
-        self.path_keypairs.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
-        let kpb = KeyPackageBundle::decode(cursor)?;
-        let leaf_index = NodeIndex::from(u32::decode(cursor)?);
-        let path_keypairs = PathKeypairs::decode(cursor)?;
-        Ok(OwnLeaf {
-            ciphersuite,
-            kpb,
-            leaf_index,
-            path_keypairs,
-        })
     }
 }
 
@@ -599,13 +525,15 @@ impl Tree {
         let private_key = if resolution[position_in_resolution] == own_index {
             self.own_leaf.kpb.get_private_key().clone()
         } else {
-            match self.own_leaf
+            match self
+                .own_leaf
                 .path_keypairs
-                .get(common_ancestor_copath_index) {
-                    // FIXME: don't clone
-                    Some(key_pair) => key_pair.get_private_key().clone(),
-                    None => panic!("TODO: handle this."),
-                }
+                .get(common_ancestor_copath_index)
+            {
+                // FIXME: don't clone
+                Some(key_pair) => key_pair.get_private_key().clone(),
+                None => panic!("TODO: handle this."),
+            }
         };
         let common_path = treemath::dirpath_long(common_ancestor, self.leaf_count());
         let secret = self
@@ -656,7 +584,7 @@ impl Tree {
             None => {
                 debug_assert!(kpb.is_some());
                 kpb.clone().unwrap().get_private_key().clone()
-            },
+            }
         };
         let dirpath_root = treemath::dirpath_root(own_index, self.leaf_count());
         let node_secret = private_key.as_slice();
@@ -991,25 +919,6 @@ impl Tree {
     }
 }
 
-impl Codec for Tree {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
-        self.own_leaf.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
-        let nodes = decode_vec(VecSize::VecU32, cursor)?;
-        let own_leaf = OwnLeaf::decode(cursor)?;
-        Ok(Tree {
-            ciphersuite,
-            nodes,
-            own_leaf,
-        })
-    }
-}
-
 pub struct ParentNodeHashInput {
     node_index: u32,
     parent_node: Option<ParentNode>,
@@ -1037,28 +946,6 @@ impl ParentNodeHashInput {
     }
 }
 
-impl Codec for ParentNodeHashInput {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.encode(buffer)?;
-        self.parent_node.encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.left_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.right_hash)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let node_index = u32::decode(cursor)?;
-        let parent_node = Option::<ParentNode>::decode(cursor)?;
-        let left_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let right_hash = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ParentNodeHashInput {
-            node_index,
-            parent_node,
-            left_hash,
-            right_hash,
-        })
-    }
-}
-
 pub struct LeafNodeHashInput {
     node_index: NodeIndex,
     key_package: Option<KeyPackage>,
@@ -1077,62 +964,14 @@ impl LeafNodeHashInput {
     }
 }
 
-impl Codec for LeafNodeHashInput {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.as_u32().encode(buffer)?;
-        self.key_package.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let node_index = NodeIndex::from(u32::decode(cursor)?);
-        let key_package = Option::<KeyPackage>::decode(cursor)?;
-        Ok(LeafNodeHashInput {
-            node_index,
-            key_package,
-        })
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct DirectPathNode {
     pub public_key: HPKEPublicKey,
     pub encrypted_path_secret: Vec<HpkeCiphertext>,
 }
 
-impl Codec for DirectPathNode {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.encrypted_path_secret)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let public_key = HPKEPublicKey::decode(cursor)?;
-        let encrypted_path_secret = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(DirectPathNode {
-            public_key,
-            encrypted_path_secret,
-        })
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct DirectPath {
     pub leaf_key_package: KeyPackage,
     pub nodes: Vec<DirectPathNode>,
-}
-
-impl Codec for DirectPath {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.leaf_key_package.encode(buffer)?;
-        encode_vec(VecSize::VecU16, buffer, &self.nodes)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let leaf_key_package = KeyPackage::decode(cursor)?;
-        let nodes = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(DirectPath {
-            leaf_key_package,
-            nodes,
-        })
-    }
 }
