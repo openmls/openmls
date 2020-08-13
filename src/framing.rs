@@ -149,7 +149,6 @@ impl MLSCiphertext {
         epoch_secrets: &EpochSecrets,
         sender_data: &MLSSenderData,
         mls_plaintext: Option<&MLSPlaintext>,
-        ciphersuite: &Ciphersuite,
     ) -> (AeadKey, AeadNonce) {
         let sender_id = match mls_plaintext {
             Some(mls_plaintext) => mls_plaintext.sender.encode_detached().unwrap(),
@@ -166,7 +165,7 @@ impl MLSCiphertext {
         for i in 0..4 {
             handshake_nonce_input[i] ^= reuse_guard[i];
         }
-        let handshake_nonce = ciphersuite.new_aead_nonce(&handshake_nonce_input).unwrap();
+        let handshake_nonce = AeadNonce::from_slice(&handshake_nonce_input);
         let handshake_key_input = hkdf_expand_label(
             config.ciphersuite,
             &epoch_secrets.handshake_secret,
@@ -174,7 +173,7 @@ impl MLSCiphertext {
             &sender_id,
             config.ciphersuite.aead_key_length(),
         );
-        let handshake_key = ciphersuite.new_aead_key(&handshake_key_input).unwrap();
+        let handshake_key = AeadKey::from_slice(&handshake_key_input);
         (handshake_key, handshake_nonce)
     }
     pub fn new_from_plaintext(
@@ -203,8 +202,8 @@ impl MLSCiphertext {
             &[],
             ciphersuite.aead_key_length(),
         );
-        let sender_data_nonce = ciphersuite.new_aead_nonce_random();
-        let sender_data_key = ciphersuite.new_aead_key(&sender_data_key_bytes).unwrap();
+        let sender_data_nonce = AeadNonce::random();
+        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             context.group_id.clone(),
             context.epoch,
@@ -259,13 +258,8 @@ impl MLSCiphertext {
             padding: padding_block,
         };
 
-        let (k1, n1) = Self::compute_handshake_key(
-            &config,
-            epoch_secrets,
-            &sender_data,
-            Some(mls_plaintext),
-            &ciphersuite,
-        );
+        let (k1, n1) =
+            Self::compute_handshake_key(&config, epoch_secrets, &sender_data, Some(mls_plaintext));
         let (key, nonce) = match mls_plaintext.content_type {
             ContentType::Application => (
                 application_secrets.get_key(),
@@ -300,7 +294,7 @@ impl MLSCiphertext {
         config: GroupConfig,
     ) -> MLSPlaintext {
         let ciphersuite = config.ciphersuite;
-        let sender_data_nonce = ciphersuite.new_aead_nonce(&self.sender_data_nonce).unwrap();
+        let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
         let sender_data_key_bytes = hkdf_expand_label(
             config.ciphersuite,
             &epoch_secrets.sender_data_secret,
@@ -308,7 +302,7 @@ impl MLSCiphertext {
             &[],
             ciphersuite.aead_key_length(),
         );
-        let sender_data_key = ciphersuite.new_aead_key(&sender_data_key_bytes).unwrap();
+        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             self.group_id.clone(),
             self.epoch,
@@ -340,8 +334,7 @@ impl MLSCiphertext {
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap();
-        let (k1, n1) =
-            Self::compute_handshake_key(&config, epoch_secrets, &sender_data, None, &ciphersuite);
+        let (k1, n1) = Self::compute_handshake_key(&config, epoch_secrets, &sender_data, None);
         let (key, nonce) = match self.content_type {
             ContentType::Application => (
                 application_secrets.get_key(),
@@ -558,7 +551,7 @@ impl MLSPlaintextTBS {
     }
     pub fn sign(&self, key_pair: &SignatureKeypair) -> Signature {
         let bytes = self.encode_detached().unwrap();
-        key_pair.sign(&bytes)
+        key_pair.sign(&bytes).unwrap()
     }
     pub fn verify(&self, credential: &Credential, signature: &Signature) -> bool {
         let bytes = self.encode_detached().unwrap();

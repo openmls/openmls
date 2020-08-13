@@ -34,7 +34,7 @@ impl Identity {
         }
     }
     pub fn sign(&self, payload: &[u8]) -> Signature {
-        self.ciphersuite.sign(self.keypair.get_private_key(), payload)
+        self.ciphersuite.sign(self.keypair.get_private_key(), payload).unwrap()
     }
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         self.ciphersuite

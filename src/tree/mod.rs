@@ -255,7 +255,7 @@ impl OwnLeaf {
         let mut keypairs = vec![];
         for path_secret in path_secrets {
             let node_secret = hkdf_expand_label(ciphersuite, &path_secret, "node", &[], hash_len);
-            let keypair = HPKEKeyPair::from_slice(&node_secret);
+            let keypair = HPKEKeyPair::from_slice(&node_secret, ciphersuite);
             keypairs.push(keypair);
         }
         keypairs

@@ -85,7 +85,6 @@ impl Codec for ApplicationContext {
     }
 }
 
-
 #[derive(Clone)]
 pub struct ASTreeNode {
     pub secret: Vec<u8>,
@@ -194,8 +193,8 @@ impl SenderRatchet {
             self.ciphersuite.aead_key_length(),
         );
         ApplicationSecrets {
-            nonce: self.ciphersuite.new_aead_nonce(&nonce).unwrap(),
-            key: self.ciphersuite.new_aead_key(&key).unwrap(),
+            nonce: AeadNonce::from_slice(&nonce),
+            key: AeadKey::from_slice(&key),
         }
     }
 }
