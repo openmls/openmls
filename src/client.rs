@@ -15,9 +15,41 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::ciphersuite::*;
+use crate::codec::*;
 use crate::creds::*;
-use crate::kp::*;
+use crate::key_packages::*;
+use std::collections::HashMap;
 pub struct Client {
-    pub key_packages: Vec<(KeyPackage, HPKEPrivateKey)>,
-    pub identity: Identity,
+    key_packages: Vec<(KeyPackage, HPKEPrivateKey)>,
+    ciphersuite_config: HashMap<CiphersuiteName, (Ciphersuite, Identity)>,
+}
+
+impl Client {
+    pub fn new(id: Vec<u8>, ciphersuite_names: Vec<CiphersuiteName>) -> Self {
+        let mut ciphersuite_config: HashMap<CiphersuiteName, (Ciphersuite, Identity)> =
+            HashMap::new();
+        for cn in ciphersuite_names {
+            let ciphersuite = Ciphersuite::new(cn);
+            ciphersuite_config.insert(cn, (ciphersuite, Identity::new(ciphersuite, id.clone())));
+        }
+        Self {
+            key_packages: vec![],
+            ciphersuite_config,
+        }
+    }
+    pub fn get_ciphersuite(&self, ciphersuite_name: &CiphersuiteName) -> &Ciphersuite {
+        &self.ciphersuite_config.get(ciphersuite_name).unwrap().0
+    }
+    pub fn get_identity(&self, ciphersuite_name: &CiphersuiteName) -> &Identity {
+        &self.ciphersuite_config.get(ciphersuite_name).unwrap().1
+    }
+}
+
+impl Codec for Client {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        unimplemented!()
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        unimplemented!()
+    }
 }

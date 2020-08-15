@@ -23,6 +23,11 @@ use crate::schedule::*;
 use crate::tree::astree::*;
 use crate::utils::*;
 
+pub enum Message {
+    Plain(MLSPlaintext),
+    Encrypted(MLSCiphertext),
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
     pub group_id: GroupId,
@@ -178,12 +183,12 @@ impl MLSCiphertext {
     }
     pub fn new_from_plaintext(
         mls_plaintext: &MLSPlaintext,
+        ciphersuite: &Ciphersuite,
         astree: &mut ASTree,
         epoch_secrets: &EpochSecrets,
         context: &GroupContext,
-        config: GroupConfig,
     ) -> MLSCiphertext {
-        let ciphersuite = config.ciphersuite;
+        const PADDING_SIZE: usize = 10;
         let generation = astree.get_generation(mls_plaintext.sender.sender);
         let application_secrets = astree
             .get_secret(mls_plaintext.sender.sender, generation)
@@ -196,7 +201,7 @@ impl MLSCiphertext {
         }
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
         let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite,
+            ciphersuite.clone(),
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
@@ -246,9 +251,8 @@ impl MLSCiphertext {
             + 2
             + TAG_BYTES
             + 4;
-        let mut padding_length = (config.padding_block_size as usize)
-            - (padding_offset % (config.padding_block_size as usize));
-        if (config.padding_block_size as usize) == padding_length {
+        let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
+        if PADDING_SIZE == padding_length {
             padding_length = 0;
         }
         let padding_block = vec![0u8; padding_length];
@@ -287,16 +291,16 @@ impl MLSCiphertext {
     }
     pub fn to_plaintext(
         &self,
+        ciphersuite: &Ciphersuite,
         roster: &[Credential],
         epoch_secrets: &EpochSecrets,
         astree: &mut ASTree,
         context: &GroupContext,
-        config: GroupConfig,
     ) -> MLSPlaintext {
         let ciphersuite = config.ciphersuite;
         let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
         let sender_data_key_bytes = hkdf_expand_label(
-            config.ciphersuite,
+            ciphersuite.clone(),
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
