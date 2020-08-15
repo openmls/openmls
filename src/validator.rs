@@ -31,21 +31,21 @@ impl<'a> Validator<'a, Group> {
         match proposal {
             Proposal::Add(add_proposal) => {
                 let kp = add_proposal.key_package.clone();
-                let credential = kp.credential.clone();
-                let in_roster = members.iter().any(|m| m == &credential);
+                let credential = kp.get_credential();
+                let in_roster = members.iter().any(|m| m == credential);
                 if in_roster {
                     return false;
                 }
-                kp.self_verify()
+                kp.verify()
             }
             Proposal::Update(update_proposal) => {
                 let kp = update_proposal.key_package.clone();
-                let credential = kp.credential.clone();
-                let in_roster = members.iter().any(|m| m == &credential);
+                let credential = kp.get_credential();
+                let in_roster = members.iter().any(|m| m == credential);
                 if !in_roster {
                     return false;
                 }
-                kp.self_verify()
+                kp.verify()
             }
             Proposal::Remove(remove_proposal) => {
                 let removed = NodeIndex::from(remove_proposal.removed);

@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::*;
+use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::creds::*;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::*;
-use crate::kp::*;
+use crate::key_packages::*;
 use crate::tree::*;
 use std::collections::HashMap;
 use std::convert::From;

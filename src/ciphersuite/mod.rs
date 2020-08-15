@@ -19,13 +19,12 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
-use crate::creds::*;
-use crate::utils::*;
 use evercrypt::prelude::*;
-use hpke::*;
+use hpke::{aead::Mode as HpkeAeadMode, kdf::Mode as HpkeKdfMode, kem::Mode as KemMode, *};
 
 mod ciphersuites;
 mod codec;
+pub(crate) mod signable;
 use ciphersuites::*;
 
 pub const NONCE_BYTES: usize = 12;
@@ -50,27 +49,26 @@ pub enum HKDFError {
     InvalidLength,
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub struct Ciphersuite {
-    pub name: CiphersuiteName,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct HpkeCiphertext {
-    pub kem_output: Vec<u8>,
-    pub ciphertext: Vec<u8>,
+    kem_output: Vec<u8>,
+    ciphertext: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct HPKEPublicKey(Vec<u8>);
+pub struct HPKEPublicKey {
+    value: Vec<u8>,
+}
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct HPKEPrivateKey(Vec<u8>);
+pub struct HPKEPrivateKey {
+    value: Vec<u8>,
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct HPKEKeyPair {
-    pub private_key: HPKEPrivateKey,
-    pub public_key: HPKEPublicKey,
+    private_key: HPKEPrivateKey,
+    public_key: HPKEPublicKey,
 }
 
 #[derive(Debug)]
@@ -81,12 +79,14 @@ pub enum AEADError {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct AEADKey {
+pub struct AeadKey {
     value: Vec<u8>,
 }
 
 #[derive(PartialEq, Debug)]
-pub struct Nonce([u8; NONCE_BYTES]);
+pub struct AeadNonce {
+    value: [u8; NONCE_BYTES],
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Signature {
@@ -95,65 +95,74 @@ pub struct Signature {
 
 #[derive(Clone)]
 pub struct SignaturePrivateKey {
-    pub value: Vec<u8>,
+    value: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SignaturePublicKey {
-    pub value: Vec<u8>,
+    value: Vec<u8>,
 }
 
 #[derive(Clone)]
 pub struct SignatureKeypair {
-    pub ciphersuite: Ciphersuite,
-    pub private_key: SignaturePrivateKey,
-    pub public_key: SignaturePublicKey,
+    ciphersuite: Ciphersuite,
+    private_key: SignaturePrivateKey,
+    public_key: SignaturePublicKey,
 }
 
-pub trait Signable: Sized {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError>;
-
-    fn sign(&mut self, id: &Identity) -> Signature {
-        let payload = self.unsigned_payload().unwrap();
-        id.sign(&payload)
-    }
-    fn verify(&self, id: &Identity, signature: &Signature) -> bool {
-        let payload = self.unsigned_payload().unwrap();
-        id.verify(&payload, signature)
-    }
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct Ciphersuite {
+    name: CiphersuiteName,
+    signature: SignatureMode,
+    hpke_kem: KemMode,
+    hpke_kdf: HpkeKdfMode,
+    hpke_aead: HpkeAeadMode,
+    aead: AeadMode,
+    hash: DigestMode,
+    hmac: HmacMode,
 }
 
 impl Ciphersuite {
+    /// Create a new ciphersuite from the given `name`.
     pub fn new(name: CiphersuiteName) -> Self {
-        Ciphersuite { name }
-    }
-    pub(crate) fn sign(&self, sk: &SignaturePrivateKey, msg: &[u8]) -> Signature {
-        // TODO: add agility
-        let signature_mode = get_signature_from_suite(&self.name);
-        if signature_mode != SignatureMode::Ed25519 {
-            panic!("Only ed25519 is currently supported");
+        Ciphersuite {
+            name,
+            signature: get_signature_from_suite(&name),
+            hpke_kem: get_kem_from_suite(&name),
+            hpke_kdf: get_hpke_kdf_from_suite(&name),
+            hpke_aead: get_hpke_aead_from_suite(&name),
+            aead: get_aead_from_suite(&name),
+            hash: get_hash_from_suite(&name),
+            hmac: get_kdf_from_suite(&name),
         }
-        Signature {
-            value: sign(signature_mode, None, &sk.value, msg, None).unwrap(),
+    }
+
+    /// Sign a `msg` with the given `sk`.
+    pub(crate) fn sign(
+        &self,
+        sk: &SignaturePrivateKey,
+        msg: &[u8],
+    ) -> Result<Signature, SignatureError> {
+        let (hash, nonce) = match self.signature {
+            SignatureMode::Ed25519 => (None, None),
+            SignatureMode::P256 => (Some(self.hash), Some(p256_ecdsa_random_nonce())),
+        };
+        match sign(self.signature, hash, &sk.value, msg, nonce.as_ref()) {
+            Ok(s) => Ok(Signature { value: s }),
+            Err(e) => Err(e),
         }
     }
+
+    /// Verify a `msg` against `sig` and `pk`.
     pub(crate) fn verify(&self, sig: &Signature, pk: &SignaturePublicKey, msg: &[u8]) -> bool {
-        // TODO: add agility
-        let signature_mode = get_signature_from_suite(&self.name);
-        if signature_mode != SignatureMode::Ed25519 {
-            panic!("Only ed25519 is currently supported");
-        }
-        verify(signature_mode, None, &pk.value, &sig.value, msg).unwrap()
+        verify(self.signature, Some(self.hash), &pk.value, &sig.value, msg).unwrap()
     }
+
+    /// Create a new signature key pair and return it.
     pub(crate) fn new_signature_keypair(&self) -> SignatureKeypair {
-        // TODO: add agility
-        let (sk, pk) = match get_signature_from_suite(&self.name) {
-            SignatureMode::Ed25519 => {
-                let sk = ed25519_key_gen();
-                let pk = ed25519_sk2pk(&sk);
-                (sk, pk)
-            }
-            _ => unimplemented!(),
+        let (sk, pk) = match signature_key_gen(self.signature) {
+            Ok((sk, pk)) => (sk, pk),
+            Err(e) => panic!("Key generation really shouldn't fail. {:?}", e),
         };
         SignatureKeypair {
             ciphersuite: *self,
@@ -161,51 +170,50 @@ impl Ciphersuite {
             public_key: SignaturePublicKey { value: pk.to_vec() },
         }
     }
+
+    /// Hash `payload` and return the digest.
     pub(crate) fn hash(&self, payload: &[u8]) -> Vec<u8> {
-        hash(get_hash_from_suite(&self.name), payload)
+        hash(self.hash, payload)
     }
+
+    /// Get the length of the used hash algorithm.
     pub(crate) fn hash_length(&self) -> usize {
-        match get_hash_from_suite(&self.name) {
-            DigestMode::Sha256 => 32,
-            DigestMode::Sha512 => 64,
-            _ => 0,
-        }
+        get_digest_size(self.hash)
     }
+
+    /// Compute the hmac with the given `key` on `data`.
     pub(crate) fn hmac(&self, key: &[u8], data: &[u8]) -> Vec<u8> {
-        hmac(get_kdf_from_suite(&self.name), key, data, None)
+        hmac(self.hmac, key, data, None)
     }
+
+    /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Vec<u8> {
-        hkdf_extract(get_kdf_from_suite(&self.name), salt, ikm)
+        hkdf_extract(self.hmac, salt, ikm)
     }
+
+    /// HKDF expand
     pub(crate) fn hkdf_expand(
         &self,
         prk: &[u8],
         info: &[u8],
         okm_len: usize,
     ) -> Result<Vec<u8>, HKDFError> {
-        // TODO: error handling
-        Ok(hkdf_expand(
-            get_kdf_from_suite(&self.name),
-            prk,
-            info,
-            okm_len,
-        ))
+        let key = hkdf_expand(self.hmac, prk, info, okm_len);
+        if key.is_empty() {
+            return Err(HKDFError::InvalidLength);
+        }
+        Ok(key)
     }
 
+    /// AEAD encrypt `msg` with `key`, `aad`, and `nonce`.
     pub(crate) fn aead_seal(
         &self,
         msg: &[u8],
         aad: &[u8],
-        key: &AEADKey,
-        nonce: &Nonce,
+        key: &AeadKey,
+        nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AEADError> {
-        let (ct, tag) = match aead_encrypt(
-            get_aead_from_suite(&self.name),
-            &key.as_slice(),
-            msg,
-            &nonce.0,
-            aad,
-        ) {
+        let (ct, tag) = match aead_encrypt(self.aead, &key.as_slice(), msg, &nonce.value, aad) {
             Ok((ct, tag)) => (ct, tag),
             Err(_) => return Err(AEADError::EncryptionError),
         };
@@ -213,66 +221,37 @@ impl Ciphersuite {
         ciphertext.extend_from_slice(&tag);
         Ok(ciphertext)
     }
+
+    /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
     pub(crate) fn aead_open(
         &self,
         ciphertext: &[u8],
         aad: &[u8],
-        key: &AEADKey,
-        nonce: &Nonce,
+        key: &AeadKey,
+        nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AEADError> {
+        // TODO: don't hard-code tag bytes
         if ciphertext.len() < TAG_BYTES {
             return Err(AEADError::DecryptionError);
         }
-        let payload = ciphertext.to_vec();
-        let (ct, tag) = payload.split_at(ciphertext.len() - TAG_BYTES);
-        match aead_decrypt(
-            get_aead_from_suite(&self.name),
-            &key.as_slice(),
-            ct,
-            tag,
-            &nonce.0,
-            aad,
-        ) {
+        let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);
+        match aead_decrypt(self.aead, key.as_slice(), ct, tag, &nonce.value, aad) {
             Ok(pt) => Ok(pt),
             Err(_) => Err(AEADError::DecryptionError),
         }
     }
 
-    pub(crate) fn new_aead_key(&self, bytes: &[u8]) -> Result<AEADKey, AEADError> {
-        if bytes.len() != self.aead_key_length() {
-            Err(AEADError::WrongKeyLength)
-        } else {
-            Ok(AEADKey {
-                value: bytes.to_vec(),
-            })
-        }
-    }
-
+    /// Returns the key size of the used AEAD.
     pub(crate) fn aead_key_length(&self) -> usize {
-        match get_aead_from_suite(&self.name) {
-            AeadMode::Aes128Gcm => AES_128_KEY_BYTES,
-            AeadMode::Aes256Gcm => AES_256_KEY_BYTES,
-            AeadMode::Chacha20Poly1305 => CHACHA_KEY_BYTES,
-        }
+        aead_key_size(&self.aead)
     }
 
-    pub(crate) fn new_aead_nonce(&self, bytes: &[u8]) -> Result<Nonce, AEADError> {
-        if bytes.len() != NONCE_BYTES {
-            return Err(AEADError::WrongKeyLength);
-        }
-        let mut value = [0u8; NONCE_BYTES];
-        value.copy_from_slice(bytes);
-        Ok(Nonce(value))
-    }
-
-    pub(crate) fn new_aead_nonce_random(&self) -> Nonce {
-        self.new_aead_nonce(&randombytes(NONCE_BYTES)).unwrap()
-    }
-
+    /// Returns the length of the nonce in the AEAD.
     pub(crate) fn aead_nonce_length(&self) -> usize {
         NONCE_BYTES
     }
 
+    /// HPKE single-shot encryption of `ptxt` to `pk_r`, using `info` and `aad`.
     pub(crate) fn hpke_seal(
         &self,
         pk_r: &HPKEPublicKey,
@@ -280,18 +259,16 @@ impl Ciphersuite {
         aad: &[u8],
         ptxt: &[u8],
     ) -> HpkeCiphertext {
-        let hpke = Hpke::new(
-            Mode::Base,
-            get_kem_from_suite(&self.name),
-            get_hpke_kdf_from_suite(&self.name),
-            get_hpke_aead_from_suite(&self.name),
-        );
-        let (kem_output, ciphertext) = hpke.seal(&pk_r.0, info, aad, ptxt, None, None, None);
+        // TODO: put hpke in the ciphersuite.
+        let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
+        let (kem_output, ciphertext) = hpke.seal(&pk_r.value, info, aad, ptxt, None, None, None);
         HpkeCiphertext {
             kem_output,
             ciphertext,
         }
     }
+
+    /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and `aad`.
     pub(crate) fn hpke_open(
         &self,
         input: HpkeCiphertext,
@@ -299,15 +276,11 @@ impl Ciphersuite {
         info: &[u8],
         aad: &[u8],
     ) -> Vec<u8> {
-        let hpke = Hpke::new(
-            Mode::Base,
-            get_kem_from_suite(&self.name),
-            get_hpke_kdf_from_suite(&self.name),
-            get_hpke_aead_from_suite(&self.name),
-        );
+        // TODO: put hpke in the ciphersuite.
+        let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
         hpke.open(
             &input.kem_output,
-            &sk_r.0,
+            &sk_r.value,
             info,
             aad,
             &input.ciphertext,
@@ -316,11 +289,15 @@ impl Ciphersuite {
             None,
         )
     }
+
+    /// Generate a new HPKE key pair and return it.
     pub(crate) fn new_hpke_keypair(&self) -> HPKEKeyPair {
-        // TODO: add agility
-        match get_kem_from_suite(&self.name) {
-            kem::Mode::DhKem25519 => HPKEKeyPair::from_slice(&randombytes(32)),
-            _ => unimplemented!(),
+        // TODO: put hpke in the ciphersuite.
+        let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
+        let (sk, pk) = hpke.key_gen();
+        HPKEKeyPair {
+            private_key: HPKEPrivateKey { value: sk },
+            public_key: HPKEPublicKey { value: pk },
         }
     }
 }
@@ -329,49 +306,94 @@ impl Ciphersuite {
 
 impl HPKEPublicKey {
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.0
+        &self.value
     }
     pub(crate) fn from_slice(bytes: &[u8]) -> Self {
-        Self(bytes.to_vec())
+        Self {
+            value: bytes.to_vec(),
+        }
     }
 }
 
 impl HPKEPrivateKey {
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.0
+        &self.value
     }
     pub(crate) fn from_slice(bytes: &[u8]) -> Self {
-        Self(bytes.to_vec())
+        Self {
+            value: bytes.to_vec(),
+        }
     }
-    pub(crate) fn public_key(&self) -> HPKEPublicKey {
-        // TODO: add agility
-        let mut sk = [0u8; 32];
-        sk.copy_from_slice(&self.0);
-        let pk = x25519_base(&sk);
+    pub(crate) fn public_key(&self, hpke_kem: KemMode) -> HPKEPublicKey {
+        let pk = match hpke_kem {
+            KemMode::DhKemP256 => p256_base(&self.value).unwrap().to_vec(),
+            KemMode::DhKemP384 => unimplemented!(),
+            KemMode::DhKemP521 => unimplemented!(),
+            KemMode::DhKem25519 => {
+                let mut sk = [0u8; 32];
+                sk.copy_from_slice(&self.value);
+                x25519_base(&sk).to_vec()
+            }
+            KemMode::DhKem448 => unimplemented!(),
+        };
         HPKEPublicKey::from_slice(&pk)
     }
 }
 
 impl HPKEKeyPair {
-    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+    /// Build a new HPKE key pair from the given `bytes`.
+    pub(crate) fn from_slice(bytes: &[u8], ciphersuite: Ciphersuite) -> Self {
         let private_key = HPKEPrivateKey::from_slice(bytes);
-        let public_key = private_key.public_key();
+        let public_key = private_key.public_key(ciphersuite.hpke_kem);
         Self {
             private_key,
             public_key,
         }
     }
-}
 
-impl AEADKey {
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.value.as_slice()
+    /// Get a reference to the private key.
+    pub(crate) fn get_private_key(&self) -> &HPKEPrivateKey {
+        &self.private_key
+    }
+
+    /// Get a reference to the public key.
+    pub(crate) fn get_public_key(&self) -> &HPKEPublicKey {
+        &self.public_key
     }
 }
 
-impl Nonce {
+impl AeadKey {
+    /// Build a new key for an AEAD from `bytes`.
+    pub(crate) fn from_slice(bytes: &[u8]) -> AeadKey {
+        AeadKey {
+            value: bytes.to_vec(),
+        }
+    }
+
+    /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.0
+        &self.value
+    }
+}
+
+impl AeadNonce {
+    /// Build a new nonce for an AEAD from `bytes`.
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(bytes);
+        AeadNonce { value: nonce }
+    }
+
+    /// Generate a new random nonce.
+    pub(crate) fn random() -> Self {
+        Self {
+            value: get_random_array(),
+        }
+    }
+
+    /// Get a slice to the nonce value.
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        &self.value
     }
 }
 
@@ -385,7 +407,17 @@ impl Signature {
 }
 
 impl SignatureKeypair {
-    pub(crate) fn sign(&self, payload: &[u8]) -> Signature {
+    pub(crate) fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
         self.ciphersuite.sign(&self.private_key, payload)
+    }
+
+    /// Get a reference to the private key.
+    pub(crate) fn get_private_key(&self) -> &SignaturePrivateKey {
+        &self.private_key
+    }
+
+    /// Get a reference to the public key.
+    pub(crate) fn get_public_key(&self) -> &SignaturePublicKey {
+        &self.public_key
     }
 }

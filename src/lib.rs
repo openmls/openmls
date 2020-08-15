@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-pub mod astree;
 pub mod ciphersuite;
 pub mod codec;
 pub mod creds;
 pub mod extensions;
 pub mod framing;
 pub mod group;
-pub mod kp;
+pub mod key_packages;
 pub mod messages;
 pub mod schedule;
 mod tree;
