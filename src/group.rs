@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::astree::*;
-use crate::ciphersuite::*;
+use crate::ciphersuite::{signable::*, *};
 use crate::client::*;
 use crate::codec::*;
 use crate::creds::*;
@@ -24,6 +23,7 @@ use crate::framing::*;
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
+use crate::tree::astree::*;
 use crate::tree::treemath;
 use crate::tree::*;
 use crate::utils::*;
@@ -159,7 +159,8 @@ impl Group {
         kpb: KeyPackageBundle,
     ) -> Group {
         let (welcome, ratchet_tree_extension) = welcome_bundle;
-        let ciphersuite = welcome.cipher_suite;
+        let ciphersuite_name = welcome.cipher_suite;
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         if &ciphersuite != kpb.get_key_package().get_cipher_suite() {
             panic!("Ciphersuite mismatch"); // TODO error handling
         }
@@ -610,7 +611,7 @@ impl Group {
         } else {
             let path_required = membership_changes.path_required();
             debug_assert!(!path_required); // TODO: error handling
-            CommitSecret(zero(self.config.ciphersuite.hash_length()))
+            CommitSecret(zero(self.get_ciphersuite().hash_length()))
         };
 
         let mut new_epoch = self.group_context.epoch;

@@ -1,7 +1,7 @@
 use maelstrom::ciphersuite::*;
 use maelstrom::creds::*;
 use maelstrom::group::*;
-use maelstrom::kp::*;
+use maelstrom::key_packages::*;
 
 /*
 #[test]

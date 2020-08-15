@@ -150,7 +150,7 @@ impl Codec for MLSCiphertext {
 
 impl MLSCiphertext {
     fn compute_handshake_key(
-        config: &GroupConfig,
+        ciphersuite: &Ciphersuite,
         epoch_secrets: &EpochSecrets,
         sender_data: &MLSSenderData,
         mls_plaintext: Option<&MLSPlaintext>,
@@ -160,11 +160,11 @@ impl MLSCiphertext {
             None => sender_data.sender.as_u32().encode_detached().unwrap(),
         };
         let mut handshake_nonce_input = hkdf_expand_label(
-            config.ciphersuite,
+            ciphersuite.clone(),
             &epoch_secrets.handshake_secret,
             "hs nonce",
             &sender_id,
-            config.ciphersuite.aead_nonce_length(),
+            ciphersuite.aead_nonce_length(),
         );
         let reuse_guard = sender_data.reuse_guard.encode_detached().unwrap();
         for i in 0..4 {
@@ -172,11 +172,11 @@ impl MLSCiphertext {
         }
         let handshake_nonce = AeadNonce::from_slice(&handshake_nonce_input);
         let handshake_key_input = hkdf_expand_label(
-            config.ciphersuite,
+            ciphersuite.clone(),
             &epoch_secrets.handshake_secret,
             "hs key",
             &sender_id,
-            config.ciphersuite.aead_key_length(),
+            ciphersuite.aead_key_length(),
         );
         let handshake_key = AeadKey::from_slice(&handshake_key_input);
         (handshake_key, handshake_nonce)
@@ -262,8 +262,12 @@ impl MLSCiphertext {
             padding: padding_block,
         };
 
-        let (k1, n1) =
-            Self::compute_handshake_key(&config, epoch_secrets, &sender_data, Some(mls_plaintext));
+        let (k1, n1) = Self::compute_handshake_key(
+            &ciphersuite,
+            epoch_secrets,
+            &sender_data,
+            Some(mls_plaintext),
+        );
         let (key, nonce) = match mls_plaintext.content_type {
             ContentType::Application => (
                 application_secrets.get_key(),
@@ -297,7 +301,6 @@ impl MLSCiphertext {
         astree: &mut ASTree,
         context: &GroupContext,
     ) -> MLSPlaintext {
-        let ciphersuite = config.ciphersuite;
         let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
         let sender_data_key_bytes = hkdf_expand_label(
             ciphersuite.clone(),
@@ -338,7 +341,7 @@ impl MLSCiphertext {
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap();
-        let (k1, n1) = Self::compute_handshake_key(&config, epoch_secrets, &sender_data, None);
+        let (k1, n1) = Self::compute_handshake_key(&ciphersuite, epoch_secrets, &sender_data, None);
         let (key, nonce) = match self.content_type {
             ContentType::Application => (
                 application_secrets.get_key(),
