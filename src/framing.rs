@@ -23,6 +23,11 @@ use crate::messages::*;
 use crate::schedule::*;
 use crate::utils::*;
 
+pub enum Message {
+    Plain(MLSPlaintext),
+    Encrypted(MLSCiphertext),
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
     pub group_id: GroupId,
@@ -146,12 +151,12 @@ impl Codec for MLSCiphertext {
 impl MLSCiphertext {
     pub fn new_from_plaintext(
         mls_plaintext: &MLSPlaintext,
+        ciphersuite: &Ciphersuite,
         astree: &mut ASTree,
         epoch_secrets: &EpochSecrets,
         context: &GroupContext,
-        config: GroupConfig,
     ) -> MLSCiphertext {
-        let ciphersuite = config.ciphersuite;
+        const PADDING_SIZE: usize = 10;
         let generation = astree.get_generation(mls_plaintext.sender.sender);
         let application_secrets = astree
             .get_secret(mls_plaintext.sender.sender, generation)
@@ -164,7 +169,7 @@ impl MLSCiphertext {
         }
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
         let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite,
+            ciphersuite.clone(),
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
@@ -214,9 +219,8 @@ impl MLSCiphertext {
             + 2
             + TAG_BYTES
             + 4;
-        let mut padding_length = (config.padding_block_size as usize)
-            - (padding_offset % (config.padding_block_size as usize));
-        if (config.padding_block_size as usize) == padding_length {
+        let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
+        if PADDING_SIZE == padding_length {
             padding_length = 0;
         }
         let padding_block = vec![0u8; padding_length];
@@ -230,7 +234,7 @@ impl MLSCiphertext {
             _ => {
                 // TODO: Add crypto agility
                 let mut handshake_nonce_input = hkdf_expand_label(
-                    config.ciphersuite,
+                    ciphersuite.clone(),
                     &epoch_secrets.handshake_secret,
                     "hs nonce",
                     &mls_plaintext.sender.encode_detached().unwrap(),
@@ -242,7 +246,7 @@ impl MLSCiphertext {
                 }
                 let handshake_nonce = ciphersuite.new_aead_nonce(&handshake_nonce_input).unwrap();
                 let handshake_key_input = hkdf_expand_label(
-                    ciphersuite,
+                    ciphersuite.clone(),
                     &epoch_secrets.handshake_secret,
                     "hs key",
                     &mls_plaintext.sender.encode_detached().unwrap(),
@@ -272,16 +276,15 @@ impl MLSCiphertext {
     }
     pub fn to_plaintext(
         &self,
+        ciphersuite: &Ciphersuite,
         roster: &[Credential],
         epoch_secrets: &EpochSecrets,
         astree: &mut ASTree,
         context: &GroupContext,
-        config: GroupConfig,
     ) -> MLSPlaintext {
-        let ciphersuite = config.ciphersuite;
         let sender_data_nonce = ciphersuite.new_aead_nonce(&self.sender_data_nonce).unwrap();
         let sender_data_key_bytes = hkdf_expand_label(
-            config.ciphersuite,
+            ciphersuite.clone(),
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
@@ -323,7 +326,7 @@ impl MLSCiphertext {
             ContentType::Application => (application_secrets.key, application_secrets.nonce),
             _ => {
                 let mut handshake_nonce_input = hkdf_expand_label(
-                    config.ciphersuite,
+                    ciphersuite.clone(),
                     &epoch_secrets.handshake_secret,
                     "hs nonce",
                     &sender_data.sender.as_u32().encode_detached().unwrap(),
@@ -335,7 +338,7 @@ impl MLSCiphertext {
                 }
                 let handshake_nonce = ciphersuite.new_aead_nonce(&handshake_nonce_input).unwrap();
                 let handshake_key_input = hkdf_expand_label(
-                    config.ciphersuite,
+                    ciphersuite.clone(),
                     &epoch_secrets.handshake_secret,
                     "hs key",
                     &sender_data.sender.as_u32().encode_detached().unwrap(),
@@ -830,7 +833,8 @@ impl Codec for MLSPlaintextCommitAuthData {
 
 #[test]
 fn codec() {
-    let ciphersuite = Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let keypair = ciphersuite.new_signature_keypair();
     let sender = Sender {
         sender_type: SenderType::Member,

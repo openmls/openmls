@@ -16,6 +16,7 @@
 
 use crate::astree::*;
 use crate::ciphersuite::*;
+use crate::client::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::extensions::*;
@@ -23,20 +24,21 @@ use crate::framing::*;
 use crate::kp::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::*;
 use crate::tree::treemath;
+use crate::tree::*;
 use crate::utils::*;
 use crate::validator::*;
 use rayon::prelude::*;
 
 pub struct Group {
-    pub config: GroupConfig,
-    pub identity: Identity,
+    pub ciphersuite_name: CiphersuiteName,
+    pub client: Client,
     pub group_context: GroupContext,
     pub generation: u32,
     pub epoch_secrets: EpochSecrets,
     pub astree: ASTree,
     pub tree: Tree,
+    pub plaintext_queue: Vec<MLSPlaintext>,
     pub public_queue: ProposalQueue,
     pub own_queue: ProposalQueue,
     pub pending_kpbs: Vec<KeyPackageBundle>,
@@ -45,13 +47,14 @@ pub struct Group {
 
 impl Codec for Group {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.config.encode(buffer)?;
-        self.identity.encode(buffer)?;
+        self.ciphersuite_name.encode(buffer)?;
+        self.client.encode(buffer)?;
         self.group_context.encode(buffer)?;
         self.generation.encode(buffer)?;
         self.epoch_secrets.encode(buffer)?;
         self.astree.encode(buffer)?;
         self.tree.encode(buffer)?;
+        encode_vec(VecSize::VecU32, buffer, &self.plaintext_queue)?;
         self.public_queue.encode(buffer)?;
         self.own_queue.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.pending_kpbs)?;
@@ -59,25 +62,27 @@ impl Codec for Group {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let config = GroupConfig::decode(cursor)?;
-        let identity = Identity::decode(cursor)?;
+        let ciphersuite_name = CiphersuiteName::decode(cursor)?;
+        let client = Client::decode(cursor)?;
         let group_context = GroupContext::decode(cursor)?;
         let generation = u32::decode(cursor)?;
         let epoch_secrets = EpochSecrets::decode(cursor)?;
         let astree = ASTree::decode(cursor)?;
         let tree = Tree::decode(cursor)?;
+        let plaintext_queue = decode_vec(VecSize::VecU32, cursor)?;
         let public_queue = ProposalQueue::decode(cursor)?;
         let own_queue = ProposalQueue::decode(cursor)?;
         let pending_kpbs = decode_vec(VecSize::VecU32, cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let group = Group {
-            config,
-            identity,
+            ciphersuite_name,
+            client,
             group_context,
             generation,
             epoch_secrets,
             astree,
             tree,
+            plaintext_queue,
             public_queue,
             own_queue,
             pending_kpbs,
@@ -88,15 +93,20 @@ impl Codec for Group {
 }
 
 impl Group {
-    pub fn new(identity: Identity, group_id: GroupId, config: GroupConfig) -> Self {
-        let kpb = KeyPackageBundle::new(config.ciphersuite, &identity, None);
+    // fn new(creator: &Client, id: &[u8], ciphersuite: Ciphersuite, validator: Validator) -> Self;
+    pub fn new(client: Client, group_id: GroupId, ciphersuite_name: CiphersuiteName) -> Self {
+        // TODO: add validator, use reference for Client
+        let ciphersuite = client.get_ciphersuite(&ciphersuite_name).clone();
+        let identity = client.get_identity(&ciphersuite_name);
+        let kpb = KeyPackageBundle::new(ciphersuite.clone(), identity, None); // TODO remove clone
         let epoch_secrets = EpochSecrets::new();
         let astree = ASTree::new(
-            config.ciphersuite,
+            ciphersuite.clone(),
             &epoch_secrets.application_secret,
             LeafIndex::from(1u32),
         );
-        let tree = Tree::new(config.ciphersuite, kpb);
+        let tree = Tree::new(ciphersuite.clone(), kpb);
+        let plaintext_queue = vec![];
         let group_context = GroupContext {
             group_id,
             epoch: GroupEpoch(0),
@@ -105,26 +115,28 @@ impl Group {
         };
         let interim_transcript_hash = vec![];
         Group {
-            config,
-            identity,
+            ciphersuite_name,
+            client,
             group_context,
             generation: 0,
             epoch_secrets,
             astree,
             tree,
-            public_queue: ProposalQueue::new(config.ciphersuite),
-            own_queue: ProposalQueue::new(config.ciphersuite),
+            plaintext_queue,
+            public_queue: ProposalQueue::new(ciphersuite),
+            own_queue: ProposalQueue::new(ciphersuite),
             pending_kpbs: vec![],
             interim_transcript_hash,
         }
     }
-    pub fn new_with_members(
-        identity: Identity,
+    fn new_with_members(
+        // TODO: not part of API
+        client: Client,
         group_id: GroupId,
-        config: GroupConfig,
+        ciphersuite_name: CiphersuiteName,
         kps: &[KeyPackage],
     ) -> (Self, (Welcome, Extension)) {
-        let mut group = Group::new(identity, group_id, config);
+        let mut group = Group::new(client, group_id, ciphersuite_name);
         let proposals: Vec<Proposal> = kps
             .par_iter()
             .map(|kp| {
@@ -142,12 +154,12 @@ impl Group {
         (group, welcome_option.unwrap())
     }
     pub fn new_from_welcome(
-        identity: Identity,
+        client: Client,
         welcome_bundle: WelcomeBundle,
         kpb: KeyPackageBundle,
     ) -> Group {
         let (welcome, ratchet_tree_extension) = welcome_bundle;
-        let ciphersuite = welcome.cipher_suite;
+        let ciphersuite = Ciphersuite::new(welcome.cipher_suite);
         if ciphersuite != kpb.key_package.cipher_suite {
             panic!("Ciphersuite mismatch"); // TODO error handling
         }
@@ -275,6 +287,7 @@ impl Group {
             &epoch_secrets.application_secret,
             tree.leaf_count(),
         );
+        let plaintext_queue = vec![];
 
         assert_eq!(
             Confirmation::new(
@@ -286,40 +299,38 @@ impl Group {
         );
 
         Group {
-            config,
-            identity,
+            ciphersuite_name: welcome.cipher_suite,
+            client,
             group_context,
             generation: 0,
             epoch_secrets,
             astree,
             tree,
+            plaintext_queue,
             public_queue: ProposalQueue::new(config.ciphersuite),
             own_queue: ProposalQueue::new(config.ciphersuite),
             pending_kpbs: vec![],
             interim_transcript_hash: group_info.interim_transcript_hash,
         }
     }
-    pub fn create_add_proposal(
-        &mut self,
-        kp: &KeyPackage,
-        authenticated_data: Option<&[u8]>,
-    ) -> MLSPlaintext {
+    pub fn create_add_proposal(&mut self, kp: &KeyPackage, authenticated_data: Option<&[u8]>) {
         let add_proposal = AddProposal {
             key_package: kp.clone(), // TODO Check kp
         };
         let proposal = Proposal::Add(add_proposal);
         self.add_own_proposal(proposal.clone());
         let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        let mls_plaintext = MLSPlaintext::new(
             self.get_sender_index(),
             authenticated_data.unwrap_or(&[]),
             content,
-            &self.identity.keypair,
+            &self.get_identity().keypair,
             &self.get_context(),
-        )
+        );
+        self.plaintext_queue.push(mls_plaintext);
     }
-    pub fn create_update_proposal(&mut self, authenticated_data: Option<&[u8]>) -> MLSPlaintext {
-        let kpb = KeyPackageBundle::new(self.config.ciphersuite, &self.identity, None);
+    pub fn create_update_proposal(&mut self, authenticated_data: Option<&[u8]>) {
+        let kpb = KeyPackageBundle::new(self.get_ciphersuite().clone(), &self.get_identity(), None);
         let update_proposal = UpdateProposal {
             key_package: kpb.key_package.clone(), // TODO Check KP
         };
@@ -327,30 +338,34 @@ impl Group {
         self.add_own_proposal(proposal.clone());
         self.pending_kpbs.push(kpb);
         let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        let mls_plaintext = MLSPlaintext::new(
             self.get_sender_index(),
             authenticated_data.unwrap_or(&[]),
             content,
-            &self.identity.keypair,
+            &self.get_identity().keypair,
             &self.get_context(),
-        )
+        );
+        self.plaintext_queue.push(mls_plaintext);
     }
-    pub fn create_remove_proposal(
-        &mut self,
-        removed: u32,
-        authenticated_data: Option<&[u8]>,
-    ) -> MLSPlaintext {
+    pub fn create_remove_proposal(&mut self, removed: u32, authenticated_data: Option<&[u8]>) {
         let remove_proposal = RemoveProposal { removed };
         let proposal = Proposal::Remove(remove_proposal); // TODO Check index
         self.add_own_proposal(proposal.clone());
         let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        let mls_plaintext = MLSPlaintext::new(
             self.get_sender_index(),
             authenticated_data.unwrap_or(&[]),
             content,
-            &self.identity.keypair,
+            &self.get_identity().keypair,
             &self.get_context(),
-        )
+        );
+        self.plaintext_queue.push(mls_plaintext);
+    }
+    pub fn flush_queue(&mut self, encrypt_hs_messages: bool) -> Vec<Message> {
+        if !encrypt_hs_messages {
+            //self.plaintext_queue.clone()
+        }
+        vec![]
     }
     fn add_own_proposal(&mut self, proposal: Proposal) {
         // TODO remove kpb from QueuedProposal or get rid of this altogether
@@ -362,7 +377,7 @@ impl Group {
         &mut self,
         authenticated_data: Option<&[u8]>,
     ) -> (MLSPlaintext, MembershipChanges, Option<WelcomeBundle>) {
-        let ciphersuite = self.config.ciphersuite;
+        let ciphersuite = self.get_ciphersuite().clone();
         // TODO Dedup proposals
         let proposal_id_list = self.public_queue.clone().get_commit_lists();
         let mut new_tree = self.tree.clone();
@@ -378,7 +393,7 @@ impl Group {
         let (path, path_secrets_option, commit_secret) = if path_required {
             let keypair = ciphersuite.new_hpke_keypair();
             let (commit_secret, kpb, path, path_secrets) = new_tree.update_own_leaf(
-                &self.identity,
+                self.get_identity(),
                 Some(&keypair),
                 None,
                 &self.group_context.serialize(),
@@ -387,7 +402,7 @@ impl Group {
             self.pending_kpbs.push(kpb);
             (path, path_secrets, commit_secret)
         } else {
-            let commit_secret = CommitSecret(zero(self.config.ciphersuite.hash_length()));
+            let commit_secret = CommitSecret(zero(self.get_ciphersuite().hash_length()));
             (None, None, commit_secret)
         };
 
@@ -402,7 +417,7 @@ impl Group {
         new_epoch.increment();
 
         let confirmed_transcript_hash = Self::update_confirmed_transcript_hash(
-            self.config.ciphersuite,
+            self.get_ciphersuite().clone(),
             &MLSPlaintextCommitContent::new(
                 &self.group_context,
                 self.get_sender_index(),
@@ -420,14 +435,14 @@ impl Group {
 
         let mut new_epoch_secrets = self.epoch_secrets.clone();
         let epoch_secret = new_epoch_secrets.get_new_epoch_secrets(
-            ciphersuite,
+            ciphersuite.clone(),
             commit_secret,
             None,
             &new_group_context.serialize(),
         );
 
         let confirmation = Confirmation::new(
-            ciphersuite,
+            ciphersuite.clone(),
             &new_epoch_secrets.confirmation_key,
             &confirmed_transcript_hash,
         );
@@ -437,12 +452,12 @@ impl Group {
             self.get_sender_index(),
             authenticated_data.unwrap_or(&[]),
             content,
-            &self.identity.keypair,
+            &self.get_identity().keypair,
             &self.get_context(),
         );
 
         let interim_transcript_hash = Self::update_interim_transcript_hash(
-            ciphersuite,
+            ciphersuite.clone(),
             &mls_plaintext,
             &confirmed_transcript_hash,
         );
@@ -463,7 +478,7 @@ impl Group {
                 signer_index: self.get_sender_index(),
                 signature: Signature::new_empty(),
             };
-            group_info.signature = group_info.sign(&self.identity);
+            group_info.signature = group_info.sign(&self.get_identity());
 
             let welcome_secret = ciphersuite
                 .hkdf_expand(&epoch_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
@@ -534,7 +549,7 @@ impl Group {
                 .collect();
             let welcome = Welcome {
                 version: ProtocolVersion::Mls10,
-                cipher_suite: ciphersuite,
+                cipher_suite: self.ciphersuite_name,
                 secrets,
                 encrypted_group_info,
             };
@@ -548,7 +563,7 @@ impl Group {
         }
     }
     pub fn process_commit(&mut self, mls_plaintext: MLSPlaintext) -> MembershipChanges {
-        let ciphersuite = self.config.ciphersuite;
+        let ciphersuite = self.get_ciphersuite();
         let sender = mls_plaintext.sender.sender;
         let is_own_commit = mls_plaintext.sender.as_tree_index() == self.tree.own_leaf.leaf_index;
         // TODO return an error in case of failure
@@ -589,7 +604,7 @@ impl Group {
                     .find(|&kpb| kpb.key_package == kp)
                     .unwrap();
                 let (commit_secret, _, _, _) = new_tree.update_own_leaf(
-                    &self.identity,
+                    self.get_identity(),
                     None,
                     Some(own_kpb.clone()),
                     &self.group_context.serialize(),
@@ -607,14 +622,14 @@ impl Group {
         } else {
             let path_required = membership_changes.path_required();
             assert!(!path_required); // TODO: error handling
-            CommitSecret(zero(self.config.ciphersuite.hash_length()))
+            CommitSecret(zero(self.get_ciphersuite().hash_length()))
         };
 
         let mut new_epoch = self.group_context.epoch;
         new_epoch.increment();
 
         let confirmed_transcript_hash = Self::update_confirmed_transcript_hash(
-            self.config.ciphersuite,
+            self.get_ciphersuite().clone(),
             &MLSPlaintextCommitContent::new(
                 &self.group_context,
                 mls_plaintext.sender.sender,
@@ -632,21 +647,21 @@ impl Group {
 
         let mut new_epoch_secrets = self.epoch_secrets.clone();
         new_epoch_secrets.get_new_epoch_secrets(
-            ciphersuite,
+            ciphersuite.clone(),
             commit_secret,
             None,
             &new_group_context.serialize(),
         );
 
         let interim_transcript_hash = Self::update_interim_transcript_hash(
-            ciphersuite,
+            ciphersuite.clone(),
             &mls_plaintext,
             &confirmed_transcript_hash,
         );
 
         assert_eq!(
             Confirmation::new(
-                ciphersuite,
+                ciphersuite.clone(),
                 &new_epoch_secrets.confirmation_key,
                 &confirmed_transcript_hash
             ),
@@ -677,12 +692,12 @@ impl Group {
         self.epoch_secrets = new_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
         self.astree = ASTree::new(
-            self.config.ciphersuite,
+            self.get_ciphersuite().clone(),
             &self.epoch_secrets.application_secret,
             self.tree.leaf_count(),
         );
-        self.own_queue = ProposalQueue::new(self.config.ciphersuite);
-        self.public_queue = ProposalQueue::new(self.config.ciphersuite);
+        self.own_queue = ProposalQueue::new(self.get_ciphersuite().clone());
+        self.public_queue = ProposalQueue::new(self.get_ciphersuite().clone());
 
         // TODO: return discarded proposals
         membership_changes
@@ -715,7 +730,7 @@ impl Group {
             self.get_sender_index(),
             authenticated_data.unwrap_or(&[]),
             content,
-            &self.identity.keypair,
+            &self.get_identity().keypair,
             &self.get_context(),
         )
     }
@@ -723,10 +738,10 @@ impl Group {
         let context = &self.get_context();
         let mls_ciphertext = MLSCiphertext::new_from_plaintext(
             &mls_plaintext,
+            &self.get_ciphersuite().clone(),
             &mut self.astree,
             &self.epoch_secrets,
             context,
-            self.config,
         );
         mls_ciphertext.encode_detached().unwrap() // TODO: error handling
     }
@@ -734,11 +749,11 @@ impl Group {
         let context = &self.get_context();
         let mls_ciphertext = MLSCiphertext::decode_detached(&message).unwrap();
         mls_ciphertext.to_plaintext(
+            &self.get_ciphersuite().clone(),
             &self.roster(),
             &self.epoch_secrets,
             &mut self.astree,
             context,
-            self.config,
         )
     }
     pub fn update_confirmed_transcript_hash(
@@ -778,6 +793,12 @@ impl Group {
     }
     pub fn get_sender_index(&self) -> LeafIndex {
         LeafIndex::from(self.tree.own_leaf.leaf_index)
+    }
+    fn get_ciphersuite(&self) -> &Ciphersuite {
+        self.client.get_ciphersuite(&self.ciphersuite_name)
+    }
+    fn get_identity(&self) -> &Identity {
+        self.client.get_identity(&self.ciphersuite_name)
     }
     fn get_context(&self) -> GroupContext {
         self.group_context.clone()
