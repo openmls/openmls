@@ -79,9 +79,6 @@ trait GroupOps {
     fn encrypt(&self, astree: &mut ASTree, ptxt: MLSPlaintext) -> MLSCiphertext;
     fn decrypt(&self, astree: &mut ASTree, ctxt: MLSCiphertext) -> MLSPlaintext;
 
-    // Export secrets
-    fn get_application_secret(&self) -> Vec<u8>;
-
     // Validation
     fn validate_welcome(welcome_msg: Welcome) -> WelcomeValidationResult;
     fn validate_proposal(&self, proposal: Proposal) -> ProposalValidationResult;
