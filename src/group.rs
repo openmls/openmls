@@ -30,6 +30,73 @@ use crate::utils::*;
 use crate::validator::*;
 use rayon::prelude::*;
 
+enum WelcomeError {}
+enum ProposalError {}
+enum CommitError {}
+enum MlsPlaintextError {}
+enum ProposalPolicyError {}
+enum CommitPolicyError {}
+
+type WelcomeValidationResult = Result<(), WelcomeError>;
+type ProposalValidationResult = Result<(), ProposalError>;
+type CommitValidationResult = Result<(), CommitError>;
+type MlsPlaintextValidationResult = Result<(), MlsPlaintextError>;
+type ProposalPolicyValidationResult = Result<(), ProposalPolicyError>;
+type CommitPolicyValidationResult = Result<(), CommitPolicyError>;
+
+trait GroupOps {
+    // Create new group.
+    fn new(creator: &Client, id: &[u8], ciphersuite: Ciphersuite) -> Self;
+    // Join a group from a welcome message
+    fn new_from_welcome(joiner: &Client, welcome_msg: Welcome, tree: Tree) -> Self;
+
+    // Create handshake messages
+    fn create_add_proposal(
+        &self,
+        aad: &[u8],
+        joiner_key_package: KeyPackage,
+    ) -> (MLSPlaintext, Proposal);
+    fn create_update_proposal(&self, aad: &[u8]) -> (MLSPlaintext, Proposal);
+    fn create_remove_proposal(
+        &self,
+        aad: &[u8],
+        removed_index: LeafIndex,
+    ) -> (MLSPlaintext, Proposal);
+    fn create_commit(
+        &self,
+        aad: &[u8],
+        proposals: Vec<Proposal>,
+        force_self_update: bool,
+    ) -> (MLSPlaintext, Welcome);
+
+    // Apply a Commit message. Return values are (application_secret, exporter_secret)
+    fn apply_commit(&mut self, msg: MLSPlaintext) -> (Vec<u8>, Vec<u8>);
+
+    // Create application message
+    fn create_application_message(&self, aad: &[u8], msg: &[u8]) -> MLSPlaintext;
+
+    // Encrypt/Decrypt MLS message
+    fn encrypt(&self, astree: &mut ASTree, ptxt: MLSPlaintext) -> MLSCiphertext;
+    fn decrypt(&self, astree: &mut ASTree, ctxt: MLSCiphertext) -> MLSPlaintext;
+
+    // Export secrets
+    fn get_application_secret(&self) -> Vec<u8>;
+
+    // Validation
+    fn validate_welcome(welcome_msg: Welcome) -> WelcomeValidationResult;
+    fn validate_proposal(&self, proposal: Proposal) -> ProposalValidationResult;
+    fn validate_commit(&self, commit: Commit) -> CommitValidationResult;
+    fn validate_mls_plaintext(&self, mls_plaintext: MLSPlaintext) -> MlsPlaintextValidationResult;
+    fn validate_proposal_against_policy(
+        &self,
+        proposal: Proposal,
+    ) -> ProposalPolicyValidationResult;
+    fn validate_commit_against_policy(
+        &self,
+        commit: Commit,
+        proposals: Vec<Proposal>,
+    ) -> CommitPolicyValidationResult;
+}
 pub struct Group {
     pub ciphersuite_name: CiphersuiteName,
     pub client: Client,
