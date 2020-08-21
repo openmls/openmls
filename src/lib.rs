@@ -22,6 +22,7 @@ pub mod extensions;
 pub mod framing;
 pub mod group;
 pub mod key_packages;
+pub mod managed_group;
 pub mod messages;
 pub mod schedule;
 mod tree;

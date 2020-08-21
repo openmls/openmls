@@ -9,14 +9,14 @@ use maelstrom::group::*;
 fn padding() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let client = Client::new(vec![1, 2, 3], vec![ciphersuite_name]);
-    let mut group_alice = Group::new(client, GroupId::random(), ciphersuite_name);
+    let mut group_alice = Group::new(client, &[1, 2, 3], ciphersuite_name);
     const PADDING_SIZE: usize = 10;
 
     for _ in 0..100 {
         let message = randombytes(random_usize() % 1000);
         let aad = randombytes(random_usize() % 1000);
-        let mls_plaintext = group_alice.create_application_message(&message, Some(&aad));
-        let encrypted_message = group_alice.encrypt(&mls_plaintext);
+        let mls_plaintext = group_alice.create_application_message(&aad, &message);
+        let encrypted_message = group_alice.encrypt(mls_plaintext).as_slice();
         let length = encrypted_message.len();
         let overflow = length % PADDING_SIZE;
         if overflow != 0 {

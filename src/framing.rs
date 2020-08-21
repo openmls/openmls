@@ -116,39 +116,13 @@ pub struct MLSCiphertext {
     pub ciphertext: Vec<u8>,
 }
 
-impl Codec for MLSCiphertext {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.content_type.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        encode_vec(VecSize::VecU8, buffer, &self.sender_data_nonce)?;
-        encode_vec(VecSize::VecU8, buffer, &self.encrypted_sender_data)?;
-        encode_vec(VecSize::VecU32, buffer, &self.ciphertext)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let content_type = ContentType::decode(cursor)?;
-        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        let sender_data_nonce = decode_vec(VecSize::VecU8, cursor)?;
-        let encrypted_sender_data = decode_vec(VecSize::VecU8, cursor)?;
-        let ciphertext = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(MLSCiphertext {
-            group_id,
-            epoch,
-            content_type,
-            authenticated_data,
-            sender_data_nonce,
-            encrypted_sender_data,
-            ciphertext,
-        })
-    }
-}
-
 impl MLSCiphertext {
+    pub fn from_slice(bytes: &[u8]) -> Self {
+        MLSCiphertext::decode_detached(&bytes).unwrap()
+    }
+    pub fn as_slice(&self) -> Vec<u8> {
+        self.encode_detached().unwrap()
+    }
     fn compute_handshake_key(
         ciphersuite: &Ciphersuite,
         epoch_secrets: &EpochSecrets,
@@ -378,6 +352,38 @@ impl MLSCiphertext {
     }
 }
 
+impl Codec for MLSCiphertext {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.group_id.encode(buffer)?;
+        self.epoch.encode(buffer)?;
+        self.content_type.encode(buffer)?;
+        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
+        encode_vec(VecSize::VecU8, buffer, &self.sender_data_nonce)?;
+        encode_vec(VecSize::VecU8, buffer, &self.encrypted_sender_data)?;
+        encode_vec(VecSize::VecU32, buffer, &self.ciphertext)?;
+        Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let group_id = GroupId::decode(cursor)?;
+        let epoch = GroupEpoch::decode(cursor)?;
+        let content_type = ContentType::decode(cursor)?;
+        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
+        let sender_data_nonce = decode_vec(VecSize::VecU8, cursor)?;
+        let encrypted_sender_data = decode_vec(VecSize::VecU8, cursor)?;
+        let ciphertext = decode_vec(VecSize::VecU32, cursor)?;
+        Ok(MLSCiphertext {
+            group_id,
+            epoch,
+            content_type,
+            authenticated_data,
+            sender_data_nonce,
+            encrypted_sender_data,
+            ciphertext,
+        })
+    }
+}
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum SenderType {
@@ -423,7 +429,10 @@ impl Sender {
             sender,
         }
     }
-    pub fn as_tree_index(self) -> NodeIndex {
+    pub fn as_leaf_index(&self) -> LeafIndex {
+        self.sender
+    }
+    pub fn as_node_index(self) -> NodeIndex {
         NodeIndex::from(self.sender)
     }
 }

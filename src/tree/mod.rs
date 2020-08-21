@@ -263,14 +263,14 @@ impl OwnLeaf {
 }
 
 #[derive(Debug, Clone)]
-pub struct Tree {
+pub struct RatchetTree {
     ciphersuite: Ciphersuite,
     pub nodes: Vec<Node>,
     pub own_leaf: OwnLeaf,
 }
 
-impl Tree {
-    pub fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> Tree {
+impl RatchetTree {
+    pub fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
         let own_leaf = OwnLeaf::new(
             ciphersuite,
             kpb.clone(),
@@ -282,7 +282,7 @@ impl Tree {
             key_package: Some(kpb.get_key_package().clone()),
             node: None,
         }];
-        Tree {
+        RatchetTree {
             ciphersuite,
             nodes,
             own_leaf,
@@ -293,7 +293,7 @@ impl Tree {
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
         index: NodeIndex,
-    ) -> Tree {
+    ) -> RatchetTree {
         let mut nodes = Vec::with_capacity(node_options.len());
         for (i, node_option) in node_options.iter().enumerate() {
             if let Some(node) = node_option.clone() {
@@ -312,7 +312,7 @@ impl Tree {
         let mut path_keypairs = PathKeypairs::new();
         path_keypairs.add(keypairs, dirpath);
         let own_leaf = OwnLeaf::new(ciphersuite, kpb, index, path_keypairs);
-        Tree {
+        RatchetTree {
             ciphersuite,
             nodes,
             own_leaf,
@@ -710,7 +710,7 @@ impl Tree {
             let proposal = queued_proposal.proposal.clone();
             let update_proposal = proposal.as_update().unwrap();
             let sender = queued_proposal.sender;
-            let index = sender.as_tree_index();
+            let index = sender.as_node_index();
             let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
             updated_members.push(update_proposal.key_package.get_credential().clone());
             self.blank_member(index);
@@ -823,7 +823,7 @@ impl Tree {
         }
     }
     pub fn compute_tree_hash(&self) -> Vec<u8> {
-        fn node_hash(ciphersuite: Ciphersuite, tree: &Tree, index: NodeIndex) -> Vec<u8> {
+        fn node_hash(ciphersuite: Ciphersuite, tree: &RatchetTree, index: NodeIndex) -> Vec<u8> {
             let node: Node = tree.nodes[index.as_usize()].clone();
             match node.node_type {
                 NodeType::Leaf => {

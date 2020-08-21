@@ -82,7 +82,7 @@ impl Codec for OwnLeaf {
     }
 }
 
-impl Codec for Tree {
+impl Codec for RatchetTree {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.ciphersuite.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
@@ -93,7 +93,7 @@ impl Codec for Tree {
         let ciphersuite = Ciphersuite::decode(cursor)?;
         let nodes = decode_vec(VecSize::VecU32, cursor)?;
         let own_leaf = OwnLeaf::decode(cursor)?;
-        Ok(Tree {
+        Ok(RatchetTree {
             ciphersuite,
             nodes,
             own_leaf,

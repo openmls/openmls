@@ -27,28 +27,32 @@ use crate::tree::astree::*;
 use crate::tree::treemath;
 use crate::tree::*;
 use crate::utils::*;
-use crate::validator::*;
 use rayon::prelude::*;
 
-enum WelcomeError {}
-enum ProposalError {}
-enum CommitError {}
-enum MlsPlaintextError {}
-enum ProposalPolicyError {}
-enum CommitPolicyError {}
+pub enum WelcomeError {}
+pub enum ProposalError {}
+pub enum CommitError {}
+pub enum MlsPlaintextError {}
+pub enum ProposalPolicyError {}
+pub enum CommitPolicyError {}
 
-type WelcomeValidationResult = Result<(), WelcomeError>;
-type ProposalValidationResult = Result<(), ProposalError>;
-type CommitValidationResult = Result<(), CommitError>;
-type MlsPlaintextValidationResult = Result<(), MlsPlaintextError>;
-type ProposalPolicyValidationResult = Result<(), ProposalPolicyError>;
-type CommitPolicyValidationResult = Result<(), CommitPolicyError>;
+pub type WelcomeValidationResult = Result<(), WelcomeError>;
+pub type ProposalValidationResult = Result<(), ProposalError>;
+pub type CommitValidationResult = Result<(), CommitError>;
+pub type MlsPlaintextValidationResult = Result<(), MlsPlaintextError>;
+pub type ProposalPolicyValidationResult = Result<(), ProposalPolicyError>;
+pub type CommitPolicyValidationResult = Result<(), CommitPolicyError>;
 
-trait GroupOps {
+pub trait GroupOps {
     // Create new group.
-    fn new(creator: &Client, id: &[u8], ciphersuite: Ciphersuite) -> Self;
+    fn new(creator: Client, id: &[u8], ciphersuite_name: CiphersuiteName) -> Group;
     // Join a group from a welcome message
-    fn new_from_welcome(joiner: &Client, welcome_msg: Welcome, tree: Tree) -> Self;
+    fn new_from_welcome(
+        joiner: Client,
+        welcome: Welcome,
+        ratchet_tree: RatchetTree,
+        tree_hash: &[u8],
+    ) -> Group;
 
     // Create handshake messages
     fn create_add_proposal(
@@ -56,7 +60,11 @@ trait GroupOps {
         aad: &[u8],
         joiner_key_package: KeyPackage,
     ) -> (MLSPlaintext, Proposal);
-    fn create_update_proposal(&self, aad: &[u8]) -> (MLSPlaintext, Proposal);
+    fn create_update_proposal(
+        &self,
+        aad: &[u8],
+        key_package: KeyPackage,
+    ) -> (MLSPlaintext, Proposal);
     fn create_remove_proposal(
         &self,
         aad: &[u8],
@@ -65,22 +73,31 @@ trait GroupOps {
     fn create_commit(
         &self,
         aad: &[u8],
-        proposals: Vec<Proposal>,
+        proposals: Vec<(Sender, Proposal)>,
+        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
-    ) -> (MLSPlaintext, Welcome);
+    ) -> (MLSPlaintext, Option<Welcome>);
 
-    // Apply a Commit message. Return values are (application_secret, exporter_secret)
-    fn apply_commit(&mut self, msg: MLSPlaintext) -> (Vec<u8>, Vec<u8>);
+    // Apply a Commit message
+    fn apply_commit(
+        &mut self,
+        mls_plaintext: MLSPlaintext,
+        proposals: Vec<(Sender, Proposal)>,
+        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+    );
 
     // Create application message
     fn create_application_message(&self, aad: &[u8], msg: &[u8]) -> MLSPlaintext;
 
     // Encrypt/Decrypt MLS message
-    fn encrypt(&self, astree: &mut ASTree, ptxt: MLSPlaintext) -> MLSCiphertext;
-    fn decrypt(&self, astree: &mut ASTree, ctxt: MLSCiphertext) -> MLSPlaintext;
+    fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext;
+    fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext;
+
+    // Exporter
+    fn get_exporter_secret(&self) -> Vec<u8>;
 
     // Validation
-    fn validate_welcome(welcome_msg: Welcome) -> WelcomeValidationResult;
+    fn validate_welcome(welcome: Welcome) -> WelcomeValidationResult;
     fn validate_proposal(&self, proposal: Proposal) -> ProposalValidationResult;
     fn validate_commit(&self, commit: Commit) -> CommitValidationResult;
     fn validate_mls_plaintext(&self, mls_plaintext: MLSPlaintext) -> MlsPlaintextValidationResult;
@@ -101,67 +118,15 @@ pub struct Group {
     pub generation: u32,
     pub epoch_secrets: EpochSecrets,
     pub astree: ASTree,
-    pub tree: Tree,
-    pub plaintext_queue: Vec<MLSPlaintext>,
-    pub public_queue: ProposalQueue,
-    pub own_queue: ProposalQueue,
-    pub pending_kpbs: Vec<KeyPackageBundle>,
+    pub tree: RatchetTree,
     pub interim_transcript_hash: Vec<u8>,
 }
 
-impl Codec for Group {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite_name.encode(buffer)?;
-        self.client.encode(buffer)?;
-        self.group_context.encode(buffer)?;
-        self.generation.encode(buffer)?;
-        self.epoch_secrets.encode(buffer)?;
-        self.astree.encode(buffer)?;
-        self.tree.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.plaintext_queue)?;
-        self.public_queue.encode(buffer)?;
-        self.own_queue.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.pending_kpbs)?;
-        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite_name = CiphersuiteName::decode(cursor)?;
-        let client = Client::decode(cursor)?;
-        let group_context = GroupContext::decode(cursor)?;
-        let generation = u32::decode(cursor)?;
-        let epoch_secrets = EpochSecrets::decode(cursor)?;
-        let astree = ASTree::decode(cursor)?;
-        let tree = Tree::decode(cursor)?;
-        let plaintext_queue = decode_vec(VecSize::VecU32, cursor)?;
-        let public_queue = ProposalQueue::decode(cursor)?;
-        let own_queue = ProposalQueue::decode(cursor)?;
-        let pending_kpbs = decode_vec(VecSize::VecU32, cursor)?;
-        let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let group = Group {
-            ciphersuite_name,
-            client,
-            group_context,
-            generation,
-            epoch_secrets,
-            astree,
-            tree,
-            plaintext_queue,
-            public_queue,
-            own_queue,
-            pending_kpbs,
-            interim_transcript_hash,
-        };
-        Ok(group)
-    }
-}
-
-impl Group {
-    // fn new(creator: &Client, id: &[u8], ciphersuite: Ciphersuite, validator: Validator) -> Self;
-    pub fn new(client: Client, group_id: GroupId, ciphersuite_name: CiphersuiteName) -> Self {
-        // TODO: add validator, use reference for Client
-        let ciphersuite = client.get_ciphersuite(&ciphersuite_name).clone();
-        let identity = client.get_identity(&ciphersuite_name);
+impl GroupOps for Group {
+    fn new(creator: Client, id: &[u8], ciphersuite_name: CiphersuiteName) -> Group {
+        let group_id = GroupId { value: id.to_vec() };
+        let ciphersuite = creator.get_ciphersuite(&ciphersuite_name).clone();
+        let identity = creator.get_identity(&ciphersuite_name);
         let kpb = KeyPackageBundle::new(ciphersuite.clone(), identity, None); // TODO remove clone
         let epoch_secrets = EpochSecrets::new();
         let astree = ASTree::new(
@@ -169,8 +134,7 @@ impl Group {
             &epoch_secrets.application_secret,
             LeafIndex::from(1u32),
         );
-        let tree = Tree::new(ciphersuite.clone(), kpb);
-        let plaintext_queue = vec![];
+        let tree = RatchetTree::new(ciphersuite.clone(), kpb);
         let group_context = GroupContext {
             group_id,
             epoch: GroupEpoch(0),
@@ -180,69 +144,36 @@ impl Group {
         let interim_transcript_hash = vec![];
         Group {
             ciphersuite_name,
-            client,
+            client: creator,
             group_context,
             generation: 0,
             epoch_secrets,
             astree,
             tree,
-            plaintext_queue,
-            public_queue: ProposalQueue::new(ciphersuite),
-            own_queue: ProposalQueue::new(ciphersuite),
-            pending_kpbs: vec![],
             interim_transcript_hash,
         }
     }
-    fn new_with_members(
-        // TODO: not part of API
-        client: Client,
-        group_id: GroupId,
-        ciphersuite_name: CiphersuiteName,
-        kps: &[KeyPackage],
-    ) -> (Self, (Welcome, Extension)) {
-        let mut group = Group::new(client, group_id, ciphersuite_name);
-        let proposals: Vec<Proposal> = kps
-            .par_iter()
-            .map(|kp| {
-                let add_proposal = AddProposal {
-                    key_package: kp.clone(), // TODO Check kp
-                };
-                Proposal::Add(add_proposal)
-            })
-            .collect();
-        for proposal in proposals {
-            group.add_own_proposal(proposal);
-        }
-        let (commit, _mc, welcome_option) = group.create_commit(None);
-        group.process_commit(commit);
-        (group, welcome_option.unwrap())
-    }
-    pub fn new_from_welcome(
-        client: Client,
-        welcome_bundle: WelcomeBundle,
-        kpb: KeyPackageBundle,
+    // Join a group from a welcome message
+    fn new_from_welcome(
+        joiner: Client,
+        welcome: Welcome,
+        ratchet_tree: RatchetTree,
+        tree_hash: &[u8],
     ) -> Group {
-        let (welcome, ratchet_tree_extension) = welcome_bundle;
+        // TODO: Remove consumed key from client
         let ciphersuite_name = welcome.cipher_suite;
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
-        if &ciphersuite != kpb.get_key_package().get_cipher_suite() {
+        let mut tree = ratchet_tree;
+        let (key_package, private_key, egs) =
+            match joiner.get_key_package_from_welcome_secrets(&welcome.secrets) {
+                Some((kp, pk, egs)) => (kp, pk, egs),
+                None => panic!("No secret found in Welcome"),
+            };
+        if &ciphersuite != key_package.get_cipher_suite() {
             panic!("Ciphersuite mismatch"); // TODO error handling
         }
-        let key_package_hash = kpb.get_key_package().hash();
-        let secret_option = welcome
-            .secrets
-            .iter()
-            .find(|&secret| secret.key_package_hash == key_package_hash);
-        if secret_option.is_none() {
-            panic!("No secret found in Welcome"); // TODO error handling
-        }
-        let secret = secret_option.unwrap();
-        let group_secrets_bytes = ciphersuite.hpke_open(
-            secret.encrypted_group_secrets.clone(),
-            kpb.get_private_key(),
-            &[],
-            &[],
-        );
+        let group_secrets_bytes =
+            ciphersuite.hpke_open(egs.encrypted_group_secrets.clone(), &private_key, &[], &[]);
         let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
         let welcome_secret = ciphersuite
             .hkdf_expand(
@@ -270,17 +201,8 @@ impl Group {
             )
             .unwrap();
         let group_info = GroupInfo::decode_detached(&group_info_bytes).unwrap();
-        let tree_hash = group_info.tree_hash.clone();
-        debug_assert_eq!(
-            tree_hash,
-            ciphersuite.hash(&ratchet_tree_extension.extension_data)
-        );
-        let ratchet_tree =
-            RatchetTreeExtension::new_from_bytes(&ratchet_tree_extension.extension_data);
-        let tree = ratchet_tree.tree;
-        let signer_node = tree[NodeIndex::from(group_info.signer_index).as_usize()]
-            .clone()
-            .unwrap();
+        debug_assert_eq!(tree_hash, group_info.tree_hash);
+        let signer_node = tree.nodes[NodeIndex::from(group_info.signer_index).as_usize()].clone();
         debug_assert_eq!(signer_node.node_type, NodeType::Leaf);
         let signer_key_package = signer_node.key_package.unwrap();
         debug_assert!(signer_key_package.verify());
@@ -288,13 +210,13 @@ impl Group {
         debug_assert!(signer_key_package
             .get_credential()
             .verify(&payload, &group_info.signature));
-        let nodes = tree;
-        debug_assert!(Tree::verify_integrity(ciphersuite, &nodes));
+        let nodes = tree.public_key_tree();
+        debug_assert!(RatchetTree::verify_integrity(ciphersuite, &nodes));
         let mut index_option = None;
         for (i, node_option) in nodes.iter().enumerate() {
             if let Some(node) = node_option {
                 if let Some(kp) = node.key_package.clone() {
-                    if &kp == kpb.get_key_package() {
+                    if kp == key_package {
                         index_option = Some(NodeIndex::from(i));
                         break;
                     }
@@ -307,7 +229,6 @@ impl Group {
         } else {
             panic!("Own key package not found in welcome tree");
         };
-        let mut tree = Tree::new_from_nodes(ciphersuite, kpb, &nodes, index);
         if let Some(path_secret) = group_secrets.path_secret {
             let common_ancestor =
                 treemath::common_ancestor(index, NodeIndex::from(group_info.signer_index));
@@ -344,7 +265,6 @@ impl Group {
             &epoch_secrets.application_secret,
             tree.leaf_count(),
         );
-        let plaintext_queue = vec![];
 
         debug_assert_eq!(
             Confirmation::new(
@@ -357,96 +277,100 @@ impl Group {
 
         Group {
             ciphersuite_name: welcome.cipher_suite,
-            client,
+            client: joiner,
             group_context,
             generation: 0,
             epoch_secrets,
             astree,
             tree,
-            plaintext_queue,
-            public_queue: ProposalQueue::new(config.ciphersuite),
-            own_queue: ProposalQueue::new(config.ciphersuite),
-            pending_kpbs: vec![],
             interim_transcript_hash: group_info.interim_transcript_hash,
         }
     }
-    pub fn create_add_proposal(&mut self, kp: &KeyPackage, authenticated_data: Option<&[u8]>) {
+
+    // Create handshake messages
+    fn create_add_proposal(
+        &self,
+        aad: &[u8],
+        joiner_key_package: KeyPackage,
+    ) -> (MLSPlaintext, Proposal) {
         let add_proposal = AddProposal {
-            key_package: kp.clone(), // TODO Check kp
+            key_package: joiner_key_package.clone(),
         };
         let proposal = Proposal::Add(add_proposal);
-        self.add_own_proposal(proposal.clone());
-        let content = MLSPlaintextContentType::Proposal(proposal);
+        let content = MLSPlaintextContentType::Proposal(proposal.clone());
         let mls_plaintext = MLSPlaintext::new(
             self.get_sender_index(),
-            authenticated_data.unwrap_or(&[]),
+            aad,
             content,
             &self.get_identity().keypair,
             &self.get_context(),
         );
-        self.plaintext_queue.push(mls_plaintext);
+        (mls_plaintext, proposal)
     }
-    pub fn create_update_proposal(&mut self, authenticated_data: Option<&[u8]>) {
-        let kpb = KeyPackageBundle::new(self.get_ciphersuite().clone(), &self.get_identity(), None);
-        let update_proposal = UpdateProposal {
-            key_package: kpb.get_key_package().clone(), // TODO Check KP
-        };
+    fn create_update_proposal(
+        &self,
+        aad: &[u8],
+        key_package: KeyPackage,
+    ) -> (MLSPlaintext, Proposal) {
+        let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        self.add_own_proposal(proposal.clone());
-        self.pending_kpbs.push(kpb);
-        let content = MLSPlaintextContentType::Proposal(proposal);
+        let content = MLSPlaintextContentType::Proposal(proposal.clone());
         let mls_plaintext = MLSPlaintext::new(
             self.get_sender_index(),
-            authenticated_data.unwrap_or(&[]),
+            aad,
             content,
             &self.get_identity().keypair,
             &self.get_context(),
         );
-        self.plaintext_queue.push(mls_plaintext);
+        (mls_plaintext, proposal)
     }
-    pub fn create_remove_proposal(&mut self, removed: u32, authenticated_data: Option<&[u8]>) {
-        let remove_proposal = RemoveProposal { removed };
-        let proposal = Proposal::Remove(remove_proposal); // TODO Check index
-        self.add_own_proposal(proposal.clone());
-        let content = MLSPlaintextContentType::Proposal(proposal);
+    fn create_remove_proposal(
+        &self,
+        aad: &[u8],
+        removed_index: LeafIndex,
+    ) -> (MLSPlaintext, Proposal) {
+        let remove_proposal = RemoveProposal {
+            removed: removed_index.as_u32(),
+        };
+        let proposal = Proposal::Remove(remove_proposal);
+        let content = MLSPlaintextContentType::Proposal(proposal.clone());
         let mls_plaintext = MLSPlaintext::new(
             self.get_sender_index(),
-            authenticated_data.unwrap_or(&[]),
+            aad,
             content,
             &self.get_identity().keypair,
             &self.get_context(),
         );
-        self.plaintext_queue.push(mls_plaintext);
+        (mls_plaintext, proposal)
     }
-    pub fn flush_queue(&mut self, encrypt_hs_messages: bool) -> Vec<Message> {
-        if !encrypt_hs_messages {
-            //self.plaintext_queue.clone()
-        }
-        vec![]
-    }
-    fn add_own_proposal(&mut self, proposal: Proposal) {
-        // TODO remove kpb from QueuedProposal or get rid of this altogether
-        let queued_proposal = QueuedProposal::new(proposal, self.get_sender_index(), None);
-        self.own_queue.add(queued_proposal.clone());
-        self.public_queue.add(queued_proposal);
-    }
-    pub fn create_commit(
-        &mut self,
-        authenticated_data: Option<&[u8]>,
-    ) -> (MLSPlaintext, MembershipChanges, Option<WelcomeBundle>) {
+    fn create_commit(
+        &self,
+        aad: &[u8],
+        proposals: Vec<(Sender, Proposal)>,
+        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+        force_self_update: bool,
+    ) -> (MLSPlaintext, Option<Welcome>) {
         let ciphersuite = self.get_ciphersuite().clone();
         // TODO Dedup proposals
-        let proposal_id_list = self.public_queue.clone().get_commit_lists();
+        let mut public_queue = ProposalQueue::new();
+        for (sender, proposal) in proposals {
+            let queued_proposal = QueuedProposal::new(proposal, sender.as_leaf_index(), None);
+            public_queue.add(queued_proposal, &ciphersuite);
+        }
+        let proposal_id_list = public_queue.clone().get_commit_lists(&ciphersuite);
         let mut new_tree = self.tree.clone();
 
-        let (membership_changes, invited_members, _self_removed) = new_tree.apply_proposals(
-            proposal_id_list.clone(),
-            self.public_queue.clone(),
-            self.pending_kpbs.clone(),
-        );
+        let mut pending_kpbs = vec![];
+        for (pk, kp) in own_key_packages {
+            pending_kpbs.push(KeyPackageBundle::from_key_package(kp, pk));
+        }
 
-        let path_required = membership_changes.path_required();
+        let (membership_changes, invited_members, _self_removed) =
+            new_tree.apply_proposals(proposal_id_list.clone(), public_queue, pending_kpbs);
 
+        let path_required = membership_changes.path_required() || force_self_update;
+
+        // TODO: store new keys in Client
         let (path, path_secrets_option, commit_secret) = if path_required {
             let keypair = ciphersuite.new_hpke_keypair();
             let (commit_secret, kpb, path, path_secrets) = new_tree.update_own_leaf(
@@ -456,7 +380,7 @@ impl Group {
                 &self.group_context.serialize(),
                 true,
             );
-            self.pending_kpbs.push(kpb);
+            //self.pending_kpbs.push(kpb);
             (path, path_secrets, commit_secret)
         } else {
             let commit_secret = CommitSecret(zero(self.get_ciphersuite().hash_length()));
@@ -507,7 +431,7 @@ impl Group {
         let content = MLSPlaintextContentType::Commit((commit, confirmation.clone()));
         let mls_plaintext = MLSPlaintext::new(
             self.get_sender_index(),
-            authenticated_data.unwrap_or(&[]),
+            aad,
             content,
             &self.get_identity().keypair,
             &self.get_context(),
@@ -606,19 +530,35 @@ impl Group {
                 secrets,
                 encrypted_group_info,
             };
-            (
-                mls_plaintext,
-                membership_changes,
-                Some((welcome, ratchet_tree_extension)),
-            )
+            (mls_plaintext, Some(welcome))
         } else {
-            (mls_plaintext, membership_changes, None)
+            (mls_plaintext, None)
         }
     }
-    pub fn process_commit(&mut self, mls_plaintext: MLSPlaintext) -> MembershipChanges {
-        let ciphersuite = self.get_ciphersuite();
+
+    // Apply a Commit message
+    fn apply_commit(
+        &mut self,
+        mls_plaintext: MLSPlaintext,
+        proposals: Vec<(Sender, Proposal)>,
+        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+    ) {
+        let ciphersuite = self.get_ciphersuite().clone();
+        let mut public_queue = ProposalQueue::new();
+        for (sender, proposal) in proposals {
+            let queued_proposal = QueuedProposal::new(proposal, sender.as_leaf_index(), None);
+            public_queue.add(queued_proposal, &ciphersuite);
+        }
+        let proposal_id_list = public_queue.clone().get_commit_lists(&ciphersuite);
+        let mut new_tree = self.tree.clone();
+
+        let mut pending_kpbs = vec![];
+        for (pk, kp) in own_key_packages {
+            pending_kpbs.push(KeyPackageBundle::from_key_package(kp, pk));
+        }
+
         let sender = mls_plaintext.sender.sender;
-        let is_own_commit = mls_plaintext.sender.as_tree_index() == self.tree.own_leaf.leaf_index;
+        let is_own_commit = mls_plaintext.sender.as_node_index() == self.tree.own_leaf.leaf_index;
         // TODO return an error in case of failure
         debug_assert_eq!(mls_plaintext.epoch, self.group_context.epoch);
         let (commit, confirmation) = match mls_plaintext.content.clone() {
@@ -634,15 +574,12 @@ impl Group {
             adds: commit.adds.clone(),
         };
 
-        let (membership_changes, _invited_members, self_removed) = new_tree.apply_proposals(
-            proposal_id_list,
-            self.public_queue.clone(),
-            self.pending_kpbs.clone(),
-        );
+        let (membership_changes, _invited_members, self_removed) =
+            new_tree.apply_proposals(proposal_id_list, public_queue.clone(), pending_kpbs.clone());
 
         // TODO save this state in the group to prevent future operations
         if self_removed {
-            return membership_changes;
+            return;
         }
 
         let commit_secret = if let Some(path) = commit.path.clone() {
@@ -651,8 +588,7 @@ impl Group {
             debug_assert!(kp.verify());
             debug_assert!(mls_plaintext.verify(&self.group_context, kp.get_credential()));
             if is_own_commit {
-                let own_kpb = self
-                    .pending_kpbs
+                let own_kpb = pending_kpbs
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == &kp)
                     .unwrap();
@@ -749,58 +685,34 @@ impl Group {
             &self.epoch_secrets.application_secret,
             self.tree.leaf_count(),
         );
-        self.own_queue = ProposalQueue::new(self.get_ciphersuite().clone());
-        self.public_queue = ProposalQueue::new(self.get_ciphersuite().clone());
+    }
 
-        // TODO: return discarded proposals
-        membership_changes
-    }
-    pub fn process_proposal(&mut self, mls_plaintext: MLSPlaintext) {
-        let validator = Validator::new(&self);
-        debug_assert_eq!(mls_plaintext.content_type, ContentType::Proposal);
-        let proposal_option = match mls_plaintext.content {
-            MLSPlaintextContentType::Proposal(proposal) => Some(proposal),
-            _ => None,
-        };
-        debug_assert!(proposal_option.is_some());
-        if let Some(proposal) = proposal_option {
-            debug_assert!(validator.validate_proposal(&proposal, mls_plaintext.sender));
-            let queued_proposal = QueuedProposal {
-                proposal,
-                sender: mls_plaintext.sender,
-                own_kpb: None,
-            };
-            self.public_queue.add(queued_proposal);
-        }
-    }
-    pub fn create_application_message(
-        &mut self,
-        message: &[u8],
-        authenticated_data: Option<&[u8]>,
-    ) -> MLSPlaintext {
-        let content = MLSPlaintextContentType::Application(message.to_vec());
+    // Create application message
+    fn create_application_message(&self, aad: &[u8], msg: &[u8]) -> MLSPlaintext {
+        let content = MLSPlaintextContentType::Application(msg.to_vec());
         MLSPlaintext::new(
             self.get_sender_index(),
-            authenticated_data.unwrap_or(&[]),
+            aad,
             content,
             &self.get_identity().keypair,
             &self.get_context(),
         )
     }
-    pub fn encrypt(&mut self, mls_plaintext: &MLSPlaintext) -> Vec<u8> {
+
+    // Encrypt/Decrypt MLS message
+    fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let context = &self.get_context();
-        let mls_ciphertext = MLSCiphertext::new_from_plaintext(
+        MLSCiphertext::new_from_plaintext(
             &mls_plaintext,
             &self.get_ciphersuite().clone(),
             &mut self.astree,
             &self.epoch_secrets,
             context,
-        );
-        mls_ciphertext.encode_detached().unwrap() // TODO: error handling
+        )
     }
-    pub fn decrypt(&mut self, message: &[u8]) -> MLSPlaintext {
+    fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext {
         let context = &self.get_context();
-        let mls_ciphertext = MLSCiphertext::decode_detached(&message).unwrap();
+        //let mls_ciphertext = MLSCiphertext::decode_detached(&mls_ciphertext).unwrap();
         mls_ciphertext.to_plaintext(
             &self.get_ciphersuite().clone(),
             &self.roster(),
@@ -809,6 +721,41 @@ impl Group {
             context,
         )
     }
+
+    // Exporter
+    fn get_exporter_secret(&self) -> Vec<u8> {
+        unimplemented!()
+    }
+
+    // Validation
+    fn validate_welcome(welcome_msg: Welcome) -> WelcomeValidationResult {
+        unimplemented!()
+    }
+    fn validate_proposal(&self, proposal: Proposal) -> ProposalValidationResult {
+        unimplemented!()
+    }
+    fn validate_commit(&self, commit: Commit) -> CommitValidationResult {
+        unimplemented!()
+    }
+    fn validate_mls_plaintext(&self, mls_plaintext: MLSPlaintext) -> MlsPlaintextValidationResult {
+        unimplemented!()
+    }
+    fn validate_proposal_against_policy(
+        &self,
+        proposal: Proposal,
+    ) -> ProposalPolicyValidationResult {
+        unimplemented!()
+    }
+    fn validate_commit_against_policy(
+        &self,
+        commit: Commit,
+        proposals: Vec<Proposal>,
+    ) -> CommitPolicyValidationResult {
+        unimplemented!()
+    }
+}
+
+impl Group {
     pub fn update_confirmed_transcript_hash(
         ciphersuite: Ciphersuite,
         mls_plaintext_commit_content: &MLSPlaintextCommitContent,
@@ -858,6 +805,41 @@ impl Group {
     }
 }
 
+impl Codec for Group {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.ciphersuite_name.encode(buffer)?;
+        self.client.encode(buffer)?;
+        self.group_context.encode(buffer)?;
+        self.generation.encode(buffer)?;
+        self.epoch_secrets.encode(buffer)?;
+        self.astree.encode(buffer)?;
+        self.tree.encode(buffer)?;
+        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let ciphersuite_name = CiphersuiteName::decode(cursor)?;
+        let client = Client::decode(cursor)?;
+        let group_context = GroupContext::decode(cursor)?;
+        let generation = u32::decode(cursor)?;
+        let epoch_secrets = EpochSecrets::decode(cursor)?;
+        let astree = ASTree::decode(cursor)?;
+        let tree = RatchetTree::decode(cursor)?;
+        let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let group = Group {
+            ciphersuite_name,
+            client,
+            group_context,
+            generation,
+            epoch_secrets,
+            astree,
+            tree,
+            interim_transcript_hash,
+        };
+        Ok(group)
+    }
+}
+
 pub enum GroupError {
     Codec(CodecError),
 }
@@ -879,10 +861,13 @@ impl GroupId {
             value: randombytes(16),
         }
     }
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub fn from_slice(bytes: &[u8]) -> Self {
         GroupId {
             value: bytes.to_vec(),
         }
+    }
+    pub fn as_slice(&self) -> Vec<u8> {
+        self.value.clone()
     }
 }
 
@@ -955,18 +940,16 @@ impl Codec for GroupContext {
 
 #[derive(Clone, Copy)]
 pub struct GroupConfig {
-    pub(crate) ciphersuite: Ciphersuite,
     pub(crate) padding_block_size: u32,
-    pub(crate) update_policy: u8, // FIXME
+    pub(crate) additional_as_epochs: u32,
 }
 
 impl GroupConfig {
     /// Create a new `GroupConfig` with the given ciphersuite.
     pub fn new(ciphersuite: Ciphersuite) -> Self {
         Self {
-            ciphersuite,
             padding_block_size: 10,
-            update_policy: 0,
+            additional_as_epochs: 0,
         }
     }
 
@@ -979,30 +962,24 @@ impl GroupConfig {
 impl Default for GroupConfig {
     fn default() -> Self {
         Self {
-            ciphersuite: Ciphersuite::new(
-                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            ),
             padding_block_size: 10,
-            update_policy: 0,
+            additional_as_epochs: 0,
         }
     }
 }
 
 impl Codec for GroupConfig {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
         self.padding_block_size.encode(buffer)?;
-        self.update_policy.encode(buffer)?;
+        self.additional_as_epochs.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
         let padding_block_size = u32::decode(cursor)?;
-        let update_policy = u8::decode(cursor)?;
+        let additional_as_epochs = u32::decode(cursor)?;
         Ok(GroupConfig {
-            ciphersuite,
             padding_block_size,
-            update_policy,
+            additional_as_epochs,
         })
     }
 }

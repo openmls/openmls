@@ -187,6 +187,13 @@ impl KeyPackageBundle {
         }
     }
 
+    pub fn from_key_package(key_package: KeyPackage, private_key: HPKEPrivateKey) -> Self {
+        Self {
+            key_package,
+            private_key,
+        }
+    }
+
     /// Get a reference to the `KeyPackage`.
     pub fn get_key_package(&self) -> &KeyPackage {
         &self.key_package

@@ -132,7 +132,7 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub fn to_proposal_id(&self, ciphersuite: Ciphersuite) -> ProposalID {
+    pub fn to_proposal_id(&self, ciphersuite: &Ciphersuite) -> ProposalID {
         ProposalID::from_proposal(ciphersuite, self)
     }
     pub fn as_add(&self) -> Option<AddProposal> {
@@ -190,7 +190,7 @@ pub struct ProposalID {
 }
 
 impl ProposalID {
-    pub fn from_proposal(ciphersuite: Ciphersuite, proposal: &Proposal) -> Self {
+    pub fn from_proposal(ciphersuite: &Ciphersuite, proposal: &Proposal) -> Self {
         let encoded = proposal.encode_detached().unwrap();
         let value = ciphersuite.hash(&encoded);
         Self { value }
@@ -270,19 +270,17 @@ impl Codec for QueuedProposal {
 
 #[derive(Clone)]
 pub struct ProposalQueue {
-    ciphersuite: Ciphersuite,
     tuples: HashMap<ShortProposalID, (ProposalID, QueuedProposal)>,
 }
 
 impl ProposalQueue {
-    pub fn new(ciphersuite: Ciphersuite) -> Self {
+    pub fn new() -> Self {
         ProposalQueue {
-            ciphersuite,
             tuples: HashMap::new(),
         }
     }
-    pub fn add(&mut self, queued_proposal: QueuedProposal) {
-        let pi = ProposalID::from_proposal(self.ciphersuite, &queued_proposal.proposal);
+    pub fn add(&mut self, queued_proposal: QueuedProposal, ciphersuite: &Ciphersuite) {
+        let pi = ProposalID::from_proposal(ciphersuite, &queued_proposal.proposal);
         let spi = ShortProposalID::from_proposal_id(&pi);
         self.tuples.entry(spi).or_insert((pi, queued_proposal));
     }
@@ -290,15 +288,15 @@ impl ProposalQueue {
         let spi = ShortProposalID::from_proposal_id(&proposal_id);
         self.tuples.get(&spi)
     }
-    pub fn get_commit_lists(&self) -> ProposalIDList {
+    pub fn get_commit_lists(&self, ciphersuite: &Ciphersuite) -> ProposalIDList {
         let mut updates = vec![];
         let mut removes = vec![];
         let mut adds = vec![];
         for (_spi, p) in self.tuples.values() {
             match p.proposal {
-                Proposal::Update(_) => updates.push(p.proposal.to_proposal_id(self.ciphersuite)),
-                Proposal::Remove(_) => removes.push(p.proposal.to_proposal_id(self.ciphersuite)),
-                Proposal::Add(_) => adds.push(p.proposal.to_proposal_id(self.ciphersuite)),
+                Proposal::Update(_) => updates.push(p.proposal.to_proposal_id(ciphersuite)),
+                Proposal::Remove(_) => removes.push(p.proposal.to_proposal_id(ciphersuite)),
+                Proposal::Add(_) => adds.push(p.proposal.to_proposal_id(ciphersuite)),
             }
         }
         ProposalIDList {
@@ -311,17 +309,12 @@ impl ProposalQueue {
 
 impl Codec for ProposalQueue {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
         self.tuples.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
         let tuples = HashMap::<ShortProposalID, (ProposalID, QueuedProposal)>::decode(cursor)?;
-        Ok(ProposalQueue {
-            ciphersuite,
-            tuples,
-        })
+        Ok(ProposalQueue { tuples })
     }
 }
 

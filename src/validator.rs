@@ -18,13 +18,14 @@ use crate::framing::*;
 use crate::group::*;
 use crate::messages::*;
 
-pub struct Validator<'a, Group> {
+/*
+pub struct Validator<'a> {
     group: &'a Group,
 }
 
-impl<'a> Validator<'a, Group> {
-    pub fn new(group: &'a Group) -> Self {
-        Self { group }
+impl<'a> Validator<'a> {
+    pub fn new(group: &'b Group) -> Validator<'b> {
+        Validator { group }
     }
     pub fn validate_proposal(&self, proposal: &Proposal, _sender: Sender) -> bool {
         let members = self.group.roster();
@@ -63,3 +64,4 @@ impl<'a> Validator<'a, Group> {
         }
     }
 }
+*/
