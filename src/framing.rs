@@ -23,11 +23,6 @@ use crate::schedule::*;
 use crate::tree::astree::*;
 use crate::utils::*;
 
-pub enum Message {
-    Plain(MLSPlaintext),
-    Encrypted(MLSCiphertext),
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
     pub group_id: GroupId,

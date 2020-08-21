@@ -45,8 +45,9 @@ pub type CommitPolicyValidationResult = Result<(), CommitPolicyError>;
 
 pub trait GroupOps {
     // Create new group.
-    fn new(creator: Client, id: &[u8], ciphersuite_name: CiphersuiteName) -> Group;
+    fn new(creator: Client, group_id: &[u8], ciphersuite_name: CiphersuiteName) -> Group;
     // Join a group from a welcome message
+    // TODO: add support for Welcome Extensions
     fn new_from_welcome(
         joiner: Client,
         welcome: Welcome,
@@ -94,6 +95,7 @@ pub trait GroupOps {
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext;
 
     // Exporter
+    // TODO: add the label and implement the whole exporter
     fn get_exporter_secret(&self) -> Vec<u8>;
 
     // Validation
@@ -201,7 +203,7 @@ impl GroupOps for Group {
             )
             .unwrap();
         let group_info = GroupInfo::decode_detached(&group_info_bytes).unwrap();
-        debug_assert_eq!(tree_hash, group_info.tree_hash);
+        debug_assert_eq!(tree_hash.to_vec(), group_info.tree_hash);
         let signer_node = tree.nodes[NodeIndex::from(group_info.signer_index).as_usize()].clone();
         debug_assert_eq!(signer_node.node_type, NodeType::Leaf);
         let signer_key_package = signer_node.key_package.unwrap();
