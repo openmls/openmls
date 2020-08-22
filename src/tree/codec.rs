@@ -62,19 +62,16 @@ impl Codec for PathKeypairs {
 
 impl Codec for OwnLeaf {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
         self.kpb.encode(buffer)?;
         self.leaf_index.as_u32().encode(buffer)?;
         self.path_keypairs.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
         let kpb = KeyPackageBundle::decode(cursor)?;
         let leaf_index = NodeIndex::from(u32::decode(cursor)?);
         let path_keypairs = PathKeypairs::decode(cursor)?;
         Ok(OwnLeaf {
-            ciphersuite,
             kpb,
             leaf_index,
             path_keypairs,

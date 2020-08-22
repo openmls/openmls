@@ -14,20 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::{signable::*, *};
+use crate::ciphersuite::*;
 use crate::client::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::extensions::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
-use crate::tree::astree::*;
-use crate::tree::treemath;
 use crate::tree::*;
-use crate::utils::*;
-use rayon::prelude::*;
 
 pub struct ManagedGroup {
     pub group: Group,
@@ -57,16 +52,16 @@ impl ManagedGroup {
         ratchet_tree: RatchetTree,
         tree_hash: &[u8],
         kpb: KeyPackageBundle,
-    ) -> ManagedGroup {
-        let group = Group::new_from_welcome(client, welcome, ratchet_tree, tree_hash);
-        ManagedGroup {
+    ) -> Result<ManagedGroup, WelcomeError> {
+        let group = Group::new_from_welcome(client, welcome, ratchet_tree, tree_hash)?;
+        Ok(ManagedGroup {
             group,
             generation: 0,
             plaintext_queue: vec![],
             public_queue: ProposalQueue::new(),
             own_queue: ProposalQueue::new(),
             pending_kpbs: vec![],
-        }
+        })
     }
     pub fn new_with_members() {}
     pub fn propose_add_member() {}
@@ -77,17 +72,17 @@ impl ManagedGroup {
 
     pub fn send_application_message() {}
 
-    pub fn roster(&self) -> Vec<Credential> {
-        let mut roster = Vec::with_capacity(self.group.tree.leaf_count().as_usize());
+    pub fn get_members(&self) -> Vec<Credential> {
+        let mut members = Vec::with_capacity(self.group.tree.leaf_count().as_usize());
         for i in 0..self.group.tree.leaf_count().as_usize() {
             let node =
                 self.group.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
             let credential = node.key_package.unwrap().get_credential().clone();
-            roster.push(credential);
+            members.push(credential);
         }
-        roster
+        members
     }
-    fn get_ciphersuite_name(&self) -> &Ciphersuite {
+    pub fn get_ciphersuite_name(&self) -> &Ciphersuite {
         self.group
             .client
             .get_ciphersuite(&self.group.ciphersuite_name)

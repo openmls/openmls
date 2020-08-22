@@ -129,7 +129,7 @@ impl MLSCiphertext {
             None => sender_data.sender.as_u32().encode_detached().unwrap(),
         };
         let mut handshake_nonce_input = hkdf_expand_label(
-            ciphersuite.clone(),
+            ciphersuite,
             &epoch_secrets.handshake_secret,
             "hs nonce",
             &sender_id,
@@ -141,7 +141,7 @@ impl MLSCiphertext {
         }
         let handshake_nonce = AeadNonce::from_slice(&handshake_nonce_input);
         let handshake_key_input = hkdf_expand_label(
-            ciphersuite.clone(),
+            ciphersuite,
             &epoch_secrets.handshake_secret,
             "hs key",
             &sender_id,
@@ -170,7 +170,7 @@ impl MLSCiphertext {
         }
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
         let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite.clone(),
+            ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
@@ -272,7 +272,7 @@ impl MLSCiphertext {
     ) -> MLSPlaintext {
         let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
         let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite.clone(),
+            ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd key",
             &[],
@@ -495,7 +495,7 @@ impl Codec for ContentType {
 pub enum MLSPlaintextContentType {
     Application(Vec<u8>),
     Proposal(Proposal),
-    Commit((Commit, Confirmation)),
+    Commit((Commit, ConfirmationTag)),
 }
 
 impl Codec for MLSPlaintextContentType {
@@ -530,7 +530,7 @@ impl Codec for MLSPlaintextContentType {
             }
             ContentType::Commit => {
                 let commit = Commit::decode(cursor)?;
-                let confirmation = Confirmation::decode(cursor)?;
+                let confirmation = ConfirmationTag::decode(cursor)?;
                 Ok(MLSPlaintextContentType::Commit((commit, confirmation)))
             }
             _ => Err(CodecError::DecodingError),

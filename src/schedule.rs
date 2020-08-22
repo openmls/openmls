@@ -19,7 +19,7 @@ use crate::codec::*;
 use crate::messages::*;
 
 pub fn derive_secret(
-    ciphersuite: Ciphersuite,
+    ciphersuite: &Ciphersuite,
     secret: &[u8],
     label: &str,
     context: &[u8],
@@ -34,7 +34,7 @@ pub fn derive_secret(
 }
 
 pub fn mls_exporter(
-    ciphersuite: Ciphersuite,
+    ciphersuite: &Ciphersuite,
     epoch_secrets: &EpochSecrets,
     label: &str,
     context: &[u8],
@@ -51,7 +51,7 @@ pub fn mls_exporter(
 }
 
 pub fn hkdf_expand_label(
-    ciphersuite: Ciphersuite,
+    ciphersuite: &Ciphersuite,
     secret: &[u8],
     label: &str,
     context: &[u8],
@@ -119,7 +119,7 @@ impl EpochSecrets {
     }
     pub fn get_new_epoch_secrets(
         &mut self,
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         commit_secret: CommitSecret,
         psk: Option<&[u8]>,
         group_state: &[u8],
@@ -146,7 +146,7 @@ impl EpochSecrets {
     }
 
     pub fn derive_epoch_secrets(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         epoch_secret: &[u8],
         welcome_secret: Vec<u8>,
         group_state: &[u8],

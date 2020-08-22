@@ -268,7 +268,7 @@ impl Codec for QueuedProposal {
     }
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct ProposalQueue {
     tuples: HashMap<ShortProposalID, (ProposalID, QueuedProposal)>,
 }
@@ -387,29 +387,29 @@ impl Codec for Commit {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Confirmation(pub Vec<u8>);
+pub struct ConfirmationTag(pub Vec<u8>);
 
-impl Confirmation {
+impl ConfirmationTag {
     pub fn new(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         confirmation_key: &[u8],
         confirmed_transcript_hash: &[u8],
     ) -> Self {
-        Confirmation(ciphersuite.hmac(confirmation_key, confirmed_transcript_hash))
+        ConfirmationTag(ciphersuite.hkdf_extract(confirmation_key, confirmed_transcript_hash))
     }
     pub fn new_empty() -> Self {
-        Confirmation(vec![])
+        ConfirmationTag(vec![])
     }
 }
 
-impl Codec for Confirmation {
+impl Codec for ConfirmationTag {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.0)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let inner = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Confirmation(inner))
+        Ok(ConfirmationTag(inner))
     }
 }
 
@@ -548,21 +548,21 @@ impl Codec for PathSecret {
 }
 
 pub struct GroupSecrets {
-    pub epoch_secret: Vec<u8>,
+    pub joiner_secret: Vec<u8>,
     pub path_secret: Option<PathSecret>,
 }
 
 impl Codec for GroupSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.epoch_secret)?;
+        encode_vec(VecSize::VecU8, buffer, &self.joiner_secret)?;
         self.path_secret.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let epoch_secret = decode_vec(VecSize::VecU8, cursor)?;
+        let joiner_secret = decode_vec(VecSize::VecU8, cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
         Ok(GroupSecrets {
-            epoch_secret,
+            joiner_secret,
             path_secret,
         })
     }

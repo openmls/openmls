@@ -181,11 +181,6 @@ impl Ciphersuite {
         get_digest_size(self.hash)
     }
 
-    /// Compute the hmac with the given `key` on `data`.
-    pub(crate) fn hmac(&self, key: &[u8], data: &[u8]) -> Vec<u8> {
-        hmac(self.hmac, key, data, None)
-    }
-
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Vec<u8> {
         hkdf_extract(self.hmac, salt, ikm)
@@ -342,7 +337,7 @@ impl HPKEPrivateKey {
 
 impl HPKEKeyPair {
     /// Build a new HPKE key pair from the given `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8], ciphersuite: Ciphersuite) -> Self {
+    pub(crate) fn from_slice(bytes: &[u8], ciphersuite: &Ciphersuite) -> Self {
         let private_key = HPKEPrivateKey::from_slice(bytes);
         let public_key = private_key.public_key(ciphersuite.hpke_kem);
         Self {

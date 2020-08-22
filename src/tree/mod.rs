@@ -99,7 +99,7 @@ impl Node {
     pub fn is_blank(&self) -> bool {
         self.key_package.is_none() && self.node.is_none()
     }
-    pub fn hash(&self, ciphersuite: Ciphersuite) -> Option<Vec<u8>> {
+    pub fn hash(&self, ciphersuite: &Ciphersuite) -> Option<Vec<u8>> {
         if let Some(parent_node) = self.node.clone() {
             let payload = parent_node.encode_detached().unwrap();
             let node_hash = ciphersuite.hash(&payload);
@@ -184,28 +184,21 @@ impl PathKeypairs {
 
 #[derive(Debug, Clone)]
 pub struct OwnLeaf {
-    pub ciphersuite: Ciphersuite,
     pub kpb: KeyPackageBundle,
     pub leaf_index: NodeIndex,
     pub path_keypairs: PathKeypairs,
 }
 
 impl OwnLeaf {
-    pub fn new(
-        ciphersuite: Ciphersuite,
-        kpb: KeyPackageBundle,
-        leaf_index: NodeIndex,
-        path_keypairs: PathKeypairs,
-    ) -> Self {
+    pub fn new(kpb: KeyPackageBundle, leaf_index: NodeIndex, path_keypairs: PathKeypairs) -> Self {
         Self {
-            ciphersuite,
             kpb,
             leaf_index,
             path_keypairs,
         }
     }
     pub fn generate_path_secrets(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         start_secret: &[u8],
         n: usize,
     ) -> (Vec<Vec<u8>>, CommitSecret) {
@@ -227,7 +220,7 @@ impl OwnLeaf {
         (path_secrets, commit_secret)
     }
     pub fn continue_path_secrets(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         intermediate_secret: &[u8],
         n: usize,
     ) -> (Vec<Vec<u8>>, CommitSecret) {
@@ -248,7 +241,7 @@ impl OwnLeaf {
         (path_secrets, commit_secret)
     }
     pub fn generate_path_keypairs(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         path_secrets: Vec<Vec<u8>>,
     ) -> Vec<HPKEKeyPair> {
         let hash_len = ciphersuite.hash_length();
@@ -271,12 +264,7 @@ pub struct RatchetTree {
 
 impl RatchetTree {
     pub fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
-        let own_leaf = OwnLeaf::new(
-            ciphersuite,
-            kpb.clone(),
-            NodeIndex::from(0u32),
-            PathKeypairs::new(),
-        );
+        let own_leaf = OwnLeaf::new(kpb.clone(), NodeIndex::from(0u32), PathKeypairs::new());
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
             key_package: Some(kpb.get_key_package().clone()),
@@ -307,11 +295,11 @@ impl RatchetTree {
         let secret = kpb.get_private_key().as_slice();
         let dirpath = treemath::dirpath_root(index, LeafIndex::from(NodeIndex::from(nodes.len())));
         let (path_secrets, _commit_secret) =
-            OwnLeaf::generate_path_secrets(ciphersuite, secret, dirpath.len());
-        let keypairs = OwnLeaf::generate_path_keypairs(ciphersuite, path_secrets);
+            OwnLeaf::generate_path_secrets(&ciphersuite, secret, dirpath.len());
+        let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, path_secrets);
         let mut path_keypairs = PathKeypairs::new();
         path_keypairs.add(keypairs, dirpath);
-        let own_leaf = OwnLeaf::new(ciphersuite, kpb, index, path_keypairs);
+        let own_leaf = OwnLeaf::new(kpb, index, path_keypairs);
         RatchetTree {
             ciphersuite,
             nodes,
@@ -540,8 +528,8 @@ impl RatchetTree {
             .ciphersuite
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
         let (path_secrets, commit_secret) =
-            OwnLeaf::continue_path_secrets(self.own_leaf.ciphersuite, &secret, common_path.len());
-        let keypairs = OwnLeaf::generate_path_keypairs(self.own_leaf.ciphersuite, path_secrets);
+            OwnLeaf::continue_path_secrets(&self.ciphersuite, &secret, common_path.len());
+        let keypairs = OwnLeaf::generate_path_keypairs(&self.ciphersuite, path_secrets);
         let sender_path_offset = sender_dirpath.len() - common_path.len();
         for (i, keypair) in keypairs.iter().enumerate().take(common_path.len()) {
             // TODO return an error if public keys don't match
@@ -589,8 +577,8 @@ impl RatchetTree {
         let dirpath_root = treemath::dirpath_root(own_index, self.leaf_count());
         let node_secret = private_key.as_slice();
         let (path_secrets, confirmation) =
-            OwnLeaf::generate_path_secrets(self.ciphersuite, &node_secret, dirpath_root.len());
-        let keypairs = OwnLeaf::generate_path_keypairs(self.ciphersuite, path_secrets.clone());
+            OwnLeaf::generate_path_secrets(&self.ciphersuite, &node_secret, dirpath_root.len());
+        let keypairs = OwnLeaf::generate_path_keypairs(&self.ciphersuite, path_secrets.clone());
 
         self.merge_keypairs(keypairs.clone(), dirpath_root.clone());
 
@@ -612,7 +600,7 @@ impl RatchetTree {
         self.nodes[own_index.as_usize()] = Node::new_leaf(Some(kpb.get_key_package().clone()));
         let mut path_keypairs = PathKeypairs::new();
         path_keypairs.add(keypairs.clone(), dirpath_root);
-        let own_leaf = OwnLeaf::new(self.ciphersuite, kpb.clone(), own_index, path_keypairs);
+        let own_leaf = OwnLeaf::new(kpb.clone(), own_index, path_keypairs);
         self.own_leaf = own_leaf;
         if with_direct_path {
             (
@@ -720,12 +708,7 @@ impl RatchetTree {
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
                     .unwrap();
-                self.own_leaf = OwnLeaf::new(
-                    self.ciphersuite,
-                    own_kpb.clone(),
-                    index,
-                    PathKeypairs::new(),
-                );
+                self.own_leaf = OwnLeaf::new(own_kpb.clone(), index, PathKeypairs::new());
             }
         }
         for r in proposal_id_list.removes.iter() {
@@ -849,7 +832,7 @@ impl RatchetTree {
         let parent = treemath::parent(index, self.leaf_count());
         let parent_hash = if parent == treemath::root(self.leaf_count()) {
             let root_node = self.nodes[parent.as_usize()].clone();
-            root_node.hash(self.own_leaf.ciphersuite).unwrap()
+            root_node.hash(&self.ciphersuite).unwrap()
         } else {
             self.compute_parent_hash(parent)
         };
@@ -858,12 +841,12 @@ impl RatchetTree {
             parent_node.parent_hash = parent_hash;
             self.nodes[index.as_usize()].node = Some(parent_node);
             let updated_parent_node = self.nodes[index.as_usize()].clone();
-            updated_parent_node.hash(self.own_leaf.ciphersuite).unwrap()
+            updated_parent_node.hash(&self.ciphersuite).unwrap()
         } else {
             parent_hash
         }
     }
-    pub fn verify_integrity(ciphersuite: Ciphersuite, nodes: &[Option<Node>]) -> bool {
+    pub fn verify_integrity(ciphersuite: &Ciphersuite, nodes: &[Option<Node>]) -> bool {
         let node_count = NodeIndex::from(nodes.len());
         let size = LeafIndex::from(node_count);
         for i in 0..node_count.as_usize() {
