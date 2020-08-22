@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-pub mod ciphersuite;
-pub mod client;
-pub mod codec;
-pub mod creds;
-pub mod extensions;
-pub mod framing;
-pub mod group;
-pub mod key_packages;
-pub mod messages;
-pub mod schedule;
-mod tree;
-mod utils;
-pub mod validator;
+pub enum WelcomeError {
+    CiphersuiteMismatch,
+    JoinerSecretNotFound,
+    TreeHashMismatch,
+    SelfNotInTree,
+    ConfirmationTagMismatch,
+    InvalidRatchetTree,
+    InvalidGroupInfoSignature,
+}
+pub enum ProposalError {}
+pub enum CommitError {}
+pub enum MlsPlaintextError {}
+pub enum ProposalPolicyError {}
+pub enum CommitPolicyError {}
