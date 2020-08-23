@@ -9,7 +9,7 @@ use maelstrom::group::*;
 fn padding() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let client = Client::new(vec![1, 2, 3], vec![ciphersuite_name]);
-    let mut group_alice = Group::new(client, &[1, 2, 3], ciphersuite_name);
+    let mut group_alice = MlsGroup::new(client, &[1, 2, 3], ciphersuite_name);
     const PADDING_SIZE: usize = 10;
 
     for _ in 0..100 {
