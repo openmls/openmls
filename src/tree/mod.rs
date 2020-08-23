@@ -300,11 +300,7 @@ impl RatchetTree {
             }
         }
 
-        let index = if let Some(index) = find_kp_in_tree(kpb.get_key_package(), node_options) {
-            index
-        } else {
-            return None;
-        };
+        let index = find_kp_in_tree(kpb.get_key_package(), node_options)?;
 
         let mut nodes = Vec::with_capacity(node_options.len());
         for (i, node_option) in node_options.iter().enumerate() {

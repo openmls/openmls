@@ -36,6 +36,17 @@ use apply_commit::*;
 use create_commit::*;
 use new_from_welcome::*;
 
+pub struct MlsGroup {
+    ciphersuite_name: CiphersuiteName,
+    client: Client,
+    group_context: GroupContext,
+    generation: u32,
+    epoch_secrets: EpochSecrets,
+    astree: ASTree,
+    tree: RatchetTree,
+    interim_transcript_hash: Vec<u8>,
+}
+
 impl Api for MlsGroup {
     fn new(creator: Client, id: &[u8], ciphersuite_name: CiphersuiteName) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
@@ -149,7 +160,7 @@ impl Api for MlsGroup {
         mls_plaintext: MLSPlaintext,
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
-    ) {
+    ) -> Result<(), ApplyCommitError> {
         apply_commit(self, mls_plaintext, proposals, own_key_packages)
     }
 
@@ -217,7 +228,45 @@ impl Api for MlsGroup {
     }
 }
 
+impl Codec for MlsGroup {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.ciphersuite_name.encode(buffer)?;
+        self.client.encode(buffer)?;
+        self.group_context.encode(buffer)?;
+        self.generation.encode(buffer)?;
+        self.epoch_secrets.encode(buffer)?;
+        self.astree.encode(buffer)?;
+        self.tree.encode(buffer)?;
+        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let ciphersuite_name = CiphersuiteName::decode(cursor)?;
+        let client = Client::decode(cursor)?;
+        let group_context = GroupContext::decode(cursor)?;
+        let generation = u32::decode(cursor)?;
+        let epoch_secrets = EpochSecrets::decode(cursor)?;
+        let astree = ASTree::decode(cursor)?;
+        let tree = RatchetTree::decode(cursor)?;
+        let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let group = MlsGroup {
+            ciphersuite_name,
+            client,
+            group_context,
+            generation,
+            epoch_secrets,
+            astree,
+            tree,
+            interim_transcript_hash,
+        };
+        Ok(group)
+    }
+}
+
 impl MlsGroup {
+    pub fn get_tree(&self) -> &RatchetTree {
+        &self.tree
+    }
     pub fn roster(&self) -> Vec<Credential> {
         let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
         for i in 0..self.tree.leaf_count().as_usize() {
@@ -268,4 +317,24 @@ fn update_interim_transcript_hash(
         ]
         .concat(),
     )
+}
+
+fn compute_welcome_key_nonce(
+    ciphersuite: &Ciphersuite,
+    joiner_secret: &[u8],
+) -> (AeadKey, AeadNonce) {
+    let welcome_secret = ciphersuite
+        .hkdf_expand(joiner_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
+        .unwrap();
+    let welcome_nonce = AeadNonce::from_slice(
+        &ciphersuite
+            .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
+            .unwrap(),
+    );
+    let welcome_key = AeadKey::from_slice(
+        &ciphersuite
+            .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
+            .unwrap(),
+    );
+    (welcome_key, welcome_nonce)
 }

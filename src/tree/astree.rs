@@ -23,6 +23,8 @@ use crate::tree::treemath::*;
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
 
+// TODO: get rif of Ciphersuite (pass it in get_secret)
+
 #[derive(Debug, PartialEq)]
 pub enum ASError {
     TooDistantInThePast,

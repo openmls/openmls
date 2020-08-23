@@ -17,7 +17,7 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::client::*;
 use crate::codec::*;
-use crate::group::*;
+use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
@@ -181,23 +181,8 @@ fn decrypt_group_info(
         &[],
     );
     let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
-    let welcome_secret = ciphersuite
-        .hkdf_expand(
-            &group_secrets.joiner_secret,
-            b"mls 1.0 welcome",
-            ciphersuite.hash_length(),
-        )
-        .unwrap();
-    let welcome_nonce = AeadNonce::from_slice(
-        &ciphersuite
-            .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
-            .unwrap(),
-    );
-    let welcome_key = AeadKey::from_slice(
-        &ciphersuite
-            .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
-            .unwrap(),
-    );
+    let (welcome_key, welcome_nonce) =
+        compute_welcome_key_nonce(ciphersuite, &group_secrets.joiner_secret);
     let group_info_bytes =
         match ciphersuite.aead_open(encrypted_group_info, &[], &welcome_key, &welcome_nonce) {
             Ok(bytes) => bytes,

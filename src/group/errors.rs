@@ -25,6 +25,18 @@ pub enum WelcomeError {
     InvalidGroupInfoSignature,
     GroupInfoDecryptionFailure,
 }
+
+pub enum ApplyCommitError {
+    EpochMismatch,
+    WrongPlaintextContentType,
+    SelfRemoved,
+    PathKeyPackageVerificationFailure,
+    NoParentHashExtension,
+    ParentHashMismatch,
+    PlaintextSignatureFailure,
+    RequiredPathNotFound,
+    ConfirmationTagMismatch,
+}
 pub enum ProposalError {}
 pub enum CommitError {}
 pub enum MlsPlaintextError {}

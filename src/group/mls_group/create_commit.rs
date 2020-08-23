@@ -141,19 +141,7 @@ pub fn create_commit(
         };
         group_info.signature = group_info.sign(&group.get_identity());
 
-        let welcome_secret = ciphersuite
-            .hkdf_expand(&epoch_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
-            .unwrap();
-        let welcome_nonce = AeadNonce::from_slice(
-            &ciphersuite
-                .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
-                .unwrap(),
-        );
-        let welcome_key = AeadKey::from_slice(
-            &ciphersuite
-                .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
-                .unwrap(),
-        );
+        let (welcome_key, welcome_nonce) = compute_welcome_key_nonce(ciphersuite, &epoch_secret);
 
         let encrypted_group_info = ciphersuite
             .aead_seal(

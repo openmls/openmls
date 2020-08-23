@@ -21,16 +21,12 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `ManagedGroup`.
 
-mod codec;
 mod errors;
 mod managed_group;
 mod mls_group;
 
 use crate::ciphersuite::*;
-use crate::client::*;
 use crate::codec::*;
-use crate::schedule::*;
-use crate::tree::astree::*;
 use crate::tree::*;
 use crate::utils::*;
 
@@ -38,17 +34,6 @@ pub use codec::*;
 pub use errors::*;
 pub use managed_group::*;
 pub use mls_group::*;
-
-pub struct MlsGroup {
-    ciphersuite_name: CiphersuiteName,
-    client: Client,
-    group_context: GroupContext,
-    generation: u32,
-    epoch_secrets: EpochSecrets,
-    astree: ASTree,
-    tree: RatchetTree,
-    interim_transcript_hash: Vec<u8>,
-}
 
 pub type WelcomeValidationResult = Result<(), WelcomeError>;
 pub type ProposalValidationResult = Result<(), ProposalError>;

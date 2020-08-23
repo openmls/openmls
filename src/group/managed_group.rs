@@ -72,10 +72,10 @@ impl ManagedGroup {
     pub fn send_application_message() {}
 
     pub fn get_members(&self) -> Vec<Credential> {
-        let mut members = Vec::with_capacity(self.group.tree.leaf_count().as_usize());
-        for i in 0..self.group.tree.leaf_count().as_usize() {
+        let mut members = Vec::with_capacity(self.group.get_tree().leaf_count().as_usize());
+        for i in 0..self.group.get_tree().leaf_count().as_usize() {
             let node =
-                self.group.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
+                self.group.get_tree().nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
             let credential = node.key_package.unwrap().get_credential().clone();
             members.push(credential);
         }

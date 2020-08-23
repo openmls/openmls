@@ -29,57 +29,68 @@ pub fn apply_commit(
     mls_plaintext: MLSPlaintext,
     proposals: Vec<(Sender, Proposal)>,
     own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
-) {
+) -> Result<(), ApplyCommitError> {
     let ciphersuite = group.get_ciphersuite();
-    let mut public_queue = ProposalQueue::new();
-    for (sender, proposal) in proposals {
-        let queued_proposal = QueuedProposal::new(proposal, sender.as_leaf_index(), None);
-        public_queue.add(queued_proposal, &ciphersuite);
-    }
-    //let proposal_id_list = public_queue.get_commit_lists(&ciphersuite);
-    //let mut new_tree = group.tree.clone();
 
+    // Verify epoch
+    if mls_plaintext.epoch != group.group_context.epoch {
+        return Err(ApplyCommitError::EpochMismatch);
+    }
+
+    // Create KeyPackageBundles
     let mut pending_kpbs = vec![];
     for (pk, kp) in own_key_packages {
         pending_kpbs.push(KeyPackageBundle::from_key_package(kp, pk));
     }
 
-    let sender = mls_plaintext.sender.sender;
-    let is_own_commit = mls_plaintext.sender.as_node_index() == group.tree.get_own_index();
-    // TODO return an error in case of failure
-    debug_assert_eq!(mls_plaintext.epoch, group.group_context.epoch);
-    let (commit, confirmation) = match mls_plaintext.content.clone() {
+    // Extract Commit from MLSPlaintext
+    let (commit, confirmation_tag) = match mls_plaintext.content.clone() {
         MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
-        _ => panic!("No Commit in MLSPlaintext"),
+        _ => return Err(ApplyCommitError::WrongPlaintextContentType),
     };
 
-    let mut new_tree = group.tree.clone();
-
+    // Organize proposals
     let proposal_id_list = ProposalIDList {
         updates: commit.updates.clone(),
         removes: commit.removes.clone(),
         adds: commit.adds.clone(),
     };
-
-    let (membership_changes, _invited_members, group_removed) =
-        new_tree.apply_proposals(proposal_id_list, public_queue, pending_kpbs.clone());
-
-    // TODO save this state in the group to prevent future operations
-    if group_removed {
-        return;
+    let mut proposal_queue = ProposalQueue::new();
+    for (sender, proposal) in proposals {
+        let queued_proposal = QueuedProposal::new(proposal, sender.as_leaf_index(), None);
+        proposal_queue.add(queued_proposal, &ciphersuite);
     }
 
+    // Create provisional tree and apply proposals
+    let mut provisional_tree = group.tree.clone();
+    let (membership_changes, _invited_members, group_removed) =
+        provisional_tree.apply_proposals(proposal_id_list, proposal_queue, pending_kpbs.clone());
+
+    // Check if we were removed from the group
+    if group_removed {
+        return Err(ApplyCommitError::SelfRemoved);
+    }
+
+    // Determine if Commit is own Commit
+    let sender = mls_plaintext.sender.sender;
+    let is_own_commit = mls_plaintext.sender.as_node_index() == group.tree.get_own_index();
+
+    // Determine if Commit has a path
     let commit_secret = if let Some(path) = commit.path.clone() {
-        let kp = path.leaf_key_package.clone();
-        // TODO return an error in case of failure
-        debug_assert!(kp.verify());
-        debug_assert!(mls_plaintext.verify(&group.group_context, kp.get_credential()));
+        // Verify KeyPackage and MLSPlaintext signature
+        let kp = &path.leaf_key_package;
+        if !kp.verify() {
+            return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
+        }
+        if !mls_plaintext.verify(&group.group_context, kp.get_credential()) {
+            return Err(ApplyCommitError::PlaintextSignatureFailure);
+        }
         if is_own_commit {
             let own_kpb = pending_kpbs
                 .iter()
-                .find(|&kpb| kpb.get_key_package() == &kp)
+                .find(|&kpb| kpb.get_key_package() == kp)
                 .unwrap();
-            let (commit_secret, _, _, _) = new_tree.update_own_leaf(
+            let (commit_secret, _, _, _) = provisional_tree.update_own_leaf(
                 group.get_identity(),
                 None,
                 Some(own_kpb.clone()),
@@ -88,7 +99,7 @@ pub fn apply_commit(
             );
             commit_secret
         } else {
-            new_tree.update_direct_path(
+            provisional_tree.update_direct_path(
                 sender,
                 path.clone(),
                 path.leaf_key_package,
@@ -97,76 +108,78 @@ pub fn apply_commit(
         }
     } else {
         let path_required = membership_changes.path_required();
-        debug_assert!(!path_required); // TODO: error handling
-        CommitSecret(zero(group.get_ciphersuite().hash_length()))
+        if path_required {
+            return Err(ApplyCommitError::RequiredPathNotFound);
+        }
+        CommitSecret(zero(ciphersuite.hash_length()))
     };
 
-    let mut new_epoch = group.group_context.epoch;
-    new_epoch.increment();
+    // Create provisional group state
+    let mut provisional_epoch = group.group_context.epoch;
+    provisional_epoch.increment();
 
     let confirmed_transcript_hash = update_confirmed_transcript_hash(
-        group.get_ciphersuite(),
-        &MLSPlaintextCommitContent::new(
-            &group.group_context,
-            mls_plaintext.sender.sender,
-            commit.clone(),
-        ),
+        ciphersuite,
+        &MLSPlaintextCommitContent::new(&group.group_context, sender, commit.clone()),
         &group.interim_transcript_hash,
     );
 
-    let new_group_context = GroupContext {
+    let provisional_group_context = GroupContext {
         group_id: group.group_context.group_id.clone(),
-        epoch: new_epoch,
-        tree_hash: new_tree.compute_tree_hash(),
+        epoch: provisional_epoch,
+        tree_hash: provisional_tree.compute_tree_hash(),
         confirmed_transcript_hash: confirmed_transcript_hash.clone(),
     };
 
-    let mut new_epoch_secrets = group.epoch_secrets.clone();
-    new_epoch_secrets.get_new_epoch_secrets(
+    let mut provisional_epoch_secrets = group.epoch_secrets.clone();
+    provisional_epoch_secrets.get_new_epoch_secrets(
         &ciphersuite,
         commit_secret,
         None,
-        &new_group_context.serialize(),
+        &provisional_group_context.serialize(),
     );
 
     let interim_transcript_hash =
         update_interim_transcript_hash(&ciphersuite, &mls_plaintext, &confirmed_transcript_hash);
 
-    debug_assert_eq!(
-        ConfirmationTag::new(
-            &ciphersuite,
-            &new_epoch_secrets.confirmation_key,
-            &confirmed_transcript_hash
-        ),
-        confirmation
-    );
+    // Verify confirmation tag
+    if ConfirmationTag::new(
+        &ciphersuite,
+        &provisional_epoch_secrets.confirmation_key,
+        &confirmed_transcript_hash,
+    ) != confirmation_tag
+    {
+        return Err(ApplyCommitError::ConfirmationTagMismatch);
+    }
 
+    // Verify KeyPackage extensions
     if let Some(path) = commit.path {
         if !is_own_commit {
-            let parent_hash = new_tree.compute_parent_hash(NodeIndex::from(sender));
-
+            let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
             if let Some(received_parent_hash) = path
                 .leaf_key_package
                 .get_extension(ExtensionType::ParentHash)
             {
                 if let ExtensionPayload::ParentHash(parent_hash_inner) = received_parent_hash {
-                    debug_assert_eq!(parent_hash, parent_hash_inner.parent_hash);
-                } else {
-                    panic!("Wrong extension type: expected ParentHashExtension");
-                };
+                    if parent_hash != parent_hash_inner.parent_hash {
+                        return Err(ApplyCommitError::ParentHashMismatch);
+                    }
+                }
             } else {
-                panic!("Commit didn't contain a ParentHash extension");
+                return Err(ApplyCommitError::NoParentHashExtension);
             }
         }
     }
 
-    group.tree = new_tree;
-    group.group_context = new_group_context;
-    group.epoch_secrets = new_epoch_secrets;
+    // Apply provisional tree and state to group
+    group.tree = provisional_tree;
+    group.group_context = provisional_group_context;
+    group.epoch_secrets = provisional_epoch_secrets;
     group.interim_transcript_hash = interim_transcript_hash;
     group.astree = ASTree::new(
         *group.get_ciphersuite(),
         &group.epoch_secrets.application_secret,
         group.tree.leaf_count(),
     );
+    Ok(())
 }

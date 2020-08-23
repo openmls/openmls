@@ -66,7 +66,7 @@ pub trait Api {
         mls_plaintext: MLSPlaintext,
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
-    );
+    ) -> Result<(), ApplyCommitError>;
 
     /// Create application message
     fn create_application_message(&self, aad: &[u8], msg: &[u8]) -> MLSPlaintext;
