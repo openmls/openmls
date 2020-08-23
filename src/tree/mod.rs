@@ -185,15 +185,15 @@ impl PathKeypairs {
 #[derive(Debug, Clone)]
 pub struct OwnLeaf {
     pub kpb: KeyPackageBundle,
-    pub leaf_index: NodeIndex,
+    pub node_index: NodeIndex,
     pub path_keypairs: PathKeypairs,
 }
 
 impl OwnLeaf {
-    pub fn new(kpb: KeyPackageBundle, leaf_index: NodeIndex, path_keypairs: PathKeypairs) -> Self {
+    pub fn new(kpb: KeyPackageBundle, node_index: NodeIndex, path_keypairs: PathKeypairs) -> Self {
         Self {
             kpb,
-            leaf_index,
+            node_index,
             path_keypairs,
         }
     }
@@ -280,8 +280,32 @@ impl RatchetTree {
         ciphersuite: Ciphersuite,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
-        index: NodeIndex,
-    ) -> RatchetTree {
+    ) -> Option<RatchetTree> {
+        fn find_kp_in_tree(key_package: &KeyPackage, nodes: &[Option<Node>]) -> Option<NodeIndex> {
+            let mut index_option = None;
+            for (i, node_option) in nodes.iter().enumerate() {
+                if let Some(node) = node_option {
+                    if let Some(kp) = &node.key_package {
+                        if kp == key_package {
+                            index_option = Some(NodeIndex::from(i));
+                            break;
+                        }
+                    }
+                }
+            }
+            if let Some(index) = index_option {
+                Some(index)
+            } else {
+                None
+            }
+        }
+
+        let index = if let Some(index) = find_kp_in_tree(kpb.get_key_package(), node_options) {
+            index
+        } else {
+            return None;
+        };
+
         let mut nodes = Vec::with_capacity(node_options.len());
         for (i, node_option) in node_options.iter().enumerate() {
             if let Some(node) = node_option.clone() {
@@ -300,14 +324,17 @@ impl RatchetTree {
         let mut path_keypairs = PathKeypairs::new();
         path_keypairs.add(keypairs, dirpath);
         let own_leaf = OwnLeaf::new(kpb, index, path_keypairs);
-        RatchetTree {
+        Some(RatchetTree {
             ciphersuite,
             nodes,
             own_leaf,
-        }
+        })
     }
     pub fn tree_size(&self) -> NodeIndex {
         NodeIndex::from(self.nodes.len())
+    }
+    pub fn get_own_index(&self) -> NodeIndex {
+        self.own_leaf.node_index
     }
 
     pub fn root(&self) -> Node {
@@ -345,7 +372,7 @@ impl RatchetTree {
     }
 
     pub fn own_leaf(&self) -> Node {
-        self.nodes[self.own_leaf.leaf_index.as_usize()].clone()
+        self.nodes[self.own_leaf.node_index.as_usize()].clone()
     }
 
     pub fn leaf_count(&self) -> LeafIndex {
@@ -488,10 +515,10 @@ impl RatchetTree {
         key_package: KeyPackage,
         group_context: &[u8],
     ) -> CommitSecret {
-        let own_index = self.own_leaf.leaf_index;
+        let own_index = self.own_leaf.node_index;
         // TODO check that the direct path is long enough
         let common_ancestor =
-            treemath::common_ancestor(NodeIndex::from(sender), self.own_leaf.leaf_index);
+            treemath::common_ancestor(NodeIndex::from(sender), self.own_leaf.node_index);
         let sender_dirpath = treemath::dirpath_root(NodeIndex::from(sender), self.leaf_count());
         let sender_copath = treemath::copath(NodeIndex::from(sender), self.leaf_count());
         let common_ancestor_sender_dirpath_index = sender_dirpath
@@ -503,7 +530,7 @@ impl RatchetTree {
         // TODO Check if own node is in resolution (should always be the case)
         let position_in_resolution = resolution
             .iter()
-            .position(|x| *x == self.own_leaf.leaf_index)
+            .position(|x| *x == self.own_leaf.node_index)
             .unwrap_or(0);
         // TODO Check resolution.len() == encrypted_path_secret.len()
         let hpke_ciphertext = direct_path.nodes[common_ancestor_sender_dirpath_index]
@@ -565,7 +592,7 @@ impl RatchetTree {
             panic!("This must not happen.");
         }
 
-        let own_index = self.own_leaf.leaf_index;
+        let own_index = self.own_leaf.node_index;
         let private_key = match key_pair {
             // FIXME: don't clone
             Some(k) => k.get_private_key().clone(),
@@ -625,7 +652,7 @@ impl RatchetTree {
         group_context: &[u8],
         leaf_key_package: KeyPackage,
     ) -> DirectPath {
-        let copath = treemath::copath(self.own_leaf.leaf_index, self.leaf_count());
+        let copath = treemath::copath(self.own_leaf.node_index, self.leaf_count());
         assert_eq!(path_secrets.len(), copath.len()); // TODO return error
         assert_eq!(keypairs.len(), copath.len());
         let mut direct_path_nodes = vec![];
@@ -703,7 +730,7 @@ impl RatchetTree {
             updated_members.push(update_proposal.key_package.get_credential().clone());
             self.blank_member(index);
             self.nodes[index.as_usize()] = leaf_node;
-            if index == self.own_leaf.leaf_index {
+            if index == self.own_leaf.node_index {
                 let own_kpb = pending_kpbs
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
@@ -716,7 +743,7 @@ impl RatchetTree {
             let proposal = queued_proposal.proposal.clone();
             let remove_proposal = proposal.as_remove().unwrap();
             let removed = NodeIndex::from(remove_proposal.removed);
-            if removed == self.own_leaf.leaf_index {
+            if removed == self.own_leaf.node_index {
                 self_removed = true;
             }
             let removed_member_node = self.nodes[removed.as_usize()].clone();

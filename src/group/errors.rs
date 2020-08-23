@@ -17,11 +17,13 @@
 pub enum WelcomeError {
     CiphersuiteMismatch,
     JoinerSecretNotFound,
+    MissingRatchetTree,
     TreeHashMismatch,
-    SelfNotInTree,
+    JoinerNotInTree,
     ConfirmationTagMismatch,
     InvalidRatchetTree,
     InvalidGroupInfoSignature,
+    GroupInfoDecryptionFailure,
 }
 pub enum ProposalError {}
 pub enum CommitError {}

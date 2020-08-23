@@ -25,7 +25,7 @@ use crate::messages::*;
 use crate::tree::*;
 
 pub struct ManagedGroup {
-    pub group: Group,
+    pub group: MlsGroup,
     pub generation: u32,
     pub plaintext_queue: Vec<MLSPlaintext>,
     pub public_queue: ProposalQueue,
@@ -35,7 +35,7 @@ pub struct ManagedGroup {
 
 impl ManagedGroup {
     pub fn new(client: Client, group_id: GroupId, ciphersuite_name: CiphersuiteName) -> Self {
-        let group = Group::new(client, &group_id.as_slice(), ciphersuite_name);
+        let group = MlsGroup::new(client, &group_id.as_slice(), ciphersuite_name);
 
         ManagedGroup {
             group,
@@ -49,11 +49,10 @@ impl ManagedGroup {
     pub fn new_from_welcome(
         client: Client,
         welcome: Welcome,
-        ratchet_tree: RatchetTree,
-        tree_hash: &[u8],
-        kpb: KeyPackageBundle,
+        ratchet_tree: Option<Vec<Option<Node>>>,
+        key_package_bundle: KeyPackageBundle,
     ) -> Result<ManagedGroup, WelcomeError> {
-        let group = Group::new_from_welcome(client, welcome, ratchet_tree, tree_hash)?;
+        let group = MlsGroup::new_from_welcome(client, welcome, ratchet_tree, key_package_bundle)?;
         Ok(ManagedGroup {
             group,
             generation: 0,
@@ -81,11 +80,6 @@ impl ManagedGroup {
             members.push(credential);
         }
         members
-    }
-    pub fn get_ciphersuite_name(&self) -> &Ciphersuite {
-        self.group
-            .client
-            .get_ciphersuite(&self.group.ciphersuite_name)
     }
 }
 

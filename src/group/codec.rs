@@ -17,7 +17,7 @@
 use crate::codec::*;
 use crate::group::*;
 
-impl Codec for Group {
+impl Codec for MlsGroup {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.ciphersuite_name.encode(buffer)?;
         self.client.encode(buffer)?;
@@ -38,7 +38,7 @@ impl Codec for Group {
         let astree = ASTree::decode(cursor)?;
         let tree = RatchetTree::decode(cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let group = Group {
+        let group = MlsGroup {
             ciphersuite_name,
             client,
             group_context,

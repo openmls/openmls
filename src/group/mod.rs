@@ -21,11 +21,10 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `ManagedGroup`.
 
-mod api;
 mod codec;
 mod errors;
-mod imp;
 mod managed_group;
+mod mls_group;
 
 use crate::ciphersuite::*;
 use crate::client::*;
@@ -35,20 +34,12 @@ use crate::tree::astree::*;
 use crate::tree::*;
 use crate::utils::*;
 
-pub use api::*;
 pub use codec::*;
 pub use errors::*;
-pub use imp::*;
 pub use managed_group::*;
+pub use mls_group::*;
 
-pub type WelcomeValidationResult = Result<(), WelcomeError>;
-pub type ProposalValidationResult = Result<(), ProposalError>;
-pub type CommitValidationResult = Result<(), CommitError>;
-pub type MlsPlaintextValidationResult = Result<(), MlsPlaintextError>;
-pub type ProposalPolicyValidationResult = Result<(), ProposalPolicyError>;
-pub type CommitPolicyValidationResult = Result<(), CommitPolicyError>;
-
-pub struct Group {
+pub struct MlsGroup {
     ciphersuite_name: CiphersuiteName,
     client: Client,
     group_context: GroupContext,
@@ -58,6 +49,13 @@ pub struct Group {
     tree: RatchetTree,
     interim_transcript_hash: Vec<u8>,
 }
+
+pub type WelcomeValidationResult = Result<(), WelcomeError>;
+pub type ProposalValidationResult = Result<(), ProposalError>;
+pub type CommitValidationResult = Result<(), CommitError>;
+pub type MlsPlaintextValidationResult = Result<(), MlsPlaintextError>;
+pub type ProposalPolicyValidationResult = Result<(), ProposalPolicyError>;
+pub type CommitPolicyValidationResult = Result<(), CommitPolicyError>;
 
 pub enum GroupError {
     Codec(CodecError),

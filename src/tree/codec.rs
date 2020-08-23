@@ -63,17 +63,17 @@ impl Codec for PathKeypairs {
 impl Codec for OwnLeaf {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.kpb.encode(buffer)?;
-        self.leaf_index.as_u32().encode(buffer)?;
+        self.node_index.as_u32().encode(buffer)?;
         self.path_keypairs.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let kpb = KeyPackageBundle::decode(cursor)?;
-        let leaf_index = NodeIndex::from(u32::decode(cursor)?);
+        let node_index = NodeIndex::from(u32::decode(cursor)?);
         let path_keypairs = PathKeypairs::decode(cursor)?;
         Ok(OwnLeaf {
             kpb,
-            leaf_index,
+            node_index,
             path_keypairs,
         })
     }

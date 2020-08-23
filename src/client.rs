@@ -18,7 +18,6 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::key_packages::*;
-use crate::messages::*;
 use std::collections::HashMap;
 pub struct Client {
     key_packages: Vec<(KeyPackage, HPKEPrivateKey)>,
@@ -43,20 +42,6 @@ impl Client {
     }
     pub fn get_identity(&self, ciphersuite_name: &CiphersuiteName) -> &Identity {
         &self.ciphersuite_config.get(ciphersuite_name).unwrap().1
-    }
-    pub fn get_key_package_from_welcome_secrets(
-        &self,
-        welcome_secrets: &[EncryptedGroupSecrets],
-    ) -> Option<(KeyPackage, HPKEPrivateKey, EncryptedGroupSecrets)> {
-        for egs in welcome_secrets {
-            for (kp, pk) in &self.key_packages {
-                let key_package_hash = kp.hash();
-                if key_package_hash == egs.key_package_hash {
-                    return Some((kp.clone(), pk.clone(), egs.clone()));
-                }
-            }
-        }
-        None
     }
 }
 

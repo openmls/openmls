@@ -21,15 +21,15 @@ use crate::key_packages::*;
 use crate::messages::*;
 pub trait Api {
     /// Create a new group.
-    fn new(creator: Client, group_id: &[u8], ciphersuite_name: CiphersuiteName) -> Group;
+    fn new(creator: Client, group_id: &[u8], ciphersuite_name: CiphersuiteName) -> MlsGroup;
     /// Join a group from a Welcome message
     // TODO: add support for Welcome Extensions
     fn new_from_welcome(
         joiner: Client,
         welcome: Welcome,
-        ratchet_tree: RatchetTree,
-        tree_hash: &[u8],
-    ) -> Result<Group, WelcomeError>;
+        ratchet_tree: Option<Vec<Option<Node>>>,
+        key_package_bundle: KeyPackageBundle,
+    ) -> Result<MlsGroup, WelcomeError>;
 
     // Create handshake messages
 
