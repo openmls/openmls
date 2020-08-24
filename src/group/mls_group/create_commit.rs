@@ -32,31 +32,35 @@ pub fn create_commit(
     proposals: Vec<(Sender, Proposal)>,
     own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
     force_group_update: bool,
-) -> (MLSPlaintext, Option<Welcome>) {
+) -> (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>) {
     let ciphersuite = group.get_ciphersuite();
-    // TODO Dedup proposals
-    let mut public_queue = ProposalQueue::new();
-    for (sender, proposal) in proposals {
-        let queued_proposal = QueuedProposal::new(proposal, sender.as_leaf_index(), None);
-        public_queue.add(queued_proposal, &ciphersuite);
-    }
-    let proposal_id_list = public_queue.get_commit_lists(&ciphersuite);
-    let mut new_tree = group.tree.clone();
 
+    // Create KeyPackageBundles
     let mut pending_kpbs = vec![];
     for (pk, kp) in own_key_packages {
         pending_kpbs.push(KeyPackageBundle::from_key_package(kp, pk));
     }
 
+    // Organize proposals
+    let mut proposal_queue = ProposalQueue::new();
+    for (sender, proposal) in proposals {
+        let queued_proposal = QueuedProposal::new(proposal, sender.as_leaf_index(), None);
+        proposal_queue.add(queued_proposal, &ciphersuite);
+    }
+
+    // TODO Dedup proposals
+
+    let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
+    let mut provisional_tree = group.tree.clone();
+
     let (membership_changes, invited_members, _group_removed) =
-        new_tree.apply_proposals(proposal_id_list.clone(), public_queue, pending_kpbs);
+        provisional_tree.apply_proposals(proposal_id_list.clone(), proposal_queue, pending_kpbs);
 
     let path_required = membership_changes.path_required() || force_group_update;
 
-    // TODO: store new keys in Client
-    let (path, path_secrets_option, commit_secret) = if path_required {
+    let (path, path_secrets_option, kpb_option, commit_secret) = if path_required {
         let keypair = ciphersuite.new_hpke_keypair();
-        let (commit_secret, kpb, path, path_secrets) = new_tree.update_own_leaf(
+        let (commit_secret, kpb, path, path_secrets) = provisional_tree.update_own_leaf(
             group.get_identity(),
             Some(&keypair),
             None,
@@ -64,10 +68,10 @@ pub fn create_commit(
             true,
         );
         //group.pending_kpbs.push(kpb);
-        (path, path_secrets, commit_secret)
+        (path, path_secrets, Some(kpb), commit_secret)
     } else {
         let commit_secret = CommitSecret(zero(group.get_ciphersuite().hash_length()));
-        (None, None, commit_secret)
+        (None, None, None, commit_secret)
     };
 
     let commit = Commit {
@@ -77,8 +81,8 @@ pub fn create_commit(
         path,
     };
 
-    let mut new_epoch = group.group_context.epoch;
-    new_epoch.increment();
+    let mut provisional_epoch = group.group_context.epoch;
+    provisional_epoch.increment();
 
     let confirmed_transcript_hash = update_confirmed_transcript_hash(
         group.get_ciphersuite(),
@@ -90,24 +94,24 @@ pub fn create_commit(
         &group.interim_transcript_hash,
     );
 
-    let new_group_context = GroupContext {
+    let provisional_group_context = GroupContext {
         group_id: group.group_context.group_id.clone(),
-        epoch: new_epoch,
-        tree_hash: new_tree.compute_tree_hash(),
+        epoch: provisional_epoch,
+        tree_hash: provisional_tree.compute_tree_hash(),
         confirmed_transcript_hash: confirmed_transcript_hash.clone(),
     };
 
-    let mut new_epoch_secrets = group.epoch_secrets.clone();
-    let epoch_secret = new_epoch_secrets.get_new_epoch_secrets(
+    let mut provisional_epoch_secrets = group.epoch_secrets.clone();
+    let epoch_secret = provisional_epoch_secrets.get_new_epoch_secrets(
         &ciphersuite,
         commit_secret,
         None,
-        &new_group_context.serialize(),
+        &provisional_group_context,
     );
 
     let confirmation_tag = ConfirmationTag::new(
         &ciphersuite,
-        &new_epoch_secrets.confirmation_key,
+        &provisional_epoch_secrets.confirmation_key,
         &confirmed_transcript_hash,
     );
 
@@ -124,13 +128,13 @@ pub fn create_commit(
         update_interim_transcript_hash(&ciphersuite, &mls_plaintext, &confirmed_transcript_hash);
 
     if !membership_changes.adds.is_empty() {
-        let public_tree = RatchetTreeExtension::new(new_tree.public_key_tree());
+        let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
         let ratchet_tree_extension = public_tree.to_extension();
         let tree_hash = ciphersuite.hash(&ratchet_tree_extension.extension_data);
 
         let mut group_info = GroupInfo {
-            group_id: new_group_context.group_id.clone(),
-            epoch: new_group_context.epoch,
+            group_id: provisional_group_context.group_id.clone(),
+            epoch: provisional_group_context.epoch,
             tree_hash,
             confirmed_transcript_hash,
             interim_transcript_hash,
@@ -158,8 +162,10 @@ pub fn create_commit(
             let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
             let path_secret = if path_required {
                 let common_ancestor = treemath::common_ancestor(index, group.tree.get_own_index());
-                let dirpath =
-                    treemath::dirpath_root(group.tree.get_own_index(), new_tree.leaf_count());
+                let dirpath = treemath::dirpath_root(
+                    group.tree.get_own_index(),
+                    provisional_tree.leaf_count(),
+                );
                 let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();
                 let path_secrets = path_secrets_option.clone().unwrap();
                 let path_secret = path_secrets[position].clone();
@@ -195,8 +201,8 @@ pub fn create_commit(
             secrets,
             encrypted_group_info,
         };
-        (mls_plaintext, Some(welcome))
+        (mls_plaintext, Some(welcome), kpb_option)
     } else {
-        (mls_plaintext, None)
+        (mls_plaintext, None, kpb_option)
     }
 }

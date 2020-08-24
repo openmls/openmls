@@ -416,6 +416,12 @@ impl Codec for ConfirmationTag {
 #[derive(Debug, PartialEq, Clone)]
 pub struct CommitSecret(pub Vec<u8>);
 
+impl CommitSecret {
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 impl Codec for CommitSecret {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.0)?;

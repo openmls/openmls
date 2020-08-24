@@ -136,7 +136,7 @@ pub fn apply_commit(
         &ciphersuite,
         commit_secret,
         None,
-        &provisional_group_context.serialize(),
+        &provisional_group_context,
     );
 
     let interim_transcript_hash =

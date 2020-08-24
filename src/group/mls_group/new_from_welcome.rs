@@ -86,7 +86,6 @@ pub fn new_from_welcome(
     }
 
     // Verify ratchet tree
-    //let nodes = tree.public_key_tree();
     if !RatchetTree::verify_integrity(&ciphersuite, &nodes) {
         return Err(WelcomeError::InvalidRatchetTree);
     }
@@ -119,13 +118,8 @@ pub fn new_from_welcome(
         tree_hash: tree.compute_tree_hash(),
         confirmed_transcript_hash: group_info.confirmed_transcript_hash,
     };
-    let group_state = &group_context.encode_detached().unwrap();
-    let epoch_secrets = EpochSecrets::derive_epoch_secrets(
-        &ciphersuite,
-        &group_secrets.joiner_secret,
-        vec![],
-        group_state,
-    );
+    let epoch_secrets =
+        EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
     let astree = ASTree::new(
         ciphersuite,
         &epoch_secrets.application_secret,

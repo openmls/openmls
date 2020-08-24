@@ -150,7 +150,7 @@ impl Api for MlsGroup {
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
-    ) -> (MLSPlaintext, Option<Welcome>) {
+    ) -> (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>) {
         create_commit(self, aad, proposals, own_key_packages, force_self_update)
     }
 
@@ -199,32 +199,14 @@ impl Api for MlsGroup {
     }
 
     // Exporter
-    fn get_exporter_secret(&self) -> Vec<u8> {
-        unimplemented!()
-    }
-
-    // Validation
-    fn validate_proposal(&self, proposal: Proposal) -> ProposalValidationResult {
-        unimplemented!()
-    }
-    fn validate_commit(&self, commit: Commit) -> CommitValidationResult {
-        unimplemented!()
-    }
-    fn validate_mls_plaintext(&self, mls_plaintext: MLSPlaintext) -> MlsPlaintextValidationResult {
-        unimplemented!()
-    }
-    fn validate_proposal_against_policy(
-        &self,
-        proposal: Proposal,
-    ) -> ProposalPolicyValidationResult {
-        unimplemented!()
-    }
-    fn validate_commit_against_policy(
-        &self,
-        commit: Commit,
-        proposals: Vec<Proposal>,
-    ) -> CommitPolicyValidationResult {
-        unimplemented!()
+    fn get_exporter_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
+        mls_exporter(
+            self.get_ciphersuite(),
+            &self.epoch_secrets,
+            label,
+            &self.get_context(),
+            key_length,
+        )
     }
 }
 

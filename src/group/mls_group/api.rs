@@ -58,7 +58,7 @@ pub trait Api {
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
-    ) -> (MLSPlaintext, Option<Welcome>);
+    ) -> (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>);
 
     /// Apply a `Commit` message
     fn apply_commit(
@@ -78,19 +78,5 @@ pub trait Api {
 
     // Exporter
     // TODO: add the label and implement the whole exporter
-    fn get_exporter_secret(&self) -> Vec<u8>;
-
-    // Validation
-    fn validate_proposal(&self, proposal: Proposal) -> ProposalValidationResult;
-    fn validate_commit(&self, commit: Commit) -> CommitValidationResult;
-    fn validate_mls_plaintext(&self, mls_plaintext: MLSPlaintext) -> MlsPlaintextValidationResult;
-    fn validate_proposal_against_policy(
-        &self,
-        proposal: Proposal,
-    ) -> ProposalPolicyValidationResult;
-    fn validate_commit_against_policy(
-        &self,
-        commit: Commit,
-        proposals: Vec<Proposal>,
-    ) -> CommitPolicyValidationResult;
+    fn get_exporter_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
 }
