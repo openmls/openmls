@@ -153,7 +153,7 @@ impl KeyPackageBundle {
         extensions: Option<Vec<Extension>>,
     ) -> Self {
         let keypair = ciphersuite.new_hpke_keypair();
-        Self::new_with_keypair(ciphersuite, identity, extensions, &keypair)
+        Self::new_with_keypair(&ciphersuite, identity, extensions, &keypair)
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -161,7 +161,7 @@ impl KeyPackageBundle {
     ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         identity: &Identity,
         extensions: Option<Vec<Extension>>,
         key_pair: &HPKEKeyPair,
@@ -176,7 +176,7 @@ impl KeyPackageBundle {
             final_extensions.append(&mut extensions);
         }
         let key_package = KeyPackage::new(
-            ciphersuite,
+            ciphersuite.clone(),
             &key_pair.get_public_key(),
             identity,
             &final_extensions,

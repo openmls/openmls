@@ -266,7 +266,7 @@ impl Ciphersuite {
     /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and `aad`.
     pub(crate) fn hpke_open(
         &self,
-        input: HpkeCiphertext,
+        input: &HpkeCiphertext,
         sk_r: &HPKEPrivateKey,
         info: &[u8],
         aad: &[u8],

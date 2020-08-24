@@ -104,11 +104,11 @@ pub fn new_from_welcome(
             &path_secret.path_secret,
             common_path.len(),
         );
-        let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, path_secrets);
-        tree.merge_keypairs(keypairs.clone(), common_path.clone());
+        let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
+        tree.merge_keypairs(&keypairs, &common_path);
 
         let mut path_keypairs = PathKeypairs::new();
-        path_keypairs.add(keypairs, common_path);
+        path_keypairs.add(&keypairs, &common_path);
         tree.own_leaf.path_keypairs = path_keypairs;
     }
 
@@ -175,7 +175,7 @@ fn decrypt_group_info(
     encrypted_group_info: &[u8],
 ) -> Result<(GroupInfo, GroupSecrets), WelcomeError> {
     let group_secrets_bytes = ciphersuite.hpke_open(
-        encrypted_group_secrets.encrypted_group_secrets.clone(),
+        &encrypted_group_secrets.encrypted_group_secrets,
         &private_key,
         &[],
         &[],
