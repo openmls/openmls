@@ -15,7 +15,6 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 pub mod ciphersuite;
-pub mod client;
 pub mod codec;
 pub mod creds;
 pub mod extensions;

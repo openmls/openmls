@@ -15,7 +15,6 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::ciphersuite::*;
-use crate::client::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::framing::*;
@@ -34,8 +33,12 @@ pub struct ManagedGroup {
 }
 
 impl ManagedGroup {
-    pub fn new(client: Client, group_id: GroupId, ciphersuite_name: CiphersuiteName) -> Self {
-        let group = MlsGroup::new(client, &group_id.as_slice(), ciphersuite_name);
+    pub fn new(
+        group_id: GroupId,
+        ciphersuite: Ciphersuite,
+        key_package_bundle: KeyPackageBundle,
+    ) -> Self {
+        let group = MlsGroup::new(&group_id.as_slice(), ciphersuite, key_package_bundle);
 
         ManagedGroup {
             group,
@@ -47,12 +50,11 @@ impl ManagedGroup {
         }
     }
     pub fn new_from_welcome(
-        client: Client,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<ManagedGroup, WelcomeError> {
-        let group = MlsGroup::new_from_welcome(client, welcome, ratchet_tree, key_package_bundle)?;
+        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle)?;
         Ok(ManagedGroup {
             group,
             generation: 0,

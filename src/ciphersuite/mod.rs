@@ -159,7 +159,7 @@ impl Ciphersuite {
     }
 
     /// Create a new signature key pair and return it.
-    pub(crate) fn new_signature_keypair(&self) -> SignatureKeypair {
+    pub fn new_signature_keypair(&self) -> SignatureKeypair {
         let (sk, pk) = match signature_key_gen(self.signature) {
             Ok((sk, pk)) => (sk, pk),
             Err(e) => panic!("Key generation really shouldn't fail. {:?}", e),
@@ -402,17 +402,29 @@ impl Signature {
 }
 
 impl SignatureKeypair {
-    pub(crate) fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
+    pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
         self.ciphersuite.sign(&self.private_key, payload)
     }
 
     /// Get a reference to the private key.
-    pub(crate) fn get_private_key(&self) -> &SignaturePrivateKey {
+    pub fn get_private_key(&self) -> &SignaturePrivateKey {
         &self.private_key
     }
 
     /// Get a reference to the public key.
-    pub(crate) fn get_public_key(&self) -> &SignaturePublicKey {
+    pub fn get_public_key(&self) -> &SignaturePublicKey {
         &self.public_key
     }
+}
+
+#[test]
+fn test_sign_verify() {
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let keypair = ciphersuite.new_signature_keypair();
+    let payload = &[1, 2, 3];
+    let signature = ciphersuite
+        .sign(keypair.get_private_key(), payload)
+        .unwrap();
+    assert!(ciphersuite.verify(&signature, keypair.get_public_key(), payload));
 }

@@ -15,7 +15,6 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::ciphersuite::{signable::*, *};
-use crate::client::*;
 use crate::codec::*;
 use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
@@ -26,14 +25,12 @@ use crate::tree::treemath;
 use crate::tree::*;
 
 pub fn new_from_welcome(
-    joiner: Client,
     welcome: Welcome,
     nodes_option: Option<Vec<Option<Node>>>,
     kpb: KeyPackageBundle,
 ) -> Result<MlsGroup, WelcomeError> {
     // TODO: Remove consumed key from client
-    let ciphersuite_name = welcome.cipher_suite;
-    let ciphersuite = Ciphersuite::new(ciphersuite_name);
+    let ciphersuite = welcome.cipher_suite;
 
     // Find key_package in welcome secrets
     let egs = if let Some(egs) =
@@ -136,8 +133,7 @@ pub fn new_from_welcome(
         Err(WelcomeError::ConfirmationTagMismatch)
     } else {
         Ok(MlsGroup {
-            ciphersuite_name: welcome.cipher_suite,
-            client: joiner,
+            ciphersuite: welcome.cipher_suite,
             group_context,
             generation: 0,
             epoch_secrets,

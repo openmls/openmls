@@ -36,10 +36,11 @@ pub struct MLSPlaintext {
 
 impl MLSPlaintext {
     pub fn new(
+        ciphersuite: &Ciphersuite,
         sender: LeafIndex,
         authenticated_data: &[u8],
         content: MLSPlaintextContentType,
-        key_pair: &SignatureKeypair,
+        signature_key: &SignaturePrivateKey,
         context: &GroupContext,
     ) -> Self {
         let sender = Sender {
@@ -55,12 +56,17 @@ impl MLSPlaintext {
             content,
             signature: Signature::new_empty(),
         };
-        mls_plaintext.sign(key_pair, context);
+        mls_plaintext.sign(ciphersuite, signature_key, context);
         mls_plaintext
     }
-    pub fn sign(&mut self, key_pair: &SignatureKeypair, context: &GroupContext) {
+    pub fn sign(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+        signature_key: &SignaturePrivateKey,
+        context: &GroupContext,
+    ) {
         let signature_input = MLSPlaintextTBS::new_from(&self, context);
-        self.signature = signature_input.sign(key_pair);
+        self.signature = signature_input.sign(ciphersuite, signature_key);
     }
     pub fn verify(&self, context: &GroupContext, credential: &Credential) -> bool {
         let signature_input = MLSPlaintextTBS::new_from(&self, context);
@@ -560,9 +566,13 @@ impl MLSPlaintextTBS {
             payload: mls_plaintext.content.clone(),
         }
     }
-    pub fn sign(&self, key_pair: &SignatureKeypair) -> Signature {
+    pub fn sign(
+        &self,
+        ciphersuite: &Ciphersuite,
+        signature_key: &SignaturePrivateKey,
+    ) -> Signature {
         let bytes = self.encode_detached().unwrap();
-        key_pair.sign(&bytes).unwrap()
+        ciphersuite.sign(signature_key, &bytes).unwrap()
     }
     pub fn verify(&self, credential: &Credential, signature: &Signature) -> bool {
         let bytes = self.encode_detached().unwrap();
@@ -879,7 +889,7 @@ fn codec() {
         confirmed_transcript_hash: vec![],
     };
     let signature_input = MLSPlaintextTBS::new_from(&orig, &context);
-    orig.signature = signature_input.sign(&keypair);
+    orig.signature = signature_input.sign(&ciphersuite, &keypair.get_private_key());
 
     let enc = orig.encode_detached().unwrap();
     let copy = MLSPlaintext::decode_detached(&enc).unwrap();

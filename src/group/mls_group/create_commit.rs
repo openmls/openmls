@@ -29,6 +29,8 @@ use rayon::prelude::*;
 pub fn create_commit(
     group: &MlsGroup,
     aad: &[u8],
+    signature_key: &SignaturePrivateKey,
+    key_package_bundle: KeyPackageBundle,
     proposals: Vec<(Sender, Proposal)>,
     own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
     force_group_update: bool,
@@ -59,15 +61,12 @@ pub fn create_commit(
     let path_required = membership_changes.path_required() || force_group_update;
 
     let (path, path_secrets_option, kpb_option, commit_secret) = if path_required {
-        let keypair = ciphersuite.new_hpke_keypair();
         let (commit_secret, kpb, path, path_secrets) = provisional_tree.update_own_leaf(
-            group.get_identity(),
-            Some(&keypair),
-            None,
+            Some(signature_key),
+            key_package_bundle,
             &group.group_context.serialize(),
             true,
         );
-        //group.pending_kpbs.push(kpb);
         (path, path_secrets, Some(kpb), commit_secret)
     } else {
         let commit_secret = CommitSecret(zero(group.get_ciphersuite().hash_length()));
@@ -117,10 +116,11 @@ pub fn create_commit(
 
     let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));
     let mls_plaintext = MLSPlaintext::new(
+        ciphersuite,
         group.get_sender_index(),
         aad,
         content,
-        &group.get_identity().keypair,
+        signature_key,
         &group.get_context(),
     );
 
@@ -143,7 +143,7 @@ pub fn create_commit(
             signer_index: group.get_sender_index(),
             signature: Signature::new_empty(),
         };
-        group_info.signature = group_info.sign(&group.get_identity());
+        group_info.signature = group_info.sign(ciphersuite, signature_key);
 
         let (welcome_key, welcome_nonce) = compute_welcome_key_nonce(ciphersuite, &epoch_secret);
 
@@ -197,7 +197,7 @@ pub fn create_commit(
             .collect();
         let welcome = Welcome {
             version: ProtocolVersion::Mls10,
-            cipher_suite: group.ciphersuite_name,
+            cipher_suite: group.ciphersuite,
             secrets,
             encrypted_group_info,
         };

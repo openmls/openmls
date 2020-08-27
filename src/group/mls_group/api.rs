@@ -14,18 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::client::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
 pub trait Api {
     /// Create a new group.
-    fn new(creator: Client, group_id: &[u8], ciphersuite_name: CiphersuiteName) -> MlsGroup;
+    fn new(
+        group_id: &[u8],
+        ciphersuite: Ciphersuite,
+        key_package_bundle: KeyPackageBundle,
+    ) -> MlsGroup;
     /// Join a group from a Welcome message
     // TODO: add support for Welcome Extensions
     fn new_from_welcome(
-        joiner: Client,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
@@ -37,24 +39,29 @@ pub trait Api {
     fn create_add_proposal(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
         joiner_key_package: KeyPackage,
     ) -> (MLSPlaintext, Proposal);
     /// Create an `UpdateProposal`
     fn create_update_proposal(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
         key_package: KeyPackage,
     ) -> (MLSPlaintext, Proposal);
     /// Create a `RemoveProposal`
     fn create_remove_proposal(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
         removed_index: LeafIndex,
     ) -> (MLSPlaintext, Proposal);
     /// Create a `Commit` and an optional `Welcome`
     fn create_commit(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
+        key_package_bundle: KeyPackageBundle,
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
@@ -69,14 +76,18 @@ pub trait Api {
     ) -> Result<(), ApplyCommitError>;
 
     /// Create application message
-    fn create_application_message(&self, aad: &[u8], msg: &[u8]) -> MLSPlaintext;
+    fn create_application_message(
+        &self,
+        aad: &[u8],
+        msg: &[u8],
+        signature_key: &SignaturePrivateKey,
+    ) -> MLSPlaintext;
 
     /// Encrypt an MLS message
     fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext;
     /// Decrypt an MLS message
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext;
 
-    // Exporter
-    // TODO: add the label and implement the whole exporter
-    fn get_exporter_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
+    /// Export a secret through the exporter
+    fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
 }

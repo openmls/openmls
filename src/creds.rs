@@ -33,8 +33,21 @@ impl Identity {
             keypair,
         }
     }
+    pub fn new_with_keypair(
+        ciphersuite: Ciphersuite,
+        id: Vec<u8>,
+        keypair: SignatureKeypair,
+    ) -> Self {
+        Self {
+            id,
+            ciphersuite,
+            keypair,
+        }
+    }
     pub fn sign(&self, payload: &[u8]) -> Signature {
-        self.ciphersuite.sign(self.keypair.get_private_key(), payload).unwrap()
+        self.ciphersuite
+            .sign(self.keypair.get_private_key(), payload)
+            .unwrap()
     }
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         self.ciphersuite
@@ -167,21 +180,6 @@ impl Codec for BasicCredential {
             public_key,
         })
     }
-}
-
-#[test]
-fn generate_key_package() {
-    use crate::key_packages::*;
-    let identity = Identity::new(
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
-        vec![1, 2, 3],
-    );
-    let kp_bundle = KeyPackageBundle::new(
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
-        &identity,
-        None,
-    );
-    assert!(kp_bundle.get_key_package().verify());
 }
 
 #[test]

@@ -20,7 +20,6 @@ mod create_commit;
 mod new_from_welcome;
 
 use crate::ciphersuite::*;
-use crate::client::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::framing::*;
@@ -37,8 +36,7 @@ use create_commit::*;
 use new_from_welcome::*;
 
 pub struct MlsGroup {
-    ciphersuite_name: CiphersuiteName,
-    client: Client,
+    ciphersuite: Ciphersuite,
     group_context: GroupContext,
     generation: u32,
     epoch_secrets: EpochSecrets,
@@ -48,18 +46,15 @@ pub struct MlsGroup {
 }
 
 impl Api for MlsGroup {
-    fn new(creator: Client, id: &[u8], ciphersuite_name: CiphersuiteName) -> MlsGroup {
+    fn new(id: &[u8], ciphersuite: Ciphersuite, key_package_bundle: KeyPackageBundle) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
-        let ciphersuite = *creator.get_ciphersuite(&ciphersuite_name);
-        let identity = creator.get_identity(&ciphersuite_name);
-        let kpb = KeyPackageBundle::new(ciphersuite, identity, None); // TODO remove clone
         let epoch_secrets = EpochSecrets::new();
         let astree = ASTree::new(
             ciphersuite,
             &epoch_secrets.application_secret,
             LeafIndex::from(1u32),
         );
-        let tree = RatchetTree::new(ciphersuite, kpb);
+        let tree = RatchetTree::new(ciphersuite, key_package_bundle);
         let group_context = GroupContext {
             group_id,
             epoch: GroupEpoch(0),
@@ -68,8 +63,8 @@ impl Api for MlsGroup {
         };
         let interim_transcript_hash = vec![];
         MlsGroup {
-            ciphersuite_name,
-            client: creator,
+            ciphersuite,
+            //client: creator,
             group_context,
             generation: 0,
             epoch_secrets,
@@ -80,18 +75,18 @@ impl Api for MlsGroup {
     }
     // Join a group from a welcome message
     fn new_from_welcome(
-        joiner: Client,
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
     ) -> Result<MlsGroup, WelcomeError> {
-        new_from_welcome(joiner, welcome, nodes_option, kpb)
+        new_from_welcome(welcome, nodes_option, kpb)
     }
 
     // Create handshake messages
     fn create_add_proposal(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
         joiner_key_package: KeyPackage,
     ) -> (MLSPlaintext, Proposal) {
         let add_proposal = AddProposal {
@@ -100,10 +95,11 @@ impl Api for MlsGroup {
         let proposal = Proposal::Add(add_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal.clone());
         let mls_plaintext = MLSPlaintext::new(
+            &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
-            &self.get_identity().keypair,
+            signature_key,
             &self.get_context(),
         );
         (mls_plaintext, proposal)
@@ -111,16 +107,18 @@ impl Api for MlsGroup {
     fn create_update_proposal(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
         key_package: KeyPackage,
     ) -> (MLSPlaintext, Proposal) {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal.clone());
         let mls_plaintext = MLSPlaintext::new(
+            &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
-            &self.get_identity().keypair,
+            signature_key,
             &self.get_context(),
         );
         (mls_plaintext, proposal)
@@ -128,6 +126,7 @@ impl Api for MlsGroup {
     fn create_remove_proposal(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
         removed_index: LeafIndex,
     ) -> (MLSPlaintext, Proposal) {
         let remove_proposal = RemoveProposal {
@@ -136,10 +135,11 @@ impl Api for MlsGroup {
         let proposal = Proposal::Remove(remove_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal.clone());
         let mls_plaintext = MLSPlaintext::new(
+            &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
-            &self.get_identity().keypair,
+            signature_key,
             &self.get_context(),
         );
         (mls_plaintext, proposal)
@@ -147,11 +147,21 @@ impl Api for MlsGroup {
     fn create_commit(
         &self,
         aad: &[u8],
+        signature_key: &SignaturePrivateKey,
+        key_package_bundle: KeyPackageBundle,
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
     ) -> (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>) {
-        create_commit(self, aad, proposals, own_key_packages, force_self_update)
+        create_commit(
+            self,
+            aad,
+            signature_key,
+            key_package_bundle,
+            proposals,
+            own_key_packages,
+            force_self_update,
+        )
     }
 
     // Apply a Commit message
@@ -165,13 +175,19 @@ impl Api for MlsGroup {
     }
 
     // Create application message
-    fn create_application_message(&self, aad: &[u8], msg: &[u8]) -> MLSPlaintext {
+    fn create_application_message(
+        &self,
+        aad: &[u8],
+        msg: &[u8],
+        signature_key: &SignaturePrivateKey,
+    ) -> MLSPlaintext {
         let content = MLSPlaintextContentType::Application(msg.to_vec());
         MLSPlaintext::new(
+            &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
-            &self.get_identity().keypair,
+            signature_key,
             &self.get_context(),
         )
     }
@@ -199,7 +215,7 @@ impl Api for MlsGroup {
     }
 
     // Exporter
-    fn get_exporter_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
+    fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
         mls_exporter(
             self.get_ciphersuite(),
             &self.epoch_secrets,
@@ -212,8 +228,7 @@ impl Api for MlsGroup {
 
 impl Codec for MlsGroup {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite_name.encode(buffer)?;
-        self.client.encode(buffer)?;
+        self.ciphersuite.encode(buffer)?;
         self.group_context.encode(buffer)?;
         self.generation.encode(buffer)?;
         self.epoch_secrets.encode(buffer)?;
@@ -223,8 +238,7 @@ impl Codec for MlsGroup {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite_name = CiphersuiteName::decode(cursor)?;
-        let client = Client::decode(cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
         let group_context = GroupContext::decode(cursor)?;
         let generation = u32::decode(cursor)?;
         let epoch_secrets = EpochSecrets::decode(cursor)?;
@@ -232,8 +246,7 @@ impl Codec for MlsGroup {
         let tree = RatchetTree::decode(cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let group = MlsGroup {
-            ciphersuite_name,
-            client,
+            ciphersuite,
             group_context,
             generation,
             epoch_secrets,
@@ -262,11 +275,9 @@ impl MlsGroup {
         LeafIndex::from(self.tree.get_own_index())
     }
     fn get_ciphersuite(&self) -> &Ciphersuite {
-        self.client.get_ciphersuite(&self.ciphersuite_name)
+        &self.ciphersuite
     }
-    fn get_identity(&self) -> &Identity {
-        self.client.get_identity(&self.ciphersuite_name)
-    }
+
     fn get_context(&self) -> GroupContext {
         self.group_context.clone()
     }

@@ -16,9 +16,8 @@
 
 use rayon::prelude::*;
 
-use crate::ciphersuite::*;
+use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
-use crate::creds::*;
 use crate::extensions::*;
 use crate::key_packages::*;
 use crate::messages::*;
@@ -545,9 +544,8 @@ impl RatchetTree {
     }
     pub fn update_own_leaf(
         &mut self,
-        identity: &Identity,
-        key_pair: Option<&HPKEKeyPair>,
-        kpb_option: Option<KeyPackageBundle>,
+        signature_key_option: Option<&SignaturePrivateKey>,
+        kpb: KeyPackageBundle,
         group_context: &[u8],
         with_direct_path: bool,
     ) -> (
@@ -556,62 +554,53 @@ impl RatchetTree {
         Option<DirectPath>,
         Option<Vec<Vec<u8>>>,
     ) {
-        if key_pair.is_none() && kpb_option.is_none() {
-            // TODO: Error handling.
-            panic!("This must not happen.");
-        }
+        // Extract the private key from the KeyPackageBundle
+        let private_key = kpb.get_private_key();
 
+        // Compute the direct path and keypairs along it
         let own_index = self.own_leaf.node_index;
-        let private_key = match key_pair {
-            // FIXME: don't clone
-            Some(k) => k.get_private_key(),
-            None => {
-                debug_assert!(kpb_option.is_some());
-                kpb_option.as_ref().unwrap().get_private_key()
-            }
-        };
         let dirpath_root = treemath::dirpath_root(own_index, self.leaf_count());
         let node_secret = private_key.as_slice();
         let (path_secrets, confirmation) =
             OwnLeaf::generate_path_secrets(&self.ciphersuite, &node_secret, dirpath_root.len());
         let keypairs = OwnLeaf::generate_path_keypairs(&self.ciphersuite, &path_secrets);
-
         self.merge_keypairs(&keypairs, &dirpath_root);
 
-        let parent_hash = self.compute_parent_hash(own_index);
-        let kpb = match kpb_option {
-            Some(k) => k,
-            None => {
-                debug_assert!(key_pair.is_some());
-                let parent_hash_extension = ParentHashExtension::new(&parent_hash);
-                KeyPackageBundle::new_with_keypair(
-                    &self.ciphersuite,
-                    identity,
-                    Some(vec![parent_hash_extension.to_extension()]),
-                    key_pair.unwrap(),
-                )
+        // Check if we need to add the parent hash extension and re-sign the KeyPackage
+        let key_package_bundle = match signature_key_option {
+            Some(signature_key) => {
+                // Compute the parent hash extension and add it to the KeyPackage
+                let parent_hash = self.compute_parent_hash(own_index);
+                let parent_hash_extension = ParentHashExtension::new(&parent_hash).to_extension();
+                let mut key_package = kpb.get_key_package().clone();
+                key_package.add_extension(parent_hash_extension);
+                key_package.sign(&self.ciphersuite, signature_key);
+                KeyPackageBundle::from_key_package(key_package, kpb.get_private_key().clone())
             }
+            None => kpb,
         };
 
-        self.nodes[own_index.as_usize()] = Node::new_leaf(Some(kpb.get_key_package().clone()));
+        // Update own leaf node with the new values
+        self.nodes[own_index.as_usize()] =
+            Node::new_leaf(Some(key_package_bundle.get_key_package().clone()));
         let mut path_keypairs = PathKeypairs::new();
         path_keypairs.add(&keypairs, &dirpath_root);
-        let own_leaf = OwnLeaf::new(kpb.clone(), own_index, path_keypairs);
+        let own_leaf = OwnLeaf::new(key_package_bundle.clone(), own_index, path_keypairs);
         self.own_leaf = own_leaf;
         if with_direct_path {
             (
                 confirmation,
-                kpb.clone(),
+                key_package_bundle.clone(),
                 Some(self.encrypt_to_copath(
                     path_secrets.clone(),
                     keypairs,
                     group_context,
-                    kpb.get_key_package().clone(),
+                    key_package_bundle.get_key_package().clone(),
                 )),
                 Some(path_secrets),
             )
         } else {
-            (confirmation, kpb, None, None)
+            (confirmation, key_package_bundle, None, None)
         }
     }
     pub fn encrypt_to_copath(

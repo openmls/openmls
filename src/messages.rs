@@ -599,7 +599,7 @@ impl Codec for EncryptedGroupSecrets {
 #[derive(Clone)]
 pub struct Welcome {
     pub version: ProtocolVersion,
-    pub cipher_suite: CiphersuiteName,
+    pub cipher_suite: Ciphersuite,
     pub secrets: Vec<EncryptedGroupSecrets>,
     pub encrypted_group_info: Vec<u8>,
 }
@@ -614,7 +614,7 @@ impl Codec for Welcome {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let version = ProtocolVersion::decode(cursor)?;
-        let cipher_suite = CiphersuiteName::decode(cursor)?;
+        let cipher_suite = Ciphersuite::decode(cursor)?;
         let secrets = decode_vec(VecSize::VecU32, cursor)?;
         let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
         Ok(Welcome {

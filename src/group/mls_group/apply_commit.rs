@@ -86,14 +86,14 @@ pub fn apply_commit(
             return Err(ApplyCommitError::PlaintextSignatureFailure);
         }
         if is_own_commit {
+            // Find the right KeyPackageBundle among the pending bundles
             let own_kpb = pending_kpbs
                 .iter()
                 .find(|&kpb| kpb.get_key_package() == kp)
                 .unwrap();
             let (commit_secret, _, _, _) = provisional_tree.update_own_leaf(
-                group.get_identity(),
                 None,
-                Some(own_kpb.clone()),
+                own_kpb.clone(),
                 &group.group_context.serialize(),
                 false,
             );
@@ -107,8 +107,7 @@ pub fn apply_commit(
             )
         }
     } else {
-        let path_required = membership_changes.path_required();
-        if path_required {
+        if membership_changes.path_required() {
             return Err(ApplyCommitError::RequiredPathNotFound);
         }
         CommitSecret(zero(ciphersuite.hash_length()))

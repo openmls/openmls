@@ -1,9 +1,10 @@
+/*
 use maelstrom::ciphersuite::*;
 use maelstrom::creds::*;
 use maelstrom::group::*;
 use maelstrom::key_packages::*;
 
-/*
+
 #[test]
 fn group_operations() {
     let ciphersuite = Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
