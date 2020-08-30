@@ -46,7 +46,11 @@ pub struct MlsGroup {
 }
 
 impl Api for MlsGroup {
-    fn new(id: &[u8], ciphersuite: Ciphersuite, key_package_bundle: KeyPackageBundle) -> MlsGroup {
+    fn new(
+        id: &[u8],
+        ciphersuite: Ciphersuite,
+        key_package_bundle: (HPKEPrivateKey, KeyPackage),
+    ) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
         let astree = ASTree::new(
@@ -54,7 +58,9 @@ impl Api for MlsGroup {
             &epoch_secrets.application_secret,
             LeafIndex::from(1u32),
         );
-        let tree = RatchetTree::new(ciphersuite, key_package_bundle);
+        let (private_key, key_package) = key_package_bundle;
+        let kpb = KeyPackageBundle::from_values(key_package, private_key);
+        let tree = RatchetTree::new(ciphersuite, kpb);
         let group_context = GroupContext {
             group_id,
             epoch: GroupEpoch(0),
@@ -77,7 +83,7 @@ impl Api for MlsGroup {
     fn new_from_welcome(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
-        kpb: KeyPackageBundle,
+        kpb: (HPKEPrivateKey, KeyPackage),
     ) -> Result<MlsGroup, WelcomeError> {
         new_from_welcome(welcome, nodes_option, kpb)
     }
@@ -148,11 +154,15 @@ impl Api for MlsGroup {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: (HPKEPrivateKey, KeyPackage),
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
-    ) -> (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>) {
+    ) -> (
+        MLSPlaintext,
+        Option<Welcome>,
+        Option<(HPKEPrivateKey, KeyPackage)>,
+    ) {
         create_commit(
             self,
             aad,

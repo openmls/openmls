@@ -40,7 +40,7 @@ pub fn apply_commit(
     // Create KeyPackageBundles
     let mut pending_kpbs = vec![];
     for (pk, kp) in own_key_packages {
-        pending_kpbs.push(KeyPackageBundle::from_key_package(kp, pk));
+        pending_kpbs.push(KeyPackageBundle::from_values(kp, pk));
     }
 
     // Extract Commit from MLSPlaintext

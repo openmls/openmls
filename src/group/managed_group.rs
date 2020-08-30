@@ -38,7 +38,14 @@ impl ManagedGroup {
         ciphersuite: Ciphersuite,
         key_package_bundle: KeyPackageBundle,
     ) -> Self {
-        let group = MlsGroup::new(&group_id.as_slice(), ciphersuite, key_package_bundle);
+        let group = MlsGroup::new(
+            &group_id.as_slice(),
+            ciphersuite,
+            (
+                key_package_bundle.get_private_key().clone(),
+                key_package_bundle.get_key_package().clone(),
+            ),
+        );
 
         ManagedGroup {
             group,
@@ -54,7 +61,14 @@ impl ManagedGroup {
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<ManagedGroup, WelcomeError> {
-        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle)?;
+        let group = MlsGroup::new_from_welcome(
+            welcome,
+            ratchet_tree,
+            (
+                key_package_bundle.get_private_key().clone(),
+                key_package_bundle.get_key_package().clone(),
+            ),
+        )?;
         Ok(ManagedGroup {
             group,
             generation: 0,

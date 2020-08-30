@@ -211,7 +211,7 @@ impl KeyPackageBundle {
         }
     }
 
-    pub fn from_key_package(key_package: KeyPackage, private_key: HPKEPrivateKey) -> Self {
+    pub fn from_values(key_package: KeyPackage, private_key: HPKEPrivateKey) -> Self {
         Self {
             key_package,
             private_key,

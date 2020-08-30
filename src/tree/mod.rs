@@ -575,7 +575,7 @@ impl RatchetTree {
                 let mut key_package = kpb.get_key_package().clone();
                 key_package.add_extension(parent_hash_extension);
                 key_package.sign(&self.ciphersuite, signature_key);
-                KeyPackageBundle::from_key_package(key_package, kpb.get_private_key().clone())
+                KeyPackageBundle::from_values(key_package, kpb.get_private_key().clone())
             }
             None => kpb,
         };

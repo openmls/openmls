@@ -27,20 +27,20 @@ use crate::tree::*;
 pub fn new_from_welcome(
     welcome: Welcome,
     nodes_option: Option<Vec<Option<Node>>>,
-    kpb: KeyPackageBundle,
+    key_package_bundle: (HPKEPrivateKey, KeyPackage),
 ) -> Result<MlsGroup, WelcomeError> {
     // TODO: Remove consumed key from client
     let ciphersuite = welcome.cipher_suite;
+    let (private_key, key_package) = key_package_bundle;
 
     // Find key_package in welcome secrets
-    let egs = if let Some(egs) =
-        find_key_package_from_welcome_secrets(kpb.get_key_package(), &welcome.secrets)
-    {
-        egs
-    } else {
-        return Err(WelcomeError::JoinerSecretNotFound);
-    };
-    if &ciphersuite != kpb.get_key_package().get_cipher_suite() {
+    let egs =
+        if let Some(egs) = find_key_package_from_welcome_secrets(&key_package, &welcome.secrets) {
+            egs
+        } else {
+            return Err(WelcomeError::JoinerSecretNotFound);
+        };
+    if &ciphersuite != key_package.get_cipher_suite() {
         return Err(WelcomeError::CiphersuiteMismatch);
     }
 
@@ -48,7 +48,7 @@ pub fn new_from_welcome(
     let (group_info, group_secrets) = decrypt_group_info(
         &ciphersuite,
         &egs,
-        kpb.get_private_key(),
+        &private_key,
         &welcome.encrypted_group_info,
     )?;
 
@@ -60,7 +60,11 @@ pub fn new_from_welcome(
         return Err(WelcomeError::MissingRatchetTree);
     };
 
-    let mut tree = if let Some(tree) = RatchetTree::new_from_nodes(ciphersuite, kpb, &nodes) {
+    let mut tree = if let Some(tree) = RatchetTree::new_from_nodes(
+        ciphersuite,
+        KeyPackageBundle::from_values(key_package, private_key),
+        &nodes,
+    ) {
         tree
     } else {
         return Err(WelcomeError::JoinerNotInTree);

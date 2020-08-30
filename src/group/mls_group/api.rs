@@ -23,14 +23,13 @@ pub trait Api {
     fn new(
         group_id: &[u8],
         ciphersuite: Ciphersuite,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: (HPKEPrivateKey, KeyPackage),
     ) -> MlsGroup;
     /// Join a group from a Welcome message
-    // TODO: add support for Welcome Extensions
     fn new_from_welcome(
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: (HPKEPrivateKey, KeyPackage),
     ) -> Result<MlsGroup, WelcomeError>;
 
     // Create handshake messages
@@ -61,11 +60,15 @@ pub trait Api {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: (HPKEPrivateKey, KeyPackage),
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
-    ) -> (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>);
+    ) -> (
+        MLSPlaintext,
+        Option<Welcome>,
+        Option<(HPKEPrivateKey, KeyPackage)>,
+    );
 
     /// Apply a `Commit` message
     fn apply_commit(

@@ -30,17 +30,22 @@ pub fn create_commit(
     group: &MlsGroup,
     aad: &[u8],
     signature_key: &SignaturePrivateKey,
-    key_package_bundle: KeyPackageBundle,
+    key_package_bundle: (HPKEPrivateKey, KeyPackage),
     proposals: Vec<(Sender, Proposal)>,
     own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
     force_group_update: bool,
-) -> (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>) {
+) -> (
+    MLSPlaintext,
+    Option<Welcome>,
+    Option<(HPKEPrivateKey, KeyPackage)>,
+) {
     let ciphersuite = group.get_ciphersuite();
+    let (private_key, key_package) = key_package_bundle;
 
     // Create KeyPackageBundles
     let mut pending_kpbs = vec![];
     for (pk, kp) in own_key_packages {
-        pending_kpbs.push(KeyPackageBundle::from_key_package(kp, pk));
+        pending_kpbs.push(KeyPackageBundle::from_values(kp, pk));
     }
 
     // Organize proposals
@@ -63,7 +68,7 @@ pub fn create_commit(
     let (path, path_secrets_option, kpb_option, commit_secret) = if path_required {
         let (commit_secret, kpb, path, path_secrets) = provisional_tree.update_own_leaf(
             Some(signature_key),
-            key_package_bundle,
+            KeyPackageBundle::from_values(key_package, private_key),
             &group.group_context.serialize(),
             true,
         );
@@ -71,6 +76,12 @@ pub fn create_commit(
     } else {
         let commit_secret = CommitSecret(zero(group.get_ciphersuite().hash_length()));
         (None, None, None, commit_secret)
+    };
+
+    let return_kpb_option = if let Some(kpb) = kpb_option {
+        Some((kpb.get_private_key().clone(), kpb.get_key_package().clone()))
+    } else {
+        None
     };
 
     let commit = Commit {
@@ -201,8 +212,8 @@ pub fn create_commit(
             secrets,
             encrypted_group_info,
         };
-        (mls_plaintext, Some(welcome), kpb_option)
+        (mls_plaintext, Some(welcome), return_kpb_option)
     } else {
-        (mls_plaintext, None, kpb_option)
+        (mls_plaintext, None, return_kpb_option)
     }
 }
