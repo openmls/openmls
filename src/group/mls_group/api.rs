@@ -64,11 +64,7 @@ pub trait Api {
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
-    ) -> (
-        MLSPlaintext,
-        Option<Welcome>,
-        Option<(HPKEPrivateKey, KeyPackage)>,
-    );
+    ) -> CreateCommitResult;
 
     /// Apply a `Commit` message
     fn apply_commit(
@@ -94,3 +90,12 @@ pub trait Api {
     /// Export a secret through the exporter
     fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
 }
+
+pub type CreateCommitResult = Result<
+    (
+        MLSPlaintext,
+        Option<Welcome>,
+        Option<(HPKEPrivateKey, KeyPackage)>,
+    ),
+    CreateCommitError,
+>;

@@ -400,6 +400,9 @@ impl ConfirmationTag {
     pub fn new_empty() -> Self {
         ConfirmationTag(vec![])
     }
+    pub fn as_slice(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
 }
 
 impl Codec for ConfirmationTag {
@@ -488,7 +491,7 @@ pub struct GroupInfo {
     pub confirmed_transcript_hash: Vec<u8>,
     pub interim_transcript_hash: Vec<u8>,
     pub extensions: Vec<Extension>,
-    pub confirmation: Vec<u8>,
+    pub confirmation_tag: Vec<u8>,
     pub signer_index: LeafIndex,
     pub signature: Signature,
 }
@@ -506,7 +509,7 @@ impl Codec for GroupInfo {
         let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = decode_vec(VecSize::VecU16, cursor)?;
-        let confirmation = decode_vec(VecSize::VecU8, cursor)?;
+        let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;
         let signer_index = LeafIndex::from(u32::decode(cursor)?);
         let signature = Signature::decode(cursor)?;
         Ok(GroupInfo {
@@ -516,7 +519,7 @@ impl Codec for GroupInfo {
             confirmed_transcript_hash,
             interim_transcript_hash,
             extensions,
-            confirmation,
+            confirmation_tag,
             signer_index,
             signature,
         })
@@ -532,7 +535,7 @@ impl Signable for GroupInfo {
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         encode_vec(VecSize::VecU16, buffer, &self.extensions)?;
-        encode_vec(VecSize::VecU8, buffer, &self.confirmation)?;
+        encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
         self.signer_index.as_u32().encode(buffer)?;
         Ok(buffer.to_vec())
     }

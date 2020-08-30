@@ -8,7 +8,6 @@ impl Codec for KeyPackage {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        // FIXME
         let protocol_version = ProtocolVersion::decode(cursor)?;
         let cipher_suite = Ciphersuite::decode(cursor)?;
         let hpke_init_key = HPKEPublicKey::decode(cursor)?;

@@ -667,7 +667,7 @@ impl RatchetTree {
     }
     pub fn apply_proposals(
         &mut self,
-        proposal_id_list: ProposalIDList,
+        proposal_id_list: &ProposalIDList,
         proposal_queue: ProposalQueue,
         pending_kpbs: Vec<KeyPackageBundle>,
     ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {

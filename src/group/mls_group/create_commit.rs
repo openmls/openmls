@@ -34,11 +34,7 @@ pub fn create_commit(
     proposals: Vec<(Sender, Proposal)>,
     own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
     force_group_update: bool,
-) -> (
-    MLSPlaintext,
-    Option<Welcome>,
-    Option<(HPKEPrivateKey, KeyPackage)>,
-) {
+) -> CreateCommitResult {
     let ciphersuite = group.get_ciphersuite();
     let (private_key, key_package) = key_package_bundle;
 
@@ -56,34 +52,42 @@ pub fn create_commit(
     }
 
     // TODO Dedup proposals
-
     let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
+
+    // Create provisional tree
     let mut provisional_tree = group.tree.clone();
 
-    let (membership_changes, invited_members, _group_removed) =
-        provisional_tree.apply_proposals(proposal_id_list.clone(), proposal_queue, pending_kpbs);
+    // Apply proposals to tree
+    let (membership_changes, invited_members, group_removed) =
+        provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, pending_kpbs);
+    if group_removed {
+        return Err(CreateCommitError::CannotRemoveSelf);
+    }
 
+    // Determine if Commit needs path field
     let path_required = membership_changes.path_required() || force_group_update;
 
-    let (path, path_secrets_option, kpb_option, commit_secret) = if path_required {
-        let (commit_secret, kpb, path, path_secrets) = provisional_tree.update_own_leaf(
+    let (commit_secret, path, path_secrets_option, key_package_bundle_option) = if path_required {
+        // If path is eeded, compute path values
+        let (commit_secret, kpb, path_option, path_secrets) = provisional_tree.update_own_leaf(
             Some(signature_key),
             KeyPackageBundle::from_values(key_package, private_key),
             &group.group_context.serialize(),
             true,
         );
-        (path, path_secrets, Some(kpb), commit_secret)
+        (commit_secret, path_option, path_secrets, Some(kpb))
     } else {
+        // If path is not needed, return empty commit secret
         let commit_secret = CommitSecret(zero(group.get_ciphersuite().hash_length()));
-        (None, None, None, commit_secret)
+        (commit_secret, None, None, None)
     };
-
-    let return_kpb_option = if let Some(kpb) = kpb_option {
+    let return_kpb_option = if let Some(kpb) = key_package_bundle_option {
         Some((kpb.get_private_key().clone(), kpb.get_key_package().clone()))
     } else {
         None
     };
 
+    // Create commit message
     let commit = Commit {
         updates: proposal_id_list.updates,
         removes: proposal_id_list.removes,
@@ -91,6 +95,7 @@ pub fn create_commit(
         path,
     };
 
+    // Create provisional group state
     let mut provisional_epoch = group.group_context.epoch;
     provisional_epoch.increment();
 
@@ -119,12 +124,14 @@ pub fn create_commit(
         &provisional_group_context,
     );
 
+    // Compute confirmation tag
     let confirmation_tag = ConfirmationTag::new(
         &ciphersuite,
         &provisional_epoch_secrets.confirmation_key,
         &confirmed_transcript_hash,
     );
 
+    // Create MLSPlaintext
     let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));
     let mls_plaintext = MLSPlaintext::new(
         ciphersuite,
@@ -135,14 +142,19 @@ pub fn create_commit(
         &group.get_context(),
     );
 
-    let interim_transcript_hash =
-        update_interim_transcript_hash(&ciphersuite, &mls_plaintext, &confirmed_transcript_hash);
-
+    // Check if new members were added an create welcome message
+    // TODO: Add support for extensions
     if !membership_changes.adds.is_empty() {
         let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
         let ratchet_tree_extension = public_tree.to_extension();
         let tree_hash = ciphersuite.hash(&ratchet_tree_extension.extension_data);
 
+        // Create GroupInfo object
+        let interim_transcript_hash = update_interim_transcript_hash(
+            &ciphersuite,
+            &mls_plaintext,
+            &confirmed_transcript_hash,
+        );
         let mut group_info = GroupInfo {
             group_id: provisional_group_context.group_id.clone(),
             epoch: provisional_group_context.epoch,
@@ -150,12 +162,13 @@ pub fn create_commit(
             confirmed_transcript_hash,
             interim_transcript_hash,
             extensions: vec![],
-            confirmation: confirmation_tag.0,
+            confirmation_tag: confirmation_tag.as_slice(),
             signer_index: group.get_sender_index(),
             signature: Signature::new_empty(),
         };
         group_info.signature = group_info.sign(ciphersuite, signature_key);
 
+        // Encrypt GroupInfo object
         let (welcome_key, welcome_nonce) = compute_welcome_key_nonce(ciphersuite, &epoch_secret);
 
         let encrypted_group_info = ciphersuite
@@ -167,6 +180,7 @@ pub fn create_commit(
             )
             .unwrap();
 
+        // Create group secrets
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members.clone() {
             let key_package = add_proposal.key_package;
@@ -196,6 +210,8 @@ pub fn create_commit(
                 key_package_hash,
             ));
         }
+
+        // Encrypt group secrets
         let secrets = plaintext_secrets
             .par_iter()
             .map(|(init_key, bytes, key_package_hash)| {
@@ -206,14 +222,16 @@ pub fn create_commit(
                 }
             })
             .collect();
+
+        // Create welcome message
         let welcome = Welcome {
             version: ProtocolVersion::Mls10,
             cipher_suite: group.ciphersuite,
             secrets,
             encrypted_group_info,
         };
-        (mls_plaintext, Some(welcome), return_kpb_option)
+        Ok((mls_plaintext, Some(welcome), return_kpb_option))
     } else {
-        (mls_plaintext, None, return_kpb_option)
+        Ok((mls_plaintext, None, return_kpb_option))
     }
 }

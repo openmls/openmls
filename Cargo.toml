@@ -23,3 +23,6 @@ criterion = "^0.2"
 [[bench]]
 name = "benchmark"
 harness = false
+
+[package.metadata.clippy]
+type-complexity-threshold = 1_000_000

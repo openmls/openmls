@@ -37,6 +37,10 @@ pub enum ApplyCommitError {
     RequiredPathNotFound,
     ConfirmationTagMismatch,
 }
+
+pub enum CreateCommitError {
+    CannotRemoveSelf,
+}
 pub enum ProposalError {}
 pub enum CommitError {}
 pub enum MlsPlaintextError {}

@@ -158,11 +158,7 @@ impl Api for MlsGroup {
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
         force_self_update: bool,
-    ) -> (
-        MLSPlaintext,
-        Option<Welcome>,
-        Option<(HPKEPrivateKey, KeyPackage)>,
-    ) {
+    ) -> CreateCommitResult {
         create_commit(
             self,
             aad,

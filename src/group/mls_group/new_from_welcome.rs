@@ -29,7 +29,6 @@ pub fn new_from_welcome(
     nodes_option: Option<Vec<Option<Node>>>,
     key_package_bundle: (HPKEPrivateKey, KeyPackage),
 ) -> Result<MlsGroup, WelcomeError> {
-    // TODO: Remove consumed key from client
     let ciphersuite = welcome.cipher_suite;
     let (private_key, key_package) = key_package_bundle;
 
@@ -132,7 +131,7 @@ pub fn new_from_welcome(
         &ciphersuite,
         &epoch_secrets.confirmation_key,
         &group_context.confirmed_transcript_hash,
-    ) != ConfirmationTag(group_info.confirmation)
+    ) != ConfirmationTag(group_info.confirmation_tag)
     {
         Err(WelcomeError::ConfirmationTagMismatch)
     } else {
