@@ -99,12 +99,7 @@ pub fn apply_commit(
             );
             commit_secret
         } else {
-            provisional_tree.update_direct_path(
-                sender,
-                path.clone(),
-                path.leaf_key_package,
-                &group.group_context.serialize(),
-            )
+            provisional_tree.update_direct_path(sender, &path, &group.group_context.serialize())
         }
     } else {
         if membership_changes.path_required() {

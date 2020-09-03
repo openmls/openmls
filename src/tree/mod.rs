@@ -150,6 +150,12 @@ pub struct ParentNode {
     parent_hash: Vec<u8>,
 }
 
+impl ParentNode {
+    pub fn get_public_key(&self) -> &HPKEPublicKey {
+        &self.public_key
+    }
+}
+
 // TODO improve the storage memory footprint
 #[derive(Default, Debug, Clone)]
 pub struct PathKeypairs {
@@ -173,11 +179,14 @@ impl PathKeypairs {
             self.keypairs[index.as_usize()] = Some(keypairs[i].clone());
         }
     }
-    pub fn get(&self, index: NodeIndex) -> Option<HPKEKeyPair> {
+    pub fn get(&self, index: NodeIndex) -> Option<&HPKEKeyPair> {
         if index.as_usize() >= self.keypairs.len() {
             return None;
         }
-        self.keypairs.get(index.as_usize()).unwrap().clone()
+        match self.keypairs.get(index.as_usize()) {
+            Some(keypair_option) => keypair_option.as_ref(),
+            None => None,
+        }
     }
 }
 
@@ -262,7 +271,7 @@ pub struct RatchetTree {
 }
 
 impl RatchetTree {
-    pub fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
+    pub(crate) fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
         let own_leaf = OwnLeaf::new(kpb, NodeIndex::from(0u32), PathKeypairs::new());
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
@@ -275,7 +284,7 @@ impl RatchetTree {
             own_leaf,
         }
     }
-    pub fn new_from_nodes(
+    pub(crate) fn new_from_nodes(
         ciphersuite: Ciphersuite,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
@@ -325,14 +334,14 @@ impl RatchetTree {
             own_leaf,
         })
     }
-    pub fn tree_size(&self) -> NodeIndex {
+    fn tree_size(&self) -> NodeIndex {
         NodeIndex::from(self.nodes.len())
     }
-    pub fn get_own_index(&self) -> NodeIndex {
+    pub(crate) fn get_own_index(&self) -> NodeIndex {
         self.own_leaf.node_index
     }
 
-    pub fn public_key_tree(&self) -> Vec<Option<Node>> {
+    pub(crate) fn public_key_tree(&self) -> Vec<Option<Node>> {
         let mut tree = vec![];
         for node in self.nodes.iter() {
             if node.is_blank() {
@@ -344,11 +353,7 @@ impl RatchetTree {
         tree
     }
 
-    pub fn own_leaf(&self) -> &Node {
-        &self.nodes[self.own_leaf.node_index.as_usize()]
-    }
-
-    pub fn leaf_count(&self) -> LeafIndex {
+    pub(crate) fn leaf_count(&self) -> LeafIndex {
         LeafIndex::from(self.tree_size())
     }
 
@@ -380,7 +385,7 @@ impl RatchetTree {
         left.extend(right);
         left
     }
-    pub fn blank_member(&mut self, index: NodeIndex) {
+    pub(crate) fn blank_member(&mut self, index: NodeIndex) {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
         self.nodes[treemath::root(size).as_usize()].blank();
@@ -388,15 +393,7 @@ impl RatchetTree {
             self.nodes[index.as_usize()].blank();
         }
     }
-    pub fn first_free_leaf(&self) -> Option<NodeIndex> {
-        for i in 0..self.leaf_count().as_usize() {
-            if self.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].is_blank() {
-                return Some(NodeIndex::from(i));
-            }
-        }
-        None
-    }
-    pub fn free_leaves(&self) -> Vec<NodeIndex> {
+    pub(crate) fn free_leaves(&self) -> Vec<NodeIndex> {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
@@ -406,121 +403,58 @@ impl RatchetTree {
         }
         free_leaves
     }
-    pub fn print(&self, message: &str) {
-        use crate::utils::*;
-        let factor = 3;
-        println!("{}", message);
-        for (i, node) in self.nodes.iter().enumerate() {
-            let level = treemath::level(NodeIndex::from(i));
-            print!("{:04}", i);
-            if !node.is_blank() {
-                let key_bytes;
-                let parent_hash_bytes: Vec<u8>;
-                match node.node_type {
-                    NodeType::Leaf => {
-                        print!("\tL");
-                        key_bytes = if let Some(kp) = &node.key_package {
-                            kp.get_hpke_init_key().as_slice()
-                        } else {
-                            &[]
-                        };
-                        parent_hash_bytes = if let Some(kp) = &node.key_package {
-                            if let Some(phe) = kp.get_extension(ExtensionType::ParentHash) {
-                                if let ExtensionPayload::ParentHash(parent_hash_inner) = phe {
-                                    parent_hash_inner.parent_hash
-                                } else {
-                                    panic!("Wrong extension type: expected ParentHashExtension")
-                                }
-                            } else {
-                                vec![]
-                            }
-                        } else {
-                            vec![]
-                        }
-                    }
-                    NodeType::Parent => {
-                        print!("\tP");
-                        key_bytes = if let Some(n) = &node.node {
-                            n.public_key.as_slice()
-                        } else {
-                            &[]
-                        };
-                        parent_hash_bytes = if let Some(ph) = node.parent_hash() {
-                            ph
-                        } else {
-                            vec![]
-                        }
-                    }
-                    _ => unreachable!(),
-                }
-                if !key_bytes.is_empty() {
-                    print!("\tPK: {}", bytes_to_hex(&key_bytes));
-                } else {
-                    print!("\tPK:\t\t\t");
-                }
 
-                if !parent_hash_bytes.is_empty() {
-                    print!("\tPH: {}", bytes_to_hex(&parent_hash_bytes));
-                } else {
-                    print!("\tPH:\t\t\t\t\t\t\t\t");
-                }
-                print!("\t| ");
-                for _ in 0..level * factor {
-                    print!(" ");
-                }
-                print!("◼︎");
-            } else {
-                print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
-                for _ in 0..level * factor {
-                    print!(" ");
-                }
-                print!("❑");
-            }
-            println!();
-        }
-    }
-    pub fn update_direct_path(
+    pub(crate) fn update_direct_path(
         &mut self,
         sender: LeafIndex,
-        direct_path: DirectPath,
-        key_package: KeyPackage,
+        direct_path: &DirectPath,
         group_context: &[u8],
     ) -> CommitSecret {
         let own_index = self.own_leaf.node_index;
         // TODO check that the direct path is long enough
+
+        // Find common ancestor of own leaf and sender leaf
         let common_ancestor =
             treemath::common_ancestor(NodeIndex::from(sender), self.own_leaf.node_index);
+
+        // Calculate sender direct path & copath, common path
         let sender_dirpath = treemath::dirpath_root(NodeIndex::from(sender), self.leaf_count());
         let sender_copath = treemath::copath(NodeIndex::from(sender), self.leaf_count());
+
+        // Find the position of the common ancestor in the sender's direct path
         let common_ancestor_sender_dirpath_index = sender_dirpath
             .iter()
             .position(|x| *x == common_ancestor)
             .unwrap();
         let common_ancestor_copath_index = sender_copath[common_ancestor_sender_dirpath_index];
+
+        // Resolve the node of that copath index
         let resolution = self.resolve(common_ancestor_copath_index);
-        // TODO Check if own node is in resolution (should always be the case)
         let position_in_resolution = resolution
             .iter()
             .position(|x| *x == self.own_leaf.node_index)
             .unwrap_or(0);
         // TODO Check resolution.len() == encrypted_path_secret.len()
+
+        // Decrypt the ciphertext of that node
         let hpke_ciphertext = &direct_path.nodes[common_ancestor_sender_dirpath_index]
             .encrypted_path_secret[position_in_resolution];
 
+        // Check whether the secret was encrypted to the leaf node
         let private_key = if resolution[position_in_resolution] == own_index {
-            self.own_leaf.kpb.get_private_key().clone()
+            self.own_leaf.kpb.get_private_key()
         } else {
-            match self
-                .own_leaf
+            self.own_leaf
                 .path_keypairs
                 .get(common_ancestor_copath_index)
-            {
-                // FIXME: don't clone
-                Some(key_pair) => key_pair.get_private_key().clone(),
-                None => panic!("TODO: handle this."),
-            }
+                .unwrap()
+                .get_private_key()
         };
+
+        // Compute the common path between the common ancestor and the root
         let common_path = treemath::dirpath_long(common_ancestor, self.leaf_count());
+
+        // Decrypt the secret and derive path secrets
         let secret = self
             .ciphersuite
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
@@ -528,6 +462,8 @@ impl RatchetTree {
             OwnLeaf::continue_path_secrets(&self.ciphersuite, &secret, common_path.len());
         let keypairs = OwnLeaf::generate_path_keypairs(&self.ciphersuite, &path_secrets);
         let sender_path_offset = sender_dirpath.len() - common_path.len();
+
+        // Generate keypairs from the path secrets
         for (i, keypair) in keypairs.iter().enumerate().take(common_path.len()) {
             // TODO return an error if public keys don't match
             assert_eq!(
@@ -535,14 +471,17 @@ impl RatchetTree {
                 keypair.get_public_key()
             );
         }
+
+        // Merge new nodes and path secrets
         self.merge_public_keys(direct_path, sender_dirpath);
         self.own_leaf.path_keypairs.add(&keypairs, &common_path);
         self.merge_keypairs(&keypairs, &common_path);
-        self.nodes[NodeIndex::from(sender).as_usize()] = Node::new_leaf(Some(key_package));
+        self.nodes[NodeIndex::from(sender).as_usize()] =
+            Node::new_leaf(Some(direct_path.leaf_key_package.clone()));
         self.compute_parent_hash(NodeIndex::from(sender));
         commit_secret
     }
-    pub fn update_own_leaf(
+    pub(crate) fn update_own_leaf(
         &mut self,
         signature_key_option: Option<&SignaturePrivateKey>,
         kpb: KeyPackageBundle,
@@ -642,7 +581,7 @@ impl RatchetTree {
             nodes: direct_path_nodes,
         }
     }
-    pub fn merge_public_keys(&mut self, direct_path: DirectPath, path: Vec<NodeIndex>) {
+    pub fn merge_public_keys(&mut self, direct_path: &DirectPath, path: Vec<NodeIndex>) {
         assert_eq!(direct_path.nodes.len(), path.len()); // TODO return error
         for (i, p) in path.iter().enumerate() {
             let public_key = direct_path.nodes[i].clone().public_key;

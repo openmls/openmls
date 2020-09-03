@@ -218,13 +218,17 @@ impl KeyPackageBundle {
         }
     }
 
+    pub fn into_tuple(self) -> (HPKEPrivateKey, KeyPackage) {
+        (self.private_key, self.key_package)
+    }
+
     /// Get a reference to the `KeyPackage`.
     pub fn get_key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 
     /// Get a reference to the `HPKEPrivateKey`.
-    pub(crate) fn get_private_key(&self) -> &HPKEPrivateKey {
+    pub fn get_private_key(&self) -> &HPKEPrivateKey {
         &self.private_key
     }
 }

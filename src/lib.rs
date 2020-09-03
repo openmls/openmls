@@ -24,5 +24,5 @@ pub mod key_packages;
 pub mod messages;
 pub mod schedule;
 mod tree;
-mod utils;
+pub mod utils;
 pub mod validator;

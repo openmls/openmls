@@ -21,7 +21,7 @@ fn padding() {
         None,
     );
 
-    let mut group_alice = MlsGroup::new(&id, ciphersuite, kpb);
+    let mut group_alice = MlsGroup::new(&id, ciphersuite, kpb.into_tuple());
     const PADDING_SIZE: usize = 10;
 
     for _ in 0..100 {
