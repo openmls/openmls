@@ -35,13 +35,6 @@ pub use errors::*;
 pub use managed_group::*;
 pub use mls_group::*;
 
-pub type WelcomeValidationResult = Result<(), WelcomeError>;
-pub type ProposalValidationResult = Result<(), ProposalError>;
-pub type CommitValidationResult = Result<(), CommitError>;
-pub type MlsPlaintextValidationResult = Result<(), MlsPlaintextError>;
-pub type ProposalPolicyValidationResult = Result<(), ProposalPolicyError>;
-pub type CommitPolicyValidationResult = Result<(), CommitPolicyError>;
-
 pub enum GroupError {
     Codec(CodecError),
 }

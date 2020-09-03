@@ -15,34 +15,29 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 pub enum WelcomeError {
-    CiphersuiteMismatch,
-    JoinerSecretNotFound,
-    MissingRatchetTree,
-    TreeHashMismatch,
-    JoinerNotInTree,
-    ConfirmationTagMismatch,
-    InvalidRatchetTree,
-    InvalidGroupInfoSignature,
-    GroupInfoDecryptionFailure,
+    CiphersuiteMismatch = 100,
+    JoinerSecretNotFound = 101,
+    MissingRatchetTree = 102,
+    TreeHashMismatch = 103,
+    JoinerNotInTree = 104,
+    ConfirmationTagMismatch = 105,
+    InvalidRatchetTree = 106,
+    InvalidGroupInfoSignature = 107,
+    GroupInfoDecryptionFailure = 108,
 }
 
 pub enum ApplyCommitError {
-    EpochMismatch,
-    WrongPlaintextContentType,
-    SelfRemoved,
-    PathKeyPackageVerificationFailure,
-    NoParentHashExtension,
-    ParentHashMismatch,
-    PlaintextSignatureFailure,
-    RequiredPathNotFound,
-    ConfirmationTagMismatch,
+    EpochMismatch = 200,
+    WrongPlaintextContentType = 201,
+    SelfRemoved = 202,
+    PathKeyPackageVerificationFailure = 203,
+    NoParentHashExtension = 204,
+    ParentHashMismatch = 205,
+    PlaintextSignatureFailure = 206,
+    RequiredPathNotFound = 207,
+    ConfirmationTagMismatch = 208,
 }
 
 pub enum CreateCommitError {
-    CannotRemoveSelf,
+    CannotRemoveSelf = 300,
 }
-pub enum ProposalError {}
-pub enum CommitError {}
-pub enum MlsPlaintextError {}
-pub enum ProposalPolicyError {}
-pub enum CommitPolicyError {}
