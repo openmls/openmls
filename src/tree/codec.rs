@@ -1,5 +1,4 @@
-use crate::tree::astree::*;
-use crate::tree::*;
+use crate::tree::{astree::*, node::*, *};
 
 impl Codec for NodeType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -26,25 +25,6 @@ impl Codec for Node {
             node_type,
             key_package,
             node,
-        })
-    }
-}
-
-impl Codec for ParentNode {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.unmerged_leaves)?;
-        encode_vec(VecSize::VecU8, buffer, &self.parent_hash)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let public_key = HPKEPublicKey::decode(cursor)?;
-        let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;
-        let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ParentNode {
-            public_key,
-            unmerged_leaves,
-            parent_hash,
         })
     }
 }

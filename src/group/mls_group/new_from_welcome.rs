@@ -22,7 +22,7 @@ use crate::messages::*;
 use crate::schedule::*;
 use crate::tree::astree::*;
 use crate::tree::treemath;
-use crate::tree::*;
+use crate::tree::{node::*, *};
 
 pub fn new_from_welcome(
     welcome: Welcome,

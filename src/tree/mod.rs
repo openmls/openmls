@@ -26,135 +26,14 @@ use crate::schedule::*;
 // Tree modules
 pub(crate) mod astree;
 pub(crate) mod codec;
+pub(crate) mod node;
 pub(crate) mod treemath;
+
+use node::*;
 
 // Internal tree tests
 mod test_astree;
 mod test_treemath;
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum NodeType {
-    Leaf = 0,
-    Parent = 1,
-    Default = 255,
-}
-
-impl From<u8> for NodeType {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => NodeType::Leaf,
-            1 => NodeType::Parent,
-            _ => NodeType::Default,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Node {
-    pub node_type: NodeType,
-    pub key_package: Option<KeyPackage>,
-    pub node: Option<ParentNode>,
-}
-
-impl Node {
-    pub fn new_leaf(kp_option: Option<KeyPackage>) -> Self {
-        Node {
-            node_type: NodeType::Leaf,
-            key_package: kp_option,
-            node: None,
-        }
-    }
-    pub fn new_blank_parent_node() -> Self {
-        Node {
-            node_type: NodeType::Parent,
-            key_package: None,
-            node: None,
-        }
-    }
-    pub fn get_public_hpke_key(&self) -> Option<&HPKEPublicKey> {
-        match self.node_type {
-            NodeType::Leaf => {
-                if let Some(ref kp) = self.key_package {
-                    Some(kp.get_hpke_init_key())
-                } else {
-                    None
-                }
-            }
-            NodeType::Parent => {
-                if let Some(ref parent_node) = self.node {
-                    Some(&parent_node.public_key)
-                } else {
-                    None
-                }
-            }
-            NodeType::Default => None,
-        }
-    }
-    pub fn blank(&mut self) {
-        self.key_package = None;
-        self.node = None;
-    }
-    pub fn is_blank(&self) -> bool {
-        self.key_package.is_none() && self.node.is_none()
-    }
-    pub fn hash(&self, ciphersuite: &Ciphersuite) -> Option<Vec<u8>> {
-        if let Some(parent_node) = &self.node {
-            let payload = parent_node.encode_detached().unwrap();
-            let node_hash = ciphersuite.hash(&payload);
-            Some(node_hash)
-        } else {
-            None
-        }
-    }
-    pub fn parent_hash(&self) -> Option<Vec<u8>> {
-        if self.is_blank() {
-            return None;
-        }
-        match self.node_type {
-            NodeType::Parent => {
-                if let Some(node) = &self.node {
-                    Some(node.parent_hash.clone())
-                } else {
-                    None
-                }
-            }
-            NodeType::Leaf => {
-                if let Some(key_package) = &self.key_package {
-                    if let Some(extension_payload) =
-                        key_package.get_extension(ExtensionType::ParentHash)
-                    {
-                        if let ExtensionPayload::ParentHash(parent_hash_extension) =
-                            extension_payload
-                        {
-                            Some(parent_hash_extension.parent_hash)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct ParentNode {
-    public_key: HPKEPublicKey,
-    unmerged_leaves: Vec<u32>,
-    parent_hash: Vec<u8>,
-}
-
-impl ParentNode {
-    pub fn get_public_key(&self) -> &HPKEPublicKey {
-        &self.public_key
-    }
-}
 
 // TODO improve the storage memory footprint
 #[derive(Default, Debug, Clone)]
@@ -373,7 +252,7 @@ impl RatchetTree {
             let node = &self.nodes[index.as_usize()].node.as_ref();
             unmerged_leaves.extend(
                 node.unwrap()
-                    .unmerged_leaves
+                    .get_unmerged_leaves()
                     .iter()
                     .map(|n| NodeIndex::from(*n)),
             );
@@ -585,22 +464,14 @@ impl RatchetTree {
         assert_eq!(direct_path.nodes.len(), path.len()); // TODO return error
         for (i, p) in path.iter().enumerate() {
             let public_key = direct_path.nodes[i].clone().public_key;
-            let node = ParentNode {
-                public_key: public_key.clone(),
-                unmerged_leaves: vec![],
-                parent_hash: vec![],
-            };
+            let node = ParentNode::new(public_key.clone(), &[], &[]);
             self.nodes[p.as_usize()].node = Some(node);
         }
     }
     pub fn merge_keypairs(&mut self, keypairs: &[HPKEKeyPair], path: &[NodeIndex]) {
         assert_eq!(keypairs.len(), path.len()); // TODO return error
         for i in 0..path.len() {
-            let node = ParentNode {
-                public_key: keypairs[i].get_public_key().clone(),
-                unmerged_leaves: vec![],
-                parent_hash: vec![],
-            };
+            let node = ParentNode::new(keypairs[i].get_public_key().clone(), &[], &[]);
             self.nodes[path[i].as_usize()].node = Some(node);
         }
     }
@@ -683,8 +554,8 @@ impl RatchetTree {
                         let index = d.as_u32();
                         // TODO handle error
                         let mut parent_node = node.node.clone().unwrap();
-                        if !parent_node.unmerged_leaves.contains(&index) {
-                            parent_node.unmerged_leaves.push(index);
+                        if !parent_node.get_unmerged_leaves().contains(&index) {
+                            parent_node.get_unmerged_leaves_mut().push(index);
                         }
                         self.nodes[d.as_usize()].node = Some(parent_node);
                     }
@@ -766,7 +637,7 @@ impl RatchetTree {
         };
         let current_node = &self.nodes[index.as_usize()];
         if let Some(mut parent_node) = current_node.node.clone() {
-            parent_node.parent_hash = parent_hash;
+            parent_node.set_parent_hash(parent_hash);
             self.nodes[index.as_usize()].node = Some(parent_node);
             let updated_parent_node = &self.nodes[index.as_usize()];
             updated_parent_node.hash(&self.ciphersuite).unwrap()

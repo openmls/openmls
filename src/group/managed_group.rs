@@ -21,7 +21,7 @@ use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
-use crate::tree::*;
+use crate::tree::node::*;
 
 pub struct ManagedGroup {
     pub group: MlsGroup,

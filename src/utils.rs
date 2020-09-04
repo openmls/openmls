@@ -16,7 +16,7 @@
 
 use crate::extensions::*;
 use crate::messages::*;
-use crate::tree::*;
+use crate::tree::{node::*, *};
 use evercrypt::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;

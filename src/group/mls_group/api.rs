@@ -18,6 +18,8 @@ use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
+use crate::tree::node::*;
+
 pub trait Api {
     /// Create a new group.
     fn new(

@@ -16,7 +16,7 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::tree::*;
+use crate::tree::node::*;
 use crate::utils::*;
 use std::cmp::Ordering;
 use std::mem;

@@ -28,7 +28,7 @@ use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::tree::astree::*;
-use crate::tree::*;
+use crate::tree::{node::*, *};
 
 pub use api::*;
 use apply_commit::*;
