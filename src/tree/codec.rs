@@ -1,5 +1,5 @@
-use crate::tree::*;
 use crate::tree::astree::*;
+use crate::tree::*;
 
 impl Codec for NodeType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -62,38 +62,35 @@ impl Codec for PathKeypairs {
 
 impl Codec for OwnLeaf {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
         self.kpb.encode(buffer)?;
-        self.leaf_index.as_u32().encode(buffer)?;
+        self.node_index.as_u32().encode(buffer)?;
         self.path_keypairs.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
         let kpb = KeyPackageBundle::decode(cursor)?;
-        let leaf_index = NodeIndex::from(u32::decode(cursor)?);
+        let node_index = NodeIndex::from(u32::decode(cursor)?);
         let path_keypairs = PathKeypairs::decode(cursor)?;
         Ok(OwnLeaf {
-            ciphersuite,
             kpb,
-            leaf_index,
+            node_index,
             path_keypairs,
         })
     }
 }
 
-impl Codec for Tree {
+impl Codec for RatchetTree {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.ciphersuite.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
         self.own_leaf.encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    fn decode(cursor: &mut Cursor) -> Result<RatchetTree, CodecError> {
         let ciphersuite = Ciphersuite::decode(cursor)?;
         let nodes = decode_vec(VecSize::VecU32, cursor)?;
         let own_leaf = OwnLeaf::decode(cursor)?;
-        Ok(Tree {
+        Ok(RatchetTree {
             ciphersuite,
             nodes,
             own_leaf,
@@ -101,7 +98,7 @@ impl Codec for Tree {
     }
 }
 
-impl Codec for ParentNodeHashInput {
+impl<'a> Codec for ParentNodeHashInput<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.node_index.encode(buffer)?;
         self.parent_node.encode(buffer)?;
@@ -109,33 +106,19 @@ impl Codec for ParentNodeHashInput {
         encode_vec(VecSize::VecU8, buffer, &self.right_hash)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let node_index = u32::decode(cursor)?;
-        let parent_node = Option::<ParentNode>::decode(cursor)?;
-        let left_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let right_hash = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ParentNodeHashInput {
-            node_index,
-            parent_node,
-            left_hash,
-            right_hash,
-        })
+    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
+        unimplemented!()
     }
 }
 
-impl Codec for LeafNodeHashInput {
+impl<'a> Codec for LeafNodeHashInput<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.node_index.as_u32().encode(buffer)?;
         self.key_package.encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let node_index = NodeIndex::from(u32::decode(cursor)?);
-        let key_package = Option::<KeyPackage>::decode(cursor)?;
-        Ok(LeafNodeHashInput {
-            node_index,
-            key_package,
-        })
+    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
+        unimplemented!()
     }
 }
 
@@ -183,4 +166,3 @@ impl Codec for ASTreeNode {
         Ok(ASTreeNode { secret })
     }
 }
-

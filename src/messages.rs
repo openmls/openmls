@@ -132,7 +132,7 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub fn to_proposal_id(&self, ciphersuite: Ciphersuite) -> ProposalID {
+    pub fn to_proposal_id(&self, ciphersuite: &Ciphersuite) -> ProposalID {
         ProposalID::from_proposal(ciphersuite, self)
     }
     pub fn as_add(&self) -> Option<AddProposal> {
@@ -190,7 +190,7 @@ pub struct ProposalID {
 }
 
 impl ProposalID {
-    pub fn from_proposal(ciphersuite: Ciphersuite, proposal: &Proposal) -> Self {
+    pub fn from_proposal(ciphersuite: &Ciphersuite, proposal: &Proposal) -> Self {
         let encoded = proposal.encode_detached().unwrap();
         let value = ciphersuite.hash(&encoded);
         Self { value }
@@ -268,21 +268,19 @@ impl Codec for QueuedProposal {
     }
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct ProposalQueue {
-    ciphersuite: Ciphersuite,
     tuples: HashMap<ShortProposalID, (ProposalID, QueuedProposal)>,
 }
 
 impl ProposalQueue {
-    pub fn new(ciphersuite: Ciphersuite) -> Self {
+    pub fn new() -> Self {
         ProposalQueue {
-            ciphersuite,
             tuples: HashMap::new(),
         }
     }
-    pub fn add(&mut self, queued_proposal: QueuedProposal) {
-        let pi = ProposalID::from_proposal(self.ciphersuite, &queued_proposal.proposal);
+    pub fn add(&mut self, queued_proposal: QueuedProposal, ciphersuite: &Ciphersuite) {
+        let pi = ProposalID::from_proposal(ciphersuite, &queued_proposal.proposal);
         let spi = ShortProposalID::from_proposal_id(&pi);
         self.tuples.entry(spi).or_insert((pi, queued_proposal));
     }
@@ -290,15 +288,15 @@ impl ProposalQueue {
         let spi = ShortProposalID::from_proposal_id(&proposal_id);
         self.tuples.get(&spi)
     }
-    pub fn get_commit_lists(&self) -> ProposalIDList {
+    pub fn get_commit_lists(&self, ciphersuite: &Ciphersuite) -> ProposalIDList {
         let mut updates = vec![];
         let mut removes = vec![];
         let mut adds = vec![];
         for (_spi, p) in self.tuples.values() {
             match p.proposal {
-                Proposal::Update(_) => updates.push(p.proposal.to_proposal_id(self.ciphersuite)),
-                Proposal::Remove(_) => removes.push(p.proposal.to_proposal_id(self.ciphersuite)),
-                Proposal::Add(_) => adds.push(p.proposal.to_proposal_id(self.ciphersuite)),
+                Proposal::Update(_) => updates.push(p.proposal.to_proposal_id(ciphersuite)),
+                Proposal::Remove(_) => removes.push(p.proposal.to_proposal_id(ciphersuite)),
+                Proposal::Add(_) => adds.push(p.proposal.to_proposal_id(ciphersuite)),
             }
         }
         ProposalIDList {
@@ -311,17 +309,12 @@ impl ProposalQueue {
 
 impl Codec for ProposalQueue {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
         self.tuples.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
         let tuples = HashMap::<ShortProposalID, (ProposalID, QueuedProposal)>::decode(cursor)?;
-        Ok(ProposalQueue {
-            ciphersuite,
-            tuples,
-        })
+        Ok(ProposalQueue { tuples })
     }
 }
 
@@ -394,34 +387,43 @@ impl Codec for Commit {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Confirmation(pub Vec<u8>);
+pub struct ConfirmationTag(pub Vec<u8>);
 
-impl Confirmation {
+impl ConfirmationTag {
     pub fn new(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         confirmation_key: &[u8],
         confirmed_transcript_hash: &[u8],
     ) -> Self {
-        Confirmation(ciphersuite.hmac(confirmation_key, confirmed_transcript_hash))
+        ConfirmationTag(ciphersuite.hkdf_extract(confirmation_key, confirmed_transcript_hash))
     }
     pub fn new_empty() -> Self {
-        Confirmation(vec![])
+        ConfirmationTag(vec![])
+    }
+    pub fn as_slice(&self) -> Vec<u8> {
+        self.0.to_vec()
     }
 }
 
-impl Codec for Confirmation {
+impl Codec for ConfirmationTag {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.0)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let inner = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Confirmation(inner))
+        Ok(ConfirmationTag(inner))
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct CommitSecret(pub Vec<u8>);
+
+impl CommitSecret {
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 impl Codec for CommitSecret {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -489,7 +491,7 @@ pub struct GroupInfo {
     pub confirmed_transcript_hash: Vec<u8>,
     pub interim_transcript_hash: Vec<u8>,
     pub extensions: Vec<Extension>,
-    pub confirmation: Vec<u8>,
+    pub confirmation_tag: Vec<u8>,
     pub signer_index: LeafIndex,
     pub signature: Signature,
 }
@@ -507,7 +509,7 @@ impl Codec for GroupInfo {
         let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = decode_vec(VecSize::VecU16, cursor)?;
-        let confirmation = decode_vec(VecSize::VecU8, cursor)?;
+        let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;
         let signer_index = LeafIndex::from(u32::decode(cursor)?);
         let signature = Signature::decode(cursor)?;
         Ok(GroupInfo {
@@ -517,7 +519,7 @@ impl Codec for GroupInfo {
             confirmed_transcript_hash,
             interim_transcript_hash,
             extensions,
-            confirmation,
+            confirmation_tag,
             signer_index,
             signature,
         })
@@ -533,7 +535,7 @@ impl Signable for GroupInfo {
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         encode_vec(VecSize::VecU16, buffer, &self.extensions)?;
-        encode_vec(VecSize::VecU8, buffer, &self.confirmation)?;
+        encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
         self.signer_index.as_u32().encode(buffer)?;
         Ok(buffer.to_vec())
     }
@@ -555,21 +557,21 @@ impl Codec for PathSecret {
 }
 
 pub struct GroupSecrets {
-    pub epoch_secret: Vec<u8>,
+    pub joiner_secret: Vec<u8>,
     pub path_secret: Option<PathSecret>,
 }
 
 impl Codec for GroupSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.epoch_secret)?;
+        encode_vec(VecSize::VecU8, buffer, &self.joiner_secret)?;
         self.path_secret.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let epoch_secret = decode_vec(VecSize::VecU8, cursor)?;
+        let joiner_secret = decode_vec(VecSize::VecU8, cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
         Ok(GroupSecrets {
-            epoch_secret,
+            joiner_secret,
             path_secret,
         })
     }

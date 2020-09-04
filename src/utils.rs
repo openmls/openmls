@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::extensions::*;
+use crate::messages::*;
+use crate::tree::*;
 use evercrypt::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;
@@ -34,10 +37,83 @@ pub(crate) fn zero(length: usize) -> Vec<u8> {
     result
 }
 
-pub(crate) fn bytes_to_hex(bytes: &[u8]) -> String {
+fn _bytes_to_hex(bytes: &[u8]) -> String {
     let mut hex = String::new();
     for b in bytes {
         hex += &format!("{:02X}", *b);
     }
     hex
+}
+
+pub fn _print_tree(tree: &RatchetTree, message: &str) {
+    let factor = 3;
+    println!("{}", message);
+    for (i, node) in tree.nodes.iter().enumerate() {
+        let level = treemath::level(NodeIndex::from(i));
+        print!("{:04}", i);
+        if !node.is_blank() {
+            let key_bytes;
+            let parent_hash_bytes: Vec<u8>;
+            match node.node_type {
+                NodeType::Leaf => {
+                    print!("\tL");
+                    key_bytes = if let Some(kp) = &node.key_package {
+                        kp.get_hpke_init_key().as_slice()
+                    } else {
+                        &[]
+                    };
+                    parent_hash_bytes = if let Some(kp) = &node.key_package {
+                        if let Some(phe) = kp.get_extension(ExtensionType::ParentHash) {
+                            if let ExtensionPayload::ParentHash(parent_hash_inner) = phe {
+                                parent_hash_inner.parent_hash
+                            } else {
+                                panic!("Wrong extension type: expected ParentHashExtension")
+                            }
+                        } else {
+                            vec![]
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                NodeType::Parent => {
+                    print!("\tP");
+                    key_bytes = if let Some(n) = &node.node {
+                        n.get_public_key().as_slice()
+                    } else {
+                        &[]
+                    };
+                    parent_hash_bytes = if let Some(ph) = node.parent_hash() {
+                        ph
+                    } else {
+                        vec![]
+                    }
+                }
+                _ => unreachable!(),
+            }
+            if !key_bytes.is_empty() {
+                print!("\tPK: {}", _bytes_to_hex(&key_bytes));
+            } else {
+                print!("\tPK:\t\t\t");
+            }
+
+            if !parent_hash_bytes.is_empty() {
+                print!("\tPH: {}", _bytes_to_hex(&parent_hash_bytes));
+            } else {
+                print!("\tPH:\t\t\t\t\t\t\t\t");
+            }
+            print!("\t| ");
+            for _ in 0..level * factor {
+                print!(" ");
+            }
+            print!("◼︎");
+        } else {
+            print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
+            for _ in 0..level * factor {
+                print!(" ");
+            }
+            print!("❑");
+        }
+        println!();
+    }
 }

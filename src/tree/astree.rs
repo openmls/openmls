@@ -23,6 +23,8 @@ use crate::tree::treemath::*;
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
 
+// TODO: get rif of Ciphersuite (pass it in get_secret)
+
 #[derive(Debug, PartialEq)]
 pub enum ASError {
     TooDistantInThePast,
@@ -31,7 +33,7 @@ pub enum ASError {
 }
 
 fn derive_app_secret(
-    ciphersuite: Ciphersuite,
+    ciphersuite: &Ciphersuite,
     secret: &[u8],
     label: &str,
     node: u32,
@@ -167,7 +169,7 @@ impl SenderRatchet {
     }
     fn ratchet_secret(&self, secret: &[u8]) -> Vec<u8> {
         derive_app_secret(
-            self.ciphersuite,
+            &self.ciphersuite,
             secret,
             "app-secret",
             self.index.as_u32(),
@@ -177,7 +179,7 @@ impl SenderRatchet {
     }
     fn derive_key_nonce(&self, secret: &[u8], generation: u32) -> ApplicationSecrets {
         let nonce = derive_app_secret(
-            self.ciphersuite,
+            &self.ciphersuite,
             secret,
             "app-nonce",
             self.index.as_u32(),
@@ -185,7 +187,7 @@ impl SenderRatchet {
             self.ciphersuite.aead_nonce_length(),
         );
         let key = derive_app_secret(
-            self.ciphersuite,
+            &self.ciphersuite,
             secret,
             "app-key",
             self.index.as_u32(),
@@ -299,7 +301,7 @@ impl ASTree {
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree, self.size);
         let left_secret = derive_app_secret(
-            self.ciphersuite,
+            &self.ciphersuite,
             &node_secret,
             "tree",
             left_index.as_u32(),
@@ -307,7 +309,7 @@ impl ASTree {
             hash_len,
         );
         let right_secret = derive_app_secret(
-            self.ciphersuite,
+            &self.ciphersuite,
             &node_secret,
             "tree",
             right_index.as_u32(),

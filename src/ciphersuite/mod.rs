@@ -34,7 +34,7 @@ pub const AES_256_KEY_BYTES: usize = 32;
 pub const TAG_BYTES: usize = 16;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CiphersuiteName {
     MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
     MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,
@@ -159,7 +159,7 @@ impl Ciphersuite {
     }
 
     /// Create a new signature key pair and return it.
-    pub(crate) fn new_signature_keypair(&self) -> SignatureKeypair {
+    pub fn new_signature_keypair(&self) -> SignatureKeypair {
         let (sk, pk) = match signature_key_gen(self.signature) {
             Ok((sk, pk)) => (sk, pk),
             Err(e) => panic!("Key generation really shouldn't fail. {:?}", e),
@@ -179,11 +179,6 @@ impl Ciphersuite {
     /// Get the length of the used hash algorithm.
     pub(crate) fn hash_length(&self) -> usize {
         get_digest_size(self.hash)
-    }
-
-    /// Compute the hmac with the given `key` on `data`.
-    pub(crate) fn hmac(&self, key: &[u8], data: &[u8]) -> Vec<u8> {
-        hmac(self.hmac, key, data, None)
     }
 
     /// HKDF extract.
@@ -271,7 +266,7 @@ impl Ciphersuite {
     /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and `aad`.
     pub(crate) fn hpke_open(
         &self,
-        input: HpkeCiphertext,
+        input: &HpkeCiphertext,
         sk_r: &HPKEPrivateKey,
         info: &[u8],
         aad: &[u8],
@@ -342,7 +337,7 @@ impl HPKEPrivateKey {
 
 impl HPKEKeyPair {
     /// Build a new HPKE key pair from the given `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8], ciphersuite: Ciphersuite) -> Self {
+    pub(crate) fn from_slice(bytes: &[u8], ciphersuite: &Ciphersuite) -> Self {
         let private_key = HPKEPrivateKey::from_slice(bytes);
         let public_key = private_key.public_key(ciphersuite.hpke_kem);
         Self {
@@ -407,17 +402,29 @@ impl Signature {
 }
 
 impl SignatureKeypair {
-    pub(crate) fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
+    pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
         self.ciphersuite.sign(&self.private_key, payload)
     }
 
     /// Get a reference to the private key.
-    pub(crate) fn get_private_key(&self) -> &SignaturePrivateKey {
+    pub fn get_private_key(&self) -> &SignaturePrivateKey {
         &self.private_key
     }
 
     /// Get a reference to the public key.
-    pub(crate) fn get_public_key(&self) -> &SignaturePublicKey {
+    pub fn get_public_key(&self) -> &SignaturePublicKey {
         &self.public_key
     }
+}
+
+#[test]
+fn test_sign_verify() {
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let keypair = ciphersuite.new_signature_keypair();
+    let payload = &[1, 2, 3];
+    let signature = ciphersuite
+        .sign(keypair.get_private_key(), payload)
+        .unwrap();
+    assert!(ciphersuite.verify(&signature, keypair.get_public_key(), payload));
 }

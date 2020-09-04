@@ -16,42 +16,34 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::group::*;
 use crate::messages::*;
 
-pub fn derive_secret(
-    ciphersuite: Ciphersuite,
-    secret: &[u8],
-    label: &str,
-    context: &[u8],
-) -> Vec<u8> {
-    hkdf_expand_label(
-        ciphersuite,
-        secret,
-        label,
-        context,
-        ciphersuite.hash_length(),
-    )
+pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &[u8], label: &str) -> Vec<u8> {
+    hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
 }
 
 pub fn mls_exporter(
-    ciphersuite: Ciphersuite,
+    ciphersuite: &Ciphersuite,
     epoch_secrets: &EpochSecrets,
     label: &str,
-    context: &[u8],
+    group_context: &GroupContext,
     key_length: usize,
 ) -> Vec<u8> {
     let secret = &epoch_secrets.exporter_secret;
+    let context = &group_context.serialize();
+    let context_hash = &ciphersuite.hash(context);
     hkdf_expand_label(
         ciphersuite,
-        &derive_secret(ciphersuite, secret, label, context),
+        &derive_secret(ciphersuite, secret, label),
         "exporter",
-        context,
+        context_hash,
         key_length,
     )
 }
 
 pub fn hkdf_expand_label(
-    ciphersuite: Ciphersuite,
+    ciphersuite: &Ciphersuite,
     secret: &[u8],
     label: &str,
     context: &[u8],
@@ -119,22 +111,20 @@ impl EpochSecrets {
     }
     pub fn get_new_epoch_secrets(
         &mut self,
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         commit_secret: CommitSecret,
         psk: Option<&[u8]>,
-        group_state: &[u8],
+        group_context: &GroupContext,
     ) -> Vec<u8> {
         let current_init_secret = self.init_secret.clone();
-        let welcome_secret = derive_secret(ciphersuite, &current_init_secret, "group info", &[]);
-        let salt = &psk.unwrap_or(&[]);
-        let ikm = &current_init_secret;
-        let early_secret = ciphersuite.hkdf_extract(salt, ikm);
-        let derived_secret = derive_secret(ciphersuite, &early_secret, "derived", &[]);
-        let salt = &derived_secret;
-        let ikm = &commit_secret.0;
-        let epoch_secret = ciphersuite.hkdf_extract(salt, ikm);
-        let epoch_secrets =
-            Self::derive_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret, group_state);
+        let joiner_secret =
+            &ciphersuite.hkdf_extract(commit_secret.as_slice(), &current_init_secret);
+        let welcome_secret = derive_secret(ciphersuite, &joiner_secret, "welcome");
+        let pre_member_secret = derive_secret(ciphersuite, &joiner_secret, "member");
+        let member_secret = ciphersuite.hkdf_extract(&psk.unwrap_or(&[]), &pre_member_secret);
+        let pre_epoch_secret = derive_secret(ciphersuite, &member_secret, "epoch");
+        let epoch_secret = ciphersuite.hkdf_extract(&group_context.serialize(), &pre_epoch_secret);
+        let epoch_secrets = Self::derive_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret);
         self.welcome_secret = epoch_secrets.welcome_secret;
         self.sender_data_secret = epoch_secrets.sender_data_secret;
         self.handshake_secret = epoch_secrets.handshake_secret;
@@ -146,18 +136,16 @@ impl EpochSecrets {
     }
 
     pub fn derive_epoch_secrets(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         epoch_secret: &[u8],
         welcome_secret: Vec<u8>,
-        group_state: &[u8],
     ) -> EpochSecrets {
-        let sender_data_secret =
-            derive_secret(ciphersuite, epoch_secret, "sender data", group_state);
-        let handshake_secret = derive_secret(ciphersuite, epoch_secret, "handshake", group_state);
-        let application_secret = derive_secret(ciphersuite, epoch_secret, "app", group_state);
-        let exporter_secret = derive_secret(ciphersuite, epoch_secret, "exporter", group_state);
-        let confirmation_key = derive_secret(ciphersuite, epoch_secret, "confirm", group_state);
-        let init_secret = derive_secret(ciphersuite, epoch_secret, "init", group_state);
+        let sender_data_secret = derive_secret(ciphersuite, epoch_secret, "sender data");
+        let handshake_secret = derive_secret(ciphersuite, epoch_secret, "handshake");
+        let application_secret = derive_secret(ciphersuite, epoch_secret, "app");
+        let exporter_secret = derive_secret(ciphersuite, epoch_secret, "exporter");
+        let confirmation_key = derive_secret(ciphersuite, epoch_secret, "confirm");
+        let init_secret = derive_secret(ciphersuite, epoch_secret, "init");
         EpochSecrets {
             welcome_secret,
             sender_data_secret,

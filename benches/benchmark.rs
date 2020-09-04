@@ -26,12 +26,22 @@ use maelstrom::key_packages::*;
 
 fn criterion_kp_bundle(c: &mut Criterion) {
     c.bench_function("KeyPackage create bundle", |b| {
-        let ciphersuite = Ciphersuite::new(
-            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-        );
+        let ciphersuite =
+            Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+        let signature_keypair = ciphersuite.new_signature_keypair();
         b.iter_with_setup(
-            || Identity::new(ciphersuite, vec![1, 2, 3]),
-            |identity| KeyPackageBundle::new(ciphersuite, &identity, None),
+            || {
+                let identity = Identity::new(ciphersuite, vec![1, 2, 3]);
+                Credential::Basic(BasicCredential::from(&identity))
+            },
+            |credential| {
+                KeyPackageBundle::new(
+                    ciphersuite,
+                    signature_keypair.get_private_key(),
+                    credential,
+                    None,
+                );
+            },
         )
     });
 }
