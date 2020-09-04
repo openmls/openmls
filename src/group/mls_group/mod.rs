@@ -21,7 +21,6 @@ mod new_from_welcome;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::creds::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -209,9 +208,20 @@ impl Api for MlsGroup {
     }
 
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext {
+        let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
+        for i in 0..self.tree.leaf_count().as_usize() {
+            let node = &self.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()];
+            let credential = if let Some(kp) = &node.key_package {
+                kp.get_credential()
+            } else {
+                panic!("Missing key package");
+            };
+            roster.push(credential);
+        }
+
         mls_ciphertext.to_plaintext(
             &self.ciphersuite,
-            &self.roster(),
+            &roster,
             &self.epoch_secrets,
             &mut self.astree,
             &self.group_context,
@@ -265,15 +275,6 @@ impl Codec for MlsGroup {
 impl MlsGroup {
     pub fn get_tree(&self) -> &RatchetTree {
         &self.tree
-    }
-    pub fn roster(&self) -> Vec<Credential> {
-        let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
-        for i in 0..self.tree.leaf_count().as_usize() {
-            let node = self.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
-            let credential = node.key_package.unwrap().get_credential().clone();
-            roster.push(credential);
-        }
-        roster
     }
     fn get_sender_index(&self) -> LeafIndex {
         LeafIndex::from(self.tree.get_own_index())

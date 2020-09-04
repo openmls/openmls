@@ -272,7 +272,7 @@ impl MLSCiphertext {
     pub fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
-        roster: &[Credential],
+        roster: &[&Credential],
         epoch_secrets: &EpochSecrets,
         astree: &mut ASTree,
         context: &GroupContext,
