@@ -132,7 +132,7 @@ impl MLSCiphertext {
     ) -> (AeadKey, AeadNonce) {
         let sender_id = match mls_plaintext {
             Some(mls_plaintext) => mls_plaintext.sender.encode_detached().unwrap(),
-            None => sender_data.sender.as_u32().encode_detached().unwrap(),
+            None => sender_data.sender.encode_detached().unwrap(),
         };
         let mut handshake_nonce_input = hkdf_expand_label(
             ciphersuite,
@@ -442,7 +442,7 @@ impl Sender {
 impl Codec for Sender {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.sender_type.encode(buffer)?;
-        self.sender.as_u32().encode(buffer)?;
+        self.sender.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
@@ -586,7 +586,7 @@ impl Codec for MLSPlaintextTBS {
         self.context.encode(buffer)?;
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
-        self.sender.as_u32().encode(buffer)?;
+        self.sender.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
         self.content_type.encode(buffer)?;
         self.payload.encode(buffer)?;
@@ -622,7 +622,7 @@ pub struct MLSSenderData {
 
 impl Codec for MLSSenderData {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.sender.as_u32().encode(buffer)?;
+        self.sender.encode(buffer)?;
         self.generation.encode(buffer)?;
         self.reuse_guard.encode(buffer)?;
         Ok(())

@@ -135,7 +135,7 @@ impl Api for MlsGroup {
         removed_index: LeafIndex,
     ) -> (MLSPlaintext, Proposal) {
         let remove_proposal = RemoveProposal {
-            removed: removed_index.as_u32(),
+            removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal.clone());
@@ -208,9 +208,9 @@ impl Api for MlsGroup {
     }
 
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext {
-        let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
+        let mut roster = Vec::new();
         for i in 0..self.tree.leaf_count().as_usize() {
-            let node = &self.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()];
+            let node = &self.tree.nodes[NodeIndex::from(i).as_usize()];
             let credential = if let Some(kp) = &node.key_package {
                 kp.get_credential()
             } else {
@@ -277,7 +277,7 @@ impl MlsGroup {
         &self.tree
     }
     fn get_sender_index(&self) -> LeafIndex {
-        LeafIndex::from(self.tree.get_own_index())
+        self.tree.get_own_index().into()
     }
     pub(crate) fn get_ciphersuite(&self) -> &Ciphersuite {
         &self.ciphersuite

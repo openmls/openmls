@@ -56,8 +56,8 @@ impl From<usize> for NodeIndex {
 }
 
 impl From<LeafIndex> for NodeIndex {
-    fn from(roster_index: LeafIndex) -> NodeIndex {
-        NodeIndex(roster_index.as_u32() * 2)
+    fn from(node_index: LeafIndex) -> NodeIndex {
+        NodeIndex(node_index.as_u32() * 2)
     }
 }
 
@@ -79,6 +79,18 @@ impl From<u32> for LeafIndex {
     }
 }
 
+impl Into<u32> for LeafIndex {
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
+impl Into<usize> for LeafIndex {
+    fn into(self) -> usize {
+        self.0 as usize
+    }
+}
+
 impl From<usize> for LeafIndex {
     fn from(i: usize) -> LeafIndex {
         LeafIndex(i as u32)
@@ -88,6 +100,12 @@ impl From<usize> for LeafIndex {
 impl From<NodeIndex> for LeafIndex {
     fn from(tree_index: NodeIndex) -> LeafIndex {
         LeafIndex((tree_index.as_u32() + 1) / 2)
+    }
+}
+
+impl Codec for LeafIndex {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.0.encode(buffer)
     }
 }
 
@@ -536,7 +554,7 @@ impl Signable for GroupInfo {
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         encode_vec(VecSize::VecU16, buffer, &self.extensions)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
-        self.signer_index.as_u32().encode(buffer)?;
+        self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())
     }
 }

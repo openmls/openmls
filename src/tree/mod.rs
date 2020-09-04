@@ -169,22 +169,16 @@ impl RatchetTree {
         node_options: &[Option<Node>],
     ) -> Option<RatchetTree> {
         fn find_kp_in_tree(key_package: &KeyPackage, nodes: &[Option<Node>]) -> Option<NodeIndex> {
-            let mut index_option = None;
             for (i, node_option) in nodes.iter().enumerate() {
                 if let Some(node) = node_option {
                     if let Some(kp) = &node.key_package {
                         if kp == key_package {
-                            index_option = Some(NodeIndex::from(i));
-                            break;
+                            return Some(NodeIndex::from(i));
                         }
                     }
                 }
             }
-            if let Some(index) = index_option {
-                Some(index)
-            } else {
-                None
-            }
+            None
         }
 
         let index = find_kp_in_tree(kpb.get_key_package(), node_options)?;
@@ -200,7 +194,7 @@ impl RatchetTree {
             }
         }
         let secret = kpb.get_private_key().as_slice();
-        let dirpath = treemath::dirpath_root(index, LeafIndex::from(NodeIndex::from(nodes.len())));
+        let dirpath = treemath::dirpath_root(index, NodeIndex::from(nodes.len()).into());
         let (path_secrets, _commit_secret) =
             OwnLeaf::generate_path_secrets(&ciphersuite, secret, dirpath.len());
         let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
@@ -233,7 +227,7 @@ impl RatchetTree {
     }
 
     pub(crate) fn leaf_count(&self) -> LeafIndex {
-        LeafIndex::from(self.tree_size())
+        self.tree_size().into()
     }
 
     fn resolve(&self, index: NodeIndex) -> Vec<NodeIndex> {
@@ -276,7 +270,7 @@ impl RatchetTree {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
-            if self.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].is_blank() {
+            if self.nodes[NodeIndex::from(i).as_usize()].is_blank() {
                 free_leaves.push(NodeIndex::from(i));
             }
         }
@@ -647,14 +641,14 @@ impl RatchetTree {
     }
     pub fn verify_integrity(ciphersuite: &Ciphersuite, nodes: &[Option<Node>]) -> bool {
         let node_count = NodeIndex::from(nodes.len());
-        let size = LeafIndex::from(node_count);
+        let size = node_count;
         for i in 0..node_count.as_usize() {
             let node_option = &nodes[i];
             if let Some(node) = node_option {
                 match node.node_type {
                     NodeType::Parent => {
                         let left_index = treemath::left(NodeIndex::from(i));
-                        let right_index = treemath::right(NodeIndex::from(i), size);
+                        let right_index = treemath::right(NodeIndex::from(i), size.into());
                         if right_index >= node_count {
                             return false;
                         }

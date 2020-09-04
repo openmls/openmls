@@ -92,6 +92,7 @@ pub struct ASTreeNode {
     pub secret: Vec<u8>,
 }
 
+#[derive(Clone)]
 pub struct SenderRatchet {
     ciphersuite: Ciphersuite,
     index: LeafIndex,
@@ -102,7 +103,7 @@ pub struct SenderRatchet {
 impl Codec for SenderRatchet {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.ciphersuite.encode(buffer)?;
-        self.index.as_u32().encode(buffer)?;
+        self.index.encode(buffer)?;
         self.generation.encode(buffer)?;
         let len = self.past_secrets.len();
         (len as u32).encode(buffer)?;
@@ -172,7 +173,7 @@ impl SenderRatchet {
             &self.ciphersuite,
             secret,
             "app-secret",
-            self.index.as_u32(),
+            self.index.into(),
             self.generation,
             self.ciphersuite.hash_length(),
         )
@@ -182,7 +183,7 @@ impl SenderRatchet {
             &self.ciphersuite,
             secret,
             "app-nonce",
-            self.index.as_u32(),
+            self.index.into(),
             generation,
             self.ciphersuite.aead_nonce_length(),
         );
@@ -190,7 +191,7 @@ impl SenderRatchet {
             &self.ciphersuite,
             secret,
             "app-key",
-            self.index.as_u32(),
+            self.index.into(),
             generation,
             self.ciphersuite.aead_key_length(),
         );
@@ -213,7 +214,7 @@ impl Codec for ASTree {
         self.ciphersuite.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
         encode_vec(VecSize::VecU32, buffer, &self.sender_ratchets)?;
-        self.size.as_u32().encode(buffer)?;
+        self.size.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
@@ -234,17 +235,12 @@ impl ASTree {
     pub fn new(ciphersuite: Ciphersuite, application_secret: &[u8], size: LeafIndex) -> Self {
         let root = root(size);
         let num_indices = NodeIndex::from(size).as_usize() - 1;
-        let mut nodes: Vec<Option<ASTreeNode>> = Vec::with_capacity(num_indices);
-        for _ in 0..(num_indices) {
-            nodes.push(None);
-        }
+
+        let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(ASTreeNode {
             secret: application_secret.to_vec(),
         });
-        let mut sender_ratchets: Vec<Option<SenderRatchet>> = Vec::with_capacity(size.as_usize());
-        for _ in 0..(size.as_usize()) {
-            sender_ratchets.push(None);
-        }
+        let sender_ratchets = vec![None; size.as_usize()];
         Self {
             ciphersuite,
             nodes,
@@ -252,6 +248,7 @@ impl ASTree {
             size,
         }
     }
+
     pub fn get_generation(&self, sender: LeafIndex) -> u32 {
         if let Some(sender_ratchet) = &self.sender_ratchets[sender.as_usize()] {
             sender_ratchet.generation
@@ -259,6 +256,7 @@ impl ASTree {
             0
         }
     }
+
     pub fn get_secret(
         &mut self,
         index: LeafIndex,
@@ -295,6 +293,7 @@ impl ASTree {
         self.sender_ratchets[index.as_usize()] = Some(sender_ratchet);
         application_secret
     }
+
     fn hash_down(&mut self, index_in_tree: NodeIndex) {
         let hash_len = self.ciphersuite.hash_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
