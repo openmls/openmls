@@ -158,16 +158,16 @@ impl MLSCiphertext {
     }
     pub fn new_from_plaintext(
         mls_plaintext: &MLSPlaintext,
-        ciphersuite: &Ciphersuite,
-        astree: &mut ASTree,
-        epoch_secrets: &EpochSecrets,
-        context: &GroupContext,
+        mls_group: &MlsGroup,
+        generation: u32,
+        application_secrets: &ApplicationSecrets,
     ) -> MLSCiphertext {
         const PADDING_SIZE: usize = 10;
-        let generation = astree.get_generation(mls_plaintext.sender.sender);
-        let application_secrets = astree
-            .get_secret(mls_plaintext.sender.sender, generation)
-            .unwrap();
+
+        let ciphersuite = mls_group.get_ciphersuite();
+        let context = mls_group.get_context();
+        let epoch_secrets = mls_group.get_epoch_secrets();
+
         match mls_plaintext.content_type {
             ContentType::Application => {}
             ContentType::Commit => {}
@@ -268,6 +268,7 @@ impl MLSCiphertext {
             ciphertext,
         }
     }
+
     pub fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,

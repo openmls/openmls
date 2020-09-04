@@ -200,23 +200,21 @@ impl Api for MlsGroup {
 
     // Encrypt/Decrypt MLS message
     fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
-        let context = &self.get_context();
-        MLSCiphertext::new_from_plaintext(
-            &mls_plaintext,
-            &self.get_ciphersuite().clone(),
-            &mut self.astree,
-            &self.epoch_secrets,
-            context,
-        )
+        let generation = self.astree.get_generation(mls_plaintext.sender.sender);
+        let application_secrets = self
+            .astree
+            .get_secret(mls_plaintext.sender.sender, generation)
+            .unwrap();
+        MLSCiphertext::new_from_plaintext(&mls_plaintext, &self, generation, &application_secrets)
     }
+
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext {
-        let context = &self.get_context();
         mls_ciphertext.to_plaintext(
-            &self.get_ciphersuite().clone(),
+            &self.ciphersuite,
             &self.roster(),
             &self.epoch_secrets,
             &mut self.astree,
-            context,
+            &self.group_context,
         )
     }
 
@@ -280,12 +278,16 @@ impl MlsGroup {
     fn get_sender_index(&self) -> LeafIndex {
         LeafIndex::from(self.tree.get_own_index())
     }
-    fn get_ciphersuite(&self) -> &Ciphersuite {
+    pub(crate) fn get_ciphersuite(&self) -> &Ciphersuite {
         &self.ciphersuite
     }
 
-    fn get_context(&self) -> GroupContext {
-        self.group_context.clone()
+    pub(crate) fn get_context(&self) -> &GroupContext {
+        &self.group_context
+    }
+
+    pub(crate) fn get_epoch_secrets(&self) -> &EpochSecrets {
+        &self.epoch_secrets
     }
 }
 
