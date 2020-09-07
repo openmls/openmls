@@ -20,9 +20,7 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::astree::*;
-use crate::tree::treemath;
-use crate::tree::{node::*, *};
+use crate::tree::{astree::*, index::*, node::*, treemath, *};
 
 pub fn new_from_welcome(
     welcome: Welcome,

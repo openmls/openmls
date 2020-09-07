@@ -1,11 +1,10 @@
-
 #[test]
 fn test_boundaries() {
-    use crate::tree::astree::*;
-    use crate::messages::*;
     use crate::ciphersuite::*;
-    
-    let ciphersuite = Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519);
+    use crate::tree::{astree::*, index::*};
+
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519);
     let mut astree = ASTree::new(ciphersuite, &[0u8; 32], LeafIndex::from(2u32));
     assert!(astree.get_secret(LeafIndex::from(0u32), 0).is_ok());
     assert!(astree.get_secret(LeafIndex::from(1u32), 0).is_ok());

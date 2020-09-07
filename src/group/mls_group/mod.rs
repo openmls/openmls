@@ -24,10 +24,9 @@ use crate::codec::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::*;
+use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::astree::*;
-use crate::tree::{node::*, *};
+use crate::tree::{astree::*, index::*, node::*, *};
 
 pub use api::*;
 use apply_commit::*;

@@ -20,16 +20,18 @@ use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::extensions::*;
 use crate::key_packages::*;
-use crate::messages::*;
+use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 
 // Tree modules
 pub(crate) mod astree;
 pub(crate) mod codec;
+pub(crate) mod index;
 pub(crate) mod node;
 pub(crate) mod treemath;
 
 use node::*;
+use index::*;
 
 // Internal tree tests
 mod test_astree;

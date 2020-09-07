@@ -18,9 +18,9 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::group::*;
-use crate::messages::*;
+use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::astree::*;
+use crate::tree::{astree::*, index::*};
 use crate::utils::*;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -59,6 +59,7 @@ impl MLSPlaintext {
         mls_plaintext.sign(ciphersuite, signature_key, context);
         mls_plaintext
     }
+    // XXX: Only used in tests right now.
     pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
         let mut cursor = Cursor::new(bytes);
         let group_id = GroupId::decode(&mut cursor).unwrap();

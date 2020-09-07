@@ -16,8 +16,8 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::messages::*;
 use crate::schedule::*;
+use crate::tree::index::*;
 use crate::tree::treemath::*;
 
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;

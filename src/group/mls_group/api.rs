@@ -17,8 +17,8 @@
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::*;
-use crate::tree::node::*;
+use crate::messages::{proposals::*, *};
+use crate::tree::{index::LeafIndex, node::*};
 
 pub trait Api {
     /// Create a new group.
