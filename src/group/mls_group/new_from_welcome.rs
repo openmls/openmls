@@ -182,7 +182,7 @@ fn decrypt_group_info(
             Err(_) => return Err(WelcomeError::GroupInfoDecryptionFailure),
         };
     Ok((
-        GroupInfo::decode_detached(&group_info_bytes).unwrap(),
+        GroupInfo::from_bytes(&group_info_bytes).unwrap(),
         group_secrets,
     ))
 }

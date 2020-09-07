@@ -514,6 +514,32 @@ pub struct GroupInfo {
     pub signature: Signature,
 }
 
+impl GroupInfo {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+        let mut cursor = Cursor::new(bytes);
+        let group_id = GroupId::decode(&mut cursor)?;
+        let epoch = GroupEpoch::decode(&mut cursor)?;
+        let tree_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
+        let confirmed_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
+        let interim_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
+        let extensions = decode_vec(VecSize::VecU16, &mut cursor)?;
+        let confirmation_tag = decode_vec(VecSize::VecU8, &mut cursor)?;
+        let signer_index = LeafIndex::from(u32::decode(&mut cursor)?);
+        let signature = Signature::decode(&mut cursor)?;
+        Ok(GroupInfo {
+            group_id,
+            epoch,
+            tree_hash,
+            confirmed_transcript_hash,
+            interim_transcript_hash,
+            extensions,
+            confirmation_tag,
+            signer_index,
+            signature,
+        })
+    }
+}
+
 impl Codec for GroupInfo {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.append(&mut self.unsigned_payload()?);

@@ -59,6 +59,26 @@ impl MLSPlaintext {
         mls_plaintext.sign(ciphersuite, signature_key, context);
         mls_plaintext
     }
+    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+        let mut cursor = Cursor::new(bytes);
+        let group_id = GroupId::decode(&mut cursor).unwrap();
+        let epoch = GroupEpoch::decode(&mut cursor).unwrap();
+        let sender = Sender::decode(&mut cursor).unwrap();
+        let authenticated_data = decode_vec(VecSize::VecU32, &mut cursor).unwrap();
+        let content_type = ContentType::decode(&mut cursor).unwrap();
+        let content = MLSPlaintextContentType::decode(&mut cursor).unwrap();
+        let signature = Signature::decode(&mut cursor).unwrap();
+
+        Ok(MLSPlaintext {
+            group_id,
+            epoch,
+            sender,
+            authenticated_data,
+            content_type,
+            content,
+            signature,
+        })
+    }
     pub fn sign(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -118,9 +138,25 @@ pub struct MLSCiphertext {
 }
 
 impl MLSCiphertext {
-    pub fn from_slice(bytes: &[u8]) -> Self {
-        MLSCiphertext::decode_detached(&bytes).unwrap()
-    }
+    // pub fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+    //     let mut cursor = Cursor::new(bytes);
+    //     let group_id = GroupId::decode(&mut cursor)?;
+    //     let epoch = GroupEpoch::decode(&mut cursor)?;
+    //     let content_type = ContentType::decode(&mut cursor)?;
+    //     let authenticated_data = decode_vec(VecSize::VecU32, &mut cursor)?;
+    //     let sender_data_nonce = decode_vec(VecSize::VecU8, &mut cursor)?;
+    //     let encrypted_sender_data = decode_vec(VecSize::VecU8, &mut cursor)?;
+    //     let ciphertext = decode_vec(VecSize::VecU32, &mut cursor)?;
+    //     Ok(MLSCiphertext {
+    //         group_id,
+    //         epoch,
+    //         content_type,
+    //         authenticated_data,
+    //         sender_data_nonce,
+    //         encrypted_sender_data,
+    //         ciphertext,
+    //     })
+    // }
     pub fn as_slice(&self) -> Vec<u8> {
         self.encode_detached().unwrap()
     }
@@ -303,7 +339,7 @@ impl MLSCiphertext {
                 &sender_data_nonce,
             )
             .unwrap();
-        let sender_data = MLSSenderData::decode_detached(&sender_data_bytes).unwrap();
+        let sender_data = MLSSenderData::from_bytes(&sender_data_bytes).unwrap();
         let application_secrets = astree
             .get_secret(sender_data.sender, sender_data.generation)
             .unwrap();
@@ -334,7 +370,7 @@ impl MLSCiphertext {
             )
             .unwrap();
         let mls_ciphertext_content =
-            MLSCiphertextContent::decode_detached(&mls_ciphertext_content_bytes).unwrap();
+            MLSCiphertextContent::from_bytes(&mls_ciphertext_content_bytes).unwrap();
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: sender_data.sender,
@@ -620,6 +656,21 @@ pub struct MLSSenderData {
     pub reuse_guard: u32,
 }
 
+impl MLSSenderData {
+    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+        let mut cursor = Cursor::new(bytes);
+        let sender = LeafIndex::from(u32::decode(&mut cursor)?);
+        let generation = u32::decode(&mut cursor)?;
+        let reuse_guard = u32::decode(&mut cursor)?;
+
+        Ok(MLSSenderData {
+            sender,
+            generation,
+            reuse_guard,
+        })
+    }
+}
+
 impl Codec for MLSSenderData {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.sender.encode(buffer)?;
@@ -711,6 +762,20 @@ pub struct MLSCiphertextContent {
     pub padding: Vec<u8>,
 }
 
+impl MLSCiphertextContent {
+    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+        let mut cursor = Cursor::new(bytes);
+        let content = MLSPlaintextContentType::decode(&mut cursor)?;
+        let signature = Signature::decode(&mut cursor)?;
+        let padding = decode_vec(VecSize::VecU16, &mut cursor)?;
+        Ok(MLSCiphertextContent {
+            content,
+            signature,
+            padding,
+        })
+    }
+}
+
 impl Codec for MLSCiphertextContent {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.content.encode(buffer)?;
@@ -719,6 +784,7 @@ impl Codec for MLSCiphertextContent {
         Ok(())
     }
 
+    // FIXME: delete
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let content = MLSPlaintextContentType::decode(cursor)?;
         let signature = Signature::decode(cursor)?;
@@ -893,6 +959,6 @@ fn codec() {
     orig.signature = signature_input.sign(&ciphersuite, &keypair.get_private_key());
 
     let enc = orig.encode_detached().unwrap();
-    let copy = MLSPlaintext::decode_detached(&enc).unwrap();
+    let copy = MLSPlaintext::from_bytes(&enc).unwrap();
     assert_eq!(orig, copy);
 }
