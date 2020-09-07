@@ -32,9 +32,9 @@ impl Codec for ProposalType {
         (*self as u8).encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(ProposalType::from(u8::decode(cursor)?))
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     Ok(ProposalType::from(u8::decode(cursor)?))
+    // }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -87,15 +87,15 @@ impl Codec for Proposal {
         }
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let proposal_type = ProposalType::from(u8::decode(cursor)?);
-        match proposal_type {
-            ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
-            ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
-            ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
-            _ => Err(CodecError::DecodingError),
-        }
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let proposal_type = ProposalType::from(u8::decode(cursor)?);
+    //     match proposal_type {
+    //         ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
+    //         ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
+    //         ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
+    //         _ => Err(CodecError::DecodingError),
+    //     }
+    // }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -116,10 +116,10 @@ impl Codec for ProposalID {
         encode_vec(VecSize::VecU8, buffer, &self.value)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ProposalID { value })
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let value = decode_vec(VecSize::VecU8, cursor)?;
+    //     Ok(ProposalID { value })
+    // }
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone)]
@@ -138,12 +138,12 @@ impl Codec for ShortProposalID {
         encode_vec(VecSize::VecU8, buffer, &self.0)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = decode_vec(VecSize::VecU8, cursor)?;
-        let mut inner = [0u8; 32];
-        inner.copy_from_slice(&value[..32]);
-        Ok(ShortProposalID(inner))
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let value = decode_vec(VecSize::VecU8, cursor)?;
+    //     let mut inner = [0u8; 32];
+    //     inner.copy_from_slice(&value[..32]);
+    //     Ok(ShortProposalID(inner))
+    // }
 }
 
 #[derive(Clone)]
@@ -170,16 +170,16 @@ impl Codec for QueuedProposal {
         self.own_kpb.encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let proposal = Proposal::decode(cursor)?;
-        let sender = Sender::decode(cursor)?;
-        let own_kpb = Option::<KeyPackageBundle>::decode(cursor)?;
-        Ok(QueuedProposal {
-            proposal,
-            sender,
-            own_kpb,
-        })
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let proposal = Proposal::decode(cursor)?;
+    //     let sender = Sender::decode(cursor)?;
+    //     let own_kpb = Option::<KeyPackageBundle>::decode(cursor)?;
+    //     Ok(QueuedProposal {
+    //         proposal,
+    //         sender,
+    //         own_kpb,
+    //     })
+    // }
 }
 
 #[derive(Default, Clone)]
@@ -226,10 +226,10 @@ impl Codec for ProposalQueue {
         self.tuples.encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let tuples = HashMap::<ShortProposalID, (ProposalID, QueuedProposal)>::decode(cursor)?;
-        Ok(ProposalQueue { tuples })
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let tuples = HashMap::<ShortProposalID, (ProposalID, QueuedProposal)>::decode(cursor)?;
+    //     Ok(ProposalQueue { tuples })
+    // }
 }
 
 #[derive(Clone)]
@@ -249,10 +249,10 @@ impl Codec for AddProposal {
         self.key_package.encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_package = KeyPackage::decode(cursor)?;
-        Ok(AddProposal { key_package })
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let key_package = KeyPackage::decode(cursor)?;
+    //     Ok(AddProposal { key_package })
+    // }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -265,10 +265,10 @@ impl Codec for UpdateProposal {
         self.key_package.encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_package = KeyPackage::decode(cursor)?;
-        Ok(UpdateProposal { key_package })
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let key_package = KeyPackage::decode(cursor)?;
+    //     Ok(UpdateProposal { key_package })
+    // }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -281,8 +281,8 @@ impl Codec for RemoveProposal {
         self.removed.encode(buffer)?;
         Ok(())
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let removed = u32::decode(cursor)?;
-        Ok(RemoveProposal { removed })
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let removed = u32::decode(cursor)?;
+    //     Ok(RemoveProposal { removed })
+    // }
 }
