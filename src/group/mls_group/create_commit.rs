@@ -55,7 +55,7 @@ pub fn create_commit(
     let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
 
     // Create provisional tree
-    let mut provisional_tree = group.tree.clone();
+    let mut provisional_tree = group.tree.borrow_mut();
 
     // Apply proposals to tree
     let (membership_changes, invited_members, group_removed) =
@@ -186,9 +186,9 @@ pub fn create_commit(
             let key_package = add_proposal.key_package;
             let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
             let path_secret = if path_required {
-                let common_ancestor = treemath::common_ancestor(index, group.tree.get_own_index());
+                let common_ancestor = treemath::common_ancestor(index, provisional_tree.get_own_index());
                 let dirpath = treemath::dirpath_root(
-                    group.tree.get_own_index(),
+                    provisional_tree.get_own_index(),
                     provisional_tree.leaf_count(),
                 );
                 let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();

@@ -138,8 +138,8 @@ pub fn new_from_welcome(
             group_context,
             generation: 0,
             epoch_secrets,
-            astree,
-            tree,
+            astree: RefCell::new(astree),
+            tree: RefCell::new(tree),
             interim_transcript_hash: group_info.interim_transcript_hash,
         })
     }

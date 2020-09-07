@@ -62,7 +62,7 @@ pub fn apply_commit(
     }
 
     // Create provisional tree and apply proposals
-    let mut provisional_tree = group.tree.clone();
+    let mut provisional_tree = group.tree.borrow_mut();
     let (membership_changes, _invited_members, group_removed) =
         provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, pending_kpbs.clone());
 
@@ -73,7 +73,7 @@ pub fn apply_commit(
 
     // Determine if Commit is own Commit
     let sender = mls_plaintext.sender.sender;
-    let is_own_commit = mls_plaintext.sender.as_node_index() == group.tree.get_own_index();
+    let is_own_commit = mls_plaintext.sender.as_node_index() == provisional_tree.get_own_index(); // XXX: correct?
 
     // Determine if Commit has a path
     let commit_secret = if let Some(path) = commit.path.clone() {
@@ -166,14 +166,14 @@ pub fn apply_commit(
     }
 
     // Apply provisional tree and state to group
-    group.tree = provisional_tree;
+    // group.tree = provisional_tree;
     group.group_context = provisional_group_context;
     group.epoch_secrets = provisional_epoch_secrets;
     group.interim_transcript_hash = interim_transcript_hash;
-    group.astree = ASTree::new(
+    group.astree.replace(ASTree::new(
         *group.get_ciphersuite(),
         &group.epoch_secrets.application_secret,
-        group.tree.leaf_count(),
-    );
+        provisional_tree.leaf_count(),
+    ));
     Ok(())
 }
