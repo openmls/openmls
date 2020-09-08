@@ -28,10 +28,11 @@ pub(crate) mod astree;
 pub(crate) mod codec;
 pub(crate) mod index;
 pub(crate) mod node;
+pub(crate) mod sender_ratchet;
 pub(crate) mod treemath;
 
-use node::*;
 use index::*;
+use node::*;
 
 // Internal tree tests
 mod test_astree;
