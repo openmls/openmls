@@ -30,17 +30,24 @@ pub fn create_commit(
     group: &MlsGroup,
     aad: &[u8],
     signature_key: &SignaturePrivateKey,
-    key_package_bundle: (HPKEPrivateKey, KeyPackage),
+    key_package_bundle: KeyPackageBundle,
     proposals: Vec<(Sender, Proposal)>,
-    own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+    own_key_packages: Vec<KeyPackageBundle>,
     force_group_update: bool,
 ) -> CreateCommitResult {
     let ciphersuite = group.get_ciphersuite();
-    let (private_key, key_package) = key_package_bundle;
+    let (private_key, key_package) = (
+        key_package_bundle.private_key,
+        key_package_bundle.key_package,
+    );
 
     // Create KeyPackageBundles
     let mut pending_kpbs = vec![];
-    for (pk, kp) in own_key_packages {
+    for kpb in own_key_packages {
+        let (pk, kp) = (
+            kpb.private_key,
+            kpb.key_package,
+        );
         pending_kpbs.push(KeyPackageBundle::from_values(kp, pk));
     }
 

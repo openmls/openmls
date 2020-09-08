@@ -21,7 +21,7 @@ use crate::codec::*;
 pub struct Identity {
     pub id: Vec<u8>,
     pub ciphersuite: Ciphersuite,
-    pub keypair: SignatureKeypair,
+    keypair: SignatureKeypair,
 }
 
 impl Identity {
@@ -52,6 +52,9 @@ impl Identity {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         self.ciphersuite
             .verify(signature, self.keypair.get_public_key(), payload)
+    }
+    pub fn get_signature_key_pair(&self) -> &SignatureKeypair {
+        &self.keypair
     }
 }
 

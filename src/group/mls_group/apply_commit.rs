@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;
@@ -27,7 +26,7 @@ pub fn apply_commit(
     group: &mut MlsGroup,
     mls_plaintext: MLSPlaintext,
     proposals: Vec<(Sender, Proposal)>,
-    own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+    own_key_packages: Vec<KeyPackageBundle>,
 ) -> Result<(), ApplyCommitError> {
     let ciphersuite = group.get_ciphersuite();
 
@@ -38,7 +37,11 @@ pub fn apply_commit(
 
     // Create KeyPackageBundles
     let mut pending_kpbs = vec![];
-    for (pk, kp) in own_key_packages {
+    for kpb in own_key_packages {
+        let (pk, kp) = (
+            kpb.private_key,
+            kpb.key_package,
+        );
         pending_kpbs.push(KeyPackageBundle::from_values(kp, pk));
     }
 

@@ -46,15 +46,14 @@ pub struct MlsGroup {
 }
 
 impl Api for MlsGroup {
-    fn new(
-        id: &[u8],
-        ciphersuite: Ciphersuite,
-        key_package_bundle: (HPKEPrivateKey, KeyPackage),
-    ) -> MlsGroup {
+    fn new(id: &[u8], ciphersuite: Ciphersuite, key_package_bundle: KeyPackageBundle) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
         let astree = ASTree::new(&epoch_secrets.application_secret, LeafIndex::from(1u32));
-        let (private_key, key_package) = key_package_bundle;
+        let (private_key, key_package) = (
+            key_package_bundle.private_key,
+            key_package_bundle.key_package,
+        );
         let kpb = KeyPackageBundle::from_values(key_package, private_key);
         let tree = RatchetTree::new(ciphersuite, kpb);
         let group_context = GroupContext {
@@ -78,7 +77,7 @@ impl Api for MlsGroup {
     fn new_from_welcome(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
-        kpb: (HPKEPrivateKey, KeyPackage),
+        kpb: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
         new_from_welcome(welcome, nodes_option, kpb)
     }
@@ -149,9 +148,9 @@ impl Api for MlsGroup {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: (HPKEPrivateKey, KeyPackage),
+        key_package_bundle: KeyPackageBundle,
         proposals: Vec<(Sender, Proposal)>,
-        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
         create_commit(
@@ -170,7 +169,7 @@ impl Api for MlsGroup {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<(Sender, Proposal)>,
-        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+        own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
         apply_commit(self, mls_plaintext, proposals, own_key_packages)
     }

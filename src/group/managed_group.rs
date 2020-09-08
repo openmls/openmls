@@ -41,10 +41,10 @@ impl ManagedGroup {
         let group = MlsGroup::new(
             &group_id.as_slice(),
             ciphersuite,
-            (
-                key_package_bundle.get_private_key().clone(),
-                key_package_bundle.get_key_package().clone(),
-            ),
+            KeyPackageBundle {
+                private_key: key_package_bundle.get_private_key().clone(),
+                key_package: key_package_bundle.get_key_package().clone(),
+            },
         );
 
         ManagedGroup {
@@ -64,10 +64,10 @@ impl ManagedGroup {
         let group = MlsGroup::new_from_welcome(
             welcome,
             ratchet_tree,
-            (
-                key_package_bundle.get_private_key().clone(),
-                key_package_bundle.get_key_package().clone(),
-            ),
+            KeyPackageBundle {
+                private_key: key_package_bundle.get_private_key().clone(),
+                key_package: key_package_bundle.get_key_package().clone(),
+            },
         )?;
         Ok(ManagedGroup {
             group,

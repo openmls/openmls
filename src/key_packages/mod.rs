@@ -152,8 +152,8 @@ impl Signable for KeyPackage {
 
 #[derive(Debug, Clone)]
 pub struct KeyPackageBundle {
-    key_package: KeyPackage,
-    private_key: HPKEPrivateKey,
+    pub(crate) key_package: KeyPackage,
+    pub(crate) private_key: HPKEPrivateKey,
 }
 
 impl KeyPackageBundle {
@@ -163,9 +163,9 @@ impl KeyPackageBundle {
     ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new(
-        ciphersuite: Ciphersuite,
+        ciphersuite: &Ciphersuite,
         signature_key: &SignaturePrivateKey,
-        credential: Credential,
+        credential: Credential, // FIXME: must be reference
         extensions: Option<Vec<Extension>>,
     ) -> Self {
         let keypair = ciphersuite.new_hpke_keypair();

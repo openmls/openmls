@@ -15,13 +15,13 @@ fn padding() {
     let signature_keypair = ciphersuite.new_signature_keypair();
     let credential = Credential::Basic(BasicCredential::from(&identity));
     let kpb = KeyPackageBundle::new(
-        ciphersuite,
+        &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
         None,
     );
 
-    let mut group_alice = MlsGroup::new(&id, ciphersuite, kpb.into_tuple());
+    let mut group_alice = MlsGroup::new(&id, ciphersuite, kpb);
     const PADDING_SIZE: usize = 10;
 
     for _ in 0..100 {

@@ -25,10 +25,13 @@ use crate::tree::{astree::*, index::*, node::*, treemath, *};
 pub fn new_from_welcome(
     welcome: Welcome,
     nodes_option: Option<Vec<Option<Node>>>,
-    key_package_bundle: (HPKEPrivateKey, KeyPackage),
+    key_package_bundle: KeyPackageBundle,
 ) -> Result<MlsGroup, WelcomeError> {
     let ciphersuite = welcome.cipher_suite;
-    let (private_key, key_package) = key_package_bundle;
+    let (private_key, key_package) = (
+        key_package_bundle.private_key,
+        key_package_bundle.key_package,
+    );
 
     // Find key_package in welcome secrets
     let egs =

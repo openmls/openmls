@@ -8,7 +8,7 @@ fn generate_key_package() {
         Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
     let credential = Credential::Basic(BasicCredential::from(&identity));
     let kpb = KeyPackageBundle::new(
-        ciphersuite,
+        &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
         None,
@@ -26,7 +26,7 @@ fn test_codec() {
         Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
     let credential = Credential::Basic(BasicCredential::from(&identity));
     let kpb = KeyPackageBundle::new(
-        ciphersuite,
+        &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
         None,
