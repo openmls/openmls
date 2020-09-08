@@ -21,7 +21,6 @@ use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
-use crate::tree::astree::*;
 use crate::utils::*;
 
 pub fn apply_commit(
@@ -166,14 +165,16 @@ pub fn apply_commit(
     }
 
     // Apply provisional tree and state to group
-    // group.tree = provisional_tree;
     group.group_context = provisional_group_context;
     group.epoch_secrets = provisional_epoch_secrets;
     group.interim_transcript_hash = interim_transcript_hash;
-    group.astree.replace(ASTree::new(
-        *group.get_ciphersuite(),
-        &group.epoch_secrets.application_secret,
-        provisional_tree.leaf_count(),
-    ));
+    group
+        .astree
+        .borrow_mut()
+        .set_size(provisional_tree.leaf_count());
+    group
+        .astree
+        .borrow_mut()
+        .set_application_secrets(&group.epoch_secrets.application_secret);
     Ok(())
 }

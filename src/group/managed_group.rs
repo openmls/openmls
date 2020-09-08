@@ -60,7 +60,7 @@ impl ManagedGroup {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<ManagedGroup, WelcomeError> {
+    ) -> Result<Self, WelcomeError> {
         let group = MlsGroup::new_from_welcome(
             welcome,
             ratchet_tree,

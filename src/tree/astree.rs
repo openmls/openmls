@@ -16,6 +16,7 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::group::MlsGroup;
 use crate::schedule::*;
 use crate::tree::index::*;
 use crate::tree::treemath::*;
@@ -203,20 +204,19 @@ impl SenderRatchet {
 }
 
 pub struct ASTree {
-    ciphersuite: Ciphersuite,
     nodes: Vec<Option<ASTreeNode>>,
     sender_ratchets: Vec<Option<SenderRatchet>>,
     size: LeafIndex,
 }
 
 impl Codec for ASTree {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
-        encode_vec(VecSize::VecU32, buffer, &self.sender_ratchets)?;
-        self.size.encode(buffer)?;
-        Ok(())
-    }
+    // fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+    //     self.group.get_ciphersuite().encode(buffer)?;
+    //     encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
+    //     encode_vec(VecSize::VecU32, buffer, &self.sender_ratchets)?;
+    //     self.size.encode(buffer)?;
+    //     Ok(())
+    // }
     // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
     //     let ciphersuite = Ciphersuite::decode(cursor)?;
     //     let nodes = decode_vec(VecSize::VecU32, cursor)?;
@@ -232,21 +232,26 @@ impl Codec for ASTree {
 }
 
 impl ASTree {
-    pub fn new(ciphersuite: Ciphersuite, application_secret: &[u8], size: LeafIndex) -> Self {
-        let root = root(size);
-        let num_indices = NodeIndex::from(size).as_usize() - 1;
-
+    pub fn new(application_secret: &[u8], size: LeafIndex) -> Self {
+        let mut out = Self {
+            nodes: vec![],
+            sender_ratchets: vec![None; size.as_usize()],
+            size,
+        };
+        out.set_application_secrets(application_secret);
+        out
+    }
+    pub(crate) fn set_application_secrets(&mut self, application_secret: &[u8]) {
+        let root = root(self.size);
+        let num_indices = NodeIndex::from(self.size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(ASTreeNode {
             secret: application_secret.to_vec(),
         });
-        let sender_ratchets = vec![None; size.as_usize()];
-        Self {
-            ciphersuite,
-            nodes,
-            sender_ratchets,
-            size,
-        }
+        self.nodes = nodes;
+    }
+    pub(crate) fn set_size(&mut self, size: LeafIndex) {
+        self.size = size;
     }
 
     pub fn get_generation(&self, sender: LeafIndex) -> u32 {
@@ -259,6 +264,7 @@ impl ASTree {
 
     pub fn get_secret(
         &mut self,
+        ciphersuite: &Ciphersuite,
         index: LeafIndex,
         generation: u32,
     ) -> Result<ApplicationSecrets, ASError> {
@@ -284,23 +290,23 @@ impl ASTree {
         empty_nodes.remove(0);
         empty_nodes.reverse();
         for n in empty_nodes {
-            self.hash_down(n);
+            self.hash_down(ciphersuite, n);
         }
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
-        let mut sender_ratchet = SenderRatchet::new(index, node_secret, self.ciphersuite);
+        let mut sender_ratchet = SenderRatchet::new(index, node_secret, ciphersuite.clone());
         let application_secret = sender_ratchet.get_secret(generation);
         self.nodes[index_in_tree.as_usize()] = None;
         self.sender_ratchets[index.as_usize()] = Some(sender_ratchet);
         application_secret
     }
 
-    fn hash_down(&mut self, index_in_tree: NodeIndex) {
-        let hash_len = self.ciphersuite.hash_length();
+    fn hash_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
+        let hash_len = ciphersuite.hash_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree, self.size);
         let left_secret = derive_app_secret(
-            &self.ciphersuite,
+            &ciphersuite,
             &node_secret,
             "tree",
             left_index.as_u32(),
@@ -308,7 +314,7 @@ impl ASTree {
             hash_len,
         );
         let right_secret = derive_app_secret(
-            &self.ciphersuite,
+            &ciphersuite,
             &node_secret,
             "tree",
             right_index.as_u32(),

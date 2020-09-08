@@ -342,7 +342,7 @@ impl MLSCiphertext {
             .unwrap();
         let sender_data = MLSSenderData::from_bytes(&sender_data_bytes).unwrap();
         let application_secrets = astree
-            .get_secret(sender_data.sender, sender_data.generation)
+            .get_secret(ciphersuite, sender_data.sender, sender_data.generation)
             .unwrap();
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: self.group_id.clone(),

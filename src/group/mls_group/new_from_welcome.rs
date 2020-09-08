@@ -118,11 +118,7 @@ pub fn new_from_welcome(
     };
     let epoch_secrets =
         EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
-    let astree = ASTree::new(
-        ciphersuite,
-        &epoch_secrets.application_secret,
-        tree.leaf_count(),
-    );
+    let astree = ASTree::new(&epoch_secrets.application_secret, tree.leaf_count());
 
     // Verify confirmation tag
     if ConfirmationTag::new(

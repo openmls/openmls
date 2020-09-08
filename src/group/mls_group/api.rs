@@ -20,7 +20,7 @@ use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
 use crate::tree::{index::LeafIndex, node::*};
 
-pub trait Api {
+pub trait Api: Sized {
     /// Create a new group.
     fn new(
         group_id: &[u8],
@@ -32,7 +32,7 @@ pub trait Api {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: (HPKEPrivateKey, KeyPackage),
-    ) -> Result<MlsGroup, WelcomeError>;
+    ) -> Result<Self, WelcomeError>;
 
     // Create handshake messages
 

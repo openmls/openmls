@@ -33,7 +33,7 @@ use apply_commit::*;
 use create_commit::*;
 use new_from_welcome::*;
 
-use std::cell::{RefCell, Ref};
+use std::cell::{Ref, RefCell};
 
 pub struct MlsGroup {
     ciphersuite: Ciphersuite,
@@ -53,11 +53,7 @@ impl Api for MlsGroup {
     ) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
-        let astree = ASTree::new(
-            ciphersuite,
-            &epoch_secrets.application_secret,
-            LeafIndex::from(1u32),
-        );
+        let astree = ASTree::new(&epoch_secrets.application_secret, LeafIndex::from(1u32));
         let (private_key, key_package) = key_package_bundle;
         let kpb = KeyPackageBundle::from_values(key_package, private_key);
         let tree = RatchetTree::new(ciphersuite, kpb);
@@ -70,7 +66,6 @@ impl Api for MlsGroup {
         let interim_transcript_hash = vec![];
         MlsGroup {
             ciphersuite,
-            //client: creator,
             group_context,
             generation: 0,
             epoch_secrets,
@@ -84,7 +79,7 @@ impl Api for MlsGroup {
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: (HPKEPrivateKey, KeyPackage),
-    ) -> Result<MlsGroup, WelcomeError> {
+    ) -> Result<Self, WelcomeError> {
         new_from_welcome(welcome, nodes_option, kpb)
     }
 
@@ -203,7 +198,7 @@ impl Api for MlsGroup {
         let mut astree = self.astree.borrow_mut();
         let generation = astree.get_generation(mls_plaintext.sender.sender);
         let application_secrets = astree
-            .get_secret(mls_plaintext.sender.sender, generation)
+            .get_secret(&self.ciphersuite, mls_plaintext.sender.sender, generation)
             .unwrap();
         MLSCiphertext::new_from_plaintext(&mls_plaintext, &self, generation, &application_secrets)
     }
