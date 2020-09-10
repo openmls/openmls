@@ -36,7 +36,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
             },
             |credential| {
                 KeyPackageBundle::new(
-                    ciphersuite,
+                    &ciphersuite,
                     signature_keypair.get_private_key(),
                     credential,
                     None,
