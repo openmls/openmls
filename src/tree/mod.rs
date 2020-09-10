@@ -477,10 +477,9 @@ impl RatchetTree {
     /// Add nodes for the provided key packages.
     pub(crate) fn add_nodes(
         &mut self,
-        new_kp_in_place: &[KeyPackage],
-        new_kp_append: &[KeyPackage],
+        new_kp: &[KeyPackage],
     ) -> Vec<(NodeIndex, Credential)> {
-        let num_new_kp = new_kp_in_place.len() + new_kp_append.len();
+        let num_new_kp = new_kp.len();
         let mut added_members = Vec::with_capacity(num_new_kp);
 
         if num_new_kp > (2 * self.leaf_count().as_usize()) {
@@ -488,7 +487,11 @@ impl RatchetTree {
                 .reserve_exact((2 * num_new_kp) - (2 * self.leaf_count().as_usize()));
         }
 
-        for (new_kp, leaf_index) in new_kp_in_place.iter().zip(self.free_leaves()) {
+        // Add new nodes for key packages into existing free leaves.
+        // Note that zip makes it so only the first free_leaves().len() nodes are taken.
+        let free_leaves = self.free_leaves();
+        let free_leaves_len = free_leaves.len();
+        for (new_kp, leaf_index) in new_kp.iter().zip(free_leaves) {
             self.nodes[leaf_index.as_usize()] = Node::new_leaf(Some(new_kp.clone()));
             let dirpath = treemath::dirpath_root(leaf_index, self.leaf_count());
             for d in dirpath.iter() {
@@ -505,9 +508,10 @@ impl RatchetTree {
             }
             added_members.push((leaf_index, new_kp.get_credential().clone()));
         }
+        // Add the remaining nodes.
         let mut new_nodes = Vec::with_capacity(num_new_kp * 2);
         let mut leaf_index = self.nodes.len() + 1;
-        for add_proposal in new_kp_append.iter() {
+        for add_proposal in new_kp.iter().skip(free_leaves_len) {
             new_nodes.extend(vec![
                 Node::new_blank_parent_node(),
                 Node::new_leaf(Some(add_proposal.clone())),
@@ -582,13 +586,11 @@ impl RatchetTree {
                 })
                 .collect();
             // TODO make sure intermediary nodes are updated with unmerged_leaves
-            let (add_in_place, add_append) = add_proposals.split_at(self.free_leaves().len());
-
-            let add_in_place: Vec<KeyPackage> =
-                add_in_place.iter().map(|a| a.key_package.clone()).collect();
-            let add_append: Vec<KeyPackage> =
-                add_append.iter().map(|a| a.key_package.clone()).collect();
-            let added = self.add_nodes(&add_in_place, &add_append);
+            let key_packages: Vec<KeyPackage> = add_proposals
+                .iter()
+                .map(|a| a.key_package.clone())
+                .collect();
+            let added = self.add_nodes(&key_packages);
 
             for (i, added) in added.iter().enumerate() {
                 invited_members.push((added.0, add_proposals.get(i).unwrap().clone()));
@@ -597,6 +599,8 @@ impl RatchetTree {
         } else {
             Vec::new()
         };
+
+        // Return membership changes
         (
             MembershipChanges {
                 updates: updated_members,
