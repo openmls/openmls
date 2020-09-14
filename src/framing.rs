@@ -784,18 +784,6 @@ impl Codec for MLSCiphertextContent {
         encode_vec(VecSize::VecU16, buffer, &self.padding)?;
         Ok(())
     }
-
-    // FIXME: delete
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let content = MLSPlaintextContentType::decode(cursor)?;
-        let signature = Signature::decode(cursor)?;
-        let padding = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(MLSCiphertextContent {
-            content,
-            signature,
-            padding,
-        })
-    }
 }
 
 #[derive(Clone)]
