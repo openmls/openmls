@@ -17,20 +17,22 @@
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::*;
-pub trait Api {
+use crate::messages::{proposals::*, *};
+use crate::tree::{index::LeafIndex, node::*};
+
+pub trait Api: Sized {
     /// Create a new group.
     fn new(
         group_id: &[u8],
         ciphersuite: Ciphersuite,
-        key_package_bundle: (HPKEPrivateKey, KeyPackage),
+        key_package_bundle: KeyPackageBundle,
     ) -> MlsGroup;
     /// Join a group from a Welcome message
     fn new_from_welcome(
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
-        key_package_bundle: (HPKEPrivateKey, KeyPackage),
-    ) -> Result<MlsGroup, WelcomeError>;
+        key_package_bundle: KeyPackageBundle,
+    ) -> Result<Self, WelcomeError>;
 
     // Create handshake messages
 
@@ -60,9 +62,9 @@ pub trait Api {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: (HPKEPrivateKey, KeyPackage),
+        key_package_bundle: KeyPackageBundle,
         proposals: Vec<(Sender, Proposal)>,
-        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult;
 
@@ -71,7 +73,7 @@ pub trait Api {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<(Sender, Proposal)>,
-        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+        own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError>;
 
     /// Create application message

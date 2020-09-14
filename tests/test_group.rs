@@ -1,10 +1,69 @@
-/*
 use maelstrom::ciphersuite::*;
 use maelstrom::creds::*;
 use maelstrom::group::*;
 use maelstrom::key_packages::*;
 
+#[test]
+fn basic_group_setup() {
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
 
+    // Define identities
+    let alice_identity = Identity::new(ciphersuite, "Alice".into());
+    let bob_identity = Identity::new(ciphersuite, "Bob".into());
+    let charlie_identity = Identity::new(ciphersuite, "Charlie".into());
+
+    // Define credentials
+    let alice_credential = BasicCredential::from(&alice_identity);
+    let bob_credential = BasicCredential::from(&bob_identity);
+    let charlie_credential = BasicCredential::from(&bob_identity);
+
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &ciphersuite,
+        &bob_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
+        Credential::Basic(bob_credential), // TODO: this consumes the credential!
+        None,
+    );
+    let bob_key_package = bob_key_package_bundle.get_key_package();
+
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &ciphersuite,
+        &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
+        Credential::Basic(alice_credential),
+        None,
+    );
+    let alice_key_package = alice_key_package_bundle.get_key_package();
+
+    let charlie_key_package_bundle = KeyPackageBundle::new(
+        &ciphersuite,
+        &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
+        Credential::Basic(charlie_credential),
+        None,
+    );
+    let charlie_key_package = charlie_key_package_bundle.get_key_package();
+
+    // Alice creates a group
+    let group_id = [1, 2, 3, 4];
+    let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
+
+    // Alice adds Bob
+    let bob_add_proposal = group_alice_1234.create_add_proposal(
+        &[],
+        &alice_identity.get_signature_key_pair().get_private_key(),
+        bob_key_package.clone(),
+    );
+    // group_alice_1234.create_commit(
+    //     &[],
+    //     &alice_identity.get_signature_key_pair().get_private_key(),
+    //     alice_key_package_bundle,
+    //     vec![bob_add_proposal],
+    //     vec![alice_key_package_bundle],
+    //     true,
+    // );
+}
+
+/*
 #[test]
 fn group_operations() {
     let ciphersuite = Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);

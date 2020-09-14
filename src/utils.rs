@@ -15,8 +15,7 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::extensions::*;
-use crate::messages::*;
-use crate::tree::*;
+use crate::tree::{index::*, node::*, *};
 use evercrypt::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;

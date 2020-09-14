@@ -17,6 +17,7 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
+use std::io::Write;
 
 #[derive(Debug)]
 pub enum CodecError {
@@ -69,19 +70,18 @@ impl<'a> Cursor {
 }
 
 pub trait Codec: Sized {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError>;
+    fn encode(&self, _buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        unimplemented!();
+    }
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError>;
+    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
+        unimplemented!();
+    }
 
     fn encode_detached(&self) -> Result<Vec<u8>, CodecError> {
         let mut buffer = vec![];
         self.encode(&mut buffer)?;
         Ok(buffer)
-    }
-
-    fn decode_detached(buffer: &[u8]) -> Result<Self, CodecError> {
-        let mut cursor = Cursor::new(buffer);
-        Self::decode(&mut cursor)
     }
 }
 

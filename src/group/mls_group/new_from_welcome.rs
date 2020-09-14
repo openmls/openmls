@@ -20,17 +20,18 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::astree::*;
-use crate::tree::treemath;
-use crate::tree::*;
+use crate::tree::{astree::*, index::*, node::*, treemath, *};
 
 pub fn new_from_welcome(
     welcome: Welcome,
     nodes_option: Option<Vec<Option<Node>>>,
-    key_package_bundle: (HPKEPrivateKey, KeyPackage),
+    key_package_bundle: KeyPackageBundle,
 ) -> Result<MlsGroup, WelcomeError> {
     let ciphersuite = welcome.cipher_suite;
-    let (private_key, key_package) = key_package_bundle;
+    let (private_key, key_package) = (
+        key_package_bundle.private_key,
+        key_package_bundle.key_package,
+    );
 
     // Find key_package in welcome secrets
     let egs =
@@ -120,11 +121,7 @@ pub fn new_from_welcome(
     };
     let epoch_secrets =
         EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
-    let astree = ASTree::new(
-        ciphersuite,
-        &epoch_secrets.application_secret,
-        tree.leaf_count(),
-    );
+    let astree = ASTree::new(&epoch_secrets.application_secret, tree.leaf_count());
 
     // Verify confirmation tag
     if ConfirmationTag::new(
@@ -140,8 +137,8 @@ pub fn new_from_welcome(
             group_context,
             generation: 0,
             epoch_secrets,
-            astree,
-            tree,
+            astree: RefCell::new(astree),
+            tree: RefCell::new(tree),
             interim_transcript_hash: group_info.interim_transcript_hash,
         })
     }
@@ -182,7 +179,7 @@ fn decrypt_group_info(
             Err(_) => return Err(WelcomeError::GroupInfoDecryptionFailure),
         };
     Ok((
-        GroupInfo::decode_detached(&group_info_bytes).unwrap(),
+        GroupInfo::from_bytes(&group_info_bytes).unwrap(),
         group_secrets,
     ))
 }

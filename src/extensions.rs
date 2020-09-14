@@ -16,7 +16,7 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::tree::*;
+use crate::tree::node::*;
 use crate::utils::*;
 use std::cmp::Ordering;
 use std::mem;
@@ -54,10 +54,10 @@ impl Codec for ProtocolVersion {
         Ok(())
     }
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let version = u8::decode(cursor)?;
-        Ok(version.into())
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let version = u8::decode(cursor)?;
+    //     Ok(version.into())
+    // }
 }
 
 pub const CURRENT_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::Mls10;
@@ -86,10 +86,10 @@ impl Codec for ExtensionType {
         Ok(())
     }
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let extension = u16::decode(cursor)?;
-        Ok(extension.into())
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let extension = u16::decode(cursor)?;
+    //     Ok(extension.into())
+    // }
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -289,14 +289,14 @@ impl Codec for Extension {
         Ok(())
     }
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let extension_type = ExtensionType::decode(cursor)?;
-        let extension_data = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(Extension {
-            extension_type,
-            extension_data,
-        })
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let extension_type = ExtensionType::decode(cursor)?;
+    //     let extension_data = decode_vec(VecSize::VecU16, cursor)?;
+    //     Ok(Extension {
+    //         extension_type,
+    //         extension_data,
+    //     })
+    // }
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -325,11 +325,11 @@ impl Codec for KeyPackageId {
         Ok(())
     }
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let bytes = decode_vec(VecSize::VecU8, cursor)?;
-        let id = KeyPackageId::from_slice(&bytes);
-        Ok(id)
-    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let bytes = decode_vec(VecSize::VecU8, cursor)?;
+    //     let id = KeyPackageId::from_slice(&bytes);
+    //     Ok(id)
+    // }
 }
 
 #[test]
@@ -355,5 +355,5 @@ fn test_extension_codec() {
     );
     let extension = capabilities_extension.to_extension();
     let bytes = extension.encode_detached().unwrap();
-    let _dec = Extension::decode(&mut Cursor::new(&bytes));
+    // let _dec = Extension::decode(&mut Cursor::new(&bytes));
 }

@@ -14,21 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
-use crate::tree::astree::*;
 use crate::utils::*;
 
 pub fn apply_commit(
     group: &mut MlsGroup,
     mls_plaintext: MLSPlaintext,
     proposals: Vec<(Sender, Proposal)>,
-    own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+    own_key_packages: Vec<KeyPackageBundle>,
 ) -> Result<(), ApplyCommitError> {
     let ciphersuite = group.get_ciphersuite();
 
@@ -39,7 +37,11 @@ pub fn apply_commit(
 
     // Create KeyPackageBundles
     let mut pending_kpbs = vec![];
-    for (pk, kp) in own_key_packages {
+    for kpb in own_key_packages {
+        let (pk, kp) = (
+            kpb.private_key,
+            kpb.key_package,
+        );
         pending_kpbs.push(KeyPackageBundle::from_values(kp, pk));
     }
 
@@ -62,7 +64,7 @@ pub fn apply_commit(
     }
 
     // Create provisional tree and apply proposals
-    let mut provisional_tree = group.tree.clone();
+    let mut provisional_tree = group.tree.borrow_mut();
     let (membership_changes, _invited_members, group_removed) =
         provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, pending_kpbs.clone());
 
@@ -73,7 +75,7 @@ pub fn apply_commit(
 
     // Determine if Commit is own Commit
     let sender = mls_plaintext.sender.sender;
-    let is_own_commit = mls_plaintext.sender.as_node_index() == group.tree.get_own_index();
+    let is_own_commit = mls_plaintext.sender.as_node_index() == provisional_tree.get_own_index(); // XXX: correct?
 
     // Determine if Commit has a path
     let commit_secret = if let Some(path) = commit.path.clone() {
@@ -166,14 +168,16 @@ pub fn apply_commit(
     }
 
     // Apply provisional tree and state to group
-    group.tree = provisional_tree;
     group.group_context = provisional_group_context;
     group.epoch_secrets = provisional_epoch_secrets;
     group.interim_transcript_hash = interim_transcript_hash;
-    group.astree = ASTree::new(
-        *group.get_ciphersuite(),
-        &group.epoch_secrets.application_secret,
-        group.tree.leaf_count(),
-    );
+    group
+        .astree
+        .borrow_mut()
+        .set_size(provisional_tree.leaf_count());
+    group
+        .astree
+        .borrow_mut()
+        .set_application_secrets(&group.epoch_secrets.application_secret);
     Ok(())
 }

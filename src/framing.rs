@@ -18,9 +18,9 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::group::*;
-use crate::messages::*;
+use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::astree::*;
+use crate::tree::{astree::*, index::*};
 use crate::utils::*;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -58,6 +58,27 @@ impl MLSPlaintext {
         };
         mls_plaintext.sign(ciphersuite, signature_key, context);
         mls_plaintext
+    }
+    // XXX: Only used in tests right now.
+    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+        let mut cursor = Cursor::new(bytes);
+        let group_id = GroupId::decode(&mut cursor).unwrap();
+        let epoch = GroupEpoch::decode(&mut cursor).unwrap();
+        let sender = Sender::decode(&mut cursor).unwrap();
+        let authenticated_data = decode_vec(VecSize::VecU32, &mut cursor).unwrap();
+        let content_type = ContentType::decode(&mut cursor).unwrap();
+        let content = MLSPlaintextContentType::decode(&mut cursor).unwrap();
+        let signature = Signature::decode(&mut cursor).unwrap();
+
+        Ok(MLSPlaintext {
+            group_id,
+            epoch,
+            sender,
+            authenticated_data,
+            content_type,
+            content,
+            signature,
+        })
     }
     pub fn sign(
         &mut self,
@@ -118,9 +139,25 @@ pub struct MLSCiphertext {
 }
 
 impl MLSCiphertext {
-    pub fn from_slice(bytes: &[u8]) -> Self {
-        MLSCiphertext::decode_detached(&bytes).unwrap()
-    }
+    // pub fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+    //     let mut cursor = Cursor::new(bytes);
+    //     let group_id = GroupId::decode(&mut cursor)?;
+    //     let epoch = GroupEpoch::decode(&mut cursor)?;
+    //     let content_type = ContentType::decode(&mut cursor)?;
+    //     let authenticated_data = decode_vec(VecSize::VecU32, &mut cursor)?;
+    //     let sender_data_nonce = decode_vec(VecSize::VecU8, &mut cursor)?;
+    //     let encrypted_sender_data = decode_vec(VecSize::VecU8, &mut cursor)?;
+    //     let ciphertext = decode_vec(VecSize::VecU32, &mut cursor)?;
+    //     Ok(MLSCiphertext {
+    //         group_id,
+    //         epoch,
+    //         content_type,
+    //         authenticated_data,
+    //         sender_data_nonce,
+    //         encrypted_sender_data,
+    //         ciphertext,
+    //     })
+    // }
     pub fn as_slice(&self) -> Vec<u8> {
         self.encode_detached().unwrap()
     }
@@ -132,7 +169,7 @@ impl MLSCiphertext {
     ) -> (AeadKey, AeadNonce) {
         let sender_id = match mls_plaintext {
             Some(mls_plaintext) => mls_plaintext.sender.encode_detached().unwrap(),
-            None => sender_data.sender.as_u32().encode_detached().unwrap(),
+            None => sender_data.sender.encode_detached().unwrap(),
         };
         let mut handshake_nonce_input = hkdf_expand_label(
             ciphersuite,
@@ -158,16 +195,16 @@ impl MLSCiphertext {
     }
     pub fn new_from_plaintext(
         mls_plaintext: &MLSPlaintext,
-        ciphersuite: &Ciphersuite,
-        astree: &mut ASTree,
-        epoch_secrets: &EpochSecrets,
-        context: &GroupContext,
+        mls_group: &MlsGroup,
+        generation: u32,
+        application_secrets: &ApplicationSecrets,
     ) -> MLSCiphertext {
         const PADDING_SIZE: usize = 10;
-        let generation = astree.get_generation(mls_plaintext.sender.sender);
-        let application_secrets = astree
-            .get_secret(mls_plaintext.sender.sender, generation)
-            .unwrap();
+
+        let ciphersuite = mls_group.get_ciphersuite();
+        let context = mls_group.get_context();
+        let epoch_secrets = mls_group.get_epoch_secrets();
+
         match mls_plaintext.content_type {
             ContentType::Application => {}
             ContentType::Commit => {}
@@ -268,10 +305,11 @@ impl MLSCiphertext {
             ciphertext,
         }
     }
+
     pub fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
-        roster: &[Credential],
+        roster: &[&Credential],
         epoch_secrets: &EpochSecrets,
         astree: &mut ASTree,
         context: &GroupContext,
@@ -302,9 +340,9 @@ impl MLSCiphertext {
                 &sender_data_nonce,
             )
             .unwrap();
-        let sender_data = MLSSenderData::decode_detached(&sender_data_bytes).unwrap();
+        let sender_data = MLSSenderData::from_bytes(&sender_data_bytes).unwrap();
         let application_secrets = astree
-            .get_secret(sender_data.sender, sender_data.generation)
+            .get_secret(ciphersuite, sender_data.sender, sender_data.generation)
             .unwrap();
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: self.group_id.clone(),
@@ -333,7 +371,7 @@ impl MLSCiphertext {
             )
             .unwrap();
         let mls_ciphertext_content =
-            MLSCiphertextContent::decode_detached(&mls_ciphertext_content_bytes).unwrap();
+            MLSCiphertextContent::from_bytes(&mls_ciphertext_content_bytes).unwrap();
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: sender_data.sender,
@@ -441,7 +479,7 @@ impl Sender {
 impl Codec for Sender {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.sender_type.encode(buffer)?;
-        self.sender.as_u32().encode(buffer)?;
+        self.sender.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
@@ -585,7 +623,7 @@ impl Codec for MLSPlaintextTBS {
         self.context.encode(buffer)?;
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
-        self.sender.as_u32().encode(buffer)?;
+        self.sender.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
         self.content_type.encode(buffer)?;
         self.payload.encode(buffer)?;
@@ -619,9 +657,24 @@ pub struct MLSSenderData {
     pub reuse_guard: u32,
 }
 
+impl MLSSenderData {
+    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+        let mut cursor = Cursor::new(bytes);
+        let sender = LeafIndex::from(u32::decode(&mut cursor)?);
+        let generation = u32::decode(&mut cursor)?;
+        let reuse_guard = u32::decode(&mut cursor)?;
+
+        Ok(MLSSenderData {
+            sender,
+            generation,
+            reuse_guard,
+        })
+    }
+}
+
 impl Codec for MLSSenderData {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.sender.as_u32().encode(buffer)?;
+        self.sender.encode(buffer)?;
         self.generation.encode(buffer)?;
         self.reuse_guard.encode(buffer)?;
         Ok(())
@@ -710,23 +763,26 @@ pub struct MLSCiphertextContent {
     pub padding: Vec<u8>,
 }
 
+impl MLSCiphertextContent {
+    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+        let mut cursor = Cursor::new(bytes);
+        let content = MLSPlaintextContentType::decode(&mut cursor)?;
+        let signature = Signature::decode(&mut cursor)?;
+        let padding = decode_vec(VecSize::VecU16, &mut cursor)?;
+        Ok(MLSCiphertextContent {
+            content,
+            signature,
+            padding,
+        })
+    }
+}
+
 impl Codec for MLSCiphertextContent {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.content.encode(buffer)?;
         self.signature.encode(buffer)?;
         encode_vec(VecSize::VecU16, buffer, &self.padding)?;
         Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let content = MLSPlaintextContentType::decode(cursor)?;
-        let signature = Signature::decode(cursor)?;
-        let padding = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(MLSCiphertextContent {
-            content,
-            signature,
-            padding,
-        })
     }
 }
 
@@ -892,6 +948,6 @@ fn codec() {
     orig.signature = signature_input.sign(&ciphersuite, &keypair.get_private_key());
 
     let enc = orig.encode_detached().unwrap();
-    let copy = MLSPlaintext::decode_detached(&enc).unwrap();
+    let copy = MLSPlaintext::from_bytes(&enc).unwrap();
     assert_eq!(orig, copy);
 }

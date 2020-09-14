@@ -21,44 +21,39 @@ mod new_from_welcome;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::creds::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::*;
+use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::astree::*;
-use crate::tree::*;
+use crate::tree::{astree::*, index::*, node::*, *};
 
 pub use api::*;
 use apply_commit::*;
 use create_commit::*;
 use new_from_welcome::*;
 
+use std::cell::{Ref, RefCell};
+
 pub struct MlsGroup {
     ciphersuite: Ciphersuite,
     group_context: GroupContext,
     generation: u32,
     epoch_secrets: EpochSecrets,
-    astree: ASTree,
-    tree: RatchetTree,
+    astree: RefCell<ASTree>,
+    tree: RefCell<RatchetTree>,
     interim_transcript_hash: Vec<u8>,
 }
 
 impl Api for MlsGroup {
-    fn new(
-        id: &[u8],
-        ciphersuite: Ciphersuite,
-        key_package_bundle: (HPKEPrivateKey, KeyPackage),
-    ) -> MlsGroup {
+    fn new(id: &[u8], ciphersuite: Ciphersuite, key_package_bundle: KeyPackageBundle) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
-        let astree = ASTree::new(
-            ciphersuite,
-            &epoch_secrets.application_secret,
-            LeafIndex::from(1u32),
+        let astree = ASTree::new(&epoch_secrets.application_secret, LeafIndex::from(1u32));
+        let (private_key, key_package) = (
+            key_package_bundle.private_key,
+            key_package_bundle.key_package,
         );
-        let (private_key, key_package) = key_package_bundle;
         let kpb = KeyPackageBundle::from_values(key_package, private_key);
         let tree = RatchetTree::new(ciphersuite, kpb);
         let group_context = GroupContext {
@@ -70,12 +65,11 @@ impl Api for MlsGroup {
         let interim_transcript_hash = vec![];
         MlsGroup {
             ciphersuite,
-            //client: creator,
             group_context,
             generation: 0,
             epoch_secrets,
-            astree,
-            tree,
+            astree: RefCell::new(astree),
+            tree: RefCell::new(tree),
             interim_transcript_hash,
         }
     }
@@ -83,8 +77,8 @@ impl Api for MlsGroup {
     fn new_from_welcome(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
-        kpb: (HPKEPrivateKey, KeyPackage),
-    ) -> Result<MlsGroup, WelcomeError> {
+        kpb: KeyPackageBundle,
+    ) -> Result<Self, WelcomeError> {
         new_from_welcome(welcome, nodes_option, kpb)
     }
 
@@ -136,7 +130,7 @@ impl Api for MlsGroup {
         removed_index: LeafIndex,
     ) -> (MLSPlaintext, Proposal) {
         let remove_proposal = RemoveProposal {
-            removed: removed_index.as_u32(),
+            removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal.clone());
@@ -154,9 +148,9 @@ impl Api for MlsGroup {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: (HPKEPrivateKey, KeyPackage),
+        key_package_bundle: KeyPackageBundle,
         proposals: Vec<(Sender, Proposal)>,
-        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
         create_commit(
@@ -175,7 +169,7 @@ impl Api for MlsGroup {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<(Sender, Proposal)>,
-        own_key_packages: Vec<(HPKEPrivateKey, KeyPackage)>,
+        own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
         apply_commit(self, mls_plaintext, proposals, own_key_packages)
     }
@@ -200,23 +194,33 @@ impl Api for MlsGroup {
 
     // Encrypt/Decrypt MLS message
     fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
-        let context = &self.get_context();
-        MLSCiphertext::new_from_plaintext(
-            &mls_plaintext,
-            &self.get_ciphersuite().clone(),
-            &mut self.astree,
-            &self.epoch_secrets,
-            context,
-        )
+        let mut astree = self.astree.borrow_mut();
+        let generation = astree.get_generation(mls_plaintext.sender.sender);
+        let application_secrets = astree
+            .get_secret(&self.ciphersuite, mls_plaintext.sender.sender, generation)
+            .unwrap();
+        MLSCiphertext::new_from_plaintext(&mls_plaintext, &self, generation, &application_secrets)
     }
+
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext {
-        let context = &self.get_context();
+        let tree = self.tree.borrow();
+        let mut roster = Vec::new();
+        for i in 0..tree.leaf_count().as_usize() {
+            let node = &tree.nodes[NodeIndex::from(i).as_usize()];
+            let credential = if let Some(kp) = &node.key_package {
+                kp.get_credential()
+            } else {
+                panic!("Missing key package");
+            };
+            roster.push(credential);
+        }
+
         mls_ciphertext.to_plaintext(
-            &self.get_ciphersuite().clone(),
-            &self.roster(),
+            &self.ciphersuite,
+            &roster,
             &self.epoch_secrets,
-            &mut self.astree,
-            context,
+            &mut self.astree.borrow_mut(),
+            &self.group_context,
         )
     }
 
@@ -238,8 +242,8 @@ impl Codec for MlsGroup {
         self.group_context.encode(buffer)?;
         self.generation.encode(buffer)?;
         self.epoch_secrets.encode(buffer)?;
-        self.astree.encode(buffer)?;
-        self.tree.encode(buffer)?;
+        self.astree.borrow().encode(buffer)?;
+        self.tree.borrow().encode(buffer)?;
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         Ok(())
     }
@@ -256,8 +260,8 @@ impl Codec for MlsGroup {
             group_context,
             generation,
             epoch_secrets,
-            astree,
-            tree,
+            astree: RefCell::new(astree),
+            tree: RefCell::new(tree),
             interim_transcript_hash,
         };
         Ok(group)
@@ -265,27 +269,22 @@ impl Codec for MlsGroup {
 }
 
 impl MlsGroup {
-    pub fn get_tree(&self) -> &RatchetTree {
-        &self.tree
-    }
-    pub fn roster(&self) -> Vec<Credential> {
-        let mut roster = Vec::with_capacity(self.tree.leaf_count().as_usize());
-        for i in 0..self.tree.leaf_count().as_usize() {
-            let node = self.tree.nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
-            let credential = node.key_package.unwrap().get_credential().clone();
-            roster.push(credential);
-        }
-        roster
+    pub fn get_tree(&self) -> Ref<RatchetTree> {
+        self.tree.borrow()
     }
     fn get_sender_index(&self) -> LeafIndex {
-        LeafIndex::from(self.tree.get_own_index())
+        self.tree.borrow().get_own_index().into()
     }
-    fn get_ciphersuite(&self) -> &Ciphersuite {
+    pub(crate) fn get_ciphersuite(&self) -> &Ciphersuite {
         &self.ciphersuite
     }
 
-    fn get_context(&self) -> GroupContext {
-        self.group_context.clone()
+    pub(crate) fn get_context(&self) -> &GroupContext {
+        &self.group_context
+    }
+
+    pub(crate) fn get_epoch_secrets(&self) -> &EpochSecrets {
+        &self.epoch_secrets
     }
 }
 

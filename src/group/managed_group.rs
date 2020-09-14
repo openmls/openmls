@@ -20,8 +20,8 @@ use crate::creds::*;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::*;
-use crate::tree::*;
+use crate::messages::{proposals::*, *};
+use crate::tree::{index::*, node::*};
 
 pub struct ManagedGroup {
     pub group: MlsGroup,
@@ -41,10 +41,10 @@ impl ManagedGroup {
         let group = MlsGroup::new(
             &group_id.as_slice(),
             ciphersuite,
-            (
-                key_package_bundle.get_private_key().clone(),
-                key_package_bundle.get_key_package().clone(),
-            ),
+            KeyPackageBundle {
+                private_key: key_package_bundle.get_private_key().clone(),
+                key_package: key_package_bundle.get_key_package().clone(),
+            },
         );
 
         ManagedGroup {
@@ -60,14 +60,14 @@ impl ManagedGroup {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<ManagedGroup, WelcomeError> {
+    ) -> Result<Self, WelcomeError> {
         let group = MlsGroup::new_from_welcome(
             welcome,
             ratchet_tree,
-            (
-                key_package_bundle.get_private_key().clone(),
-                key_package_bundle.get_key_package().clone(),
-            ),
+            KeyPackageBundle {
+                private_key: key_package_bundle.get_private_key().clone(),
+                key_package: key_package_bundle.get_key_package().clone(),
+            },
         )?;
         Ok(ManagedGroup {
             group,
@@ -88,10 +88,9 @@ impl ManagedGroup {
     pub fn send_application_message() {}
 
     pub fn get_members(&self) -> Vec<Credential> {
-        let mut members = Vec::with_capacity(self.group.get_tree().leaf_count().as_usize());
+        let mut members = Vec::new();
         for i in 0..self.group.get_tree().leaf_count().as_usize() {
-            let node =
-                self.group.get_tree().nodes[NodeIndex::from(LeafIndex::from(i)).as_usize()].clone();
+            let node = self.group.get_tree().nodes[NodeIndex::from(i).as_usize()].clone();
             let credential = node.key_package.unwrap().get_credential().clone();
             members.push(credential);
         }
