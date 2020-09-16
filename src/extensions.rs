@@ -71,6 +71,7 @@ pub enum ExtensionType {
     KeyID = 3,
     ParentHash = 4,
     RatchetTree = 5,
+    DeviceCapabilities = 6,
     Default = 65535,
 }
 
@@ -263,6 +264,78 @@ impl RatchetTreeExtension {
         let mut extension_data: Vec<u8> = vec![];
         encode_vec(VecSize::VecU32, &mut extension_data, &self.tree).unwrap();
         let extension_type = ExtensionType::RatchetTree;
+        Extension {
+            extension_type,
+            extension_data,
+        }
+    }
+}
+
+#[repr(u32)]
+#[cfg_attr(rustfmt, rustfmt_skip)]
+pub enum DeviceCapabilityType {
+    AddCap          = 0b0001u32,
+    RemoveCap       = 0b0010u32,
+    NonRemovableCap = 0b0100u32,
+    SelfUpdateCap   = 0b1000u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DeviceCapabilities(pub u32);
+
+impl DeviceCapabilities {
+    pub fn is_permanent(&self) -> bool {
+        self.0 & DeviceType::PermanentDevice as u32 == DeviceType::PermanentDevice as u32
+    }
+    pub fn is_temporary(&self) -> bool {
+        self.0 == DeviceType::TemporaryDevice as u32
+    }
+    pub fn can_add(&self) -> bool {
+        (self.0 & DeviceCapabilityType::AddCap as u32) > 0
+    }
+    pub fn can_remove(&self) -> bool {
+        (self.0 & DeviceCapabilityType::RemoveCap as u32) > 0
+    }
+    pub fn cannot_be_removed(&self) -> bool {
+        (self.0 & DeviceCapabilityType::NonRemovableCap as u32) > 0
+    }
+    pub fn can_self_update(&self) -> bool {
+        (self.0 & DeviceCapabilityType::SelfUpdateCap as u32) > 0
+    }
+}
+
+#[repr(u32)]
+pub enum DeviceType {
+    TemporaryDevice = 0u32,
+    PermanentDevice = DeviceCapabilityType::AddCap as u32
+        | DeviceCapabilityType::RemoveCap as u32
+        | DeviceCapabilityType::SelfUpdateCap as u32,
+}
+
+impl From<DeviceType> for DeviceCapabilities {
+    fn from(n: DeviceType) -> DeviceCapabilities {
+        DeviceCapabilities(n as u32)
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct DeviceCapabilityExtension {
+    pub capabilities: DeviceCapabilities,
+}
+
+impl DeviceCapabilityExtension {
+    pub fn new(capabilities: DeviceCapabilities) -> Self {
+        DeviceCapabilityExtension { capabilities }
+    }
+    pub fn new_from_bytes(bytes: &[u8]) -> Self {
+        let cursor = &mut Cursor::new(bytes);
+        let capabilities = DeviceCapabilities(Codec::decode(cursor).unwrap());
+        Self { capabilities }
+    }
+    pub fn to_extension(&self) -> Extension {
+        let mut extension_data: Vec<u8> = vec![];
+        self.capabilities.0.encode(&mut extension_data).unwrap();
+        let extension_type = ExtensionType::DeviceCapabilities;
         Extension {
             extension_type,
             extension_data,
