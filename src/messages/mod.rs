@@ -46,8 +46,14 @@ impl fmt::Debug for MembershipChanges {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn list_members(f: &mut fmt::Formatter<'_>, members: &[Credential]) -> fmt::Result {
             for m in members {
-                let Credential::Basic(bc) = m;
-                write!(f, "{} ", String::from_utf8(bc.identity.clone()).unwrap())?;
+                match m {
+                    Credential::Basic(bc) => {
+                        write!(f, "{} ", String::from_utf8(bc.identity.clone()).unwrap())?;
+                    }
+                    Credential::Extensible(ec) => {
+                        write!(f, "{} ", String::from_utf8(ec.identity.clone()).unwrap())?;
+                    }
+                }
             }
             Ok(())
         }

@@ -16,6 +16,7 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::extensions::Extension;
 
 #[derive(Clone)]
 pub struct Identity {
@@ -82,6 +83,7 @@ impl Codec for Identity {
 pub enum CredentialType {
     Basic = 0,
     X509 = 1,
+    Extensible = 2,
     Default = 255,
 }
 
@@ -90,6 +92,7 @@ impl From<u8> for CredentialType {
         match value {
             0 => CredentialType::Basic,
             1 => CredentialType::X509,
+            2 => CredentialType::Extensible,
             _ => CredentialType::Default,
         }
     }
@@ -108,6 +111,7 @@ impl Codec for CredentialType {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Credential {
     Basic(BasicCredential),
+    Extensible(ExtensibleCredential),
 }
 
 impl Credential {
@@ -118,6 +122,9 @@ impl Credential {
                 &basic_credential.public_key,
                 payload,
             ),
+            Credential::Extensible(extensible_credential) => extensible_credential
+                .ciphersuite
+                .verify(signature, &extensible_credential.public_key, payload),
         }
     }
 }
@@ -128,6 +135,10 @@ impl Codec for Credential {
             Credential::Basic(basic_credential) => {
                 CredentialType::Basic.encode(buffer)?;
                 basic_credential.encode(buffer)?;
+            }
+            Credential::Extensible(extensible_credential) => {
+                CredentialType::Extensible.encode(buffer)?;
+                extensible_credential.encode(buffer)?;
             }
         }
         Ok(())
@@ -167,6 +178,50 @@ impl From<&Identity> for BasicCredential {
 }
 
 impl Codec for BasicCredential {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        encode_vec(VecSize::VecU16, buffer, &self.identity)?;
+        self.ciphersuite.encode(buffer)?;
+        self.public_key.encode(buffer)?;
+        Ok(())
+    }
+    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+    //     let identity = decode_vec(VecSize::VecU16, cursor)?;
+    //     let ciphersuite = Ciphersuite::decode(cursor)?;
+    //     let public_key = SignaturePublicKey::decode(cursor)?;
+    //     Ok(BasicCredential {
+    //         identity,
+    //         ciphersuite,
+    //         public_key,
+    //     })
+    // }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExtensibleCredential {
+    pub identity: Vec<u8>,
+    pub ciphersuite: Ciphersuite,
+    pub public_key: SignaturePublicKey,
+    pub extensions: Vec<Extension>,
+}
+
+impl ExtensibleCredential {
+    pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
+        self.ciphersuite
+            .verify(signature, &self.public_key, payload)
+    }
+}
+
+//impl From<&Identity, &Vec<Extension>> for ExtensibleCredential {
+//    fn from(identity: &Identity, extensions: &Vec<Extension>) -> Self {
+//        ExtensibleCredential {
+//            identity: identity.id.clone(),
+//            ciphersuite: identity.ciphersuite,
+//            public_key: identity.keypair.get_public_key().clone(),
+//        }
+//    }
+//}
+
+impl Codec for ExtensibleCredential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
         self.ciphersuite.encode(buffer)?;
