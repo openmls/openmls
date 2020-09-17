@@ -226,18 +226,21 @@ impl Codec for ExtensibleCredential {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
         self.ciphersuite.encode(buffer)?;
         self.public_key.encode(buffer)?;
+        encode_vec(VecSize::VecU32, buffer, &self.extensions)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let identity = decode_vec(VecSize::VecU16, cursor)?;
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let public_key = SignaturePublicKey::decode(cursor)?;
-    //     Ok(BasicCredential {
-    //         identity,
-    //         ciphersuite,
-    //         public_key,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let identity = decode_vec(VecSize::VecU16, cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
+        let public_key = SignaturePublicKey::decode(cursor)?;
+        let extensions = decode_vec(VecSize::VecU32, cursor)?;
+        Ok(ExtensibleCredential {
+            identity,
+            ciphersuite,
+            public_key,
+            extensions,
+        })
+    }
 }
 
 #[test]
