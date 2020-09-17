@@ -211,16 +211,6 @@ impl ExtensibleCredential {
     }
 }
 
-//impl From<&Identity, &Vec<Extension>> for ExtensibleCredential {
-//    fn from(identity: &Identity, extensions: &Vec<Extension>) -> Self {
-//        ExtensibleCredential {
-//            identity: identity.id.clone(),
-//            ciphersuite: identity.ciphersuite,
-//            public_key: identity.keypair.get_public_key().clone(),
-//        }
-//    }
-//}
-
 impl Codec for ExtensibleCredential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
@@ -228,18 +218,6 @@ impl Codec for ExtensibleCredential {
         self.public_key.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.extensions)?;
         Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let identity = decode_vec(VecSize::VecU16, cursor)?;
-        let ciphersuite = Ciphersuite::decode(cursor)?;
-        let public_key = SignaturePublicKey::decode(cursor)?;
-        let extensions = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(ExtensibleCredential {
-            identity,
-            ciphersuite,
-            public_key,
-            extensions,
-        })
     }
 }
 
