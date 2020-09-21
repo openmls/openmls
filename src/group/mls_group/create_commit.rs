@@ -32,7 +32,7 @@ impl MlsGroup {
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         key_package_bundle: KeyPackageBundle,
-        proposals: Vec<(MLSPlaintext, Proposal)>,
+        proposals: Vec<MLSPlaintext>,
         own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
@@ -49,8 +49,8 @@ impl MlsGroup {
         }
         // Organize proposals
         let mut proposal_queue = ProposalQueue::new();
-        for (mls_plaintext, proposal) in proposals {
-            let queued_proposal = QueuedProposal::new(proposal, mls_plaintext.sender, None);
+        for mls_plaintext in proposals {
+            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
             proposal_queue.add(queued_proposal, &ciphersuite);
         }
         

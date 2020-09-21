@@ -26,7 +26,7 @@ impl MlsGroup {
     pub(crate) fn apply_commit_internal(
         &mut self,
         mls_plaintext: MLSPlaintext,
-        proposals: Vec<(Sender, Proposal)>,
+        proposals: Vec<MLSPlaintext>,
         own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.get_ciphersuite();
@@ -56,8 +56,8 @@ impl MlsGroup {
             adds: commit.adds.clone(),
         };
         let mut proposal_queue = ProposalQueue::new();
-        for (sender, proposal) in proposals {
-            let queued_proposal = QueuedProposal::new(proposal, Sender::member(sender.as_leaf_index()), None);
+        for mls_plaintext in proposals {
+            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
             proposal_queue.add(queued_proposal, &ciphersuite);
         }
 

@@ -1,8 +1,7 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::framing::sender::*;
+use crate::framing::{sender::*, *};
 use crate::key_packages::*;
-use crate::tree::index::LeafIndex;
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug)]
@@ -144,10 +143,15 @@ pub struct QueuedProposal {
 }
 
 impl QueuedProposal {
-    pub fn new(proposal: Proposal, sender: Sender, own_kpb: Option<KeyPackageBundle>) -> Self {
+    pub fn new(mls_plaintext: MLSPlaintext, own_kpb: Option<KeyPackageBundle>) -> Self {
+        debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
+        let proposal = match mls_plaintext.content {
+            MLSPlaintextContentType::Proposal(p) => p,
+            _ => panic!("API misuses. Only proposal can end up in the proposal queue"),
+        };
         Self {
             proposal,
-            sender,
+            sender: mls_plaintext.sender,
             own_kpb,
         }
     }

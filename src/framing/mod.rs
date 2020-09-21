@@ -55,7 +55,7 @@ impl MLSPlaintext {
             epoch: context.epoch,
             sender,
             authenticated_data: authenticated_data.to_vec(),
-            content_type: ContentType::from(content.clone()),
+            content_type: ContentType::from(&content),
             content,
             signature: Signature::new_empty(),
         };
@@ -448,8 +448,8 @@ impl From<u8> for ContentType {
     }
 }
 
-impl From<MLSPlaintextContentType> for ContentType {
-    fn from(value: MLSPlaintextContentType) -> Self {
+impl From<&MLSPlaintextContentType> for ContentType {
+    fn from(value: &MLSPlaintextContentType) -> Self {
         match value {
             MLSPlaintextContentType::Application(_) => ContentType::Application,
             MLSPlaintextContentType::Proposal(_) => ContentType::Proposal,

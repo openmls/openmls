@@ -46,7 +46,8 @@ fn basic_group_setup() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
+    // FIXME: We should never have to clone the key package bundle
+    let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle.clone());
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -54,14 +55,17 @@ fn basic_group_setup() {
         &alice_identity.get_signature_key_pair().get_private_key(),
         bob_key_package.clone(),
     );
-    // group_alice_1234.create_commit(
-    //     group_aad,
-    //     &alice_identity.get_signature_key_pair().get_private_key(),
-    //     alice_key_package_bundle,
-    //     vec![(bob, bob_add_proposal)],
-    //     vec![alice_key_package_bundle],
-    //     true,
-    // );
+    let commit = match group_alice_1234.create_commit(
+        group_aad,
+        &alice_identity.get_signature_key_pair().get_private_key(),
+        alice_key_package_bundle.clone(),
+        vec![bob_add_proposal],
+        vec![alice_key_package_bundle],
+        true,
+    ) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 }
 
 /*

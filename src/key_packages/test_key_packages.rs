@@ -31,7 +31,7 @@ fn test_codec() {
         credential,
         None,
     );
-    let enc = kpb.encode_detached().unwrap();
+    let _enc = kpb.encode_detached().unwrap();
     // let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
     // assert_eq!(kpb.key_package, kp);
 }
