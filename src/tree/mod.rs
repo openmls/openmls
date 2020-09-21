@@ -18,6 +18,7 @@ use rayon::prelude::*;
 
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
+use crate::creds::*;
 use crate::extensions::*;
 use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
@@ -472,6 +473,58 @@ impl RatchetTree {
             self.nodes[path[i].as_usize()].node = Some(node);
         }
     }
+
+    /// Add nodes for the provided key packages.
+    pub(crate) fn add_nodes(
+        &mut self,
+        new_kp: &[KeyPackage],
+    ) -> Vec<(NodeIndex, Credential)> {
+        let num_new_kp = new_kp.len();
+        let mut added_members = Vec::with_capacity(num_new_kp);
+
+        if num_new_kp > (2 * self.leaf_count().as_usize()) {
+            self.nodes
+                .reserve_exact((2 * num_new_kp) - (2 * self.leaf_count().as_usize()));
+        }
+
+        // Add new nodes for key packages into existing free leaves.
+        // Note that zip makes it so only the first free_leaves().len() nodes are taken.
+        let free_leaves = self.free_leaves();
+        let free_leaves_len = free_leaves.len();
+        for (new_kp, leaf_index) in new_kp.iter().zip(free_leaves) {
+            self.nodes[leaf_index.as_usize()] = Node::new_leaf(Some(new_kp.clone()));
+            let dirpath = treemath::dirpath_root(leaf_index, self.leaf_count());
+            for d in dirpath.iter() {
+                if !self.nodes[d.as_usize()].is_blank() {
+                    let node = &self.nodes[d.as_usize()];
+                    let index = d.as_u32();
+                    // TODO handle error
+                    let mut parent_node = node.node.clone().unwrap();
+                    if !parent_node.get_unmerged_leaves().contains(&index) {
+                        parent_node.get_unmerged_leaves_mut().push(index);
+                    }
+                    self.nodes[d.as_usize()].node = Some(parent_node);
+                }
+            }
+            added_members.push((leaf_index, new_kp.get_credential().clone()));
+        }
+        // Add the remaining nodes.
+        let mut new_nodes = Vec::with_capacity(num_new_kp * 2);
+        let mut leaf_index = self.nodes.len() + 1;
+        for add_proposal in new_kp.iter().skip(free_leaves_len) {
+            new_nodes.extend(vec![
+                Node::new_blank_parent_node(),
+                Node::new_leaf(Some(add_proposal.clone())),
+            ]);
+            let node_index = NodeIndex::from(leaf_index);
+            added_members.push((node_index, add_proposal.get_credential().clone()));
+            leaf_index += 2;
+        }
+        self.nodes.extend(new_nodes);
+        self.trim_tree();
+        added_members
+    }
+
     pub fn apply_proposals(
         &mut self,
         proposal_id_list: &ProposalIDList,
@@ -480,7 +533,6 @@ impl RatchetTree {
     ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {
         let mut updated_members = vec![];
         let mut removed_members = vec![];
-        let mut added_members = Vec::with_capacity(proposal_id_list.adds.len());
         let mut invited_members = Vec::with_capacity(proposal_id_list.adds.len());
 
         let mut self_removed = false;
@@ -522,12 +574,8 @@ impl RatchetTree {
             self.blank_member(removed);
         }
 
-        if !proposal_id_list.adds.is_empty() {
-            if proposal_id_list.adds.len() > (2 * self.leaf_count().as_usize()) {
-                self.nodes.reserve_exact(
-                    (2 * proposal_id_list.adds.len()) - (2 * self.leaf_count().as_usize()),
-                );
-            }
+        // Process adds
+        let added_members = if !proposal_id_list.adds.is_empty() {
             let add_proposals: Vec<AddProposal> = proposal_id_list
                 .adds
                 .par_iter()
@@ -537,48 +585,27 @@ impl RatchetTree {
                     proposal.as_add().unwrap()
                 })
                 .collect();
-
-            let free_leaves = self.free_leaves();
             // TODO make sure intermediary nodes are updated with unmerged_leaves
-            let (add_in_place, add_append) = add_proposals.split_at(free_leaves.len());
-            for (add_proposal, leaf_index) in add_in_place.iter().zip(free_leaves) {
-                self.nodes[leaf_index.as_usize()] =
-                    Node::new_leaf(Some(add_proposal.key_package.clone()));
-                let dirpath = treemath::dirpath_root(leaf_index, self.leaf_count());
-                for d in dirpath.iter() {
-                    if !self.nodes[d.as_usize()].is_blank() {
-                        let node = &self.nodes[d.as_usize()];
-                        let index = d.as_u32();
-                        // TODO handle error
-                        let mut parent_node = node.node.clone().unwrap();
-                        if !parent_node.get_unmerged_leaves().contains(&index) {
-                            parent_node.get_unmerged_leaves_mut().push(index);
-                        }
-                        self.nodes[d.as_usize()].node = Some(parent_node);
-                    }
-                }
-                added_members.push(add_proposal.key_package.get_credential().clone());
-                invited_members.push((leaf_index, add_proposal.clone()));
+            let key_packages: Vec<KeyPackage> = add_proposals
+                .iter()
+                .map(|a| a.key_package.clone())
+                .collect();
+            let added = self.add_nodes(&key_packages);
+
+            for (i, added) in added.iter().enumerate() {
+                invited_members.push((added.0, add_proposals.get(i).unwrap().clone()));
             }
-            let mut new_nodes = Vec::with_capacity(proposal_id_list.adds.len() * 2);
-            let mut leaf_index = self.nodes.len() + 1;
-            for add_proposal in add_append.iter() {
-                new_nodes.extend(vec![
-                    Node::new_blank_parent_node(),
-                    Node::new_leaf(Some(add_proposal.key_package.clone())),
-                ]);
-                added_members.push(add_proposal.key_package.get_credential().clone());
-                invited_members.push((NodeIndex::from(leaf_index), add_proposal.clone()));
-                leaf_index += 2;
-            }
-            self.nodes.extend(new_nodes);
-            self.trim_tree();
-        }
+            added
+        } else {
+            Vec::new()
+        };
+
+        // Return membership changes
         (
             MembershipChanges {
                 updates: updated_members,
                 removes: removed_members,
-                adds: added_members,
+                adds: added_members.iter().map(|(_, n)| n.clone()).collect(),
             },
             invited_members,
             self_removed,
