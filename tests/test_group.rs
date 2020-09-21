@@ -7,6 +7,7 @@ use maelstrom::key_packages::*;
 fn basic_group_setup() {
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let group_aad = b"Alice's test group";
 
     // Define identities
     let alice_identity = Identity::new(ciphersuite, "Alice".into());
@@ -49,15 +50,15 @@ fn basic_group_setup() {
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
-        &[],
+        group_aad,
         &alice_identity.get_signature_key_pair().get_private_key(),
         bob_key_package.clone(),
     );
     // group_alice_1234.create_commit(
-    //     &[],
+    //     group_aad,
     //     &alice_identity.get_signature_key_pair().get_private_key(),
     //     alice_key_package_bundle,
-    //     vec![bob_add_proposal],
+    //     vec![(bob, bob_add_proposal)],
     //     vec![alice_key_package_bundle],
     //     true,
     // );

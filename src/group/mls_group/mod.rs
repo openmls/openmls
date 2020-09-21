@@ -21,7 +21,7 @@ mod new_from_welcome;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::framing::*;
+use crate::framing::{sender::*, *};
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
@@ -29,9 +29,6 @@ use crate::schedule::*;
 use crate::tree::{astree::*, index::*, node::*, *};
 
 pub use api::*;
-use apply_commit::*;
-use create_commit::*;
-use new_from_welcome::*;
 
 use std::cell::{Ref, RefCell};
 
@@ -79,7 +76,7 @@ impl Api for MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
-        new_from_welcome(welcome, nodes_option, kpb)
+        Self::new_from_welcome_internal(welcome, nodes_option, kpb)
     }
 
     // Create handshake messages
@@ -149,12 +146,11 @@ impl Api for MlsGroup {
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         key_package_bundle: KeyPackageBundle,
-        proposals: Vec<(Sender, Proposal)>,
+        proposals: Vec<(MLSPlaintext, Proposal)>,
         own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        create_commit(
-            self,
+        self.create_commit_internal(
             aad,
             signature_key,
             key_package_bundle,
@@ -171,7 +167,7 @@ impl Api for MlsGroup {
         proposals: Vec<(Sender, Proposal)>,
         own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
-        apply_commit(self, mls_plaintext, proposals, own_key_packages)
+        self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)
     }
 
     // Create application message

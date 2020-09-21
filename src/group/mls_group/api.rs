@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::framing::*;
+use crate::framing::{sender::*, *};
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
@@ -63,7 +63,7 @@ pub trait Api: Sized {
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         key_package_bundle: KeyPackageBundle,
-        proposals: Vec<(Sender, Proposal)>,
+        proposals: Vec<(MLSPlaintext, Proposal)>,
         own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult;
