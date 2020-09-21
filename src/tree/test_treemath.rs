@@ -1,8 +1,7 @@
-
 #[test]
 fn verify_binary_test_vector_treemath() {
-    use crate::tree::*;
     use crate::tree::treemath;
+    use crate::tree::*;
     use std::fs::File;
     use std::io::Read;
 
@@ -45,4 +44,43 @@ fn verify_binary_test_vector_treemath() {
         );
     }
     assert_eq!(cursor.has_more(), false);
+}
+
+#[test]
+fn test_tree_hash() {
+    use crate::ciphersuite::*;
+    use crate::creds::*;
+    use crate::tree::*;
+
+    fn create_identity(id: &[u8], ciphersuite: &Ciphersuite) -> KeyPackageBundle {
+        let signature_keypair = ciphersuite.new_signature_keypair();
+        let identity = Identity::new(ciphersuite.clone(), id.to_vec());
+        let credential = Credential::Basic(BasicCredential::from(&identity));
+        let kbp = KeyPackageBundle::new(
+            &ciphersuite,
+            signature_keypair.get_private_key(),
+            credential,
+            None,
+        );
+        kbp
+    }
+
+    let csuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::new(csuite);
+    let kbp = create_identity(b"Tree creator", &ciphersuite);
+
+    // Initialise tree
+    let mut tree = RatchetTree::new(ciphersuite, kbp);
+    let tree_hash = tree.compute_tree_hash();
+    println!("Tree hash: {:?}", tree_hash);
+
+    // Add 5 nodes to the tree.
+    let mut nodes = Vec::new();
+    for _ in 0..5 {
+        nodes.push(create_identity(b"Tree creator", &ciphersuite));
+    }
+    let key_packages: Vec<KeyPackage> = nodes.iter().map(|kbp| kbp.key_package.clone()).collect();
+    let _ = tree.add_nodes(&key_packages);
+    let tree_hash = tree.compute_tree_hash();
+    println!("Tree hash: {:?}", tree_hash);
 }
