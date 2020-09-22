@@ -354,6 +354,6 @@ fn test_extension_codec() {
         SUPPORTED_EXTENSIONS.to_vec(),
     );
     let extension = capabilities_extension.to_extension();
-    let bytes = extension.encode_detached().unwrap();
+    let _bytes = extension.encode_detached().unwrap();
     // let _dec = Extension::decode(&mut Cursor::new(&bytes));
 }

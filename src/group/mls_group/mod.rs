@@ -29,9 +29,6 @@ use crate::schedule::*;
 use crate::tree::{astree::*, index::*, node::*, *};
 
 pub use api::*;
-use apply_commit::*;
-use create_commit::*;
-use new_from_welcome::*;
 
 use std::cell::{Ref, RefCell};
 
@@ -79,82 +76,104 @@ impl Api for MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
-        new_from_welcome(welcome, nodes_option, kpb)
+        Self::new_from_welcome_internal(welcome, nodes_option, kpb)
     }
 
-    // Create handshake messages
+    // === Create handshake messages ===
+    // TODO: share functionality between these.
+
+    // 11.1.1. Add
+    // struct {
+    //     KeyPackage key_package;
+    // } Add;
     fn create_add_proposal(
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         joiner_key_package: KeyPackage,
-    ) -> (MLSPlaintext, Proposal) {
+    ) -> MLSPlaintext {
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal.clone());
-        let mls_plaintext = MLSPlaintext::new(
+        let content = MLSPlaintextContentType::Proposal(proposal);
+        MLSPlaintext::new(
             &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
             signature_key,
             &self.get_context(),
-        );
-        (mls_plaintext, proposal)
+        )
     }
+
+    // 11.1.2. Update
+    // struct {
+    //     KeyPackage key_package;
+    // } Update;
     fn create_update_proposal(
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         key_package: KeyPackage,
-    ) -> (MLSPlaintext, Proposal) {
+    ) -> MLSPlaintext {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal.clone());
-        let mls_plaintext = MLSPlaintext::new(
+        let content = MLSPlaintextContentType::Proposal(proposal);
+        MLSPlaintext::new(
             &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
             signature_key,
             &self.get_context(),
-        );
-        (mls_plaintext, proposal)
+        )
     }
+
+    // 11.1.3. Remove
+    // struct {
+    //     uint32 removed;
+    // } Remove;
     fn create_remove_proposal(
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         removed_index: LeafIndex,
-    ) -> (MLSPlaintext, Proposal) {
+    ) -> MLSPlaintext {
         let remove_proposal = RemoveProposal {
             removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal.clone());
-        let mls_plaintext = MLSPlaintext::new(
+        let content = MLSPlaintextContentType::Proposal(proposal);
+        MLSPlaintext::new(
             &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
             signature_key,
             &self.get_context(),
-        );
-        (mls_plaintext, proposal)
+        )
     }
+
+    // === ===
+
+    // 11.2. Commit
+    // opaque ProposalID<0..255>;
+    //
+    // struct {
+    //     ProposalID proposals<0..2^32-1>;
+    //     optional<UpdatePath> path;
+    // } Commit;
     fn create_commit(
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         key_package_bundle: KeyPackageBundle,
-        proposals: Vec<(Sender, Proposal)>,
+        proposals: Vec<MLSPlaintext>,
         own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        create_commit(
-            self,
+        self.create_commit_internal(
             aad,
             signature_key,
             key_package_bundle,
@@ -168,10 +187,10 @@ impl Api for MlsGroup {
     fn apply_commit(
         &mut self,
         mls_plaintext: MLSPlaintext,
-        proposals: Vec<(Sender, Proposal)>,
+        proposals: Vec<MLSPlaintext>,
         own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
-        apply_commit(self, mls_plaintext, proposals, own_key_packages)
+        self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)
     }
 
     // Create application message

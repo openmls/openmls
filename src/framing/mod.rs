@@ -23,6 +23,9 @@ use crate::schedule::*;
 use crate::tree::{astree::*, index::*};
 use crate::utils::*;
 
+pub mod sender;
+use sender::*;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
     pub group_id: GroupId,
@@ -52,7 +55,7 @@ impl MLSPlaintext {
             epoch: context.epoch,
             sender,
             authenticated_data: authenticated_data.to_vec(),
-            content_type: ContentType::from(content.clone()),
+            content_type: ContentType::from(&content),
             content,
             signature: Signature::new_empty(),
         };
@@ -425,75 +428,6 @@ impl Codec for MLSCiphertext {
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
-pub enum SenderType {
-    Invalid = 0,
-    Member = 1,
-    Preconfigured = 2,
-    NewMember = 3,
-    Default = 255,
-}
-
-impl From<u8> for SenderType {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => SenderType::Invalid,
-            1 => SenderType::Member,
-            2 => SenderType::Preconfigured,
-            3 => SenderType::NewMember,
-            _ => SenderType::Default,
-        }
-    }
-}
-
-impl Codec for SenderType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(SenderType::from(u8::decode(cursor)?))
-    }
-}
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub struct Sender {
-    pub sender_type: SenderType,
-    pub sender: LeafIndex,
-}
-
-impl Sender {
-    pub fn member(sender: LeafIndex) -> Self {
-        Sender {
-            sender_type: SenderType::Member,
-            sender,
-        }
-    }
-    pub fn as_leaf_index(&self) -> LeafIndex {
-        self.sender
-    }
-    pub fn as_node_index(self) -> NodeIndex {
-        NodeIndex::from(self.sender)
-    }
-}
-
-impl Codec for Sender {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.sender_type.encode(buffer)?;
-        self.sender.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let sender_type = SenderType::decode(cursor)?;
-        let sender = LeafIndex::from(u32::decode(cursor)?);
-        Ok(Sender {
-            sender_type,
-            sender,
-        })
-    }
-}
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-#[repr(u8)]
 pub enum ContentType {
     Invalid = 0,
     Application = 1,
@@ -514,8 +448,8 @@ impl From<u8> for ContentType {
     }
 }
 
-impl From<MLSPlaintextContentType> for ContentType {
-    fn from(value: MLSPlaintextContentType) -> Self {
+impl From<&MLSPlaintextContentType> for ContentType {
+    fn from(value: &MLSPlaintextContentType) -> Self {
         match value {
             MLSPlaintextContentType::Application(_) => ContentType::Application,
             MLSPlaintextContentType::Proposal(_) => ContentType::Proposal,

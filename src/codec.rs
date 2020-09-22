@@ -17,7 +17,6 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
-use std::io::Write;
 
 #[derive(Debug)]
 pub enum CodecError {

@@ -17,7 +17,7 @@
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::{proposals::*, *};
+use crate::messages::*;
 use crate::tree::{index::LeafIndex, node::*};
 
 pub trait Api: Sized {
@@ -42,28 +42,28 @@ pub trait Api: Sized {
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         joiner_key_package: KeyPackage,
-    ) -> (MLSPlaintext, Proposal);
+    ) -> MLSPlaintext;
     /// Create an `UpdateProposal`
     fn create_update_proposal(
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         key_package: KeyPackage,
-    ) -> (MLSPlaintext, Proposal);
+    ) -> MLSPlaintext;
     /// Create a `RemoveProposal`
     fn create_remove_proposal(
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         removed_index: LeafIndex,
-    ) -> (MLSPlaintext, Proposal);
+    ) -> MLSPlaintext;
     /// Create a `Commit` and an optional `Welcome`
     fn create_commit(
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
         key_package_bundle: KeyPackageBundle,
-        proposals: Vec<(Sender, Proposal)>,
+        proposals: Vec<MLSPlaintext>,
         own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult;
@@ -72,7 +72,7 @@ pub trait Api: Sized {
     fn apply_commit(
         &mut self,
         mls_plaintext: MLSPlaintext,
-        proposals: Vec<(Sender, Proposal)>,
+        proposals: Vec<MLSPlaintext>,
         own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError>;
 

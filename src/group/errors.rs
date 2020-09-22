@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+#[derive(Debug)]
 pub enum WelcomeError {
     CiphersuiteMismatch = 100,
     JoinerSecretNotFound = 101,
@@ -26,6 +27,7 @@ pub enum WelcomeError {
     GroupInfoDecryptionFailure = 108,
 }
 
+#[derive(Debug)]
 pub enum ApplyCommitError {
     EpochMismatch = 200,
     WrongPlaintextContentType = 201,
@@ -38,6 +40,7 @@ pub enum ApplyCommitError {
     ConfirmationTagMismatch = 208,
 }
 
+#[derive(Debug)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
 }
