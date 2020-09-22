@@ -57,6 +57,7 @@ impl MlsGroup {
         // TODO Dedup proposals
         let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
         
+        let sender_index = self.get_sender_index();
         let mut provisional_tree = self.tree.borrow_mut();
 
         // Apply proposals to tree
@@ -102,7 +103,7 @@ impl MlsGroup {
             self.get_ciphersuite(),
             &MLSPlaintextCommitContent::new(
                 &self.group_context,
-                self.get_sender_index(),
+                sender_index,
                 commit.clone(),
             ),
             &self.interim_transcript_hash,
@@ -130,7 +131,7 @@ impl MlsGroup {
         let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));
         let mls_plaintext = MLSPlaintext::new(
             ciphersuite,
-            self.get_sender_index(),
+            sender_index,
             aad,
             content,
             signature_key,
@@ -156,7 +157,7 @@ impl MlsGroup {
                 interim_transcript_hash,
                 extensions: vec![],
                 confirmation_tag: confirmation_tag.as_slice(),
-                signer_index: self.get_sender_index(),
+                signer_index: sender_index,
                 signature: Signature::new_empty(),
             };
             group_info.signature = group_info.sign(ciphersuite, signature_key);
