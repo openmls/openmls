@@ -4,7 +4,7 @@
 
 // TODO: #26 Functions should operate on `self`.
 
-use super::{index::NodeIndex, path_key_pairs::PathKeypairs};
+use super::{index::NodeIndex, path_keys::PathKeys};
 use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey};
 use crate::codec::{Codec, CodecError};
 use crate::messages::CommitSecret;
@@ -20,19 +20,19 @@ pub(crate) struct OwnLeaf {
     hpke_private_key: HPKEPrivateKey,
 
     // A vector of HPKEKeyPairs in the path from this leaf.
-    path_keypairs: PathKeypairs,
+    path_keys: PathKeys,
 }
 
 impl OwnLeaf {
     pub(crate) fn new(
         hpke_private_key: HPKEPrivateKey,
         node_index: NodeIndex,
-        path_keypairs: PathKeypairs,
+        path_keys: PathKeys,
     ) -> Self {
         Self {
             hpke_private_key,
             node_index,
-            path_keypairs,
+            path_keys,
         }
     }
 
@@ -44,14 +44,14 @@ impl OwnLeaf {
     pub(crate) fn get_node_index(&self) -> NodeIndex {
         self.node_index
     }
-    pub(crate) fn get_path_key_pairs(&self) -> &PathKeypairs {
-        &self.path_keypairs
+    pub(crate) fn get_path_key_pairs(&self) -> &PathKeys {
+        &self.path_keys
     }
-    pub(crate) fn get_path_key_pairs_mut(&mut self) -> &mut PathKeypairs {
-        &mut self.path_keypairs
+    pub(crate) fn get_path_key_pairs_mut(&mut self) -> &mut PathKeys {
+        &mut self.path_keys
     }
-    pub(crate) fn set_path_key_pairs(&mut self, new_key_pairs: PathKeypairs) {
-        self.path_keypairs = new_key_pairs;
+    pub(crate) fn set_path_key_pairs(&mut self, new_key_pairs: PathKeys) {
+        self.path_keys = new_key_pairs;
     }
 
     /// Generate `n` path secrets with the given `start_secret`.
@@ -135,7 +135,7 @@ impl Codec for OwnLeaf {
         // FIXME: do we need this encode? Private keys should not be encoded if not absolutely necessary.
         // self.hpke_private_key.encode(buffer)?;
         self.node_index.as_u32().encode(buffer)?;
-        self.path_keypairs.encode(buffer)?;
+        self.path_keys.encode(buffer)?;
         Ok(())
     }
 }

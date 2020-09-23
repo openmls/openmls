@@ -8,42 +8,42 @@
 //       public keys are in the tree nodes.
 //
 use super::index::NodeIndex;
-use crate::ciphersuite::HPKEKeyPair;
+use crate::ciphersuite::{HPKEKeyPair, HPKEPrivateKey};
 use crate::codec::{encode_vec, Codec, CodecError, VecSize};
 
 #[derive(Default, Debug)]
-pub struct PathKeypairs {
-    key_pairs: Vec<Option<HPKEKeyPair>>,
+pub struct PathKeys {
+    keys: Vec<Option<HPKEPrivateKey>>,
 }
 
-impl PathKeypairs {
+impl PathKeys {
     pub fn add(&mut self, key_pairs: &[HPKEKeyPair], path: &[NodeIndex]) {
-        fn extend_vec(tree_keypairs: &mut PathKeypairs, max_index: NodeIndex) {
-            while tree_keypairs.key_pairs.len() <= max_index.as_usize() {
-                tree_keypairs.key_pairs.push(None);
+        fn extend_vec(tree_keypairs: &mut PathKeys, max_index: NodeIndex) {
+            while tree_keypairs.keys.len() <= max_index.as_usize() {
+                tree_keypairs.keys.push(None);
             }
         }
         assert_eq!(key_pairs.len(), path.len());
         for i in 0..path.len() {
             let index = path[i];
             extend_vec(self, index);
-            self.key_pairs[index.as_usize()] = Some(key_pairs[i].clone());
+            self.keys[index.as_usize()] = Some(key_pairs[i].get_private_key().clone());
         }
     }
-    pub fn get(&self, index: NodeIndex) -> Option<&HPKEKeyPair> {
-        if index.as_usize() >= self.key_pairs.len() {
+    pub fn get(&self, index: NodeIndex) -> Option<&HPKEPrivateKey> {
+        if index.as_usize() >= self.keys.len() {
             return None;
         }
-        match self.key_pairs.get(index.as_usize()) {
+        match self.keys.get(index.as_usize()) {
             Some(keypair_option) => keypair_option.as_ref(),
             None => None,
         }
     }
 }
 
-impl Codec for PathKeypairs {
+impl Codec for PathKeys {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.key_pairs)?;
+        encode_vec(VecSize::VecU32, buffer, &self.keys)?;
         Ok(())
     }
 }

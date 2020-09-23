@@ -21,7 +21,7 @@ use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::tree::{
-    astree::*, index::*, node::*, own_leaf::OwnLeaf, path_key_pairs::PathKeypairs, treemath, *,
+    astree::*, index::*, node::*, own_leaf::OwnLeaf, path_keys::PathKeys, treemath, *,
 };
 
 impl MlsGroup {
@@ -112,9 +112,9 @@ impl MlsGroup {
             let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
             tree.merge_keypairs(&keypairs, &common_path);
 
-            let mut path_keypairs = PathKeypairs::default();
-            path_keypairs.add(&keypairs, &common_path);
-            tree.get_own_leaf_mut().set_path_key_pairs(path_keypairs);
+            let mut path_keys = PathKeys::default();
+            path_keys.add(&keypairs, &common_path);
+            tree.get_own_leaf_mut().set_path_key_pairs(path_keys);
         }
 
         // Compute state

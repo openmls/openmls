@@ -30,7 +30,7 @@ pub(crate) mod hash_input;
 pub(crate) mod index;
 pub(crate) mod node;
 pub(crate) mod own_leaf;
-pub(crate) mod path_key_pairs;
+pub(crate) mod path_keys;
 pub(crate) mod sender_ratchet;
 pub(crate) mod treemath;
 
@@ -38,7 +38,7 @@ use hash_input::*;
 use index::*;
 use node::*;
 use own_leaf::*;
-use path_key_pairs::*;
+use path_keys::*;
 
 // Internal tree tests
 mod test_astree;
@@ -56,7 +56,7 @@ impl RatchetTree {
         let own_leaf = OwnLeaf::new(
             kpb.private_key,
             NodeIndex::from(0u32),
-            PathKeypairs::default(),
+            PathKeys::default(),
         );
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
@@ -114,9 +114,9 @@ impl RatchetTree {
             dirpath.len(),
         );
         let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
-        let mut path_keypairs = PathKeypairs::default();
-        path_keypairs.add(&keypairs, &dirpath);
-        let own_leaf = OwnLeaf::new(kpb.private_key, index, path_keypairs);
+        let mut path_keys = PathKeys::default();
+        path_keys.add(&keypairs, &dirpath);
+        let own_leaf = OwnLeaf::new(kpb.private_key, index, path_keys);
         Some(RatchetTree {
             ciphersuite,
             nodes,
@@ -237,7 +237,6 @@ impl RatchetTree {
                 .get_path_key_pairs()
                 .get(common_ancestor_copath_index)
                 .unwrap()
-                .get_private_key()
         };
 
         // Compute the common path between the common ancestor and the root
@@ -325,7 +324,7 @@ impl RatchetTree {
         // Update own leaf node with the new values
         self.nodes[own_index.as_usize()] =
             Node::new_leaf(Some(key_package_bundle.get_key_package().clone()));
-        let mut path_keypairs = PathKeypairs::default();
+        let mut path_keypairs = PathKeys::default();
         path_keypairs.add(&keypairs, &dirpath_root);
         let own_leaf = OwnLeaf::new(
             key_package_bundle.private_key.clone(),
@@ -480,7 +479,7 @@ impl RatchetTree {
                     .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
                     .unwrap();
                 self.own_leaf =
-                    OwnLeaf::new(own_kpb.private_key.clone(), index, PathKeypairs::default());
+                    OwnLeaf::new(own_kpb.private_key.clone(), index, PathKeys::default());
             }
         }
         for r in proposal_id_list.removes.iter() {
