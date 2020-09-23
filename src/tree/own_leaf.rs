@@ -2,7 +2,7 @@
 //! belongs to the current client.
 //!
 
-// TODO: Functions should operate on `self`.
+// TODO: #26 Functions should operate on `self`.
 
 use super::{index::NodeIndex, path_key_pairs::PathKeypairs};
 use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey};
