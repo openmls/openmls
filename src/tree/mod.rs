@@ -44,7 +44,7 @@ use path_key_pairs::*;
 mod test_astree;
 mod test_treemath;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RatchetTree {
     ciphersuite: Ciphersuite,
     pub nodes: Vec<Node>,
@@ -53,7 +53,7 @@ pub struct RatchetTree {
 
 impl RatchetTree {
     pub(crate) fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
-        let own_leaf = OwnLeaf::new(kpb, NodeIndex::from(0u32), PathKeypairs::new());
+        let own_leaf = OwnLeaf::new(kpb, NodeIndex::from(0u32), PathKeypairs::default());
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
             key_package: Some(own_leaf.get_kpb().get_key_package().clone()),
@@ -103,14 +103,14 @@ impl RatchetTree {
         }
         let secret = kpb.get_private_key().as_slice();
         let dirpath = treemath::dirpath_root(index, NodeIndex::from(nodes.len()).into());
-        let (path_secrets, _commit_secret) = OwnLeaf::generate_path_secrets(
+        let path_secrets = OwnLeaf::generate_path_secrets(
             &ciphersuite,
             secret,
             true, /* leaf */
             dirpath.len(),
         );
         let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
-        let mut path_keypairs = PathKeypairs::new();
+        let mut path_keypairs = PathKeypairs::default();
         path_keypairs.add(&keypairs, &dirpath);
         let own_leaf = OwnLeaf::new(kpb, index, path_keypairs);
         Some(RatchetTree {
@@ -243,12 +243,14 @@ impl RatchetTree {
         let secret = self
             .ciphersuite
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
-        let (path_secrets, commit_secret) = OwnLeaf::generate_path_secrets(
+        let path_secrets = OwnLeaf::generate_path_secrets(
             &self.ciphersuite,
             &secret,
             false, /* non-leaf */
             common_path.len(),
         );
+        let commit_secret =
+            OwnLeaf::generate_commit_secret(&self.ciphersuite, &path_secrets.last().unwrap());
         let keypairs = OwnLeaf::generate_path_keypairs(&self.ciphersuite, &path_secrets);
         let sender_path_offset = sender_dirpath.len() - common_path.len();
 
@@ -263,7 +265,9 @@ impl RatchetTree {
 
         // Merge new nodes and path secrets
         self.merge_public_keys(direct_path, sender_dirpath);
-        self.own_leaf.get_path_key_pairs_mut().add(&keypairs, &common_path);
+        self.own_leaf
+            .get_path_key_pairs_mut()
+            .add(&keypairs, &common_path);
         self.merge_keypairs(&keypairs, &common_path);
         self.nodes[NodeIndex::from(sender).as_usize()] =
             Node::new_leaf(Some(direct_path.leaf_key_package.clone()));
@@ -289,12 +293,14 @@ impl RatchetTree {
         let own_index = self.own_leaf.get_node_index();
         let dirpath_root = treemath::dirpath_root(own_index, self.leaf_count());
         let node_secret = private_key.as_slice();
-        let (path_secrets, confirmation) = OwnLeaf::generate_path_secrets(
+        let path_secrets = OwnLeaf::generate_path_secrets(
             &self.ciphersuite,
             &node_secret,
             true, /* leaf */
             dirpath_root.len(),
         );
+        let confirmation =
+            OwnLeaf::generate_commit_secret(&self.ciphersuite, &path_secrets.last().unwrap());
         let keypairs = OwnLeaf::generate_path_keypairs(&self.ciphersuite, &path_secrets);
         self.merge_keypairs(&keypairs, &dirpath_root);
 
@@ -315,7 +321,7 @@ impl RatchetTree {
         // Update own leaf node with the new values
         self.nodes[own_index.as_usize()] =
             Node::new_leaf(Some(key_package_bundle.get_key_package().clone()));
-        let mut path_keypairs = PathKeypairs::new();
+        let mut path_keypairs = PathKeypairs::default();
         path_keypairs.add(&keypairs, &dirpath_root);
         let own_leaf = OwnLeaf::new(key_package_bundle.clone(), own_index, path_keypairs);
         self.own_leaf = own_leaf;
@@ -465,7 +471,7 @@ impl RatchetTree {
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
                     .unwrap();
-                self.own_leaf = OwnLeaf::new(own_kpb.clone(), index, PathKeypairs::new());
+                self.own_leaf = OwnLeaf::new(own_kpb.clone(), index, PathKeypairs::default());
             }
         }
         for r in proposal_id_list.removes.iter() {

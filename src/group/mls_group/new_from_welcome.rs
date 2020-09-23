@@ -103,7 +103,7 @@ impl MlsGroup {
                 NodeIndex::from(group_info.signer_index),
             );
             let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
-            let (path_secrets, _commit_secret) = OwnLeaf::generate_path_secrets(
+            let path_secrets = OwnLeaf::generate_path_secrets(
                 &ciphersuite,
                 &path_secret.path_secret,
                 false,
@@ -112,7 +112,7 @@ impl MlsGroup {
             let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
             tree.merge_keypairs(&keypairs, &common_path);
 
-            let mut path_keypairs = PathKeypairs::new();
+            let mut path_keypairs = PathKeypairs::default();
             path_keypairs.add(&keypairs, &common_path);
             tree.get_own_leaf_mut().set_path_key_pairs(path_keypairs);
         }
