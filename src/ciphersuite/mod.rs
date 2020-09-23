@@ -20,7 +20,9 @@
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
 use evercrypt::prelude::*;
-use hpke::{aead::Mode as HpkeAeadMode, kdf::Mode as HpkeKdfMode, kem::Mode as KemMode, *};
+use hpke::{
+    aead::Mode as HpkeAeadMode, kdf::Mode as HpkeKdfMode, kem::Mode as KemMode, Hpke, Mode,
+};
 
 mod ciphersuites;
 mod codec;
