@@ -4,6 +4,8 @@
 // TODO: probably shouldn't own key pairs.
 // TODO: replace `Vec` with a hash map.
 // TODO: `add` should return error on invalid inputs
+// TODO: This should not hold key pairs but again only private keys. The corresponding
+//       public keys are in the tree nodes.
 //
 use super::index::NodeIndex;
 use crate::ciphersuite::HPKEKeyPair;

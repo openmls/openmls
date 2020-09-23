@@ -3,31 +3,34 @@
 //!
 
 // TODO: Functions should operate on `self`.
-// TODO: The key package must not be stored in here. It's in the node already.
-//       Only the HPKE private key might potentially be stored in here.
 
 use super::{index::NodeIndex, path_key_pairs::PathKeypairs};
-use crate::ciphersuite::{Ciphersuite, HPKEKeyPair};
+use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey};
 use crate::codec::{Codec, CodecError};
-use crate::key_packages::KeyPackageBundle;
 use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
 
 #[derive(Debug)]
 pub(crate) struct OwnLeaf {
-    kpb: KeyPackageBundle,
+    // The index of the node corresponding to this leaf information.
     node_index: NodeIndex,
+
+    // This is the HPKE private key corresponding to the HPKEPublicKey in the
+    // node with index `node_index`.
+    hpke_private_key: HPKEPrivateKey,
+
+    // A vector of HPKEKeyPairs in the path from this leaf.
     path_keypairs: PathKeypairs,
 }
 
 impl OwnLeaf {
     pub(crate) fn new(
-        kpb: KeyPackageBundle,
+        hpke_private_key: HPKEPrivateKey,
         node_index: NodeIndex,
         path_keypairs: PathKeypairs,
     ) -> Self {
         Self {
-            kpb,
+            hpke_private_key,
             node_index,
             path_keypairs,
         }
@@ -35,8 +38,8 @@ impl OwnLeaf {
 
     // === Setter and Getter ===
 
-    pub(crate) fn get_kpb(&self) -> &KeyPackageBundle {
-        &self.kpb
+    pub(crate) fn get_hpke_private_key(&self) -> &HPKEPrivateKey {
+        &self.hpke_private_key
     }
     pub(crate) fn get_node_index(&self) -> NodeIndex {
         self.node_index
@@ -129,7 +132,8 @@ impl OwnLeaf {
 
 impl Codec for OwnLeaf {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.kpb.encode(buffer)?;
+        // FIXME: do we need this encode? Private keys should not be encoded if not absolutely necessary.
+        // self.hpke_private_key.encode(buffer)?;
         self.node_index.as_u32().encode(buffer)?;
         self.path_keypairs.encode(buffer)?;
         Ok(())

@@ -106,7 +106,7 @@ impl MlsGroup {
             let path_secrets = OwnLeaf::generate_path_secrets(
                 &ciphersuite,
                 &path_secret.path_secret,
-                false,
+                false /* non-leaf */,
                 common_path.len(),
             );
             let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
