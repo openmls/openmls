@@ -29,36 +29,6 @@ impl Codec for Node {
     // }
 }
 
-impl Codec for PathKeypairs {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.keypairs)?;
-        Ok(())
-    }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let keypairs = decode_vec(VecSize::VecU32, cursor)?;
-    //     Ok(PathKeypairs { keypairs })
-    // }
-}
-
-impl Codec for OwnLeaf {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.kpb.encode(buffer)?;
-        self.node_index.as_u32().encode(buffer)?;
-        self.path_keypairs.encode(buffer)?;
-        Ok(())
-    }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let kpb = KeyPackageBundle::decode(cursor)?;
-    //     let node_index = NodeIndex::from(u32::decode(cursor)?);
-    //     let path_keypairs = PathKeypairs::decode(cursor)?;
-    //     Ok(OwnLeaf {
-    //         kpb,
-    //         node_index,
-    //         path_keypairs,
-    //     })
-    // }
-}
-
 impl Codec for RatchetTree {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.ciphersuite.encode(buffer)?;
@@ -78,29 +48,6 @@ impl Codec for RatchetTree {
     // }
 }
 
-impl<'a> Codec for ParentNodeHashInput<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.encode(buffer)?;
-        self.parent_node.encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.left_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.right_hash)?;
-        Ok(())
-    }
-    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
-        unimplemented!()
-    }
-}
-
-impl<'a> Codec for LeafNodeHashInput<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.as_u32().encode(buffer)?;
-        self.key_package.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
-        unimplemented!()
-    }
-}
 
 impl Codec for DirectPathNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {

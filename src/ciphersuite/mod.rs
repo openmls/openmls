@@ -338,6 +338,21 @@ impl HPKEPrivateKey {
 }
 
 impl HPKEKeyPair {
+    /// Derive a new key pair for the HPKE KEM with the given input key material.
+    pub(crate) fn derive(ikm: &[u8], ciphersuite: &Ciphersuite) -> Self {
+        let (pk, sk) = Hpke::new(
+            Mode::Base,
+            ciphersuite.hpke_kem,
+            ciphersuite.hpke_kdf,
+            ciphersuite.hpke_aead,
+        )
+        .derive_keypair(ikm);
+        Self {
+            private_key: HPKEPrivateKey { value: sk },
+            public_key: HPKEPublicKey { value: pk },
+        }
+    }
+
     /// Build a new HPKE key pair from the given `bytes`.
     pub(crate) fn from_slice(bytes: &[u8], ciphersuite: &Ciphersuite) -> Self {
         let private_key = HPKEPrivateKey::from_slice(bytes);

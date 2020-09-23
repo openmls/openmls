@@ -20,7 +20,9 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::{astree::*, index::*, node::*, treemath, *};
+use crate::tree::{
+    astree::*, index::*, node::*, own_leaf::OwnLeaf, path_key_pairs::PathKeypairs, treemath, *,
+};
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -101,9 +103,10 @@ impl MlsGroup {
                 NodeIndex::from(group_info.signer_index),
             );
             let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
-            let (path_secrets, _commit_secret) = OwnLeaf::continue_path_secrets(
+            let (path_secrets, _commit_secret) = OwnLeaf::generate_path_secrets(
                 &ciphersuite,
                 &path_secret.path_secret,
+                false,
                 common_path.len(),
             );
             let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
@@ -111,7 +114,7 @@ impl MlsGroup {
 
             let mut path_keypairs = PathKeypairs::new();
             path_keypairs.add(&keypairs, &common_path);
-            tree.own_leaf.path_keypairs = path_keypairs;
+            tree.get_own_leaf_mut().set_path_key_pairs(path_keypairs);
         }
 
         // Compute state
