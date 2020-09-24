@@ -52,6 +52,7 @@ pub struct RatchetTree {
 }
 
 impl RatchetTree {
+    /// Create a new empty `RatchetTree`.
     pub(crate) fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
         let own_leaf = OwnLeaf::new(kpb.private_key, NodeIndex::from(0u32), PathKeys::default());
         let nodes = vec![Node {
@@ -107,19 +108,11 @@ impl RatchetTree {
             }
         }
 
-        let secret = kpb.get_private_key().as_slice();
+        // Build OwnLeaf
         let direct_path =
             treemath::direct_path_root(own_index, NodeIndex::from(nodes.len()).into());
-        let path_secrets = OwnLeaf::generate_path_secrets(
-            &ciphersuite,
-            secret,
-            true, /* leaf */
-            direct_path.len(),
-        );
-        let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
-        let mut path_keys = PathKeys::default();
-        path_keys.add(&keypairs, &direct_path);
-        let own_leaf = OwnLeaf::new(kpb.private_key, own_index, path_keys);
+        let own_leaf = OwnLeaf::new_raw(&ciphersuite, own_index, kpb.private_key, &direct_path);
+
         Some(RatchetTree {
             ciphersuite,
             nodes,

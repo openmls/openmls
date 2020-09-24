@@ -103,7 +103,7 @@ impl MlsGroup {
                 tree.get_own_index(),
                 NodeIndex::from(group_info.signer_index),
             );
-            let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
+            let common_path = treemath::direct_path_root(common_ancestor, tree.leaf_count());
             let path_secrets = OwnLeaf::generate_path_secrets(
                 &ciphersuite,
                 &path_secret.path_secret,

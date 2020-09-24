@@ -180,7 +180,7 @@ impl MlsGroup {
                 let path_secret = if path_required {
                     let common_ancestor =
                         treemath::common_ancestor(index, provisional_tree.get_own_index());
-                    let dirpath = treemath::dirpath_root(
+                    let dirpath = treemath::direct_path_root(
                         provisional_tree.get_own_index(),
                         provisional_tree.leaf_count(),
                     );

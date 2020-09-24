@@ -24,6 +24,26 @@ pub(crate) struct OwnLeaf {
 }
 
 impl OwnLeaf {
+    /// Generate a new `OwnLeaf` based on the input values.
+    pub(crate) fn new_raw(
+        ciphersuite: &Ciphersuite,
+        node_index: NodeIndex,
+        hpke_private_key: HPKEPrivateKey,
+        direct_path: &[NodeIndex],
+    ) -> Self {
+        let path_secrets = OwnLeaf::generate_path_secrets(
+            &ciphersuite,
+            hpke_private_key.as_slice(),
+            true, /* leaf */
+            direct_path.len(),
+        );
+        let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
+        let mut path_keys = PathKeys::default();
+        path_keys.add(&keypairs, &direct_path);
+        Self::new(hpke_private_key, node_index, path_keys)
+    }
+
+    /// Generate a new `OwnLeaf` and populate it with pre-computed values.
     pub(crate) fn new(
         hpke_private_key: HPKEPrivateKey,
         node_index: NodeIndex,
