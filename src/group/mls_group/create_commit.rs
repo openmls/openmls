@@ -53,10 +53,8 @@ impl MlsGroup {
             let queued_proposal = QueuedProposal::new(mls_plaintext, None);
             proposal_queue.add(queued_proposal, &ciphersuite);
         }
-        
         // TODO Dedup proposals
         let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
-        
         let sender_index = self.get_sender_index();
         let mut provisional_tree = self.tree.borrow_mut();
 
@@ -72,12 +70,14 @@ impl MlsGroup {
         let (commit_secret, path, path_secrets_option, key_package_bundle_option) = if path_required
         {
             // If path is eeded, compute path values
-            let (commit_secret, kpb, path_option, path_secrets) = provisional_tree.update_own_leaf(
-                Some(signature_key),
-                KeyPackageBundle::from_values(key_package, private_key),
-                &self.group_context.serialize(),
-                true,
-            );
+            let (commit_secret, kpb, path_option, path_secrets) = provisional_tree
+                .update_own_leaf(
+                    Some(signature_key),
+                    KeyPackageBundle::from_values(key_package, private_key),
+                    &self.group_context.serialize(),
+                    true,
+                )
+                .unwrap();
             (commit_secret, path_option, path_secrets, Some(kpb))
         } else {
             // If path is not needed, return empty commit secret
@@ -101,11 +101,7 @@ impl MlsGroup {
         provisional_epoch.increment();
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             self.get_ciphersuite(),
-            &MLSPlaintextCommitContent::new(
-                &self.group_context,
-                sender_index,
-                commit.clone(),
-            ),
+            &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
         let provisional_group_context = GroupContext {

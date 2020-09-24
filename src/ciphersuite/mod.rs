@@ -364,13 +364,23 @@ impl HPKEKeyPair {
     }
 
     /// Get a reference to the private key.
-    pub(crate) fn get_private_key(&self) -> &HPKEPrivateKey {
+    pub(crate) fn get_private_key_ref(&self) -> &HPKEPrivateKey {
         &self.private_key
     }
 
     /// Get a reference to the public key.
-    pub(crate) fn get_public_key(&self) -> &HPKEPublicKey {
+    pub(crate) fn get_public_key_ref(&self) -> &HPKEPublicKey {
         &self.public_key
+    }
+
+    /// Get the private key.
+    pub(crate) fn get_private_key(&self) -> HPKEPrivateKey {
+        self.private_key.clone()
+    }
+
+    /// Get the public key.
+    pub(crate) fn get_public_key(&self) -> HPKEPublicKey {
+        self.public_key.clone()
     }
 }
 

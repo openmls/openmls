@@ -17,17 +17,17 @@ pub struct PathKeys {
 }
 
 impl PathKeys {
-    pub fn add(&mut self, key_pairs: &[HPKEKeyPair], path: &[NodeIndex]) {
+    pub fn add(&mut self, private_keys: &[HPKEPrivateKey], path: &[NodeIndex]) {
         fn extend_vec(tree_keypairs: &mut PathKeys, max_index: NodeIndex) {
             while tree_keypairs.keys.len() <= max_index.as_usize() {
                 tree_keypairs.keys.push(None);
             }
         }
-        assert_eq!(key_pairs.len(), path.len());
+        assert_eq!(private_keys.len(), path.len());
         for i in 0..path.len() {
             let index = path[i];
             extend_vec(self, index);
-            self.keys[index.as_usize()] = Some(key_pairs[i].get_private_key().clone());
+            self.keys[index.as_usize()] = Some(private_keys[i].clone());
         }
     }
     pub fn get(&self, index: NodeIndex) -> Option<&HPKEPrivateKey> {

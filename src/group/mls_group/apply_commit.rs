@@ -92,15 +92,19 @@ impl MlsGroup {
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == kp)
                     .unwrap();
-                let (commit_secret, _, _, _) = provisional_tree.update_own_leaf(
-                    None,
-                    own_kpb.clone(),
-                    &self.group_context.serialize(),
-                    false,
-                );
+                let (commit_secret, _, _, _) = provisional_tree
+                    .update_own_leaf(
+                        None,
+                        own_kpb.clone(),
+                        &self.group_context.serialize(),
+                        false,
+                    )
+                    .unwrap();
                 commit_secret
             } else {
-                provisional_tree.update_direct_path(sender, &path, &self.group_context.serialize())
+                provisional_tree
+                    .update_direct_path(sender, &path, &self.group_context.serialize())
+                    .unwrap()
             }
         } else {
             if membership_changes.path_required() {

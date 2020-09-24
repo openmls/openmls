@@ -20,9 +20,7 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::{
-    astree::*, index::*, node::*, own_leaf::OwnLeaf, path_keys::PathKeys, treemath, *,
-};
+use crate::tree::{astree::*, index::*, node::*, treemath, *};
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -64,7 +62,7 @@ impl MlsGroup {
             return Err(WelcomeError::MissingRatchetTree);
         };
 
-        let mut tree = if let Some(tree) = RatchetTree::new_from_nodes(
+        let mut tree = if let Ok(tree) = RatchetTree::new_from_nodes(
             ciphersuite,
             KeyPackageBundle::from_values(key_package, private_key),
             &nodes,
@@ -104,18 +102,20 @@ impl MlsGroup {
                 NodeIndex::from(group_info.signer_index),
             );
             let common_path = treemath::direct_path_root(common_ancestor, tree.leaf_count());
-            let path_secrets = OwnLeaf::generate_path_secrets(
+
+            // Update own_leaf.
+            let own_leaf = tree.get_own_leaf_mut();
+            own_leaf.generate_path_secrets(
                 &ciphersuite,
-                &path_secret.path_secret,
-                false /* non-leaf */,
+                Some(&path_secret.path_secret),
                 common_path.len(),
             );
-            let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
-            tree.merge_keypairs(&keypairs, &common_path);
+            let new_public_keys = own_leaf
+                .generate_path_keypairs(&ciphersuite, &common_path)
+                .unwrap();
 
-            let mut path_keys = PathKeys::default();
-            path_keys.add(&keypairs, &common_path);
-            tree.get_own_leaf_mut().set_path_key_pairs(path_keys);
+            // Merge new public keys into the tree.
+            tree.merge_public_keys(&new_public_keys, &common_path);
         }
 
         // Compute state

@@ -4,8 +4,8 @@
 
 // TODO: #26 Functions should operate on `self`.
 
-use super::{index::NodeIndex, path_keys::PathKeys};
-use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey};
+use super::{index::NodeIndex, path_keys::PathKeys, TreeError};
+use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
 use crate::codec::{Codec, CodecError};
 use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
@@ -21,26 +21,48 @@ pub(crate) struct OwnLeaf {
 
     // A vector of HPKEKeyPairs in the path from this leaf.
     path_keys: PathKeys,
+
+    // Commit secret.
+    commit_secret: CommitSecret,
+
+    // Path secrets.
+    // The first entry here must be the hpke_private_key.
+    path_secrets: Vec<Vec<u8>>,
 }
 
 impl OwnLeaf {
+    /// Create a minimal `OwnLeaf` setting only the private key.
+    pub(crate) fn from_private_key(
+        node_index: NodeIndex,
+        hpke_private_key: HPKEPrivateKey,
+    ) -> Self {
+        Self {
+            node_index,
+            hpke_private_key,
+            path_keys: PathKeys::default(),
+            commit_secret: CommitSecret::default(),
+            path_secrets: Vec::default(),
+        }
+    }
+
     /// Generate a new `OwnLeaf` based on the input values.
     pub(crate) fn new_raw(
         ciphersuite: &Ciphersuite,
         node_index: NodeIndex,
         hpke_private_key: HPKEPrivateKey,
         direct_path: &[NodeIndex],
-    ) -> Self {
-        let path_secrets = OwnLeaf::generate_path_secrets(
-            &ciphersuite,
-            hpke_private_key.as_slice(),
-            true, /* leaf */
-            direct_path.len(),
-        );
-        let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
-        let mut path_keys = PathKeys::default();
-        path_keys.add(&keypairs, &direct_path);
-        Self::new(hpke_private_key, node_index, path_keys)
+    ) -> Result<(Self, Vec<HPKEPublicKey>), TreeError> {
+        let mut out = Self::from_private_key(node_index, hpke_private_key);
+
+        // Compute path secrets.
+        out.generate_path_secrets(&ciphersuite, None, direct_path.len());
+
+        // Compute commit secret.
+        out.generate_commit_secret(ciphersuite)?;
+
+        // Generate key pairs and return.
+        let public_keys = out.generate_path_keypairs(ciphersuite, direct_path)?;
+        Ok((out, public_keys))
     }
 
     /// Generate a new `OwnLeaf` and populate it with pre-computed values.
@@ -48,11 +70,15 @@ impl OwnLeaf {
         hpke_private_key: HPKEPrivateKey,
         node_index: NodeIndex,
         path_keys: PathKeys,
+        commit_secret: CommitSecret,
+        path_secrets: Vec<Vec<u8>>,
     ) -> Self {
         Self {
             hpke_private_key,
             node_index,
             path_keys,
+            commit_secret,
+            path_secrets,
         }
     }
 
@@ -64,14 +90,20 @@ impl OwnLeaf {
     pub(crate) fn get_node_index(&self) -> NodeIndex {
         self.node_index
     }
-    pub(crate) fn get_path_key_pairs(&self) -> &PathKeys {
+    pub(crate) fn get_path_keys(&self) -> &PathKeys {
         &self.path_keys
     }
-    pub(crate) fn get_path_key_pairs_mut(&mut self) -> &mut PathKeys {
+    pub(crate) fn get_path_keys_mut(&mut self) -> &mut PathKeys {
         &mut self.path_keys
     }
     pub(crate) fn set_path_key_pairs(&mut self, new_key_pairs: PathKeys) {
         self.path_keys = new_key_pairs;
+    }
+    pub(crate) fn get_commit_secret(&self) -> CommitSecret {
+        self.commit_secret.clone()
+    }
+    pub(crate) fn get_path_secrets(&self) -> &[Vec<u8>] {
+        &self.path_secrets
     }
 
     /// Generate `n` path secrets with the given `start_secret`.
@@ -82,18 +114,17 @@ impl OwnLeaf {
     /// path_secret[n] = DeriveSecret(path_secret[n-1], "path")
     /// ```
     ///
-    /// Returns a vector of path secrets.
+    /// Note that this overrides the `path_secrets`.
     pub(crate) fn generate_path_secrets(
+        &mut self,
         ciphersuite: &Ciphersuite,
-        start_secret: &[u8],
-        start_on_leaf: bool,
+        start_secret: Option<&[u8]>,
         n: usize,
-    ) -> Vec<Vec<u8>> {
+    ) {
         let hash_len = ciphersuite.hash_length();
-        let start_secret = if start_on_leaf {
-            hkdf_expand_label(ciphersuite, start_secret, "path", &[], hash_len)
-        } else {
-            start_secret.to_vec()
+        let start_secret = match start_secret {
+            Some(secret) => hkdf_expand_label(ciphersuite, secret, "path", &[], hash_len),
+            None => self.hpke_private_key.as_slice().to_vec(),
         };
         let mut path_secrets = vec![start_secret];
         for i in 0..n - 1 {
@@ -101,7 +132,7 @@ impl OwnLeaf {
                 hkdf_expand_label(ciphersuite, &path_secrets[i], "path", &[], hash_len);
             path_secrets.push(path_secret);
         }
-        path_secrets
+        self.path_secrets = path_secrets
     }
 
     /// Generate the commit secret for the given `path_secret`.
@@ -114,16 +145,23 @@ impl OwnLeaf {
     ///
     /// Returns a path secret that's a `CommitSecret`.
     pub(crate) fn generate_commit_secret(
+        &mut self,
         ciphersuite: &Ciphersuite,
-        path_secret: &[u8],
-    ) -> CommitSecret {
-        CommitSecret(hkdf_expand_label(
+    ) -> Result<(), TreeError> {
+        let path_secret = match self.path_secrets.last() {
+            Some(ps) => ps,
+            None => return Err(TreeError::NoneError),
+        };
+
+        self.commit_secret = CommitSecret(hkdf_expand_label(
             ciphersuite,
             &path_secret,
             "path",
             &[],
             ciphersuite.hash_length(),
-        ))
+        ));
+
+        Ok(())
     }
 
     /// Generate HPKE key pairs for all path secrets in `path_secrets`.
@@ -134,19 +172,36 @@ impl OwnLeaf {
     /// node_priv[n], node_pub[n] = KEM.DeriveKeyPair(node_secret[n])
     /// ```
     ///
-    /// Returns a vector of `HPKEKeyPair`.
+    /// Note that this **extends** existing `path_keys` in this leaf.
+    ///
+    /// Returns a vector of `HPKEPublicKey`.
     pub(crate) fn generate_path_keypairs(
+        &mut self,
         ciphersuite: &Ciphersuite,
-        path_secrets: &[Vec<u8>],
-    ) -> Vec<HPKEKeyPair> {
+        direct_path: &[NodeIndex],
+    ) -> Result<Vec<HPKEPublicKey>, TreeError> {
+        // TODO: Get rid of the potential for error here.
+        assert_eq!(self.path_secrets.len(), direct_path.len());
+        if self.path_secrets.len() != direct_path.len() {
+            return Err(TreeError::InvalidArguments);
+        }
+
         let hash_len = ciphersuite.hash_length();
-        let mut keypairs = vec![];
-        for path_secret in path_secrets {
+        let mut private_keys = vec![];
+        let mut public_keys = vec![];
+
+        // Derive key pairs for all nodes in the direct path.
+        for path_secret in self.path_secrets.iter() {
             let node_secret = hkdf_expand_label(ciphersuite, &path_secret, "node", &[], hash_len);
             let keypair = HPKEKeyPair::derive(&node_secret, ciphersuite);
-            keypairs.push(keypair);
+            public_keys.push(keypair.get_public_key());
+            private_keys.push(keypair.get_private_key());
         }
-        keypairs
+
+        // Store private keys.
+        self.path_keys.add(&private_keys, &direct_path);
+        // Return public keys.
+        Ok(public_keys)
     }
 }
 

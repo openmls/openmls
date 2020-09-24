@@ -48,7 +48,6 @@ impl Codec for RatchetTree {
     // }
 }
 
-
 impl Codec for DirectPathNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;

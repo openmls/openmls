@@ -47,7 +47,8 @@ fn basic_group_setup() {
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
     // FIXME: We should never have to clone the key package bundle
-    let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle.clone());
+    let mut group_alice_1234 =
+        MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle.clone());
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
