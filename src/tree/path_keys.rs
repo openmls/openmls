@@ -8,7 +8,7 @@
 //       public keys are in the tree nodes.
 //
 use super::index::NodeIndex;
-use crate::ciphersuite::{HPKEKeyPair, HPKEPrivateKey};
+use crate::ciphersuite::HPKEPrivateKey;
 use crate::codec::{encode_vec, Codec, CodecError, VecSize};
 
 #[derive(Default, Debug)]

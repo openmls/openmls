@@ -93,12 +93,6 @@ impl OwnLeaf {
     pub(crate) fn get_path_keys(&self) -> &PathKeys {
         &self.path_keys
     }
-    pub(crate) fn get_path_keys_mut(&mut self) -> &mut PathKeys {
-        &mut self.path_keys
-    }
-    pub(crate) fn set_path_key_pairs(&mut self, new_key_pairs: PathKeys) {
-        self.path_keys = new_key_pairs;
-    }
     pub(crate) fn get_commit_secret(&self) -> CommitSecret {
         self.commit_secret.clone()
     }

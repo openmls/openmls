@@ -43,6 +43,7 @@ use path_keys::*;
 // Internal tree tests
 mod test_astree;
 mod test_treemath;
+mod test_own_leaf;
 
 #[derive(Debug)]
 pub struct RatchetTree {
@@ -255,7 +256,7 @@ impl RatchetTree {
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
         self.own_leaf
             .generate_path_secrets(&self.ciphersuite, Some(&secret), common_path.len());
-        self.own_leaf.generate_commit_secret(&self.ciphersuite);
+        self.own_leaf.generate_commit_secret(&self.ciphersuite)?;
         let sender_path_offset = sender_dirpath.len() - common_path.len();
 
         // Update OwnLeaf path keys
@@ -277,8 +278,8 @@ impl RatchetTree {
         }
 
         // Merge new nodes into the tree
-        self.merge_direct_path_keys(direct_path, sender_dirpath);
-        self.merge_public_keys(&new_path_public_keys, &common_path);
+        self.merge_direct_path_keys(direct_path, sender_dirpath)?;
+        self.merge_public_keys(&new_path_public_keys, &common_path)?;
         self.nodes[NodeIndex::from(sender).as_usize()] =
             Node::new_leaf(Some(direct_path.leaf_key_package.clone()));
         self.compute_parent_hash(NodeIndex::from(sender));
@@ -314,7 +315,7 @@ impl RatchetTree {
             kpb.private_key.clone(),
             &direct_path_root,
         )?;
-        self.merge_public_keys(&new_public_keys, &direct_path_root);
+        self.merge_public_keys(&new_public_keys, &direct_path_root)?;
 
         // Check if we need to add the parent hash extension and re-sign the KeyPackage
         let key_package_bundle = match signature_key_option {
