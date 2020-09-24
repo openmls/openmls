@@ -48,6 +48,12 @@ impl Proposal {
     pub fn to_proposal_id(&self, ciphersuite: &Ciphersuite) -> ProposalID {
         ProposalID::from_proposal(ciphersuite, self)
     }
+    pub fn is_update(&self) -> bool {
+        match self {
+            Proposal::Update(ref _u) => true,
+            _ => false,
+        }
+    }
     pub fn as_add(&self) -> Option<AddProposal> {
         match self {
             Proposal::Add(add_proposal) => Some(add_proposal.clone()),

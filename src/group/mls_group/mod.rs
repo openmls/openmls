@@ -170,7 +170,6 @@ impl Api for MlsGroup {
         signature_key: &SignaturePrivateKey,
         key_package_bundle: KeyPackageBundle,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
         self.create_commit_internal(
@@ -178,7 +177,6 @@ impl Api for MlsGroup {
             signature_key,
             key_package_bundle,
             proposals,
-            own_key_packages,
             force_self_update,
         )
     }

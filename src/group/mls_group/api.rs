@@ -64,7 +64,6 @@ pub trait Api: Sized {
         signature_key: &SignaturePrivateKey,
         key_package_bundle: KeyPackageBundle,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult;
 

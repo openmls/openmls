@@ -475,10 +475,7 @@ impl RatchetTree {
     }
 
     /// Add nodes for the provided key packages.
-    pub(crate) fn add_nodes(
-        &mut self,
-        new_kp: &[KeyPackage],
-    ) -> Vec<(NodeIndex, Credential)> {
+    pub(crate) fn add_nodes(&mut self, new_kp: &[KeyPackage]) -> Vec<(NodeIndex, Credential)> {
         let num_new_kp = new_kp.len();
         let mut added_members = Vec::with_capacity(num_new_kp);
 
@@ -529,7 +526,7 @@ impl RatchetTree {
         &mut self,
         proposal_id_list: &ProposalIDList,
         proposal_queue: ProposalQueue,
-        pending_kpbs: Vec<KeyPackageBundle>,
+        pending_kpbs_option: Option<Vec<KeyPackageBundle>>,
     ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {
         let mut updated_members = vec![];
         let mut removed_members = vec![];
@@ -548,11 +545,13 @@ impl RatchetTree {
             self.blank_member(index);
             self.nodes[index.as_usize()] = leaf_node;
             if index == self.own_leaf.node_index {
-                let own_kpb = pending_kpbs
-                    .iter()
-                    .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
-                    .unwrap();
-                self.own_leaf = OwnLeaf::new(own_kpb.clone(), index, PathKeypairs::new());
+                if let Some(pending_kpbs) = &pending_kpbs_option {
+                    let own_kpb = pending_kpbs
+                        .iter()
+                        .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
+                        .unwrap();
+                    self.own_leaf = OwnLeaf::new(own_kpb.clone(), index, PathKeypairs::new());
+                }
             }
         }
         for r in proposal_id_list.removes.iter() {
