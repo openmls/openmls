@@ -121,7 +121,7 @@ impl RatchetTree {
         // Build OwnLeaf
         let direct_path =
             treemath::direct_path_root(own_index, NodeIndex::from(nodes.len()).into());
-        let (own_leaf, public_keys) =
+        let (own_leaf, _public_keys) =
             OwnLeaf::new_raw(&ciphersuite, own_index, kpb.private_key, &direct_path)?;
         // FIXME: the public keys get los here.
 

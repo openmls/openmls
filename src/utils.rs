@@ -28,6 +28,7 @@ pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
+#[cfg(test)]
 pub(crate) fn random_u8() -> u8 {
     get_random_vec(1)[0]
 }

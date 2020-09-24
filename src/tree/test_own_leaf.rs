@@ -1,32 +1,56 @@
 //! Unit test for OwnLeaf
 
-#[allow(unused_macros)]
-macro_rules! includes {
-    () => {
-        use super::index::NodeIndex;
-        use super::own_leaf::*;
-        use crate::ciphersuite::*;
-        use crate::utils::*;
-    };
+#[cfg(test)]
+use super::{index::NodeIndex, own_leaf::*};
+#[cfg(test)]
+use crate::{ciphersuite::*, utils::*};
+
+#[cfg(test)]
+// Generate a random sequence of node indices.
+fn generate_path(len: usize) -> Vec<NodeIndex> {
+    (0..len)
+        .map(|_| NodeIndex::from(random_u8() as u32))
+        .collect()
 }
 
-#[test]
-fn create_own_leaf_from_secret() {
-    includes!();
-
-    // Generate a random sequence of node indices.
-    fn generate_path(len: usize) -> Vec<NodeIndex> {
-        (0..len)
-            .map(|_| NodeIndex::from(random_u8() as u32))
-            .collect()
-    }
-
-    const PATH_LENGTH: usize = 33;
+#[cfg(test)]
+// Common setup for tests.
+fn setup(len: usize) -> (Ciphersuite, HPKEPrivateKey, NodeIndex, Vec<NodeIndex>) {
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let hpke_private_key = HPKEPrivateKey::from_slice(&randombytes(32));
     let own_index = NodeIndex::from(0u32);
-    let direct_path = generate_path(PATH_LENGTH);
+    let direct_path = generate_path(len);
+
+    (ciphersuite, hpke_private_key, own_index, direct_path)
+}
+
+#[cfg(test)]
+// Common tests after setup.
+fn test_own_leaf(
+    own_leaf: &OwnLeaf,
+    direct_path: &[NodeIndex],
+    public_keys: &[HPKEPublicKey],
+    ciphersuite: &Ciphersuite,
+) {
+    // Check that we can encrypt to a public key.
+    let path_index = 15;
+    let index = direct_path[path_index];
+    let public_key = &public_keys[path_index];
+    let private_key = own_leaf.get_path_keys().get(index).unwrap();
+    let data = randombytes(55);
+    let info = b"OwnLeaf Test Info";
+    let aad = b"OwnLeaf Test AAD";
+
+    let c = ciphersuite.hpke_seal(public_key, info, aad, &data);
+    let m = ciphersuite.hpke_open(&c, &private_key, info, aad);
+    assert_eq!(m, data);
+}
+
+#[test]
+fn create_own_leaf_from_secret() {
+    const PATH_LENGTH: usize = 33;
+    let (ciphersuite, hpke_private_key, own_index, direct_path) = setup(PATH_LENGTH);
 
     let mut own_leaf = OwnLeaf::from_private_key(own_index, hpke_private_key);
 
@@ -43,16 +67,16 @@ fn create_own_leaf_from_secret() {
 
     assert_eq!(public_keys.len(), direct_path.len());
 
-    // Check that we can encrypt to a public key.
-    let path_index = 15;
-    let index = direct_path[path_index];
-    let public_key = &public_keys[path_index];
-    let private_key = own_leaf.get_path_keys().get(index).unwrap();
-    let data = randombytes(55);
-    let info = b"OwnLeaf Test Info";
-    let aad = b"OwnLeaf Test AAD";
+    test_own_leaf(&own_leaf, &direct_path, &public_keys, &ciphersuite);
+}
 
-    let c = ciphersuite.hpke_seal(public_key, info, aad, &data);
-    let m = ciphersuite.hpke_open(&c, &private_key, info, aad);
-    assert_eq!(m, data);
+#[test]
+fn create_own_leaf_from_raw() {
+    const PATH_LENGTH: usize = 33;
+    let (ciphersuite, hpke_private_key, own_index, direct_path) = setup(PATH_LENGTH);
+
+    let (own_leaf, public_keys) =
+        OwnLeaf::new_raw(&ciphersuite, own_index, hpke_private_key, &direct_path).unwrap();
+
+    test_own_leaf(&own_leaf, &direct_path, &public_keys, &ciphersuite);
 }
