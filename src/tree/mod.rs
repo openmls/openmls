@@ -53,11 +53,7 @@ pub struct RatchetTree {
 
 impl RatchetTree {
     pub(crate) fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
-        let own_leaf = OwnLeaf::new(
-            kpb.private_key,
-            NodeIndex::from(0u32),
-            PathKeys::default(),
-        );
+        let own_leaf = OwnLeaf::new(kpb.private_key, NodeIndex::from(0u32), PathKeys::default());
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
             key_package: Some(kpb.key_package),
@@ -75,6 +71,8 @@ impl RatchetTree {
         &mut self.own_leaf
     }
 
+    /// Generate a new `RatchetTree` from `Node`s with the client's key package
+    /// bundle `kpb`.
     pub(crate) fn new_from_nodes(
         ciphersuite: Ciphersuite,
         kpb: KeyPackageBundle,
@@ -93,8 +91,11 @@ impl RatchetTree {
             None
         }
 
-        let index = find_kp_in_tree(kpb.get_key_package(), node_options)?;
+        // Find the own node in the list of nodes.
+        let own_index = find_kp_in_tree(kpb.get_key_package(), node_options)?;
 
+        // Build a full set of nodes for the tree based on the potentially incomplete
+        // input nodes.
         let mut nodes = Vec::with_capacity(node_options.len());
         for (i, node_option) in node_options.iter().enumerate() {
             if let Some(node) = node_option.clone() {
@@ -105,18 +106,20 @@ impl RatchetTree {
                 nodes.push(Node::new_blank_parent_node());
             }
         }
+
         let secret = kpb.get_private_key().as_slice();
-        let dirpath = treemath::dirpath_root(index, NodeIndex::from(nodes.len()).into());
+        let direct_path =
+            treemath::direct_path_root(own_index, NodeIndex::from(nodes.len()).into());
         let path_secrets = OwnLeaf::generate_path_secrets(
             &ciphersuite,
             secret,
             true, /* leaf */
-            dirpath.len(),
+            direct_path.len(),
         );
         let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
         let mut path_keys = PathKeys::default();
-        path_keys.add(&keypairs, &dirpath);
-        let own_leaf = OwnLeaf::new(kpb.private_key, index, path_keys);
+        path_keys.add(&keypairs, &direct_path);
+        let own_leaf = OwnLeaf::new(kpb.private_key, own_index, path_keys);
         Some(RatchetTree {
             ciphersuite,
             nodes,
@@ -207,7 +210,7 @@ impl RatchetTree {
             treemath::common_ancestor(NodeIndex::from(sender), self.own_leaf.get_node_index());
 
         // Calculate sender direct path & copath, common path
-        let sender_dirpath = treemath::dirpath_root(NodeIndex::from(sender), self.leaf_count());
+        let sender_dirpath = treemath::direct_path_root(NodeIndex::from(sender), self.leaf_count());
         let sender_copath = treemath::copath(NodeIndex::from(sender), self.leaf_count());
 
         // Find the position of the common ancestor in the sender's direct path
@@ -294,7 +297,7 @@ impl RatchetTree {
 
         // Compute the direct path and keypairs along it
         let own_index = self.own_leaf.get_node_index();
-        let dirpath_root = treemath::dirpath_root(own_index, self.leaf_count());
+        let dirpath_root = treemath::direct_path_root(own_index, self.leaf_count());
         let node_secret = private_key.as_slice();
         let path_secrets = OwnLeaf::generate_path_secrets(
             &self.ciphersuite,
@@ -419,7 +422,7 @@ impl RatchetTree {
         let free_leaves_len = free_leaves.len();
         for (new_kp, leaf_index) in new_kp.iter().zip(free_leaves) {
             self.nodes[leaf_index.as_usize()] = Node::new_leaf(Some(new_kp.clone()));
-            let dirpath = treemath::dirpath_root(leaf_index, self.leaf_count());
+            let dirpath = treemath::direct_path_root(leaf_index, self.leaf_count());
             for d in dirpath.iter() {
                 if !self.nodes[d.as_usize()].is_blank() {
                     let node = &self.nodes[d.as_usize()];

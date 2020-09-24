@@ -133,7 +133,7 @@ pub(crate) fn dirpath_long(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> 
 
 // Ordered from leaf to root
 // Includes root but not leaf
-pub(crate) fn dirpath_root(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
+pub(crate) fn direct_path_root(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let mut d = vec![];
     let mut p = parent(index, size);
     let r = root(size);
