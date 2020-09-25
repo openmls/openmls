@@ -116,6 +116,8 @@ pub enum Credential {
     Extensible(ExtensibleCredential),
 }
 
+/// TODO: Shouldn't this be a trait that we implement for the individual
+/// credentials?
 impl Credential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         match self {
