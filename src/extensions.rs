@@ -71,7 +71,7 @@ pub enum ExtensionType {
     KeyID = 3,
     ParentHash = 4,
     RatchetTree = 5,
-    DeviceCapabilities = 6,
+    DeviceCapabilities = 0xff00,
     Default = 65535,
 }
 
