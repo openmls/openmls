@@ -79,20 +79,22 @@ impl Codec for Identity {
 }
 
 #[derive(Copy, Clone)]
-#[repr(u8)]
+#[repr(u16)]
 pub enum CredentialType {
-    Basic = 0,
-    X509 = 1,
-    Extensible = 2,
-    Default = 255,
+    Reserved = 0x0,
+    Basic = 1,
+    X509 = 2,
+    Extensible = 0xff00,
+    Default = 65535,
 }
 
-impl From<u8> for CredentialType {
-    fn from(value: u8) -> Self {
+impl From<u16> for CredentialType {
+    fn from(value: u16) -> Self {
         match value {
-            0 => CredentialType::Basic,
-            1 => CredentialType::X509,
-            2 => CredentialType::Extensible,
+            0 => CredentialType::Reserved,
+            1 => CredentialType::Basic,
+            2 => CredentialType::X509,
+            0xff00 => CredentialType::Extensible,
             _ => CredentialType::Default,
         }
     }
