@@ -1,10 +1,6 @@
 //! A data structure holding HPKE key pairs for a path in the tree.
 //!
 
-// TODO: #25 replace `Vec` with a hash map.
-// TODO: #24 This should not hold key pairs but again only private keys. The corresponding
-//       public keys are in the tree nodes.
-//
 use super::{index::NodeIndex, TreeError};
 use crate::ciphersuite::HPKEPrivateKey;
 use std::collections::HashMap;

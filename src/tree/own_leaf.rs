@@ -2,8 +2,6 @@
 //! belongs to the current client.
 //!
 
-// TODO: #26 Functions should operate on `self`.
-
 use super::{index::NodeIndex, path_keys::PathKeys, TreeError};
 use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
 use crate::codec::{Codec, CodecError};
