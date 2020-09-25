@@ -198,31 +198,6 @@ impl Codec for BasicCredential {
     // }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ExtensibleCredential {
-    pub identity: Vec<u8>,
-    pub ciphersuite: Ciphersuite,
-    pub public_key: SignaturePublicKey,
-    pub extensions: Vec<Extension>,
-}
-
-impl ExtensibleCredential {
-    pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.ciphersuite
-            .verify(signature, &self.public_key, payload)
-    }
-}
-
-impl Codec for ExtensibleCredential {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU16, buffer, &self.identity)?;
-        self.ciphersuite.encode(buffer)?;
-        self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.extensions)?;
-        Ok(())
-    }
-}
-
 #[test]
 fn test_protocol_version() {
     use crate::extensions::*;
