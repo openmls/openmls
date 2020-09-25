@@ -1,17 +1,9 @@
 //! Unit test for OwnLeaf
 
 #[cfg(test)]
-use super::{index::NodeIndex, own_leaf::*};
+use super::{index::NodeIndex, own_leaf::*, test_util::*};
 #[cfg(test)]
 use crate::{ciphersuite::*, utils::*};
-
-#[cfg(test)]
-// Generate a random sequence of node indices.
-fn generate_path(len: usize) -> Vec<NodeIndex> {
-    (0..len)
-        .map(|_| NodeIndex::from(random_u8() as u32))
-        .collect()
-}
 
 #[cfg(test)]
 // Common setup for tests.
@@ -20,7 +12,7 @@ fn setup(len: usize) -> (Ciphersuite, HPKEPrivateKey, NodeIndex, Vec<NodeIndex>)
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let hpke_private_key = HPKEPrivateKey::from_slice(&randombytes(32));
     let own_index = NodeIndex::from(0u32);
-    let direct_path = generate_path(len);
+    let direct_path = generate_path_u8(len);
 
     (ciphersuite, hpke_private_key, own_index, direct_path)
 }

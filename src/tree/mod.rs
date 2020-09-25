@@ -42,8 +42,10 @@ use path_keys::*;
 
 // Internal tree tests
 mod test_astree;
-mod test_treemath;
 mod test_own_leaf;
+mod test_path_keys;
+mod test_treemath;
+mod test_util;
 
 #[derive(Debug)]
 pub struct RatchetTree {
@@ -715,4 +717,5 @@ pub struct DirectPath {
 pub enum TreeError {
     InvalidArguments,
     NoneError,
+    DuplicateIndex,
 }

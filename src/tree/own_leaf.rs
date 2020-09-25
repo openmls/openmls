@@ -193,7 +193,8 @@ impl OwnLeaf {
         }
 
         // Store private keys.
-        self.path_keys.add(&private_keys, &direct_path);
+        println!("Path indices: {:?}", direct_path);
+        self.path_keys.add(private_keys, &direct_path)?;
         // Return public keys.
         Ok(public_keys)
     }
@@ -204,7 +205,7 @@ impl Codec for OwnLeaf {
         // FIXME: do we need this encode? Private keys should not be encoded if not absolutely necessary.
         // self.hpke_private_key.encode(buffer)?;
         self.node_index.as_u32().encode(buffer)?;
-        self.path_keys.encode(buffer)?;
+        // self.path_keys.encode(buffer)?;
         Ok(())
     }
 }
