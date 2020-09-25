@@ -17,6 +17,8 @@
 pub mod ciphersuite;
 pub mod codec;
 pub mod creds;
+pub mod device_capability_extension;
+pub mod extensible_credential;
 pub mod extensions;
 pub mod framing;
 pub mod group;
