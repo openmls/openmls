@@ -20,7 +20,6 @@ use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
-use crate::key_packages::*;
 use crate::messages::*;
 use crate::tree::treemath;
 use crate::utils::*;
@@ -31,15 +30,10 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: KeyPackageBundle,
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult {
         let ciphersuite = self.get_ciphersuite();
-        let (private_key, key_package) = (
-            key_package_bundle.private_key,
-            key_package_bundle.key_package,
-        );
         let mut contains_own_updates = false;
         // Organize proposals
         let mut proposal_queue = ProposalQueue::new();
@@ -72,13 +66,9 @@ impl MlsGroup {
 
         let (commit_secret, path, path_secrets_option, key_package_bundle_option) = if path_required
         {
-            // If path is eeded, compute path values
-            let (commit_secret, kpb, path_option, path_secrets) = provisional_tree.update_own_leaf(
-                Some(signature_key),
-                KeyPackageBundle::from_values(key_package, private_key),
-                &self.group_context.serialize(),
-                true,
-            );
+            // If path is needed, compute path values
+            let (commit_secret, kpb, path_option, path_secrets) =
+                provisional_tree.refresh_own_leaf(signature_key, &self.group_context.serialize());
             (commit_secret, path_option, path_secrets, Some(kpb))
         } else {
             // If path is not needed, return empty commit secret

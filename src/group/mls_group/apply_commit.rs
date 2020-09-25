@@ -96,13 +96,7 @@ impl MlsGroup {
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == kp)
                     .unwrap();
-                let (commit_secret, _, _, _) = provisional_tree.update_own_leaf(
-                    None,
-                    own_kpb.clone(),
-                    &self.group_context.serialize(),
-                    false,
-                );
-                commit_secret
+                provisional_tree.replace_own_leaf(own_kpb.clone(), &self.group_context.serialize())
             } else {
                 provisional_tree.update_direct_path(sender, &path, &self.group_context.serialize())
             }

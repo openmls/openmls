@@ -168,17 +168,10 @@ impl Api for MlsGroup {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: KeyPackageBundle,
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        self.create_commit_internal(
-            aad,
-            signature_key,
-            key_package_bundle,
-            proposals,
-            force_self_update,
-        )
+        self.create_commit_internal(aad, signature_key, proposals, force_self_update)
     }
 
     // Apply a Commit message

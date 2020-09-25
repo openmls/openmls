@@ -358,10 +358,48 @@ impl RatchetTree {
         self.compute_parent_hash(NodeIndex::from(sender));
         commit_secret
     }
-    pub(crate) fn update_own_leaf(
+    pub(crate) fn replace_own_leaf(
         &mut self,
-        signature_key_option: Option<&SignaturePrivateKey>,
-        kpb: KeyPackageBundle,
+        key_package_bundle: KeyPackageBundle,
+        group_context: &[u8],
+    ) -> CommitSecret {
+        let (commit_secret, _kpb, _path_option, _secrets_option) =
+            self.update_own_leaf(key_package_bundle, group_context, false);
+        commit_secret
+    }
+    pub(crate) fn refresh_own_leaf(
+        &mut self,
+        signature_key: &SignaturePrivateKey,
+        group_context: &[u8],
+    ) -> (
+        CommitSecret,
+        KeyPackageBundle,
+        Option<DirectPath>,
+        Option<Vec<Vec<u8>>>,
+    ) {
+        // Check if we need to add the parent hash extension and re-sign the KeyPackage
+        let own_index = self.own_leaf.node_index;
+        let key_package_bundle = {
+            // Generate new keypair and replace it in current KeyPackage
+            let keypair = self.ciphersuite.new_hpke_keypair();
+            let mut key_package = self.own_leaf.kpb.get_key_package().clone();
+            key_package.set_hpke_init_key(keypair.get_public_key().clone());
+
+            // Compute the parent hash extension and add it to the KeyPackage
+            let parent_hash = self.compute_parent_hash(own_index);
+            let parent_hash_extension = ParentHashExtension::new(&parent_hash).to_extension();
+
+            key_package.add_extension(parent_hash_extension);
+            key_package.sign(&self.ciphersuite, signature_key);
+            KeyPackageBundle::from_values(key_package, keypair.get_private_key().clone())
+        };
+        let (commit_secret, kpb, path_option, secrets_option) =
+            self.update_own_leaf(key_package_bundle, group_context, true);
+        (commit_secret, kpb, path_option, secrets_option)
+    }
+    fn update_own_leaf(
+        &mut self,
+        key_package_bundle: KeyPackageBundle,
         group_context: &[u8],
         with_direct_path: bool,
     ) -> (
@@ -371,7 +409,7 @@ impl RatchetTree {
         Option<Vec<Vec<u8>>>,
     ) {
         // Extract the private key from the KeyPackageBundle
-        let private_key = kpb.get_private_key();
+        let private_key = key_package_bundle.get_private_key();
 
         // Compute the direct path and keypairs along it
         let own_index = self.own_leaf.node_index;
@@ -381,20 +419,6 @@ impl RatchetTree {
             OwnLeaf::generate_path_secrets(&self.ciphersuite, &node_secret, dirpath_root.len());
         let keypairs = OwnLeaf::generate_path_keypairs(&self.ciphersuite, &path_secrets);
         self.merge_keypairs(&keypairs, &dirpath_root);
-
-        // Check if we need to add the parent hash extension and re-sign the KeyPackage
-        let key_package_bundle = match signature_key_option {
-            Some(signature_key) => {
-                // Compute the parent hash extension and add it to the KeyPackage
-                let parent_hash = self.compute_parent_hash(own_index);
-                let parent_hash_extension = ParentHashExtension::new(&parent_hash).to_extension();
-                let mut key_package = kpb.get_key_package().clone();
-                key_package.add_extension(parent_hash_extension);
-                key_package.sign(&self.ciphersuite, signature_key);
-                KeyPackageBundle::from_values(key_package, kpb.get_private_key().clone())
-            }
-            None => kpb,
-        };
 
         // Update own leaf node with the new values
         self.nodes[own_index.as_usize()] =
