@@ -16,7 +16,7 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::extensions::Extension;
+use crate::extensible_credential::ExtensibleCredential;
 
 #[derive(Clone)]
 pub struct Identity {
