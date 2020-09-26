@@ -133,7 +133,6 @@ impl PathKeypairs {
 pub struct RatchetTree {
     ciphersuite: Ciphersuite,
     pub nodes: Vec<Node>,
-    //pub own_leaf: OwnLeaf,
     own_private_key: HPKEPrivateKey,
     path_keypairs: PathKeypairs,
     own_node_index: NodeIndex,
@@ -266,11 +265,11 @@ impl RatchetTree {
         own_node.key_package.as_ref().unwrap()
     }
 
-    pub(crate) fn get_own_private_key(&self) -> &HPKEPrivateKey {
+    fn get_own_private_key(&self) -> &HPKEPrivateKey {
         &self.own_private_key
     }
 
-    pub(crate) fn blank_member(&mut self, index: NodeIndex) {
+    fn blank_member(&mut self, index: NodeIndex) {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
         self.nodes[treemath::root(size).as_usize()].blank();
@@ -278,7 +277,7 @@ impl RatchetTree {
             self.nodes[index.as_usize()].blank();
         }
     }
-    pub(crate) fn free_leaves(&self) -> Vec<NodeIndex> {
+    fn free_leaves(&self) -> Vec<NodeIndex> {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
@@ -447,7 +446,7 @@ impl RatchetTree {
             (confirmation, None, None)
         }
     }
-    pub fn encrypt_to_copath(
+    fn encrypt_to_copath(
         &self,
         path_secrets: &[Vec<u8>],
         keypairs: Vec<HPKEKeyPair>,
@@ -486,7 +485,7 @@ impl RatchetTree {
             nodes: direct_path_nodes,
         }
     }
-    pub fn merge_public_keys(&mut self, direct_path: &DirectPath, path: Vec<NodeIndex>) {
+    fn merge_public_keys(&mut self, direct_path: &DirectPath, path: Vec<NodeIndex>) {
         assert_eq!(direct_path.nodes.len(), path.len()); // TODO return error
         for (i, p) in path.iter().enumerate() {
             let public_key = direct_path.nodes[i].clone().public_key;
@@ -639,7 +638,7 @@ impl RatchetTree {
             self_removed,
         )
     }
-    pub fn trim_tree(&mut self) {
+    fn trim_tree(&mut self) {
         let mut new_tree_size = 0;
 
         for i in 0..self.nodes.len() {
