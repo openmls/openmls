@@ -54,7 +54,7 @@ fn test_tree_hash() {
 
     fn create_identity(id: &[u8], ciphersuite: &Ciphersuite) -> KeyPackageBundle {
         let signature_keypair = ciphersuite.new_signature_keypair();
-        let identity = Identity::new(ciphersuite.clone(), id.to_vec());
+        let identity = Identity::new(*ciphersuite, id.to_vec());
         let credential = Credential::Basic(BasicCredential::from(&identity));
         let kbp = KeyPackageBundle::new(
             &ciphersuite,

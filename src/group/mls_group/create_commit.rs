@@ -64,21 +64,15 @@ impl MlsGroup {
         let path_required =
             membership_changes.path_required() || contains_own_updates || force_self_update;
 
-        let (commit_secret, path, path_secrets_option, key_package_bundle_option) = if path_required
-        {
+        let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
-            let (commit_secret, kpb, path_option, path_secrets) =
+            let (commit_secret, path_option, path_secrets) =
                 provisional_tree.refresh_own_leaf(signature_key, &self.group_context.serialize());
-            (commit_secret, path_option, path_secrets, Some(kpb))
+            (commit_secret, path_option, path_secrets)
         } else {
             // If path is not needed, return empty commit secret
             let commit_secret = CommitSecret(zero(self.get_ciphersuite().hash_length()));
-            (commit_secret, None, None, None)
-        };
-        let return_kpb_option = if let Some(kpb) = key_package_bundle_option {
-            Some((kpb.get_private_key().clone(), kpb.get_key_package().clone()))
-        } else {
-            None
+            (commit_secret, None, None)
         };
         // Create commit message
         let commit = Commit {
@@ -207,9 +201,9 @@ impl MlsGroup {
                 secrets,
                 encrypted_group_info,
             };
-            Ok((mls_plaintext, Some(welcome), return_kpb_option))
+            Ok((mls_plaintext, Some(welcome)))
         } else {
-            Ok((mls_plaintext, None, return_kpb_option))
+            Ok((mls_plaintext, None))
         }
     }
 }

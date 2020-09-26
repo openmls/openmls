@@ -363,51 +363,51 @@ impl RatchetTree {
         key_package_bundle: KeyPackageBundle,
         group_context: &[u8],
     ) -> CommitSecret {
-        let (commit_secret, _kpb, _path_option, _secrets_option) =
-            self.update_own_leaf(key_package_bundle, group_context, false);
+        let (commit_secret, _path_option, _secrets_option) =
+            self.update_own_leaf(&key_package_bundle, group_context, false);
         commit_secret
     }
     pub(crate) fn refresh_own_leaf(
         &mut self,
         signature_key: &SignaturePrivateKey,
         group_context: &[u8],
-    ) -> (
-        CommitSecret,
-        KeyPackageBundle,
-        Option<DirectPath>,
-        Option<Vec<Vec<u8>>>,
-    ) {
-        // Check if we need to add the parent hash extension and re-sign the KeyPackage
+    ) -> (CommitSecret, Option<DirectPath>, Option<Vec<Vec<u8>>>) {
+        // Generate new keypair
         let own_index = self.own_leaf.node_index;
+        let keypair = self.ciphersuite.new_hpke_keypair();
+
+        // Replace the init key in the current KeyPackage
         let key_package_bundle = {
             // Generate new keypair and replace it in current KeyPackage
-            let keypair = self.ciphersuite.new_hpke_keypair();
             let mut key_package = self.own_leaf.kpb.get_key_package().clone();
             key_package.set_hpke_init_key(keypair.get_public_key().clone());
+            KeyPackageBundle::from_values(key_package, keypair.get_private_key().clone())
+        };
+        let (commit_secret, path_option, secrets_option) =
+            self.update_own_leaf(&key_package_bundle, group_context, true);
 
-            // Compute the parent hash extension and add it to the KeyPackage
+        // Compute the parent hash extension and add it to the KeyPackage
+        let key_package_bundle = {
             let parent_hash = self.compute_parent_hash(own_index);
             let parent_hash_extension = ParentHashExtension::new(&parent_hash).to_extension();
-
+            let mut key_package = key_package_bundle.get_key_package().clone();
             key_package.add_extension(parent_hash_extension);
             key_package.sign(&self.ciphersuite, signature_key);
             KeyPackageBundle::from_values(key_package, keypair.get_private_key().clone())
         };
-        let (commit_secret, kpb, path_option, secrets_option) =
-            self.update_own_leaf(key_package_bundle, group_context, true);
-        (commit_secret, kpb, path_option, secrets_option)
+
+        // Store new KeyPackage in tree
+        self.nodes[own_index.as_usize()] =
+            Node::new_leaf(Some(key_package_bundle.get_key_package().clone()));
+        self.own_leaf.kpb = key_package_bundle;
+        (commit_secret, path_option, secrets_option)
     }
     fn update_own_leaf(
         &mut self,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         with_direct_path: bool,
-    ) -> (
-        CommitSecret,
-        KeyPackageBundle,
-        Option<DirectPath>,
-        Option<Vec<Vec<u8>>>,
-    ) {
+    ) -> (CommitSecret, Option<DirectPath>, Option<Vec<Vec<u8>>>) {
         // Extract the private key from the KeyPackageBundle
         let private_key = key_package_bundle.get_private_key();
 
@@ -430,9 +430,8 @@ impl RatchetTree {
         if with_direct_path {
             (
                 confirmation,
-                key_package_bundle.clone(),
                 Some(self.encrypt_to_copath(
-                    path_secrets.clone(),
+                    &path_secrets,
                     keypairs,
                     group_context,
                     key_package_bundle.get_key_package().clone(),
@@ -440,12 +439,12 @@ impl RatchetTree {
                 Some(path_secrets),
             )
         } else {
-            (confirmation, key_package_bundle, None, None)
+            (confirmation, None, None)
         }
     }
     pub fn encrypt_to_copath(
         &self,
-        path_secrets: Vec<Vec<u8>>,
+        path_secrets: &[Vec<u8>],
         keypairs: Vec<HPKEKeyPair>,
         group_context: &[u8],
         leaf_key_package: KeyPackage,
