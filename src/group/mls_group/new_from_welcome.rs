@@ -97,21 +97,21 @@ impl MlsGroup {
         // TODO: check if path_secret has to be optional
         if let Some(path_secret) = group_secrets.path_secret {
             let common_ancestor = treemath::common_ancestor(
-                tree.get_own_index(),
+                tree.get_own_node_index(),
                 NodeIndex::from(group_info.signer_index),
             );
             let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
-            let (path_secrets, _commit_secret) = OwnLeaf::continue_path_secrets(
+            let (path_secrets, _commit_secret) = PathKeypairs::continue_path_secrets(
                 &ciphersuite,
                 &path_secret.path_secret,
                 common_path.len(),
             );
-            let keypairs = OwnLeaf::generate_path_keypairs(&ciphersuite, &path_secrets);
+            let keypairs = PathKeypairs::generate_path_keypairs(&ciphersuite, &path_secrets);
             tree.merge_keypairs(&keypairs, &common_path);
 
             let mut path_keypairs = PathKeypairs::new();
             path_keypairs.add(&keypairs, &common_path);
-            tree.own_leaf.path_keypairs = path_keypairs;
+            tree.set_path_keypairs(path_keypairs);
         }
 
         // Compute state

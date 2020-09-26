@@ -160,9 +160,9 @@ impl MlsGroup {
                 let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
                 let path_secret = if path_required {
                     let common_ancestor =
-                        treemath::common_ancestor(index, provisional_tree.get_own_index());
+                        treemath::common_ancestor(index, provisional_tree.get_own_node_index());
                     let dirpath = treemath::dirpath_root(
-                        provisional_tree.get_own_index(),
+                        provisional_tree.get_own_node_index(),
                         provisional_tree.leaf_count(),
                     );
                     let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();

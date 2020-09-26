@@ -283,7 +283,7 @@ impl MlsGroup {
         self.tree.borrow()
     }
     fn get_sender_index(&self) -> LeafIndex {
-        self.tree.borrow().get_own_index().into()
+        self.tree.borrow().get_own_node_index().into()
     }
     pub(crate) fn get_ciphersuite(&self) -> &Ciphersuite {
         &self.ciphersuite

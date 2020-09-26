@@ -40,30 +40,12 @@ impl Codec for PathKeypairs {
     // }
 }
 
-impl Codec for OwnLeaf {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.kpb.encode(buffer)?;
-        self.node_index.as_u32().encode(buffer)?;
-        self.path_keypairs.encode(buffer)?;
-        Ok(())
-    }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let kpb = KeyPackageBundle::decode(cursor)?;
-    //     let node_index = NodeIndex::from(u32::decode(cursor)?);
-    //     let path_keypairs = PathKeypairs::decode(cursor)?;
-    //     Ok(OwnLeaf {
-    //         kpb,
-    //         node_index,
-    //         path_keypairs,
-    //     })
-    // }
-}
-
 impl Codec for RatchetTree {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.ciphersuite.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
-        self.own_leaf.encode(buffer)?;
+        self.path_keypairs.encode(buffer)?;
+        self.own_node_index.as_u32().encode(buffer)?;
         Ok(())
     }
     // fn decode(cursor: &mut Cursor) -> Result<RatchetTree, CodecError> {
