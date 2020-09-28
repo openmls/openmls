@@ -44,7 +44,7 @@ impl MlsGroup {
         }
 
         // Extract Commit from MLSPlaintext
-        let (commit, confirmation_tag) = match mls_plaintext.content.clone() {
+        let (commit, confirmation_tag) = match &mls_plaintext.content {
             MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
@@ -63,12 +63,8 @@ impl MlsGroup {
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
-        let (membership_changes, _invited_members, group_removed) = provisional_tree
-            .apply_proposals(
-                &proposal_id_list,
-                proposal_queue,
-                Some(pending_kpbs.clone()),
-            );
+        let (membership_changes, _invited_members, group_removed) =
+            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &pending_kpbs);
 
         // Check if we were removed from the group
         if group_removed {
@@ -95,8 +91,9 @@ impl MlsGroup {
                 let own_kpb = pending_kpbs
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == kp)
-                    .unwrap();
-                provisional_tree.replace_own_leaf(own_kpb.clone(), &self.group_context.serialize())
+                    .unwrap()
+                    .clone();
+                provisional_tree.replace_own_leaf(own_kpb, &self.group_context.serialize())
             } else {
                 provisional_tree.update_direct_path(sender, &path, &self.group_context.serialize())
             }
@@ -139,7 +136,7 @@ impl MlsGroup {
         );
 
         // Verify confirmation tag
-        if ConfirmationTag::new(
+        if &ConfirmationTag::new(
             &ciphersuite,
             &provisional_epoch_secrets.confirmation_key,
             &confirmed_transcript_hash,
@@ -149,7 +146,7 @@ impl MlsGroup {
         }
 
         // Verify KeyPackage extensions
-        if let Some(path) = commit.path {
+        if let Some(path) = &commit.path {
             if !is_own_commit {
                 let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
                 if let Some(received_parent_hash) = path

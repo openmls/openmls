@@ -281,7 +281,8 @@ impl RatchetTree {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
-            if self.nodes[NodeIndex::from(i).as_usize()].is_blank() {
+            let leaf_index = LeafIndex::from(i);
+            if self.nodes[NodeIndex::from(leaf_index).as_usize()].is_blank() {
                 free_leaves.push(NodeIndex::from(i));
             }
         }
@@ -514,6 +515,7 @@ impl RatchetTree {
         // Add new nodes for key packages into existing free leaves.
         // Note that zip makes it so only the first free_leaves().len() nodes are taken.
         let free_leaves = self.free_leaves();
+        println!("free leaves: {:?}", free_leaves);
         let free_leaves_len = free_leaves.len();
         for (new_kp, leaf_index) in new_kp.iter().zip(free_leaves) {
             self.nodes[leaf_index.as_usize()] = Node::new_leaf(Some(new_kp.clone()));
@@ -553,7 +555,7 @@ impl RatchetTree {
         &mut self,
         proposal_id_list: &ProposalIDList,
         proposal_queue: ProposalQueue,
-        pending_kpbs_option: Option<Vec<KeyPackageBundle>>,
+        pending_kpbs: &[KeyPackageBundle],
     ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {
         let mut updated_members = vec![];
         let mut removed_members = vec![];
@@ -571,15 +573,13 @@ impl RatchetTree {
             updated_members.push(update_proposal.key_package.get_credential().clone());
             self.blank_member(index);
             self.nodes[index.as_usize()] = leaf_node;
-            if index == self.get_own_node_index() {
-                if let Some(pending_kpbs) = &pending_kpbs_option {
-                    let own_kpb = pending_kpbs
-                        .iter()
-                        .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
-                        .unwrap();
-                    self.own_private_key = own_kpb.get_private_key().clone();
-                    self.path_keypairs = PathKeypairs::new();
-                }
+            if index == self.get_own_node_index() && !pending_kpbs.is_empty() {
+                let own_kpb = pending_kpbs
+                    .iter()
+                    .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
+                    .unwrap();
+                self.own_private_key = own_kpb.get_private_key().clone();
+                self.path_keypairs = PathKeypairs::new();
             }
         }
         for r in proposal_id_list.removes.iter() {

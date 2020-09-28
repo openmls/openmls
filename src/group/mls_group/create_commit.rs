@@ -56,7 +56,7 @@ impl MlsGroup {
 
         // Apply proposals to tree
         let (membership_changes, invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, None);
+            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &[]);
         if group_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }

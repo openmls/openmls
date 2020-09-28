@@ -1,8 +1,125 @@
 use maelstrom::ciphersuite::*;
 use maelstrom::creds::*;
+use maelstrom::framing::*;
 use maelstrom::group::*;
 use maelstrom::key_packages::*;
 
+#[test]
+fn create_commit_optinal_path() {
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let group_aad = b"Alice's test group";
+
+    // Define identities
+    let alice_identity = Identity::new(ciphersuite, "Alice".into());
+    let bob_identity = Identity::new(ciphersuite, "Bob".into());
+    let charlie_identity = Identity::new(ciphersuite, "Charlie".into());
+
+    // Define credentials
+    let alice_credential = BasicCredential::from(&alice_identity);
+    let bob_credential = BasicCredential::from(&bob_identity);
+    let charlie_credential = BasicCredential::from(&bob_identity);
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &ciphersuite,
+        &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
+        Credential::Basic(alice_credential.clone()), // TODO: this consumes the credential!
+        None,
+    );
+    let alice_key_package = alice_key_package_bundle.get_key_package();
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &ciphersuite,
+        &bob_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
+        Credential::Basic(bob_credential), // TODO: this consumes the credential!
+        None,
+    );
+    let bob_key_package = bob_key_package_bundle.get_key_package();
+
+    let alice_update_key_package_bundle = KeyPackageBundle::new(
+        &ciphersuite,
+        &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
+        Credential::Basic(alice_credential),
+        None,
+    );
+    let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
+
+    let charlie_key_package_bundle = KeyPackageBundle::new(
+        &ciphersuite,
+        &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
+        Credential::Basic(charlie_credential),
+        None,
+    );
+    let charlie_key_package = charlie_key_package_bundle.get_key_package();
+
+    // Alice creates a group
+    let group_id = [1, 2, 3, 4];
+    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
+
+    // Alice adds Bob
+    let bob_add_proposal = group_alice_1234.create_add_proposal(
+        group_aad,
+        &alice_identity.get_signature_key_pair().get_private_key(),
+        bob_key_package.clone(),
+    );
+
+    // Alice updates
+    let alice_update_proposal = group_alice_1234.create_update_proposal(
+        group_aad,
+        &alice_identity.get_signature_key_pair().get_private_key(),
+        alice_update_key_package.clone(),
+    );
+
+    // Only AddProposals
+    let (commit_mls_plaintext, _welcome_option) = match group_alice_1234.create_commit(
+        group_aad,
+        &alice_identity.get_signature_key_pair().get_private_key(),
+        vec![bob_add_proposal.clone()],
+        false,
+    ) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
+    let (commit, _confirmation_tag) = match commit_mls_plaintext.content {
+        MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
+        _ => panic!(),
+    };
+    assert!(commit.path.is_none());
+
+    // Only AddProposals with forced self update
+    let (commit_mls_plaintext, _welcome_option) = match group_alice_1234.create_commit(
+        group_aad,
+        &alice_identity.get_signature_key_pair().get_private_key(),
+        vec![bob_add_proposal],
+        true,
+    ) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
+
+    let (commit, _confirmation_tag) = match commit_mls_plaintext.content {
+        MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
+        _ => panic!(),
+    };
+    assert!(commit.path.is_some());
+
+    // Own UpdateProposal
+    let (commit_mls_plaintext, _welcome_option) = match group_alice_1234.create_commit(
+        group_aad,
+        &alice_identity.get_signature_key_pair().get_private_key(),
+        vec![alice_update_proposal],
+        true,
+    ) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
+
+    let (commit, _confirmation_tag) = match commit_mls_plaintext.content {
+        MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
+        _ => panic!(),
+    };
+    assert!(commit.path.is_some());
+}
 #[test]
 fn basic_group_setup() {
     let ciphersuite =
@@ -46,7 +163,6 @@ fn basic_group_setup() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    // FIXME: We should never have to clone the key package bundle
     let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
 
     // Alice adds Bob
