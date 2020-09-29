@@ -21,8 +21,13 @@
 
 use evercrypt::prelude::*;
 use hpke::{
-    aead::Mode as HpkeAeadMode, kdf::Mode as HpkeKdfMode, kem::Mode as KemMode, Hpke, Mode,
+    aead::Mode as HpkeAeadMode, kdf::Mode as HpkeKdfMode, kem::Mode as KemMode,
+    HPKEKeyPair as RealHPKEKeyPair, HPKEPrivateKey as RealHPKEPrivateKey,
+    HPKEPublicKey as RealHPKEPublicKey, Hpke, Mode,
 };
+
+// TODO: re-export for other parts of the library when we can use it
+// pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
 
 mod ciphersuites;
 mod codec;
@@ -51,6 +56,8 @@ pub enum HKDFError {
     InvalidLength,
 }
 
+// TODO: remove these and use the proper types from HPKE.
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct HpkeCiphertext {
     kem_output: Vec<u8>,
@@ -72,6 +79,8 @@ pub struct HPKEKeyPair {
     private_key: HPKEPrivateKey,
     public_key: HPKEPublicKey,
 }
+
+// ===
 
 #[derive(Debug)]
 pub enum AEADError {
@@ -258,7 +267,9 @@ impl Ciphersuite {
     ) -> HpkeCiphertext {
         // TODO: put hpke in the ciphersuite.
         let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
-        let (kem_output, ciphertext) = hpke.seal(&pk_r.value, info, aad, ptxt, None, None, None);
+        let (kem_output, ciphertext) = hpke
+            .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
+            .unwrap();
         HpkeCiphertext {
             kem_output,
             ciphertext,
@@ -277,7 +288,7 @@ impl Ciphersuite {
         let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
         hpke.open(
             &input.kem_output,
-            &sk_r.value,
+            &sk_r.into(),
             info,
             aad,
             &input.ciphertext,
@@ -285,17 +296,14 @@ impl Ciphersuite {
             None,
             None,
         )
+        .unwrap()
     }
 
     /// Generate a new HPKE key pair and return it.
     pub(crate) fn new_hpke_keypair(&self) -> HPKEKeyPair {
         // TODO: put hpke in the ciphersuite.
         let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
-        let (sk, pk) = hpke.key_gen();
-        HPKEKeyPair {
-            private_key: HPKEPrivateKey { value: sk },
-            public_key: HPKEPublicKey { value: pk },
-        }
+        HPKEKeyPair::from(hpke.generate_key_pair())
     }
 }
 
@@ -308,6 +316,15 @@ impl HPKEPublicKey {
     pub(crate) fn from_slice(bytes: &[u8]) -> Self {
         Self {
             value: bytes.to_vec(),
+        }
+    }
+
+    fn into(&self) -> RealHPKEPublicKey {
+        RealHPKEPublicKey::new(self.value.clone())
+    }
+    fn from(k: RealHPKEPublicKey) -> Self {
+        Self {
+            value: k.as_slice().to_vec(),
         }
     }
 }
@@ -335,6 +352,15 @@ impl HPKEPrivateKey {
         };
         HPKEPublicKey::from_slice(&pk)
     }
+
+    fn into(&self) -> RealHPKEPrivateKey {
+        RealHPKEPrivateKey::new(self.value.clone())
+    }
+    fn from(k: RealHPKEPrivateKey) -> Self {
+        Self {
+            value: k.as_slice().to_vec(),
+        }
+    }
 }
 
 impl HPKEKeyPair {
@@ -356,6 +382,19 @@ impl HPKEKeyPair {
     /// Get a reference to the public key.
     pub(crate) fn get_public_key(&self) -> &HPKEPublicKey {
         &self.public_key
+    }
+
+    fn into(&self) -> RealHPKEKeyPair {
+        RealHPKEKeyPair::new(
+            self.private_key.value.clone(),
+            self.public_key.value.clone(),
+        )
+    }
+    fn from(k: RealHPKEKeyPair) -> Self {
+        Self {
+            private_key: HPKEPrivateKey::from_slice(k.get_private_key_ref().as_slice()),
+            public_key: HPKEPublicKey::from_slice(k.get_public_key_ref().as_slice()),
+        }
     }
 }
 
