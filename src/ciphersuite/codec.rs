@@ -123,7 +123,7 @@ impl Codec for HPKEPrivateKey {
 
 impl Codec for HPKEPublicKey {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU16, buffer, &self.value)?;
+        encode_vec(VecSize::VecU16, buffer, self.as_slice())?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
