@@ -366,39 +366,18 @@ impl HPKEPrivateKey {
 impl HPKEKeyPair {
     /// Derive a new key pair for the HPKE KEM with the given input key material.
     pub(crate) fn derive(ikm: &[u8], ciphersuite: &Ciphersuite) -> Self {
-        let (pk, sk) = Hpke::new(
+        let key_pair = Hpke::new(
             Mode::Base,
             ciphersuite.hpke_kem,
             ciphersuite.hpke_kdf,
             ciphersuite.hpke_aead,
         )
-        .derive_keypair(ikm);
+        .derive_key_pair(ikm);
         Self {
-            private_key: HPKEPrivateKey { value: sk },
-            public_key: HPKEPublicKey { value: pk },
+            private_key: HPKEPrivateKey { value: key_pair.get_private_key_ref().as_slice().to_vec() },
+            public_key: HPKEPublicKey { value: key_pair.get_public_key_ref().as_slice().to_vec() },
         }
     }
-
-    /// Build a new HPKE key pair from the given `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8], ciphersuite: &Ciphersuite) -> Self {
-        let private_key = HPKEPrivateKey::from_slice(bytes);
-        let public_key = private_key.public_key(ciphersuite.hpke_kem);
-        Self {
-            private_key,
-            public_key,
-        }
-    }
-
-    /// Get a reference to the private key.
-    pub(crate) fn get_private_key_ref(&self) -> &HPKEPrivateKey {
-        &self.private_key
-    }
-
-    /// Get a reference to the public key.
-    pub(crate) fn get_public_key_ref(&self) -> &HPKEPublicKey {
-        &self.public_key
-    }
-
 
     /// Get the private key.
     pub(crate) fn get_private_key(&self) -> HPKEPrivateKey {
@@ -408,6 +387,7 @@ impl HPKEKeyPair {
     /// Get the public key.
     pub(crate) fn get_public_key(&self) -> HPKEPublicKey {
         self.public_key.clone()
+    }
 
     fn into(&self) -> RealHPKEKeyPair {
         RealHPKEKeyPair::new(
