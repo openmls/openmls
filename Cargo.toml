@@ -10,7 +10,7 @@ rayon = "^1.3"
 rand = "^0.7"
 zeroize = "^1.1"
 byteorder = "^1.3"
-hpke = {git = "https://github.com/franziskuskiefer/hpke-rs", branch = "master"}
+hpke = {git = "https://github.com/franziskuskiefer/hpke-rs", rev = "0680647"}
 evercrypt = {git = "https://github.com/franziskuskiefer/evercrypt-rust", branch = "master"}
 
 [features]
