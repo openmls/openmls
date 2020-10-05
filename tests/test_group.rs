@@ -5,7 +5,7 @@ use maelstrom::group::*;
 use maelstrom::key_packages::*;
 
 #[test]
-fn create_commit_optinal_path() {
+fn create_commit_optional_path() {
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let group_aad = b"Alice's test group";
