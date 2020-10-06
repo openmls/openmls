@@ -67,7 +67,7 @@ pub struct Commit {
     pub updates: Vec<ProposalID>,
     pub removes: Vec<ProposalID>,
     pub adds: Vec<ProposalID>,
-    pub path: Option<DirectPath>,
+    pub path: Option<UpdatePath>,
 }
 
 impl Codec for Commit {
@@ -82,7 +82,7 @@ impl Codec for Commit {
     //     let updates = decode_vec(VecSize::VecU32, cursor)?;
     //     let removes = decode_vec(VecSize::VecU32, cursor)?;
     //     let adds = decode_vec(VecSize::VecU32, cursor)?;
-    //     let path = Option::<DirectPath>::decode(cursor)?;
+    //     let path = Option::<UpdatePath>::decode(cursor)?;
     //     Ok(Commit {
     //         updates,
     //         removes,

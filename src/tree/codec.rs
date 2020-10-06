@@ -60,7 +60,7 @@ impl Codec for RatchetTree {
     // }
 }
 
-impl Codec for DirectPathNode {
+impl Codec for UpdatePathNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.encrypted_path_secret)?;
@@ -69,14 +69,14 @@ impl Codec for DirectPathNode {
     // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
     //     let public_key = HPKEPublicKey::decode(cursor)?;
     //     let encrypted_path_secret = decode_vec(VecSize::VecU32, cursor)?;
-    //     Ok(DirectPathNode {
+    //     Ok(UpdatePathNode {
     //         public_key,
     //         encrypted_path_secret,
     //     })
     // }
 }
 
-impl Codec for DirectPath {
+impl Codec for UpdatePath {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.leaf_key_package.encode(buffer)?;
         encode_vec(VecSize::VecU16, buffer, &self.nodes)?;
@@ -85,7 +85,7 @@ impl Codec for DirectPath {
     // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
     //     let leaf_key_package = KeyPackage::decode(cursor)?;
     //     let nodes = decode_vec(VecSize::VecU16, cursor)?;
-    //     Ok(DirectPath {
+    //     Ok(UpdatePath {
     //         leaf_key_package,
     //         nodes,
     //     })

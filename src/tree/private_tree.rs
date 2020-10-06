@@ -170,11 +170,11 @@ impl OwnLeaf {
     pub(crate) fn generate_path_keypairs(
         &mut self,
         ciphersuite: &Ciphersuite,
-        direct_path: &[NodeIndex],
+        path: &[NodeIndex],
     ) -> Result<Vec<HPKEPublicKey>, TreeError> {
         // TODO: Get rid of the potential for error here.
-        assert_eq!(self.path_secrets.len(), direct_path.len());
-        if self.path_secrets.len() != direct_path.len() {
+        assert_eq!(self.path_secrets.len(), path.len());
+        if self.path_secrets.len() != path.len() {
             return Err(TreeError::InvalidArguments);
         }
 
@@ -191,8 +191,8 @@ impl OwnLeaf {
         }
 
         // Store private keys.
-        println!("Path indices: {:?}", direct_path);
-        self.path_keys.add(private_keys, &direct_path)?;
+        println!("Path indices: {:?}", path);
+        self.path_keys.add(private_keys, &path)?;
         // Return public keys.
         Ok(public_keys)
     }

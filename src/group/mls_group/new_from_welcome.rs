@@ -96,11 +96,11 @@ impl MlsGroup {
         // Compute path secrets
         // TODO: check if path_secret has to be optional
         if let Some(path_secret) = group_secrets.path_secret {
-            let common_ancestor = treemath::common_ancestor(
+            let common_ancestor_index = treemath::common_ancestor_index(
                 tree.get_own_node_index(),
                 NodeIndex::from(group_info.signer_index),
             );
-            let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
+            let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count());
             let (path_secrets, _commit_secret) = PathKeypairs::continue_path_secrets(
                 &ciphersuite,
                 &path_secret.path_secret,

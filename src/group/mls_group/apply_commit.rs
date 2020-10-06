@@ -95,7 +95,7 @@ impl MlsGroup {
                     .clone();
                 provisional_tree.replace_own_leaf(own_kpb, &self.group_context.serialize())
             } else {
-                provisional_tree.update_direct_path(sender, &path, &self.group_context.serialize())
+                provisional_tree.update_path(sender, &path, &self.group_context.serialize())
             }
         } else {
             if membership_changes.path_required() {
