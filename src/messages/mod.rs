@@ -122,7 +122,7 @@ impl Codec for ConfirmationTag {
     // }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct CommitSecret(pub Vec<u8>);
 
 impl CommitSecret {

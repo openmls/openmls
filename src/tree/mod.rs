@@ -27,17 +27,29 @@ use crate::schedule::*;
 // Tree modules
 pub(crate) mod astree;
 pub(crate) mod codec;
+pub(crate) mod hash_input;
 pub(crate) mod index;
 pub(crate) mod node;
+pub(crate) mod path_keys;
+pub(crate) mod private_tree;
 pub(crate) mod sender_ratchet;
 pub(crate) mod treemath;
 
+use hash_input::*;
 use index::*;
 use node::*;
 
 // Internal tree tests
+#[cfg(test)]
 mod test_astree;
+#[cfg(test)]
+mod test_path_keys;
+#[cfg(test)]
+mod test_private_tree;
+#[cfg(test)]
 mod test_treemath;
+#[cfg(test)]
+mod test_util;
 
 // TODO improve the storage memory footprint
 #[derive(Default, Debug, Clone)]
@@ -323,7 +335,7 @@ impl RatchetTree {
 
         // Check whether the secret was encrypted to the leaf node
         let private_key = if resolution[position_in_resolution] == own_index {
-            self.get_own_private_key()
+            self.get_own_private_key().clone()
         } else {
             self.get_path_keypairs()
                 .get(common_ancestor_copath_index)
@@ -347,7 +359,7 @@ impl RatchetTree {
         for (i, keypair) in keypairs.iter().enumerate().take(common_path.len()) {
             // TODO return an error if public keys don't match
             assert_eq!(
-                &direct_path.nodes[sender_path_offset + i].public_key,
+                direct_path.nodes[sender_path_offset + i].public_key,
                 keypair.get_public_key()
             );
         }
@@ -752,51 +764,6 @@ impl RatchetTree {
     }
 }
 
-pub struct ParentNodeHashInput<'a> {
-    node_index: u32,
-    parent_node: &'a Option<ParentNode>,
-    left_hash: &'a [u8],
-    right_hash: &'a [u8],
-}
-
-impl<'a> ParentNodeHashInput<'a> {
-    pub fn new(
-        node_index: u32,
-        parent_node: &'a Option<ParentNode>,
-        left_hash: &'a [u8],
-        right_hash: &'a [u8],
-    ) -> Self {
-        Self {
-            node_index,
-            parent_node,
-            left_hash,
-            right_hash,
-        }
-    }
-    pub fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
-        ciphersuite.hash(&payload)
-    }
-}
-
-pub struct LeafNodeHashInput<'a> {
-    node_index: &'a NodeIndex,
-    key_package: &'a Option<KeyPackage>,
-}
-
-impl<'a> LeafNodeHashInput<'a> {
-    pub fn new(node_index: &'a NodeIndex, key_package: &'a Option<KeyPackage>) -> Self {
-        Self {
-            node_index,
-            key_package,
-        }
-    }
-    pub fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
-        ciphersuite.hash(&payload)
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct DirectPathNode {
     pub public_key: HPKEPublicKey,
@@ -807,4 +774,11 @@ pub struct DirectPathNode {
 pub struct DirectPath {
     pub leaf_key_package: KeyPackage,
     pub nodes: Vec<DirectPathNode>,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum TreeError {
+    InvalidArguments,
+    NoneError,
+    DuplicateIndex,
 }

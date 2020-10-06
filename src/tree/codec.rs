@@ -60,30 +60,6 @@ impl Codec for RatchetTree {
     // }
 }
 
-impl<'a> Codec for ParentNodeHashInput<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.encode(buffer)?;
-        self.parent_node.encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.left_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.right_hash)?;
-        Ok(())
-    }
-    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
-        unimplemented!()
-    }
-}
-
-impl<'a> Codec for LeafNodeHashInput<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.as_u32().encode(buffer)?;
-        self.key_package.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
-        unimplemented!()
-    }
-}
-
 impl Codec for DirectPathNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
