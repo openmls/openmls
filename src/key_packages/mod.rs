@@ -132,6 +132,11 @@ impl KeyPackage {
         &self.hpke_init_key
     }
 
+    /// Set a new HPKE init key.
+    pub(crate) fn set_hpke_init_key(&mut self, hpke_init_key: HPKEPublicKey) {
+        self.hpke_init_key = hpke_init_key;
+    }
+
     /// Get a reference to the `Ciphersuite`.
     pub(crate) fn get_cipher_suite(&self) -> &Ciphersuite {
         &self.cipher_suite

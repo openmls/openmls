@@ -168,19 +168,10 @@ impl Api for MlsGroup {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: KeyPackageBundle,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        self.create_commit_internal(
-            aad,
-            signature_key,
-            key_package_bundle,
-            proposals,
-            own_key_packages,
-            force_self_update,
-        )
+        self.create_commit_internal(aad, signature_key, proposals, force_self_update)
     }
 
     // Apply a Commit message
@@ -292,7 +283,7 @@ impl MlsGroup {
         self.tree.borrow()
     }
     fn get_sender_index(&self) -> LeafIndex {
-        self.tree.borrow().get_own_index().into()
+        self.tree.borrow().get_own_node_index().into()
     }
     pub(crate) fn get_ciphersuite(&self) -> &Ciphersuite {
         &self.ciphersuite

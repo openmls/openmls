@@ -20,7 +20,6 @@ use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
-use crate::key_packages::*;
 use crate::messages::*;
 use crate::tree::treemath;
 use crate::utils::*;
@@ -31,63 +30,49 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: KeyPackageBundle,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult {
         let ciphersuite = self.get_ciphersuite();
-        let (private_key, key_package) = (
-            key_package_bundle.private_key,
-            key_package_bundle.key_package,
-        );
-        // Create KeyPackageBundles
-        let mut pending_kpbs = vec![];
-        for kpb in own_key_packages {
-            let (pk, kp) = (kpb.private_key, kpb.key_package);
-            pending_kpbs.push(KeyPackageBundle::from_values(kp, pk));
-        }
+        let mut contains_own_updates = false;
         // Organize proposals
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
             let queued_proposal = QueuedProposal::new(mls_plaintext, None);
-            proposal_queue.add(queued_proposal, &ciphersuite);
+            if queued_proposal.sender.as_leaf_index() == self.get_sender_index()
+                && queued_proposal.proposal.is_update()
+            {
+                contains_own_updates = true;
+            } else {
+                proposal_queue.add(queued_proposal, &ciphersuite);
+            }
         }
-        
+
         // TODO Dedup proposals
         let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
-        
+
         let sender_index = self.get_sender_index();
         let mut provisional_tree = self.tree.borrow_mut();
 
         // Apply proposals to tree
         let (membership_changes, invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, pending_kpbs);
+            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &[]);
         if group_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
         // Determine if Commit needs path field
-        let path_required = membership_changes.path_required() || force_self_update;
+        let path_required =
+            membership_changes.path_required() || contains_own_updates || force_self_update;
 
-        let (commit_secret, path, path_secrets_option, key_package_bundle_option) = if path_required
-        {
-            // If path is eeded, compute path values
-            let (commit_secret, kpb, path_option, path_secrets) = provisional_tree.update_own_leaf(
-                Some(signature_key),
-                KeyPackageBundle::from_values(key_package, private_key),
-                &self.group_context.serialize(),
-                true,
-            );
-            (commit_secret, path_option, path_secrets, Some(kpb))
+        let (commit_secret, path, path_secrets_option) = if path_required {
+            // If path is needed, compute path values
+            let (commit_secret, path_option, path_secrets) =
+                provisional_tree.refresh_own_leaf(signature_key, &self.group_context.serialize());
+            (commit_secret, path_option, path_secrets)
         } else {
             // If path is not needed, return empty commit secret
             let commit_secret = CommitSecret(zero(self.get_ciphersuite().hash_length()));
-            (commit_secret, None, None, None)
-        };
-        let return_kpb_option = if let Some(kpb) = key_package_bundle_option {
-            Some((kpb.get_private_key().clone(), kpb.get_key_package().clone()))
-        } else {
-            None
+            (commit_secret, None, None)
         };
         // Create commit message
         let commit = Commit {
@@ -101,11 +86,7 @@ impl MlsGroup {
         provisional_epoch.increment();
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             self.get_ciphersuite(),
-            &MLSPlaintextCommitContent::new(
-                &self.group_context,
-                sender_index,
-                commit.clone(),
-            ),
+            &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
         let provisional_group_context = GroupContext {
@@ -179,9 +160,9 @@ impl MlsGroup {
                 let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
                 let path_secret = if path_required {
                     let common_ancestor =
-                        treemath::common_ancestor(index, provisional_tree.get_own_index());
+                        treemath::common_ancestor(index, provisional_tree.get_own_node_index());
                     let dirpath = treemath::dirpath_root(
-                        provisional_tree.get_own_index(),
+                        provisional_tree.get_own_node_index(),
                         provisional_tree.leaf_count(),
                     );
                     let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();
@@ -220,9 +201,9 @@ impl MlsGroup {
                 secrets,
                 encrypted_group_info,
             };
-            Ok((mls_plaintext, Some(welcome), return_kpb_option))
+            Ok((mls_plaintext, Some(welcome)))
         } else {
-            Ok((mls_plaintext, None, return_kpb_option))
+            Ok((mls_plaintext, None))
         }
     }
 }

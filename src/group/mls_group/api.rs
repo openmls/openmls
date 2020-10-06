@@ -62,9 +62,7 @@ pub trait Api: Sized {
         &self,
         aad: &[u8],
         signature_key: &SignaturePrivateKey,
-        key_package_bundle: KeyPackageBundle,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: Vec<KeyPackageBundle>,
         force_self_update: bool,
     ) -> CreateCommitResult;
 
@@ -93,11 +91,4 @@ pub trait Api: Sized {
     fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
 }
 
-pub type CreateCommitResult = Result<
-    (
-        MLSPlaintext,
-        Option<Welcome>,
-        Option<(HPKEPrivateKey, KeyPackage)>,
-    ),
-    CreateCommitError,
->;
+pub type CreateCommitResult = Result<(MLSPlaintext, Option<Welcome>), CreateCommitError>;
