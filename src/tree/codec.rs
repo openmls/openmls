@@ -29,17 +29,6 @@ impl Codec for Node {
     // }
 }
 
-impl Codec for PathKeypairs {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.keypairs)?;
-        Ok(())
-    }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let keypairs = decode_vec(VecSize::VecU32, cursor)?;
-    //     Ok(PathKeypairs { keypairs })
-    // }
-}
-
 impl Codec for RatchetTree {
     // fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
     //     self.ciphersuite.encode(buffer)?;
