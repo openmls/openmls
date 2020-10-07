@@ -62,15 +62,11 @@ impl MlsGroup {
             return Err(WelcomeError::MissingRatchetTree);
         };
 
-        let mut tree = if let Some(tree) = RatchetTree::new_from_nodes(
+        let mut tree = RatchetTree::new_from_nodes(
             ciphersuite,
             KeyPackageBundle::from_values(key_package, private_key),
             &nodes,
-        ) {
-            tree
-        } else {
-            return Err(WelcomeError::JoinerNotInTree);
-        };
+        )?;
 
         // Verify tree hash
         if tree.compute_tree_hash() != &group_info.tree_hash[..] {
@@ -89,12 +85,13 @@ impl MlsGroup {
         }
 
         // Verify ratchet tree
+        // TODO: #35 Why does this get the nodes? Shouldn't `new_from_nodes` consume the nodes?
         if !RatchetTree::verify_integrity(&ciphersuite, &nodes) {
             return Err(WelcomeError::InvalidRatchetTree);
         }
 
         // Compute path secrets
-        // TODO: check if path_secret has to be optional
+        // TODO: #36 check if path_secret has to be optional
         if let Some(path_secret) = group_secrets.path_secret {
             let common_ancestor_index = treemath::common_ancestor_index(
                 tree.get_own_node_index(),

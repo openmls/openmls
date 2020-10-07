@@ -18,14 +18,13 @@ use crate::extensions::*;
 use crate::tree::{index::*, node::*, *};
 use evercrypt::prelude::*;
 
-#[cfg(test)]
-use rand::{rngs::OsRng, RngCore};
+use rand::rngs::OsRng;
+use rand::RngCore;
 
 pub(crate) fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
 }
 
-#[cfg(test)]
 pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }

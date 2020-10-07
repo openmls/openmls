@@ -41,13 +41,13 @@ impl Codec for PathKeypairs {
 }
 
 impl Codec for RatchetTree {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
-        self.path_keypairs.encode(buffer)?;
-        self.own_node_index.as_u32().encode(buffer)?;
-        Ok(())
-    }
+    // fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+    //     self.ciphersuite.encode(buffer)?;
+    //     encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
+    //     self.path_keypairs.encode(buffer)?;
+    //     self.own_node_index.as_u32().encode(buffer)?;
+    //     Ok(())
+    // }
     // fn decode(cursor: &mut Cursor) -> Result<RatchetTree, CodecError> {
     //     let ciphersuite = Ciphersuite::decode(cursor)?;
     //     let nodes = decode_vec(VecSize::VecU32, cursor)?;

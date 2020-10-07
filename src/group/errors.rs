@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::tree::TreeError;
+
 #[derive(Debug)]
 pub enum WelcomeError {
     CiphersuiteMismatch = 100,
@@ -43,4 +45,15 @@ pub enum ApplyCommitError {
 #[derive(Debug)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
+}
+
+impl From<TreeError> for WelcomeError {
+    fn from(e: TreeError) -> WelcomeError {
+        match e {
+            TreeError::DuplicateIndex => WelcomeError::InvalidRatchetTree,
+            TreeError::InvalidArguments => WelcomeError::InvalidRatchetTree,
+            TreeError::InvalidUpdatePath => WelcomeError::InvalidRatchetTree,
+            TreeError::NoneError => WelcomeError::InvalidRatchetTree,
+        }
+    }
 }
