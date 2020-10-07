@@ -149,6 +149,11 @@ impl RatchetTree {
         Ok(out)
     }
 
+    /// Return a mutable reference to the `OwnLeaf`.
+    pub(crate) fn get_private_tree_mut(&mut self) -> &mut OwnLeaf {
+        &mut self.private_tree
+    }
+
     fn tree_size(&self) -> NodeIndex {
         NodeIndex::from(self.nodes.len())
     }
@@ -344,7 +349,7 @@ impl RatchetTree {
             .enumerate()
             .take(common_path.len())
         {
-            assert_eq!(update_path.nodes[sender_path_offset + i].public_key, key);
+            assert_eq!(&update_path.nodes[sender_path_offset + i].public_key, key);
             if &update_path.nodes[sender_path_offset + i].public_key != key {
                 return Err(TreeError::InvalidUpdatePath);
             }
@@ -425,9 +430,10 @@ impl RatchetTree {
         group_context: &[u8],
         with_update_path: bool,
     ) -> Result<Option<UpdatePath>, TreeError> {
+        // TODO: cloning key packages here ...
         let (private_key, key_package) = (
-            key_package_bundle.private_key,
-            key_package_bundle.key_package,
+            key_package_bundle.get_private_key(),
+            key_package_bundle.get_key_package(),
         );
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
@@ -451,12 +457,9 @@ impl RatchetTree {
             return Ok(None);
         }
 
-        let update_path_nodes = self.encrypt_to_copath(
-            new_public_keys,
-            group_context,
-            key_package_bundle.get_key_package(),
-        )?;
-        let update_path = UpdatePath::new(key_package_bundle.key_package, update_path_nodes);
+        let update_path_nodes =
+            self.encrypt_to_copath(new_public_keys, group_context, &key_package)?;
+        let update_path = UpdatePath::new(key_package.clone(), update_path_nodes);
         Ok(Some(update_path))
     }
 
@@ -539,7 +542,7 @@ impl RatchetTree {
         for (key, path_index) in keys.iter().zip(direct_path) {
             // TODO: this is pretty ugly
             let node = match self.nodes.get(path_index.as_usize()) {
-                Some(node) => node.node.unwrap(),
+                Some(node) => node.node.clone().unwrap(),
                 None => ParentNode::new(key.clone(), &[], &[]),
             };
             self.nodes[path_index.as_usize()].node = Some(node);
@@ -548,7 +551,7 @@ impl RatchetTree {
         Ok(())
     }
 
-    fn merge_public_keys(
+    pub(crate) fn merge_public_keys(
         &mut self,
         public_keys: &[HPKEPublicKey],
         path: &[NodeIndex],

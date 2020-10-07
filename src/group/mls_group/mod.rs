@@ -346,5 +346,3 @@ fn compute_welcome_key_nonce(
     );
     (welcome_key, welcome_nonce)
 }
-
-

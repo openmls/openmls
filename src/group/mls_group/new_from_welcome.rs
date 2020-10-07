@@ -98,17 +98,20 @@ impl MlsGroup {
                 NodeIndex::from(group_info.signer_index),
             );
             let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count());
-            let (path_secrets, _commit_secret) = PathKeypairs::continue_path_secrets(
+
+            // Update the private tree.
+            let own_leaf = tree.get_private_tree_mut();
+            own_leaf.generate_path_secrets(
                 &ciphersuite,
-                &path_secret.path_secret,
+                Some(&path_secret.path_secret),
                 common_path.len(),
             );
-            let keypairs = PathKeypairs::generate_path_keypairs(&ciphersuite, &path_secrets);
-            tree.merge_keypairs(&keypairs, &common_path);
+            let new_public_keys = own_leaf
+                .generate_path_keypairs(&ciphersuite, &common_path)
+                .unwrap();
 
-            let mut path_keypairs = PathKeypairs::new();
-            path_keypairs.add(&keypairs, &common_path);
-            tree.set_path_keypairs(path_keypairs);
+            // Merge new public keys into the tree.
+            tree.merge_public_keys(&new_public_keys, &common_path)?;
         }
 
         // Compute state
