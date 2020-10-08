@@ -100,13 +100,13 @@ impl MlsGroup {
             let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count());
 
             // Update the private tree.
-            let own_leaf = tree.get_private_tree_mut();
-            own_leaf.generate_path_secrets(
+            let private_tree = tree.get_private_tree_mut();
+            private_tree.generate_path_secrets(
                 &ciphersuite,
                 Some(&path_secret.path_secret),
                 common_path.len(),
             );
-            let new_public_keys = own_leaf
+            let new_public_keys = private_tree
                 .generate_path_keypairs(&ciphersuite, &common_path)
                 .unwrap();
 

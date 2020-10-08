@@ -94,7 +94,7 @@ impl MlsGroup {
                     .unwrap()
                     .clone();
                 provisional_tree
-                    .replace_own_leaf(own_kpb, &self.group_context.serialize())
+                    .replace_private_tree(own_kpb, &self.group_context.serialize())
                     .unwrap()
             } else {
                 provisional_tree

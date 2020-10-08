@@ -367,12 +367,12 @@ impl RatchetTree {
     }
 
     /// Update the private tree with the new `KeyPackageBundle`.
-    pub(crate) fn replace_own_leaf(
+    pub(crate) fn replace_private_tree(
         &mut self,
         key_package_bundle: KeyPackageBundle,
         group_context: &[u8],
     ) -> Result<CommitSecret, TreeError> {
-        let _path_option = self.replace_private_tree(
+        let _path_option = self.replace_private_tree_(
             &key_package_bundle,
             group_context,
             false, /* without update path */
@@ -381,7 +381,7 @@ impl RatchetTree {
     }
 
     /// Update the private tree.
-    pub(crate) fn refresh_own_leaf(
+    pub(crate) fn refresh_private_tree(
         &mut self,
         signature_key: &SignaturePrivateKey,
         group_context: &[u8],
@@ -397,7 +397,7 @@ impl RatchetTree {
             key_package.set_hpke_init_key(keypair.get_public_key().clone());
             KeyPackageBundle::from_values(key_package, keypair.get_private_key().clone())
         };
-        let path_option = self.replace_private_tree(
+        let path_option = self.replace_private_tree_(
             &key_package_bundle,
             group_context,
             true, /* with update path */
@@ -424,7 +424,7 @@ impl RatchetTree {
     }
 
     /// Replace the private tree with a new one based on the `key_package_bundle`.
-    fn replace_private_tree(
+    fn replace_private_tree_(
         &mut self,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],

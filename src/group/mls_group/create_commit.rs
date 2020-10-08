@@ -67,7 +67,7 @@ impl MlsGroup {
         let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path_option, path_secrets) = provisional_tree
-                .refresh_own_leaf(signature_key, &self.group_context.serialize())
+                .refresh_private_tree(signature_key, &self.group_context.serialize())
                 .unwrap();
             (commit_secret, path_option, path_secrets)
         } else {
