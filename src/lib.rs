@@ -16,7 +16,9 @@
 
 pub mod ciphersuite;
 pub mod codec;
+pub mod config;
 pub mod creds;
+pub mod errors;
 pub mod extensions;
 pub mod framing;
 pub mod group;

@@ -16,51 +16,16 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::tree::node::*;
+use crate::config::ProtocolVersion;
+use crate::errors::ConfigError;
 use crate::utils::*;
-use std::cmp::Ordering;
 use std::mem;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::*;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
-pub enum ProtocolVersion {
-    Mls10 = 0,
-    Default = 255,
-}
+mod ratchet_tree_extension;
 
-impl From<u8> for ProtocolVersion {
-    fn from(a: u8) -> ProtocolVersion {
-        unsafe { mem::transmute(a) }
-    }
-}
-
-impl PartialOrd for ProtocolVersion {
-    fn partial_cmp(&self, other: &ProtocolVersion) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for ProtocolVersion {
-    fn cmp(&self, other: &ProtocolVersion) -> Ordering {
-        (*self as u8).cmp(&(*other as u8))
-    }
-}
-
-impl Codec for ProtocolVersion {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
-    }
-
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let version = u8::decode(cursor)?;
-    //     Ok(version.into())
-    // }
-}
-
-pub const CURRENT_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::Mls10;
+pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u16)]
@@ -120,17 +85,24 @@ impl CapabilitiesExtension {
             extensions,
         }
     }
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
+
+    /// Build a new CapabilitiesExtension from a byte slice.
+    pub fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError> {
         let cursor = &mut Cursor::new(bytes);
-        let versions = decode_vec(VecSize::VecU8, cursor).unwrap();
+        let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor).unwrap();
+        let mut versions = Vec::new();
+        for &version_number in version_numbers.iter() {
+            versions.push(ProtocolVersion::from(version_number)?)
+        }
         let ciphersuites = decode_vec(VecSize::VecU8, cursor).unwrap();
         let extensions = decode_vec(VecSize::VecU8, cursor).unwrap();
-        CapabilitiesExtension {
+        Ok(CapabilitiesExtension {
             versions,
             ciphersuites,
             extensions,
-        }
+        })
     }
+
     pub fn to_extension(&self) -> Extension {
         let mut extension_data: Vec<u8> = vec![];
         encode_vec(VecSize::VecU8, &mut extension_data, &self.versions).unwrap();
@@ -245,31 +217,6 @@ impl ParentHashExtension {
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct RatchetTreeExtension {
-    pub tree: Vec<Option<Node>>,
-}
-
-impl RatchetTreeExtension {
-    pub fn new(tree: Vec<Option<Node>>) -> Self {
-        RatchetTreeExtension { tree }
-    }
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
-        let cursor = &mut Cursor::new(bytes);
-        let tree = decode_vec(VecSize::VecU32, cursor).unwrap();
-        Self { tree }
-    }
-    pub fn to_extension(&self) -> Extension {
-        let mut extension_data: Vec<u8> = vec![];
-        encode_vec(VecSize::VecU32, &mut extension_data, &self.tree).unwrap();
-        let extension_type = ExtensionType::RatchetTree;
-        Extension {
-            extension_type,
-            extension_data,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Extension {
     pub extension_type: ExtensionType,
@@ -335,13 +282,13 @@ impl Codec for KeyPackageId {
 #[test]
 fn test_protocol_version() {
     let mls10_version = ProtocolVersion::Mls10;
-    let default_version = ProtocolVersion::Default;
+    let default_version = ProtocolVersion::default();
     let mls10_e = mls10_version.encode_detached().unwrap();
     assert_eq!(mls10_e[0], mls10_version as u8);
     let default_e = default_version.encode_detached().unwrap();
     assert_eq!(default_e[0], default_version as u8);
-    assert_eq!(mls10_e[0], 0);
-    assert_eq!(default_e[0], 255);
+    assert_eq!(mls10_e[0], 1);
+    assert_eq!(default_e[0], 1);
 }
 
 #[test]
@@ -349,7 +296,7 @@ fn test_extension_codec() {
     use crate::key_packages::*;
 
     let capabilities_extension = CapabilitiesExtension::new(
-        SUPPORTED_PROTOCOL_VERSIONS.to_vec(),
+        ProtocolVersion::supported(),
         CIPHERSUITES.to_vec(),
         SUPPORTED_EXTENSIONS.to_vec(),
     );

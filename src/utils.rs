@@ -65,7 +65,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                         &[]
                     };
                     parent_hash_bytes = if let Some(kp) = &node.key_package {
-                        if let Some(phe) = kp.get_extension(ExtensionType::ParentHash) {
+                        if let Some(phe) = kp.get_extension(ExtensionType::ParentHash).unwrap() {
                             if let ExtensionPayload::ParentHash(parent_hash_inner) = phe {
                                 parent_hash_inner.parent_hash
                             } else {

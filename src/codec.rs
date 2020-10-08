@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::errors::ConfigError;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
@@ -22,6 +23,14 @@ use std::convert::*;
 pub enum CodecError {
     EncodingError,
     DecodingError,
+}
+
+impl From<ConfigError> for CodecError {
+    fn from(e: ConfigError) -> CodecError {
+        match e {
+            ConfigError::UnsupportedMlsVersion => CodecError::DecodingError,
+        }
+    }
 }
 
 pub enum VecSize {
