@@ -62,15 +62,11 @@ impl MlsGroup {
             return Err(WelcomeError::MissingRatchetTree);
         };
 
-        let mut tree = if let Some(tree) = RatchetTree::new_from_nodes(
+        let mut tree = RatchetTree::new_from_nodes(
             ciphersuite,
             KeyPackageBundle::from_values(key_package, private_key),
             &nodes,
-        ) {
-            tree
-        } else {
-            return Err(WelcomeError::JoinerNotInTree);
-        };
+        )?;
 
         // Verify tree hash
         if tree.compute_tree_hash() != &group_info.tree_hash[..] {
@@ -89,29 +85,33 @@ impl MlsGroup {
         }
 
         // Verify ratchet tree
+        // TODO: #35 Why does this get the nodes? Shouldn't `new_from_nodes` consume the nodes?
         if !RatchetTree::verify_integrity(&ciphersuite, &nodes) {
             return Err(WelcomeError::InvalidRatchetTree);
         }
 
         // Compute path secrets
-        // TODO: check if path_secret has to be optional
+        // TODO: #36 check if path_secret has to be optional
         if let Some(path_secret) = group_secrets.path_secret {
-            let common_ancestor = treemath::common_ancestor(
+            let common_ancestor_index = treemath::common_ancestor_index(
                 tree.get_own_node_index(),
                 NodeIndex::from(group_info.signer_index),
             );
-            let common_path = treemath::dirpath_root(common_ancestor, tree.leaf_count());
-            let (path_secrets, _commit_secret) = PathKeypairs::continue_path_secrets(
+            let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count());
+
+            // Update the private tree.
+            let private_tree = tree.get_private_tree_mut();
+            private_tree.generate_path_secrets(
                 &ciphersuite,
-                &path_secret.path_secret,
+                Some(&path_secret.path_secret),
                 common_path.len(),
             );
-            let keypairs = PathKeypairs::generate_path_keypairs(&ciphersuite, &path_secrets);
-            tree.merge_keypairs(&keypairs, &common_path);
+            let new_public_keys = private_tree
+                .generate_path_keypairs(&ciphersuite, &common_path)
+                .unwrap();
 
-            let mut path_keypairs = PathKeypairs::new();
-            path_keypairs.add(&keypairs, &common_path);
-            tree.set_path_keypairs(path_keypairs);
+            // Merge new public keys into the tree.
+            tree.merge_public_keys(&new_public_keys, &common_path)?;
         }
 
         // Compute state

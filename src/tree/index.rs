@@ -1,6 +1,6 @@
 use crate::codec::*;
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash, Default)]
 pub struct NodeIndex(u32);
 
 impl NodeIndex {

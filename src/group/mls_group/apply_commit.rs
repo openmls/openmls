@@ -93,9 +93,13 @@ impl MlsGroup {
                     .find(|&kpb| kpb.get_key_package() == kp)
                     .unwrap()
                     .clone();
-                provisional_tree.replace_own_leaf(own_kpb, &self.group_context.serialize())
+                provisional_tree
+                    .replace_private_tree(own_kpb, &self.group_context.serialize())
+                    .unwrap()
             } else {
-                provisional_tree.update_direct_path(sender, &path, &self.group_context.serialize())
+                provisional_tree
+                    .update_path(sender, &path, &self.group_context.serialize())
+                    .unwrap()
             }
         } else {
             if membership_changes.path_required() {

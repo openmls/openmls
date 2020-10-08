@@ -66,8 +66,9 @@ impl MlsGroup {
 
         let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
-            let (commit_secret, path_option, path_secrets) =
-                provisional_tree.refresh_own_leaf(signature_key, &self.group_context.serialize());
+            let (commit_secret, path_option, path_secrets) = provisional_tree
+                .refresh_private_tree(signature_key, &self.group_context.serialize())
+                .unwrap();
             (commit_secret, path_option, path_secrets)
         } else {
             // If path is not needed, return empty commit secret
@@ -159,13 +160,18 @@ impl MlsGroup {
                 let key_package = add_proposal.key_package;
                 let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
                 let path_secret = if path_required {
-                    let common_ancestor =
-                        treemath::common_ancestor(index, provisional_tree.get_own_node_index());
-                    let dirpath = treemath::dirpath_root(
+                    let common_ancestor_index = treemath::common_ancestor_index(
+                        index,
+                        provisional_tree.get_own_node_index(),
+                    );
+                    let dirpath = treemath::direct_path_root(
                         provisional_tree.get_own_node_index(),
                         provisional_tree.leaf_count(),
                     );
-                    let position = dirpath.iter().position(|&x| x == common_ancestor).unwrap();
+                    let position = dirpath
+                        .iter()
+                        .position(|&x| x == common_ancestor_index)
+                        .unwrap();
                     let path_secrets = path_secrets_option.clone().unwrap();
                     let path_secret = path_secrets[position].clone();
                     Some(PathSecret { path_secret })

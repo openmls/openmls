@@ -56,13 +56,21 @@ pub enum HKDFError {
     InvalidLength,
 }
 
-// TODO: remove these and use the proper types from HPKE.
-
+/// 7.7. Update Paths
+///
+/// ```text
+/// struct {
+///     opaque kem_output<0..2^16-1>;
+///     opaque ciphertext<0..2^16-1>;
+/// } HPKECiphertext;
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct HpkeCiphertext {
     kem_output: Vec<u8>,
     ciphertext: Vec<u8>,
 }
+
+// TODO: remove these and use the proper types from HPKE.
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct HPKEPublicKey {
@@ -364,6 +372,26 @@ impl HPKEPrivateKey {
 }
 
 impl HPKEKeyPair {
+    /// Derive a new key pair for the HPKE KEM with the given input key material.
+    pub(crate) fn derive(ikm: &[u8], ciphersuite: &Ciphersuite) -> Self {
+        let key_pair = Hpke::new(
+            Mode::Base,
+            ciphersuite.hpke_kem,
+            ciphersuite.hpke_kdf,
+            ciphersuite.hpke_aead,
+        )
+        .derive_key_pair(ikm);
+        Self {
+            private_key: HPKEPrivateKey {
+                value: key_pair.get_private_key_ref().as_slice().to_vec(),
+            },
+            public_key: HPKEPublicKey {
+                value: key_pair.get_public_key_ref().as_slice().to_vec(),
+            },
+        }
+    }
+
+    // FIXME: remove
     /// Build a new HPKE key pair from the given `bytes`.
     pub(crate) fn from_slice(bytes: &[u8], ciphersuite: &Ciphersuite) -> Self {
         let private_key = HPKEPrivateKey::from_slice(bytes);
@@ -374,14 +402,14 @@ impl HPKEKeyPair {
         }
     }
 
-    /// Get a reference to the private key.
-    pub(crate) fn get_private_key(&self) -> &HPKEPrivateKey {
-        &self.private_key
+    /// Get the private key.
+    pub(crate) fn get_private_key(&self) -> HPKEPrivateKey {
+        self.private_key.clone()
     }
 
-    /// Get a reference to the public key.
-    pub(crate) fn get_public_key(&self) -> &HPKEPublicKey {
-        &self.public_key
+    /// Get the public key.
+    pub(crate) fn get_public_key(&self) -> HPKEPublicKey {
+        self.public_key.clone()
     }
 
     fn into(&self) -> RealHPKEKeyPair {

@@ -24,6 +24,8 @@ impl From<u8> for NodeType {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Node {
     pub node_type: NodeType,
+    // The node only holds public values.
+    // The private HPKE keys are stored in the `PrivateTree`.
     pub key_package: Option<KeyPackage>,
     pub node: Option<ParentNode>,
 }

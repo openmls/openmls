@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use std::cmp::Ordering;
 use crate::tree::index::*;
+use std::cmp::Ordering;
 
 pub(crate) fn log2(x: usize) -> usize {
     if x == 0 {
@@ -133,7 +133,7 @@ pub(crate) fn dirpath_long(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> 
 
 // Ordered from leaf to root
 // Includes root but not leaf
-pub(crate) fn dirpath_root(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
+pub(crate) fn direct_path_root(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let mut d = vec![];
     let mut p = parent(index, size);
     let r = root(size);
@@ -152,7 +152,7 @@ pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     d.iter().map(|&index| sibling(index, size)).collect()
 }
 
-pub(crate) fn common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
+pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     let (mut xn, mut yn) = (x.as_usize(), y.as_usize());
     let mut k = 0;
     while xn != yn {

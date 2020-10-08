@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
+use evercrypt::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;
-use evercrypt::prelude::*;
 
 pub(crate) fn random_usize() -> usize {
     OsRng.next_u64() as usize
