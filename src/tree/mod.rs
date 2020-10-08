@@ -293,7 +293,7 @@ impl RatchetTree {
             Some(node) => node,
             None => return Err(TreeError::InvalidArguments),
         };
-        assert_eq!(
+        debug_assert_eq!(
             resolution.len(),
             common_ancestor_node.encrypted_path_secret.len()
         );
@@ -320,7 +320,7 @@ impl RatchetTree {
         // Compute the common path between the common ancestor and the root
         let common_path = treemath::dirpath_long(common_ancestor_index, self.leaf_count());
 
-        assert!(sender_direct_path.len() > common_path.len());
+        debug_assert!(sender_direct_path.len() > common_path.len());
         if sender_direct_path.len() <= common_path.len() {
             return Err(TreeError::InvalidArguments);
         }
@@ -349,7 +349,7 @@ impl RatchetTree {
             .enumerate()
             .take(common_path.len())
         {
-            assert_eq!(&update_path.nodes[sender_path_offset + i].public_key, key);
+            debug_assert_eq!(&update_path.nodes[sender_path_offset + i].public_key, key);
             if &update_path.nodes[sender_path_offset + i].public_key != key {
                 return Err(TreeError::InvalidUpdatePath);
             }
@@ -473,11 +473,11 @@ impl RatchetTree {
         let copath = treemath::copath(self.private_tree.get_node_index(), self.leaf_count());
         let path_secrets = self.private_tree.get_path_secrets();
 
-        assert_eq!(path_secrets.len(), copath.len());
+        debug_assert_eq!(path_secrets.len(), copath.len());
         if path_secrets.len() != copath.len() {
             return Err(TreeError::InvalidArguments);
         }
-        assert_eq!(public_keys.len(), copath.len());
+        debug_assert_eq!(public_keys.len(), copath.len());
         if public_keys.len() != copath.len() {
             return Err(TreeError::InvalidArguments);
         }
@@ -514,7 +514,7 @@ impl RatchetTree {
         direct_path: &UpdatePath,
         path: Vec<NodeIndex>,
     ) -> Result<(), TreeError> {
-        assert_eq!(direct_path.nodes.len(), path.len());
+        debug_assert_eq!(direct_path.nodes.len(), path.len());
         if direct_path.nodes.len() != path.len() {
             return Err(TreeError::InvalidArguments);
         }
@@ -534,7 +534,7 @@ impl RatchetTree {
         direct_path: &[NodeIndex],
         keys: Vec<HPKEPublicKey>,
     ) -> Result<(), TreeError> {
-        assert_eq!(direct_path.len(), keys.len());
+        debug_assert_eq!(direct_path.len(), keys.len());
         if direct_path.len() != keys.len() {
             return Err(TreeError::InvalidArguments);
         }
@@ -556,7 +556,7 @@ impl RatchetTree {
         public_keys: &[HPKEPublicKey],
         path: &[NodeIndex],
     ) -> Result<(), TreeError> {
-        assert_eq!(public_keys.len(), path.len());
+        debug_assert_eq!(public_keys.len(), path.len());
         if public_keys.len() != path.len() {
             return Err(TreeError::InvalidArguments);
         }
@@ -567,14 +567,6 @@ impl RatchetTree {
         }
         Ok(())
     }
-
-    // pub fn merge_keypairs(&mut self, keypairs: &[HPKEKeyPair], path: &[NodeIndex]) {
-    //     assert_eq!(keypairs.len(), path.len()); // TODO return error
-    //     for i in 0..path.len() {
-    //         let node = ParentNode::new(keypairs[i].get_public_key().clone(), &[], &[]);
-    //         self.nodes[path[i].as_usize()].node = Some(node);
-    //     }
-    // }
 
     /// Add nodes for the provided key packages.
     pub(crate) fn add_nodes(&mut self, new_kp: &[KeyPackage]) -> Vec<(NodeIndex, Credential)> {
