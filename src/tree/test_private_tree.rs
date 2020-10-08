@@ -20,7 +20,7 @@ fn setup(len: usize) -> (Ciphersuite, HPKEPrivateKey, NodeIndex, Vec<NodeIndex>)
 #[cfg(test)]
 // Common tests after setup.
 fn test_private_tree(
-    private_tree: &OwnLeaf,
+    private_tree: &PrivateTree,
     direct_path: &[NodeIndex],
     public_keys: &[HPKEPublicKey],
     ciphersuite: &Ciphersuite,
@@ -31,8 +31,8 @@ fn test_private_tree(
     let public_key = &public_keys[path_index];
     let private_key = private_tree.get_path_keys().get(index).unwrap();
     let data = randombytes(55);
-    let info = b"OwnLeaf Test Info";
-    let aad = b"OwnLeaf Test AAD";
+    let info = b"PrivateTree Test Info";
+    let aad = b"PrivateTree Test AAD";
 
     let c = ciphersuite.hpke_seal(public_key, info, aad, &data);
     let m = ciphersuite.hpke_open(&c, &private_key, info, aad);
@@ -44,7 +44,7 @@ fn create_private_tree_from_secret() {
     const PATH_LENGTH: usize = 33;
     let (ciphersuite, hpke_private_key, own_index, direct_path) = setup(PATH_LENGTH);
 
-    let mut private_tree = OwnLeaf::from_private_key(own_index, hpke_private_key);
+    let mut private_tree = PrivateTree::from_private_key(own_index, hpke_private_key);
 
     // Compute path secrets form the leaf.
     private_tree.generate_path_secrets(&ciphersuite, None, direct_path.len());
@@ -68,7 +68,7 @@ fn create_private_tree_from_raw() {
     let (ciphersuite, hpke_private_key, own_index, direct_path) = setup(PATH_LENGTH);
 
     let (private_tree, public_keys) =
-        OwnLeaf::new_raw(&ciphersuite, own_index, hpke_private_key, &direct_path).unwrap();
+        PrivateTree::new_raw(&ciphersuite, own_index, hpke_private_key, &direct_path).unwrap();
 
     test_private_tree(&private_tree, &direct_path, &public_keys, &ciphersuite);
 }

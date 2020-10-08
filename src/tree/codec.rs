@@ -40,7 +40,7 @@ impl Codec for RatchetTree {
     // fn decode(cursor: &mut Cursor) -> Result<RatchetTree, CodecError> {
     //     let ciphersuite = Ciphersuite::decode(cursor)?;
     //     let nodes = decode_vec(VecSize::VecU32, cursor)?;
-    //     let own_leaf = OwnLeaf::decode(cursor)?;
+    //     let own_leaf = PrivateTree::decode(cursor)?;
     //     Ok(RatchetTree {
     //         ciphersuite,
     //         nodes,

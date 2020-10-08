@@ -9,7 +9,7 @@ use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
 
 #[derive(Debug)]
-pub(crate) struct OwnLeaf {
+pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
     node_index: NodeIndex,
 
@@ -28,8 +28,8 @@ pub(crate) struct OwnLeaf {
     path_secrets: Vec<Vec<u8>>,
 }
 
-impl OwnLeaf {
-    /// Create a minimal `OwnLeaf` setting only the private key.
+impl PrivateTree {
+    /// Create a minimal `PrivateTree` setting only the private key.
     pub(crate) fn from_private_key(
         node_index: NodeIndex,
         hpke_private_key: HPKEPrivateKey,
@@ -43,7 +43,7 @@ impl OwnLeaf {
         }
     }
 
-    /// Generate a new `OwnLeaf` based on the input values.
+    /// Generate a new `PrivateTree` based on the input values.
     pub(crate) fn new_raw(
         ciphersuite: &Ciphersuite,
         node_index: NodeIndex,
@@ -63,7 +63,7 @@ impl OwnLeaf {
         Ok((out, public_keys))
     }
 
-    /// Generate a new `OwnLeaf` and populate it with pre-computed values.
+    /// Generate a new `PrivateTree` and populate it with pre-computed values.
     pub(crate) fn new(
         hpke_private_key: HPKEPrivateKey,
         node_index: NodeIndex,
@@ -198,7 +198,7 @@ impl OwnLeaf {
     }
 }
 
-impl Codec for OwnLeaf {
+impl Codec for PrivateTree {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         // FIXME: do we need this encode? Private keys should not be encoded if not absolutely necessary.
         // self.hpke_private_key.encode(buffer)?;

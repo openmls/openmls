@@ -38,7 +38,7 @@ use hash_input::*;
 use index::*;
 use node::*;
 use path_keys::PathKeys;
-use private_tree::OwnLeaf;
+use private_tree::PrivateTree;
 
 // Internal tree tests
 #[cfg(test)]
@@ -64,8 +64,8 @@ pub struct RatchetTree {
     pub nodes: Vec<Node>,
 
     /// This holds all private values in the tree.
-    /// See `OwnLeaf` for details.
-    private_tree: OwnLeaf,
+    /// See `PrivateTree` for details.
+    private_tree: PrivateTree,
 }
 
 impl RatchetTree {
@@ -76,7 +76,7 @@ impl RatchetTree {
             key_package: Some(kpb.get_key_package().clone()),
             node: None,
         }];
-        let private_tree = OwnLeaf::new(
+        let private_tree = PrivateTree::new(
             kpb.private_key,
             NodeIndex::from(0u32),
             PathKeys::default(),
@@ -134,7 +134,7 @@ impl RatchetTree {
         let direct_path =
             treemath::direct_path_root(own_node_index, NodeIndex::from(nodes.len()).into());
         let (private_tree, public_keys) =
-            OwnLeaf::new_raw(&ciphersuite, own_node_index, kpb.private_key, &direct_path)?;
+            PrivateTree::new_raw(&ciphersuite, own_node_index, kpb.private_key, &direct_path)?;
 
         // Build tree.
         let mut out = RatchetTree {
@@ -149,8 +149,8 @@ impl RatchetTree {
         Ok(out)
     }
 
-    /// Return a mutable reference to the `OwnLeaf`.
-    pub(crate) fn get_private_tree_mut(&mut self) -> &mut OwnLeaf {
+    /// Return a mutable reference to the `PrivateTree`.
+    pub(crate) fn get_private_tree_mut(&mut self) -> &mut PrivateTree {
         &mut self.private_tree
     }
 
@@ -440,7 +440,7 @@ impl RatchetTree {
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count());
 
         // Create new private tree and merge corresponding public keys.
-        let (new_private_tree, new_public_keys) = OwnLeaf::new_raw(
+        let (new_private_tree, new_public_keys) = PrivateTree::new_raw(
             &self.ciphersuite,
             own_index,
             // TODO: this and subsequent clones on kpb should be removed; requires changed output.
@@ -644,7 +644,7 @@ impl RatchetTree {
                     .iter()
                     .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
                     .unwrap();
-                self.private_tree = OwnLeaf::new(
+                self.private_tree = PrivateTree::new(
                     own_kpb.private_key.clone(),
                     index,
                     PathKeys::default(),
