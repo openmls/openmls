@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::ProtocolVersion;
-use crate::errors::ConfigError;
 use crate::utils::*;
-use std::mem;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::*;
 
+mod capabilities_extension;
 mod ratchet_tree_extension;
 
+pub(crate) use capabilities_extension::CapabilitiesExtension;
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -79,7 +77,7 @@ impl Codec for ExtensionType {
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub enum ExtensionPayload {
+pub(crate) enum ExtensionPayload {
     Capabilities(CapabilitiesExtension),
     Lifetime(LifetimeExtension),
     KeyID(KeyIDExtension),
@@ -87,55 +85,6 @@ pub enum ExtensionPayload {
     RatchetTree(RatchetTreeExtension),
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct CapabilitiesExtension {
-    pub versions: Vec<ProtocolVersion>,
-    pub ciphersuites: Vec<CiphersuiteName>,
-    pub extensions: Vec<ExtensionType>,
-}
-
-impl CapabilitiesExtension {
-    pub fn new(
-        versions: Vec<ProtocolVersion>,
-        ciphersuites: Vec<CiphersuiteName>,
-        extensions: Vec<ExtensionType>,
-    ) -> Self {
-        CapabilitiesExtension {
-            versions,
-            ciphersuites,
-            extensions,
-        }
-    }
-
-    /// Build a new CapabilitiesExtension from a byte slice.
-    pub fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError> {
-        let cursor = &mut Cursor::new(bytes);
-        let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor).unwrap();
-        let mut versions = Vec::new();
-        for &version_number in version_numbers.iter() {
-            versions.push(ProtocolVersion::from(version_number)?)
-        }
-        let ciphersuites = decode_vec(VecSize::VecU8, cursor).unwrap();
-        let extensions = decode_vec(VecSize::VecU8, cursor).unwrap();
-        Ok(CapabilitiesExtension {
-            versions,
-            ciphersuites,
-            extensions,
-        })
-    }
-
-    pub fn to_extension(&self) -> Extension {
-        let mut extension_data: Vec<u8> = vec![];
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.versions).unwrap();
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.ciphersuites).unwrap();
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.extensions).unwrap();
-        let extension_type = ExtensionType::Capabilities;
-        Extension {
-            extension_type,
-            extension_data,
-        }
-    }
-}
 #[derive(PartialEq, Clone, Debug)]
 pub struct LifetimeExtension {
     not_before: u64,
@@ -302,6 +251,8 @@ impl Codec for KeyPackageId {
 
 #[test]
 fn test_protocol_version() {
+    use crate::config::ProtocolVersion;
+
     let mls10_version = ProtocolVersion::Mls10;
     let default_version = ProtocolVersion::default();
     let mls10_e = mls10_version.encode_detached().unwrap();
@@ -314,6 +265,7 @@ fn test_protocol_version() {
 
 #[test]
 fn test_extension_codec() {
+    use crate::config::ProtocolVersion;
     use crate::key_packages::*;
 
     let capabilities_extension = CapabilitiesExtension::new(

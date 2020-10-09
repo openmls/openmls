@@ -37,10 +37,9 @@ impl Codec for KeyPackage {
                 ExtensionType::Capabilities => {
                     let capabilities_extension =
                         CapabilitiesExtension::new_from_bytes(&e.extension_data)?;
-                    if !capabilities_extension
-                        .ciphersuites
-                        .contains(&CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
-                    {
+                    if !capabilities_extension.contains_ciphersuite(
+                        &CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                    ) {
                         return Err(CodecError::DecodingError);
                     }
                 }

@@ -81,7 +81,7 @@ impl KeyPackage {
 
     /// Get the extension of `extension_type`.
     /// Returns `Some(extension)` if present and `None` if the extension is not present.
-    pub fn get_extension(
+    pub(crate) fn get_extension(
         &self,
         extension_type: ExtensionType,
     ) -> Result<Option<ExtensionPayload>, ConfigError> {
