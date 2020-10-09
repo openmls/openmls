@@ -58,8 +58,7 @@ impl Codec for KeyPackage {
                         ParentHashExtension::new_from_bytes(&e.extension_data);
                 }
                 ExtensionType::RatchetTree => {}
-                ExtensionType::Invalid => {}
-                ExtensionType::Default => {}
+                ExtensionType::Reserved => {}
             }
         }
 

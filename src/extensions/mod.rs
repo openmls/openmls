@@ -27,21 +27,47 @@ mod ratchet_tree_extension;
 
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ExtensionError {
+    UnknownExtension,
+}
+
+/// # Extension types
+///
+/// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
+///
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum ExtensionType {
-    Invalid = 0,
+    Reserved = 0,
     Capabilities = 1,
     Lifetime = 2,
     KeyID = 3,
     ParentHash = 4,
     RatchetTree = 5,
-    Default = 65535,
 }
 
-impl From<u16> for ExtensionType {
-    fn from(a: u16) -> ExtensionType {
-        unsafe { mem::transmute(a) }
+/// The default extension type is invalid.
+/// This has to be set explicitly.
+impl Default for ExtensionType {
+    fn default() -> Self {
+        ExtensionType::Reserved
+    }
+}
+
+impl ExtensionType {
+    /// Get the `ExtensionType` from a u16.
+    /// Returns an error if the extension type is not known.
+    pub(crate) fn from(a: u16) -> Result<ExtensionType, ExtensionError> {
+        match a {
+            0 => Ok(ExtensionType::Reserved),
+            1 => Ok(ExtensionType::Capabilities),
+            2 => Ok(ExtensionType::Lifetime),
+            3 => Ok(ExtensionType::KeyID),
+            4 => Ok(ExtensionType::ParentHash),
+            5 => Ok(ExtensionType::RatchetTree),
+            _ => Err(ExtensionError::UnknownExtension),
+        }
     }
 }
 
@@ -50,11 +76,6 @@ impl Codec for ExtensionType {
         (*self as u16).encode(buffer)?;
         Ok(())
     }
-
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let extension = u16::decode(cursor)?;
-    //     Ok(extension.into())
-    // }
 }
 
 #[derive(PartialEq, Clone, Debug)]
