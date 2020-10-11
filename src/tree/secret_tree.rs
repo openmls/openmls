@@ -224,7 +224,7 @@ impl SecretTree {
         let application_ratchet_secret = derive_tree_secret(
             ciphersuite,
             node_secret,
-            "handshake",
+            "application",
             index.as_u32(),
             generation,
             ciphersuite.hash_length(),
