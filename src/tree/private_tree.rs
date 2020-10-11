@@ -8,6 +8,7 @@ use crate::codec::{Codec, CodecError};
 use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
 
+pub(crate) type PathSecrets = Vec<Vec<u8>>;
 #[derive(Debug)]
 pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
@@ -25,7 +26,7 @@ pub(crate) struct PrivateTree {
 
     // Path secrets.
     // The first entry here must be the hpke_private_key.
-    path_secrets: Vec<Vec<u8>>,
+    path_secrets: PathSecrets,
 }
 
 impl PrivateTree {
@@ -69,7 +70,7 @@ impl PrivateTree {
         node_index: NodeIndex,
         path_keys: PathKeys,
         commit_secret: CommitSecret,
-        path_secrets: Vec<Vec<u8>>,
+        path_secrets: PathSecrets,
     ) -> Self {
         Self {
             hpke_private_key,

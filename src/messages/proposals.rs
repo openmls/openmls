@@ -49,10 +49,7 @@ impl Proposal {
         ProposalID::from_proposal(ciphersuite, self)
     }
     pub fn is_update(&self) -> bool {
-        match self {
-            Proposal::Update(ref _u) => true,
-            _ => false,
-        }
+        matches!(self, Proposal::Update(ref _u))
     }
     pub fn as_add(&self) -> Option<AddProposal> {
         match self {

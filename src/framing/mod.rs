@@ -63,7 +63,7 @@ impl MLSPlaintext {
         mls_plaintext
     }
     // XXX: Only used in tests right now.
-    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+    pub(crate) fn _from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
         let mut cursor = Cursor::new(bytes);
         let group_id = GroupId::decode(&mut cursor).unwrap();
         let epoch = GroupEpoch::decode(&mut cursor).unwrap();
@@ -882,6 +882,6 @@ fn codec() {
     orig.signature = signature_input.sign(&ciphersuite, &keypair.get_private_key());
 
     let enc = orig.encode_detached().unwrap();
-    let copy = MLSPlaintext::from_bytes(&enc).unwrap();
+    let copy = MLSPlaintext::_from_bytes(&enc).unwrap();
     assert_eq!(orig, copy);
 }
