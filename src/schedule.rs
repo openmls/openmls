@@ -18,6 +18,7 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
 use crate::messages::*;
+use evercrypt::prelude::*;
 
 pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &[u8], label: &str) -> Vec<u8> {
     hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
@@ -91,14 +92,14 @@ pub struct EpochSecrets {
 }
 
 impl EpochSecrets {
-    pub fn new() -> Self {
+    pub fn new(ciphersuite: &Ciphersuite) -> Self {
         let welcome_secret = vec![];
         let sender_data_secret = vec![];
         let handshake_secret = vec![];
         let application_secret = vec![];
         let exporter_secret = vec![];
         let confirmation_key = vec![];
-        let init_secret = vec![];
+        let init_secret = get_random_vec(ciphersuite.hash_length());
         Self {
             welcome_secret,
             sender_data_secret,
