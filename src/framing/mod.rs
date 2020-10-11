@@ -20,7 +20,7 @@ use crate::creds::*;
 use crate::group::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::{astree::*, index::*};
+use crate::tree::{index::*, secret_tree::*};
 use crate::utils::*;
 
 pub mod sender;
@@ -164,56 +164,18 @@ impl MLSCiphertext {
     pub fn as_slice(&self) -> Vec<u8> {
         self.encode_detached().unwrap()
     }
-    fn compute_handshake_key(
-        ciphersuite: &Ciphersuite,
-        epoch_secrets: &EpochSecrets,
-        sender_data: &MLSSenderData,
-        mls_plaintext: Option<&MLSPlaintext>,
-    ) -> (AeadKey, AeadNonce) {
-        let sender_id = match mls_plaintext {
-            Some(mls_plaintext) => mls_plaintext.sender.encode_detached().unwrap(),
-            None => sender_data.sender.encode_detached().unwrap(),
-        };
-        let mut handshake_nonce_input = hkdf_expand_label(
-            ciphersuite,
-            &epoch_secrets.handshake_secret,
-            "hs nonce",
-            &sender_id,
-            ciphersuite.aead_nonce_length(),
-        );
-        let reuse_guard = sender_data.reuse_guard.encode_detached().unwrap();
-        for i in 0..4 {
-            handshake_nonce_input[i] ^= reuse_guard[i];
-        }
-        let handshake_nonce = AeadNonce::from_slice(&handshake_nonce_input);
-        let handshake_key_input = hkdf_expand_label(
-            ciphersuite,
-            &epoch_secrets.handshake_secret,
-            "hs key",
-            &sender_id,
-            ciphersuite.aead_key_length(),
-        );
-        let handshake_key = AeadKey::from_slice(&handshake_key_input);
-        (handshake_key, handshake_nonce)
-    }
+
     pub fn new_from_plaintext(
         mls_plaintext: &MLSPlaintext,
         mls_group: &MlsGroup,
         generation: u32,
-        application_secrets: &ApplicationSecrets,
+        ratchet_secrets: &RatchetSecrets,
     ) -> MLSCiphertext {
         const PADDING_SIZE: usize = 10;
 
         let ciphersuite = mls_group.get_ciphersuite();
         let context = mls_group.get_context();
         let epoch_secrets = mls_group.get_epoch_secrets();
-
-        match mls_plaintext.content_type {
-            ContentType::Application => {}
-            ContentType::Commit => {}
-            ContentType::Proposal => {}
-            _ => {}
-        }
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
         let sender_data_key_bytes = hkdf_expand_label(
             ciphersuite,
@@ -277,25 +239,12 @@ impl MLSCiphertext {
             padding: padding_block,
         };
 
-        let (k1, n1) = Self::compute_handshake_key(
-            &ciphersuite,
-            epoch_secrets,
-            &sender_data,
-            Some(mls_plaintext),
-        );
-        let (key, nonce) = match mls_plaintext.content_type {
-            ContentType::Application => (
-                application_secrets.get_key(),
-                application_secrets.get_nonce(),
-            ),
-            _ => (&k1, &n1),
-        };
         let ciphertext = ciphersuite
             .aead_seal(
                 &mls_ciphertext_content.encode_detached().unwrap(),
                 &mls_ciphertext_content_aad_bytes,
-                key,
-                nonce,
+                ratchet_secrets.get_key(),
+                ratchet_secrets.get_nonce(),
             )
             .unwrap();
         MLSCiphertext {
@@ -314,7 +263,7 @@ impl MLSCiphertext {
         ciphersuite: &Ciphersuite,
         roster: &[&Credential],
         epoch_secrets: &EpochSecrets,
-        astree: &mut ASTree,
+        secret_tree: &mut SecretTree,
         context: &GroupContext,
     ) -> MLSPlaintext {
         let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
@@ -344,8 +293,17 @@ impl MLSCiphertext {
             )
             .unwrap();
         let sender_data = MLSSenderData::from_bytes(&sender_data_bytes).unwrap();
-        let application_secrets = astree
-            .get_secret(ciphersuite, sender_data.sender, sender_data.generation)
+        let secret_type = match self.content_type {
+            ContentType::Application => SecretType::ApplicationSecret,
+            _ => SecretType::HandshakeSecret,
+        };
+        let ratchet_secrets = secret_tree
+            .get_secret(
+                ciphersuite,
+                sender_data.sender,
+                secret_type,
+                sender_data.generation,
+            )
             .unwrap();
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: self.group_id.clone(),
@@ -357,20 +315,12 @@ impl MLSCiphertext {
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap();
-        let (k1, n1) = Self::compute_handshake_key(&ciphersuite, epoch_secrets, &sender_data, None);
-        let (key, nonce) = match self.content_type {
-            ContentType::Application => (
-                application_secrets.get_key(),
-                application_secrets.get_nonce(),
-            ),
-            _ => (&k1, &n1),
-        };
         let mls_ciphertext_content_bytes = ciphersuite
             .aead_open(
                 &self.ciphertext,
                 &mls_ciphertext_content_aad_bytes,
-                key,
-                nonce,
+                ratchet_secrets.get_key(),
+                ratchet_secrets.get_nonce(),
             )
             .unwrap();
         let mls_ciphertext_content =

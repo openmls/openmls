@@ -20,7 +20,7 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::{astree::*, index::*, node::*, treemath, *};
+use crate::tree::{index::*, node::*, secret_tree::*, treemath, *};
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -123,7 +123,7 @@ impl MlsGroup {
         };
         let epoch_secrets =
             EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
-        let astree = ASTree::new(&epoch_secrets.application_secret, tree.leaf_count());
+        let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, tree.leaf_count());
 
         // Verify confirmation tag
         if ConfirmationTag::new(
@@ -139,7 +139,7 @@ impl MlsGroup {
                 group_context,
                 generation: 0,
                 epoch_secrets,
-                astree: RefCell::new(astree),
+                secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash: group_info.interim_transcript_hash,
             })

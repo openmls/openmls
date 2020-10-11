@@ -1,6 +1,6 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::tree::{astree::*, index::LeafIndex};
+use crate::tree::{index::LeafIndex, secret_tree::*};
 
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
@@ -55,20 +55,20 @@ impl SenderRatchet {
         &mut self,
         generation: u32,
         ciphersuite: &Ciphersuite,
-    ) -> Result<ApplicationSecrets, ASError> {
+    ) -> Result<RatchetSecrets, SecretTreeError> {
         if generation > (self.generation + MAXIMUM_FORWARD_DISTANCE) {
-            return Err(ASError::TooDistantInTheFuture);
+            return Err(SecretTreeError::TooDistantInTheFuture);
         }
         if generation < self.generation && (self.generation - generation) >= OUT_OF_ORDER_TOLERANCE
         {
-            return Err(ASError::TooDistantInThePast);
+            return Err(SecretTreeError::TooDistantInThePast);
         }
         if generation <= self.generation {
             let window_index =
                 (self.past_secrets.len() as u32 - (self.generation - generation) - 1) as usize;
             let secret = self.past_secrets.get(window_index).unwrap().clone();
-            let application_secrets = self.derive_key_nonce(&secret, generation, ciphersuite);
-            Ok(application_secrets)
+            let ratchet_secrets = self.derive_key_nonce(&secret, generation, ciphersuite);
+            Ok(ratchet_secrets)
         } else {
             for _ in 0..(generation - self.generation) {
                 if self.past_secrets.len() == OUT_OF_ORDER_TOLERANCE as usize {
@@ -79,16 +79,16 @@ impl SenderRatchet {
                 self.past_secrets.push(new_secret);
             }
             let secret = self.past_secrets.last().unwrap();
-            let application_secrets = self.derive_key_nonce(&secret, generation, ciphersuite);
+            let ratchet_secrets = self.derive_key_nonce(&secret, generation, ciphersuite);
             self.generation = generation;
-            Ok(application_secrets)
+            Ok(ratchet_secrets)
         }
     }
     fn ratchet_secret(&self, secret: &[u8], ciphersuite: &Ciphersuite) -> Vec<u8> {
-        derive_app_secret(
+        derive_tree_secret(
             ciphersuite,
             secret,
-            "app-secret",
+            "secret",
             self.index.into(),
             self.generation,
             ciphersuite.hash_length(),
@@ -99,24 +99,24 @@ impl SenderRatchet {
         secret: &[u8],
         generation: u32,
         ciphersuite: &Ciphersuite,
-    ) -> ApplicationSecrets {
-        let nonce = derive_app_secret(
+    ) -> RatchetSecrets {
+        let nonce = derive_tree_secret(
             &ciphersuite,
             secret,
-            "app-nonce",
+            "nonce",
             self.index.into(),
             generation,
             ciphersuite.aead_nonce_length(),
         );
-        let key = derive_app_secret(
+        let key = derive_tree_secret(
             &ciphersuite,
             secret,
-            "app-key",
+            "key",
             self.index.into(),
             generation,
             ciphersuite.aead_key_length(),
         );
-        ApplicationSecrets::new(AeadNonce::from_slice(&nonce), AeadKey::from_slice(&key))
+        RatchetSecrets::new(AeadNonce::from_slice(&nonce), AeadKey::from_slice(&key))
     }
 
     pub(crate) fn get_generation(&self) -> u32 {

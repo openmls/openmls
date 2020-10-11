@@ -16,19 +16,35 @@
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::framing::*;
 use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 
 // TODO: get rif of Ciphersuite (pass it in get_secret)
 
 #[derive(Debug, PartialEq)]
-pub enum ASError {
+pub enum SecretTreeError {
     TooDistantInThePast,
     TooDistantInTheFuture,
     IndexOutOfBounds,
 }
 
-pub(crate) fn derive_app_secret(
+#[derive(Copy, Clone)]
+pub enum SecretType {
+    HandshakeSecret,
+    ApplicationSecret,
+}
+
+impl From<&MLSPlaintext> for SecretType {
+    fn from(mls_plaintext: &MLSPlaintext) -> SecretType {
+        match mls_plaintext.content_type {
+            ContentType::Application => SecretType::ApplicationSecret,
+            _ => SecretType::HandshakeSecret,
+        }
+    }
+}
+
+pub(crate) fn derive_tree_secret(
     ciphersuite: &Ciphersuite,
     secret: &[u8],
     label: &str,
@@ -36,26 +52,20 @@ pub(crate) fn derive_app_secret(
     generation: u32,
     length: usize,
 ) -> Vec<u8> {
-    let application_context = ApplicationContext { node, generation };
-    let serialized_application_context = application_context.encode_detached().unwrap();
-    hkdf_expand_label(
-        ciphersuite,
-        secret,
-        label,
-        &serialized_application_context,
-        length,
-    )
+    let tree_context = TreeContext { node, generation };
+    let serialized_tree_context = tree_context.encode_detached().unwrap();
+    hkdf_expand_label(ciphersuite, secret, label, &serialized_tree_context, length)
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ApplicationSecrets {
+pub struct RatchetSecrets {
     nonce: AeadNonce,
     key: AeadKey,
 }
 
-impl ApplicationSecrets {
+impl RatchetSecrets {
     pub(crate) fn new(nonce: AeadNonce, key: AeadKey) -> Self {
-        Self { nonce, key }
+        RatchetSecrets { nonce, key }
     }
 
     /// Get a reference to the key.
@@ -69,12 +79,12 @@ impl ApplicationSecrets {
     }
 }
 
-pub struct ApplicationContext {
+pub struct TreeContext {
     node: u32,
     generation: u32,
 }
 
-impl Codec for ApplicationContext {
+impl Codec for TreeContext {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.node.encode(buffer)?;
         self.generation.encode(buffer)?;
@@ -88,17 +98,18 @@ impl Codec for ApplicationContext {
 }
 
 #[derive(Clone)]
-pub struct ASTreeNode {
+pub struct SecretTreeNode {
     pub secret: Vec<u8>,
 }
 
-pub struct ASTree {
-    nodes: Vec<Option<ASTreeNode>>,
-    sender_ratchets: Vec<Option<SenderRatchet>>,
+pub struct SecretTree {
+    nodes: Vec<Option<SecretTreeNode>>,
+    handshake_sender_ratchets: Vec<Option<SenderRatchet>>,
+    application_sender_ratchets: Vec<Option<SenderRatchet>>,
     size: LeafIndex,
 }
 
-impl Codec for ASTree {
+impl Codec for SecretTree {
     // fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
     //     self.group.get_ciphersuite().encode(buffer)?;
     //     encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
@@ -120,34 +131,39 @@ impl Codec for ASTree {
     // }
 }
 
-impl ASTree {
-    pub fn new(application_secret: &[u8], size: LeafIndex) -> Self {
-        let mut out = Self {
-            nodes: vec![],
-            sender_ratchets: vec![None; size.as_usize()],
-            size,
-        };
-        out.set_application_secrets(application_secret);
-        out
-    }
-    pub(crate) fn set_application_secrets(&mut self, application_secret: &[u8]) {
-        let root = root(self.size);
-        let num_indices = NodeIndex::from(self.size).as_usize() - 1;
+impl SecretTree {
+    pub fn new(encryption_secret: &[u8], size: LeafIndex) -> Self {
+        let root = root(size);
+        let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
-        nodes[root.as_usize()] = Some(ASTreeNode {
-            secret: application_secret.to_vec(),
+        nodes[root.as_usize()] = Some(SecretTreeNode {
+            secret: encryption_secret.to_vec(),
         });
-        self.nodes = nodes;
-    }
-    pub(crate) fn set_size(&mut self, size: LeafIndex) {
-        self.size = size;
+
+        SecretTree {
+            nodes,
+            handshake_sender_ratchets: vec![None; size.as_usize()],
+            application_sender_ratchets: vec![None; size.as_usize()],
+            size,
+        }
     }
 
-    pub fn get_generation(&self, sender: LeafIndex) -> u32 {
-        if let Some(sender_ratchet) = &self.sender_ratchets[sender.as_usize()] {
-            sender_ratchet.get_generation()
-        } else {
-            0
+    pub fn get_generation(&self, sender: LeafIndex, secret_type: SecretType) -> u32 {
+        match secret_type {
+            SecretType::HandshakeSecret => {
+                if let Some(sender_ratchet) = &self.handshake_sender_ratchets[sender.as_usize()] {
+                    sender_ratchet.get_generation()
+                } else {
+                    0
+                }
+            }
+            SecretType::ApplicationSecret => {
+                if let Some(sender_ratchet) = &self.application_sender_ratchets[sender.as_usize()] {
+                    sender_ratchet.get_generation()
+                } else {
+                    0
+                }
+            }
         }
     }
 
@@ -155,17 +171,32 @@ impl ASTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
+        secret_type: SecretType,
         generation: u32,
-    ) -> Result<ApplicationSecrets, ASError> {
+    ) -> Result<RatchetSecrets, SecretTreeError> {
         let index_in_tree = NodeIndex::from(index);
         if index >= self.size {
-            return Err(ASError::IndexOutOfBounds);
+            return Err(SecretTreeError::IndexOutOfBounds);
         }
-        if let Some(ratchet_opt) = self.sender_ratchets.get_mut(index.as_usize()) {
-            if let Some(ratchet) = ratchet_opt {
-                return ratchet.get_secret(generation, ciphersuite);
+        match secret_type {
+            SecretType::HandshakeSecret => {
+                if let Some(ratchet_opt) = self.handshake_sender_ratchets.get_mut(index.as_usize())
+                {
+                    if let Some(ratchet) = ratchet_opt {
+                        return ratchet.get_secret(generation, ciphersuite);
+                    }
+                }
             }
-        }
+            SecretType::ApplicationSecret => {
+                if let Some(ratchet_opt) =
+                    self.application_sender_ratchets.get_mut(index.as_usize())
+                {
+                    if let Some(ratchet) = ratchet_opt {
+                        return ratchet.get_secret(generation, ciphersuite);
+                    }
+                }
+            }
+        };
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(dirpath(index_in_tree, self.size));
         dir_path.push(root(self.size));
@@ -182,11 +213,36 @@ impl ASTree {
             self.hash_down(ciphersuite, n);
         }
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
-        let mut sender_ratchet = SenderRatchet::new(index, node_secret);
-        let application_secret = sender_ratchet.get_secret(generation, ciphersuite);
+        let handshake_ratchet_secret = derive_tree_secret(
+            ciphersuite,
+            node_secret,
+            "handshake",
+            index.as_u32(),
+            generation,
+            ciphersuite.hash_length(),
+        );
+        let application_ratchet_secret = derive_tree_secret(
+            ciphersuite,
+            node_secret,
+            "handshake",
+            index.as_u32(),
+            generation,
+            ciphersuite.hash_length(),
+        );
+        let mut handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
+        let mut application_sender_ratchet = SenderRatchet::new(index, &application_ratchet_secret);
+        let ratchet_secrets = match secret_type {
+            SecretType::HandshakeSecret => {
+                handshake_sender_ratchet.get_secret(generation, ciphersuite)
+            }
+            SecretType::ApplicationSecret => {
+                application_sender_ratchet.get_secret(generation, ciphersuite)
+            }
+        };
         self.nodes[index_in_tree.as_usize()] = None;
-        self.sender_ratchets[index.as_usize()] = Some(sender_ratchet);
-        application_secret
+        self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
+        self.application_sender_ratchets[index.as_usize()] = Some(application_sender_ratchet);
+        ratchet_secrets
     }
 
     fn hash_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
@@ -194,7 +250,7 @@ impl ASTree {
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree, self.size);
-        let left_secret = derive_app_secret(
+        let left_secret = derive_tree_secret(
             &ciphersuite,
             &node_secret,
             "tree",
@@ -202,7 +258,7 @@ impl ASTree {
             0,
             hash_len,
         );
-        let right_secret = derive_app_secret(
+        let right_secret = derive_tree_secret(
             &ciphersuite,
             &node_secret,
             "tree",
@@ -210,10 +266,10 @@ impl ASTree {
             0,
             hash_len,
         );
-        self.nodes[left_index.as_usize()] = Some(ASTreeNode {
+        self.nodes[left_index.as_usize()] = Some(SecretTreeNode {
             secret: left_secret,
         });
-        self.nodes[right_index.as_usize()] = Some(ASTreeNode {
+        self.nodes[right_index.as_usize()] = Some(SecretTreeNode {
             secret: right_secret,
         });
         self.nodes[index_in_tree.as_usize()] = None;

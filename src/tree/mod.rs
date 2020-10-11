@@ -24,13 +24,13 @@ use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
 
 // Tree modules
-pub(crate) mod astree;
 pub(crate) mod codec;
 pub(crate) mod hash_input;
 pub(crate) mod index;
 pub(crate) mod node;
 pub(crate) mod path_keys;
 pub(crate) mod private_tree;
+pub(crate) mod secret_tree;
 pub(crate) mod sender_ratchet;
 pub(crate) mod treemath;
 
@@ -42,11 +42,11 @@ use private_tree::PrivateTree;
 
 // Internal tree tests
 #[cfg(test)]
-mod test_astree;
-#[cfg(test)]
 mod test_path_keys;
 #[cfg(test)]
 mod test_private_tree;
+#[cfg(test)]
+mod test_secret_tree;
 #[cfg(test)]
 mod test_treemath;
 #[cfg(test)]
