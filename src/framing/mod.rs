@@ -777,20 +777,23 @@ impl MLSPlaintextCommitContent {
             commit,
         }
     }
+    pub fn serialize(&self) -> Vec<u8> {
+        self.encode_detached().unwrap()
+    }
 }
 
-impl From<MLSPlaintext> for MLSPlaintextCommitContent {
-    fn from(mls_plaintext: MLSPlaintext) -> Self {
-        let commit = match mls_plaintext.content {
+impl From<&MLSPlaintext> for MLSPlaintextCommitContent {
+    fn from(mls_plaintext: &MLSPlaintext) -> Self {
+        let commit = match &mls_plaintext.content {
             MLSPlaintextContentType::Commit((commit, _confirmation)) => commit,
             _ => panic!("MLSPlaintext needs to contain a Commit"),
         };
         MLSPlaintextCommitContent {
-            group_id: mls_plaintext.group_id,
+            group_id: mls_plaintext.group_id.clone(),
             epoch: mls_plaintext.epoch,
             sender: mls_plaintext.sender,
             content_type: mls_plaintext.content_type,
-            commit,
+            commit: commit.clone(),
         }
     }
 }
@@ -825,14 +828,20 @@ pub struct MLSPlaintextCommitAuthData {
     pub signature: Vec<u8>,
 }
 
-impl From<MLSPlaintext> for MLSPlaintextCommitAuthData {
-    fn from(mls_plaintext: MLSPlaintext) -> Self {
-        let confirmation = match mls_plaintext.content {
+impl MLSPlaintextCommitAuthData {
+    pub fn serialize(&self) -> Vec<u8> {
+        self.encode_detached().unwrap()
+    }
+}
+
+impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
+    fn from(mls_plaintext: &MLSPlaintext) -> Self {
+        let confirmation = match &mls_plaintext.content {
             MLSPlaintextContentType::Commit((_commit, confirmation)) => confirmation,
             _ => panic!("MLSPlaintext needs to contain a Commit"),
         };
         MLSPlaintextCommitAuthData {
-            confirmation: confirmation.0,
+            confirmation: confirmation.0.clone(),
             signature: mls_plaintext.signature.as_slice().to_vec(),
         }
     }
