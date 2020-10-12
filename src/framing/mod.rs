@@ -63,6 +63,7 @@ impl MLSPlaintext {
         mls_plaintext
     }
     // XXX: Only used in tests right now.
+    #[cfg(test)]
     pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
         let mut cursor = Cursor::new(bytes);
         let group_id = GroupId::decode(&mut cursor).unwrap();
