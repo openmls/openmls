@@ -45,7 +45,7 @@ pub struct MlsGroup {
 impl Api for MlsGroup {
     fn new(id: &[u8], ciphersuite: Ciphersuite, key_package_bundle: KeyPackageBundle) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
-        let epoch_secrets = EpochSecrets::new(&ciphersuite);
+        let epoch_secrets = EpochSecrets::new();
         let astree = ASTree::new(&epoch_secrets.application_secret, LeafIndex::from(1u32));
         let (private_key, key_package) = (
             key_package_bundle.private_key,
@@ -305,9 +305,8 @@ fn update_confirmed_transcript_hash(
     mls_plaintext_commit_content: &MLSPlaintextCommitContent,
     interim_transcript_hash: &[u8],
 ) -> Vec<u8> {
-    let mls_plaintext_commit_content_bytes =
-        mls_plaintext_commit_content.encode_detached().unwrap();
-    ciphersuite.hash(&[interim_transcript_hash, &mls_plaintext_commit_content_bytes].concat())
+    let commit_content_bytes = mls_plaintext_commit_content.serialize();
+    ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat())
 }
 
 fn update_interim_transcript_hash(
@@ -315,16 +314,8 @@ fn update_interim_transcript_hash(
     mls_plaintext: &MLSPlaintext,
     confirmed_transcript_hash: &[u8],
 ) -> Vec<u8> {
-    let mls_plaintext_auth_data_bytes = &MLSPlaintextCommitAuthData::from(mls_plaintext.clone())
-        .encode_detached()
-        .unwrap();
-    ciphersuite.hash(
-        &[
-            &confirmed_transcript_hash,
-            &mls_plaintext_auth_data_bytes[..],
-        ]
-        .concat(),
-    )
+    let commit_auth_data_bytes = &MLSPlaintextCommitAuthData::from(mls_plaintext).serialize();
+    ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
 }
 
 fn compute_welcome_key_nonce(
