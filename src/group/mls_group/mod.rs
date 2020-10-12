@@ -45,7 +45,7 @@ pub struct MlsGroup {
 impl Api for MlsGroup {
     fn new(id: &[u8], ciphersuite: Ciphersuite, key_package_bundle: KeyPackageBundle) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
-        let epoch_secrets = EpochSecrets::new();
+        let epoch_secrets = EpochSecrets::new(&ciphersuite);
         let astree = ASTree::new(&epoch_secrets.application_secret, LeafIndex::from(1u32));
         let (private_key, key_package) = (
             key_package_bundle.private_key,
