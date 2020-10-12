@@ -28,7 +28,7 @@ pub enum CodecError {
 impl From<ConfigError> for CodecError {
     fn from(e: ConfigError) -> CodecError {
         match e {
-            ConfigError::UnsupportedMlsVersion => CodecError::DecodingError,
+            _ => CodecError::DecodingError,
         }
     }
 }

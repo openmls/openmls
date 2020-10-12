@@ -1,8 +1,17 @@
 //! This config contains all structs, enums and functions to configure MLS.
 //!
 
+use crate::ciphersuite::CiphersuiteName;
 use crate::codec::{Codec, CodecError};
 use crate::errors::ConfigError;
+use crate::extensions::ExtensionType;
+
+/// # MLS Configuration
+///
+/// This is the global configuration for MLS.
+///
+/// TODO: #85 This doesn't do much yet.
+pub struct Config {}
 
 /// # Protocol Version
 ///
@@ -47,9 +56,34 @@ impl ProtocolVersion {
             _ => Err(ConfigError::UnsupportedMlsVersion),
         }
     }
+}
 
-    /// Returns a list of all supported protocol versions.
-    pub fn supported() -> Vec<Self> {
-        vec![Self::Mls10]
+impl CiphersuiteName {
+    pub(crate) fn is_supported(&self) -> bool {
+        match self {
+            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => true,
+            _ => false,
+        }
+    }
+}
+
+impl Config {
+    /// Get a list of the supported extension types.
+    pub fn supported_extensions() -> Vec<ExtensionType> {
+        vec![ExtensionType::Lifetime]
+    }
+
+    /// Get a list of the supported cipher suite names.
+    pub fn supported_ciphersuites() -> Vec<CiphersuiteName> {
+        vec![
+            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        ]
+    }
+
+    /// Get a list of the supported protocol versions.
+    pub fn supported_versions() -> Vec<ProtocolVersion> {
+        vec![ProtocolVersion::Mls10]
     }
 }

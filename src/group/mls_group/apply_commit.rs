@@ -155,12 +155,14 @@ impl MlsGroup {
                 let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
-                    .get_extension(ExtensionType::ParentHash)?
+                    .get_extension(ExtensionType::ParentHash)
                 {
-                    if let ExtensionPayload::ParentHash(parent_hash_inner) = received_parent_hash {
-                        if parent_hash != parent_hash_inner.parent_hash {
-                            return Err(ApplyCommitError::ParentHashMismatch);
-                        }
+                    let parent_hash_extension: &ParentHashExtension = received_parent_hash
+                        .as_any()
+                        .downcast_ref::<ParentHashExtension>()
+                        .expect("Library error");
+                    if parent_hash != parent_hash_extension.get_parent_hash_ref() {
+                        return Err(ApplyCommitError::ParentHashMismatch);
                     }
                 } else {
                     return Err(ApplyCommitError::NoParentHashExtension);

@@ -54,45 +54,45 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
         let level = treemath::level(NodeIndex::from(i));
         print!("{:04}", i);
         if !node.is_blank() {
-            let key_bytes;
-            let parent_hash_bytes: Vec<u8>;
-            match node.node_type {
+            let (key_bytes, parent_hash_bytes) = match node.node_type {
                 NodeType::Leaf => {
                     print!("\tL");
-                    key_bytes = if let Some(kp) = &node.key_package {
+                    let key_bytes = if let Some(kp) = &node.key_package {
                         kp.get_hpke_init_key().as_slice()
                     } else {
                         &[]
                     };
-                    parent_hash_bytes = if let Some(kp) = &node.key_package {
-                        if let Some(phe) = kp.get_extension(ExtensionType::ParentHash).unwrap() {
-                            if let ExtensionPayload::ParentHash(parent_hash_inner) = phe {
-                                parent_hash_inner.parent_hash
-                            } else {
-                                panic!("Wrong extension type: expected ParentHashExtension")
-                            }
+                    let parent_hash_bytes = if let Some(kp) = &node.key_package {
+                        if let Some(phe) = kp.get_extension(ExtensionType::ParentHash) {
+                            let parent_hash_extension: &ParentHashExtension = phe
+                                .as_any()
+                                .downcast_ref::<ParentHashExtension>()
+                                .expect("Library error");
+                            parent_hash_extension.get_parent_hash_ref().to_vec()
                         } else {
                             vec![]
                         }
                     } else {
                         vec![]
-                    }
+                    };
+                    (key_bytes, parent_hash_bytes)
                 }
                 NodeType::Parent => {
                     print!("\tP");
-                    key_bytes = if let Some(n) = &node.node {
+                    let key_bytes = if let Some(n) = &node.node {
                         n.get_public_key().as_slice()
                     } else {
                         &[]
                     };
-                    parent_hash_bytes = if let Some(ph) = node.parent_hash() {
+                    let parent_hash_bytes = if let Some(ph) = node.parent_hash() {
                         ph
                     } else {
                         vec![]
-                    }
+                    };
+                    (key_bytes, parent_hash_bytes)
                 }
                 _ => unreachable!(),
-            }
+            };
             if !key_bytes.is_empty() {
                 print!("\tPK: {}", _bytes_to_hex(&key_bytes));
             } else {

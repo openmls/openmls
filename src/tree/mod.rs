@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use rayon::prelude::*;
-
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::creds::*;
@@ -406,7 +404,7 @@ impl RatchetTree {
         // Compute the parent hash extension and add it to the KeyPackage
         let key_package_bundle = {
             let parent_hash = self.compute_parent_hash(own_index);
-            let parent_hash_extension = ParentHashExtension::new(&parent_hash).to_extension();
+            let parent_hash_extension = Box::new(ParentHashExtension::new(&parent_hash));
             let mut key_package = key_package_bundle.get_key_package().clone();
             key_package.add_extension(parent_hash_extension);
             key_package.sign(&self.ciphersuite, signature_key);
@@ -487,7 +485,7 @@ impl RatchetTree {
         for (path_secret, copath_node) in path_secrets.iter().zip(copath.iter()) {
             let node_ciphertexts: Vec<HpkeCiphertext> = self
                 .resolve(*copath_node)
-                .par_iter()
+                .iter()
                 .map(|&x| {
                     let pk = self.nodes[x.as_usize()].get_public_hpke_key().unwrap();
                     self.ciphersuite
@@ -676,7 +674,7 @@ impl RatchetTree {
         let added_members = if !proposal_id_list.adds.is_empty() {
             let add_proposals: Vec<AddProposal> = proposal_id_list
                 .adds
-                .par_iter()
+                .iter()
                 .map(|a| {
                     let (_proposal_id, queued_proposal) = proposal_queue.get(&a).unwrap();
                     let proposal = &queued_proposal.proposal;

@@ -59,10 +59,11 @@ impl From<TreeError> for WelcomeError {
     }
 }
 
+// TODO: Should get fixed in #83
 impl From<ConfigError> for ApplyCommitError {
     fn from(e: ConfigError) -> ApplyCommitError {
         match e {
-            ConfigError::UnsupportedMlsVersion => ApplyCommitError::NoParentHashExtension,
+            _ => ApplyCommitError::NoParentHashExtension,
         }
     }
 }
