@@ -19,8 +19,7 @@ use crate::codec::*;
 use crate::framing::*;
 use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
-
-// TODO: get rif of Ciphersuite (pass it in get_secret)
+use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
 pub enum SecretTreeError {
@@ -29,18 +28,35 @@ pub enum SecretTreeError {
     IndexOutOfBounds,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum SecretType {
     HandshakeSecret,
     ApplicationSecret,
 }
 
-impl From<&MLSPlaintext> for SecretType {
-    fn from(mls_plaintext: &MLSPlaintext) -> SecretType {
-        match mls_plaintext.content_type {
-            ContentType::Application => SecretType::ApplicationSecret,
-            _ => SecretType::HandshakeSecret,
+#[derive(Debug)]
+pub enum SecretTypeError {
+    InvalidContentType,
+}
+
+impl TryFrom<&ContentType> for SecretType {
+    type Error = SecretTypeError;
+
+    fn try_from(content_type: &ContentType) -> Result<SecretType, SecretTypeError> {
+        match content_type {
+            ContentType::Application => Ok(SecretType::ApplicationSecret),
+            ContentType::Commit => Ok(SecretType::HandshakeSecret),
+            ContentType::Proposal => Ok(SecretType::HandshakeSecret),
+            _ => Err(SecretTypeError::InvalidContentType),
         }
+    }
+}
+
+impl TryFrom<&MLSPlaintext> for SecretType {
+    type Error = SecretTypeError;
+
+    fn try_from(mls_plaintext: &MLSPlaintext) -> Result<SecretType, SecretTypeError> {
+        SecretType::try_from(&mls_plaintext.content_type)
     }
 }
 
@@ -167,36 +183,27 @@ impl SecretTree {
         }
     }
 
-    pub fn get_secret(
+    fn initialize_sender_ratchets(
         &mut self,
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
-        secret_type: SecretType,
-        generation: u32,
-    ) -> Result<RatchetSecrets, SecretTreeError> {
-        let index_in_tree = NodeIndex::from(index);
+    ) -> Result<(), SecretTreeError> {
         if index >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
-        match secret_type {
-            SecretType::HandshakeSecret => {
-                if let Some(ratchet_opt) = self.handshake_sender_ratchets.get_mut(index.as_usize())
-                {
-                    if let Some(ratchet) = ratchet_opt {
-                        return ratchet.get_secret(generation, ciphersuite);
-                    }
-                }
-            }
-            SecretType::ApplicationSecret => {
-                if let Some(ratchet_opt) =
-                    self.application_sender_ratchets.get_mut(index.as_usize())
-                {
-                    if let Some(ratchet) = ratchet_opt {
-                        return ratchet.get_secret(generation, ciphersuite);
-                    }
-                }
-            }
-        };
+        // Check if SenderRatchets are already initialized
+        if self
+            .get_ratchet_opt(index, SecretType::HandshakeSecret)
+            .is_some()
+            && self
+                .get_ratchet_opt(index, SecretType::ApplicationSecret)
+                .is_some()
+        {
+            return Ok(());
+        }
+        // Calculate direct path
+        let index_in_tree = NodeIndex::from(index);
+        let generation = 0;
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(dirpath(index_in_tree, self.size));
         dir_path.push(root(self.size));
@@ -207,12 +214,18 @@ impl SecretTree {
                 break;
             }
         }
+        // Remove leaf and invert direct path
         empty_nodes.remove(0);
         empty_nodes.reverse();
+        // Find empty nodes
         for n in empty_nodes {
-            self.hash_down(ciphersuite, n);
+            self.derive_down(ciphersuite, n);
         }
-        let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
+        // Calculate node secret and initialize SenderRatchets
+        let node_secret = &self.nodes[index_in_tree.as_usize()]
+            .as_ref()
+            .unwrap()
+            .secret;
         let handshake_ratchet_secret = derive_tree_secret(
             ciphersuite,
             node_secret,
@@ -221,6 +234,8 @@ impl SecretTree {
             generation,
             ciphersuite.hash_length(),
         );
+        let handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
+        self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
         let application_ratchet_secret = derive_tree_secret(
             ciphersuite,
             node_secret,
@@ -229,25 +244,81 @@ impl SecretTree {
             generation,
             ciphersuite.hash_length(),
         );
-        let mut handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
-        let mut application_sender_ratchet = SenderRatchet::new(index, &application_ratchet_secret);
-        let ratchet_secrets = match secret_type {
-            SecretType::HandshakeSecret => {
-                handshake_sender_ratchet.get_secret(generation, ciphersuite)
-            }
-            SecretType::ApplicationSecret => {
-                application_sender_ratchet.get_secret(generation, ciphersuite)
-            }
-        };
-        self.nodes[index_in_tree.as_usize()] = None;
-        self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
+        let application_sender_ratchet = SenderRatchet::new(index, &application_ratchet_secret);
         self.application_sender_ratchets[index.as_usize()] = Some(application_sender_ratchet);
-        ratchet_secrets
+        // Delete leaf node
+        self.nodes[index_in_tree.as_usize()] = None;
+        Ok(())
     }
 
-    fn hash_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
+    pub fn get_secret(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+        index: LeafIndex,
+        secret_type: SecretType,
+        generation: u32,
+    ) -> Result<RatchetSecrets, SecretTreeError> {
+        // Check tree bounds
+        if index >= self.size {
+            return Err(SecretTreeError::IndexOutOfBounds);
+        }
+        if generation == 0 {
+            // Initialize the tree first
+            self.initialize_sender_ratchets(ciphersuite, index)?;
+        }
+        let sender_ratchet = self.get_ratchet_mut(index, secret_type);
+        sender_ratchet.get_secret(generation, ciphersuite)
+    }
+
+    pub fn next_secret(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+        index: LeafIndex,
+        secret_type: SecretType,
+    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
+        let generation = self.get_generation(index, secret_type);
+        if generation == 0 {
+            // Initialize the tree first
+            self.initialize_sender_ratchets(ciphersuite, index)?;
+        }
+        Ok(self
+            .get_ratchet_mut(index, secret_type)
+            .next_secret(ciphersuite)?)
+    }
+
+    fn get_ratchet_mut(&mut self, index: LeafIndex, secret_type: SecretType) -> &mut SenderRatchet {
+        let sender_ratchets = match secret_type {
+            SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
+            SecretType::ApplicationSecret => &mut self.application_sender_ratchets,
+        };
+        sender_ratchets
+            .get_mut(index.as_usize())
+            .expect("SenderRatchets not initialized")
+            .as_mut()
+            .expect("SecretTree not initialized")
+    }
+
+    fn get_ratchet_opt(
+        &mut self,
+        index: LeafIndex,
+        secret_type: SecretType,
+    ) -> Option<&SenderRatchet> {
+        let sender_ratchets = match secret_type {
+            SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
+            SecretType::ApplicationSecret => &mut self.application_sender_ratchets,
+        };
+        sender_ratchets
+            .get(index.as_usize())
+            .expect("SenderRatchets not initialized")
+            .as_ref()
+    }
+
+    fn derive_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
         let hash_len = ciphersuite.hash_length();
-        let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
+        let node_secret = &self.nodes[index_in_tree.as_usize()]
+            .as_ref()
+            .unwrap()
+            .secret;
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree, self.size);
         let left_secret = derive_tree_secret(
@@ -273,5 +344,44 @@ impl SecretTree {
             secret: right_secret,
         });
         self.nodes[index_in_tree.as_usize()] = None;
+    }
+}
+
+#[test]
+fn increment_generation() {
+    const SIZE: usize = 1000;
+    const MAX_GENERATIONS: usize = 10;
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let mut secret_tree = SecretTree::new(&[1, 2, 3], LeafIndex::from(SIZE as u32));
+    for i in 0..SIZE {
+        assert_eq!(
+            secret_tree.get_generation(LeafIndex::from(i as u32), SecretType::HandshakeSecret),
+            0
+        );
+        assert_eq!(
+            secret_tree.get_generation(LeafIndex::from(i as u32), SecretType::ApplicationSecret),
+            0
+        );
+    }
+    for i in 0..MAX_GENERATIONS {
+        for j in 0..SIZE {
+            let (next_gen, _secret) = secret_tree
+                .next_secret(
+                    &ciphersuite,
+                    LeafIndex::from(j as u32),
+                    SecretType::HandshakeSecret,
+                )
+                .unwrap();
+            assert_eq!(next_gen, i as u32);
+            let (next_gen, _secret) = secret_tree
+                .next_secret(
+                    &ciphersuite,
+                    LeafIndex::from(j as u32),
+                    SecretType::ApplicationSecret,
+                )
+                .unwrap();
+            assert_eq!(next_gen, i as u32);
+        }
     }
 }

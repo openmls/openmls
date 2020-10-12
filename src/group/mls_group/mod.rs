@@ -31,6 +31,7 @@ use crate::tree::{index::*, node::*, secret_tree::*, *};
 pub use api::*;
 
 use std::cell::{Ref, RefCell};
+use std::convert::TryFrom;
 
 pub struct MlsGroup {
     ciphersuite: Ciphersuite,
@@ -205,17 +206,11 @@ impl Api for MlsGroup {
     // Encrypt/Decrypt MLS message
     fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let mut secret_tree = self.secret_tree.borrow_mut();
-        let secret_type = SecretType::from(&mls_plaintext);
-        let generation = secret_tree.get_generation(mls_plaintext.sender.sender, secret_type);
-        let application_secrets = secret_tree
-            .get_secret(
-                &self.ciphersuite,
-                mls_plaintext.sender.sender,
-                secret_type,
-                generation,
-            )
+        let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
+        let (generation, ratchet_secrets) = secret_tree
+            .next_secret(&self.ciphersuite, mls_plaintext.sender.sender, secret_type)
             .unwrap();
-        MLSCiphertext::new_from_plaintext(&mls_plaintext, &self, generation, &application_secrets)
+        MLSCiphertext::new_from_plaintext(&mls_plaintext, &self, generation, &ratchet_secrets)
     }
 
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext {

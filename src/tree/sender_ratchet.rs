@@ -84,6 +84,15 @@ impl SenderRatchet {
             Ok(ratchet_secrets)
         }
     }
+    pub fn next_secret(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
+        let generation = self.get_generation();
+        let secret = self.get_secret(generation, ciphersuite)?;
+        self.generation += 1;
+        Ok((generation, secret))
+    }
     fn ratchet_secret(&self, secret: &[u8], ciphersuite: &Ciphersuite) -> Vec<u8> {
         derive_tree_secret(
             ciphersuite,

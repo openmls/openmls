@@ -23,6 +23,8 @@ use crate::schedule::*;
 use crate::tree::{index::*, secret_tree::*};
 use crate::utils::*;
 
+use std::convert::TryFrom;
+
 pub mod sender;
 use sender::*;
 
@@ -293,10 +295,9 @@ impl MLSCiphertext {
             )
             .unwrap();
         let sender_data = MLSSenderData::from_bytes(&sender_data_bytes).unwrap();
-        let secret_type = match self.content_type {
-            ContentType::Application => SecretType::ApplicationSecret,
-            _ => SecretType::HandshakeSecret,
-        };
+        // TODO Handle error
+        let secret_type = SecretType::try_from(&self.content_type).unwrap();
+        // TODO Handle error
         let ratchet_secrets = secret_tree
             .get_secret(
                 ciphersuite,
