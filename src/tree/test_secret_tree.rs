@@ -49,3 +49,45 @@ fn test_boundaries() {
         Err(SecretTreeError::IndexOutOfBounds)
     );
 }
+
+#[test]
+fn increment_generation() {
+    use crate::ciphersuite::*;
+    use crate::tree::{secret_tree::*, *};
+
+    const SIZE: usize = 1000;
+    const MAX_GENERATIONS: usize = 10;
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let mut secret_tree = SecretTree::new(&[1, 2, 3], LeafIndex::from(SIZE as u32));
+    for i in 0..SIZE {
+        assert_eq!(
+            secret_tree.get_generation(LeafIndex::from(i as u32), SecretType::HandshakeSecret),
+            0
+        );
+        assert_eq!(
+            secret_tree.get_generation(LeafIndex::from(i as u32), SecretType::ApplicationSecret),
+            0
+        );
+    }
+    for i in 0..MAX_GENERATIONS {
+        for j in 0..SIZE {
+            let (next_gen, _secret) = secret_tree
+                .next_secret(
+                    &ciphersuite,
+                    LeafIndex::from(j as u32),
+                    SecretType::HandshakeSecret,
+                )
+                .unwrap();
+            assert_eq!(next_gen, i as u32);
+            let (next_gen, _secret) = secret_tree
+                .next_secret(
+                    &ciphersuite,
+                    LeafIndex::from(j as u32),
+                    SecretType::ApplicationSecret,
+                )
+                .unwrap();
+            assert_eq!(next_gen, i as u32);
+        }
+    }
+}
