@@ -1,3 +1,7 @@
+//! # Ratchet tree extension
+//!
+//! > GroupInfo Extension
+//!
 //! 11.3. Ratchet Tree Extension
 //!
 //! ```text

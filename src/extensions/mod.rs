@@ -15,14 +15,17 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::codec::*;
-use crate::utils::*;
-use std::time::{SystemTime, UNIX_EPOCH};
-use uuid::*;
 
 mod capabilities_extension;
+mod key_package_id_extension;
+mod life_time_extension;
+mod parent_hash_extension;
 mod ratchet_tree_extension;
 
 pub(crate) use capabilities_extension::CapabilitiesExtension;
+pub(crate) use key_package_id_extension::KeyIDExtension;
+pub(crate) use life_time_extension::LifetimeExtension;
+pub(crate) use parent_hash_extension::ParentHashExtension;
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -85,108 +88,10 @@ pub(crate) enum ExtensionPayload {
     RatchetTree(RatchetTreeExtension),
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct LifetimeExtension {
-    not_before: u64,
-    not_after: u64,
-}
 
-impl LifetimeExtension {
-    pub const LIFETIME_1_MINUTE: u64 = 60;
-    pub const LIFETIME_1_HOUR: u64 = 60 * LifetimeExtension::LIFETIME_1_MINUTE;
-    pub const LIFETIME_1_DAY: u64 = 24 * LifetimeExtension::LIFETIME_1_HOUR;
-    pub const LIFETIME_1_WEEK: u64 = 7 * LifetimeExtension::LIFETIME_1_DAY;
-    pub const LIFETIME_4_WEEKS: u64 = 4 * LifetimeExtension::LIFETIME_1_WEEK;
-    pub const LIFETIME_MARGIN: u64 = LifetimeExtension::LIFETIME_1_HOUR;
-    pub fn new(t: u64) -> Self {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let not_before = now - LifetimeExtension::LIFETIME_MARGIN;
-        let not_after = now + t + LifetimeExtension::LIFETIME_MARGIN;
-        Self {
-            not_before,
-            not_after,
-        }
-    }
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
-        let mut cursor = Cursor::new(bytes);
-        let not_before = u64::decode(&mut cursor).unwrap();
-        let not_after = u64::decode(&mut cursor).unwrap();
-        Self {
-            not_before,
-            not_after,
-        }
-    }
-    pub fn to_extension(&self) -> Extension {
-        let mut extension_data: Vec<u8> = vec![];
-        self.not_before.encode(&mut extension_data).unwrap();
-        self.not_after.encode(&mut extension_data).unwrap();
-        let extension_type = ExtensionType::Lifetime;
-        Extension {
-            extension_type,
-            extension_data,
-        }
-    }
-    pub fn is_expired(&self) -> bool {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        self.not_before < now && self.not_after > now
-    }
-}
-
-#[derive(PartialEq, Clone, Debug)]
-pub struct KeyIDExtension {
-    key_id: Vec<u8>,
-}
-
-impl KeyIDExtension {
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
-        let cursor = &mut Cursor::new(bytes);
-        let key_id = decode_vec(VecSize::VecU16, cursor).unwrap();
-        Self { key_id }
-    }
-    pub fn to_extension(&self) -> Extension {
-        let mut extension_data: Vec<u8> = vec![];
-        encode_vec(VecSize::VecU16, &mut extension_data, &self.key_id).unwrap();
-        let extension_type = ExtensionType::KeyID;
-        Extension {
-            extension_type,
-            extension_data,
-        }
-    }
-}
-
-#[derive(PartialEq, Clone, Debug)]
-pub struct ParentHashExtension {
-    pub parent_hash: Vec<u8>,
-}
-
-impl ParentHashExtension {
-    pub fn new(hash: &[u8]) -> Self {
-        ParentHashExtension {
-            parent_hash: hash.to_vec(),
-        }
-    }
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
-        let cursor = &mut Cursor::new(bytes);
-        let parent_hash = decode_vec(VecSize::VecU8, cursor).unwrap();
-        Self { parent_hash }
-    }
-    pub fn to_extension(&self) -> Extension {
-        let mut extension_data: Vec<u8> = vec![];
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.parent_hash).unwrap();
-        let extension_type = ExtensionType::ParentHash;
-        Extension {
-            extension_type,
-            extension_data,
-        }
-    }
-}
-
+/// # Extension
+/// 
+/// An extension has an `ExtensionType` and an opaque payload (byte vector).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Extension {
     pub extension_type: ExtensionType,
@@ -213,39 +118,6 @@ impl Codec for Extension {
     //         extension_type,
     //         extension_data,
     //     })
-    // }
-}
-
-#[derive(Debug, PartialEq, Clone, Default)]
-pub struct KeyPackageId {
-    uuid: Uuid,
-}
-
-impl KeyPackageId {
-    pub fn new() -> Self {
-        let uuid = Uuid::from_slice(&randombytes(16)).unwrap();
-        Self { uuid }
-    }
-    pub fn from_slice(bytes: &[u8]) -> Self {
-        let uuid = Uuid::from_slice(bytes).unwrap();
-        Self { uuid }
-    }
-    pub fn to_vec(&self) -> Vec<u8> {
-        let bytes = self.uuid.as_bytes();
-        bytes.to_vec()
-    }
-}
-
-impl Codec for KeyPackageId {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.to_vec())?;
-        Ok(())
-    }
-
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let bytes = decode_vec(VecSize::VecU8, cursor)?;
-    //     let id = KeyPackageId::from_slice(&bytes);
-    //     Ok(id)
     // }
 }
 

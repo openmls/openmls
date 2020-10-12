@@ -2,7 +2,9 @@
 //!
 //! > Key Package Extension
 //!
-//! The capabilities extension is mandatory in key packages.
+//! This extension MUST be always present in a KeyPackage. Extensions that 
+//! appear in the extensions field of a KeyPackage MUST be included in the 
+//! extensions field of the capabilities extension.
 //!
 //! ```text
 //! struct {
