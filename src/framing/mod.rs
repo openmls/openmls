@@ -66,7 +66,8 @@ impl MLSPlaintext {
             content,
             signature: Signature::new_empty(),
         };
-        mls_plaintext.sign(ciphersuite, signature_key, context);
+        let serialized_context = context.encode_detached().unwrap();
+        mls_plaintext.sign(ciphersuite, signature_key, Some(serialized_context));
         mls_plaintext
     }
     // XXX: Only used in tests right now.
@@ -95,13 +96,17 @@ impl MLSPlaintext {
         &mut self,
         ciphersuite: &Ciphersuite,
         signature_key: &SignaturePrivateKey,
-        context: &GroupContext,
+        serialized_context_option: Option<Vec<u8>>,
     ) {
-        let signature_input = MLSPlaintextTBS::new_from(&self, context);
+        let signature_input = MLSPlaintextTBS::new_from(&self, serialized_context_option);
         self.signature = signature_input.sign(ciphersuite, signature_key);
     }
-    pub fn verify(&self, context: &GroupContext, credential: &Credential) -> bool {
-        let signature_input = MLSPlaintextTBS::new_from(&self, context);
+    pub fn verify(
+        &self,
+        serialized_context_option: Option<Vec<u8>>,
+        credential: &Credential,
+    ) -> bool {
+        let signature_input = MLSPlaintextTBS::new_from(&self, serialized_context_option);
         signature_input.verify(credential, &self.signature)
     }
 }
@@ -347,8 +352,9 @@ impl MLSCiphertext {
             content: mls_ciphertext_content.content,
             signature: mls_ciphertext_content.signature,
         };
-        let credential = &roster.get(sender_data.sender.as_usize()).unwrap();
-        assert!(mls_plaintext.verify(context, credential));
+        let credential = roster.get(sender_data.sender.as_usize()).unwrap();
+        let serialized_context = context.encode_detached().unwrap();
+        assert!(mls_plaintext.verify(Some(serialized_context), credential));
         Ok(mls_plaintext)
     }
 }
@@ -476,7 +482,7 @@ impl Codec for MLSPlaintextContentType {
 }
 
 pub struct MLSPlaintextTBS {
-    pub context: GroupContext,
+    pub serialized_context_option: Option<Vec<u8>>,
     pub group_id: GroupId,
     pub epoch: GroupEpoch,
     pub sender: LeafIndex,
@@ -486,9 +492,12 @@ pub struct MLSPlaintextTBS {
 }
 
 impl MLSPlaintextTBS {
-    pub fn new_from(mls_plaintext: &MLSPlaintext, context: &GroupContext) -> Self {
+    pub fn new_from(
+        mls_plaintext: &MLSPlaintext,
+        serialized_context_option: Option<Vec<u8>>,
+    ) -> Self {
         MLSPlaintextTBS {
-            context: context.clone(),
+            serialized_context_option,
             group_id: mls_plaintext.group_id.clone(),
             epoch: mls_plaintext.epoch,
             sender: mls_plaintext.sender.sender,
@@ -513,7 +522,9 @@ impl MLSPlaintextTBS {
 
 impl Codec for MLSPlaintextTBS {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.context.encode(buffer)?;
+        if let Some(ref serialized_context) = self.serialized_context_option {
+            buffer.extend_from_slice(serialized_context);
+        }
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
         self.sender.encode(buffer)?;
@@ -522,6 +533,7 @@ impl Codec for MLSPlaintextTBS {
         self.payload.encode(buffer)?;
         Ok(())
     }
+    /*
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let context = GroupContext::decode(cursor)?;
         let group_id = GroupId::decode(cursor)?;
@@ -541,6 +553,7 @@ impl Codec for MLSPlaintextTBS {
             payload,
         })
     }
+    */
 }
 
 #[derive(Clone)]
@@ -846,7 +859,8 @@ fn codec() {
         tree_hash: vec![],
         confirmed_transcript_hash: vec![],
     };
-    let signature_input = MLSPlaintextTBS::new_from(&orig, &context);
+    let serialized_context = context.encode_detached().unwrap();
+    let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context));
     orig.signature = signature_input.sign(&ciphersuite, &keypair.get_private_key());
 
     let enc = orig.encode_detached().unwrap();
