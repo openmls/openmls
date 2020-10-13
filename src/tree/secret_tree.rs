@@ -148,6 +148,9 @@ impl Codec for SecretTree {
 }
 
 impl SecretTree {
+    /// Creates a new SecretTree based on an `encryption_secret` and group size `size`.
+    /// The inner nodes of the tree and the SenderRatchets only get initialized when secrets
+    /// are requested either through `get_secret()` or `next_secret()`.
     pub fn new(encryption_secret: &[u8], size: LeafIndex) -> Self {
         let root = root(size);
         let num_indices = NodeIndex::from(size).as_usize() - 1;
@@ -164,25 +167,15 @@ impl SecretTree {
         }
     }
 
-    pub fn get_generation(&self, sender: LeafIndex, secret_type: SecretType) -> u32 {
-        match secret_type {
-            SecretType::HandshakeSecret => {
-                if let Some(sender_ratchet) = &self.handshake_sender_ratchets[sender.as_usize()] {
-                    sender_ratchet.get_generation()
-                } else {
-                    0
-                }
-            }
-            SecretType::ApplicationSecret => {
-                if let Some(sender_ratchet) = &self.application_sender_ratchets[sender.as_usize()] {
-                    sender_ratchet.get_generation()
-                } else {
-                    0
-                }
-            }
+    /// Get current generation for a specific SenderRatchet
+    pub fn get_generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
+        match self.get_ratchet_opt(index, secret_type) {
+            Some(sender_ratchet) => sender_ratchet.get_generation(),
+            None => 0,
         }
     }
 
+    /// Initializes a specific SenderRatchet pair for a given index by calculating and deleteing the appropriate values in the SecretTree
     fn initialize_sender_ratchets(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -251,6 +244,7 @@ impl SecretTree {
         Ok(())
     }
 
+    /// Return RatchetSecrets for a given index and generation. Returns an error if index or ganartion are out of bound.
     pub fn get_secret(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -263,13 +257,13 @@ impl SecretTree {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         if self.get_ratchet_opt(index, secret_type).is_none() {
-            self.initialize_sender_ratchets(ciphersuite, index)
-                .expect("Error initializing SenderRatchet");
+            self.initialize_sender_ratchets(ciphersuite, index)?;
         }
         let sender_ratchet = self.get_ratchet_mut(index, secret_type);
         sender_ratchet.get_secret(generation, ciphersuite)
     }
 
+    /// Return the next RatchetSecrets that should be used for encryption and then increments the generation.
     pub fn next_secret(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -277,15 +271,26 @@ impl SecretTree {
         secret_type: SecretType,
     ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
         let generation = self.get_generation(index, secret_type);
-        if generation == 0 {
-            // Initialize the tree first
+
+        /*
+        let generation = self.get_generation();
+        let secret = self.get_secret(generation, ciphersuite)?;
+        self.generation += 1;
+        Ok((generation, secret))
+
+        */
+
+        if self.get_ratchet_opt(index, secret_type).is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)?;
         }
-        Ok(self
-            .get_ratchet_mut(index, secret_type)
-            .next_secret(ciphersuite)?)
+
+        let secret = self.get_secret(ciphersuite, index, secret_type, generation)?;
+        let generation = self.get_generation(index, secret_type);
+        self.get_ratchet_mut(index, secret_type).ratchet_forward();
+        Ok((generation, secret))
     }
 
+    /// Returns a mutable reference to a specific SenderRatchet. The SenderRatchet needs to be initialized.
     fn get_ratchet_mut(&mut self, index: LeafIndex, secret_type: SecretType) -> &mut SenderRatchet {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
@@ -298,14 +303,11 @@ impl SecretTree {
             .expect("SecretTree not initialized")
     }
 
-    fn get_ratchet_opt(
-        &mut self,
-        index: LeafIndex,
-        secret_type: SecretType,
-    ) -> Option<&SenderRatchet> {
+    /// Returns an optional reference to a specific SenderRatchet
+    fn get_ratchet_opt(&self, index: LeafIndex, secret_type: SecretType) -> Option<&SenderRatchet> {
         let sender_ratchets = match secret_type {
-            SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
-            SecretType::ApplicationSecret => &mut self.application_sender_ratchets,
+            SecretType::HandshakeSecret => &self.handshake_sender_ratchets,
+            SecretType::ApplicationSecret => &self.application_sender_ratchets,
         };
         sender_ratchets
             .get(index.as_usize())
@@ -313,6 +315,7 @@ impl SecretTree {
             .as_ref()
     }
 
+    /// Derives the secrets for the child leaves in a SecretTree and blanks the parent leaf.
     fn derive_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
         let hash_len = ciphersuite.hash_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()]

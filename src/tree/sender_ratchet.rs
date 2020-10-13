@@ -44,6 +44,7 @@ impl Codec for SenderRatchet {
 }
 
 impl SenderRatchet {
+    /// Creates e new SenderRatchet
     pub fn new(index: LeafIndex, secret: &[u8]) -> Self {
         Self {
             index,
@@ -51,6 +52,7 @@ impl SenderRatchet {
             past_secrets: vec![secret.to_vec()],
         }
     }
+    /// Gets a secret from the SenderRatchet. Returns an error if the generation is out of bound.
     pub fn get_secret(
         &mut self,
         generation: u32,
@@ -84,15 +86,13 @@ impl SenderRatchet {
             Ok(ratchet_secrets)
         }
     }
-    pub fn next_secret(
-        &mut self,
-        ciphersuite: &Ciphersuite,
-    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
-        let generation = self.get_generation();
-        let secret = self.get_secret(generation, ciphersuite)?;
+    /// Increments the generation by one and drops all past secrets
+    pub fn ratchet_forward(&mut self) {
+        // Keep only the most current secret
+        self.past_secrets = vec![self.past_secrets.last().unwrap().to_vec()];
         self.generation += 1;
-        Ok((generation, secret))
     }
+    /// Computes the new secret
     fn ratchet_secret(&self, secret: &[u8], ciphersuite: &Ciphersuite) -> Vec<u8> {
         derive_tree_secret(
             ciphersuite,
@@ -103,6 +103,7 @@ impl SenderRatchet {
             ciphersuite.hash_length(),
         )
     }
+    /// Derives a key & nonce from a secret
     fn derive_key_nonce(
         &self,
         secret: &[u8],
@@ -127,7 +128,7 @@ impl SenderRatchet {
         );
         RatchetSecrets::new(AeadNonce::from_slice(&nonce), AeadKey::from_slice(&key))
     }
-
+    /// Gets the current generation
     pub(crate) fn get_generation(&self) -> u32 {
         self.generation
     }
