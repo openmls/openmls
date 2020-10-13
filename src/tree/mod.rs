@@ -198,14 +198,13 @@ impl RatchetTree {
             return unmerged_leaves;
         }
 
-        let mut left = self.resolve(treemath::left(index).expect(
-            "resolve:
-            TreeMath error when computing left child.",
-        ));
-        let right = self.resolve(treemath::right(index, size).expect(
-            "resolve:
-            TreeMath error when computing right child.",
-        ));
+        let mut left = self.resolve(
+            treemath::left(index).expect("resolve: TreeMath error when computing left child."),
+        );
+        let right = self.resolve(
+            treemath::right(index, size)
+                .expect("resolve: TreeMath error when computing right child."),
+        );
         left.extend(right);
         left
     }
@@ -237,10 +236,9 @@ impl RatchetTree {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
         self.nodes[treemath::root(size).as_usize()].blank();
-        for index in treemath::dirpath(index, size).expect(
-            "blank_member:
-            TreeMath error when computing direct path.",
-        ) {
+        for index in treemath::dirpath(index, size)
+            .expect("blank_member: TreeMath error when computing direct path.")
+        {
             self.nodes[index.as_usize()].blank();
         }
     }
@@ -745,10 +743,8 @@ impl RatchetTree {
                     leaf_node_hash.hash(ciphersuite)
                 }
                 NodeType::Parent => {
-                    let left = treemath::left(index).expect(
-                        "node_hash: Error when computing left
-            child of node.",
-                    );
+                    let left = treemath::left(index)
+                        .expect("node_hash: Error when computing left child of node.");
                     let left_hash = node_hash(ciphersuite, tree, left);
                     let right = treemath::right(index, tree.leaf_count())
                         .expect("node_hash: Error when computing left child of node.");
