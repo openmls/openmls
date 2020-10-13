@@ -76,11 +76,11 @@ pub trait Api: Sized {
 
     /// Create application message
     fn create_application_message(
-        &self,
+        &mut self,
         aad: &[u8],
         msg: &[u8],
         signature_key: &SignaturePrivateKey,
-    ) -> MLSPlaintext;
+    ) -> MLSCiphertext;
 
     /// Encrypt an MLS message
     fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext;

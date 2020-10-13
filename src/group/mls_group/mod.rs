@@ -187,20 +187,21 @@ impl Api for MlsGroup {
 
     // Create application message
     fn create_application_message(
-        &self,
+        &mut self,
         aad: &[u8],
         msg: &[u8],
         signature_key: &SignaturePrivateKey,
-    ) -> MLSPlaintext {
+    ) -> MLSCiphertext {
         let content = MLSPlaintextContentType::Application(msg.to_vec());
-        MLSPlaintext::new(
+        let mls_plaintext = MLSPlaintext::new(
             &self.ciphersuite,
             self.get_sender_index(),
             aad,
             content,
             signature_key,
             &self.get_context(),
-        )
+        );
+        self.encrypt(mls_plaintext)
     }
 
     // Encrypt/Decrypt MLS message
