@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::framing::*;
 use crate::errors::ConfigError;
 use crate::tree::TreeError;
 
@@ -41,6 +42,16 @@ pub enum ApplyCommitError {
     PlaintextSignatureFailure = 206,
     RequiredPathNotFound = 207,
     ConfirmationTagMismatch = 208,
+}
+
+pub enum DecryptionError {
+    CiphertextError(MLSCiphertextError),
+}
+
+impl From<MLSCiphertextError> for DecryptionError {
+    fn from(e: MLSCiphertextError) -> DecryptionError {
+        DecryptionError::CiphertextError(e)
+    }
 }
 
 #[derive(Debug)]

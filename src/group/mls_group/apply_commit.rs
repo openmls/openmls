@@ -172,12 +172,10 @@ impl MlsGroup {
         self.group_context = provisional_group_context;
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
-        self.astree
-            .borrow_mut()
-            .set_size(provisional_tree.leaf_count());
-        self.astree
-            .borrow_mut()
-            .set_application_secrets(&self.epoch_secrets.application_secret);
+        self.secret_tree = RefCell::new(SecretTree::new(
+            &self.epoch_secrets.encryption_secret,
+            provisional_tree.leaf_count(),
+        ));
         Ok(())
     }
 }

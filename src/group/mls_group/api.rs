@@ -85,7 +85,7 @@ pub trait Api: Sized {
     /// Encrypt an MLS message
     fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext;
     /// Decrypt an MLS message
-    fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext;
+    fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, DecryptionError>;
 
     /// Export a secret through the exporter
     fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
