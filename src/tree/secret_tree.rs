@@ -271,22 +271,13 @@ impl SecretTree {
         secret_type: SecretType,
     ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
         let generation = self.get_generation(index, secret_type);
-
-        /*
-        let generation = self.get_generation();
-        let secret = self.get_secret(generation, ciphersuite)?;
-        self.generation += 1;
-        Ok((generation, secret))
-
-        */
-
         if self.get_ratchet_opt(index, secret_type).is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)?;
         }
-
         let secret = self.get_secret(ciphersuite, index, secret_type, generation)?;
         let generation = self.get_generation(index, secret_type);
-        self.get_ratchet_mut(index, secret_type).ratchet_forward();
+        self.get_ratchet_mut(index, secret_type)
+            .ratchet_forward(ciphersuite);
         Ok((generation, secret))
     }
 

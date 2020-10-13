@@ -77,7 +77,7 @@ impl SenderRatchet {
                     self.past_secrets.remove(0);
                 }
                 let new_secret =
-                    self.ratchet_secret(self.past_secrets.last().unwrap(), ciphersuite);
+                    self.ratchet_secret(ciphersuite, self.past_secrets.last().unwrap());
                 self.past_secrets.push(new_secret);
             }
             let secret = self.past_secrets.last().unwrap();
@@ -87,13 +87,14 @@ impl SenderRatchet {
         }
     }
     /// Increments the generation by one and drops all past secrets
-    pub fn ratchet_forward(&mut self) {
+    pub fn ratchet_forward(&mut self, ciphersuite: &Ciphersuite) {
         // Keep only the most current secret
-        self.past_secrets = vec![self.past_secrets.last().unwrap().to_vec()];
+        self.past_secrets =
+            vec![self.ratchet_secret(ciphersuite, &self.past_secrets.last().unwrap().to_vec())];
         self.generation += 1;
     }
     /// Computes the new secret
-    fn ratchet_secret(&self, secret: &[u8], ciphersuite: &Ciphersuite) -> Vec<u8> {
+    fn ratchet_secret(&self, ciphersuite: &Ciphersuite, secret: &[u8]) -> Vec<u8> {
         derive_tree_secret(
             ciphersuite,
             secret,
