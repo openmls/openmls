@@ -152,7 +152,7 @@ impl Codec for ExtensionStruct {
 /// # Extension
 ///
 /// This trait defines functions to interact with an extension.
-pub trait Extension: Debug + ExtensionClone {
+pub trait Extension: Debug + ExtensionHelper {
     /// Build a new extension of the given type from a byte slice.
     fn create_from_bytes(
         ext_type: ExtensionType,
@@ -215,13 +215,13 @@ pub trait Extension: Debug + ExtensionClone {
 }
 
 // A slightly hacky work around to make `Extensions` clonable.
-pub trait ExtensionClone {
+pub trait ExtensionHelper {
     fn clone_it(&self) -> Box<dyn Extension>;
 }
 
-impl<T> ExtensionClone for T
+impl<T> ExtensionHelper for T
 where
-    T: 'static + Extension + Clone,
+    T: 'static + Extension + Clone + Default,
 {
     fn clone_it(&self) -> Box<dyn Extension> {
         Box::new(self.clone())

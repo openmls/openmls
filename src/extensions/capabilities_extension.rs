@@ -28,22 +28,15 @@ pub(crate) struct CapabilitiesExtension {
     extensions: Vec<ExtensionType>,
 }
 
-impl CapabilitiesExtension {
-    /// Create a new `CapabilitiesExtension` with the given values.
-    pub(crate) fn new() -> Self {
+impl Default for CapabilitiesExtension {
+    fn default() -> Self {
         CapabilitiesExtension {
             versions: Config::supported_versions(),
             ciphersuites: Config::supported_ciphersuites(),
             extensions: Config::supported_extensions(),
         }
     }
-
-    pub(crate) fn contains_ciphersuite(&self, ciphersuite: &CiphersuiteName) -> bool {
-        self.ciphersuites.contains(ciphersuite)
-    }
 }
-
-// impl Codec for CapabilitiesExtension {}
 
 impl Extension for CapabilitiesExtension {
     fn get_type(&self) -> ExtensionType {

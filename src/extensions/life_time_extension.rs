@@ -25,31 +25,31 @@ use crate::errors::ConfigError;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Default)]
 pub struct LifetimeExtension {
     not_before: u64,
     not_after: u64,
 }
 
 impl LifetimeExtension {
-    pub const LIFETIME_1_MINUTE: u64 = 60;
-    pub const LIFETIME_1_HOUR: u64 = 60 * LifetimeExtension::LIFETIME_1_MINUTE;
-    pub const LIFETIME_1_DAY: u64 = 24 * LifetimeExtension::LIFETIME_1_HOUR;
-    pub const LIFETIME_1_WEEK: u64 = 7 * LifetimeExtension::LIFETIME_1_DAY;
-    pub const LIFETIME_4_WEEKS: u64 = 4 * LifetimeExtension::LIFETIME_1_WEEK;
-    pub const LIFETIME_MARGIN: u64 = LifetimeExtension::LIFETIME_1_HOUR;
-    pub fn new(t: u64) -> Self {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let not_before = now - LifetimeExtension::LIFETIME_MARGIN;
-        let not_after = now + t + LifetimeExtension::LIFETIME_MARGIN;
-        Self {
-            not_before,
-            not_after,
-        }
-    }
+    // pub const LIFETIME_1_MINUTE: u64 = 60;
+    // pub const LIFETIME_1_HOUR: u64 = 60 * LifetimeExtension::LIFETIME_1_MINUTE;
+    // pub const LIFETIME_1_DAY: u64 = 24 * LifetimeExtension::LIFETIME_1_HOUR;
+    // pub const LIFETIME_1_WEEK: u64 = 7 * LifetimeExtension::LIFETIME_1_DAY;
+    // pub const LIFETIME_4_WEEKS: u64 = 4 * LifetimeExtension::LIFETIME_1_WEEK;
+    // pub const LIFETIME_MARGIN: u64 = LifetimeExtension::LIFETIME_1_HOUR;
+    // pub fn new(t: u64) -> Self {
+    //     let now = SystemTime::now()
+    //         .duration_since(UNIX_EPOCH)
+    //         .unwrap()
+    //         .as_secs();
+    //     let not_before = now - LifetimeExtension::LIFETIME_MARGIN;
+    //     let not_after = now + t + LifetimeExtension::LIFETIME_MARGIN;
+    //     Self {
+    //         not_before,
+    //         not_after,
+    //     }
+    // }
 
     fn is_expired(&self) -> bool {
         let now = SystemTime::now()

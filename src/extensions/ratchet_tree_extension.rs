@@ -29,7 +29,7 @@ use crate::tree::node::*;
 
 use super::{Extension, ExtensionStruct, ExtensionType};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Default)]
 pub struct RatchetTreeExtension {
     pub tree: Vec<Option<Node>>,
 }

@@ -81,7 +81,7 @@ impl Node {
         }
     }
 
-    // TODO: should this really return a vec?
+    // TODO: #98 should this really return a vec?
     pub fn parent_hash(&self) -> Option<Vec<u8>> {
         if self.is_blank() {
             return None;

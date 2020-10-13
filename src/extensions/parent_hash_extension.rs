@@ -22,7 +22,7 @@ use super::{Extension, ExtensionStruct, ExtensionType};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 use crate::errors::ConfigError;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Default)]
 pub struct ParentHashExtension {
     parent_hash: Vec<u8>,
 }
