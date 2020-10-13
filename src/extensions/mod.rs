@@ -219,6 +219,26 @@ pub trait Extension: Debug + ExtensionHelper {
 
     /// Get a generic trait object for downcasting.
     fn as_any(&self) -> &dyn Any;
+
+    /// Get a reference to the `ParentHashExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `ParentHashExtension`.
+    fn to_parent_hash_extension_ref(&self) -> Result<&ParentHashExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<ParentHashExtension>() {
+            Some(e) => Ok(e),
+            None => Err(ExtensionError::InvalidExtensionType),
+        }
+    }
+
+    /// Get a reference to the `CapabilitiesExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `CapabilitiesExtension`.
+    fn to_capabilities_extension_ref(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<CapabilitiesExtension>() {
+            Some(e) => Ok(e),
+            None => Err(ExtensionError::InvalidExtensionType),
+        }
+    }
 }
 
 // A slightly hacky work around to make `Extensions` clonable.

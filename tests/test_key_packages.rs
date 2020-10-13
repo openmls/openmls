@@ -5,6 +5,7 @@ use maelstrom::{
     ciphersuite::{Ciphersuite, CiphersuiteName},
     config::Config,
     creds::*,
+    extensions::*,
     key_packages::*,
 };
 
@@ -29,6 +30,33 @@ macro_rules! key_package_generation {
                 credential,
                 None,
             );
+
+            let extensions = kpb.get_key_package().get_extensions_ref();
+
+            // The capabilities extension must be present and valid.
+            // It's added automatically.
+            let capabilities_extension = extensions
+                .iter()
+                .find(|e| e.get_type() == ExtensionType::Capabilities)
+                .expect("Capabilities extension is missing in key package");
+            let _capabilities_extension = capabilities_extension
+                .to_capabilities_extension_ref()
+                .unwrap();
+            // TODO: #101 test capabilities.
+
+            // Lifetime extension must be present and valid.
+            // TODO: #99 add lifetime extension to key packages
+            // let lifetime_extension = extensions
+            //     .iter()
+            //     .find(|e| e.get_type() == ExtensionType::Lifetime)
+            //     .expect("Lifetime extension is missing in key package");
+
+            // Parent hash extension must be present and valid.
+            // TODO: #100 add parent hash extension to key package
+            // let parent_hash_extension = extensions
+            //     .iter()
+            //     .find(|e| e.get_type() == ExtensionType::ParentHash)
+            //     .expect("Parent hash extension is missing in key package");
         }
     };
 }

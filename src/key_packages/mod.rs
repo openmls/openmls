@@ -115,6 +115,11 @@ impl KeyPackage {
     pub(crate) fn get_cipher_suite(&self) -> &Ciphersuite {
         &self.cipher_suite
     }
+
+    /// Get a reference to the extensions of this key package.
+    pub fn get_extensions_ref(&self) -> &[Box<dyn Extension>] {
+        &self.extensions
+    }
 }
 
 impl Signable for KeyPackage {
@@ -143,7 +148,8 @@ pub struct KeyPackageBundle {
 
 impl KeyPackageBundle {
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
-    /// and `extensions`.
+    /// and `extensions`. Note that the capabilities extension gets added
+    /// automatically, based on the configuration.
     /// This generates a fresh HPKE key pair for this bundle.
     ///
     /// Returns a new `KeyPackageBundle`.

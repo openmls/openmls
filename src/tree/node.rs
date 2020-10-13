@@ -100,10 +100,10 @@ impl Node {
                         key_package.get_extension(ExtensionType::ParentHash);
                     match parent_hash_extension {
                         Some(phe) => {
-                            let phe: &ParentHashExtension = phe
-                                .as_any()
-                                .downcast_ref::<ParentHashExtension>()
-                                .expect("Library error");
+                            let phe = match phe.to_parent_hash_extension_ref() {
+                                Ok(phe) => phe,
+                                Err(_) => return None,
+                            };
                             Some(phe.get_parent_hash_ref().to_vec())
                         }
                         None => None,
