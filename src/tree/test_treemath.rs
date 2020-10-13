@@ -1,3 +1,6 @@
+/// The following test uses an old test vector that assumes an outdated version
+/// of the treemath defined in the spec. We do not consider a few select test
+/// cases that are no longer valid based on the new treemath.
 #[test]
 fn verify_binary_test_vector_treemath() {
     use crate::tree::treemath;
@@ -23,25 +26,51 @@ fn verify_binary_test_vector_treemath() {
         assert_eq!(NodeIndex::from(*r), treemath::root(LeafIndex::from(i + 1)));
     }
     for (i, l) in left.iter().enumerate() {
-        assert_eq!(NodeIndex::from(*l), treemath::left(NodeIndex::from(i)));
+        // Skip cases where input = output, which is a remnant of the old way
+        // that children were computed.
+        if i != *l as usize {
+            assert_eq!(
+                NodeIndex::from(*l),
+                treemath::left(NodeIndex::from(i)).expect(
+                    "verify_binary_test_vector_treemath: Failed to compute left child of node."
+                )
+            );
+        }
     }
     for (i, r) in right.iter().enumerate() {
-        assert_eq!(
-            NodeIndex::from(*r),
-            treemath::right(NodeIndex::from(i), tree_size)
-        );
+        // Skip cases where input = output, which is a remnant of the old way
+        // that children were computed.
+        if i != *r as usize {
+            assert_eq!(
+                NodeIndex::from(*r),
+                treemath::right(NodeIndex::from(i), tree_size).expect(
+                    "verify_binary_test_vector_treemath: Failed to compute right child of node."
+                )
+            );
+        }
     }
     for (i, p) in parent.iter().enumerate() {
-        assert_eq!(
-            NodeIndex::from(*p),
-            treemath::parent(NodeIndex::from(i), tree_size)
-        );
+        // Skip cases where input = output, which is a remnant of the old way
+        // that the parent of a root was computed.
+        if i != *p as usize {
+            assert_eq!(
+                NodeIndex::from(*p),
+                treemath::parent(NodeIndex::from(i), tree_size).expect(
+                    "verify_binary_test_vector_treemath: Failed to compute parent of node."
+                )
+            );
+        }
     }
     for (i, s) in sibling.iter().enumerate() {
-        assert_eq!(
-            NodeIndex::from(*s),
-            treemath::sibling(NodeIndex::from(i), tree_size)
-        );
+        // Skip cases where input = output, which is a remnant of the old way
+        // that siblings were computed, where the root is its own sibling.
+        if i != *s as usize {
+            assert_eq!(
+                NodeIndex::from(*s),
+                treemath::sibling(NodeIndex::from(i), tree_size)
+                    .expect("verify_binary_test_vector_treemath: Failed to compute left sibling.")
+            );
+        }
     }
     assert_eq!(cursor.has_more(), false);
 }
