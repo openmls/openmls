@@ -167,7 +167,8 @@ impl MlsGroup {
                     let dirpath = treemath::direct_path_root(
                         provisional_tree.get_own_node_index(),
                         provisional_tree.leaf_count(),
-                    );
+                    )
+                    .expect("create_commit_internal: TreeMath error when computing direct path.");
                     let position = dirpath
                         .iter()
                         .position(|&x| x == common_ancestor_index)

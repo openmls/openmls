@@ -167,7 +167,10 @@ impl ASTree {
             }
         }
         let mut dir_path = vec![index_in_tree];
-        dir_path.extend(dirpath(index_in_tree, self.size));
+        dir_path.extend(
+            dirpath(index_in_tree, self.size)
+                .expect("get_secret: Error when computing direct path."),
+        );
         dir_path.push(root(self.size));
         let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
@@ -192,8 +195,10 @@ impl ASTree {
     fn hash_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
         let hash_len = ciphersuite.hash_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()].clone().unwrap().secret;
-        let left_index = left(index_in_tree);
-        let right_index = right(index_in_tree, self.size);
+        let left_index =
+            left(index_in_tree).expect("hash_down: Error when computing left child of node.");
+        let right_index = right(index_in_tree, self.size)
+            .expect("hash_down: Error when computing right child of node.");
         let left_secret = derive_app_secret(
             &ciphersuite,
             &node_secret,
