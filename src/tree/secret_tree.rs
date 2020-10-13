@@ -60,6 +60,7 @@ impl TryFrom<&MLSPlaintext> for SecretType {
     }
 }
 
+/// Derives secrets for inner nodes of a SecretTree
 pub(crate) fn derive_tree_secret(
     ciphersuite: &Ciphersuite,
     secret: &[u8],
@@ -243,8 +244,9 @@ impl SecretTree {
         Ok(())
     }
 
-    /// Return RatchetSecrets for a given index and generation. Returns an error if index or ganartion are out of bound.
-    pub fn get_secret(
+    /// Return RatchetSecrets for a given index and generation. This should be called when decrypting
+    /// an MLSCiphertext received fromanother member. Returns an error if index or genartion are out of bound.
+    pub fn get_secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
@@ -259,25 +261,22 @@ impl SecretTree {
             self.initialize_sender_ratchets(ciphersuite, index)?;
         }
         let sender_ratchet = self.get_ratchet_mut(index, secret_type);
-        sender_ratchet.get_secret(generation, ciphersuite)
+        sender_ratchet.get_secret_for_decryption(ciphersuite, generation)
     }
 
     /// Return the next RatchetSecrets that should be used for encryption and then increments the generation.
-    pub fn next_secret(
+    pub fn get_secret_for_encryption(
         &mut self,
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
         secret_type: SecretType,
-    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
-        let generation = self.get_generation(index, secret_type);
+    ) -> (u32, RatchetSecrets) {
         if self.get_ratchet_opt(index, secret_type).is_none() {
-            self.initialize_sender_ratchets(ciphersuite, index)?;
+            self.initialize_sender_ratchets(ciphersuite, index)
+                .expect("Index out of bounds");
         }
-        let secret = self.get_secret(ciphersuite, index, secret_type, generation)?;
-        let generation = self.get_generation(index, secret_type);
-        self.get_ratchet_mut(index, secret_type)
-            .ratchet_forward(ciphersuite);
-        Ok((generation, secret))
+        let sender_ratchet = self.get_ratchet_mut(index, secret_type);
+        sender_ratchet.get_secret_for_encryption(ciphersuite)
     }
 
     /// Returns a mutable reference to a specific SenderRatchet. The SenderRatchet needs to be initialized.

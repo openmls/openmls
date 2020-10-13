@@ -9,44 +9,59 @@ fn test_boundaries() {
     let mut secret_tree = SecretTree::new(&[0u8; 32], LeafIndex::from(2u32));
     let secret_type = SecretType::ApplicationSecret;
     assert!(secret_tree
-        .get_secret(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
         .is_ok());
     assert!(secret_tree
-        .get_secret(&ciphersuite, LeafIndex::from(1u32), secret_type, 0)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(1u32), secret_type, 0)
         .is_ok());
     assert!(secret_tree
-        .get_secret(&ciphersuite, LeafIndex::from(0u32), secret_type, 1)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1)
         .is_ok());
     assert!(secret_tree
-        .get_secret(&ciphersuite, LeafIndex::from(0u32), secret_type, 1_000)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1_000)
         .is_ok());
     assert_eq!(
-        secret_tree.get_secret(&ciphersuite, LeafIndex::from(1u32), secret_type, 1001),
+        secret_tree.get_secret_for_decryption(
+            &ciphersuite,
+            LeafIndex::from(1u32),
+            secret_type,
+            1001
+        ),
         Err(SecretTreeError::TooDistantInTheFuture)
     );
     assert!(secret_tree
-        .get_secret(&ciphersuite, LeafIndex::from(0u32), secret_type, 996)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 996)
         .is_ok());
     assert_eq!(
-        secret_tree.get_secret(&ciphersuite, LeafIndex::from(0u32), secret_type, 995),
+        secret_tree.get_secret_for_decryption(
+            &ciphersuite,
+            LeafIndex::from(0u32),
+            secret_type,
+            995
+        ),
         Err(SecretTreeError::TooDistantInThePast)
     );
     assert_eq!(
-        secret_tree.get_secret(&ciphersuite, LeafIndex::from(2u32), secret_type, 0),
+        secret_tree.get_secret_for_decryption(&ciphersuite, LeafIndex::from(2u32), secret_type, 0),
         Err(SecretTreeError::IndexOutOfBounds)
     );
     let mut largetree = SecretTree::new(&[0u8; 32], LeafIndex::from(100_000u32));
     assert!(largetree
-        .get_secret(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
         .is_ok());
     assert!(largetree
-        .get_secret(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 0)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 0)
         .is_ok());
     assert!(largetree
-        .get_secret(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 1_000)
+        .get_secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 1_000)
         .is_ok());
     assert_eq!(
-        largetree.get_secret(&ciphersuite, LeafIndex::from(100_000u32), secret_type, 0),
+        largetree.get_secret_for_decryption(
+            &ciphersuite,
+            LeafIndex::from(100_000u32),
+            secret_type,
+            0
+        ),
         Err(SecretTreeError::IndexOutOfBounds)
     );
 }
@@ -58,7 +73,7 @@ fn increment_generation() {
     use crate::tree::{secret_tree::*, *};
     use std::collections::HashMap;
 
-    const SIZE: usize = 1000;
+    const SIZE: usize = 100;
     const MAX_GENERATIONS: usize = 10;
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
@@ -76,13 +91,11 @@ fn increment_generation() {
     }
     for i in 0..MAX_GENERATIONS {
         for j in 0..SIZE {
-            let (next_gen, handshake_secret) = secret_tree
-                .next_secret(
-                    &ciphersuite,
-                    LeafIndex::from(j as u32),
-                    SecretType::HandshakeSecret,
-                )
-                .unwrap();
+            let (next_gen, handshake_secret) = secret_tree.get_secret_for_encryption(
+                &ciphersuite,
+                LeafIndex::from(j as u32),
+                SecretType::HandshakeSecret,
+            );
             assert_eq!(next_gen, i as u32);
             assert!(unique_values
                 .insert(handshake_secret.get_key().as_slice().to_vec(), true)
@@ -90,13 +103,11 @@ fn increment_generation() {
             assert!(unique_values
                 .insert(handshake_secret.get_nonce().as_slice().to_vec(), true)
                 .is_none());
-            let (next_gen, application_secret) = secret_tree
-                .next_secret(
-                    &ciphersuite,
-                    LeafIndex::from(j as u32),
-                    SecretType::ApplicationSecret,
-                )
-                .unwrap();
+            let (next_gen, application_secret) = secret_tree.get_secret_for_encryption(
+                &ciphersuite,
+                LeafIndex::from(j as u32),
+                SecretType::ApplicationSecret,
+            );
             assert_eq!(next_gen, i as u32);
             assert!(unique_values
                 .insert(application_secret.get_key().as_slice().to_vec(), true)
