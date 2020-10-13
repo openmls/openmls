@@ -196,7 +196,6 @@ impl SecretTree {
         }
         // Calculate direct path
         let index_in_tree = NodeIndex::from(index);
-        let generation = 0;
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(dirpath(index_in_tree, self.size));
         dir_path.push(root(self.size));
@@ -224,7 +223,7 @@ impl SecretTree {
             node_secret,
             "handshake",
             index.as_u32(),
-            generation,
+            0,
             ciphersuite.hash_length(),
         );
         let handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
@@ -234,7 +233,7 @@ impl SecretTree {
             node_secret,
             "application",
             index.as_u32(),
-            generation,
+            0,
             ciphersuite.hash_length(),
         );
         let application_sender_ratchet = SenderRatchet::new(index, &application_ratchet_secret);
