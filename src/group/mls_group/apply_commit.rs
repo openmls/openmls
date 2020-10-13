@@ -155,7 +155,7 @@ impl MlsGroup {
                 let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
-                    .get_extension(ExtensionType::ParentHash)
+                    .get_extension(ExtensionType::ParentHash)?
                 {
                     if let ExtensionPayload::ParentHash(parent_hash_inner) = received_parent_hash {
                         if parent_hash != parent_hash_inner.parent_hash {

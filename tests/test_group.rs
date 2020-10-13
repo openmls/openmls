@@ -13,12 +13,10 @@ fn create_commit_optional_path() {
     // Define identities
     let alice_identity = Identity::new(ciphersuite, "Alice".into());
     let bob_identity = Identity::new(ciphersuite, "Bob".into());
-    let charlie_identity = Identity::new(ciphersuite, "Charlie".into());
 
     // Define credentials
     let alice_credential = BasicCredential::from(&alice_identity);
     let bob_credential = BasicCredential::from(&bob_identity);
-    let charlie_credential = BasicCredential::from(&bob_identity);
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
@@ -27,7 +25,7 @@ fn create_commit_optional_path() {
         Credential::Basic(alice_credential.clone()), // TODO: this consumes the credential!
         None,
     );
-    let alice_key_package = alice_key_package_bundle.get_key_package();
+
     let bob_key_package_bundle = KeyPackageBundle::new(
         &ciphersuite,
         &bob_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
@@ -43,14 +41,6 @@ fn create_commit_optional_path() {
         None,
     );
     let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
-
-    let charlie_key_package_bundle = KeyPackageBundle::new(
-        &ciphersuite,
-        &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
-        Credential::Basic(charlie_credential),
-        None,
-    );
-    let charlie_key_package = charlie_key_package_bundle.get_key_package();
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
@@ -129,12 +119,10 @@ fn basic_group_setup() {
     // Define identities
     let alice_identity = Identity::new(ciphersuite, "Alice".into());
     let bob_identity = Identity::new(ciphersuite, "Bob".into());
-    let charlie_identity = Identity::new(ciphersuite, "Charlie".into());
 
     // Define credentials
     let alice_credential = BasicCredential::from(&alice_identity);
     let bob_credential = BasicCredential::from(&bob_identity);
-    let charlie_credential = BasicCredential::from(&bob_identity);
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
@@ -151,19 +139,10 @@ fn basic_group_setup() {
         Credential::Basic(alice_credential),
         None,
     );
-    let alice_key_package = alice_key_package_bundle.get_key_package();
-
-    let charlie_key_package_bundle = KeyPackageBundle::new(
-        &ciphersuite,
-        &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
-        Credential::Basic(charlie_credential),
-        None,
-    );
-    let charlie_key_package = charlie_key_package_bundle.get_key_package();
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
+    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -171,7 +150,7 @@ fn basic_group_setup() {
         &alice_identity.get_signature_key_pair().get_private_key(),
         bob_key_package.clone(),
     );
-    let commit = match group_alice_1234.create_commit(
+    let _commit = match group_alice_1234.create_commit(
         group_aad,
         &alice_identity.get_signature_key_pair().get_private_key(),
         vec![bob_add_proposal],

@@ -16,7 +16,9 @@
 
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
+use crate::config::ProtocolVersion;
 use crate::creds::*;
+use crate::errors::ConfigError;
 use crate::extensions::*;
 
 mod codec;
@@ -28,7 +30,6 @@ pub(crate) const CIPHERSUITES: &[CiphersuiteName] = &[
     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
     CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
 ];
-pub(crate) const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] = &[CURRENT_PROTOCOL_VERSION];
 pub(crate) const SUPPORTED_EXTENSIONS: &[ExtensionType] = &[ExtensionType::Lifetime];
 
 #[derive(Debug, PartialEq, Clone)]
@@ -51,9 +52,9 @@ impl KeyPackage {
         credential: Credential,
         extensions: &[Extension],
     ) -> Self {
-        //let credential = Credential::Basic(identity.into());
         let mut key_package = Self {
-            protocol_version: CURRENT_PROTOCOL_VERSION,
+            // TODO: #85 Take from global config.
+            protocol_version: ProtocolVersion::default(),
             cipher_suite: ciphersuite,
             hpke_init_key: hpke_init_key.to_owned(),
             credential,
@@ -80,34 +81,37 @@ impl KeyPackage {
 
     /// Get the extension of `extension_type`.
     /// Returns `Some(extension)` if present and `None` if the extension is not present.
-    pub fn get_extension(&self, extension_type: ExtensionType) -> Option<ExtensionPayload> {
+    pub(crate) fn get_extension(
+        &self,
+        extension_type: ExtensionType,
+    ) -> Result<Option<ExtensionPayload>, ConfigError> {
         for e in &self.extensions {
             if e.get_type() == extension_type {
                 match extension_type {
                     ExtensionType::Capabilities => {
                         let capabilities_extension =
-                            CapabilitiesExtension::new_from_bytes(&e.extension_data);
-                        return Some(ExtensionPayload::Capabilities(capabilities_extension));
+                            CapabilitiesExtension::new_from_bytes(&e.extension_data)?;
+                        return Ok(Some(ExtensionPayload::Capabilities(capabilities_extension)));
                     }
                     ExtensionType::Lifetime => {
                         let lifetime_extension =
                             LifetimeExtension::new_from_bytes(&e.extension_data);
-                        return Some(ExtensionPayload::Lifetime(lifetime_extension));
+                        return Ok(Some(ExtensionPayload::Lifetime(lifetime_extension)));
                     }
                     ExtensionType::KeyID => {
                         let key_id_extension = KeyIDExtension::new_from_bytes(&e.extension_data);
-                        return Some(ExtensionPayload::KeyID(key_id_extension));
+                        return Ok(Some(ExtensionPayload::KeyID(key_id_extension)));
                     }
                     ExtensionType::ParentHash => {
                         let parent_hash_extension =
                             ParentHashExtension::new_from_bytes(&e.extension_data);
-                        return Some(ExtensionPayload::ParentHash(parent_hash_extension));
+                        return Ok(Some(ExtensionPayload::ParentHash(parent_hash_extension)));
                     }
-                    _ => return None,
+                    _ => return Ok(None),
                 }
             }
         }
-        None
+        Ok(None)
     }
 
     /// Add (or replace) an extension to the KeyPackage.
@@ -195,7 +199,7 @@ impl KeyPackageBundle {
         key_pair: &HPKEKeyPair,
     ) -> Self {
         let capabilities_extension = CapabilitiesExtension::new(
-            SUPPORTED_PROTOCOL_VERSIONS.to_vec(),
+            ProtocolVersion::supported(),
             CIPHERSUITES.to_vec(),
             SUPPORTED_EXTENSIONS.to_vec(),
         );
@@ -212,7 +216,7 @@ impl KeyPackageBundle {
         );
         KeyPackageBundle {
             key_package,
-            private_key: key_pair.get_private_key().clone(),
+            private_key: key_pair.get_private_key(),
         }
     }
 

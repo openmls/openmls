@@ -15,6 +15,7 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
 use crate::framing::*;
+use crate::errors::ConfigError;
 use crate::tree::TreeError;
 
 #[derive(Debug)]
@@ -65,6 +66,14 @@ impl From<TreeError> for WelcomeError {
             TreeError::InvalidArguments => WelcomeError::InvalidRatchetTree,
             TreeError::InvalidUpdatePath => WelcomeError::InvalidRatchetTree,
             TreeError::NoneError => WelcomeError::InvalidRatchetTree,
+        }
+    }
+}
+
+impl From<ConfigError> for ApplyCommitError {
+    fn from(e: ConfigError) -> ApplyCommitError {
+        match e {
+            ConfigError::UnsupportedMlsVersion => ApplyCommitError::NoParentHashExtension,
         }
     }
 }
