@@ -17,6 +17,7 @@
 use crate::tree::index::*;
 use std::cmp::Ordering;
 
+#[derive(Debug)]
 pub enum TreeMathError {
     LeafHasNoChildren,
     RootHasNoParent,
@@ -119,11 +120,11 @@ pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex
     }
 
     let mut d = vec![];
-
-    index = parent(index, size)?;
-    while index != r {
-        d.push(index);
-        index = parent(index, size)?;
+    let mut x = index;
+    x = parent(x, size)?;
+    while x != r {
+        d.push(x);
+        x = parent(x, size)?;
     }
     return Ok(d);
 }
@@ -139,10 +140,11 @@ pub(crate) fn dirpath_long(
         return Ok(vec![]);
     }
 
+    let mut x = index;
     let mut d = vec![index];
-    while index != r {
-        index = parent(index, size)?;
-        d.push(index);
+    while x != r {
+        x = parent(x, size)?;
+        d.push(x);
     }
     return Ok(d);
 }
@@ -159,9 +161,10 @@ pub(crate) fn direct_path_root(
     }
 
     let mut d = vec![];
-    while index != r {
-        index = parent(index, size)?;
-        d.push(index);
+    let mut x = index;
+    while x != r {
+        x = parent(x, size)?;
+        d.push(x);
     }
     return Ok(d);
 }
@@ -173,12 +176,11 @@ pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>
     }
     let mut d = vec![index];
     d.append(&mut dirpath(index, size)?);
-    d.pop();
     d.iter().map(|&index| sibling(index, size)).collect()
 }
 
 pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
-    let (mut lx, mut ly) = (level(x) + 1, level(y) + 1);
+    let (lx, ly) = (level(x) + 1, level(y) + 1);
     if (lx <= ly) && (x.as_usize() >> ly == y.as_usize() >> ly) {
         return y;
     } else if (ly <= lx) && (x.as_usize() >> lx == y.as_usize() >> lx) {
