@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::framing::*;
+use crate::errors::ConfigError;
 use crate::tree::TreeError;
 
 #[derive(Debug)]
@@ -42,6 +44,16 @@ pub enum ApplyCommitError {
     ConfirmationTagMismatch = 208,
 }
 
+pub enum DecryptionError {
+    CiphertextError(MLSCiphertextError),
+}
+
+impl From<MLSCiphertextError> for DecryptionError {
+    fn from(e: MLSCiphertextError) -> DecryptionError {
+        DecryptionError::CiphertextError(e)
+    }
+}
+
 #[derive(Debug)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
@@ -54,6 +66,14 @@ impl From<TreeError> for WelcomeError {
             TreeError::InvalidArguments => WelcomeError::InvalidRatchetTree,
             TreeError::InvalidUpdatePath => WelcomeError::InvalidRatchetTree,
             TreeError::NoneError => WelcomeError::InvalidRatchetTree,
+        }
+    }
+}
+
+impl From<ConfigError> for ApplyCommitError {
+    fn from(e: ConfigError) -> ApplyCommitError {
+        match e {
+            ConfigError::UnsupportedMlsVersion => ApplyCommitError::NoParentHashExtension,
         }
     }
 }

@@ -16,7 +16,8 @@
 
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
-use crate::extensions::*;
+use crate::config::ProtocolVersion;
+use crate::extensions::RatchetTreeExtension;
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;

@@ -1,4 +1,4 @@
-use crate::tree::{astree::*, node::*, *};
+use crate::tree::{node::*, secret_tree::*, *};
 
 impl Codec for NodeType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -83,7 +83,7 @@ impl Codec for UpdatePath {
 
 // ASTree Codecs
 
-impl Codec for ASTreeNode {
+impl Codec for SecretTreeNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.secret)?;
         Ok(())

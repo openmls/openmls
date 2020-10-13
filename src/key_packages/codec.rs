@@ -1,3 +1,4 @@
+use crate::config::ProtocolVersion;
 use crate::key_packages::*;
 
 impl Codec for KeyPackage {
@@ -35,16 +36,10 @@ impl Codec for KeyPackage {
             match e.extension_type {
                 ExtensionType::Capabilities => {
                     let capabilities_extension =
-                        CapabilitiesExtension::new_from_bytes(&e.extension_data);
-                    for v in capabilities_extension.versions.iter() {
-                        if *v > CURRENT_PROTOCOL_VERSION {
-                            return Err(CodecError::DecodingError);
-                        }
-                    }
-                    if !capabilities_extension
-                        .ciphersuites
-                        .contains(&CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
-                    {
+                        CapabilitiesExtension::new_from_bytes(&e.extension_data)?;
+                    if !capabilities_extension.contains_ciphersuite(
+                        &CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                    ) {
                         return Err(CodecError::DecodingError);
                     }
                 }
@@ -62,8 +57,7 @@ impl Codec for KeyPackage {
                         ParentHashExtension::new_from_bytes(&e.extension_data);
                 }
                 ExtensionType::RatchetTree => {}
-                ExtensionType::Invalid => {}
-                ExtensionType::Default => {}
+                ExtensionType::Reserved => {}
             }
         }
 

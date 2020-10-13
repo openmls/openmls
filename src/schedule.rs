@@ -83,8 +83,7 @@ impl HkdfLabel {
 pub struct EpochSecrets {
     pub welcome_secret: Vec<u8>,
     pub sender_data_secret: Vec<u8>,
-    pub handshake_secret: Vec<u8>,
-    pub application_secret: Vec<u8>,
+    pub encryption_secret: Vec<u8>,
     pub exporter_secret: Vec<u8>,
     pub confirmation_key: Vec<u8>,
     pub init_secret: Vec<u8>,
@@ -94,16 +93,14 @@ impl EpochSecrets {
     pub fn new() -> Self {
         let welcome_secret = vec![];
         let sender_data_secret = vec![];
-        let handshake_secret = vec![];
-        let application_secret = vec![];
+        let encryption_secret = vec![];
         let exporter_secret = vec![];
         let confirmation_key = vec![];
         let init_secret = vec![];
         Self {
             welcome_secret,
             sender_data_secret,
-            handshake_secret,
-            application_secret,
+            encryption_secret,
             exporter_secret,
             confirmation_key,
             init_secret,
@@ -127,8 +124,7 @@ impl EpochSecrets {
         let epoch_secrets = Self::derive_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret);
         self.welcome_secret = epoch_secrets.welcome_secret;
         self.sender_data_secret = epoch_secrets.sender_data_secret;
-        self.handshake_secret = epoch_secrets.handshake_secret;
-        self.application_secret = epoch_secrets.application_secret;
+        self.encryption_secret = epoch_secrets.encryption_secret;
         self.exporter_secret = epoch_secrets.exporter_secret;
         self.confirmation_key = epoch_secrets.confirmation_key;
         self.init_secret = epoch_secrets.init_secret;
@@ -141,16 +137,14 @@ impl EpochSecrets {
         welcome_secret: Vec<u8>,
     ) -> EpochSecrets {
         let sender_data_secret = derive_secret(ciphersuite, epoch_secret, "sender data");
-        let handshake_secret = derive_secret(ciphersuite, epoch_secret, "handshake");
-        let application_secret = derive_secret(ciphersuite, epoch_secret, "app");
+        let encryption_secret = derive_secret(ciphersuite, epoch_secret, "encryption");
         let exporter_secret = derive_secret(ciphersuite, epoch_secret, "exporter");
         let confirmation_key = derive_secret(ciphersuite, epoch_secret, "confirm");
         let init_secret = derive_secret(ciphersuite, epoch_secret, "init");
         EpochSecrets {
             welcome_secret,
             sender_data_secret,
-            handshake_secret,
-            application_secret,
+            encryption_secret,
             exporter_secret,
             confirmation_key,
             init_secret,
@@ -162,8 +156,7 @@ impl Codec for EpochSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.welcome_secret)?;
         encode_vec(VecSize::VecU8, buffer, &self.sender_data_secret)?;
-        encode_vec(VecSize::VecU8, buffer, &self.handshake_secret)?;
-        encode_vec(VecSize::VecU8, buffer, &self.application_secret)?;
+        encode_vec(VecSize::VecU8, buffer, &self.encryption_secret)?;
         encode_vec(VecSize::VecU8, buffer, &self.exporter_secret)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmation_key)?;
         encode_vec(VecSize::VecU8, buffer, &self.init_secret)?;
@@ -172,16 +165,14 @@ impl Codec for EpochSecrets {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let welcome_secret = decode_vec(VecSize::VecU8, cursor)?;
         let sender_data_secret = decode_vec(VecSize::VecU8, cursor)?;
-        let handshake_secret = decode_vec(VecSize::VecU8, cursor)?;
-        let application_secret = decode_vec(VecSize::VecU8, cursor)?;
+        let encryption_secret = decode_vec(VecSize::VecU8, cursor)?;
         let exporter_secret = decode_vec(VecSize::VecU8, cursor)?;
         let confirmation_key = decode_vec(VecSize::VecU8, cursor)?;
         let init_secret = decode_vec(VecSize::VecU8, cursor)?;
         Ok(EpochSecrets {
             welcome_secret,
             sender_data_secret,
-            handshake_secret,
-            application_secret,
+            encryption_secret,
             exporter_secret,
             confirmation_key,
             init_secret,

@@ -94,8 +94,9 @@ impl Node {
             }
             NodeType::Leaf => {
                 if let Some(key_package) = &self.key_package {
-                    if let Some(extension_payload) =
-                        key_package.get_extension(ExtensionType::ParentHash)
+                    if let Some(extension_payload) = key_package
+                        .get_extension(ExtensionType::ParentHash)
+                        .unwrap()
                     {
                         if let ExtensionPayload::ParentHash(parent_hash_extension) =
                             extension_payload

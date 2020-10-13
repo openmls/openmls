@@ -155,7 +155,7 @@ impl MlsGroup {
                 let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
-                    .get_extension(ExtensionType::ParentHash)
+                    .get_extension(ExtensionType::ParentHash)?
                 {
                     if let ExtensionPayload::ParentHash(parent_hash_inner) = received_parent_hash {
                         if parent_hash != parent_hash_inner.parent_hash {
@@ -172,12 +172,10 @@ impl MlsGroup {
         self.group_context = provisional_group_context;
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
-        self.astree
-            .borrow_mut()
-            .set_size(provisional_tree.leaf_count());
-        self.astree
-            .borrow_mut()
-            .set_application_secrets(&self.epoch_secrets.application_secret);
+        self.secret_tree = RefCell::new(SecretTree::new(
+            &self.epoch_secrets.encryption_secret,
+            provisional_tree.leaf_count(),
+        ));
         Ok(())
     }
 }
