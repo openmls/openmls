@@ -46,13 +46,13 @@ impl Extension for ParentHashExtension {
     }
 
     /// Build a new ParentHashExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
     where
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
         let parent_hash = decode_vec(VecSize::VecU8, cursor).unwrap();
-        Ok(Box::new(Self { parent_hash }))
+        Ok(Self { parent_hash })
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

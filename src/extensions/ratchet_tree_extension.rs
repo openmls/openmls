@@ -46,13 +46,13 @@ impl Extension for RatchetTreeExtension {
     }
 
     /// Build a new RatchetTreeExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
     where
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
         let tree = decode_vec(VecSize::VecU32, cursor).unwrap();
-        Ok(Box::new(Self { tree }))
+        Ok(Self { tree })
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

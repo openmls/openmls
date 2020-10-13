@@ -22,19 +22,28 @@ pub struct KeyIDExtension {
     key_id: Vec<u8>,
 }
 
+impl KeyIDExtension {
+    /// Create a new key identifier extension from a byte slice.
+    pub fn new(id: &[u8]) -> Self {
+        Self {
+            key_id: id.to_vec(),
+        }
+    }
+}
+
 impl Extension for KeyIDExtension {
     fn get_type(&self) -> ExtensionType {
         ExtensionType::KeyID
     }
 
     /// Build a new KeyIDExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
     where
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
         let key_id = decode_vec(VecSize::VecU16, cursor).unwrap();
-        Ok(Box::new(Self { key_id }))
+        Ok(Self { key_id })
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

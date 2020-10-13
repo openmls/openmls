@@ -22,7 +22,7 @@ use crate::config::{Config, ProtocolVersion};
 use crate::errors::ConfigError;
 
 #[derive(PartialEq, Clone, Debug)]
-pub(crate) struct CapabilitiesExtension {
+pub struct CapabilitiesExtension {
     versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<CiphersuiteName>,
     extensions: Vec<ExtensionType>,
@@ -46,7 +46,7 @@ impl Extension for CapabilitiesExtension {
     /// Build a new CapabilitiesExtension from a byte slice.
     /// Checks that we can work with these capabilities and returns a `ConfigError`
     /// if not.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
     where
         Self: Sized,
     {
@@ -77,11 +77,11 @@ impl Extension for CapabilitiesExtension {
 
         let extensions = decode_vec(VecSize::VecU8, cursor).unwrap();
 
-        Ok(Box::new(Self {
+        Ok(Self {
             versions,
             ciphersuites,
             extensions,
-        }))
+        })
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

@@ -66,7 +66,7 @@ impl Extension for LifetimeExtension {
     }
 
     /// Build a new LifetimeExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
     where
         Self: Sized,
     {
@@ -80,7 +80,7 @@ impl Extension for LifetimeExtension {
         if out.is_expired() {
             return Err(ConfigError::ExpiredLifetimeExtension);
         }
-        Ok(Box::new(out))
+        Ok(out)
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

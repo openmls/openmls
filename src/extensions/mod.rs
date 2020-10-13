@@ -24,11 +24,14 @@ mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
 
-pub(crate) use capabilities_extension::CapabilitiesExtension;
+pub use capabilities_extension::CapabilitiesExtension;
 pub(crate) use key_package_id_extension::KeyIDExtension;
 pub(crate) use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
+
+#[cfg(test)]
+mod test_extensions;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ExtensionError {
@@ -40,6 +43,14 @@ impl From<ExtensionError> for ConfigError {
     fn from(e: ExtensionError) -> Self {
         match e {
             _ => ConfigError::InvalidConfig,
+        }
+    }
+}
+
+impl From<ExtensionError> for CodecError {
+    fn from(e: ExtensionError) -> Self {
+        match e {
+            _ => CodecError::DecodingError,
         }
     }
 }
@@ -88,9 +99,14 @@ impl Codec for ExtensionType {
         (*self as u16).encode(buffer)?;
         Ok(())
     }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let value = u16::decode(cursor)?;
+        Ok(Self::from(value)?)
+    }
 }
 
-/// # Extension
+/// # Extension struct
 ///
 /// An extension has an `ExtensionType` and an opaque payload (byte vector).
 /// This is only used for encoding and decoding.
@@ -122,11 +138,6 @@ impl<'a> ExtensionStruct {
     }
 
     /// Get the type of this extension struct.
-    pub(crate) fn get_extension_type(&self) -> ExtensionType {
-        self.extension_type
-    }
-
-    /// Get the type of this extension struct.
     pub(crate) fn get_extension_data(&'a self) -> &'a [u8] {
         &self.extension_data
     }
@@ -149,30 +160,52 @@ impl Codec for ExtensionStruct {
     }
 }
 
+/// Build a new extension of the given type from a byte slice.
+fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError> {
+    match ext_type {
+        ExtensionType::Capabilities => Ok(Box::new(CapabilitiesExtension::new_from_bytes(bytes)?)),
+        ExtensionType::KeyID => Ok(Box::new(KeyIDExtension::new_from_bytes(bytes)?)),
+        ExtensionType::Lifetime => Ok(Box::new(LifetimeExtension::new_from_bytes(bytes)?)),
+        ExtensionType::ParentHash => Ok(Box::new(ParentHashExtension::new_from_bytes(bytes)?)),
+        ExtensionType::RatchetTree => Ok(Box::new(RatchetTreeExtension::new_from_bytes(bytes)?)),
+        _ => Err(ExtensionError::InvalidExtensionType.into()),
+    }
+}
+
+/// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
+pub(crate) fn extensions_vec_from_cursor(
+    cursor: &mut Cursor,
+) -> Result<Vec<Box<dyn Extension>>, CodecError> {
+    // First parse the extension bytes into the `ExtensionStruct`.
+    let extension_struct_vec: Vec<ExtensionStruct> = decode_vec(VecSize::VecU16, cursor)?;
+
+    // Now create the result vector of `Extension`s.
+    let mut result: Vec<Box<dyn Extension>> = Vec::new();
+    for extension in extension_struct_vec.iter() {
+        // Make sure there are no duplicate extensions.
+        if result
+            .iter()
+            .find(|e| e.get_type() == extension.extension_type)
+            .is_some()
+        {
+            return Err(CodecError::DecodingError);
+        }
+        let ext = from_bytes(extension.extension_type, &extension.extension_data)?;
+        result.push(ext);
+    }
+
+    Ok(result)
+}
+
 /// # Extension
 ///
 /// This trait defines functions to interact with an extension.
 pub trait Extension: Debug + ExtensionHelper {
-    /// Build a new extension of the given type from a byte slice.
-    fn create_from_bytes(
-        ext_type: ExtensionType,
-        bytes: &[u8],
-    ) -> Result<Box<dyn Extension>, ConfigError>
-    where
-        Self: Sized,
-    {
-        match ext_type {
-            ExtensionType::Capabilities => CapabilitiesExtension::new_from_bytes(bytes),
-            ExtensionType::KeyID => KeyIDExtension::new_from_bytes(bytes),
-            ExtensionType::Lifetime => LifetimeExtension::new_from_bytes(bytes),
-            ExtensionType::ParentHash => ParentHashExtension::new_from_bytes(bytes),
-            ExtensionType::RatchetTree => RatchetTreeExtension::new_from_bytes(bytes),
-            _ => Err(ExtensionError::InvalidExtensionType.into()),
-        }
-    }
-
     /// Build a new extension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError>
+    ///
+    /// Note that all implementations of this trait are not public such that
+    /// this function can't be used outside of the library.
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
     where
         Self: Sized;
 
@@ -180,32 +213,6 @@ pub trait Extension: Debug + ExtensionHelper {
     /// This should be an associated constant really.
     /// See https://github.com/rust-lang/rust/issues/46969 for reference.
     fn get_type(&self) -> ExtensionType;
-
-    /// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
-    fn new_vec_from_cursor(cursor: &mut Cursor) -> Result<Vec<Box<dyn Extension>>, CodecError>
-    where
-        Self: Sized,
-    {
-        // First parse the extension bytes into the `ExtensionStruct`.
-        let extension_struct_vec: Vec<ExtensionStruct> = decode_vec(VecSize::VecU16, cursor)?;
-
-        // Now create the result vector of `Extension`s.
-        let mut result: Vec<Box<dyn Extension>> = Vec::new();
-        for extension in extension_struct_vec.iter() {
-            // Make sure there are no duplicate extensions.
-            if result
-                .iter()
-                .find(|e| e.get_type() == extension.extension_type)
-                .is_some()
-            {
-                return Err(CodecError::DecodingError);
-            }
-            let ext = Self::create_from_bytes(extension.extension_type, &extension.extension_data)?;
-            result.push(ext);
-        }
-
-        Ok(result)
-    }
 
     /// Get the extension as `ExtensionStruct` for encoding.
     fn to_extension_struct(&self) -> ExtensionStruct;
@@ -248,32 +255,3 @@ impl PartialEq for dyn Extension {
         self.to_extension_struct() == other.to_extension_struct()
     }
 }
-
-#[test]
-fn test_protocol_version() {
-    use crate::config::ProtocolVersion;
-
-    let mls10_version = ProtocolVersion::Mls10;
-    let default_version = ProtocolVersion::default();
-    let mls10_e = mls10_version.encode_detached().unwrap();
-    assert_eq!(mls10_e[0], mls10_version as u8);
-    let default_e = default_version.encode_detached().unwrap();
-    assert_eq!(default_e[0], default_version as u8);
-    assert_eq!(mls10_e[0], 1);
-    assert_eq!(default_e[0], 1);
-}
-
-// #[test]
-// fn test_extension_codec() {
-//     use crate::config::ProtocolVersion;
-//     use crate::key_packages::*;
-
-//     let capabilities_extension = CapabilitiesExtension::new(
-//         ProtocolVersion::supported(),
-//         CIPHERSUITES.to_vec(),
-//         SUPPORTED_EXTENSIONS.to_vec(),
-//     );
-//     let extension = capabilities_extension.to_extension();
-//     let _bytes = extension.encode_detached().unwrap();
-//     // let _dec = Extension::decode(&mut Cursor::new(&bytes));
-// }

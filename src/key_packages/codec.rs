@@ -15,35 +15,7 @@ impl Codec for KeyPackage {
         let cipher_suite = Ciphersuite::decode(cursor)?;
         let hpke_init_key = HPKEPublicKey::decode(cursor)?;
         let credential = Credential::decode(cursor)?;
-        // TODO: The following should replace the code chunk below. Needs further
-        //       investigation.
-        // let extensions = Extension::new_vec_from_cursor(cursor)?;
-        // First parse the extension bytes into the `ExtensionStruct`.
-        let extension_struct_vec: Vec<ExtensionStruct> = decode_vec(VecSize::VecU16, cursor)?;
-
-        // Now create the result vector of `Extension`s.
-        let mut extensions: Vec<Box<dyn Extension>> = Vec::new();
-        for extension in extension_struct_vec.iter() {
-            // Make sure there are no duplicate extensions.
-            if extensions
-                .iter()
-                .find(|e| e.get_type() == extension.get_extension_type())
-                .is_some()
-            {
-                return Err(CodecError::DecodingError);
-            }
-            let bytes = extension.get_extension_data();
-            let ext = match extension.get_extension_type() {
-                ExtensionType::Capabilities => CapabilitiesExtension::new_from_bytes(bytes),
-                ExtensionType::KeyID => KeyIDExtension::new_from_bytes(bytes),
-                ExtensionType::Lifetime => LifetimeExtension::new_from_bytes(bytes),
-                ExtensionType::ParentHash => ParentHashExtension::new_from_bytes(bytes),
-                ExtensionType::RatchetTree => RatchetTreeExtension::new_from_bytes(bytes),
-                _ => Err(ExtensionError::InvalidExtensionType.into()),
-            }?;
-            extensions.push(ext);
-        }
-        // ===
+        let extensions = extensions_vec_from_cursor(cursor)?;
         let signature = Signature::decode(cursor)?;
         let kp = KeyPackage {
             protocol_version,

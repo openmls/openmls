@@ -176,7 +176,7 @@ impl KeyPackageBundle {
     ) -> Self {
         // TODO: #85 this must be configurable.
         let mut final_extensions: Vec<Box<dyn Extension>> =
-            vec![Box::new(CapabilitiesExtension::new())];
+            vec![Box::new(CapabilitiesExtension::default())];
         if let Some(mut extensions) = extensions {
             final_extensions.append(&mut extensions);
         }
