@@ -28,6 +28,11 @@ use std::convert::TryFrom;
 pub mod sender;
 use sender::*;
 
+pub enum MLSCiphertextError {
+    InvalidContentType,
+    GenerationOutOfBound,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
     pub group_id: GroupId,
@@ -267,7 +272,7 @@ impl MLSCiphertext {
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
         context: &GroupContext,
-    ) -> MLSPlaintext {
+    ) -> Result<MLSPlaintext, MLSCiphertextError> {
         let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
         let sender_data_key_bytes = hkdf_expand_label(
             ciphersuite,
@@ -295,17 +300,19 @@ impl MLSCiphertext {
             )
             .unwrap();
         let sender_data = MLSSenderData::from_bytes(&sender_data_bytes).unwrap();
-        // TODO Handle error
-        let secret_type = SecretType::try_from(&self.content_type).unwrap();
-        // TODO Handle error
-        let ratchet_secrets = secret_tree
-            .get_secret(
-                ciphersuite,
-                sender_data.sender,
-                secret_type,
-                sender_data.generation,
-            )
-            .unwrap();
+        let secret_type = match SecretType::try_from(&self.content_type) {
+            Ok(secret_type) => secret_type,
+            Err(_) => return Err(MLSCiphertextError::InvalidContentType),
+        };
+        let ratchet_secrets = match secret_tree.get_secret(
+            ciphersuite,
+            sender_data.sender,
+            secret_type,
+            sender_data.generation,
+        ) {
+            Ok(ratchet_secrets) => ratchet_secrets,
+            Err(_) => return Err(MLSCiphertextError::GenerationOutOfBound),
+        };
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
@@ -341,7 +348,7 @@ impl MLSCiphertext {
         };
         let credential = &roster.get(sender_data.sender.as_usize()).unwrap();
         assert!(mls_plaintext.verify(context, credential));
-        mls_plaintext
+        Ok(mls_plaintext)
     }
 }
 

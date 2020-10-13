@@ -213,7 +213,7 @@ impl Api for MlsGroup {
         MLSCiphertext::new_from_plaintext(&mls_plaintext, &self, generation, &ratchet_secrets)
     }
 
-    fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> MLSPlaintext {
+    fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, DecryptionError> {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
@@ -226,13 +226,13 @@ impl Api for MlsGroup {
             roster.push(credential);
         }
 
-        mls_ciphertext.to_plaintext(
+        Ok(mls_ciphertext.to_plaintext(
             &self.ciphersuite,
             &roster,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
             &self.group_context,
-        )
+        )?)
     }
 
     // Exporter

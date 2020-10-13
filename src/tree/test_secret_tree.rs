@@ -1,3 +1,4 @@
+// This tests the boundaries of the generations from a SecretTree
 #[test]
 fn test_boundaries() {
     use crate::ciphersuite::*;
@@ -50,15 +51,18 @@ fn test_boundaries() {
     );
 }
 
+// This tests if the generation gets incremented correctly and that the returned values are unique.
 #[test]
 fn increment_generation() {
     use crate::ciphersuite::*;
     use crate::tree::{secret_tree::*, *};
+    use std::collections::HashMap;
 
     const SIZE: usize = 1000;
     const MAX_GENERATIONS: usize = 10;
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
     let mut secret_tree = SecretTree::new(&[1, 2, 3], LeafIndex::from(SIZE as u32));
     for i in 0..SIZE {
         assert_eq!(
@@ -72,7 +76,7 @@ fn increment_generation() {
     }
     for i in 0..MAX_GENERATIONS {
         for j in 0..SIZE {
-            let (next_gen, _secret) = secret_tree
+            let (next_gen, handshake_secret) = secret_tree
                 .next_secret(
                     &ciphersuite,
                     LeafIndex::from(j as u32),
@@ -80,7 +84,13 @@ fn increment_generation() {
                 )
                 .unwrap();
             assert_eq!(next_gen, i as u32);
-            let (next_gen, _secret) = secret_tree
+            assert!(unique_values
+                .insert(handshake_secret.get_key().as_slice().to_vec(), true)
+                .is_none());
+            assert!(unique_values
+                .insert(handshake_secret.get_nonce().as_slice().to_vec(), true)
+                .is_none());
+            let (next_gen, application_secret) = secret_tree
                 .next_secret(
                     &ciphersuite,
                     LeafIndex::from(j as u32),
@@ -88,6 +98,12 @@ fn increment_generation() {
                 )
                 .unwrap();
             assert_eq!(next_gen, i as u32);
+            assert!(unique_values
+                .insert(application_secret.get_key().as_slice().to_vec(), true)
+                .is_none());
+            assert!(unique_values
+                .insert(application_secret.get_nonce().as_slice().to_vec(), true)
+                .is_none());
         }
     }
 }

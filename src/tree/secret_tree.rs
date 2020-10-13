@@ -262,9 +262,9 @@ impl SecretTree {
         if index >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
-        if generation == 0 {
-            // Initialize the tree first
-            self.initialize_sender_ratchets(ciphersuite, index)?;
+        if self.get_ratchet_opt(index, secret_type).is_none() {
+            self.initialize_sender_ratchets(ciphersuite, index)
+                .expect("Error initializing SenderRatchet");
         }
         let sender_ratchet = self.get_ratchet_mut(index, secret_type);
         sender_ratchet.get_secret(generation, ciphersuite)
