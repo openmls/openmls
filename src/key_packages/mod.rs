@@ -216,7 +216,7 @@ impl KeyPackageBundle {
         );
         KeyPackageBundle {
             key_package,
-            private_key: key_pair.get_private_key().clone(),
+            private_key: key_pair.get_private_key(),
         }
     }
 

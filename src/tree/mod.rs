@@ -38,7 +38,7 @@ use hash_input::*;
 use index::*;
 use node::*;
 use path_keys::PathKeys;
-use private_tree::PrivateTree;
+use private_tree::{PathSecrets, PrivateTree};
 
 // Internal tree tests
 #[cfg(test)]
@@ -144,7 +144,7 @@ impl RatchetTree {
         };
 
         // Merge public keys into the tree.
-        out.merge_direct_path(&direct_path, public_keys);
+        out.merge_direct_path(&direct_path, public_keys)?;
 
         Ok(out)
     }
@@ -279,7 +279,7 @@ impl RatchetTree {
             .unwrap();
         let common_ancestor_copath_index =
             match sender_co_path.get(common_ancestor_sender_dirpath_index) {
-                Some(i) => i.clone(),
+                Some(i) => *i,
                 None => return Err(TreeError::InvalidArguments),
             };
 
@@ -363,7 +363,7 @@ impl RatchetTree {
         self.compute_parent_hash(NodeIndex::from(sender));
 
         // TODO: Do we really want to return the commit secret here?
-        Ok(self.private_tree.get_commit_secret().clone())
+        Ok(self.private_tree.get_commit_secret())
     }
 
     /// Update the private tree with the new `KeyPackageBundle`.
@@ -385,7 +385,7 @@ impl RatchetTree {
         &mut self,
         signature_key: &SignaturePrivateKey,
         group_context: &[u8],
-    ) -> Result<(CommitSecret, Option<UpdatePath>, Option<Vec<Vec<u8>>>), TreeError> {
+    ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
         // Generate new keypair
         let own_index = self.get_own_node_index();
         let keypair = self.ciphersuite.new_hpke_keypair();
@@ -394,8 +394,8 @@ impl RatchetTree {
         let key_package_bundle = {
             // Generate new keypair and replace it in current KeyPackage
             let mut key_package = self.get_own_key_package_ref().clone();
-            key_package.set_hpke_init_key(keypair.get_public_key().clone());
-            KeyPackageBundle::from_values(key_package, keypair.get_private_key().clone())
+            key_package.set_hpke_init_key(keypair.get_public_key());
+            KeyPackageBundle::from_values(key_package, keypair.get_private_key())
         };
         let path_option = self.replace_private_tree_(
             &key_package_bundle,
@@ -410,7 +410,7 @@ impl RatchetTree {
             let mut key_package = key_package_bundle.get_key_package().clone();
             key_package.add_extension(parent_hash_extension);
             key_package.sign(&self.ciphersuite, signature_key);
-            KeyPackageBundle::from_values(key_package, keypair.get_private_key().clone())
+            KeyPackageBundle::from_values(key_package, keypair.get_private_key())
         };
 
         // Store new KeyPackage in tree
@@ -457,8 +457,7 @@ impl RatchetTree {
             return Ok(None);
         }
 
-        let update_path_nodes =
-            self.encrypt_to_copath(new_public_keys, group_context, &key_package)?;
+        let update_path_nodes = self.encrypt_to_copath(new_public_keys, group_context)?;
         let update_path = UpdatePath::new(key_package.clone(), update_path_nodes);
         Ok(Some(update_path))
     }
@@ -468,7 +467,6 @@ impl RatchetTree {
         &self,
         public_keys: Vec<HPKEPublicKey>,
         group_context: &[u8],
-        leaf_key_package: &KeyPackage,
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
         let copath = treemath::copath(self.private_tree.get_node_index(), self.leaf_count());
         let path_secrets = self.private_tree.get_path_secrets();
