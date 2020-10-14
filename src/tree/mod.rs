@@ -425,7 +425,7 @@ impl RatchetTree {
         )?;
 
         // Compute the parent hash extension and update the KeyPackage
-        let csuite =  self.ciphersuite.clone(); // FIXME
+        let csuite = self.ciphersuite.clone(); // FIXME
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
