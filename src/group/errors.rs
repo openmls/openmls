@@ -16,6 +16,7 @@
 
 use crate::framing::*;
 use crate::errors::ConfigError;
+use crate::extensions::ExtensionError;
 use crate::tree::TreeError;
 
 #[derive(Debug)]
@@ -70,10 +71,20 @@ impl From<TreeError> for WelcomeError {
     }
 }
 
+// TODO: Should get fixed in #83
 impl From<ConfigError> for ApplyCommitError {
     fn from(e: ConfigError) -> ApplyCommitError {
         match e {
-            ConfigError::UnsupportedMlsVersion => ApplyCommitError::NoParentHashExtension,
+            _ => ApplyCommitError::NoParentHashExtension,
+        }
+    }
+}
+
+// TODO: Should get fixed in #83
+impl From<ExtensionError> for ApplyCommitError {
+    fn from(e: ExtensionError) -> ApplyCommitError {
+        match e {
+            _ => ApplyCommitError::NoParentHashExtension,
         }
     }
 }
