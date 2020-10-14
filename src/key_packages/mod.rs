@@ -18,27 +18,19 @@ use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
-use crate::errors::ConfigError;
-use crate::extensions::*;
+use crate::extensions::{CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType};
 
 mod codec;
 
 mod test_key_packages;
 
-// This implementation currently supports the following
-pub(crate) const CIPHERSUITES: &[CiphersuiteName] = &[
-    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-];
-pub(crate) const SUPPORTED_EXTENSIONS: &[ExtensionType] = &[ExtensionType::Lifetime];
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
     protocol_version: ProtocolVersion,
     cipher_suite: Ciphersuite,
     hpke_init_key: HPKEPublicKey,
     credential: Credential,
-    extensions: Vec<Extension>,
+    extensions: Vec<Box<dyn Extension>>,
     signature: Signature,
 }
 
@@ -50,7 +42,7 @@ impl KeyPackage {
         hpke_init_key: &HPKEPublicKey,
         signature_key: &SignaturePrivateKey,
         credential: Credential,
-        extensions: &[Extension],
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         let mut key_package = Self {
             // TODO: #85 Take from global config.
@@ -58,7 +50,7 @@ impl KeyPackage {
             cipher_suite: ciphersuite,
             hpke_init_key: hpke_init_key.to_owned(),
             credential,
-            extensions: extensions.to_vec(),
+            extensions,
             signature: Signature::new_empty(),
         };
         let payload = &key_package.unsigned_payload().unwrap();
@@ -79,51 +71,29 @@ impl KeyPackage {
         self.cipher_suite.hash(&bytes)
     }
 
-    /// Get the extension of `extension_type`.
+    /// Get a reference to the extension of `extension_type`.
     /// Returns `Some(extension)` if present and `None` if the extension is not present.
     pub(crate) fn get_extension(
         &self,
         extension_type: ExtensionType,
-    ) -> Result<Option<ExtensionPayload>, ConfigError> {
+    ) -> Option<&Box<dyn Extension>> {
         for e in &self.extensions {
             if e.get_type() == extension_type {
-                match extension_type {
-                    ExtensionType::Capabilities => {
-                        let capabilities_extension =
-                            CapabilitiesExtension::new_from_bytes(&e.extension_data)?;
-                        return Ok(Some(ExtensionPayload::Capabilities(capabilities_extension)));
-                    }
-                    ExtensionType::Lifetime => {
-                        let lifetime_extension =
-                            LifetimeExtension::new_from_bytes(&e.extension_data);
-                        return Ok(Some(ExtensionPayload::Lifetime(lifetime_extension)));
-                    }
-                    ExtensionType::KeyID => {
-                        let key_id_extension = KeyIDExtension::new_from_bytes(&e.extension_data);
-                        return Ok(Some(ExtensionPayload::KeyID(key_id_extension)));
-                    }
-                    ExtensionType::ParentHash => {
-                        let parent_hash_extension =
-                            ParentHashExtension::new_from_bytes(&e.extension_data);
-                        return Ok(Some(ExtensionPayload::ParentHash(parent_hash_extension)));
-                    }
-                    _ => return Ok(None),
-                }
+                return Some(e);
             }
         }
-        Ok(None)
+        None
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub(crate) fn add_extension(&mut self, extension: Extension) {
-        self.remove_extension(extension.extension_type);
+    pub(crate) fn add_extension(&mut self, extension: Box<dyn Extension>) {
+        self.remove_extension(extension.get_type());
         self.extensions.push(extension);
     }
 
     /// Remove an extension from the KeyPackage
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
-        self.extensions
-            .retain(|e| e.extension_type != extension_type);
+        self.extensions.retain(|e| e.get_type() != extension_type);
     }
 
     /// Get a reference to the credential.
@@ -145,6 +115,11 @@ impl KeyPackage {
     pub(crate) fn get_cipher_suite(&self) -> &Ciphersuite {
         &self.cipher_suite
     }
+
+    /// Get a reference to the extensions of this key package.
+    pub fn get_extensions_ref(&self) -> &[Box<dyn Extension>] {
+        &self.extensions
+    }
 }
 
 impl Signable for KeyPackage {
@@ -154,7 +129,13 @@ impl Signable for KeyPackage {
         self.cipher_suite.encode(buffer)?;
         self.hpke_init_key.encode(buffer)?;
         self.credential.encode(buffer)?;
-        encode_vec(VecSize::VecU16, buffer, &self.extensions)?;
+        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
+        let encoded_extensions: Vec<ExtensionStruct> = self
+            .extensions
+            .iter()
+            .map(|e| e.to_extension_struct())
+            .collect();
+        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
         Ok(buffer.to_vec())
     }
 }
@@ -167,7 +148,8 @@ pub struct KeyPackageBundle {
 
 impl KeyPackageBundle {
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
-    /// and `extensions`.
+    /// and `extensions`. Note that the capabilities extension gets added
+    /// automatically, based on the configuration.
     /// This generates a fresh HPKE key pair for this bundle.
     ///
     /// Returns a new `KeyPackageBundle`.
@@ -175,7 +157,7 @@ impl KeyPackageBundle {
         ciphersuite: &Ciphersuite,
         signature_key: &SignaturePrivateKey,
         credential: Credential, // FIXME: must be reference
-        extensions: Option<Vec<Extension>>,
+        extensions: Option<Vec<Box<dyn Extension>>>,
     ) -> Self {
         let keypair = ciphersuite.new_hpke_keypair();
         Self::new_with_keypair(
@@ -195,15 +177,12 @@ impl KeyPackageBundle {
         ciphersuite: &Ciphersuite,
         signature_key: &SignaturePrivateKey,
         credential: Credential,
-        extensions: Option<Vec<Extension>>,
+        extensions: Option<Vec<Box<dyn Extension>>>,
         key_pair: &HPKEKeyPair,
     ) -> Self {
-        let capabilities_extension = CapabilitiesExtension::new(
-            ProtocolVersion::supported(),
-            CIPHERSUITES.to_vec(),
-            SUPPORTED_EXTENSIONS.to_vec(),
-        );
-        let mut final_extensions = vec![capabilities_extension.to_extension()];
+        // TODO: #85 this must be configurable.
+        let mut final_extensions: Vec<Box<dyn Extension>> =
+            vec![Box::new(CapabilitiesExtension::default())];
         if let Some(mut extensions) = extensions {
             final_extensions.append(&mut extensions);
         }
@@ -212,7 +191,7 @@ impl KeyPackageBundle {
             &key_pair.get_public_key(),
             signature_key,
             credential,
-            &final_extensions,
+            final_extensions,
         );
         KeyPackageBundle {
             key_package,
