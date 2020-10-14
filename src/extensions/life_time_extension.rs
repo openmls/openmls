@@ -25,6 +25,8 @@ use crate::errors::ConfigError;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// The lifetime extension holds a not before and a not after time measured in
+/// seconds since the Unix epoch (1970-01-01T00:00:00Z).
 #[derive(PartialEq, Clone, Debug, Default)]
 pub struct LifetimeExtension {
     not_before: u64,
@@ -32,31 +34,31 @@ pub struct LifetimeExtension {
 }
 
 impl LifetimeExtension {
-    // pub const LIFETIME_1_MINUTE: u64 = 60;
-    // pub const LIFETIME_1_HOUR: u64 = 60 * LifetimeExtension::LIFETIME_1_MINUTE;
-    // pub const LIFETIME_1_DAY: u64 = 24 * LifetimeExtension::LIFETIME_1_HOUR;
-    // pub const LIFETIME_1_WEEK: u64 = 7 * LifetimeExtension::LIFETIME_1_DAY;
-    // pub const LIFETIME_4_WEEKS: u64 = 4 * LifetimeExtension::LIFETIME_1_WEEK;
-    // pub const LIFETIME_MARGIN: u64 = LifetimeExtension::LIFETIME_1_HOUR;
-    // pub fn new(t: u64) -> Self {
-    //     let now = SystemTime::now()
-    //         .duration_since(UNIX_EPOCH)
-    //         .unwrap()
-    //         .as_secs();
-    //     let not_before = now - LifetimeExtension::LIFETIME_MARGIN;
-    //     let not_after = now + t + LifetimeExtension::LIFETIME_MARGIN;
-    //     Self {
-    //         not_before,
-    //         not_after,
-    //     }
-    // }
-
-    fn is_expired(&self) -> bool {
+    /// Create a new lifetime extensions with lifetime `t`.
+    /// Note that the lifetime is extended 1h into the past to adapt to skewed
+    /// clocks.
+    pub fn new(t: u64) -> Self {
+        // TODO: #85 make the margin configurable.
+        const LIFETIME_MARGIN: u64 = 60 * 60;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("SystemTime before UNIX EPOCH!")
             .as_secs();
-        self.not_before < now && self.not_after > now
+        let not_before = now - LIFETIME_MARGIN;
+        let not_after = now + t;
+        Self {
+            not_before,
+            not_after,
+        }
+    }
+
+    /// Returns true if this lifetime is valid.
+    pub(crate) fn is_valid(&self) -> bool {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_secs();
+        self.not_before < now && now < self.not_after
     }
 }
 
@@ -77,7 +79,7 @@ impl Extension for LifetimeExtension {
             not_before,
             not_after,
         };
-        if out.is_expired() {
+        if !out.is_valid() {
             return Err(ConfigError::ExpiredLifetimeExtension);
         }
         Ok(out)

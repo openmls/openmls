@@ -130,7 +130,8 @@ impl RatchetTree {
 
         // Build private tree
         let direct_path =
-            treemath::direct_path_root(own_node_index, NodeIndex::from(nodes.len()).into());
+            treemath::direct_path_root(own_node_index, NodeIndex::from(nodes.len()).into())
+                .expect("new_from_nodes: TreeMath error when computing direct path.");
         let (private_tree, public_keys) =
             PrivateTree::new_raw(&ciphersuite, own_node_index, kpb.private_key, &direct_path)?;
 
@@ -195,8 +196,13 @@ impl RatchetTree {
             return unmerged_leaves;
         }
 
-        let mut left = self.resolve(treemath::left(index));
-        let right = self.resolve(treemath::right(index, size));
+        let mut left = self.resolve(
+            treemath::left(index).expect("resolve: TreeMath error when computing left child."),
+        );
+        let right = self.resolve(
+            treemath::right(index, size)
+                .expect("resolve: TreeMath error when computing right child."),
+        );
         left.extend(right);
         left
     }
@@ -228,7 +234,9 @@ impl RatchetTree {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
         self.nodes[treemath::root(size).as_usize()].blank();
-        for index in treemath::dirpath(index, size) {
+        for index in treemath::dirpath(index, size)
+            .expect("blank_member: TreeMath error when computing direct path.")
+        {
             self.nodes[index.as_usize()].blank();
         }
     }
@@ -267,8 +275,10 @@ impl RatchetTree {
 
         // Calculate sender direct path & co-path, common path
         let sender_direct_path =
-            treemath::direct_path_root(NodeIndex::from(sender), self.leaf_count());
-        let sender_co_path = treemath::copath(NodeIndex::from(sender), self.leaf_count());
+            treemath::direct_path_root(NodeIndex::from(sender), self.leaf_count())
+                .expect("update_path: Error when computing direct path.");
+        let sender_co_path = treemath::copath(NodeIndex::from(sender), self.leaf_count())
+            .expect("update_path: Error when computing copath.");
 
         // Find the position of the common ancestor in the sender's direct path
         let common_ancestor_sender_dirpath_index = sender_direct_path
@@ -316,7 +326,8 @@ impl RatchetTree {
         };
 
         // Compute the common path between the common ancestor and the root
-        let common_path = treemath::dirpath_long(common_ancestor_index, self.leaf_count());
+        let common_path = treemath::dirpath_long(common_ancestor_index, self.leaf_count())
+            .expect("update_path: Error when computing direct path.");
 
         debug_assert!(sender_direct_path.len() > common_path.len());
         if sender_direct_path.len() <= common_path.len() {
@@ -398,9 +409,8 @@ impl RatchetTree {
 
         // Compute the parent hash extension and update the KeyPackage
         let parent_hash = self.compute_parent_hash(own_index);
-        let parent_hash_extension = Box::new(ParentHashExtension::new(&parent_hash));
         let key_package = key_package_bundle.get_key_package_ref_mut();
-        key_package.add_extension(parent_hash_extension);
+        key_package.update_parent_hash(&parent_hash);
         key_package.sign(&self.ciphersuite, signature_key);
 
         // Replace the private tree with a new ine based on the new key package
@@ -428,7 +438,8 @@ impl RatchetTree {
         let (private_key, key_package) = key_package_bundle.into_tuple();
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
-        let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count());
+        let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
+            .expect("replace_private_tree: Error when computing direct path.");
 
         // Update private tree and merge corresponding public keys.
         let new_public_keys =
@@ -454,7 +465,8 @@ impl RatchetTree {
         public_keys: Vec<HPKEPublicKey>,
         group_context: &[u8],
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
-        let copath = treemath::copath(self.private_tree.get_node_index(), self.leaf_count());
+        let copath = treemath::copath(self.private_tree.get_node_index(), self.leaf_count())
+            .expect("encrypt_to_copath: Error when computing copath.");
         let path_secrets = self.private_tree.get_path_secrets();
 
         debug_assert_eq!(path_secrets.len(), copath.len());
@@ -569,7 +581,8 @@ impl RatchetTree {
         let free_leaves_len = free_leaves.len();
         for (new_kp, leaf_index) in new_kp.iter().zip(free_leaves) {
             self.nodes[leaf_index.as_usize()] = Node::new_leaf(Some(new_kp.clone()));
-            let dirpath = treemath::direct_path_root(leaf_index, self.leaf_count());
+            let dirpath = treemath::direct_path_root(leaf_index, self.leaf_count())
+                .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
                 if !self.nodes[d.as_usize()].is_blank() {
                     let node = &self.nodes[d.as_usize()];
@@ -723,9 +736,11 @@ impl RatchetTree {
                     leaf_node_hash.hash(ciphersuite)
                 }
                 NodeType::Parent => {
-                    let left = treemath::left(index);
+                    let left = treemath::left(index)
+                        .expect("node_hash: Error when computing left child of node.");
                     let left_hash = node_hash(ciphersuite, tree, left);
-                    let right = treemath::right(index, tree.leaf_count());
+                    let right = treemath::right(index, tree.leaf_count())
+                        .expect("node_hash: Error when computing left child of node.");
                     let right_hash = node_hash(ciphersuite, tree, right);
                     let parent_node_hash = ParentNodeHashInput::new(
                         index.as_u32(),
@@ -742,7 +757,8 @@ impl RatchetTree {
         node_hash(&self.ciphersuite, &self, root)
     }
     pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Vec<u8> {
-        let parent = treemath::parent(index, self.leaf_count());
+        let parent = treemath::parent(index, self.leaf_count())
+            .expect("compute_parent_hash: Error when computing node parent.");
         let parent_hash = if parent == treemath::root(self.leaf_count()) {
             let root_node = &self.nodes[parent.as_usize()];
             root_node.hash(&self.ciphersuite).unwrap()
@@ -767,8 +783,10 @@ impl RatchetTree {
             if let Some(node) = node_option {
                 match node.node_type {
                     NodeType::Parent => {
-                        let left_index = treemath::left(NodeIndex::from(i));
-                        let right_index = treemath::right(NodeIndex::from(i), size.into());
+                        let left_index = treemath::left(NodeIndex::from(i))
+                            .expect("verify_integrity: Error when computing left child of node.");
+                        let right_index = treemath::right(NodeIndex::from(i), size.into())
+                            .expect("verify_integrity: Error when computing right child of node.");
                         if right_index >= node_count {
                             return false;
                         }

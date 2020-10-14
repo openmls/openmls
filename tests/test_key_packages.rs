@@ -28,7 +28,7 @@ macro_rules! key_package_generation {
                 &ciphersuite,
                 signature_keypair.get_private_key(),
                 credential,
-                None,
+                Vec::new(),
             );
 
             let extensions = kpb.get_key_package().get_extensions_ref();
