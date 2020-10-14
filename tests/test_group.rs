@@ -71,7 +71,7 @@ fn create_commit_optional_path() {
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
     let (commit, _confirmation_tag) = match commit_mls_plaintext.content {
-        MLSPlaintextContentType::Commit((commit, confirmation_tag)) => (commit, confirmation_tag),
+        MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
         _ => panic!(),
     };
     assert!(commit.path.is_none());
@@ -88,7 +88,7 @@ fn create_commit_optional_path() {
     };
 
     let (commit, _confirmation_tag) = match commit_mls_plaintext.content {
-        MLSPlaintextContentType::Commit((commit, confirmation_tag)) => (commit, confirmation_tag),
+        MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
         _ => panic!(),
     };
     assert!(commit.path.is_some());
@@ -105,7 +105,7 @@ fn create_commit_optional_path() {
     };
 
     let (commit, _confirmation_tag) = match commit_mls_plaintext.content {
-        MLSPlaintextContentType::Commit((commit, confirmation_tag)) => (commit, confirmation_tag),
+        MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
         _ => panic!(),
     };
     assert!(commit.path.is_some());

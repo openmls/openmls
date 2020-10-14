@@ -45,9 +45,7 @@ impl MlsGroup {
 
         // Extract Commit from MLSPlaintext
         let (commit, confirmation_tag) = match &mls_plaintext.content {
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
-                (commit, confirmation_tag)
-            }
+            MLSPlaintextContentType::Commit((commit, confirmation)) => (commit, confirmation),
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 
