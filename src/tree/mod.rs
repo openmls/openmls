@@ -371,7 +371,7 @@ impl RatchetTree {
         group_context: &[u8],
     ) -> Result<CommitSecret, TreeError> {
         let _path_option = self.replace_private_tree_(
-            &key_package_bundle,
+            key_package_bundle,
             group_context,
             false, /* without update path */
         )?;
@@ -386,34 +386,31 @@ impl RatchetTree {
     ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
         // Generate new keypair
         let own_index = self.get_own_node_index();
-        let keypair = self.ciphersuite.new_hpke_keypair();
+        let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().to_keys();
 
         // Replace the init key in the current KeyPackage
-        let key_package_bundle = {
+        let mut key_package_bundle = {
             // Generate new keypair and replace it in current KeyPackage
             let mut key_package = self.get_own_key_package_ref().clone();
-            key_package.set_hpke_init_key(keypair.get_public_key());
-            KeyPackageBundle::from_values(key_package, keypair.get_private_key())
+            key_package.set_hpke_init_key(public_key);
+            KeyPackageBundle::from_values(key_package, private_key)
         };
+
+        // Compute the parent hash extension and update the KeyPackage
+        let parent_hash = self.compute_parent_hash(own_index);
+        let parent_hash_extension = Box::new(ParentHashExtension::new(&parent_hash));
+        let key_package = key_package_bundle.get_key_package_ref_mut();
+        key_package.add_extension(parent_hash_extension);
+        key_package.sign(&self.ciphersuite, signature_key);
+
+        // Replace the private tree with a new ine based on the new key package
+        // bundle and store the key package in the own node.
         let path_option = self.replace_private_tree_(
-            &key_package_bundle,
+            key_package_bundle,
             group_context,
             true, /* with update path */
         )?;
 
-        // Compute the parent hash extension and add it to the KeyPackage
-        let key_package_bundle = {
-            let parent_hash = self.compute_parent_hash(own_index);
-            let parent_hash_extension = Box::new(ParentHashExtension::new(&parent_hash));
-            let mut key_package = key_package_bundle.get_key_package().clone();
-            key_package.add_extension(parent_hash_extension);
-            key_package.sign(&self.ciphersuite, signature_key);
-            KeyPackageBundle::from_values(key_package, keypair.get_private_key())
-        };
-
-        // Store new KeyPackage in tree
-        self.nodes[own_index.as_usize()] =
-            Node::new_leaf(Some(key_package_bundle.get_key_package().clone()));
         Ok((
             self.private_tree.get_commit_secret(),
             path_option,
@@ -424,39 +421,30 @@ impl RatchetTree {
     /// Replace the private tree with a new one based on the `key_package_bundle`.
     fn replace_private_tree_(
         &mut self,
-        key_package_bundle: &KeyPackageBundle,
+        key_package_bundle: KeyPackageBundle,
         group_context: &[u8],
         with_update_path: bool,
     ) -> Result<Option<UpdatePath>, TreeError> {
-        // TODO: cloning key packages here ...
-        let (private_key, key_package) = (
-            key_package_bundle.get_private_key(),
-            key_package_bundle.get_key_package(),
-        );
+        let (private_key, key_package) = key_package_bundle.into_tuple();
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count());
 
-        // Create new private tree and merge corresponding public keys.
-        let (new_private_tree, new_public_keys) = PrivateTree::new_raw(
-            &self.ciphersuite,
-            own_index,
-            // TODO: this and subsequent clones on kpb should be removed; requires changed output.
-            private_key.clone(),
-            &direct_path_root,
-        )?;
+        // Update private tree and merge corresponding public keys.
+        let new_public_keys =
+            self.private_tree
+                .update(&self.ciphersuite, Some(private_key), &direct_path_root)?;
         self.merge_public_keys(&new_public_keys, &direct_path_root)?;
 
         // Update own leaf node with the new values
         self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
-        self.private_tree = new_private_tree;
 
         if !with_update_path {
             return Ok(None);
         }
 
         let update_path_nodes = self.encrypt_to_copath(new_public_keys, group_context)?;
-        let update_path = UpdatePath::new(key_package.clone(), update_path_nodes);
+        let update_path = UpdatePath::new(key_package, update_path_nodes);
         Ok(Some(update_path))
     }
 
@@ -636,12 +624,20 @@ impl RatchetTree {
             self.blank_member(index);
             self.nodes[index.as_usize()] = leaf_node;
             if index == self.get_own_node_index() && !pending_kpbs.is_empty() {
-                let own_kpb = pending_kpbs
+                let own_kpb = match pending_kpbs
                     .iter()
-                    .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
-                    .unwrap();
+                    .find(|kpb| kpb.get_key_package() == &update_proposal.key_package)
+                {
+                    Some(i) => i,
+                    None => panic!("Handle this error case"),
+                };
+                // let own_kpb = pending_kpbs.remove(own_kpb_index);
+                // let own_kpb = pending_kpbs
+                //     .iter()
+                //     .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
+                //     .unwrap();
                 self.private_tree = PrivateTree::new(
-                    own_kpb.private_key.clone(),
+                    own_kpb.private_key,
                     index,
                     PathKeys::default(),
                     CommitSecret(Vec::new()),

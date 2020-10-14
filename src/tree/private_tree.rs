@@ -52,16 +52,32 @@ impl PrivateTree {
         direct_path: &[NodeIndex],
     ) -> Result<(Self, Vec<HPKEPublicKey>), TreeError> {
         let mut out = Self::from_private_key(node_index, hpke_private_key);
+        let public_keys = out.update(ciphersuite, None, direct_path)?;
+        Ok((out, public_keys))
+    }
+
+    /// Update this tree with a new private key and path
+    pub(crate) fn update(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+        hpke_private_key: Option<HPKEPrivateKey>,
+        path: &[NodeIndex],
+    ) -> Result<Vec<HPKEPublicKey>, TreeError> {
+        // Set new private key if present.
+        self.hpke_private_key = match hpke_private_key {
+            Some(k) => k,
+            None => self.hpke_private_key,
+        };
 
         // Compute path secrets.
-        out.generate_path_secrets(&ciphersuite, None, direct_path.len());
+        self.generate_path_secrets(ciphersuite, None, path.len());
 
         // Compute commit secret.
-        out.generate_commit_secret(ciphersuite)?;
+        self.generate_commit_secret(ciphersuite)?;
 
         // Generate key pairs and return.
-        let public_keys = out.generate_path_keypairs(ciphersuite, direct_path)?;
-        Ok((out, public_keys))
+        let public_keys = self.generate_path_keypairs(ciphersuite, path)?;
+        Ok(public_keys)
     }
 
     /// Generate a new `PrivateTree` and populate it with pre-computed values.
@@ -187,8 +203,9 @@ impl PrivateTree {
         for path_secret in self.path_secrets.iter() {
             let node_secret = hkdf_expand_label(ciphersuite, &path_secret, "node", &[], hash_len);
             let keypair = HPKEKeyPair::derive(&node_secret, ciphersuite);
-            public_keys.push(keypair.get_public_key());
-            private_keys.push(keypair.get_private_key());
+            let (private_key, public_key) = keypair.to_keys();
+            public_keys.push(public_key);
+            private_keys.push(private_key);
         }
 
         // Store private keys.
