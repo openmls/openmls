@@ -53,7 +53,7 @@ jobs:
     - name: Tests
       run: cargo test --verbose
     - name: Cargo fmt
-      run: cargo +nightly fmt -- --check
+      run: cargo fmt -- --check
     - name: Clippy warnings
       uses: actions-rs/clippy-check@v1
       with:
