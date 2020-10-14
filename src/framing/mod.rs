@@ -446,10 +446,10 @@ impl Codec for MLSPlaintextContentType {
                 ContentType::Proposal.encode(buffer)?;
                 proposal.encode(buffer)?;
             }
-            MLSPlaintextContentType::Commit((commit, confirmation)) => {
+            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
                 ContentType::Commit.encode(buffer)?;
                 commit.encode(buffer)?;
-                confirmation.encode(buffer)?;
+                confirmation_tag.encode(buffer)?;
             }
         }
         Ok(())
@@ -467,8 +467,8 @@ impl Codec for MLSPlaintextContentType {
             }
             ContentType::Commit => {
                 let commit = Commit::decode(cursor)?;
-                let confirmation = ConfirmationTag::decode(cursor)?;
-                Ok(MLSPlaintextContentType::Commit((commit, confirmation)))
+                let confirmation_tag = ConfirmationTag::decode(cursor)?;
+                Ok(MLSPlaintextContentType::Commit((commit, confirmation_tag)))
             }
             _ => Err(CodecError::DecodingError),
         }
@@ -744,7 +744,7 @@ impl MLSPlaintextCommitContent {
 impl From<&MLSPlaintext> for MLSPlaintextCommitContent {
     fn from(mls_plaintext: &MLSPlaintext) -> Self {
         let commit = match &mls_plaintext.content {
-            MLSPlaintextContentType::Commit((commit, _confirmation)) => commit,
+            MLSPlaintextContentType::Commit((commit, _confirmation_tag)) => commit,
             _ => panic!("MLSPlaintext needs to contain a Commit"),
         };
         MLSPlaintextCommitContent {
@@ -783,7 +783,7 @@ impl Codec for MLSPlaintextCommitContent {
 }
 
 pub struct MLSPlaintextCommitAuthData {
-    pub confirmation: Vec<u8>,
+    pub confirmation_tag: Vec<u8>,
     pub signature: Vec<u8>,
 }
 
@@ -795,12 +795,12 @@ impl MLSPlaintextCommitAuthData {
 
 impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
     fn from(mls_plaintext: &MLSPlaintext) -> Self {
-        let confirmation = match &mls_plaintext.content {
-            MLSPlaintextContentType::Commit((_commit, confirmation)) => confirmation,
+        let confirmation_tag = match &mls_plaintext.content {
+            MLSPlaintextContentType::Commit((_commit, confirmation_tag)) => confirmation_tag,
             _ => panic!("MLSPlaintext needs to contain a Commit"),
         };
         MLSPlaintextCommitAuthData {
-            confirmation: confirmation.0.clone(),
+            confirmation_tag: confirmation_tag.0.clone(),
             signature: mls_plaintext.signature.as_slice().to_vec(),
         }
     }
@@ -808,15 +808,15 @@ impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
 
 impl Codec for MLSPlaintextCommitAuthData {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.confirmation)?;
+        encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
         encode_vec(VecSize::VecU16, buffer, &self.signature)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let confirmation = decode_vec(VecSize::VecU8, cursor)?;
+        let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;
         let signature = decode_vec(VecSize::VecU16, cursor)?;
         Ok(MLSPlaintextCommitAuthData {
-            confirmation,
+            confirmation_tag,
             signature,
         })
     }
