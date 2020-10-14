@@ -44,6 +44,8 @@ impl KeyPackage {
         credential: Credential,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
+        // TODO: #31 Make sure we have all necessary extensions.
+
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
@@ -184,8 +186,6 @@ impl KeyPackageBundle {
         let mut final_extensions: Vec<Box<dyn Extension>> =
             vec![Box::new(CapabilitiesExtension::default())];
 
-        // TODO: #31 Make sure we have all necessary extensions.
-
         final_extensions.extend_from_slice(&extensions);
         let key_package = KeyPackage::new(
             *ciphersuite,
@@ -205,10 +205,6 @@ impl KeyPackageBundle {
             key_package,
             private_key,
         }
-    }
-
-    pub fn into_tuple(self) -> (HPKEPrivateKey, KeyPackage) {
-        (self.private_key, self.key_package)
     }
 
     /// Get a reference to the `KeyPackage`.
