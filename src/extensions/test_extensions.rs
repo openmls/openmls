@@ -45,3 +45,18 @@ fn key_package_id() {
         &ext_struct.encode_detached().unwrap()[..]
     );
 }
+
+#[test]
+fn lifetime() {
+    const LIFETIME_1_MINUTE: u64 = 60;
+    const LIFETIME_1_HOUR: u64 = 60 * LIFETIME_1_MINUTE;
+
+    // A freshly created extensions must be valid.
+    let ext = LifetimeExtension::new(LIFETIME_1_HOUR);
+    assert!(ext.is_valid());
+
+    // An extension without lifetime is invalid (waiting for 1 second).
+    let ext = LifetimeExtension::new(0);
+    std::thread::sleep(std::time::Duration::from_secs(1));
+    assert!(!ext.is_valid());
+}
