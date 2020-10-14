@@ -27,17 +27,27 @@ impl PathKeys {
             return Err(TreeError::InvalidArguments);
         }
         let mut private_keys = private_keys;
+        println!("private_keys: {:?}", private_keys);
+        println!("path: {:?}", path);
 
         for (i, private_key) in private_keys.drain(..).enumerate() {
             let index = path[i];
             if self.keys.insert(index, private_key).is_some() {
+                assert!(false);
                 return Err(TreeError::DuplicateIndex);
             }
         }
 
         Ok(())
     }
+
+    /// Get an HPKE private key for a given node index.
     pub fn get(&self, index: NodeIndex) -> Option<&HPKEPrivateKey> {
         self.keys.get(&index)
+    }
+
+    /// Clear all path keys.
+    pub(crate) fn clear(&mut self) {
+        self.keys.clear();
     }
 }

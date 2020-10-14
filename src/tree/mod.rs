@@ -226,6 +226,15 @@ impl RatchetTree {
         own_node.key_package.as_ref().unwrap()
     }
 
+    /// Get a mutable reference to the own key package.
+    fn get_own_key_package_ref_mut(&mut self) -> &mut KeyPackage {
+        let own_node = self
+            .nodes
+            .get_mut(self.private_tree.get_node_index().as_usize())
+            .unwrap();
+        own_node.get_key_package_ref_mut().unwrap()
+    }
+
     // fn get_own_private_key(&self) -> &HPKEPrivateKey {
     //     &self.own_private_key
     // }
@@ -400,18 +409,12 @@ impl RatchetTree {
         let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().to_keys();
 
         // Replace the init key in the current KeyPackage
-        let mut key_package_bundle = {
+        let key_package_bundle = {
             // Generate new keypair and replace it in current KeyPackage
             let mut key_package = self.get_own_key_package_ref().clone();
             key_package.set_hpke_init_key(public_key);
             KeyPackageBundle::from_values(key_package, private_key)
         };
-
-        // Compute the parent hash extension and update the KeyPackage
-        let parent_hash = self.compute_parent_hash(own_index);
-        let key_package = key_package_bundle.get_key_package_ref_mut();
-        key_package.update_parent_hash(&parent_hash);
-        key_package.sign(&self.ciphersuite, signature_key);
 
         // Replace the private tree with a new ine based on the new key package
         // bundle and store the key package in the own node.
@@ -420,6 +423,13 @@ impl RatchetTree {
             group_context,
             true, /* with update path */
         )?;
+
+        // Compute the parent hash extension and update the KeyPackage
+        let csuite =  self.ciphersuite.clone(); // FIXME
+        let parent_hash = self.compute_parent_hash(own_index);
+        let key_package = self.get_own_key_package_ref_mut();
+        key_package.update_parent_hash(&parent_hash);
+        key_package.sign(&csuite, signature_key);
 
         Ok((
             self.private_tree.get_commit_secret(),
@@ -618,7 +628,7 @@ impl RatchetTree {
         &mut self,
         proposal_id_list: &ProposalIDList,
         proposal_queue: ProposalQueue,
-        pending_kpbs: &[KeyPackageBundle],
+        pending_kpbs: &mut Vec<KeyPackageBundle>,
     ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {
         let mut updated_members = vec![];
         let mut removed_members = vec![];
@@ -637,18 +647,14 @@ impl RatchetTree {
             self.blank_member(index);
             self.nodes[index.as_usize()] = leaf_node;
             if index == self.get_own_node_index() && !pending_kpbs.is_empty() {
-                let own_kpb = match pending_kpbs
+                let own_kpb_index = match pending_kpbs
                     .iter()
-                    .find(|kpb| kpb.get_key_package() == &update_proposal.key_package)
+                    .position(|kpb| kpb.get_key_package() == &update_proposal.key_package)
                 {
                     Some(i) => i,
                     None => panic!("Handle this error case"),
                 };
-                // let own_kpb = pending_kpbs.remove(own_kpb_index);
-                // let own_kpb = pending_kpbs
-                //     .iter()
-                //     .find(|&kpb| kpb.get_key_package() == &update_proposal.key_package)
-                //     .unwrap();
+                let own_kpb = pending_kpbs.remove(own_kpb_index);
                 self.private_tree = PrivateTree::new(
                     own_kpb.private_key,
                     index,

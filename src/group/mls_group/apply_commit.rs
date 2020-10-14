@@ -60,7 +60,7 @@ impl MlsGroup {
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
         let (membership_changes, _invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &pending_kpbs);
+            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &mut pending_kpbs);
 
         // Check if we were removed from the group
         if group_removed {

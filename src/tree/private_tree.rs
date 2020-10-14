@@ -64,16 +64,19 @@ impl PrivateTree {
         path: &[NodeIndex],
     ) -> Result<Vec<HPKEPublicKey>, TreeError> {
         // Set new private key if present.
-        self.hpke_private_key = match hpke_private_key {
-            Some(k) => k,
-            None => self.hpke_private_key,
-        };
+        match hpke_private_key {
+            Some(k) => self.hpke_private_key = k,
+            None => (),
+        }
 
         // Compute path secrets.
         self.generate_path_secrets(ciphersuite, None, path.len());
 
         // Compute commit secret.
         self.generate_commit_secret(ciphersuite)?;
+
+        // Clean the path keys for the update.
+        self.path_keys.clear();
 
         // Generate key pairs and return.
         let public_keys = self.generate_path_keypairs(ciphersuite, path)?;
@@ -211,6 +214,7 @@ impl PrivateTree {
         // Store private keys.
         println!("Path indices: {:?}", path);
         self.path_keys.add(private_keys, &path)?;
+
         // Return public keys.
         Ok(public_keys)
     }
