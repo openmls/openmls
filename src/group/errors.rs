@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::framing::*;
 use crate::errors::ConfigError;
 use crate::extensions::ExtensionError;
+use crate::framing::*;
 use crate::tree::TreeError;
 
 #[derive(Debug)]
