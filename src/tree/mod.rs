@@ -404,9 +404,8 @@ impl RatchetTree {
         // Compute the parent hash extension and add it to the KeyPackage
         let key_package_bundle = {
             let parent_hash = self.compute_parent_hash(own_index);
-            let parent_hash_extension = Box::new(ParentHashExtension::new(&parent_hash));
             let mut key_package = key_package_bundle.get_key_package().clone();
-            key_package.add_extension(parent_hash_extension);
+            key_package.update_parent_hash(&parent_hash);
             key_package.sign(&self.ciphersuite, signature_key);
             KeyPackageBundle::from_values(key_package, keypair.get_private_key())
         };

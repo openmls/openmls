@@ -18,7 +18,9 @@ use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
-use crate::extensions::{CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType};
+use crate::extensions::{
+    CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, ParentHashExtension,
+};
 
 mod codec;
 
@@ -34,6 +36,10 @@ pub struct KeyPackage {
     signature: Signature,
 }
 
+/// Mandatory extensions for key packages.
+const MANDATORY_EXTENSIONS: [ExtensionType; 2] =
+    [ExtensionType::Capabilities, ExtensionType::Lifetime];
+
 impl KeyPackage {
     /// Create a new key package but only with the given `extensions` for the
     /// given `ciphersuite` and `identity`, and the initial HPKE key pair `init_key`.
@@ -44,8 +50,6 @@ impl KeyPackage {
         credential: Credential,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        // TODO: #31 Make sure we have all necessary extensions.
-
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
@@ -63,6 +67,24 @@ impl KeyPackage {
 
     /// Verify that the signature on this key package is valid.
     pub(crate) fn verify(&self) -> bool {
+        //  First make sure that all mandatory extensions are present.
+        let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
+        for extension in self.extensions.iter() {
+            match mandatory_extensions_found
+                .iter()
+                .position(|&e| e == extension.get_type())
+            {
+                Some(p) => {
+                    let _ = mandatory_extensions_found.remove(p);
+                }
+                None => (),
+            }
+        }
+        debug_assert_eq!(mandatory_extensions_found.len(), 0);
+        if !mandatory_extensions_found.is_empty() {
+            return false;
+        }
+
         self.credential
             .verify(&self.unsigned_payload().unwrap(), &self.signature)
     }
@@ -85,6 +107,13 @@ impl KeyPackage {
             }
         }
         None
+    }
+
+    /// Update the parent hash extension of this key package.
+    pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
+        self.remove_extension(ExtensionType::ParentHash);
+        let extension = Box::new(ParentHashExtension::new(parent_hash));
+        self.extensions.push(extension);
     }
 
     /// Add (or replace) an extension to the KeyPackage.
