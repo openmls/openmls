@@ -2,7 +2,7 @@ name: Build & Test
 
 on:
   push:
-    branches: [ master, franziskus/gh-actions-update ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
