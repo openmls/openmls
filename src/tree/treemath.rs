@@ -48,7 +48,7 @@ pub(crate) fn level(index: NodeIndex) -> usize {
 
 pub(crate) fn node_width(n: usize) -> usize {
     if n == 0 {
-        return 0;
+        0
     } else {
         2 * (n - 1) + 1
     }
