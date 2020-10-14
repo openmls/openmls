@@ -23,14 +23,14 @@ fn create_commit_optional_path() {
         &ciphersuite,
         &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(alice_credential.clone()), // TODO: this consumes the credential!
-        None,
+        Vec::new(),
     );
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &ciphersuite,
         &bob_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(bob_credential), // TODO: this consumes the credential!
-        None,
+        Vec::new(),
     );
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
@@ -38,7 +38,7 @@ fn create_commit_optional_path() {
         &ciphersuite,
         &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(alice_credential),
-        None,
+        Vec::new(),
     );
     let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
 
@@ -129,7 +129,7 @@ fn basic_group_setup() {
         &ciphersuite,
         &bob_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(bob_credential), // TODO: this consumes the credential!
-        None,
+        Vec::new(),
     );
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
@@ -137,7 +137,7 @@ fn basic_group_setup() {
         &ciphersuite,
         &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(alice_credential),
-        None,
+        Vec::new(),
     );
 
     // Alice creates a group

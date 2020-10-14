@@ -60,7 +60,7 @@ fn test_tree_hash() {
             &ciphersuite,
             signature_keypair.get_private_key(),
             credential,
-            None,
+            Vec::new(),
         );
         kbp
     }

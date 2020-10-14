@@ -157,7 +157,7 @@ impl KeyPackageBundle {
         ciphersuite: &Ciphersuite,
         signature_key: &SignaturePrivateKey,
         credential: Credential, // FIXME: must be reference
-        extensions: Option<Vec<Box<dyn Extension>>>,
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         let keypair = ciphersuite.new_hpke_keypair();
         Self::new_with_keypair(
@@ -177,15 +177,16 @@ impl KeyPackageBundle {
         ciphersuite: &Ciphersuite,
         signature_key: &SignaturePrivateKey,
         credential: Credential,
-        extensions: Option<Vec<Box<dyn Extension>>>,
+        extensions: Vec<Box<dyn Extension>>,
         key_pair: &HPKEKeyPair,
     ) -> Self {
         // TODO: #85 this must be configurable.
         let mut final_extensions: Vec<Box<dyn Extension>> =
             vec![Box::new(CapabilitiesExtension::default())];
-        if let Some(mut extensions) = extensions {
-            final_extensions.append(&mut extensions);
-        }
+
+        // TODO: #31 Make sure we have all necessary extensions.
+
+        final_extensions.extend_from_slice(&extensions);
         let key_package = KeyPackage::new(
             *ciphersuite,
             &key_pair.get_public_key(),

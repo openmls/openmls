@@ -11,7 +11,7 @@ fn generate_key_package() {
         &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
-        None,
+        Vec::new(),
     );
     assert!(kpb.get_key_package().verify());
 }
@@ -29,7 +29,7 @@ fn test_codec() {
         &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
-        None,
+        Vec::new(),
     );
     let _enc = kpb.encode_detached().unwrap();
     // let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
