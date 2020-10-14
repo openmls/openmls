@@ -195,11 +195,6 @@ impl Ciphersuite {
         hash(self.hash, payload)
     }
 
-    /// Get the length of the used hash algorithm.
-    pub(crate) fn hash_length(&self) -> usize {
-        get_digest_size(self.hash)
-    }
-
     /// Get the output length of the kdf.
     pub(crate) fn hkdf_length(&self) -> usize {
         get_tag_size(self.hmac)
