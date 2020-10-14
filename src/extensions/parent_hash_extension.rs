@@ -18,12 +18,13 @@
 //! parent_hash matches the hash of the leaf's parent node when represented as a
 //! ParentNode struct.
 
-use super::{Extension, ExtensionType};
+use super::{Extension, ExtensionStruct, ExtensionType};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
+use crate::errors::ConfigError;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Default)]
 pub struct ParentHashExtension {
-    pub parent_hash: Vec<u8>,
+    parent_hash: Vec<u8>,
 }
 
 impl ParentHashExtension {
@@ -32,18 +33,36 @@ impl ParentHashExtension {
             parent_hash: hash.to_vec(),
         }
     }
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
+
+    /// Get a reference to the parent hash value.
+    pub(crate) fn get_parent_hash_ref<'a>(&'a self) -> &'a [u8] {
+        &self.parent_hash
+    }
+}
+
+impl Extension for ParentHashExtension {
+    fn get_type(&self) -> ExtensionType {
+        ExtensionType::ParentHash
+    }
+
+    /// Build a new ParentHashExtension from a byte slice.
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    where
+        Self: Sized,
+    {
         let cursor = &mut Cursor::new(bytes);
         let parent_hash = decode_vec(VecSize::VecU8, cursor).unwrap();
-        Self { parent_hash }
+        Ok(Self { parent_hash })
     }
-    pub fn to_extension(&self) -> Extension {
+
+    fn to_extension_struct(&self) -> ExtensionStruct {
         let mut extension_data: Vec<u8> = vec![];
         encode_vec(VecSize::VecU8, &mut extension_data, &self.parent_hash).unwrap();
         let extension_type = ExtensionType::ParentHash;
-        Extension {
-            extension_type,
-            extension_data,
-        }
+        ExtensionStruct::new(extension_type, extension_data)
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

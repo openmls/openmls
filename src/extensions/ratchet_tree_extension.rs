@@ -24,11 +24,12 @@
 //! ```
 //!
 use crate::codec::*;
+use crate::errors::ConfigError;
 use crate::tree::node::*;
 
-use super::{Extension, ExtensionType};
+use super::{Extension, ExtensionStruct, ExtensionType};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Default)]
 pub struct RatchetTreeExtension {
     pub tree: Vec<Option<Node>>,
 }
@@ -37,18 +38,31 @@ impl RatchetTreeExtension {
     pub fn new(tree: Vec<Option<Node>>) -> Self {
         RatchetTreeExtension { tree }
     }
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
+}
+
+impl Extension for RatchetTreeExtension {
+    fn get_type(&self) -> ExtensionType {
+        ExtensionType::RatchetTree
+    }
+
+    /// Build a new RatchetTreeExtension from a byte slice.
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    where
+        Self: Sized,
+    {
         let cursor = &mut Cursor::new(bytes);
         let tree = decode_vec(VecSize::VecU32, cursor).unwrap();
-        Self { tree }
+        Ok(Self { tree })
     }
-    pub fn to_extension(&self) -> Extension {
+
+    fn to_extension_struct(&self) -> ExtensionStruct {
         let mut extension_data: Vec<u8> = vec![];
         encode_vec(VecSize::VecU32, &mut extension_data, &self.tree).unwrap();
         let extension_type = ExtensionType::RatchetTree;
-        Extension {
-            extension_type,
-            extension_data,
-        }
+        ExtensionStruct::new(extension_type, extension_data)
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

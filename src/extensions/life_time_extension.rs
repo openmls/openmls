@@ -19,60 +19,81 @@
 //! uint64 not_after;
 //! ```
 //!
-use super::{Extension, ExtensionType};
+use super::{Extension, ExtensionStruct, ExtensionType};
 use crate::codec::{Codec, Cursor};
+use crate::errors::ConfigError;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(PartialEq, Clone, Debug)]
+/// The lifetime extension holds a not before and a not after time measured in
+/// seconds since the Unix epoch (1970-01-01T00:00:00Z).
+#[derive(PartialEq, Clone, Debug, Default)]
 pub struct LifetimeExtension {
     not_before: u64,
     not_after: u64,
 }
 
 impl LifetimeExtension {
-    pub const LIFETIME_1_MINUTE: u64 = 60;
-    pub const LIFETIME_1_HOUR: u64 = 60 * LifetimeExtension::LIFETIME_1_MINUTE;
-    pub const LIFETIME_1_DAY: u64 = 24 * LifetimeExtension::LIFETIME_1_HOUR;
-    pub const LIFETIME_1_WEEK: u64 = 7 * LifetimeExtension::LIFETIME_1_DAY;
-    pub const LIFETIME_4_WEEKS: u64 = 4 * LifetimeExtension::LIFETIME_1_WEEK;
-    pub const LIFETIME_MARGIN: u64 = LifetimeExtension::LIFETIME_1_HOUR;
+    /// Create a new lifetime extensions with lifetime `t`.
+    /// Note that the lifetime is extended 1h into the past to adapt to skewed
+    /// clocks.
     pub fn new(t: u64) -> Self {
+        // TODO: #85 make the margin configurable.
+        const LIFETIME_MARGIN: u64 = 60 * 60;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("SystemTime before UNIX EPOCH!")
             .as_secs();
-        let not_before = now - LifetimeExtension::LIFETIME_MARGIN;
-        let not_after = now + t + LifetimeExtension::LIFETIME_MARGIN;
+        let not_before = now - LIFETIME_MARGIN;
+        let not_after = now + t;
         Self {
             not_before,
             not_after,
         }
     }
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
+
+    /// Returns true if this lifetime is valid.
+    pub(crate) fn is_valid(&self) -> bool {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_secs();
+        self.not_before < now && now < self.not_after
+    }
+}
+
+impl Extension for LifetimeExtension {
+    fn get_type(&self) -> ExtensionType {
+        ExtensionType::Lifetime
+    }
+
+    /// Build a new LifetimeExtension from a byte slice.
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    where
+        Self: Sized,
+    {
         let mut cursor = Cursor::new(bytes);
         let not_before = u64::decode(&mut cursor).unwrap();
         let not_after = u64::decode(&mut cursor).unwrap();
-        Self {
+        let out = Self {
             not_before,
             not_after,
+        };
+        if !out.is_valid() {
+            return Err(ConfigError::ExpiredLifetimeExtension);
         }
+        Ok(out)
     }
-    pub fn to_extension(&self) -> Extension {
+
+    fn to_extension_struct(&self) -> ExtensionStruct {
         let mut extension_data: Vec<u8> = vec![];
         self.not_before.encode(&mut extension_data).unwrap();
         self.not_after.encode(&mut extension_data).unwrap();
         let extension_type = ExtensionType::Lifetime;
-        Extension {
-            extension_type,
-            extension_data,
-        }
+        ExtensionStruct::new(extension_type, extension_data)
     }
-    pub fn is_expired(&self) -> bool {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        self.not_before < now && self.not_after > now
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

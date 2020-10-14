@@ -18,7 +18,7 @@ fn padding() {
         &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
-        None,
+        Vec::new(),
     );
 
     let mut group_alice = MlsGroup::new(&id, ciphersuite, kpb);

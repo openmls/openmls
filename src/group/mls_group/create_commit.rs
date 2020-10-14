@@ -17,7 +17,7 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::ProtocolVersion;
-use crate::extensions::RatchetTreeExtension;
+use crate::extensions::{Extension, RatchetTreeExtension};
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
@@ -124,8 +124,8 @@ impl MlsGroup {
         // TODO: Add support for extensions
         if !membership_changes.adds.is_empty() {
             let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
-            let ratchet_tree_extension = public_tree.to_extension();
-            let tree_hash = ciphersuite.hash(&ratchet_tree_extension.extension_data);
+            let ratchet_tree_extension = public_tree.to_extension_struct();
+            let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
             // Create GroupInfo object
             let interim_transcript_hash = update_interim_transcript_hash(
                 &ciphersuite,
@@ -168,7 +168,8 @@ impl MlsGroup {
                     let dirpath = treemath::direct_path_root(
                         provisional_tree.get_own_node_index(),
                         provisional_tree.leaf_count(),
-                    );
+                    )
+                    .expect("create_commit_internal: TreeMath error when computing direct path.");
                     let position = dirpath
                         .iter()
                         .position(|&x| x == common_ancestor_index)
