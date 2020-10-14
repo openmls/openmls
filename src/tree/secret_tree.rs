@@ -225,7 +225,7 @@ impl SecretTree {
             "handshake",
             index.as_u32(),
             0,
-            ciphersuite.hash_length(),
+            ciphersuite.hkdf_length(),
         );
         let handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
         self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
@@ -235,7 +235,7 @@ impl SecretTree {
             "application",
             index.as_u32(),
             0,
-            ciphersuite.hash_length(),
+            ciphersuite.hkdf_length(),
         );
         let application_sender_ratchet = SenderRatchet::new(index, &application_ratchet_secret);
         self.application_sender_ratchets[index.as_usize()] = Some(application_sender_ratchet);
@@ -306,7 +306,7 @@ impl SecretTree {
 
     /// Derives the secrets for the child leaves in a SecretTree and blanks the parent leaf.
     fn derive_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
-        let hash_len = ciphersuite.hash_length();
+        let hkdf_len = ciphersuite.hkdf_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()]
             .as_ref()
             .unwrap()
@@ -319,7 +319,7 @@ impl SecretTree {
             "tree",
             left_index.as_u32(),
             0,
-            hash_len,
+            hkdf_len,
         );
         let right_secret = derive_tree_secret(
             &ciphersuite,
@@ -327,7 +327,7 @@ impl SecretTree {
             "tree",
             right_index.as_u32(),
             0,
-            hash_len,
+            hkdf_len,
         );
         self.nodes[left_index.as_usize()] = Some(SecretTreeNode {
             secret: left_secret,

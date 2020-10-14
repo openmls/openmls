@@ -105,7 +105,7 @@ impl MlsGroup {
             if membership_changes.path_required() {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
-            CommitSecret(zero(ciphersuite.hash_length()))
+            CommitSecret(zero(ciphersuite.hkdf_length()))
         };
 
         // Create provisional group state

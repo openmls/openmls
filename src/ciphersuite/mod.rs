@@ -200,6 +200,11 @@ impl Ciphersuite {
         get_digest_size(self.hash)
     }
 
+    /// Get the output length of the kdf.
+    pub(crate) fn hkdf_length(&self) -> usize {
+        get_tag_size(self.hmac)
+    }
+
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Vec<u8> {
         hkdf_extract(self.hmac, salt, ikm)

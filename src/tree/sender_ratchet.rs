@@ -113,7 +113,7 @@ impl SenderRatchet {
             "secret",
             self.index.into(),
             self.generation,
-            ciphersuite.hash_length(),
+            ciphersuite.hkdf_length(),
         )
     }
     /// Derives a key & nonce from a secret

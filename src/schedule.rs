@@ -20,7 +20,7 @@ use crate::group::*;
 use crate::messages::*;
 
 pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &[u8], label: &str) -> Vec<u8> {
-    hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
+    hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hkdf_length())
 }
 
 pub fn mls_exporter(

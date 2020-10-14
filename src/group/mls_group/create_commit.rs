@@ -73,7 +73,7 @@ impl MlsGroup {
             (commit_secret, path_option, path_secrets)
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = CommitSecret(zero(self.get_ciphersuite().hash_length()));
+            let commit_secret = CommitSecret(zero(self.get_ciphersuite().hkdf_length()));
             (commit_secret, None, None)
         };
         // Create commit message

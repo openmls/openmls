@@ -326,7 +326,7 @@ fn compute_welcome_key_nonce(
     joiner_secret: &[u8],
 ) -> (AeadKey, AeadNonce) {
     let welcome_secret = ciphersuite
-        .hkdf_expand(joiner_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
+        .hkdf_expand(joiner_secret, b"mls 1.0 welcome", ciphersuite.hkdf_length())
         .unwrap();
     let welcome_nonce = AeadNonce::from_slice(
         &ciphersuite

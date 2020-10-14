@@ -114,15 +114,15 @@ impl PrivateTree {
         start_secret: Option<&[u8]>,
         n: usize,
     ) {
-        let hash_len = ciphersuite.hash_length();
+        let hkdf_len = ciphersuite.hkdf_length();
         let start_secret = match start_secret {
-            Some(secret) => hkdf_expand_label(ciphersuite, secret, "path", &[], hash_len),
+            Some(secret) => hkdf_expand_label(ciphersuite, secret, "path", &[], hkdf_len),
             None => self.hpke_private_key.as_slice().to_vec(),
         };
         let mut path_secrets = vec![start_secret];
         for i in 0..n - 1 {
             let path_secret =
-                hkdf_expand_label(ciphersuite, &path_secrets[i], "path", &[], hash_len);
+                hkdf_expand_label(ciphersuite, &path_secrets[i], "path", &[], hkdf_len);
             path_secrets.push(path_secret);
         }
         self.path_secrets = path_secrets
@@ -151,7 +151,7 @@ impl PrivateTree {
             &path_secret,
             "path",
             &[],
-            ciphersuite.hash_length(),
+            ciphersuite.hkdf_length(),
         ));
 
         Ok(())
@@ -179,13 +179,13 @@ impl PrivateTree {
             return Err(TreeError::InvalidArguments);
         }
 
-        let hash_len = ciphersuite.hash_length();
+        let hkdf_len = ciphersuite.hkdf_length();
         let mut private_keys = vec![];
         let mut public_keys = vec![];
 
         // Derive key pairs for all nodes in the direct path.
         for path_secret in self.path_secrets.iter() {
-            let node_secret = hkdf_expand_label(ciphersuite, &path_secret, "node", &[], hash_len);
+            let node_secret = hkdf_expand_label(ciphersuite, &path_secret, "node", &[], hkdf_len);
             let keypair = HPKEKeyPair::derive(&node_secret, ciphersuite);
             public_keys.push(keypair.get_public_key());
             private_keys.push(keypair.get_private_key());
