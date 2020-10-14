@@ -65,7 +65,10 @@ impl KeyPackage {
         key_package
     }
 
-    /// Verify that the signature on this key package is valid.
+    /// Verify that this key package is valid:
+    /// * verify that the signature on this key package is valid
+    /// * verify that all mandatory extensions are present
+    /// * make sure that the lifetime is valid
     pub(crate) fn verify(&self) -> bool {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
@@ -79,12 +82,29 @@ impl KeyPackage {
                 }
                 None => (),
             }
+            // Make sure the lifetime is valid.
+            if extension.get_type() == ExtensionType::Lifetime {
+                match extension.to_lifetime_extension_ref() {
+                    Ok(e) => {
+                        if !e.is_valid() {
+                            return false;
+                        }
+                    }
+                    Err(e) => {
+                        println!("Library error. {:?}", e);
+                        return false;
+                    }
+                }
+            }
         }
-        debug_assert_eq!(mandatory_extensions_found.len(), 0);
+
+        // Make sure we found all mandatory extensions.
         if !mandatory_extensions_found.is_empty() {
             return false;
         }
+        debug_assert_eq!(mandatory_extensions_found.len(), 0);
 
+        // Verify the signature on this key package.
         self.credential
             .verify(&self.unsigned_payload().unwrap(), &self.signature)
     }

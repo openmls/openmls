@@ -1,6 +1,5 @@
-use crate::extensions::LifetimeExtension;
 #[cfg(test)]
-use crate::key_packages::*;
+use crate::{extensions::LifetimeExtension, key_packages::*};
 
 #[test]
 fn generate_key_package() {
@@ -10,14 +9,36 @@ fn generate_key_package() {
     let identity =
         Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
     let credential = Credential::Basic(BasicCredential::from(&identity));
-    let lifetime_extension = Box::new(LifetimeExtension::new(60));
     let kpb = KeyPackageBundle::new(
         &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
+        vec![],
+    );
+    // This is invalid because the lifetime extension is missing.
+    assert!(!kpb.get_key_package().verify());
+
+    // Now with a lifetime the key package should be valid.
+    let lifetime_extension = Box::new(LifetimeExtension::new(60));
+    let kpb = KeyPackageBundle::new(
+        &ciphersuite,
+        signature_keypair.get_private_key(),
+        Credential::Basic(BasicCredential::from(&identity)),
         vec![lifetime_extension],
     );
+    std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(kpb.get_key_package().verify());
+
+    // Now we add an invalid lifetime.
+    let lifetime_extension = Box::new(LifetimeExtension::new(0));
+    let kpb = KeyPackageBundle::new(
+        &ciphersuite,
+        signature_keypair.get_private_key(),
+        Credential::Basic(BasicCredential::from(&identity)),
+        vec![lifetime_extension],
+    );
+    std::thread::sleep(std::time::Duration::from_secs(1));
+    assert!(!kpb.get_key_package().verify());
 }
 
 #[test]

@@ -239,6 +239,16 @@ pub trait Extension: Debug + ExtensionHelper {
             None => Err(ExtensionError::InvalidExtensionType),
         }
     }
+
+    /// Get a reference to the `LifetimeExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `LifetimeExtension`.
+    fn to_lifetime_extension_ref(&self) -> Result<&LifetimeExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<LifetimeExtension>() {
+            Some(e) => Ok(e),
+            None => Err(ExtensionError::InvalidExtensionType),
+        }
+    }
 }
 
 // A slightly hacky work around to make `Extensions` clonable.
