@@ -24,34 +24,48 @@ fn verify_binary_test_vector_treemath() {
     let parent: Vec<u32> = decode_vec(VecSize::VecU32, cursor).unwrap();
     let sibling: Vec<u32> = decode_vec(VecSize::VecU32, cursor).unwrap();
 
-    fn test_result(index: usize, input: &u32, result: Result<NodeIndex, TreeMathError>) {
-        if index != *input as usize {
+    /// Take an index and entry of a test vector, as well as the result. If
+    /// index and input are equal, this is an artefact of the old treemath and
+    /// we have to expect the new treemath to raise an error.
+    fn test_result(index: usize, input: u32, result: Result<NodeIndex, TreeMathError>) {
+        if index != input as usize {
             assert!(result.is_ok());
-            assert_eq!(NodeIndex::from(*input), result.unwrap());
+            assert_eq!(NodeIndex::from(input), result.unwrap());
         } else {
             assert!(result.is_err());
         }
     }
 
-    for (i, r) in root.iter().enumerate() {
-        assert_eq!(NodeIndex::from(*r), treemath::root(LeafIndex::from(i + 1)));
+    // Test if the `root` function is computed correctly according to the test
+    // vector.
+    for (i, &r) in root.iter().enumerate() {
+        assert_eq!(NodeIndex::from(r), treemath::root(LeafIndex::from(i + 1)));
     }
-    for (i, l) in left.iter().enumerate() {
+    // Test if the `left` function is computed correctly according to the test
+    // vector.
+    for (i, &l) in left.iter().enumerate() {
         let result = treemath::left(NodeIndex::from(i));
         test_result(i, l, result);
     }
-    for (i, r) in right.iter().enumerate() {
+    // Test if the `right` function is computed correctly according to the test
+    // vector.
+    for (i, &r) in right.iter().enumerate() {
         let result = treemath::right(NodeIndex::from(i), tree_size);
         test_result(i, r, result);
     }
-    for (i, p) in parent.iter().enumerate() {
+    // Test if the `parent` function is computed correctly according to the test
+    // vector.
+    for (i, &p) in parent.iter().enumerate() {
         let result = treemath::parent(NodeIndex::from(i), tree_size);
         test_result(i, p, result);
     }
-    for (i, s) in sibling.iter().enumerate() {
+    // Test if the `sibling` function is computed correctly according to the test
+    // vector.
+    for (i, &s) in sibling.iter().enumerate() {
         let result = treemath::sibling(NodeIndex::from(i), tree_size);
         test_result(i, s, result);
     }
+    // There should be no other values in the test vector.
     assert_eq!(cursor.has_more(), false);
 }
 

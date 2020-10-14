@@ -18,7 +18,7 @@ use crate::tree::index::*;
 use std::cmp::Ordering;
 
 #[derive(Debug)]
-pub enum TreeMathError {
+pub(crate) enum TreeMathError {
     LeafHasNoChildren,
     RootHasNoParent,
 }
@@ -120,13 +120,12 @@ pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex
     }
 
     let mut d = vec![];
-    let mut x = index;
-    x = parent(x, size)?;
+    let mut x = parent(index, size)?;
     while x != r {
         d.push(x);
         x = parent(x, size)?;
     }
-    return Ok(d);
+    Ok(d)
 }
 
 // Ordered from leaf to root
@@ -146,7 +145,7 @@ pub(crate) fn dirpath_long(
         x = parent(x, size)?;
         d.push(x);
     }
-    return Ok(d);
+    Ok(d)
 }
 
 // Ordered from leaf to root
@@ -166,7 +165,7 @@ pub(crate) fn direct_path_root(
         x = parent(x, size)?;
         d.push(x);
     }
-    return Ok(d);
+    Ok(d)
 }
 
 // Ordered from leaf to root
