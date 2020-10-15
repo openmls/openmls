@@ -138,7 +138,7 @@ impl Codec for ShortProposalID {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct QueuedProposal {
     pub proposal: Proposal,
     pub sender: Sender,
@@ -169,7 +169,7 @@ impl QueuedProposal {
 //     }
 // }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct ProposalQueue {
     tuples: HashMap<ShortProposalID, (ProposalID, QueuedProposal)>,
 }

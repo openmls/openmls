@@ -43,6 +43,7 @@ pub enum ApplyCommitError {
     PlaintextSignatureFailure = 206,
     RequiredPathNotFound = 207,
     ConfirmationTagMismatch = 208,
+    MissingOwnKeyPackage = 209,
 }
 
 pub enum DecryptionError {
