@@ -80,8 +80,9 @@ impl Codec for Identity {
 #[derive(Copy, Clone)]
 #[repr(u8)]
 pub enum CredentialType {
-    Basic = 0,
-    X509 = 1,
+    Reserved = 0,
+    Basic = 1,
+    X509 = 2,
     Default = 255,
 }
 
