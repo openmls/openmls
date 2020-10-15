@@ -40,18 +40,14 @@ pub enum ExtensionError {
 }
 
 impl From<ExtensionError> for ConfigError {
-    fn from(e: ExtensionError) -> Self {
-        match e {
-            _ => ConfigError::InvalidConfig,
-        }
+    fn from(_e: ExtensionError) -> Self {
+        ConfigError::InvalidConfig
     }
 }
 
 impl From<ExtensionError> for CodecError {
-    fn from(e: ExtensionError) -> Self {
-        match e {
-            _ => CodecError::DecodingError,
-        }
+    fn from(_e: ExtensionError) -> Self {
+        CodecError::DecodingError
     }
 }
 
@@ -185,8 +181,7 @@ pub(crate) fn extensions_vec_from_cursor(
         // Make sure there are no duplicate extensions.
         if result
             .iter()
-            .find(|e| e.get_type() == extension.extension_type)
-            .is_some()
+            .any(|e| e.get_type() == extension.extension_type)
         {
             return Err(CodecError::DecodingError);
         }

@@ -73,14 +73,11 @@ impl KeyPackage {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
         for extension in self.extensions.iter() {
-            match mandatory_extensions_found
+            if let Some(p) = mandatory_extensions_found
                 .iter()
                 .position(|&e| e == extension.get_type())
             {
-                Some(p) => {
-                    let _ = mandatory_extensions_found.remove(p);
-                }
-                None => (),
+                let _ = mandatory_extensions_found.remove(p);
             }
             // Make sure the lifetime is valid.
             if extension.get_type() == ExtensionType::Lifetime {
@@ -137,7 +134,7 @@ impl KeyPackage {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub(crate) fn add_extension(&mut self, extension: Box<dyn Extension>) {
+    pub(crate) fn _add_extension(&mut self, extension: Box<dyn Extension>) {
         self.remove_extension(extension.get_type());
         self.extensions.push(extension);
     }
@@ -229,7 +226,7 @@ impl KeyPackageBundle {
         let mut final_extensions: Vec<Box<dyn Extension>> =
             vec![Box::new(CapabilitiesExtension::default())];
 
-        let (private_key, public_key) = key_pair.to_keys();
+        let (private_key, public_key) = key_pair.into_keys();
         final_extensions.extend_from_slice(&extensions);
         let key_package = KeyPackage::new(
             *ciphersuite,
@@ -252,12 +249,12 @@ impl KeyPackageBundle {
     }
 
     /// Update the private key in the bundle.
-    pub(crate) fn set_private_key(&mut self, private_key: HPKEPrivateKey) {
+    pub(crate) fn _set_private_key(&mut self, private_key: HPKEPrivateKey) {
         self.private_key = private_key;
     }
 
     /// Update the key package in the bundle.
-    pub(crate) fn set_key_package(&mut self, key_package: KeyPackage) {
+    pub(crate) fn _set_key_package(&mut self, key_package: KeyPackage) {
         self.key_package = key_package;
     }
 
