@@ -59,9 +59,7 @@ impl KeyPackage {
             extensions,
             signature: Signature::new_empty(),
         };
-        let payload = &key_package.unsigned_payload().unwrap();
-
-        key_package.signature = ciphersuite.sign(signature_key, payload).unwrap();
+        key_package.sign(&ciphersuite, signature_key);
         key_package
     }
 
@@ -99,7 +97,6 @@ impl KeyPackage {
         if !mandatory_extensions_found.is_empty() {
             return false;
         }
-        debug_assert_eq!(mandatory_extensions_found.len(), 0);
 
         // Verify the signature on this key package.
         self.credential
@@ -134,12 +131,16 @@ impl KeyPackage {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub(crate) fn _add_extension(&mut self, extension: Box<dyn Extension>) {
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
+    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
         self.remove_extension(extension.get_type());
         self.extensions.push(extension);
     }
 
     /// Remove an extension from the KeyPackage
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions.retain(|e| e.get_type() != extension_type);
     }
@@ -167,6 +168,12 @@ impl KeyPackage {
     /// Get a reference to the extensions of this key package.
     pub fn get_extensions_ref(&self) -> &[Box<dyn Extension>] {
         &self.extensions
+    }
+
+    /// Sign the key package.
+    pub(crate) fn sign(&mut self, ciphersuite: &Ciphersuite, signature_key: &SignaturePrivateKey) {
+        let payload = &self.unsigned_payload().unwrap();
+        self.signature = ciphersuite.sign(signature_key, payload).unwrap();
     }
 }
 

@@ -140,13 +140,16 @@ impl Codec for Credential {
         }
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let credential_type = CredentialType::from(u8::decode(cursor)?);
-    //     match credential_type {
-    //         CredentialType::Basic => Ok(Credential::Basic(BasicCredential::decode(cursor)?)),
-    //         _ => Err(CodecError::DecodingError),
-    //     }
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let credential_type = match CredentialType::try_from(u16::decode(cursor)?) {
+            Ok(c) => c,
+            Err(_) => return Err(CodecError::DecodingError),
+        };
+        match credential_type {
+            CredentialType::Basic => Ok(Credential::Basic(BasicCredential::decode(cursor)?)),
+            _ => Err(CodecError::DecodingError),
+        }
+    }
 }
 
 // TODO: Drop ciphersuite
@@ -181,16 +184,16 @@ impl Codec for BasicCredential {
         self.public_key.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let identity = decode_vec(VecSize::VecU16, cursor)?;
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let public_key = SignaturePublicKey::decode(cursor)?;
-    //     Ok(BasicCredential {
-    //         identity,
-    //         ciphersuite,
-    //         public_key,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let identity = decode_vec(VecSize::VecU16, cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
+        let public_key = SignaturePublicKey::decode(cursor)?;
+        Ok(BasicCredential {
+            identity,
+            ciphersuite,
+            public_key,
+        })
+    }
 }
 
 #[test]

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::{signable::*, *};
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
 use crate::key_packages::*;
