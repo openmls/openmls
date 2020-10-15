@@ -10,7 +10,7 @@ use crate::{ciphersuite::*, utils::*};
 fn setup(len: usize) -> (Ciphersuite, HPKEPrivateKey, NodeIndex, Vec<NodeIndex>) {
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
-    let hpke_private_key = HPKEPrivateKey::from_slice(&randombytes(32));
+    let hpke_private_key = HPKEPrivateKey::new(randombytes(32));
     let own_index = NodeIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 

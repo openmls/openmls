@@ -55,7 +55,7 @@ fn test_codec() {
         credential,
         Vec::new(),
     );
-    let _enc = kpb.encode_detached().unwrap();
+    let _enc = kpb.get_key_package().encode_detached().unwrap();
     // let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
     // assert_eq!(kpb.key_package, kp);
 }
