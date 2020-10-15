@@ -28,6 +28,9 @@ use std::convert::TryFrom;
 pub mod sender;
 use sender::*;
 
+#[cfg(test)]
+mod test_framing;
+
 pub enum MLSCiphertextError {
     InvalidContentType,
     GenerationOutOfBound,
@@ -833,37 +836,4 @@ impl Codec for MLSPlaintextCommitAuthData {
             signature,
         })
     }
-}
-
-#[test]
-fn codec() {
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
-    let keypair = ciphersuite.new_signature_keypair();
-    let sender = Sender {
-        sender_type: SenderType::Member,
-        sender: LeafIndex::from(2u32),
-    };
-    let mut orig = MLSPlaintext {
-        group_id: GroupId::random(),
-        epoch: GroupEpoch(1u64),
-        sender,
-        authenticated_data: vec![1, 2, 3],
-        content_type: ContentType::Application,
-        content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
-        signature: Signature::new_empty(),
-    };
-    let context = GroupContext {
-        group_id: GroupId::random(),
-        epoch: GroupEpoch(1u64),
-        tree_hash: vec![],
-        confirmed_transcript_hash: vec![],
-    };
-    let serialized_context = context.encode_detached().unwrap();
-    let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context));
-    orig.signature = signature_input.sign(&ciphersuite, &keypair.get_private_key());
-
-    let enc = orig.encode_detached().unwrap();
-    let copy = MLSPlaintext::from_bytes(&enc).unwrap();
-    assert_eq!(orig, copy);
 }
