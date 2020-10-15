@@ -3,7 +3,7 @@
 //!
 
 use super::{index::NodeIndex, path_keys::PathKeys, TreeError};
-use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
+use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
 use crate::codec::{Codec, CodecError};
 use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
