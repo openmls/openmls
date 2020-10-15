@@ -78,9 +78,7 @@ impl MlsGroup {
         };
         // Create commit message
         let commit = Commit {
-            updates: proposal_id_list.updates,
-            removes: proposal_id_list.removes,
-            adds: proposal_id_list.adds,
+            proposals: proposal_id_list,
             path,
         };
         // Create provisional group state

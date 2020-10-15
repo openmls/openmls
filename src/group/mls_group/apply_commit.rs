@@ -45,12 +45,6 @@ impl MlsGroup {
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 
-        // Organize proposals
-        let proposal_id_list = ProposalIDList {
-            updates: commit.updates.clone(),
-            removes: commit.removes.clone(),
-            adds: commit.adds.clone(),
-        };
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
             let queued_proposal = QueuedProposal::new(mls_plaintext, None);
@@ -60,7 +54,7 @@ impl MlsGroup {
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
         let (membership_changes, _invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &mut pending_kpbs);
+            provisional_tree.apply_proposals(&commit.proposals, proposal_queue, &mut pending_kpbs);
 
         // Check if we were removed from the group
         if group_removed {

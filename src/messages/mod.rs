@@ -65,17 +65,13 @@ impl fmt::Debug for MembershipChanges {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Commit {
-    pub updates: Vec<ProposalID>,
-    pub removes: Vec<ProposalID>,
-    pub adds: Vec<ProposalID>,
+    pub proposals: Vec<ProposalID>,
     pub path: Option<UpdatePath>,
 }
 
 impl Codec for Commit {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.updates)?;
-        encode_vec(VecSize::VecU32, buffer, &self.removes)?;
-        encode_vec(VecSize::VecU32, buffer, &self.adds)?;
+        encode_vec(VecSize::VecU32, buffer, &self.proposals)?;
         self.path.encode(buffer)?;
         Ok(())
     }

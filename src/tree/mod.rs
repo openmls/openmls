@@ -626,17 +626,17 @@ impl RatchetTree {
 
     pub fn apply_proposals(
         &mut self,
-        proposal_id_list: &ProposalIDList,
+        proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
         pending_kpbs: &mut Vec<KeyPackageBundle>,
     ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {
         let mut updated_members = vec![];
         let mut removed_members = vec![];
-        let mut invited_members = Vec::with_capacity(proposal_id_list.adds.len());
+        let mut invited_members = Vec::with_capacity(proposal_queue.get_adds_ref().len());
 
         let mut self_removed = false;
 
-        for u in proposal_id_list.updates.iter() {
+        for u in proposal_queue.get_updates_ref().iter() {
             let (_proposal_id, queued_proposal) = proposal_queue.get(&u).unwrap();
             let proposal = &queued_proposal.proposal;
             let update_proposal = proposal.as_update().unwrap();
@@ -664,7 +664,7 @@ impl RatchetTree {
                 );
             }
         }
-        for r in proposal_id_list.removes.iter() {
+        for r in proposal_queue.get_removes_ref().iter() {
             let (_proposal_id, queued_proposal) = proposal_queue.get(&r).unwrap();
             let proposal = &queued_proposal.proposal;
             let remove_proposal = proposal.as_remove().unwrap();
@@ -684,9 +684,9 @@ impl RatchetTree {
         }
 
         // Process adds
-        let added_members = if !proposal_id_list.adds.is_empty() {
-            let add_proposals: Vec<AddProposal> = proposal_id_list
-                .adds
+        let added_members = if !proposal_queue.get_adds_ref().is_empty() {
+            let add_proposals: Vec<AddProposal> = proposal_queue
+                .get_adds_ref()
                 .iter()
                 .map(|a| {
                     let (_proposal_id, queued_proposal) = proposal_queue.get(&a).unwrap();

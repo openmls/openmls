@@ -142,7 +142,7 @@ impl Codec for ShortProposalID {
 pub struct QueuedProposal {
     pub proposal: Proposal,
     pub sender: Sender,
-    pub own_kpb: Option<KeyPackageBundle>,
+    pub own_kpb: Option<KeyPackageBundle>, // TODO check if this can be removed
 }
 
 impl QueuedProposal {
@@ -150,7 +150,7 @@ impl QueuedProposal {
         debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
         let proposal = match mls_plaintext.content {
             MLSPlaintextContentType::Proposal(p) => p,
-            _ => panic!("API misuses. Only proposal can end up in the proposal queue"),
+            _ => panic!("API misuses. Only proposals can end up in the proposal queue"),
         };
         Self {
             proposal,
@@ -172,39 +172,51 @@ impl QueuedProposal {
 #[derive(Default)]
 pub struct ProposalQueue {
     tuples: HashMap<ShortProposalID, (ProposalID, QueuedProposal)>,
+    adds: Vec<ProposalID>,
+    updates: Vec<ProposalID>,
+    removes: Vec<ProposalID>,
 }
 
 impl ProposalQueue {
     pub fn new() -> Self {
         ProposalQueue {
             tuples: HashMap::new(),
+            adds: Vec::new(),
+            updates: Vec::new(),
+            removes: Vec::new(),
         }
     }
     pub fn add(&mut self, queued_proposal: QueuedProposal, ciphersuite: &Ciphersuite) {
-        let pi = ProposalID::from_proposal(ciphersuite, &queued_proposal.proposal);
-        let spi = ShortProposalID::from_proposal_id(&pi);
-        self.tuples.entry(spi).or_insert((pi, queued_proposal));
+        let proposal_id = ProposalID::from_proposal(ciphersuite, &queued_proposal.proposal);
+        let short_proposal_id = ShortProposalID::from_proposal_id(&proposal_id);
+        match &queued_proposal.proposal {
+            Proposal::Add(_) => self.adds.push(proposal_id.clone()),
+            Proposal::Update(_) => self.updates.push(proposal_id.clone()),
+            Proposal::Remove(_) => self.removes.push(proposal_id.clone()),
+        }
+        self.tuples
+            .entry(short_proposal_id)
+            .or_insert((proposal_id, queued_proposal));
     }
     pub fn get(&self, proposal_id: &ProposalID) -> Option<&(ProposalID, QueuedProposal)> {
-        let spi = ShortProposalID::from_proposal_id(&proposal_id);
-        self.tuples.get(&spi)
+        let short_proposal_id = ShortProposalID::from_proposal_id(&proposal_id);
+        self.tuples.get(&short_proposal_id)
     }
-    pub fn get_commit_lists(&self, ciphersuite: &Ciphersuite) -> ProposalIDList {
-        let mut updates = vec![];
-        let mut removes = vec![];
-        let mut adds = vec![];
+    pub fn get_commit_lists(&self, ciphersuite: &Ciphersuite) -> Vec<ProposalID> {
+        let mut proposals = vec![];
         for (_spi, p) in self.tuples.values() {
-            match p.proposal {
-                Proposal::Update(_) => updates.push(p.proposal.to_proposal_id(ciphersuite)),
-                Proposal::Remove(_) => removes.push(p.proposal.to_proposal_id(ciphersuite)),
-                Proposal::Add(_) => adds.push(p.proposal.to_proposal_id(ciphersuite)),
-            }
+            proposals.push(p.proposal.to_proposal_id(ciphersuite))
         }
-        ProposalIDList {
-            updates,
-            removes,
-            adds,
-        }
+        proposals
+    }
+    pub fn get_adds_ref(&self) -> &[ProposalID] {
+        &self.adds
+    }
+    pub fn get_updates_ref(&self) -> &[ProposalID] {
+        &self.updates
+    }
+    pub fn get_removes_ref(&self) -> &[ProposalID] {
+        &self.removes
     }
 }
 
