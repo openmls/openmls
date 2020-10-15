@@ -41,18 +41,11 @@ impl Codec for Commit {
         self.path.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let updates = decode_vec(VecSize::VecU32, cursor)?;
-    //     let removes = decode_vec(VecSize::VecU32, cursor)?;
-    //     let adds = decode_vec(VecSize::VecU32, cursor)?;
-    //     let path = Option::<UpdatePath>::decode(cursor)?;
-    //     Ok(Commit {
-    //         updates,
-    //         removes,
-    //         adds,
-    //         path,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let proposals = decode_vec(VecSize::VecU32, cursor)?;
+        let path = Option::<UpdatePath>::decode(cursor)?;
+        Ok(Commit { proposals, path })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -268,18 +261,18 @@ impl Codec for Welcome {
         encode_vec(VecSize::VecU32, buffer, &self.encrypted_group_info)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let version = ProtocolVersion::decode(cursor)?;
-    //     let cipher_suite = Ciphersuite::decode(cursor)?;
-    //     let secrets = decode_vec(VecSize::VecU32, cursor)?;
-    //     let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
-    //     Ok(Welcome {
-    //         version,
-    //         cipher_suite,
-    //         secrets,
-    //         encrypted_group_info,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let version = ProtocolVersion::decode(cursor)?;
+        let cipher_suite = Ciphersuite::decode(cursor)?;
+        let secrets = decode_vec(VecSize::VecU32, cursor)?;
+        let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
+        Ok(Welcome {
+            version,
+            cipher_suite,
+            secrets,
+            encrypted_group_info,
+        })
+    }
 }
 
 pub type WelcomeBundle = (Welcome, ExtensionStruct);

@@ -130,32 +130,21 @@ impl Codec for ProposalID {
 pub struct QueuedProposal {
     pub proposal: Proposal,
     pub sender: Sender,
-    pub own_kpb: Option<KeyPackageBundle>, // TODO check if this can be removed
 }
 
 impl QueuedProposal {
-    pub fn new(mls_plaintext: MLSPlaintext, own_kpb: Option<KeyPackageBundle>) -> Self {
+    pub fn new(mls_plaintext: MLSPlaintext) -> Self {
         debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
         let proposal = match mls_plaintext.content {
             MLSPlaintextContentType::Proposal(p) => p,
-            _ => panic!("API misuses. Only proposals can end up in the proposal queue"),
+            _ => panic!("API misuse. Only proposals can end up in the proposal queue"),
         };
         Self {
             proposal,
             sender: mls_plaintext.sender,
-            own_kpb,
         }
     }
 }
-
-// impl Codec for QueuedProposal {
-//     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-//         self.proposal.encode(buffer)?;
-//         self.sender.encode(buffer)?;
-//         self.own_kpb.encode(buffer)?;
-//         Ok(())
-//     }
-// }
 
 #[derive(Default)]
 pub struct ProposalQueue {
@@ -171,7 +160,7 @@ impl ProposalQueue {
     pub fn new_from_proposals(proposals: Vec<MLSPlaintext>, ciphersuite: &Ciphersuite) -> Self {
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
+            let queued_proposal = QueuedProposal::new(mls_plaintext);
             proposal_queue.add(queued_proposal, &ciphersuite);
         }
         proposal_queue

@@ -39,7 +39,7 @@ impl MlsGroup {
         // Organize proposals
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
+            let queued_proposal = QueuedProposal::new(mls_plaintext);
             if queued_proposal.sender.as_leaf_index() == self.get_sender_index()
                 && queued_proposal.proposal.is_type(ProposalType::Update)
             {
