@@ -85,7 +85,8 @@ impl MlsGroup {
             if !kp.verify() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
-            if !mls_plaintext.verify(&self.group_context, kp.get_credential()) {
+            let serialized_context = self.group_context.encode_detached().unwrap();
+            if !mls_plaintext.verify(Some(serialized_context), kp.get_credential()) {
                 return Err(ApplyCommitError::PlaintextSignatureFailure);
             }
             if is_own_commit {
