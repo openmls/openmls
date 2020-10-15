@@ -198,7 +198,10 @@ impl SecretTree {
         // Calculate direct path
         let index_in_tree = NodeIndex::from(index);
         let mut dir_path = vec![index_in_tree];
-        dir_path.extend(dirpath(index_in_tree, self.size));
+        dir_path.extend(
+            dirpath(index_in_tree, self.size)
+                .expect("initialize_sender_rathets: Error while computing direct path."),
+        );
         dir_path.push(root(self.size));
         let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
@@ -311,8 +314,10 @@ impl SecretTree {
             .as_ref()
             .unwrap()
             .secret;
-        let left_index = left(index_in_tree);
-        let right_index = right(index_in_tree, self.size);
+        let left_index =
+            left(index_in_tree).expect("derive_down: Error while computing left child.");
+        let right_index = right(index_in_tree, self.size)
+            .expect("derive_down: Error while computing right child.");
         let left_secret = derive_tree_secret(
             &ciphersuite,
             &node_secret,

@@ -80,6 +80,8 @@ impl Node {
             None
         }
     }
+
+    // TODO: #98 should this really return a vec?
     pub fn parent_hash(&self) -> Option<Vec<u8>> {
         if self.is_blank() {
             return None;
@@ -94,19 +96,17 @@ impl Node {
             }
             NodeType::Leaf => {
                 if let Some(key_package) = &self.key_package {
-                    if let Some(extension_payload) = key_package
-                        .get_extension(ExtensionType::ParentHash)
-                        .unwrap()
-                    {
-                        if let ExtensionPayload::ParentHash(parent_hash_extension) =
-                            extension_payload
-                        {
-                            Some(parent_hash_extension.parent_hash)
-                        } else {
-                            None
+                    let parent_hash_extension =
+                        key_package.get_extension(ExtensionType::ParentHash);
+                    match parent_hash_extension {
+                        Some(phe) => {
+                            let phe = match phe.to_parent_hash_extension_ref() {
+                                Ok(phe) => phe,
+                                Err(_) => return None,
+                            };
+                            Some(phe.get_parent_hash_ref().to_vec())
                         }
-                    } else {
-                        None
+                        None => None,
                     }
                 } else {
                     None

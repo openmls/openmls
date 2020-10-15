@@ -149,7 +149,7 @@ pub struct GroupInfo {
     pub tree_hash: Vec<u8>,
     pub confirmed_transcript_hash: Vec<u8>,
     pub interim_transcript_hash: Vec<u8>,
-    pub extensions: Vec<Extension>,
+    pub extensions: Vec<Box<dyn Extension>>,
     pub confirmation_tag: Vec<u8>,
     pub signer_index: LeafIndex,
     pub signature: Signature,
@@ -163,7 +163,7 @@ impl GroupInfo {
         let tree_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
         let confirmed_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let extensions = decode_vec(VecSize::VecU16, &mut cursor)?;
+        let extensions = extensions_vec_from_cursor(&mut cursor)?;
         let confirmation_tag = decode_vec(VecSize::VecU8, &mut cursor)?;
         let signer_index = LeafIndex::from(u32::decode(&mut cursor)?);
         let signature = Signature::decode(&mut cursor)?;
@@ -219,7 +219,13 @@ impl Signable for GroupInfo {
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
-        encode_vec(VecSize::VecU16, buffer, &self.extensions)?;
+        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
+        let encoded_extensions: Vec<ExtensionStruct> = self
+            .extensions
+            .iter()
+            .map(|e| e.to_extension_struct())
+            .collect();
+        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
         self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())
@@ -314,4 +320,4 @@ impl Codec for Welcome {
     // }
 }
 
-pub type WelcomeBundle = (Welcome, Extension);
+pub type WelcomeBundle = (Welcome, ExtensionStruct);
