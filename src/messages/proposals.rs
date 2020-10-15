@@ -159,36 +159,54 @@ impl QueuedProposal {
 
 #[derive(Default)]
 pub struct ProposalQueue {
-    tuples: HashMap<ProposalID, QueuedProposal>,
+    queued_proposals: HashMap<ProposalID, QueuedProposal>,
 }
 
 impl ProposalQueue {
     pub fn new() -> Self {
         ProposalQueue {
-            tuples: HashMap::new(),
+            queued_proposals: HashMap::new(),
         }
     }
-    pub fn add(&mut self, queued_proposal: QueuedProposal, ciphersuite: &Ciphersuite) {
-        let proposal_id = ProposalID::from_proposal(ciphersuite, &queued_proposal.proposal);
-        self.tuples.entry(proposal_id).or_insert(queued_proposal);
+    pub fn new_from_proposals(proposals: Vec<MLSPlaintext>, ciphersuite: &Ciphersuite) -> Self {
+        let mut proposal_queue = ProposalQueue::new();
+        for mls_plaintext in proposals {
+            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
+            proposal_queue.add(queued_proposal, &ciphersuite);
+        }
+        proposal_queue
     }
-    pub fn get(&self, proposal_id: &ProposalID) -> Option<&QueuedProposal> {
-        match self.tuples.get(&proposal_id) {
+    pub(crate) fn contains(&self, proposal_id_list: &[ProposalID]) -> bool {
+        for proposal_id in proposal_id_list {
+            if !self.queued_proposals.contains_key(proposal_id) {
+                return false;
+            }
+        }
+        true
+    }
+    pub(crate) fn add(&mut self, queued_proposal: QueuedProposal, ciphersuite: &Ciphersuite) {
+        let proposal_id = ProposalID::from_proposal(ciphersuite, &queued_proposal.proposal);
+        self.queued_proposals
+            .entry(proposal_id)
+            .or_insert(queued_proposal);
+    }
+    pub(crate) fn _get(&self, proposal_id: &ProposalID) -> Option<&QueuedProposal> {
+        match self.queued_proposals.get(&proposal_id) {
             Some(queued_proposal) => Some(queued_proposal),
             None => None,
         }
     }
-    pub fn get_proposal_id_list(&self) -> Vec<ProposalID> {
-        self.tuples.keys().into_iter().cloned().collect()
+    pub(crate) fn get_proposal_id_list(&self) -> Vec<ProposalID> {
+        self.queued_proposals.keys().into_iter().cloned().collect()
     }
-    pub fn get_filtered_proposals(
+    pub(crate) fn get_filtered_proposals(
         &self,
         proposal_id_list: &[ProposalID],
         proposal_type: ProposalType,
     ) -> Vec<&QueuedProposal> {
         let mut filtered_proposal_id_list = Vec::new();
         for proposal_id in proposal_id_list.iter() {
-            if let Some(queued_proposal) = self.tuples.get(proposal_id) {
+            if let Some(queued_proposal) = self.queued_proposals.get(proposal_id) {
                 if queued_proposal.proposal.is_type(proposal_type) {
                     filtered_proposal_id_list.push(queued_proposal);
                 }
@@ -196,20 +214,6 @@ impl ProposalQueue {
         }
         filtered_proposal_id_list
     }
-}
-
-// impl Codec for ProposalQueue {
-//     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-//         self.tuples.encode(buffer)?;
-//         Ok(())
-//     }
-// }
-
-#[derive(Clone)]
-pub struct ProposalIDList {
-    pub updates: Vec<ProposalID>,
-    pub removes: Vec<ProposalID>,
-    pub adds: Vec<ProposalID>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

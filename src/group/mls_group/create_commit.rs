@@ -56,14 +56,13 @@ impl MlsGroup {
         let mut provisional_tree = self.tree.borrow_mut();
 
         // Apply proposals to tree
-        let (membership_changes, invited_members, group_removed) =
+        let (path_required_by_commit, invited_members, group_removed) =
             provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &mut vec![]);
         if group_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
         // Determine if Commit needs path field
-        let path_required =
-            membership_changes.path_required() || contains_own_updates || force_self_update;
+        let path_required = path_required_by_commit || contains_own_updates || force_self_update;
 
         let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
@@ -120,7 +119,7 @@ impl MlsGroup {
         );
         // Check if new members were added an create welcome message
         // TODO: Add support for extensions
-        if !membership_changes.adds.is_empty() {
+        if !invited_members.is_empty() {
             let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
             let ratchet_tree_extension = public_tree.to_extension_struct();
             let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());

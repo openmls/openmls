@@ -44,6 +44,7 @@ pub enum ApplyCommitError {
     RequiredPathNotFound = 207,
     ConfirmationTagMismatch = 208,
     MissingOwnKeyPackage = 209,
+    MissingProposal = 210,
 }
 
 pub enum DecryptionError {
@@ -74,18 +75,14 @@ impl From<TreeError> for WelcomeError {
 
 // TODO: Should get fixed in #83
 impl From<ConfigError> for ApplyCommitError {
-    fn from(e: ConfigError) -> ApplyCommitError {
-        match e {
-            _ => ApplyCommitError::NoParentHashExtension,
-        }
+    fn from(_e: ConfigError) -> ApplyCommitError {
+        ApplyCommitError::NoParentHashExtension
     }
 }
 
 // TODO: Should get fixed in #83
 impl From<ExtensionError> for ApplyCommitError {
-    fn from(e: ExtensionError) -> ApplyCommitError {
-        match e {
-            _ => ApplyCommitError::NoParentHashExtension,
-        }
+    fn from(_e: ExtensionError) -> ApplyCommitError {
+        ApplyCommitError::NoParentHashExtension
     }
 }

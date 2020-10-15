@@ -627,25 +627,24 @@ impl RatchetTree {
         proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
         pending_kpbs: &mut Vec<KeyPackageBundle>,
-    ) -> (MembershipChanges, Vec<(NodeIndex, AddProposal)>, bool) {
-        let mut updated_members = vec![];
-        let mut removed_members = vec![];
+        // path_required, .. , self_removed
+    ) -> (bool, Vec<(NodeIndex, AddProposal)>, bool) {
+        let mut has_updates = false;
+        let mut has_removes = false;
         let mut invited_members = Vec::new();
 
         let mut self_removed = false;
-
-        // Check that we have all the referenced proposals from the Commit
 
         // Process updates first
         for queued_proposal in proposal_queue
             .get_filtered_proposals(proposal_id_list, ProposalType::Update)
             .iter()
         {
+            has_updates = true;
             let update_proposal = &queued_proposal.proposal.as_update().unwrap();
             let sender_index = queued_proposal.sender.as_node_index();
             // Prepare leaf node
             let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
-            updated_members.push(update_proposal.key_package.get_credential().clone());
             // Blank the direct path of that leaf node
             self.blank_member(sender_index);
             // Replace the leaf node
@@ -676,20 +675,14 @@ impl RatchetTree {
             .get_filtered_proposals(proposal_id_list, ProposalType::Remove)
             .iter()
         {
+            has_removes = true;
             let remove_proposal = &queued_proposal.proposal.as_remove().unwrap();
             let removed = NodeIndex::from(remove_proposal.removed);
             // Check if we got removed from the group
             if removed == self.get_own_node_index() {
                 self_removed = true;
             }
-            let removed_member_node = self.nodes[removed.as_usize()].clone();
-            let removed_member = if let Some(key_package) = removed_member_node.key_package {
-                key_package
-            } else {
-                // TODO check it's really a leaf node
-                panic!("Cannot remove a parent/empty node")
-            };
-            removed_members.push(removed_member.get_credential().clone());
+            // Blank the direct path of the removed member
             self.blank_member(removed);
         }
 
@@ -702,24 +695,21 @@ impl RatchetTree {
                 proposal.as_add().unwrap()
             })
             .collect();
-        // TODO make sure intermediary nodes are updated with unmerged_leaves
+        let has_adds = !add_proposals.is_empty();
+        // Extract KeyPackages from proposals
         let key_packages: Vec<&KeyPackage> = add_proposals.iter().map(|a| &a.key_package).collect();
+        // Add new members to tree
         let added_members = self.add_nodes(&key_packages);
 
+        // Prepare invitations
         for (i, added) in added_members.iter().enumerate() {
             invited_members.push((added.0, add_proposals.get(i).unwrap().clone()));
         }
 
-        // Return membership changes
-        (
-            MembershipChanges {
-                updates: updated_members,
-                removes: removed_members,
-                adds: added_members.iter().map(|(_, n)| n.clone()).collect(),
-            },
-            invited_members,
-            self_removed,
-        )
+        // Determine if Commit needs a path field
+        let path_required = has_updates || has_removes || !has_adds;
+
+        (path_required, invited_members, self_removed)
     }
     fn trim_tree(&mut self) {
         let mut new_tree_size = 0;

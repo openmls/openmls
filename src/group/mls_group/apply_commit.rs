@@ -45,15 +45,17 @@ impl MlsGroup {
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 
-        let mut proposal_queue = ProposalQueue::new();
-        for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
-            proposal_queue.add(queued_proposal, &ciphersuite);
+        // Convert proposals in a more practical queue
+        let proposal_queue = ProposalQueue::new_from_proposals(proposals, ciphersuite);
+
+        // Check that we have all proposals from the Commit
+        if !proposal_queue.contains(&commit.proposals) {
+            return Err(ApplyCommitError::MissingProposal);
         }
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
-        let (membership_changes, _invited_members, group_removed) =
+        let (path_required_by_commit, _invited_members, group_removed) =
             provisional_tree.apply_proposals(&commit.proposals, proposal_queue, &mut pending_kpbs);
 
         // Check if we were removed from the group
@@ -96,7 +98,7 @@ impl MlsGroup {
                     .unwrap()
             }
         } else {
-            if membership_changes.path_required() {
+            if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
             CommitSecret(zero(ciphersuite.hash_length()))

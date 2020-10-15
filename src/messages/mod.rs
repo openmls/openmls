@@ -17,11 +17,9 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::ProtocolVersion;
-use crate::creds::*;
 use crate::extensions::*;
 use crate::group::*;
 use crate::tree::{index::*, *};
-use std::fmt;
 
 pub(crate) mod proposals;
 use proposals::*;
@@ -29,38 +27,6 @@ use proposals::*;
 #[derive(Debug)]
 pub enum MessageError {
     UnknownOperation,
-}
-
-pub struct MembershipChanges {
-    pub updates: Vec<Credential>,
-    pub removes: Vec<Credential>,
-    pub adds: Vec<Credential>,
-}
-
-impl MembershipChanges {
-    pub fn path_required(&self) -> bool {
-        !self.updates.is_empty() || !self.removes.is_empty() || self.adds.is_empty()
-    }
-}
-
-impl fmt::Debug for MembershipChanges {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn list_members(f: &mut fmt::Formatter<'_>, members: &[Credential]) -> fmt::Result {
-            for m in members {
-                let Credential::Basic(bc) = m;
-                write!(f, "{} ", String::from_utf8(bc.identity.clone()).unwrap())?;
-            }
-            Ok(())
-        }
-        write!(f, "Membership changes:")?;
-        write!(f, "\n\tUpdates: ")?;
-        list_members(f, &self.updates)?;
-        write!(f, "\n\tRemoves: ")?;
-        list_members(f, &self.removes)?;
-        write!(f, "\n\tAdds: ")?;
-        list_members(f, &self.adds)?;
-        writeln!(f)
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
