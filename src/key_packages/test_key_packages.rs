@@ -1,6 +1,8 @@
+#[cfg(test)]
+use crate::{extensions::LifetimeExtension, key_packages::*};
+
 #[test]
 fn generate_key_package() {
-    use crate::key_packages::*;
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let signature_keypair = ciphersuite.new_signature_keypair();
@@ -11,14 +13,36 @@ fn generate_key_package() {
         &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
-        None,
+        vec![],
     );
+    // This is invalid because the lifetime extension is missing.
+    assert!(!kpb.get_key_package().verify());
+
+    // Now with a lifetime the key package should be valid.
+    let lifetime_extension = Box::new(LifetimeExtension::new(60));
+    let kpb = KeyPackageBundle::new(
+        &ciphersuite,
+        signature_keypair.get_private_key(),
+        Credential::Basic(BasicCredential::from(&identity)),
+        vec![lifetime_extension],
+    );
+    std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(kpb.get_key_package().verify());
+
+    // Now we add an invalid lifetime.
+    let lifetime_extension = Box::new(LifetimeExtension::new(0));
+    let kpb = KeyPackageBundle::new(
+        &ciphersuite,
+        signature_keypair.get_private_key(),
+        Credential::Basic(BasicCredential::from(&identity)),
+        vec![lifetime_extension],
+    );
+    std::thread::sleep(std::time::Duration::from_secs(1));
+    assert!(!kpb.get_key_package().verify());
 }
 
 #[test]
 fn test_codec() {
-    use crate::key_packages::*;
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let signature_keypair = ciphersuite.new_signature_keypair();
@@ -29,7 +53,7 @@ fn test_codec() {
         &ciphersuite,
         signature_keypair.get_private_key(),
         credential,
-        None,
+        Vec::new(),
     );
     let _enc = kpb.encode_detached().unwrap();
     // let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();

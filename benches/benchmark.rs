@@ -39,7 +39,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
                     &ciphersuite,
                     signature_keypair.get_private_key(),
                     credential,
-                    None,
+                    Vec::new(),
                 );
             },
         )

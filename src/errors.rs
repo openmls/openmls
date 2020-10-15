@@ -7,5 +7,8 @@
 
 #[derive(Debug, PartialEq)]
 pub enum ConfigError {
+    InvalidConfig,
     UnsupportedMlsVersion,
+    UnsupportedCiphersuite,
+    ExpiredLifetimeExtension,
 }
