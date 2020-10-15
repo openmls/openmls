@@ -27,13 +27,10 @@ impl PathKeys {
             return Err(TreeError::InvalidArguments);
         }
         let mut private_keys = private_keys;
-        println!("private_keys: {:?}", private_keys);
-        println!("path: {:?}", path);
 
         for (i, private_key) in private_keys.drain(..).enumerate() {
             let index = path[i];
             if self.keys.insert(index, private_key).is_some() {
-                assert!(false);
                 return Err(TreeError::DuplicateIndex);
             }
         }

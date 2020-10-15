@@ -64,9 +64,8 @@ impl PrivateTree {
         path: &[NodeIndex],
     ) -> Result<Vec<HPKEPublicKey>, TreeError> {
         // Set new private key if present.
-        match hpke_private_key {
-            Some(k) => self.hpke_private_key = k,
-            None => (),
+        if let Some(k) = hpke_private_key {
+            self.hpke_private_key = k
         }
 
         // Compute path secrets.
