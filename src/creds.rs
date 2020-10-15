@@ -77,6 +77,7 @@ impl Codec for Identity {
     // }
 }
 
+/// Enum for Credential Types. We only need this for encoding/decoding.
 #[derive(Copy, Clone)]
 #[repr(u8)]
 pub enum CredentialType {
@@ -105,22 +106,26 @@ impl Codec for CredentialType {
     // }
 }
 
+/// Struct containing an X509 certificate chain, as per Spec.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
+/// This struct contains the different available certificates.
 #[derive(Debug, PartialEq, Clone)]
 pub enum MLSCredentialType {
     Basic(BasicCredential),
     X509(Certificate),
 }
 
+/// Struct containing MLS credential data, where the data depends on the type.
 pub struct Credential {
     credential: MLSCredentialType,
 }
 
 impl Credential {
+    /// Verify a signature of a given payload against the public key contained in a credential.
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         match self.credential {
             MLSCredentialType::Basic(basic_credential) => basic_credential.ciphersuite.verify(
@@ -128,6 +133,7 @@ impl Credential {
                 &basic_credential.public_key,
                 payload,
             ),
+            // TODO: implement verification for X509 certificates
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
@@ -140,6 +146,7 @@ impl Codec for Credential {
                 CredentialType::Basic.encode(buffer)?;
                 basic_credential.encode(buffer)?;
             }
+            // TODO: implement encoding for X509 certificates
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
         Ok(())
