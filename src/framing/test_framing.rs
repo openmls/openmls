@@ -16,6 +16,7 @@
 
 use crate::framing::*;
 
+/// This tests serializing/deserializing MLSPlaintext
 #[test]
 fn codec() {
     use crate::ciphersuite::*;
@@ -51,6 +52,7 @@ fn codec() {
     assert_eq!(orig, copy);
 }
 
+/// This tests the presence of the group context in MLSPlaintextTBS
 #[test]
 fn context_presence() {
     use crate::ciphersuite::*;
@@ -84,6 +86,14 @@ fn context_presence() {
         &ciphersuite,
         identity.get_signature_key_pair().get_private_key(),
     );
-    assert!(orig.verify(Some(serialized_context), &credential));
+    assert!(orig.verify(Some(serialized_context.clone()), &credential));
     assert!(!orig.verify(None, &credential));
+
+    let signature_input = MLSPlaintextTBS::new_from(&orig, None);
+    orig.signature = signature_input.sign(
+        &ciphersuite,
+        identity.get_signature_key_pair().get_private_key(),
+    );
+    assert!(!orig.verify(Some(serialized_context), &credential));
+    assert!(orig.verify(None, &credential));
 }
