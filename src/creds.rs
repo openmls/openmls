@@ -106,29 +106,41 @@ impl Codec for CredentialType {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Credential {
+pub struct Certificate {
+    cert_data: Vec<u8>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum MLSCredentialType {
     Basic(BasicCredential),
+    X509(Certificate),
+}
+
+pub struct Credential {
+    credential: MLSCredentialType,
 }
 
 impl Credential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        match self {
-            Credential::Basic(basic_credential) => basic_credential.ciphersuite.verify(
+        match self.credential {
+            MLSCredentialType::Basic(basic_credential) => basic_credential.ciphersuite.verify(
                 signature,
                 &basic_credential.public_key,
                 payload,
             ),
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
 }
 
 impl Codec for Credential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match self {
-            Credential::Basic(basic_credential) => {
+        match self.credential {
+            MLSCredentialType::Basic(basic_credential) => {
                 CredentialType::Basic.encode(buffer)?;
                 basic_credential.encode(buffer)?;
             }
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
         Ok(())
     }
