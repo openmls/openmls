@@ -41,7 +41,7 @@ impl MlsGroup {
         for mls_plaintext in proposals {
             let queued_proposal = QueuedProposal::new(mls_plaintext, None);
             if queued_proposal.sender.as_leaf_index() == self.get_sender_index()
-                && queued_proposal.proposal.is_update()
+                && queued_proposal.proposal.is_type(ProposalType::Update)
             {
                 contains_own_updates = true;
             } else {
@@ -50,7 +50,7 @@ impl MlsGroup {
         }
 
         // TODO Dedup proposals
-        let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
+        let proposal_id_list = proposal_queue.get_proposal_id_list();
 
         let sender_index = self.get_sender_index();
         let mut provisional_tree = self.tree.borrow_mut();

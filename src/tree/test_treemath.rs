@@ -102,7 +102,7 @@ fn test_tree_hash() {
     for _ in 0..5 {
         nodes.push(create_identity(b"Tree creator", &ciphersuite));
     }
-    let key_packages: Vec<KeyPackage> = nodes.iter().map(|kbp| kbp.key_package.clone()).collect();
+    let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
     let _ = tree.add_nodes(&key_packages);
     let tree_hash = tree.compute_tree_hash();
     println!("Tree hash: {:?}", tree_hash);

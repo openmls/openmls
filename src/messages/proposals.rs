@@ -48,8 +48,14 @@ impl Proposal {
     pub fn to_proposal_id(&self, ciphersuite: &Ciphersuite) -> ProposalID {
         ProposalID::from_proposal(ciphersuite, self)
     }
-    pub fn is_update(&self) -> bool {
-        matches!(self, Proposal::Update(ref _u))
+
+    pub fn is_type(&self, proposal_type: ProposalType) -> bool {
+        match proposal_type {
+            ProposalType::Add => matches!(self, Proposal::Add(ref _a)),
+            ProposalType::Update => matches!(self, Proposal::Update(ref _u)),
+            ProposalType::Remove => matches!(self, Proposal::Remove(ref _r)),
+            _ => false,
+        }
     }
     pub fn as_add(&self) -> Option<AddProposal> {
         match self {
@@ -100,7 +106,7 @@ impl Codec for Proposal {
     // }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct ProposalID {
     value: Vec<u8>,
 }
@@ -116,24 +122,6 @@ impl ProposalID {
 impl Codec for ProposalID {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.value)?;
-        Ok(())
-    }
-}
-
-#[derive(Eq, PartialEq, Hash, Copy, Clone)]
-pub struct ShortProposalID([u8; 32]);
-
-impl ShortProposalID {
-    pub fn from_proposal_id(proposal_id: &ProposalID) -> ShortProposalID {
-        let mut inner = [0u8; 32];
-        inner.copy_from_slice(&proposal_id.value[..32]);
-        ShortProposalID(inner)
-    }
-}
-
-impl Codec for ShortProposalID {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.0)?;
         Ok(())
     }
 }
@@ -171,52 +159,42 @@ impl QueuedProposal {
 
 #[derive(Default)]
 pub struct ProposalQueue {
-    tuples: HashMap<ShortProposalID, (ProposalID, QueuedProposal)>,
-    adds: Vec<ProposalID>,
-    updates: Vec<ProposalID>,
-    removes: Vec<ProposalID>,
+    tuples: HashMap<ProposalID, QueuedProposal>,
 }
 
 impl ProposalQueue {
     pub fn new() -> Self {
         ProposalQueue {
             tuples: HashMap::new(),
-            adds: Vec::new(),
-            updates: Vec::new(),
-            removes: Vec::new(),
         }
     }
     pub fn add(&mut self, queued_proposal: QueuedProposal, ciphersuite: &Ciphersuite) {
         let proposal_id = ProposalID::from_proposal(ciphersuite, &queued_proposal.proposal);
-        let short_proposal_id = ShortProposalID::from_proposal_id(&proposal_id);
-        match &queued_proposal.proposal {
-            Proposal::Add(_) => self.adds.push(proposal_id.clone()),
-            Proposal::Update(_) => self.updates.push(proposal_id.clone()),
-            Proposal::Remove(_) => self.removes.push(proposal_id.clone()),
+        self.tuples.entry(proposal_id).or_insert(queued_proposal);
+    }
+    pub fn get(&self, proposal_id: &ProposalID) -> Option<&QueuedProposal> {
+        match self.tuples.get(&proposal_id) {
+            Some(queued_proposal) => Some(queued_proposal),
+            None => None,
         }
-        self.tuples
-            .entry(short_proposal_id)
-            .or_insert((proposal_id, queued_proposal));
     }
-    pub fn get(&self, proposal_id: &ProposalID) -> Option<&(ProposalID, QueuedProposal)> {
-        let short_proposal_id = ShortProposalID::from_proposal_id(&proposal_id);
-        self.tuples.get(&short_proposal_id)
+    pub fn get_proposal_id_list(&self) -> Vec<ProposalID> {
+        self.tuples.keys().into_iter().cloned().collect()
     }
-    pub fn get_commit_lists(&self, ciphersuite: &Ciphersuite) -> Vec<ProposalID> {
-        let mut proposals = vec![];
-        for (_spi, p) in self.tuples.values() {
-            proposals.push(p.proposal.to_proposal_id(ciphersuite))
+    pub fn get_filtered_proposals(
+        &self,
+        proposal_id_list: &[ProposalID],
+        proposal_type: ProposalType,
+    ) -> Vec<&QueuedProposal> {
+        let mut filtered_proposal_id_list = Vec::new();
+        for proposal_id in proposal_id_list.iter() {
+            if let Some(queued_proposal) = self.tuples.get(proposal_id) {
+                if queued_proposal.proposal.is_type(proposal_type) {
+                    filtered_proposal_id_list.push(queued_proposal);
+                }
+            }
         }
-        proposals
-    }
-    pub fn get_adds_ref(&self) -> &[ProposalID] {
-        &self.adds
-    }
-    pub fn get_updates_ref(&self) -> &[ProposalID] {
-        &self.updates
-    }
-    pub fn get_removes_ref(&self) -> &[ProposalID] {
-        &self.removes
+        filtered_proposal_id_list
     }
 }
 
