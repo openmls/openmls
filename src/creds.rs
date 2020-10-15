@@ -120,14 +120,16 @@ pub enum MLSCredentialType {
 }
 
 /// Struct containing MLS credential data, where the data depends on the type.
+#[derive(Debug, PartialEq, Clone)]
 pub struct Credential {
     credential: MLSCredentialType,
 }
 
 impl Credential {
-    /// Verify a signature of a given payload against the public key contained in a credential.
+    /// Verify a signature of a given payload against the public key contained
+    /// in a credential.
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        match self.credential {
+        match &self.credential {
             MLSCredentialType::Basic(basic_credential) => basic_credential.ciphersuite.verify(
                 signature,
                 &basic_credential.public_key,
@@ -137,11 +139,27 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
+    // TODO: implement getter for identity for X509 certificates
+    /// Get the identity of a given credential.
+    pub fn get_identity(&self) -> &Vec<u8> {
+        match &self.credential {
+            MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+        }
+    }
+}
+
+impl From<MLSCredentialType> for Credential {
+    fn from(mls_credential_type: MLSCredentialType) -> Self {
+        Credential {
+            credential: mls_credential_type,
+        }
+    }
 }
 
 impl Codec for Credential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match self.credential {
+        match &self.credential {
             MLSCredentialType::Basic(basic_credential) => {
                 CredentialType::Basic.encode(buffer)?;
                 basic_credential.encode(buffer)?;
