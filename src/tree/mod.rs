@@ -556,6 +556,7 @@ impl RatchetTree {
         Ok(())
     }
 
+    /// Merges `public_keys` into the tree along the `path`
     pub(crate) fn merge_public_keys(
         &mut self,
         public_keys: &[HPKEPublicKey],
@@ -622,12 +623,16 @@ impl RatchetTree {
         added_members
     }
 
+    /// Applies a list of proposals from a Commit to the tree.
+    /// `proposal_id_list` corresponds to the `proposals` field of a Commit
+    /// `proposal_queue` is the queue of proposals received or sent in the current epoch
+    /// `updates_key_package_bundles` is the list of own KeyPackageBundles corresponding to updates or commits sent in the current epoch
     pub fn apply_proposals(
         &mut self,
         proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
-        pending_kpbs: &mut Vec<KeyPackageBundle>,
-        // path_required, .. , self_removed
+        updates_key_package_bundles: &mut Vec<KeyPackageBundle>,
+        // (path_required, .. , self_removed)
     ) -> (bool, Vec<(NodeIndex, AddProposal)>, bool) {
         let mut has_updates = false;
         let mut has_removes = false;
@@ -650,8 +655,9 @@ impl RatchetTree {
             // Replace the leaf node
             self.nodes[sender_index.as_usize()] = leaf_node;
             // Check if it is a self-update
-            if sender_index == self.get_own_node_index() && !pending_kpbs.is_empty() {
-                let own_kpb_index = match pending_kpbs
+            if sender_index == self.get_own_node_index() && !updates_key_package_bundles.is_empty()
+            {
+                let own_kpb_index = match updates_key_package_bundles
                     .iter()
                     .position(|kpb| kpb.get_key_package() == &update_proposal.key_package)
                 {
@@ -660,7 +666,7 @@ impl RatchetTree {
                     None => panic!("Handle this error case"),
                 };
                 // Remove own KeyPackageBundle from the list of available ones
-                let own_kpb = pending_kpbs.remove(own_kpb_index);
+                let own_kpb = updates_key_package_bundles.remove(own_kpb_index);
                 // Update the private tree with new values
                 self.private_tree = PrivateTree::new(
                     own_kpb.private_key,
@@ -711,6 +717,7 @@ impl RatchetTree {
 
         (path_required, invited_members, self_removed)
     }
+    /// Trims the tree from the right when there are empty leaf nodes
     fn trim_tree(&mut self) {
         let mut new_tree_size = 0;
 
@@ -724,6 +731,7 @@ impl RatchetTree {
             self.nodes.truncate(new_tree_size);
         }
     }
+    /// Computes the tree hash
     pub fn compute_tree_hash(&self) -> Vec<u8> {
         fn node_hash(ciphersuite: &Ciphersuite, tree: &RatchetTree, index: NodeIndex) -> Vec<u8> {
             let node = &tree.nodes[index.as_usize()];
@@ -753,6 +761,7 @@ impl RatchetTree {
         let root = treemath::root(self.leaf_count());
         node_hash(&self.ciphersuite, &self, root)
     }
+    /// Computes the parent hash
     pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Vec<u8> {
         let parent = treemath::parent(index, self.leaf_count())
             .expect("compute_parent_hash: Error when computing node parent.");
@@ -772,6 +781,7 @@ impl RatchetTree {
             parent_hash
         }
     }
+    /// Verifies the integrity of a public tree
     pub fn verify_integrity(ciphersuite: &Ciphersuite, nodes: &[Option<Node>]) -> bool {
         let node_count = NodeIndex::from(nodes.len());
         let size = node_count;
