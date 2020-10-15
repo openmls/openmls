@@ -29,6 +29,11 @@ impl KeyIDExtension {
             key_id: id.to_vec(),
         }
     }
+
+    /// Get the value of the key id as byte slice.
+    pub(crate) fn as_slice<'a>(&'a self) -> &'a [u8] {
+        &self.key_id
+    }
 }
 
 impl Extension for KeyIDExtension {

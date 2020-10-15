@@ -19,12 +19,26 @@ use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
 use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, ParentHashExtension,
+    CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
+    ParentHashExtension,
 };
 
 mod codec;
 
 mod test_key_packages;
+
+#[derive(Debug, PartialEq)]
+pub enum KeyPackageError {
+    ExtensionNotPresent,
+}
+
+impl From<ExtensionError> for KeyPackageError {
+    fn from(e: ExtensionError) -> Self {
+        match e {
+            _ => KeyPackageError::ExtensionNotPresent,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
@@ -121,6 +135,15 @@ impl KeyPackage {
             }
         }
         None
+    }
+
+    /// Get the ID of this key package as byte slice.
+    /// Returns an error if no Key ID extension is present.
+    pub fn get_id<'a>(&'a self) -> Result<&'a [u8], KeyPackageError> {
+        if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
+            return Ok(key_id_ext.to_key_id_extension_ref()?.as_slice());
+        }
+        Err(KeyPackageError::ExtensionNotPresent)
     }
 
     /// Update the parent hash extension of this key package.

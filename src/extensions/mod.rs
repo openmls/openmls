@@ -246,6 +246,16 @@ pub trait Extension: Debug + ExtensionHelper {
             None => Err(ExtensionError::InvalidExtensionType),
         }
     }
+
+    /// Get a reference to the `KeyIDExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `KeyIDExtension`.
+    fn to_key_id_extension_ref(&self) -> Result<&KeyIDExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<KeyIDExtension>() {
+            Some(e) => Ok(e),
+            None => Err(ExtensionError::InvalidExtensionType),
+        }
+    }
 }
 
 // A slightly hacky work around to make `Extensions` clonable.
