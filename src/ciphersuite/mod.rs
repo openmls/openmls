@@ -77,12 +77,12 @@ pub struct HPKEPublicKey {
     value: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub struct HPKEPrivateKey {
     value: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub struct HPKEKeyPair {
     private_key: HPKEPrivateKey,
     public_key: HPKEPublicKey,
@@ -402,9 +402,15 @@ impl HPKEKeyPair {
         }
     }
 
+    /// Get the two keys separately.
+    /// Consumes the key pair.
+    pub(crate) fn to_keys(self) -> (HPKEPrivateKey, HPKEPublicKey) {
+        (self.private_key, self.public_key)
+    }
+
     /// Get the private key.
-    pub(crate) fn get_private_key(&self) -> HPKEPrivateKey {
-        self.private_key.clone()
+    pub(crate) fn get_private_key(&self) -> &HPKEPrivateKey {
+        &self.private_key
     }
 
     /// Get the public key.

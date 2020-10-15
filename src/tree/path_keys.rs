@@ -37,7 +37,14 @@ impl PathKeys {
 
         Ok(())
     }
+
+    /// Get an HPKE private key for a given node index.
     pub fn get(&self, index: NodeIndex) -> Option<&HPKEPrivateKey> {
         self.keys.get(&index)
+    }
+
+    /// Clear all path keys.
+    pub(crate) fn clear(&mut self) {
+        self.keys.clear();
     }
 }

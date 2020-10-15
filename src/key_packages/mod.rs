@@ -45,7 +45,7 @@ impl KeyPackage {
     /// given `ciphersuite` and `identity`, and the initial HPKE key pair `init_key`.
     fn new(
         ciphersuite: Ciphersuite,
-        hpke_init_key: &HPKEPublicKey,
+        hpke_init_key: HPKEPublicKey,
         signature_key: &SignaturePrivateKey,
         credential: Credential,
         extensions: Vec<Box<dyn Extension>>,
@@ -54,7 +54,7 @@ impl KeyPackage {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
             cipher_suite: ciphersuite,
-            hpke_init_key: hpke_init_key.to_owned(),
+            hpke_init_key,
             credential,
             extensions,
             signature: Signature::new_empty(),
@@ -191,7 +191,7 @@ impl Signable for KeyPackage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,
@@ -211,13 +211,7 @@ impl KeyPackageBundle {
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         let keypair = ciphersuite.new_hpke_keypair();
-        Self::new_with_keypair(
-            &ciphersuite,
-            signature_key,
-            credential,
-            extensions,
-            &keypair,
-        )
+        Self::new_with_keypair(&ciphersuite, signature_key, credential, extensions, keypair)
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -229,23 +223,24 @@ impl KeyPackageBundle {
         signature_key: &SignaturePrivateKey,
         credential: Credential,
         extensions: Vec<Box<dyn Extension>>,
-        key_pair: &HPKEKeyPair,
+        key_pair: HPKEKeyPair,
     ) -> Self {
         // TODO: #85 this must be configurable.
         let mut final_extensions: Vec<Box<dyn Extension>> =
             vec![Box::new(CapabilitiesExtension::default())];
 
+        let (private_key, public_key) = key_pair.to_keys();
         final_extensions.extend_from_slice(&extensions);
         let key_package = KeyPackage::new(
             *ciphersuite,
-            &key_pair.get_public_key(),
+            public_key,
             signature_key,
             credential,
             final_extensions,
         );
         KeyPackageBundle {
             key_package,
-            private_key: key_pair.get_private_key(),
+            private_key,
         }
     }
 
@@ -256,9 +251,30 @@ impl KeyPackageBundle {
         }
     }
 
+    /// Update the private key in the bundle.
+    pub(crate) fn set_private_key(&mut self, private_key: HPKEPrivateKey) {
+        self.private_key = private_key;
+    }
+
+    /// Update the key package in the bundle.
+    pub(crate) fn set_key_package(&mut self, key_package: KeyPackage) {
+        self.key_package = key_package;
+    }
+
+    /// Get the key package and HPKE private key separately.
+    /// Consumes self.
+    pub fn into_tuple(self) -> (HPKEPrivateKey, KeyPackage) {
+        (self.private_key, self.key_package)
+    }
+
     /// Get a reference to the `KeyPackage`.
     pub fn get_key_package(&self) -> &KeyPackage {
         &self.key_package
+    }
+
+    /// Get a reference to the `KeyPackage`.
+    pub fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
+        &mut self.key_package
     }
 
     /// Get a reference to the `HPKEPrivateKey`.
