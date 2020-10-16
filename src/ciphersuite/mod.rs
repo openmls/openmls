@@ -35,6 +35,7 @@ pub(crate) mod signable;
 use ciphersuites::*;
 
 pub const NONCE_BYTES: usize = 12;
+pub const REUSE_GUARD_BYTES: usize = 4;
 pub const CHACHA_KEY_BYTES: usize = 32;
 pub const AES_128_KEY_BYTES: usize = 16;
 pub const AES_256_KEY_BYTES: usize = 32;
@@ -101,6 +102,8 @@ pub enum AEADError {
 pub struct AeadKey {
     value: Vec<u8>,
 }
+
+type ReuseGuard = [u8; REUSE_GUARD_BYTES];
 
 #[derive(PartialEq, Debug)]
 pub struct AeadNonce {
@@ -458,6 +461,15 @@ impl AeadNonce {
     /// Get a slice to the nonce value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
+    }
+
+    /// Xor the first bytes of the nonce with the reuse_guard.
+    pub(crate) fn xor_with_reuse_guard(&self, reuse_guard: ReuseGuard) -> Self {
+        let xored_nonce = self.clone();
+        for i in 0..REUSE_GUARD_BYTES {
+            xored_nonce.value[i] = self.value[i] ^ reuse_guard[i]
+        }
+        *xored_nonce
     }
 }
 
