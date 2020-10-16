@@ -38,7 +38,14 @@ fn protocol_version() {
 fn default_extensions() {
     // Make sure the supported extensions are what we expect them to be.
     let supported_extensions = Config::supported_extensions();
-    assert_eq!(vec![ExtensionType::Lifetime], supported_extensions);
+    assert_eq!(
+        vec![
+            ExtensionType::Capabilities,
+            ExtensionType::Lifetime,
+            ExtensionType::KeyID
+        ],
+        supported_extensions
+    );
 }
 
 #[test]

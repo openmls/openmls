@@ -33,7 +33,7 @@ lazy_static! {
                     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                     CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                     CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256],
-                    extensions: vec![ExtensionType::Lifetime, ExtensionType::Capabilities, ExtensionType::KeyID],
+                    extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
             }
 
         }
@@ -98,32 +98,30 @@ impl ProtocolVersion {
 }
 
 impl CiphersuiteName {
+    /// Returns `true` if the ciphersuite is supported in the current configuration.
     pub(crate) fn is_supported(&self) -> bool {
-        matches!(
-            self,
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-                | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-        )
+        for suite in CONFIG.ciphersuites.iter() {
+            if self == suite {
+                return true
+            }
+        }
+        return false;
     }
 }
 
 impl Config {
     /// Get a list of the supported extension types.
-    pub fn supported_extensions() -> Vec<ExtensionType> {
-        vec![ExtensionType::Lifetime]
+    pub fn supported_extensions() -> &'static [ExtensionType] {
+        &CONFIG.extensions
     }
 
     /// Get a list of the supported cipher suite names.
-    pub fn supported_ciphersuites() -> Vec<CiphersuiteName> {
-        vec![
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
-        ]
+    pub fn supported_ciphersuites() -> &'static [CiphersuiteName] {
+        &CONFIG.ciphersuites
     }
 
     /// Get a list of the supported protocol versions.
-    pub fn supported_versions() -> Vec<ProtocolVersion> {
-        vec![ProtocolVersion::Mls10]
+    pub fn supported_versions() -> &'static [ProtocolVersion] {
+        &CONFIG.protocol_versions
     }
 }
