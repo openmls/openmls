@@ -1,17 +1,56 @@
 //! This config contains all structs, enums and functions to configure MLS.
 //!
 
+use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use std::{env, fs::File, io::BufReader};
+
 use crate::ciphersuite::CiphersuiteName;
 use crate::codec::{Codec, CodecError};
 use crate::errors::ConfigError;
 use crate::extensions::ExtensionType;
+
+lazy_static! {
+    static ref CONFIG: Config = {
+        if let Ok(path) = env::var("OPENMLS_CONFIG") {
+            let file = match File::open(path) {
+                Ok(f) => f,
+                Err(e) => panic!("Couldn't open file {}.\nPlease set \
+                                  OPENMLS_CONFIG to a valid path or unset it to \
+                                  use the default configuration.", e),
+            };
+            let reader = BufReader::new(file);
+            let config: Config = match serde_json::from_reader(reader) {
+                Ok(r) => r,
+                Err(e) => panic!("Error reading configuration file.\n{:?}", e),
+            };
+            config
+        } else {
+            // Without a config file everything is enabled.
+            Config {
+                protocol_versions: vec![ProtocolVersion::Mls10],
+                ciphersuites: vec![
+                    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                    CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256],
+                    extensions: vec![ExtensionType::Lifetime, ExtensionType::Capabilities, ExtensionType::KeyID],
+            }
+
+        }
+    };
+}
 
 /// # MLS Configuration
 ///
 /// This is the global configuration for MLS.
 ///
 /// TODO: #85 This doesn't do much yet.
-pub struct Config {}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Config {
+    protocol_versions: Vec<ProtocolVersion>,
+    ciphersuites: Vec<CiphersuiteName>,
+    extensions: Vec<ExtensionType>,
+}
 
 /// # Protocol Version
 ///
@@ -25,7 +64,7 @@ pub struct Config {}
 /// } ProtocolVersion;
 /// ```
 ///
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ProtocolVersion {
     Reserved = 0,

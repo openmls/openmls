@@ -16,6 +16,7 @@
 
 use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
 use crate::errors::ConfigError;
+use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug};
 
 mod capabilities_extension;
@@ -56,7 +57,7 @@ impl From<ExtensionError> for CodecError {
 ///
 /// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
 ///
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum ExtensionType {
     Reserved = 0,
