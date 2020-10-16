@@ -576,7 +576,7 @@ impl Codec for MLSPlaintextTBS {
 pub struct MLSSenderData {
     pub sender: LeafIndex,
     pub generation: u32,
-    pub reuse_guard: u32,
+    pub reuse_guard: ReuseGuard,
 }
 
 impl MLSSenderData {
@@ -584,7 +584,7 @@ impl MLSSenderData {
         let mut cursor = Cursor::new(bytes);
         let sender = LeafIndex::from(u32::decode(&mut cursor)?);
         let generation = u32::decode(&mut cursor)?;
-        let reuse_guard = u32::decode(&mut cursor)?;
+        let reuse_guard = ReuseGuard::decode(&mut cursor)?;
 
         Ok(MLSSenderData {
             sender,
@@ -605,7 +605,7 @@ impl Codec for MLSSenderData {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let sender = LeafIndex::from(u32::decode(cursor)?);
         let generation = u32::decode(cursor)?;
-        let reuse_guard = u32::decode(cursor)?;
+        let reuse_guard = ReuseGuard::decode(cursor)?;
 
         Ok(MLSSenderData {
             sender,
@@ -616,11 +616,11 @@ impl Codec for MLSSenderData {
 }
 
 impl MLSSenderData {
-    pub fn new(sender: LeafIndex, generation: u32) -> Self {
+    pub fn new(sender: LeafIndex, generation: u32, reuse_guard: ReuseGuard) -> Self {
         MLSSenderData {
             sender,
             generation,
-            reuse_guard: random_u32(),
+            reuse_guard,
         }
     }
 }
