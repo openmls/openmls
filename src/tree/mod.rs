@@ -17,7 +17,6 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::creds::*;
-use crate::extensions::*;
 use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
 
@@ -406,7 +405,7 @@ impl RatchetTree {
     ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
         // Generate new keypair
         let own_index = self.get_own_node_index();
-        let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().to_keys();
+        let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().into_keys();
 
         // Replace the init key in the current KeyPackage
         let key_package_bundle = {
@@ -425,7 +424,7 @@ impl RatchetTree {
         )?;
 
         // Compute the parent hash extension and update the KeyPackage
-        let csuite = self.ciphersuite.clone(); // FIXME
+        let csuite = self.ciphersuite;
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
