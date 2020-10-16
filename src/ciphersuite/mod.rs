@@ -25,6 +25,7 @@ use hpke::{
     HPKEKeyPair as RealHPKEKeyPair, HPKEPrivateKey as RealHPKEPrivateKey,
     HPKEPublicKey as RealHPKEPublicKey, Hpke, Mode,
 };
+use serde::{Deserialize, Serialize};
 
 // TODO: re-export for other parts of the library when we can use it
 // pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
@@ -41,7 +42,7 @@ pub const AES_256_KEY_BYTES: usize = 32;
 pub const TAG_BYTES: usize = 16;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CiphersuiteName {
     MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
     MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,
