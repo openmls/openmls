@@ -26,6 +26,7 @@ pub enum CodecError {
 }
 
 impl From<ConfigError> for CodecError {
+    // TODO: tbd in #83
     fn from(_e: ConfigError) -> CodecError {
         CodecError::DecodingError
     }

@@ -40,6 +40,7 @@ pub enum ExtensionError {
 }
 
 impl From<ExtensionError> for ConfigError {
+    // TODO: tbd in #83
     fn from(_e: ExtensionError) -> Self {
         ConfigError::InvalidConfig
     }

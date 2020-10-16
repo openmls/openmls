@@ -74,6 +74,7 @@ impl From<TreeError> for WelcomeError {
 
 // TODO: Should get fixed in #83
 impl From<ConfigError> for ApplyCommitError {
+    // TODO: tbd in #83
     fn from(_e: ConfigError) -> ApplyCommitError {
         ApplyCommitError::NoParentHashExtension
     }
