@@ -102,7 +102,7 @@ impl CiphersuiteName {
     pub(crate) fn is_supported(&self) -> bool {
         for suite in CONFIG.ciphersuites.iter() {
             if self == suite {
-                return true
+                return true;
             }
         }
         return false;
