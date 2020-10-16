@@ -139,11 +139,11 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
-    // TODO: implement getter for identity for X509 certificates
     /// Get the identity of a given credential.
     pub fn get_identity(&self) -> &Vec<u8> {
         match &self.credential {
             MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
+            // TODO: implement getter for identity for X509 certificates
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
