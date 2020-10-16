@@ -34,6 +34,8 @@ mod codec;
 pub(crate) mod signable;
 use ciphersuites::*;
 
+use crate::utils::random_u32;
+
 pub const NONCE_BYTES: usize = 12;
 pub const REUSE_GUARD_BYTES: usize = 4;
 pub const CHACHA_KEY_BYTES: usize = 32;
@@ -103,7 +105,16 @@ pub struct AeadKey {
     value: Vec<u8>,
 }
 
-type ReuseGuard = [u8; REUSE_GUARD_BYTES];
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct ReuseGuard([u8; REUSE_GUARD_BYTES]);
+
+impl ReuseGuard {
+    /// Samples a fresh reuse guard uniformly at random.
+    pub fn new_from_random() -> Self {
+        let reuse_guard: [u8; REUSE_GUARD_BYTES] = random_u32().to_be_bytes();
+        ReuseGuard(reuse_guard)
+    }
+}
 
 #[derive(PartialEq, Debug)]
 pub struct AeadNonce {
