@@ -17,6 +17,8 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 
+use std::convert::TryFrom;
+
 #[derive(Clone)]
 pub struct Identity {
     pub id: Vec<u8>,
@@ -78,7 +80,7 @@ impl Codec for Identity {
 }
 
 #[derive(Copy, Clone)]
-#[repr(u8)]
+#[repr(u16)]
 pub enum CredentialType {
     Reserved = 0,
     Basic = 1,
@@ -86,24 +88,30 @@ pub enum CredentialType {
     Default = 255,
 }
 
-impl From<u8> for CredentialType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u16> for CredentialType {
+    type Error = &'static str;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
-            0 => CredentialType::Basic,
-            1 => CredentialType::X509,
-            _ => CredentialType::Default,
+            1 => Ok(CredentialType::Basic),
+            2 => Ok(CredentialType::X509),
+            _ => Err("Undefined CredentialType"),
         }
     }
 }
 
 impl Codec for CredentialType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
+        (*self as u16).encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     Ok(CredentialType::from(u8::decode(cursor)?))
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        if let Ok(credential_type) = CredentialType::try_from(u16::decode(cursor)?) {
+            Ok(credential_type)
+        } else {
+            Err(CodecError::DecodingError)
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
