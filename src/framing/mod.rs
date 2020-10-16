@@ -192,7 +192,6 @@ impl MLSCiphertext {
         let ciphersuite = mls_group.get_ciphersuite();
         let context = mls_group.get_context();
         let epoch_secrets = mls_group.get_epoch_secrets();
-        let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
         let sender_data_key_bytes = hkdf_expand_label(
             ciphersuite,
             &epoch_secrets.sender_data_secret,
@@ -200,7 +199,20 @@ impl MLSCiphertext {
             &[],
             ciphersuite.aead_key_length(),
         );
-        let sender_data_nonce = AeadNonce::random();
+        // Derive initial nonce from the key schedule.
+        let key_schedule_nonce_bytes = AeadNonce::from_slice(&hkdf_expand_label(
+            ciphersuite,
+            &epoch_secrets.sender_data_secret,
+            "sd nonce",
+            &[],
+            ciphersuite.aead_nonce_length(),
+        ));
+        // Sample reuse guard uniformly at random.
+        let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
+        // Compute sender data nonce by xoring reuse guard and key schedule
+        // nonce as per spec.
+        let sender_data_nonce: AeadNonce =
+            key_schedule_nonce_bytes.xor_with_reuse_guard(reuse_guard);
         let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             context.group_id.clone(),
@@ -209,6 +221,7 @@ impl MLSCiphertext {
             mls_plaintext.authenticated_data.to_vec(),
             sender_data_nonce.as_slice().to_vec(),
         );
+        let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation, reuse_guard);
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap(); // TODO: error handling
         let encrypted_sender_data = ciphersuite
