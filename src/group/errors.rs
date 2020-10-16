@@ -74,18 +74,15 @@ impl From<TreeError> for WelcomeError {
 
 // TODO: Should get fixed in #83
 impl From<ConfigError> for ApplyCommitError {
-    fn from(e: ConfigError) -> ApplyCommitError {
-        match e {
-            _ => ApplyCommitError::NoParentHashExtension,
-        }
+    // TODO: tbd in #83
+    fn from(_e: ConfigError) -> ApplyCommitError {
+        ApplyCommitError::NoParentHashExtension
     }
 }
 
 // TODO: Should get fixed in #83
 impl From<ExtensionError> for ApplyCommitError {
-    fn from(e: ExtensionError) -> ApplyCommitError {
-        match e {
-            _ => ApplyCommitError::NoParentHashExtension,
-        }
+    fn from(_e: ExtensionError) -> ApplyCommitError {
+        ApplyCommitError::NoParentHashExtension
     }
 }

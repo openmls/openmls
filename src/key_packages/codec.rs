@@ -1,4 +1,3 @@
-use crate::codec::{decode_vec, VecSize};
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::key_packages::*;

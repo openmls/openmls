@@ -60,11 +60,11 @@ impl ProtocolVersion {
 
 impl CiphersuiteName {
     pub(crate) fn is_supported(&self) -> bool {
-        match self {
+        matches!(
+            self,
             CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => true,
-            _ => false,
-        }
+                | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+        )
     }
 }
 
