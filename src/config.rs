@@ -105,7 +105,7 @@ impl CiphersuiteName {
                 return true;
             }
         }
-        return false;
+        false
     }
 }
 
