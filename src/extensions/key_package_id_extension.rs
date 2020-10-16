@@ -24,7 +24,7 @@ pub struct KeyIDExtension {
 
 impl KeyIDExtension {
     /// Create a new key identifier extension from a byte slice.
-    pub fn new(id: &[u8]) -> Self {
+    pub fn _new(id: &[u8]) -> Self {
         Self {
             key_id: id.to_vec(),
         }
