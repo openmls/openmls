@@ -40,6 +40,7 @@ impl MlsGroup {
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
             let queued_proposal = QueuedProposal::new(mls_plaintext);
+            // Filter out own updates, because they will be overwritten by the KeyPackage from the path field
             if queued_proposal.sender.as_leaf_index() == self.get_sender_index()
                 && queued_proposal.proposal.is_type(ProposalType::Update)
             {
@@ -56,9 +57,13 @@ impl MlsGroup {
         let mut provisional_tree = self.tree.borrow_mut();
 
         // Apply proposals to tree
-        let (path_required_by_commit, invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &mut vec![]);
-        if group_removed {
+        let (path_required_by_commit, self_removed, invited_members) = match provisional_tree
+            .apply_proposals(&proposal_id_list, proposal_queue, &mut vec![])
+        {
+            Ok(res) => res,
+            Err(_) => return Err(CreateCommitError::OwnKeyNotFound),
+        };
+        if self_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
         // Determine if Commit needs path field

@@ -46,7 +46,7 @@ impl MlsGroup {
         };
 
         // Convert proposals in a more practical queue
-        let proposal_queue = ProposalQueue::new_from_proposals(proposals, ciphersuite);
+        let proposal_queue = ProposalQueue::new_from_committed_proposals(proposals, ciphersuite);
 
         // Check that we have all proposals from the Commit
         if !proposal_queue.contains(&commit.proposals) {
@@ -55,8 +55,12 @@ impl MlsGroup {
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
-        let (path_required_by_commit, _invited_members, group_removed) =
-            provisional_tree.apply_proposals(&commit.proposals, proposal_queue, &mut pending_kpbs);
+        let (path_required_by_commit, group_removed, _invited_members) = match provisional_tree
+            .apply_proposals(&commit.proposals, proposal_queue, &mut pending_kpbs)
+        {
+            Ok(res) => res,
+            Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
+        };
 
         // Check if we were removed from the group
         if group_removed {

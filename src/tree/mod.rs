@@ -632,11 +632,11 @@ impl RatchetTree {
         proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
         updates_key_package_bundles: &mut Vec<KeyPackageBundle>,
-        // (path_required, .. , self_removed)
-    ) -> (bool, Vec<(NodeIndex, AddProposal)>, bool) {
+        // (path_required, self_removed, invitation_list)
+    ) -> Result<(bool, bool, InvitationList), TreeError> {
         let mut has_updates = false;
         let mut has_removes = false;
-        let mut invited_members = Vec::new();
+        let mut invitation_list = Vec::new();
 
         let mut self_removed = false;
 
@@ -655,17 +655,16 @@ impl RatchetTree {
             // Replace the leaf node
             self.nodes[sender_index.as_usize()] = leaf_node;
             // Check if it is a self-update
-            if sender_index == self.get_own_node_index() && !updates_key_package_bundles.is_empty()
-            {
+            if sender_index == self.get_own_node_index() {
                 let own_kpb_index = match updates_key_package_bundles
                     .iter()
                     .position(|kpb| kpb.get_key_package() == &update_proposal.key_package)
                 {
                     Some(i) => i,
                     // We lost the KeyPackageBundle apparently
-                    None => panic!("Handle this error case"),
+                    None => return Err(TreeError::InvalidArguments),
                 };
-                // Remove own KeyPackageBundle from the list of available ones
+                // Get and remove own KeyPackageBundle from the list of available ones
                 let own_kpb = updates_key_package_bundles.remove(own_kpb_index);
                 // Update the private tree with new values
                 self.private_tree = PrivateTree::new(
@@ -709,13 +708,13 @@ impl RatchetTree {
 
         // Prepare invitations
         for (i, added) in added_members.iter().enumerate() {
-            invited_members.push((added.0, add_proposals.get(i).unwrap().clone()));
+            invitation_list.push((added.0, add_proposals.get(i).unwrap().clone()));
         }
 
         // Determine if Commit needs a path field
         let path_required = has_updates || has_removes || !has_adds;
 
-        (path_required, invited_members, self_removed)
+        Ok((path_required, self_removed, invitation_list))
     }
     /// Trims the tree from the right when there are empty leaf nodes
     fn trim_tree(&mut self) {
@@ -839,6 +838,8 @@ impl RatchetTree {
         true
     }
 }
+
+pub type InvitationList = Vec<(NodeIndex, AddProposal)>;
 
 /// 7.7. Update Paths
 ///

@@ -45,6 +45,7 @@ pub enum ApplyCommitError {
     ConfirmationTagMismatch = 208,
     MissingOwnKeyPackage = 209,
     MissingProposal = 210,
+    OwnKeyNotFound = 211,
 }
 
 pub enum DecryptionError {
@@ -60,6 +61,7 @@ impl From<MLSCiphertextError> for DecryptionError {
 #[derive(Debug)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
+    OwnKeyNotFound = 301,
 }
 
 impl From<TreeError> for WelcomeError {

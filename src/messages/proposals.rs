@@ -157,7 +157,10 @@ impl ProposalQueue {
             queued_proposals: HashMap::new(),
         }
     }
-    pub fn new_from_proposals(proposals: Vec<MLSPlaintext>, ciphersuite: &Ciphersuite) -> Self {
+    pub fn new_from_committed_proposals(
+        proposals: Vec<MLSPlaintext>,
+        ciphersuite: &Ciphersuite,
+    ) -> Self {
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
             let queued_proposal = QueuedProposal::new(mls_plaintext);
