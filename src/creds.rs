@@ -85,7 +85,6 @@ pub enum CredentialType {
     Reserved = 0,
     Basic = 1,
     X509 = 2,
-    Default = 255,
 }
 
 impl TryFrom<u16> for CredentialType {
