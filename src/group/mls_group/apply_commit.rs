@@ -46,7 +46,7 @@ impl MlsGroup {
         };
 
         // Convert proposals in a more practical queue
-        let proposal_queue = ProposalQueue::new_from_committed_proposals(proposals, ciphersuite);
+        let proposal_queue = ProposalQueue::new_from_committed_proposals(ciphersuite, proposals);
 
         // Check that we have all proposals from the Commit
         if !proposal_queue.contains(&commit.proposals) {

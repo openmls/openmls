@@ -35,22 +35,14 @@ impl MlsGroup {
         force_self_update: bool,
     ) -> CreateCommitResult {
         let ciphersuite = self.get_ciphersuite();
-        let mut contains_own_updates = false;
-        // Organize proposals
-        let mut proposal_queue = ProposalQueue::new();
-        for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(mls_plaintext);
-            // Filter out own updates, because they will be overwritten by the KeyPackage from the path field
-            if queued_proposal.sender.as_leaf_index() == self.get_sender_index()
-                && queued_proposal.proposal.is_type(ProposalType::Update)
-            {
-                contains_own_updates = true;
-            } else {
-                proposal_queue.add(queued_proposal, &ciphersuite);
-            }
-        }
+        // Filter proposals
+        let (proposal_queue, contains_own_updates) = ProposalQueue::filtered_proposals(
+            ciphersuite,
+            proposals,
+            LeafIndex::from(self.get_tree().get_own_node_index()),
+            self.get_tree().leaf_count(),
+        );
 
-        // TODO Dedup proposals
         let proposal_id_list = proposal_queue.get_proposal_id_list();
 
         let sender_index = self.get_sender_index();

@@ -646,8 +646,8 @@ impl RatchetTree {
             .iter()
         {
             has_updates = true;
-            let update_proposal = &queued_proposal.proposal.as_update().unwrap();
-            let sender_index = queued_proposal.sender.as_node_index();
+            let update_proposal = &queued_proposal.get_proposal_ref().as_update().unwrap();
+            let sender_index = queued_proposal.get_sender_ref().as_node_index();
             // Prepare leaf node
             let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
             // Blank the direct path of that leaf node
@@ -681,7 +681,7 @@ impl RatchetTree {
             .iter()
         {
             has_removes = true;
-            let remove_proposal = &queued_proposal.proposal.as_remove().unwrap();
+            let remove_proposal = &queued_proposal.get_proposal_ref().as_remove().unwrap();
             let removed = NodeIndex::from(remove_proposal.removed);
             // Check if we got removed from the group
             if removed == self.get_own_node_index() {
@@ -696,7 +696,7 @@ impl RatchetTree {
             .get_filtered_proposals(proposal_id_list, ProposalType::Add)
             .iter()
             .map(|queued_proposal| {
-                let proposal = &queued_proposal.proposal;
+                let proposal = &queued_proposal.get_proposal_ref();
                 proposal.as_add().unwrap()
             })
             .collect();
