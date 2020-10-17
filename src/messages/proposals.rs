@@ -47,11 +47,7 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub fn to_proposal_id(&self, ciphersuite: &Ciphersuite) -> ProposalID {
-        ProposalID::from_proposal(ciphersuite, self)
-    }
-
-    pub fn is_type(&self, proposal_type: ProposalType) -> bool {
+    pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
         match proposal_type {
             ProposalType::Add => matches!(self, Proposal::Add(ref _a)),
             ProposalType::Update => matches!(self, Proposal::Update(ref _u)),
@@ -59,19 +55,19 @@ impl Proposal {
             _ => false,
         }
     }
-    pub fn as_add(&self) -> Option<AddProposal> {
+    pub(crate) fn as_add(&self) -> Option<AddProposal> {
         match self {
             Proposal::Add(add_proposal) => Some(add_proposal.clone()),
             _ => None,
         }
     }
-    pub fn as_update(&self) -> Option<UpdateProposal> {
+    pub(crate) fn as_update(&self) -> Option<UpdateProposal> {
         match self {
             Proposal::Update(update_proposal) => Some(update_proposal.clone()),
             _ => None,
         }
     }
-    pub fn as_remove(&self) -> Option<RemoveProposal> {
+    pub(crate) fn as_remove(&self) -> Option<RemoveProposal> {
         match self {
             Proposal::Remove(remove_proposal) => Some(remove_proposal.clone()),
             _ => None,
@@ -114,16 +110,10 @@ pub struct ProposalID {
 }
 
 impl ProposalID {
-    pub fn new_empty() -> Self {
-        Self { value: Vec::new() }
-    }
-    pub fn from_proposal(ciphersuite: &Ciphersuite, proposal: &Proposal) -> Self {
+    pub(crate) fn from_proposal(ciphersuite: &Ciphersuite, proposal: &Proposal) -> Self {
         let encoded = proposal.encode_detached().unwrap();
         let value = ciphersuite.hash(&encoded);
         Self { value }
-    }
-    pub fn is_empty(&self) -> bool {
-        self.value.is_empty()
     }
 }
 
@@ -134,6 +124,7 @@ impl Codec for ProposalID {
     }
 }
 
+/// Alternative representation of a Proposal, where the sender is extracted from the encapsulating MLSPlaintext and the ProposalID is attached.
 #[derive(Clone)]
 pub struct QueuedProposal {
     proposal: Proposal,
@@ -142,6 +133,7 @@ pub struct QueuedProposal {
 }
 
 impl QueuedProposal {
+    /// Creates a new `QueuedProposal` from an `MLSPlaintext`
     pub(crate) fn new(ciphersuite: &Ciphersuite, mls_plaintext: MLSPlaintext) -> Self {
         debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
         let proposal = match mls_plaintext.content {
@@ -155,12 +147,15 @@ impl QueuedProposal {
             sender: mls_plaintext.sender,
         }
     }
+    /// Returns the `Proposal` as a reference
     pub(crate) fn get_proposal_ref(&self) -> &Proposal {
         &self.proposal
     }
+    /// Returns the `ProposalID` as a reference
     pub(crate) fn get_proposal_id_ref(&self) -> &ProposalID {
         &self.proposal_id
     }
+    /// Returns the `Sender` as a reference
     pub(crate) fn get_sender_ref(&self) -> &Sender {
         &self.sender
     }
@@ -174,13 +169,13 @@ pub struct ProposalQueue {
 
 impl ProposalQueue {
     // Returns a new empty `ProposalQueue`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         ProposalQueue {
             queued_proposals: HashMap::new(),
         }
     }
     /// Returns a new `ProposalQueue` from proposals that were committed and don't need filtering
-    pub fn new_from_committed_proposals(
+    pub(crate) fn new_from_committed_proposals(
         ciphersuite: &Ciphersuite,
         proposals: Vec<MLSPlaintext>,
     ) -> Self {
@@ -210,7 +205,7 @@ impl ProposalQueue {
     /// - Only keep the last Update
     ///
     /// Return a `ProposalQueue` a bool that indicates whether Updates for the own node were included
-    pub fn filtered_proposals(
+    pub(crate) fn filtered_proposals(
         ciphersuite: &Ciphersuite,
         proposals: Vec<MLSPlaintext>,
         own_index: LeafIndex,
