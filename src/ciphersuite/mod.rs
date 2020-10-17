@@ -25,6 +25,7 @@ use hpke::{
     HPKEKeyPair as RealHPKEKeyPair, HPKEPrivateKey as RealHPKEPrivateKey,
     HPKEPublicKey as RealHPKEPublicKey, Hpke, Mode,
 };
+use serde::{Deserialize, Serialize};
 
 // TODO: re-export for other parts of the library when we can use it
 // pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
@@ -41,7 +42,7 @@ pub const AES_256_KEY_BYTES: usize = 32;
 pub const TAG_BYTES: usize = 16;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CiphersuiteName {
     MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
     MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,
@@ -330,7 +331,7 @@ impl HPKEPublicKey {
     fn into(&self) -> RealHPKEPublicKey {
         RealHPKEPublicKey::new(self.value.clone())
     }
-    fn from(k: RealHPKEPublicKey) -> Self {
+    fn _from(k: RealHPKEPublicKey) -> Self {
         Self {
             value: k.as_slice().to_vec(),
         }
@@ -346,7 +347,7 @@ impl HPKEPrivateKey {
             value: bytes.to_vec(),
         }
     }
-    pub(crate) fn public_key(&self, hpke_kem: KemMode) -> HPKEPublicKey {
+    fn _public_key(&self, hpke_kem: KemMode) -> HPKEPublicKey {
         let pk = match hpke_kem {
             KemMode::DhKemP256 => p256_base(&self.value).unwrap().to_vec(),
             KemMode::DhKemP384 => unimplemented!(),
@@ -364,7 +365,7 @@ impl HPKEPrivateKey {
     fn into(&self) -> RealHPKEPrivateKey {
         RealHPKEPrivateKey::new(self.value.clone())
     }
-    fn from(k: RealHPKEPrivateKey) -> Self {
+    fn _from(k: RealHPKEPrivateKey) -> Self {
         Self {
             value: k.as_slice().to_vec(),
         }
@@ -393,9 +394,9 @@ impl HPKEKeyPair {
 
     // FIXME: remove
     /// Build a new HPKE key pair from the given `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8], ciphersuite: &Ciphersuite) -> Self {
+    fn _from_slice(bytes: &[u8], ciphersuite: &Ciphersuite) -> Self {
         let private_key = HPKEPrivateKey::from_slice(bytes);
-        let public_key = private_key.public_key(ciphersuite.hpke_kem);
+        let public_key = private_key._public_key(ciphersuite.hpke_kem);
         Self {
             private_key,
             public_key,
@@ -404,21 +405,21 @@ impl HPKEKeyPair {
 
     /// Get the two keys separately.
     /// Consumes the key pair.
-    pub(crate) fn to_keys(self) -> (HPKEPrivateKey, HPKEPublicKey) {
+    pub(crate) fn into_keys(self) -> (HPKEPrivateKey, HPKEPublicKey) {
         (self.private_key, self.public_key)
     }
 
     /// Get the private key.
-    pub(crate) fn get_private_key(&self) -> &HPKEPrivateKey {
+    pub(crate) fn _get_private_key(&self) -> &HPKEPrivateKey {
         &self.private_key
     }
 
     /// Get the public key.
-    pub(crate) fn get_public_key(&self) -> HPKEPublicKey {
+    pub(crate) fn _get_public_key(&self) -> HPKEPublicKey {
         self.public_key.clone()
     }
 
-    fn into(&self) -> RealHPKEKeyPair {
+    fn _into(&self) -> RealHPKEKeyPair {
         RealHPKEKeyPair::new(
             self.private_key.value.clone(),
             self.public_key.value.clone(),

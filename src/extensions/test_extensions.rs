@@ -9,7 +9,7 @@ use crate::codec::{Codec, Cursor};
 #[test]
 fn capabilities() {
     // A capabilities extension with the default values for maelstrom.
-    let extension_bytes = [0, 1, 0, 12, 1, 1, 6, 0, 1, 0, 3, 0, 2, 2, 0, 2];
+    let extension_bytes = [0, 1, 0, 16, 1, 1, 6, 0, 1, 0, 3, 0, 2, 6, 0, 1, 0, 2, 0, 3];
 
     let ext = CapabilitiesExtension::default();
     let ext_struct = ext.to_extension_struct();
@@ -29,7 +29,7 @@ fn capabilities() {
 #[test]
 fn key_package_id() {
     // A key package extension with the default values for maelstrom.
-    let extension_bytes = [0, 1, 0, 12, 1, 1, 6, 0, 1, 0, 3, 0, 2, 2, 0, 2];
+    let extension_bytes = [0, 1, 0, 16, 1, 1, 6, 0, 1, 0, 3, 0, 2, 6, 0, 1, 0, 2, 0, 3];
 
     let ext = CapabilitiesExtension::default();
     let ext_struct = ext.to_extension_struct();
