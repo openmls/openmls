@@ -21,7 +21,6 @@ use crate::group::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, secret_tree::*};
-use crate::utils::*;
 
 use std::convert::TryFrom;
 
