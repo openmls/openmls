@@ -23,7 +23,8 @@ macro_rules! key_package_generation {
             let signature_keypair = ciphersuite.new_signature_keypair();
             let identity =
                 Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
-            let credential = Credential::Basic(BasicCredential::from(&identity));
+            let credential =
+                Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
             let kpb = KeyPackageBundle::new(
                 &ciphersuite,
                 signature_keypair.get_private_key(),

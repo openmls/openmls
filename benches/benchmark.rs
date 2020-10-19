@@ -32,7 +32,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
         b.iter_with_setup(
             || {
                 let identity = Identity::new(ciphersuite, vec![1, 2, 3]);
-                Credential::Basic(BasicCredential::from(&identity))
+                Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)))
             },
             |credential| {
                 KeyPackageBundle::new(

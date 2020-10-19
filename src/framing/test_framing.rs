@@ -60,7 +60,7 @@ fn context_presence() {
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let identity = Identity::new(ciphersuite, "Random identity".into());
-    let credential = Credential::Basic(BasicCredential::from(&identity));
+    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let sender = Sender {
         sender_type: SenderType::Member,
         sender: LeafIndex::from(2u32),
