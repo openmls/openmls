@@ -79,7 +79,8 @@ impl Codec for Identity {
     // }
 }
 
-#[derive(Copy, Clone)]
+/// Enum for Credential Types. We only need this for encoding/decoding.
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u16)]
 pub enum CredentialType {
     Reserved = 0,
@@ -113,30 +114,71 @@ impl Codec for CredentialType {
     }
 }
 
+/// Struct containing an X509 certificate chain, as per Spec.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Credential {
+pub struct Certificate {
+    cert_data: Vec<u8>,
+}
+
+/// This enum contains the different available credentials.
+#[derive(Debug, PartialEq, Clone)]
+pub enum MLSCredentialType {
     Basic(BasicCredential),
+    X509(Certificate),
+}
+
+/// Struct containing MLS credential data, where the data depends on the type.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Credential {
+    credential_type: CredentialType,
+    credential: MLSCredentialType,
 }
 
 impl Credential {
+    /// Verify a signature of a given payload against the public key contained
+    /// in a credential.
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        match self {
-            Credential::Basic(basic_credential) => basic_credential.ciphersuite.verify(
+        match &self.credential {
+            MLSCredentialType::Basic(basic_credential) => basic_credential.ciphersuite.verify(
                 signature,
                 &basic_credential.public_key,
                 payload,
             ),
+            // TODO: implement verification for X509 certificates. See issue #134.
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+        }
+    }
+    /// Get the identity of a given credential.
+    pub fn get_identity(&self) -> &Vec<u8> {
+        match &self.credential {
+            MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
+            // TODO: implement getter for identity for X509 certificates. See issue #134.
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+        }
+    }
+}
+
+impl From<MLSCredentialType> for Credential {
+    fn from(mls_credential_type: MLSCredentialType) -> Self {
+        Credential {
+            credential_type: match mls_credential_type {
+                MLSCredentialType::Basic(_) => CredentialType::Basic,
+                MLSCredentialType::X509(_) => CredentialType::X509,
+            },
+            credential: mls_credential_type,
         }
     }
 }
 
 impl Codec for Credential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match self {
-            Credential::Basic(basic_credential) => {
+        match &self.credential {
+            MLSCredentialType::Basic(basic_credential) => {
                 CredentialType::Basic.encode(buffer)?;
                 basic_credential.encode(buffer)?;
             }
+            // TODO: implement encoding for X509 certificates
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
         Ok(())
     }
