@@ -120,7 +120,7 @@ pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
-/// This struct contains the different available certificates.
+/// This enum contains the different available credentials.
 #[derive(Debug, PartialEq, Clone)]
 pub enum MLSCredentialType {
     Basic(BasicCredential),
@@ -130,6 +130,7 @@ pub enum MLSCredentialType {
 /// Struct containing MLS credential data, where the data depends on the type.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Credential {
+    credential_type: CredentialType,
     credential: MLSCredentialType,
 }
 
@@ -143,7 +144,7 @@ impl Credential {
                 &basic_credential.public_key,
                 payload,
             ),
-            // TODO: implement verification for X509 certificates
+            // TODO: implement verification for X509 certificates. See issue #134.
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
@@ -151,7 +152,7 @@ impl Credential {
     pub fn get_identity(&self) -> &Vec<u8> {
         match &self.credential {
             MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
-            // TODO: implement getter for identity for X509 certificates
+            // TODO: implement getter for identity for X509 certificates. See issue #134.
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
