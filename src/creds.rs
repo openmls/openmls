@@ -80,7 +80,7 @@ impl Codec for Identity {
 }
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u16)]
 pub enum CredentialType {
     Reserved = 0,
@@ -161,6 +161,10 @@ impl Credential {
 impl From<MLSCredentialType> for Credential {
     fn from(mls_credential_type: MLSCredentialType) -> Self {
         Credential {
+            credential_type: match mls_credential_type {
+                MLSCredentialType::Basic(_) => CredentialType::Basic,
+                MLSCredentialType::X509(_) => CredentialType::X509,
+            },
             credential: mls_credential_type,
         }
     }
