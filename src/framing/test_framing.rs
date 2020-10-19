@@ -57,9 +57,9 @@ fn codec() {
 fn context_presence() {
     use crate::ciphersuite::*;
 
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
-    let identity = Identity::new(ciphersuite, "Random identity".into());
+    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::new(ciphersuite_name);
+    let identity = Identity::new(ciphersuite_name, "Random identity".into());
     let credential = Credential::Basic(BasicCredential::from(&identity));
     let sender = Sender {
         sender_type: SenderType::Member,

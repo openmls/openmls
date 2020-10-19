@@ -35,10 +35,10 @@ pub struct ManagedGroup {
 impl ManagedGroup {
     pub fn new(
         group_id: GroupId,
-        ciphersuite: Ciphersuite,
+        ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
     ) -> Self {
-        let group = MlsGroup::new(&group_id.as_slice(), ciphersuite, key_package_bundle);
+        let group = MlsGroup::new(&group_id.as_slice(), ciphersuite_name, key_package_bundle);
 
         ManagedGroup {
             group,

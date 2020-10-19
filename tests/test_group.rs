@@ -6,13 +6,12 @@ use maelstrom::key_packages::*;
 
 #[test]
 fn create_commit_optional_path() {
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let group_aad = b"Alice's test group";
 
     // Define identities
-    let alice_identity = Identity::new(ciphersuite, "Alice".into());
-    let bob_identity = Identity::new(ciphersuite, "Bob".into());
+    let alice_identity = Identity::new(ciphersuite_name, "Alice".into());
+    let bob_identity = Identity::new(ciphersuite_name, "Bob".into());
 
     // Define credentials
     let alice_credential = BasicCredential::from(&alice_identity);
@@ -20,14 +19,14 @@ fn create_commit_optional_path() {
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &ciphersuite,
+        ciphersuite_name,
         &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(alice_credential.clone()), // TODO: this consumes the credential!
         Vec::new(),
     );
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &ciphersuite,
+        ciphersuite_name,
         &bob_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(bob_credential), // TODO: this consumes the credential!
         Vec::new(),
@@ -35,7 +34,7 @@ fn create_commit_optional_path() {
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &ciphersuite,
+        ciphersuite_name,
         &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(alice_credential),
         Vec::new(),
@@ -44,7 +43,7 @@ fn create_commit_optional_path() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
+    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -112,13 +111,12 @@ fn create_commit_optional_path() {
 }
 #[test]
 fn basic_group_setup() {
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let group_aad = b"Alice's test group";
 
     // Define identities
-    let alice_identity = Identity::new(ciphersuite, "Alice".into());
-    let bob_identity = Identity::new(ciphersuite, "Bob".into());
+    let alice_identity = Identity::new(ciphersuite_name, "Alice".into());
+    let bob_identity = Identity::new(ciphersuite_name, "Bob".into());
 
     // Define credentials
     let alice_credential = BasicCredential::from(&alice_identity);
@@ -126,7 +124,7 @@ fn basic_group_setup() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &ciphersuite,
+        ciphersuite_name,
         &bob_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(bob_credential), // TODO: this consumes the credential!
         Vec::new(),
@@ -134,7 +132,7 @@ fn basic_group_setup() {
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &ciphersuite,
+        ciphersuite_name,
         &alice_identity.get_signature_key_pair().get_private_key(), // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Credential::Basic(alice_credential),
         Vec::new(),
@@ -142,7 +140,7 @@ fn basic_group_setup() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite, alice_key_package_bundle);
+    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(

@@ -11,17 +11,17 @@ fn padding() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let id = vec![1, 2, 3];
-    let identity = Identity::new(ciphersuite, vec![1, 2, 3]);
+    let identity = Identity::new(ciphersuite_name, vec![1, 2, 3]);
     let signature_keypair = ciphersuite.new_signature_keypair();
     let credential = Credential::Basic(BasicCredential::from(&identity));
     let kpb = KeyPackageBundle::new(
-        &ciphersuite,
+        ciphersuite_name,
         signature_keypair.get_private_key(),
         credential,
         Vec::new(),
     );
 
-    let mut group_alice = MlsGroup::new(&id, ciphersuite, kpb);
+    let mut group_alice = MlsGroup::new(&id, ciphersuite_name, kpb);
     const PADDING_SIZE: usize = 10;
 
     for _ in 0..100 {

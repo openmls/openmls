@@ -292,10 +292,43 @@ impl Codec for EncryptedGroupSecrets {
 
 #[derive(Clone)]
 pub struct Welcome {
-    pub version: ProtocolVersion,
-    pub cipher_suite: Ciphersuite,
-    pub secrets: Vec<EncryptedGroupSecrets>,
-    pub encrypted_group_info: Vec<u8>,
+    version: ProtocolVersion,
+    cipher_suite: CiphersuiteName,
+    secrets: Vec<EncryptedGroupSecrets>,
+    encrypted_group_info: Vec<u8>,
+}
+
+impl Welcome {
+    /// Create a new welcome message from the provided data.
+    /// Note that secrets and the encrypted group info are consumed.
+    pub(crate) fn new(
+        version: ProtocolVersion,
+        cipher_suite: CiphersuiteName,
+        secrets: Vec<EncryptedGroupSecrets>,
+        encrypted_group_info: Vec<u8>,
+    ) -> Self {
+        Self {
+            version,
+            cipher_suite,
+            secrets,
+            encrypted_group_info,
+        }
+    }
+
+    /// Get a reference to the ciphersuite in this Welcome message.
+    pub(crate) fn get_ciphersuite(&self) -> CiphersuiteName {
+        self.cipher_suite
+    }
+
+    /// Get a reference to the ciphersuite in this Welcome message.
+    pub(crate) fn get_secrets_ref(&self) -> &[EncryptedGroupSecrets] {
+        &self.secrets
+    }
+
+    /// Get a reference to the encrypted group info.
+    pub(crate) fn get_encrypted_group_info_ref(&self) -> &[u8] {
+        &self.encrypted_group_info
+    }
 }
 
 impl Codec for Welcome {
