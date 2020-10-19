@@ -26,6 +26,9 @@ use std::fmt;
 pub(crate) mod proposals;
 use proposals::*;
 
+#[cfg(test)]
+mod test_welcome;
+
 #[derive(Debug)]
 pub enum MessageError {
     UnknownOperation,
@@ -268,7 +271,7 @@ impl Codec for GroupSecrets {
     // }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EncryptedGroupSecrets {
     pub key_package_hash: Vec<u8>,
     pub encrypted_group_secrets: HpkeCiphertext,
@@ -280,17 +283,17 @@ impl Codec for EncryptedGroupSecrets {
         self.encrypted_group_secrets.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let key_package_hash = decode_vec(VecSize::VecU8, cursor)?;
-    //     let encrypted_group_secrets = HpkeCiphertext::decode(cursor)?;
-    //     Ok(EncryptedGroupSecrets {
-    //         key_package_hash,
-    //         encrypted_group_secrets,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let key_package_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let encrypted_group_secrets = HpkeCiphertext::decode(cursor)?;
+        Ok(EncryptedGroupSecrets {
+            key_package_hash,
+            encrypted_group_secrets,
+        })
+    }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Welcome {
     version: ProtocolVersion,
     cipher_suite: CiphersuiteName,
@@ -339,18 +342,18 @@ impl Codec for Welcome {
         encode_vec(VecSize::VecU32, buffer, &self.encrypted_group_info)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let version = ProtocolVersion::decode(cursor)?;
-    //     let cipher_suite = Ciphersuite::decode(cursor)?;
-    //     let secrets = decode_vec(VecSize::VecU32, cursor)?;
-    //     let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
-    //     Ok(Welcome {
-    //         version,
-    //         cipher_suite,
-    //         secrets,
-    //         encrypted_group_info,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let version = ProtocolVersion::decode(cursor)?;
+        let cipher_suite = CiphersuiteName::decode(cursor)?;
+        let secrets = decode_vec(VecSize::VecU32, cursor)?;
+        let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
+        Ok(Welcome {
+            version,
+            cipher_suite,
+            secrets,
+            encrypted_group_info,
+        })
+    }
 }
 
 pub type WelcomeBundle = (Welcome, ExtensionStruct);
