@@ -6,7 +6,7 @@ use crate::tree::index::*;
 
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum ProposalType {
     Invalid = 0,
@@ -47,13 +47,15 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
-        match proposal_type {
-            ProposalType::Add => matches!(self, Proposal::Add(ref _a)),
-            ProposalType::Update => matches!(self, Proposal::Update(ref _u)),
-            ProposalType::Remove => matches!(self, Proposal::Remove(ref _r)),
-            _ => false,
+    pub(crate) fn get_type(&self) -> ProposalType {
+        match self {
+            Proposal::Add(ref _a) => ProposalType::Add,
+            Proposal::Update(ref _u) => ProposalType::Update,
+            Proposal::Remove(ref _r) => ProposalType::Remove,
         }
+    }
+    pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
+        self.get_type() == proposal_type
     }
     pub(crate) fn as_add(&self) -> Option<AddProposal> {
         match self {
@@ -226,31 +228,36 @@ impl ProposalQueue {
         let mut adds: HashSet<ProposalID> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalID> = HashSet::new();
         let mut proposal_queue = ProposalQueue::new();
+        let mut contains_own_updates = false;
 
         // Parse proposals and build adds and member list
         for mls_plaintext in proposals {
             let queued_proposal = QueuedProposal::new(ciphersuite, mls_plaintext);
-            if queued_proposal.proposal.is_type(ProposalType::Add) {
-                adds.insert(queued_proposal.get_proposal_id_ref().clone());
-            }
-            if queued_proposal.proposal.is_type(ProposalType::Update) {
-                let sender_index = queued_proposal.sender.sender.as_usize();
-                if sender_index != own_index.as_usize() {
-                    members[sender_index].updates.push(queued_proposal.clone());
+            match queued_proposal.proposal.get_type() {
+                ProposalType::Add => {
+                    adds.insert(queued_proposal.get_proposal_id_ref().clone());
+                    proposal_queue.add(queued_proposal);
                 }
-            }
-            if queued_proposal.proposal.is_type(ProposalType::Remove) {
-                let removed_index = queued_proposal.proposal.as_remove().unwrap().removed as usize;
-                if removed_index < tree_size.as_usize() {
-                    members[removed_index].updates.push(queued_proposal.clone());
-                } else {
-                    break;
+                ProposalType::Update => {
+                    let sender_index = queued_proposal.sender.sender.as_usize();
+                    if sender_index != own_index.as_usize() {
+                        members[sender_index].updates.push(queued_proposal.clone());
+                    } else {
+                        contains_own_updates = true;
+                    }
+                    proposal_queue.add(queued_proposal);
                 }
+                ProposalType::Remove => {
+                    let removed_index =
+                        queued_proposal.proposal.as_remove().unwrap().removed as usize;
+                    if removed_index < tree_size.as_usize() {
+                        members[removed_index].updates.push(queued_proposal.clone());
+                    }
+                    proposal_queue.add(queued_proposal);
+                }
+                _ => {}
             }
-            proposal_queue.add(queued_proposal);
         }
-        // Check if Updates for own node are included
-        let contains_own_updates = !members[own_index.as_usize()].updates.is_empty();
         // Check for presence of Removes and delete Updates
         for member in members.iter_mut() {
             // Check if there are Removes
