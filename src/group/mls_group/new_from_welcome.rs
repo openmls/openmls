@@ -70,7 +70,7 @@ impl MlsGroup {
         )?;
 
         // Verify tree hash
-        if tree.compute_tree_hash() != &group_info.tree_hash[..] {
+        if tree.compute_tree_hash() != group_info.tree_hash {
             return Err(WelcomeError::TreeHashMismatch);
         }
 
@@ -137,7 +137,7 @@ impl MlsGroup {
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
-                ciphersuite: ciphersuite.clone(),
+                ciphersuite,
                 group_context,
                 generation: 0,
                 epoch_secrets,
