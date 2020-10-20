@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{env, fs::File, io::BufReader};
 
 use crate::ciphersuite::CiphersuiteName;
-use crate::codec::{Codec, CodecError};
+use crate::codec::{Codec, CodecError, Cursor};
 use crate::errors::ConfigError;
 use crate::extensions::ExtensionType;
 
@@ -82,6 +82,10 @@ impl Codec for ProtocolVersion {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)?;
         Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        Ok(Self::from(u8::decode(cursor)?)?)
     }
 }
 

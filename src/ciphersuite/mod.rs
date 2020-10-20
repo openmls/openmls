@@ -157,6 +157,11 @@ impl Ciphersuite {
         }
     }
 
+    /// Get the name of this ciphersuite.
+    pub fn get_name(&self) -> CiphersuiteName {
+        self.name
+    }
+
     /// Sign a `msg` with the given `sk`.
     pub(crate) fn sign(
         &self,

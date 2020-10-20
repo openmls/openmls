@@ -16,7 +16,7 @@
 
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
-use crate::config::ProtocolVersion;
+use crate::config::Config;
 use crate::extensions::{Extension, RatchetTreeExtension};
 use crate::framing::*;
 use crate::group::mls_group::*;
@@ -203,12 +203,12 @@ impl MlsGroup {
                 })
                 .collect();
             // Create welcome message
-            let welcome = Welcome {
-                version: ProtocolVersion::Mls10,
-                cipher_suite: self.ciphersuite,
+            let welcome = Welcome::new(
+                Config::supported_versions()[0],
+                self.ciphersuite.get_name(),
                 secrets,
                 encrypted_group_info,
-            };
+            );
             Ok((mls_plaintext, Some(welcome)))
         } else {
             Ok((mls_plaintext, None))

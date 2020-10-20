@@ -11,14 +11,14 @@ impl Codec for KeyPackage {
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let protocol_version = ProtocolVersion::decode(cursor)?;
-        let cipher_suite = Ciphersuite::decode(cursor)?;
+        let cipher_suite_name = CiphersuiteName::decode(cursor)?;
         let hpke_init_key = HPKEPublicKey::decode(cursor)?;
         let credential = Credential::decode(cursor)?;
         let extensions = extensions_vec_from_cursor(cursor)?;
         let signature = Signature::decode(cursor)?;
         let kp = KeyPackage {
             protocol_version,
-            cipher_suite,
+            cipher_suite: cipher_suite_name,
             hpke_init_key,
             credential,
             extensions,

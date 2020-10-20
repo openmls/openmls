@@ -27,7 +27,8 @@ pub struct Identity {
 }
 
 impl Identity {
-    pub fn new(ciphersuite: Ciphersuite, id: Vec<u8>) -> Self {
+    pub fn new(ciphersuite_name: CiphersuiteName, id: Vec<u8>) -> Self {
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let keypair = ciphersuite.new_signature_keypair();
         Self {
             id,
