@@ -201,7 +201,7 @@ impl MLSCiphertext {
             ciphersuite.aead_key_length(),
         );
         let sender_data_nonce = AeadNonce::random();
-        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
+        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes, ciphersuite.get_aead());
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             context.group_id.clone(),
             context.epoch,
@@ -290,7 +290,7 @@ impl MLSCiphertext {
             &[],
             ciphersuite.aead_key_length(),
         );
-        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
+        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes, ciphersuite.get_aead());
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             self.group_id.clone(),
             self.epoch,

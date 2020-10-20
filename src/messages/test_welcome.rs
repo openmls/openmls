@@ -28,7 +28,10 @@ macro_rules! test_welcome_msg {
             let ciphersuite = Ciphersuite::new($suite);
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_slice(&randombytes(ciphersuite.aead_key_length()));
+            let welcome_key = AeadKey::from_slice(
+                &randombytes(ciphersuite.aead_key_length()),
+                ciphersuite.get_aead(),
+            );
             let welcome_nonce =
                 AeadNonce::from_slice(&randombytes(ciphersuite.aead_nonce_length()));
 

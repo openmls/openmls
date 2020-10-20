@@ -100,6 +100,7 @@ pub enum AEADError {
 
 #[derive(Debug, PartialEq)]
 pub struct AeadKey {
+    pub aead_mode: AeadMode,
     value: Vec<u8>,
 }
 
@@ -160,6 +161,11 @@ impl Ciphersuite {
     /// Get the name of this ciphersuite.
     pub fn get_name(&self) -> CiphersuiteName {
         self.name
+    }
+
+    /// Get the AEAD mode
+    pub fn get_aead(&self) -> AeadMode {
+        self.aead
     }
 
     /// Sign a `msg` with the given `sk`.
@@ -233,13 +239,7 @@ impl Ciphersuite {
         key: &AeadKey,
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AEADError> {
-        let (ct, tag) = match aead_encrypt(self.aead, &key.as_slice(), msg, &nonce.value, aad) {
-            Ok((ct, tag)) => (ct, tag),
-            Err(_) => return Err(AEADError::EncryptionError),
-        };
-        let mut ciphertext = ct;
-        ciphertext.extend_from_slice(&tag);
-        Ok(ciphertext)
+        key.encrypt(msg, aad, nonce)
     }
 
     /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
@@ -250,15 +250,7 @@ impl Ciphersuite {
         key: &AeadKey,
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AEADError> {
-        // TODO: don't hard-code tag bytes
-        if ciphertext.len() < TAG_BYTES {
-            return Err(AEADError::DecryptionError);
-        }
-        let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);
-        match aead_decrypt(self.aead, key.as_slice(), ct, tag, &nonce.value, aad) {
-            Ok(pt) => Ok(pt),
-            Err(_) => Err(AEADError::DecryptionError),
-        }
+        key.decrypt(ciphertext, aad, nonce)
     }
 
     /// Returns the key size of the used AEAD.
@@ -439,9 +431,11 @@ impl HPKEKeyPair {
 }
 
 impl AeadKey {
+    // TODO: Create a new function that can only be called by HKDF.
     /// Build a new key for an AEAD from `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8]) -> AeadKey {
+    pub(crate) fn from_slice(bytes: &[u8], aead_mode: AeadMode) -> AeadKey {
         AeadKey {
+            aead_mode,
             value: bytes.to_vec(),
         }
     }
@@ -449,6 +443,48 @@ impl AeadKey {
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
+    }
+
+    /// Encrypt a payload under the AeadKey given a nonce.
+    pub fn encrypt(&self, msg: &[u8], aad: &[u8], nonce: &AeadNonce) -> Result<Vec<u8>, AEADError> {
+        let (ct, tag) = match aead_encrypt(
+            self.aead_mode,
+            &self.value.as_slice(),
+            msg,
+            &nonce.value,
+            aad,
+        ) {
+            Ok((ct, tag)) => (ct, tag),
+            Err(_) => return Err(AEADError::EncryptionError),
+        };
+        let mut ciphertext = ct;
+        ciphertext.extend_from_slice(&tag);
+        Ok(ciphertext)
+    }
+
+    /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
+    pub(crate) fn decrypt(
+        &self,
+        ciphertext: &[u8],
+        aad: &[u8],
+        nonce: &AeadNonce,
+    ) -> Result<Vec<u8>, AEADError> {
+        // TODO: don't hard-code tag bytes
+        if ciphertext.len() < TAG_BYTES {
+            return Err(AEADError::DecryptionError);
+        }
+        let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);
+        match aead_decrypt(
+            self.aead_mode,
+            self.value.as_slice(),
+            ct,
+            tag,
+            &nonce.value,
+            aad,
+        ) {
+            Ok(pt) => Ok(pt),
+            Err(_) => Err(AEADError::DecryptionError),
+        }
     }
 }
 

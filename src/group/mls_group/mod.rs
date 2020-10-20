@@ -342,6 +342,7 @@ fn compute_welcome_key_nonce(
         &ciphersuite
             .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
             .unwrap(),
+        ciphersuite.get_aead(),
     );
     (welcome_key, welcome_nonce)
 }

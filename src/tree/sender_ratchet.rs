@@ -139,7 +139,10 @@ impl SenderRatchet {
             generation,
             ciphersuite.aead_key_length(),
         );
-        RatchetSecrets::new(AeadNonce::from_slice(&nonce), AeadKey::from_slice(&key))
+        RatchetSecrets::new(
+            AeadNonce::from_slice(&nonce),
+            AeadKey::from_slice(&key, ciphersuite.get_aead()),
+        )
     }
     /// Gets the current generation
     pub(crate) fn get_generation(&self) -> u32 {
