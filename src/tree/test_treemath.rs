@@ -79,7 +79,8 @@ fn test_tree_hash() {
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let signature_keypair = ciphersuite.new_signature_keypair();
         let identity = Identity::new(ciphersuite_name, id.to_vec());
-        let credential = Credential::Basic(BasicCredential::from(&identity));
+        let credential =
+            Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
         let kbp = KeyPackageBundle::new(
             ciphersuite_name,
             signature_keypair.get_private_key(),

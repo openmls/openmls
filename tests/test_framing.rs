@@ -13,7 +13,7 @@ fn padding() {
     let id = vec![1, 2, 3];
     let identity = Identity::new(ciphersuite_name, vec![1, 2, 3]);
     let signature_keypair = ciphersuite.new_signature_keypair();
-    let credential = Credential::Basic(BasicCredential::from(&identity));
+    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let kpb = KeyPackageBundle::new(
         ciphersuite_name,
         signature_keypair.get_private_key(),

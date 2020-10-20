@@ -8,7 +8,7 @@ fn generate_key_package() {
     let signature_keypair = ciphersuite.new_signature_keypair();
     let identity =
         Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
-    let credential = Credential::Basic(BasicCredential::from(&identity));
+    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let kpb = KeyPackageBundle::new(
         ciphersuite_name,
         signature_keypair.get_private_key(),
@@ -23,7 +23,7 @@ fn generate_key_package() {
     let kpb = KeyPackageBundle::new(
         ciphersuite_name,
         signature_keypair.get_private_key(),
-        Credential::Basic(BasicCredential::from(&identity)),
+        Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity))),
         vec![lifetime_extension],
     );
     std::thread::sleep(std::time::Duration::from_secs(1));
@@ -34,7 +34,7 @@ fn generate_key_package() {
     let kpb = KeyPackageBundle::new(
         ciphersuite_name,
         signature_keypair.get_private_key(),
-        Credential::Basic(BasicCredential::from(&identity)),
+        Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity))),
         vec![lifetime_extension],
     );
     std::thread::sleep(std::time::Duration::from_secs(1));
@@ -48,7 +48,7 @@ fn test_codec() {
     let signature_keypair = ciphersuite.new_signature_keypair();
     let identity =
         Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
-    let credential = Credential::Basic(BasicCredential::from(&identity));
+    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let kpb = KeyPackageBundle::new(
         ciphersuite_name,
         signature_keypair.get_private_key(),
