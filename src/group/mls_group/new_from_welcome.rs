@@ -28,7 +28,8 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
-        let ciphersuite = welcome.cipher_suite;
+        let ciphersuite_name = welcome.get_ciphersuite();
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let (private_key, key_package) = (
             key_package_bundle.private_key,
             key_package_bundle.key_package,
@@ -36,13 +37,13 @@ impl MlsGroup {
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) =
-            Self::find_key_package_from_welcome_secrets(&key_package, &welcome.secrets)
+            Self::find_key_package_from_welcome_secrets(&key_package, welcome.get_secrets_ref())
         {
             egs
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if &ciphersuite != key_package.get_cipher_suite() {
+        if ciphersuite_name != key_package.get_cipher_suite() {
             return Err(WelcomeError::CiphersuiteMismatch);
         }
 
@@ -51,7 +52,7 @@ impl MlsGroup {
             &ciphersuite,
             &egs,
             &private_key,
-            &welcome.encrypted_group_info,
+            welcome.get_encrypted_group_info_ref(),
         )?;
 
         // Build the ratchet tree
@@ -63,13 +64,13 @@ impl MlsGroup {
         };
 
         let mut tree = RatchetTree::new_from_nodes(
-            ciphersuite,
+            ciphersuite_name,
             KeyPackageBundle::from_values(key_package, private_key),
             &nodes,
         )?;
 
         // Verify tree hash
-        if tree.compute_tree_hash() != &group_info.tree_hash[..] {
+        if tree.compute_tree_hash() != group_info.tree_hash {
             return Err(WelcomeError::TreeHashMismatch);
         }
 
@@ -136,7 +137,7 @@ impl MlsGroup {
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
-                ciphersuite: welcome.cipher_suite,
+                ciphersuite,
                 group_context,
                 generation: 0,
                 epoch_secrets,
