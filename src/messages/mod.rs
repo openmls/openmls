@@ -17,11 +17,9 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::ProtocolVersion;
-use crate::creds::*;
 use crate::extensions::*;
 use crate::group::*;
 use crate::tree::{index::*, *};
-use std::fmt;
 
 pub(crate) mod proposals;
 use proposals::*;
@@ -34,69 +32,23 @@ pub enum MessageError {
     UnknownOperation,
 }
 
-pub struct MembershipChanges {
-    pub updates: Vec<Credential>,
-    pub removes: Vec<Credential>,
-    pub adds: Vec<Credential>,
-}
-
-impl MembershipChanges {
-    pub fn path_required(&self) -> bool {
-        !self.updates.is_empty() || !self.removes.is_empty() || self.adds.is_empty()
-    }
-}
-
-impl fmt::Debug for MembershipChanges {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn list_members(f: &mut fmt::Formatter<'_>, members: &[Credential]) -> fmt::Result {
-            for m in members {
-                write!(
-                    f,
-                    "{} ",
-                    String::from_utf8(m.get_identity().clone()).unwrap()
-                )?;
-            }
-            Ok(())
-        }
-        write!(f, "Membership changes:")?;
-        write!(f, "\n\tUpdates: ")?;
-        list_members(f, &self.updates)?;
-        write!(f, "\n\tRemoves: ")?;
-        list_members(f, &self.removes)?;
-        write!(f, "\n\tAdds: ")?;
-        list_members(f, &self.adds)?;
-        writeln!(f)
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Commit {
-    pub updates: Vec<ProposalID>,
-    pub removes: Vec<ProposalID>,
-    pub adds: Vec<ProposalID>,
+    pub proposals: Vec<ProposalID>,
     pub path: Option<UpdatePath>,
 }
 
 impl Codec for Commit {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.updates)?;
-        encode_vec(VecSize::VecU32, buffer, &self.removes)?;
-        encode_vec(VecSize::VecU32, buffer, &self.adds)?;
+        encode_vec(VecSize::VecU32, buffer, &self.proposals)?;
         self.path.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let updates = decode_vec(VecSize::VecU32, cursor)?;
-    //     let removes = decode_vec(VecSize::VecU32, cursor)?;
-    //     let adds = decode_vec(VecSize::VecU32, cursor)?;
-    //     let path = Option::<UpdatePath>::decode(cursor)?;
-    //     Ok(Commit {
-    //         updates,
-    //         removes,
-    //         adds,
-    //         path,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let proposals = decode_vec(VecSize::VecU32, cursor)?;
+        let path = Option::<UpdatePath>::decode(cursor)?;
+        Ok(Commit { proposals, path })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
