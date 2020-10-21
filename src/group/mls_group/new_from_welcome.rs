@@ -126,13 +126,19 @@ impl MlsGroup {
             EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
         let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, tree.leaf_count());
 
-        // Verify confirmation tag
-        if ConfirmationTag::new(
+        let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &epoch_secrets.confirmation_key,
             &group_context.confirmed_transcript_hash,
-        ) != ConfirmationTag(group_info.confirmation_tag)
-        {
+        );
+        let interim_transcript_hash = update_interim_transcript_hash(
+            &ciphersuite,
+            &MLSPlaintextCommitAuthData::from(&confirmation_tag),
+            &group_context.confirmed_transcript_hash,
+        );
+
+        // Verify confirmation tag
+        if confirmation_tag != ConfirmationTag(group_info.confirmation_tag) {
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
@@ -142,7 +148,7 @@ impl MlsGroup {
                 epoch_secrets,
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
-                interim_transcript_hash: group_info.interim_transcript_hash,
+                interim_transcript_hash,
             })
         }
     }

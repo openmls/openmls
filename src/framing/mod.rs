@@ -800,7 +800,6 @@ impl Codec for MLSPlaintextCommitContent {
 
 pub struct MLSPlaintextCommitAuthData {
     pub confirmation_tag: Vec<u8>,
-    pub signature: Vec<u8>,
 }
 
 impl MLSPlaintextCommitAuthData {
@@ -817,7 +816,14 @@ impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
         };
         MLSPlaintextCommitAuthData {
             confirmation_tag: confirmation_tag.0.clone(),
-            signature: mls_plaintext.signature.as_slice().to_vec(),
+        }
+    }
+}
+
+impl From<&ConfirmationTag> for MLSPlaintextCommitAuthData {
+    fn from(confirmation_tag: &ConfirmationTag) -> Self {
+        MLSPlaintextCommitAuthData {
+            confirmation_tag: confirmation_tag.as_slice(),
         }
     }
 }
@@ -825,15 +831,10 @@ impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
 impl Codec for MLSPlaintextCommitAuthData {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
-        encode_vec(VecSize::VecU16, buffer, &self.signature)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;
-        let signature = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(MLSPlaintextCommitAuthData {
-            confirmation_tag,
-            signature,
-        })
+        Ok(MLSPlaintextCommitAuthData { confirmation_tag })
     }
 }

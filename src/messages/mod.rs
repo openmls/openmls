@@ -148,7 +148,7 @@ pub struct GroupInfo {
     pub epoch: GroupEpoch,
     pub tree_hash: Vec<u8>,
     pub confirmed_transcript_hash: Vec<u8>,
-    pub interim_transcript_hash: Vec<u8>,
+    //pub interim_transcript_hash: Vec<u8>,
     pub extensions: Vec<Box<dyn Extension>>,
     pub confirmation_tag: Vec<u8>,
     pub signer_index: LeafIndex,
@@ -162,7 +162,7 @@ impl GroupInfo {
         let epoch = GroupEpoch::decode(&mut cursor)?;
         let tree_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
         let confirmed_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let interim_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
+        //let interim_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
         let extensions = extensions_vec_from_cursor(&mut cursor)?;
         let confirmation_tag = decode_vec(VecSize::VecU8, &mut cursor)?;
         let signer_index = LeafIndex::from(u32::decode(&mut cursor)?);
@@ -172,7 +172,7 @@ impl GroupInfo {
             epoch,
             tree_hash,
             confirmed_transcript_hash,
-            interim_transcript_hash,
+            //interim_transcript_hash,
             extensions,
             confirmation_tag,
             signer_index,
@@ -218,7 +218,7 @@ impl Signable for GroupInfo {
         self.epoch.encode(buffer)?;
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
+        //encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
         let encoded_extensions: Vec<ExtensionStruct> = self
             .extensions

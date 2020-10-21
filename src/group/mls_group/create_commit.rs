@@ -127,17 +127,11 @@ impl MlsGroup {
             let ratchet_tree_extension = public_tree.to_extension_struct();
             let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
             // Create GroupInfo object
-            let interim_transcript_hash = update_interim_transcript_hash(
-                &ciphersuite,
-                &mls_plaintext,
-                &confirmed_transcript_hash,
-            );
             let mut group_info = GroupInfo {
                 group_id: provisional_group_context.group_id.clone(),
                 epoch: provisional_group_context.epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                interim_transcript_hash,
                 extensions: vec![],
                 confirmation_tag: confirmation_tag.as_slice(),
                 signer_index: sender_index,
