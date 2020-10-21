@@ -23,8 +23,8 @@ pub(crate) enum TreeMathError {
     RootHasNoParent,
 }
 
-pub(crate) fn log2(x: usize) -> usize {
-    if x == 0 {
+pub(crate) fn log2(x: &usize) -> usize {
+    if *x == 0 {
         return 0;
     }
     let mut k = 0;
@@ -34,7 +34,7 @@ pub(crate) fn log2(x: usize) -> usize {
     k - 1
 }
 
-pub(crate) fn level(index: NodeIndex) -> usize {
+pub(crate) fn level(index: &NodeIndex) -> usize {
     let x = index.as_usize();
     if (x & 0x01) == 0 {
         return 0;
@@ -54,68 +54,74 @@ pub(crate) fn node_width(n: usize) -> usize {
     }
 }
 
-pub(crate) fn root(size: LeafIndex) -> NodeIndex {
+pub(crate) fn root(size: &LeafIndex) -> NodeIndex {
     let n = size.as_usize();
     let w = node_width(n);
-    NodeIndex::from((1usize << log2(w)) - 1)
+    let result = (1usize << log2(&w)) - 1;
+    NodeIndex::from(result)
 }
 
-pub(crate) fn left(index: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+pub(crate) fn left(index: &NodeIndex) -> Result<NodeIndex, TreeMathError> {
     let x = index.as_usize();
-    let k = level(NodeIndex::from(x));
+    let k = level(&index);
     if k == 0 {
         return Err(TreeMathError::LeafHasNoChildren);
     }
     Ok(NodeIndex::from(x ^ (0x01 << (k - 1))))
 }
 
-pub(crate) fn right(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
-    let x = index.as_usize();
-    let n = size.as_usize();
-    let k = level(NodeIndex::from(x));
+pub(crate) fn right(index: &NodeIndex, size: &LeafIndex) -> Result<NodeIndex, TreeMathError> {
+    let k = level(index);
     if k == 0 {
         return Err(TreeMathError::LeafHasNoChildren);
     }
+    let x = index.as_usize();
+    let n = size.as_usize();
     let mut r = x ^ (0x03 << (k - 1));
     while r >= node_width(n) {
-        r = left(NodeIndex::from(r))?.as_usize();
+        r = left(&NodeIndex::from(r))?.into();
     }
     Ok(NodeIndex::from(r))
 }
 
-pub(crate) fn parent_step(x: usize) -> usize {
-    let k = level(NodeIndex::from(x));
+pub(crate) fn parent_step(x: &usize) -> usize {
+    // TODO: Is it possible to cast a usize reference to a Nodeindex reference?
+    // (I suspect not.)
+    let k = level(&NodeIndex::from(x.clone()));
     let b = (x >> (k + 1)) & 0x01;
     (x | (1 << k)) ^ (b << (k + 1))
 }
 
-pub(crate) fn parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
+pub(crate) fn parent(index: &NodeIndex, size: &LeafIndex) -> Result<NodeIndex, TreeMathError> {
     let x = index.as_usize();
     let n = size.as_usize();
-    if index == root(size) {
+    if *index == root(size) {
         return Err(TreeMathError::RootHasNoParent);
     }
     let mut p = parent_step(x);
     while p >= node_width(n) {
-        p = parent_step(p)
+        p = parent_step(&p)
     }
     Ok(NodeIndex::from(p))
 }
 
-pub(crate) fn sibling(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
+pub(crate) fn sibling(index: &NodeIndex, size: &LeafIndex) -> Result<NodeIndex, TreeMathError> {
     let p = parent(index, size)?;
     match index.cmp(&p) {
-        Ordering::Less => right(p, size),
-        Ordering::Greater => left(p),
-        Ordering::Equal => left(p),
+        Ordering::Less => right(&p, size),
+        Ordering::Greater => left(&p),
+        Ordering::Equal => left(&p),
     }
 }
 
 // Ordered from leaf to root
 // Includes neither leaf nor root
-pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
-    let r = root(size);
-    if index == r {
+pub(crate) fn dirpath(
+    index: &NodeIndex,
+    size: &LeafIndex,
+) -> Result<Vec<NodeIndex>, TreeMathError> {
+    let r = root(&size);
+    if *index == r {
         return Ok(vec![]);
     }
 
@@ -123,7 +129,7 @@ pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex
     let mut x = parent(index, size)?;
     while x != r {
         d.push(x);
-        x = parent(x, size)?;
+        x = parent(&x, size)?;
     }
     Ok(d)
 }
@@ -131,18 +137,18 @@ pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex
 // Ordered from leaf to root
 // Includes leaf and root
 pub(crate) fn dirpath_long(
-    index: NodeIndex,
-    size: LeafIndex,
+    index: &NodeIndex,
+    size: &LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
     let r = root(size);
-    if index == r {
+    if *index == r {
         return Ok(vec![]);
     }
 
-    let mut x = index;
-    let mut d = vec![index];
+    let mut x = index.clone();
+    let mut d = vec![index.clone()];
     while x != r {
-        x = parent(x, size)?;
+        x = parent(&x, size)?;
         d.push(x);
     }
     Ok(d)
@@ -151,42 +157,44 @@ pub(crate) fn dirpath_long(
 // Ordered from leaf to root
 // Includes root but not leaf
 pub(crate) fn direct_path_root(
-    index: NodeIndex,
-    size: LeafIndex,
+    index: &NodeIndex,
+    size: &LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
     let r = root(size);
-    if index == r {
+    if *index == r {
         return Ok(vec![]);
     }
 
     let mut d = vec![];
-    let mut x = index;
+    let mut x = index.clone();
     while x != r {
-        x = parent(x, size)?;
+        x = parent(&x, size)?;
         d.push(x);
     }
     Ok(d)
 }
 
 // Ordered from leaf to root
-pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
-    if index == root(size) {
+pub(crate) fn copath(index: &NodeIndex, size: &LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
+    if *index == root(size) {
         return Ok(vec![]);
     }
-    let mut d = vec![index];
+    let mut d = vec![index.clone()];
     d.append(&mut dirpath(index, size)?);
-    d.iter().map(|&index| sibling(index, size)).collect()
+    d.iter().map(|&index| sibling(&index, size)).collect()
 }
 
-pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
+pub(crate) fn common_ancestor_index(x: &NodeIndex, y: &NodeIndex) -> NodeIndex {
     let (lx, ly) = (level(x) + 1, level(y) + 1);
     if (lx <= ly) && (x.as_usize() >> ly == y.as_usize() >> ly) {
-        return y;
+        return y.clone();
     } else if (ly <= lx) && (x.as_usize() >> lx == y.as_usize() >> lx) {
-        return x;
+        return x.clone();
     }
 
-    let (mut xn, mut yn) = (x.as_usize(), y.as_usize());
+    // TODO: For this, we should proabaly have a proper `to_usize()` function
+    // for NodeIndex, as it is borrowed -> owned.
+    let (mut xn, mut yn): (usize, usize) = (x.clone().into(), y.clone().into());
     let mut k = 0;
     while xn != yn {
         xn >>= 1;

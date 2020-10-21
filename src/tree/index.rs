@@ -4,11 +4,11 @@ use crate::codec::*;
 pub struct NodeIndex(u32);
 
 impl NodeIndex {
-    pub fn as_u32(self) -> u32 {
-        self.0
+    pub fn as_u32(&self) -> &u32 {
+        &self.0
     }
-    pub fn as_usize(self) -> usize {
-        self.0 as usize
+    pub fn as_usize(&self) -> &usize {
+        &(self.0 as usize)
     }
 }
 
@@ -27,6 +27,18 @@ impl From<usize> for NodeIndex {
 impl From<LeafIndex> for NodeIndex {
     fn from(node_index: LeafIndex) -> NodeIndex {
         NodeIndex(node_index.as_u32() * 2)
+    }
+}
+
+impl Into<u32> for NodeIndex {
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
+impl Into<usize> for NodeIndex {
+    fn into(self) -> usize {
+        self.0 as usize
     }
 }
 
