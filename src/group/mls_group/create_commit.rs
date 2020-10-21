@@ -16,7 +16,7 @@
 
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
-use crate::config::ProtocolVersion;
+use crate::config::Config;
 use crate::extensions::{Extension, RatchetTreeExtension};
 use crate::framing::*;
 use crate::group::mls_group::*;
@@ -35,35 +35,31 @@ impl MlsGroup {
         force_self_update: bool,
     ) -> CreateCommitResult {
         let ciphersuite = self.get_ciphersuite();
-        let mut contains_own_updates = false;
-        // Organize proposals
-        let mut proposal_queue = ProposalQueue::new();
-        for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
-            if queued_proposal.sender.as_leaf_index() == self.get_sender_index()
-                && queued_proposal.proposal.is_update()
-            {
-                contains_own_updates = true;
-            } else {
-                proposal_queue.add(queued_proposal, &ciphersuite);
-            }
-        }
+        // Filter proposals
+        let (proposal_queue, contains_own_updates) = ProposalQueue::filtered_proposals(
+            ciphersuite,
+            proposals,
+            LeafIndex::from(self.get_tree().get_own_node_index()),
+            self.get_tree().leaf_count(),
+        );
 
-        // TODO Dedup proposals
-        let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
+        let proposal_id_list = proposal_queue.get_proposal_id_list();
 
         let sender_index = self.get_sender_index();
         let mut provisional_tree = self.tree.borrow_mut();
 
         // Apply proposals to tree
-        let (membership_changes, invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &mut vec![]);
-        if group_removed {
+        let (path_required_by_commit, self_removed, invited_members) = match provisional_tree
+            .apply_proposals(&proposal_id_list, proposal_queue, &mut vec![])
+        {
+            Ok(res) => res,
+            Err(_) => return Err(CreateCommitError::OwnKeyNotFound),
+        };
+        if self_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
         // Determine if Commit needs path field
-        let path_required =
-            membership_changes.path_required() || contains_own_updates || force_self_update;
+        let path_required = path_required_by_commit || contains_own_updates || force_self_update;
 
         let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
@@ -78,9 +74,7 @@ impl MlsGroup {
         };
         // Create commit message
         let commit = Commit {
-            updates: proposal_id_list.updates,
-            removes: proposal_id_list.removes,
-            adds: proposal_id_list.adds,
+            proposals: proposal_id_list,
             path,
         };
         // Create provisional group state
@@ -122,7 +116,7 @@ impl MlsGroup {
         );
         // Check if new members were added an create welcome message
         // TODO: Add support for extensions
-        if !membership_changes.adds.is_empty() {
+        if !invited_members.is_empty() {
             let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
             let ratchet_tree_extension = public_tree.to_extension_struct();
             let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
@@ -197,12 +191,12 @@ impl MlsGroup {
                 })
                 .collect();
             // Create welcome message
-            let welcome = Welcome {
-                version: ProtocolVersion::Mls10,
-                cipher_suite: self.ciphersuite,
+            let welcome = Welcome::new(
+                Config::supported_versions()[0],
+                self.ciphersuite.get_name(),
                 secrets,
                 encrypted_group_info,
-            };
+            );
             Ok((mls_plaintext, Some(welcome)))
         } else {
             Ok((mls_plaintext, None))
