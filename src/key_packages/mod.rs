@@ -35,7 +35,9 @@ pub enum KeyPackageError {
 impl From<ExtensionError> for KeyPackageError {
     fn from(e: ExtensionError) -> Self {
         match e {
-            _ => KeyPackageError::ExtensionNotPresent,
+            // TODO: error handling #83
+            ExtensionError::InvalidExtensionType => KeyPackageError::ExtensionNotPresent,
+            ExtensionError::UnknownExtension => KeyPackageError::ExtensionNotPresent,
         }
     }
 }
@@ -140,7 +142,7 @@ impl KeyPackage {
 
     /// Get the ID of this key package as byte slice.
     /// Returns an error if no Key ID extension is present.
-    pub fn get_id<'a>(&'a self) -> Result<&'a [u8], KeyPackageError> {
+    pub fn get_id(&self) -> Result<&[u8], KeyPackageError> {
         if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
             return Ok(key_id_ext.to_key_id_extension_ref()?.as_slice());
         }
