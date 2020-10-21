@@ -67,7 +67,7 @@ pub struct RatchetTree {
 
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
-    pub(crate) fn new(ciphersuite: Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
+    pub(crate) fn new(ciphersuite_name: CiphersuiteName, kpb: KeyPackageBundle) -> RatchetTree {
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
             key_package: Some(kpb.get_key_package().clone()),
@@ -82,7 +82,7 @@ impl RatchetTree {
         );
 
         RatchetTree {
-            ciphersuite,
+            ciphersuite: Ciphersuite::new(ciphersuite_name),
             nodes,
             private_tree,
         }
@@ -91,7 +91,7 @@ impl RatchetTree {
     /// Generate a new `RatchetTree` from `Node`s with the client's key package
     /// bundle `kpb`.
     pub(crate) fn new_from_nodes(
-        ciphersuite: Ciphersuite,
+        ciphersuite_name: CiphersuiteName,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
     ) -> Result<RatchetTree, TreeError> {
@@ -127,6 +127,7 @@ impl RatchetTree {
             }
         }
 
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         // Build private tree
         let direct_path =
             treemath::direct_path_root(own_node_index, NodeIndex::from(nodes.len()).into())

@@ -26,7 +26,7 @@ macro_rules! key_package_generation {
             let credential =
                 Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
             let kpb = KeyPackageBundle::new(
-                &ciphersuite,
+                $ciphersuite,
                 signature_keypair.get_private_key(),
                 credential,
                 Vec::new(),
