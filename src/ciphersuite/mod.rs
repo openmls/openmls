@@ -353,6 +353,7 @@ impl AeadNonce {
     }
 
     /// Get a slice to the nonce value.
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }
