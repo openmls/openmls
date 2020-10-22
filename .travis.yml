@@ -6,6 +6,9 @@ rust:
 os:
   - linux
   - osx
+arch:
+  - amd64
+  - arm64
 
 matrix:
   allow_failures:
