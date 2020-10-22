@@ -24,9 +24,9 @@ pub trait Api: Sized {
     /// Create a new group.
     fn new(
         group_id: &[u8],
-        ciphersuite: Ciphersuite,
+        ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
-    ) -> MlsGroup;
+    ) -> Self;
     /// Join a group from a Welcome message
     fn new_from_welcome(
         welcome: Welcome,

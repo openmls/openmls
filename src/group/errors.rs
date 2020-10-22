@@ -43,6 +43,9 @@ pub enum ApplyCommitError {
     PlaintextSignatureFailure = 206,
     RequiredPathNotFound = 207,
     ConfirmationTagMismatch = 208,
+    MissingOwnKeyPackage = 209,
+    MissingProposal = 210,
+    OwnKeyNotFound = 211,
 }
 
 pub enum DecryptionError {
@@ -58,6 +61,7 @@ impl From<MLSCiphertextError> for DecryptionError {
 #[derive(Debug)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
+    OwnKeyNotFound = 301,
 }
 
 impl From<TreeError> for WelcomeError {
@@ -73,18 +77,15 @@ impl From<TreeError> for WelcomeError {
 
 // TODO: Should get fixed in #83
 impl From<ConfigError> for ApplyCommitError {
-    fn from(e: ConfigError) -> ApplyCommitError {
-        match e {
-            _ => ApplyCommitError::NoParentHashExtension,
-        }
+    // TODO: tbd in #83
+    fn from(_e: ConfigError) -> ApplyCommitError {
+        ApplyCommitError::NoParentHashExtension
     }
 }
 
 // TODO: Should get fixed in #83
 impl From<ExtensionError> for ApplyCommitError {
-    fn from(e: ExtensionError) -> ApplyCommitError {
-        match e {
-            _ => ApplyCommitError::NoParentHashExtension,
-        }
+    fn from(_e: ExtensionError) -> ApplyCommitError {
+        ApplyCommitError::NoParentHashExtension
     }
 }

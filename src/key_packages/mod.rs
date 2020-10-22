@@ -19,17 +19,33 @@ use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
 use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, ParentHashExtension,
+    CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
+    ParentHashExtension,
 };
 
 mod codec;
 
 mod test_key_packages;
 
+#[derive(Debug, PartialEq)]
+pub enum KeyPackageError {
+    ExtensionNotPresent,
+}
+
+impl From<ExtensionError> for KeyPackageError {
+    fn from(e: ExtensionError) -> Self {
+        match e {
+            // TODO: error handling #83
+            ExtensionError::InvalidExtensionType => KeyPackageError::ExtensionNotPresent,
+            ExtensionError::UnknownExtension => KeyPackageError::ExtensionNotPresent,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
     protocol_version: ProtocolVersion,
-    cipher_suite: Ciphersuite,
+    cipher_suite: CiphersuiteName,
     hpke_init_key: HPKEPublicKey,
     credential: Credential,
     extensions: Vec<Box<dyn Extension>>,
@@ -44,24 +60,23 @@ impl KeyPackage {
     /// Create a new key package but only with the given `extensions` for the
     /// given `ciphersuite` and `identity`, and the initial HPKE key pair `init_key`.
     fn new(
-        ciphersuite: Ciphersuite,
-        hpke_init_key: &HPKEPublicKey,
+        ciphersuite_name: CiphersuiteName,
+        hpke_init_key: HPKEPublicKey,
         signature_key: &SignaturePrivateKey,
         credential: Credential,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
-            cipher_suite: ciphersuite,
-            hpke_init_key: hpke_init_key.to_owned(),
+            cipher_suite: ciphersuite_name,
+            hpke_init_key,
             credential,
             extensions,
             signature: Signature::new_empty(),
         };
-        let payload = &key_package.unsigned_payload().unwrap();
-
-        key_package.signature = ciphersuite.sign(signature_key, payload).unwrap();
+        key_package.sign(&ciphersuite, signature_key);
         key_package
     }
 
@@ -73,14 +88,11 @@ impl KeyPackage {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
         for extension in self.extensions.iter() {
-            match mandatory_extensions_found
+            if let Some(p) = mandatory_extensions_found
                 .iter()
                 .position(|&e| e == extension.get_type())
             {
-                Some(p) => {
-                    let _ = mandatory_extensions_found.remove(p);
-                }
-                None => (),
+                let _ = mandatory_extensions_found.remove(p);
             }
             // Make sure the lifetime is valid.
             if extension.get_type() == ExtensionType::Lifetime {
@@ -102,7 +114,6 @@ impl KeyPackage {
         if !mandatory_extensions_found.is_empty() {
             return false;
         }
-        debug_assert_eq!(mandatory_extensions_found.len(), 0);
 
         // Verify the signature on this key package.
         self.credential
@@ -112,7 +123,7 @@ impl KeyPackage {
     /// Compute the hash of the encoding of this key package.
     pub(crate) fn hash(&self) -> Vec<u8> {
         let bytes = self.encode_detached().unwrap();
-        self.cipher_suite.hash(&bytes)
+        Ciphersuite::new(self.cipher_suite).hash(&bytes)
     }
 
     /// Get a reference to the extension of `extension_type`.
@@ -129,6 +140,15 @@ impl KeyPackage {
         None
     }
 
+    /// Get the ID of this key package as byte slice.
+    /// Returns an error if no Key ID extension is present.
+    pub fn get_id(&self) -> Result<&[u8], KeyPackageError> {
+        if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
+            return Ok(key_id_ext.to_key_id_extension_ref()?.as_slice());
+        }
+        Err(KeyPackageError::ExtensionNotPresent)
+    }
+
     /// Update the parent hash extension of this key package.
     pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
         self.remove_extension(ExtensionType::ParentHash);
@@ -137,12 +157,16 @@ impl KeyPackage {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub(crate) fn add_extension(&mut self, extension: Box<dyn Extension>) {
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
+    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
         self.remove_extension(extension.get_type());
         self.extensions.push(extension);
     }
 
     /// Remove an extension from the KeyPackage
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions.retain(|e| e.get_type() != extension_type);
     }
@@ -163,13 +187,19 @@ impl KeyPackage {
     }
 
     /// Get a reference to the `Ciphersuite`.
-    pub(crate) fn get_cipher_suite(&self) -> &Ciphersuite {
-        &self.cipher_suite
+    pub(crate) fn get_cipher_suite(&self) -> CiphersuiteName {
+        self.cipher_suite
     }
 
     /// Get a reference to the extensions of this key package.
     pub fn get_extensions_ref(&self) -> &[Box<dyn Extension>] {
         &self.extensions
+    }
+
+    /// Sign the key package.
+    pub(crate) fn sign(&mut self, ciphersuite: &Ciphersuite, signature_key: &SignaturePrivateKey) {
+        let payload = &self.unsigned_payload().unwrap();
+        self.signature = ciphersuite.sign(signature_key, payload).unwrap();
     }
 }
 
@@ -191,7 +221,7 @@ impl Signable for KeyPackage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,
@@ -205,18 +235,18 @@ impl KeyPackageBundle {
     ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new(
-        ciphersuite: &Ciphersuite,
+        ciphersuite_name: CiphersuiteName,
         signature_key: &SignaturePrivateKey,
         credential: Credential, // FIXME: must be reference
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        let keypair = ciphersuite.new_hpke_keypair();
+        let keypair = Ciphersuite::new(ciphersuite_name).new_hpke_keypair();
         Self::new_with_keypair(
-            &ciphersuite,
+            ciphersuite_name,
             signature_key,
             credential,
             extensions,
-            &keypair,
+            keypair,
         )
     }
 
@@ -225,27 +255,28 @@ impl KeyPackageBundle {
     ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
-        ciphersuite: &Ciphersuite,
+        ciphersuite_name: CiphersuiteName,
         signature_key: &SignaturePrivateKey,
         credential: Credential,
         extensions: Vec<Box<dyn Extension>>,
-        key_pair: &HPKEKeyPair,
+        key_pair: HPKEKeyPair,
     ) -> Self {
         // TODO: #85 this must be configurable.
         let mut final_extensions: Vec<Box<dyn Extension>> =
             vec![Box::new(CapabilitiesExtension::default())];
 
+        let (private_key, public_key) = key_pair.to_keys();
         final_extensions.extend_from_slice(&extensions);
         let key_package = KeyPackage::new(
-            *ciphersuite,
-            &key_pair.get_public_key(),
+            ciphersuite_name,
+            public_key,
             signature_key,
             credential,
             final_extensions,
         );
         KeyPackageBundle {
             key_package,
-            private_key: key_pair.get_private_key(),
+            private_key,
         }
     }
 
@@ -256,9 +287,30 @@ impl KeyPackageBundle {
         }
     }
 
+    /// Update the private key in the bundle.
+    pub(crate) fn _set_private_key(&mut self, private_key: HPKEPrivateKey) {
+        self.private_key = private_key;
+    }
+
+    /// Update the key package in the bundle.
+    pub(crate) fn _set_key_package(&mut self, key_package: KeyPackage) {
+        self.key_package = key_package;
+    }
+
+    /// Get the key package and HPKE private key separately.
+    /// Consumes self.
+    pub fn into_tuple(self) -> (HPKEPrivateKey, KeyPackage) {
+        (self.private_key, self.key_package)
+    }
+
     /// Get a reference to the `KeyPackage`.
     pub fn get_key_package(&self) -> &KeyPackage {
         &self.key_package
+    }
+
+    /// Get a reference to the `KeyPackage`.
+    pub fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
+        &mut self.key_package
     }
 
     /// Get a reference to the `HPKEPrivateKey`.

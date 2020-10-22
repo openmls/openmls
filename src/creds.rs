@@ -17,6 +17,8 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 
+use std::convert::TryFrom;
+
 #[derive(Clone)]
 pub struct Identity {
     pub id: Vec<u8>,
@@ -25,7 +27,8 @@ pub struct Identity {
 }
 
 impl Identity {
-    pub fn new(ciphersuite: Ciphersuite, id: Vec<u8>) -> Self {
+    pub fn new(ciphersuite_name: CiphersuiteName, id: Vec<u8>) -> Self {
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let keypair = ciphersuite.new_signature_keypair();
         Self {
             id,
@@ -78,32 +81,38 @@ impl Codec for Identity {
 }
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
-#[derive(Copy, Clone)]
-#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[repr(u16)]
 pub enum CredentialType {
-    Basic = 0,
-    X509 = 1,
-    Default = 255,
+    Reserved = 0,
+    Basic = 1,
+    X509 = 2,
 }
 
-impl From<u8> for CredentialType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u16> for CredentialType {
+    type Error = &'static str;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
-            0 => CredentialType::Basic,
-            1 => CredentialType::X509,
-            _ => CredentialType::Default,
+            1 => Ok(CredentialType::Basic),
+            2 => Ok(CredentialType::X509),
+            _ => Err("Undefined CredentialType"),
         }
     }
 }
 
 impl Codec for CredentialType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
+        (*self as u16).encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     Ok(CredentialType::from(u8::decode(cursor)?))
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        if let Ok(credential_type) = CredentialType::try_from(u16::decode(cursor)?) {
+            Ok(credential_type)
+        } else {
+            Err(CodecError::DecodingError)
+        }
+    }
 }
 
 /// Struct containing an X509 certificate chain, as per Spec.
@@ -112,7 +121,7 @@ pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
-/// This struct contains the different available certificates.
+/// This enum contains the different available credentials.
 #[derive(Debug, PartialEq, Clone)]
 pub enum MLSCredentialType {
     Basic(BasicCredential),
@@ -122,6 +131,7 @@ pub enum MLSCredentialType {
 /// Struct containing MLS credential data, where the data depends on the type.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Credential {
+    credential_type: CredentialType,
     credential: MLSCredentialType,
 }
 
@@ -135,15 +145,15 @@ impl Credential {
                 &basic_credential.public_key,
                 payload,
             ),
-            // TODO: implement verification for X509 certificates
+            // TODO: implement verification for X509 certificates. See issue #134.
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
-    // TODO: implement getter for identity for X509 certificates
     /// Get the identity of a given credential.
     pub fn get_identity(&self) -> &Vec<u8> {
         match &self.credential {
             MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
+            // TODO: implement getter for identity for X509 certificates. See issue #134.
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
@@ -152,6 +162,10 @@ impl Credential {
 impl From<MLSCredentialType> for Credential {
     fn from(mls_credential_type: MLSCredentialType) -> Self {
         Credential {
+            credential_type: match mls_credential_type {
+                MLSCredentialType::Basic(_) => CredentialType::Basic,
+                MLSCredentialType::X509(_) => CredentialType::X509,
+            },
             credential: mls_credential_type,
         }
     }
@@ -169,17 +183,22 @@ impl Codec for Credential {
         }
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let credential_type = CredentialType::from(u8::decode(cursor)?);
-    //     match credential_type {
-    //         CredentialType::Basic => Ok(Credential::Basic(BasicCredential::decode(cursor)?)),
-    //         _ => Err(CodecError::DecodingError),
-    //     }
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let credential_type = match CredentialType::try_from(u16::decode(cursor)?) {
+            Ok(c) => c,
+            Err(_) => return Err(CodecError::DecodingError),
+        };
+        match credential_type {
+            CredentialType::Basic => Ok(Credential::from(MLSCredentialType::Basic(
+                BasicCredential::decode(cursor)?,
+            ))),
+            _ => Err(CodecError::DecodingError),
+        }
+    }
 }
 
 // TODO: Drop ciphersuite
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct BasicCredential {
     pub identity: Vec<u8>,
     pub ciphersuite: Ciphersuite,
@@ -197,7 +216,7 @@ impl From<&Identity> for BasicCredential {
     fn from(identity: &Identity) -> Self {
         BasicCredential {
             identity: identity.id.clone(),
-            ciphersuite: identity.ciphersuite,
+            ciphersuite: identity.ciphersuite.clone(),
             public_key: identity.keypair.get_public_key().clone(),
         }
     }
@@ -210,16 +229,22 @@ impl Codec for BasicCredential {
         self.public_key.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let identity = decode_vec(VecSize::VecU16, cursor)?;
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let public_key = SignaturePublicKey::decode(cursor)?;
-    //     Ok(BasicCredential {
-    //         identity,
-    //         ciphersuite,
-    //         public_key,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let identity = decode_vec(VecSize::VecU16, cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
+        let public_key = SignaturePublicKey::decode(cursor)?;
+        Ok(BasicCredential {
+            identity,
+            ciphersuite,
+            public_key,
+        })
+    }
+}
+
+impl PartialEq for BasicCredential {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity == other.identity && self.public_key == other.public_key
+    }
 }
 
 #[test]

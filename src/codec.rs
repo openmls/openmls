@@ -19,17 +19,16 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CodecError {
     EncodingError,
     DecodingError,
 }
 
 impl From<ConfigError> for CodecError {
-    fn from(e: ConfigError) -> CodecError {
-        match e {
-            _ => CodecError::DecodingError,
-        }
+    // TODO: tbd in #83
+    fn from(_e: ConfigError) -> CodecError {
+        CodecError::DecodingError
     }
 }
 

@@ -30,17 +30,11 @@ impl MlsGroup {
         own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.get_ciphersuite();
+        let mut pending_kpbs = own_key_packages;
 
         // Verify epoch
         if mls_plaintext.epoch != self.group_context.epoch {
             return Err(ApplyCommitError::EpochMismatch);
-        }
-
-        // Create KeyPackageBundles
-        let mut pending_kpbs = vec![];
-        for kpb in own_key_packages {
-            let (pk, kp) = (kpb.private_key, kpb.key_package);
-            pending_kpbs.push(KeyPackageBundle::from_values(kp, pk));
         }
 
         // Extract Commit from MLSPlaintext
@@ -51,22 +45,22 @@ impl MlsGroup {
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 
-        // Organize proposals
-        let proposal_id_list = ProposalIDList {
-            updates: commit.updates.clone(),
-            removes: commit.removes.clone(),
-            adds: commit.adds.clone(),
-        };
-        let mut proposal_queue = ProposalQueue::new();
-        for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
-            proposal_queue.add(queued_proposal, &ciphersuite);
+        // Convert proposals in a more practical queue
+        let proposal_queue = ProposalQueue::new_from_committed_proposals(ciphersuite, proposals);
+
+        // Check that we have all proposals from the Commit
+        if !proposal_queue.contains(&commit.proposals) {
+            return Err(ApplyCommitError::MissingProposal);
         }
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
-        let (membership_changes, _invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &pending_kpbs);
+        let (path_required_by_commit, group_removed, _invited_members) = match provisional_tree
+            .apply_proposals(&commit.proposals, proposal_queue, &mut pending_kpbs)
+        {
+            Ok(res) => res,
+            Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
+        };
 
         // Check if we were removed from the group
         if group_removed {
@@ -91,11 +85,14 @@ impl MlsGroup {
             }
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles
-                let own_kpb = pending_kpbs
+                let own_kpb_index = match pending_kpbs
                     .iter()
-                    .find(|&kpb| kpb.get_key_package() == kp)
-                    .unwrap()
-                    .clone();
+                    .position(|kpb| kpb.get_key_package() == kp)
+                {
+                    Some(i) => i,
+                    None => return Err(ApplyCommitError::MissingOwnKeyPackage),
+                };
+                let own_kpb = pending_kpbs.remove(own_kpb_index);
                 provisional_tree
                     .replace_private_tree(own_kpb, &self.group_context.serialize())
                     .unwrap()
@@ -105,7 +102,7 @@ impl MlsGroup {
                     .unwrap()
             }
         } else {
-            if membership_changes.path_required() {
+            if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
             CommitSecret(zero(ciphersuite.hash_length()))
@@ -138,7 +135,7 @@ impl MlsGroup {
 
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
-            &mls_plaintext,
+            &MLSPlaintextCommitAuthData::from(&mls_plaintext),
             &confirmed_transcript_hash,
         );
 

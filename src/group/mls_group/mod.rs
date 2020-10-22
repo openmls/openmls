@@ -44,7 +44,11 @@ pub struct MlsGroup {
 }
 
 impl Api for MlsGroup {
-    fn new(id: &[u8], ciphersuite: Ciphersuite, key_package_bundle: KeyPackageBundle) -> MlsGroup {
+    fn new(
+        id: &[u8],
+        ciphersuite_name: CiphersuiteName,
+        key_package_bundle: KeyPackageBundle,
+    ) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
         let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, LeafIndex::from(1u32));
@@ -53,7 +57,7 @@ impl Api for MlsGroup {
             key_package_bundle.key_package,
         );
         let kpb = KeyPackageBundle::from_values(key_package, private_key);
-        let tree = RatchetTree::new(ciphersuite, kpb);
+        let tree = RatchetTree::new(ciphersuite_name, kpb);
         let group_context = GroupContext {
             group_id,
             epoch: GroupEpoch(0),
@@ -62,7 +66,7 @@ impl Api for MlsGroup {
         };
         let interim_transcript_hash = vec![];
         MlsGroup {
-            ciphersuite,
+            ciphersuite: Ciphersuite::new(ciphersuite_name),
             group_context,
             generation: 0,
             epoch_secrets,
@@ -321,10 +325,10 @@ fn update_confirmed_transcript_hash(
 
 fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
-    mls_plaintext: &MLSPlaintext,
+    mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Vec<u8> {
-    let commit_auth_data_bytes = &MLSPlaintextCommitAuthData::from(mls_plaintext).serialize();
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.serialize();
     ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
 }
 

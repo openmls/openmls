@@ -1,0 +1,13 @@
+{
+    "protocol_versions": [
+        1
+    ],
+    "ciphersuites": [
+        1
+    ],
+    "extensions": [
+        1,
+        2,
+        3
+    ]
+}

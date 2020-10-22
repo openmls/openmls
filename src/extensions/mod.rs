@@ -16,6 +16,7 @@
 
 use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
 use crate::errors::ConfigError;
+use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug};
 
 mod capabilities_extension;
@@ -25,7 +26,7 @@ mod parent_hash_extension;
 mod ratchet_tree_extension;
 
 pub use capabilities_extension::CapabilitiesExtension;
-pub(crate) use key_package_id_extension::KeyIDExtension;
+pub use key_package_id_extension::KeyIDExtension;
 pub(crate) use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
@@ -40,18 +41,15 @@ pub enum ExtensionError {
 }
 
 impl From<ExtensionError> for ConfigError {
-    fn from(e: ExtensionError) -> Self {
-        match e {
-            _ => ConfigError::InvalidConfig,
-        }
+    // TODO: tbd in #83
+    fn from(_e: ExtensionError) -> Self {
+        ConfigError::InvalidConfig
     }
 }
 
 impl From<ExtensionError> for CodecError {
-    fn from(e: ExtensionError) -> Self {
-        match e {
-            _ => CodecError::DecodingError,
-        }
+    fn from(_e: ExtensionError) -> Self {
+        CodecError::DecodingError
     }
 }
 
@@ -59,7 +57,7 @@ impl From<ExtensionError> for CodecError {
 ///
 /// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
 ///
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum ExtensionType {
     Reserved = 0,
@@ -185,8 +183,7 @@ pub(crate) fn extensions_vec_from_cursor(
         // Make sure there are no duplicate extensions.
         if result
             .iter()
-            .find(|e| e.get_type() == extension.extension_type)
-            .is_some()
+            .any(|e| e.get_type() == extension.extension_type)
         {
             return Err(CodecError::DecodingError);
         }
@@ -245,6 +242,16 @@ pub trait Extension: Debug + ExtensionHelper {
     /// that's not a `LifetimeExtension`.
     fn to_lifetime_extension_ref(&self) -> Result<&LifetimeExtension, ExtensionError> {
         match self.as_any().downcast_ref::<LifetimeExtension>() {
+            Some(e) => Ok(e),
+            None => Err(ExtensionError::InvalidExtensionType),
+        }
+    }
+
+    /// Get a reference to the `KeyIDExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `KeyIDExtension`.
+    fn to_key_id_extension_ref(&self) -> Result<&KeyIDExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<KeyIDExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),
         }

@@ -31,9 +31,9 @@ pub struct CapabilitiesExtension {
 impl Default for CapabilitiesExtension {
     fn default() -> Self {
         CapabilitiesExtension {
-            versions: Config::supported_versions(),
-            ciphersuites: Config::supported_ciphersuites(),
-            extensions: Config::supported_extensions(),
+            versions: Config::supported_versions().to_vec(),
+            ciphersuites: Config::supported_ciphersuites().to_vec(),
+            extensions: Config::supported_extensions().to_vec(),
         }
     }
 }

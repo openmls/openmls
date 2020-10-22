@@ -35,17 +35,10 @@ pub struct ManagedGroup {
 impl ManagedGroup {
     pub fn new(
         group_id: GroupId,
-        ciphersuite: Ciphersuite,
+        ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
     ) -> Self {
-        let group = MlsGroup::new(
-            &group_id.as_slice(),
-            ciphersuite,
-            KeyPackageBundle {
-                private_key: key_package_bundle.get_private_key().clone(),
-                key_package: key_package_bundle.get_key_package().clone(),
-            },
-        );
+        let group = MlsGroup::new(&group_id.as_slice(), ciphersuite_name, key_package_bundle);
 
         ManagedGroup {
             group,
@@ -61,14 +54,7 @@ impl ManagedGroup {
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
-        let group = MlsGroup::new_from_welcome(
-            welcome,
-            ratchet_tree,
-            KeyPackageBundle {
-                private_key: key_package_bundle.get_private_key().clone(),
-                key_package: key_package_bundle.get_key_package().clone(),
-            },
-        )?;
+        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle)?;
         Ok(ManagedGroup {
             group,
             generation: 0,
