@@ -135,7 +135,7 @@ impl MlsGroup {
 
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
-            &mls_plaintext,
+            &MLSPlaintextCommitAuthData::from(&mls_plaintext),
             &confirmed_transcript_hash,
         );
 

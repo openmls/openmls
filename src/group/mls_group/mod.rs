@@ -319,10 +319,10 @@ fn update_confirmed_transcript_hash(
 
 fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
-    mls_plaintext: &MLSPlaintext,
+    mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Vec<u8> {
-    let commit_auth_data_bytes = &MLSPlaintextCommitAuthData::from(mls_plaintext).serialize();
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.serialize();
     ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
 }
 
