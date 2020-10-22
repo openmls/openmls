@@ -108,7 +108,7 @@ impl Api for MlsGroup {
             aad,
             content,
             signature_key,
-            &self.get_context(),
+            &self.context(),
         )
     }
 
@@ -131,7 +131,7 @@ impl Api for MlsGroup {
             aad,
             content,
             signature_key,
-            &self.get_context(),
+            &self.context(),
         )
     }
 
@@ -156,7 +156,7 @@ impl Api for MlsGroup {
             aad,
             content,
             signature_key,
-            &self.get_context(),
+            &self.context(),
         )
     }
 
@@ -203,7 +203,7 @@ impl Api for MlsGroup {
             aad,
             content,
             signature_key,
-            &self.get_context(),
+            &self.context(),
         );
         self.encrypt(mls_plaintext)
     }
@@ -245,10 +245,10 @@ impl Api for MlsGroup {
     // Exporter
     fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
         mls_exporter(
-            self.get_ciphersuite(),
+            self.ciphersuite(),
             &self.epoch_secrets,
             label,
-            &self.get_context(),
+            &self.context(),
             key_length,
         )
     }
@@ -287,21 +287,21 @@ impl Codec for MlsGroup {
 }
 
 impl MlsGroup {
-    pub fn get_tree(&self) -> Ref<RatchetTree> {
+    pub fn tree(&self) -> Ref<RatchetTree> {
         self.tree.borrow()
     }
     fn get_sender_index(&self) -> LeafIndex {
         self.tree.borrow().get_own_node_index().into()
     }
-    pub(crate) fn get_ciphersuite(&self) -> &Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> &Ciphersuite {
         &self.ciphersuite
     }
 
-    pub(crate) fn get_context(&self) -> &GroupContext {
+    pub(crate) fn context(&self) -> &GroupContext {
         &self.group_context
     }
 
-    pub(crate) fn get_epoch_secrets(&self) -> &EpochSecrets {
+    pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
         &self.epoch_secrets
     }
 }

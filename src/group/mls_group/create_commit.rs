@@ -33,13 +33,13 @@ impl MlsGroup {
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        let ciphersuite = self.get_ciphersuite();
+        let ciphersuite = self.ciphersuite();
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filtered_proposals(
             ciphersuite,
             proposals,
-            LeafIndex::from(self.get_tree().get_own_node_index()),
-            self.get_tree().leaf_count(),
+            LeafIndex::from(self.tree().get_own_node_index()),
+            self.tree().leaf_count(),
         );
 
         let proposal_id_list = proposal_queue.get_proposal_id_list();
@@ -68,7 +68,7 @@ impl MlsGroup {
             (commit_secret, path_option, path_secrets)
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = CommitSecret(zero(self.get_ciphersuite().hash_length()));
+            let commit_secret = CommitSecret(zero(self.ciphersuite().hash_length()));
             (commit_secret, None, None)
         };
         // Create commit message
@@ -80,7 +80,7 @@ impl MlsGroup {
         let mut provisional_epoch = self.group_context.epoch;
         provisional_epoch.increment();
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
-            self.get_ciphersuite(),
+            self.ciphersuite(),
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
@@ -111,7 +111,7 @@ impl MlsGroup {
             aad,
             content,
             signature_key,
-            &self.get_context(),
+            &self.context(),
         );
         // Check if new members were added an create welcome message
         // TODO: Add support for extensions
