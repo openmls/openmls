@@ -5,6 +5,8 @@ use crate::tree::{index::LeafIndex, secret_tree::*};
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
 
+pub type RatchetSecrets = (AeadKey, AeadNonce);
+
 #[derive(Clone)]
 pub struct SenderRatchet {
     index: LeafIndex,
@@ -139,7 +141,7 @@ impl SenderRatchet {
             generation,
             ciphersuite.aead_key_length(),
         );
-        RatchetSecrets::new(AeadNonce::from_slice(&nonce), AeadKey::from_slice(&key))
+        (AeadKey::from_slice(&key), AeadNonce::from_slice(&nonce))
     }
     /// Gets the current generation
     pub(crate) fn get_generation(&self) -> u32 {

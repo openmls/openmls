@@ -475,12 +475,10 @@ impl AeadNonce {
     }
 
     /// Xor the first bytes of the nonce with the reuse_guard.
-    pub(crate) fn xor_with_reuse_guard(&self, reuse_guard: ReuseGuard) -> Self {
-        let mut xored_nonce = [];
+    pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: ReuseGuard) {
         for i in 0..REUSE_GUARD_BYTES {
-            xored_nonce[i] = &self.value[i] ^ &reuse_guard.0[i]
+            self.value[i] = self.value[i] ^ &reuse_guard.0[i]
         }
-        AeadNonce::from_slice(&xored_nonce)
     }
 }
 

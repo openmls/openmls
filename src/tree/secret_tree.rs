@@ -74,28 +74,6 @@ pub(crate) fn derive_tree_secret(
     hkdf_expand_label(ciphersuite, secret, label, &serialized_tree_context, length)
 }
 
-#[derive(Debug, PartialEq)]
-pub struct RatchetSecrets {
-    nonce: AeadNonce,
-    key: AeadKey,
-}
-
-impl RatchetSecrets {
-    pub(crate) fn new(nonce: AeadNonce, key: AeadKey) -> Self {
-        RatchetSecrets { nonce, key }
-    }
-
-    /// Get a reference to the key.
-    pub(crate) fn get_key(&self) -> &AeadKey {
-        &self.key
-    }
-
-    /// Get a reference to the nonce.
-    pub(crate) fn get_nonce(&self) -> &AeadNonce {
-        &self.nonce
-    }
-}
-
 pub struct TreeContext {
     node: u32,
     generation: u32,
@@ -255,7 +233,7 @@ impl SecretTree {
         index: LeafIndex,
         secret_type: SecretType,
         generation: u32,
-    ) -> Result<RatchetSecrets, SecretTreeError> {
+    ) -> Result<(AeadKey, AeadNonce), SecretTreeError> {
         // Check tree bounds
         if index >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
@@ -273,7 +251,7 @@ impl SecretTree {
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
         secret_type: SecretType,
-    ) -> (u32, RatchetSecrets) {
+    ) -> (u32, (AeadKey, AeadNonce)) {
         if self.get_ratchet_opt(index, secret_type).is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)
                 .expect("Index out of bounds");

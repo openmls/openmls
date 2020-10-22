@@ -183,7 +183,8 @@ impl MLSCiphertext {
         mls_plaintext: &MLSPlaintext,
         mls_group: &MlsGroup,
         generation: u32,
-        ratchet_secrets: &RatchetSecrets,
+        ratchet_key: AeadKey,
+        mut ratchet_nonce: AeadNonce,
     ) -> MLSCiphertext {
         const PADDING_SIZE: usize = 10;
 
@@ -226,15 +227,13 @@ impl MLSCiphertext {
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
         // Prepare the nonce by xoring with the reuse guard.
-        let ciphertext_nonce = ratchet_secrets
-            .get_nonce()
-            .xor_with_reuse_guard(reuse_guard);
+        ratchet_nonce.xor_with_reuse_guard(reuse_guard);
         let ciphertext = ciphersuite
             .aead_seal(
                 &mls_ciphertext_content.encode_detached().unwrap(),
                 &mls_ciphertext_content_aad_bytes,
-                ratchet_secrets.get_key(),
-                &ciphertext_nonce,
+                &ratchet_key,
+                &ratchet_nonce,
             )
             .unwrap();
         // Derive key from the key schedule using the ciphertext.
@@ -326,7 +325,7 @@ impl MLSCiphertext {
             Ok(secret_type) => secret_type,
             Err(_) => return Err(MLSCiphertextError::InvalidContentType),
         };
-        let ratchet_secrets = match secret_tree.get_secret_for_decryption(
+        let (ratchet_key, mut ratchet_nonce) = match secret_tree.get_secret_for_decryption(
             ciphersuite,
             sender_data.sender,
             secret_type,
@@ -335,9 +334,7 @@ impl MLSCiphertext {
             Ok(ratchet_secrets) => ratchet_secrets,
             Err(_) => return Err(MLSCiphertextError::GenerationOutOfBound),
         };
-        let ciphertext_nonce = ratchet_secrets
-            .get_nonce()
-            .xor_with_reuse_guard(sender_data.reuse_guard);
+        ratchet_nonce.xor_with_reuse_guard(sender_data.reuse_guard);
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
@@ -350,8 +347,8 @@ impl MLSCiphertext {
             .aead_open(
                 &self.ciphertext,
                 &mls_ciphertext_content_aad_bytes,
-                ratchet_secrets.get_key(),
-                &ciphertext_nonce,
+                &ratchet_key,
+                &ratchet_nonce,
             )
             .unwrap();
         let mls_ciphertext_content =
