@@ -29,8 +29,9 @@ fn padding() {
         let aad = randombytes(random_usize() % 1000);
         let encrypted_message = group_alice
             .create_application_message(&aad, &message, signature_keypair.get_private_key())
-            .as_slice();
-        let length = encrypted_message.len();
+            .ciphertext;
+        let ciphertext = encrypted_message.as_slice();
+        let length = ciphertext.len();
         let overflow = length % PADDING_SIZE;
         if overflow != 0 {
             panic!(

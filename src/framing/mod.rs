@@ -200,20 +200,10 @@ impl MLSCiphertext {
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap(); // TODO: error handling;
                                                                    // TODO: Clean this mess up
-        let padding_offset = context.group_id.encode_detached().unwrap().len()
-            + context.epoch.encode_detached().unwrap().len()
-            + mls_plaintext.content_type.encode_detached().unwrap().len()
-            + mls_plaintext.authenticated_data.len()
-            + 4
-            //+ sender_data_nonce.as_slice().len()
-            + 1
-            //+ encrypted_sender_data.len()
-            + 1
-            + mls_plaintext.content.encode_detached().unwrap().len()
+        let padding_offset = mls_plaintext.content.encode_detached().unwrap().len()
             + mls_plaintext.signature.encode_detached().unwrap().len()
             + 2
-            + TAG_BYTES
-            + 4;
+            + TAG_BYTES;
         let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
         if PADDING_SIZE == padding_length {
             padding_length = 0;
