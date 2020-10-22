@@ -18,7 +18,6 @@ macro_rules! test_welcome_msg {
                 epoch: GroupEpoch(123),
                 tree_hash: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 confirmed_transcript_hash: vec![1, 1, 1],
-                interim_transcript_hash: vec![2, 2, 2],
                 extensions: Vec::new(),
                 confirmation_tag: vec![6, 6, 6],
                 signer_index: LeafIndex::from(8u32),
