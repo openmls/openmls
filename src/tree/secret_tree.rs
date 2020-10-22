@@ -233,7 +233,7 @@ impl SecretTree {
         index: LeafIndex,
         secret_type: SecretType,
         generation: u32,
-    ) -> Result<(AeadKey, AeadNonce), SecretTreeError> {
+    ) -> Result<RatchetSecrets, SecretTreeError> {
         // Check tree bounds
         if index >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
@@ -251,7 +251,7 @@ impl SecretTree {
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
         secret_type: SecretType,
-    ) -> (u32, (AeadKey, AeadNonce)) {
+    ) -> (u32, RatchetSecrets) {
         if self.get_ratchet_opt(index, secret_type).is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)
                 .expect("Index out of bounds");
