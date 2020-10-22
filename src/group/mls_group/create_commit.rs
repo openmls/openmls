@@ -24,7 +24,6 @@ use crate::group::*;
 use crate::messages::*;
 use crate::tree::treemath;
 use crate::utils::*;
-use rayon::prelude::*;
 
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
@@ -181,7 +180,7 @@ impl MlsGroup {
             }
             // Encrypt group secrets
             let secrets = plaintext_secrets
-                .par_iter()
+                .iter()
                 .map(|(init_key, bytes, key_package_hash)| {
                     let encrypted_group_secrets = ciphersuite.hpke_seal(init_key, &[], &[], bytes);
                     EncryptedGroupSecrets {

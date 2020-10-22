@@ -46,8 +46,11 @@ fn test_codec() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let signature_keypair = ciphersuite.new_signature_keypair();
-    let identity =
-        Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
+    let identity = Identity::new_with_keypair(
+        ciphersuite.clone(),
+        vec![1, 2, 3],
+        signature_keypair.clone(),
+    );
     let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let mut kpb = KeyPackageBundle::new(
         ciphersuite_name,
@@ -57,7 +60,7 @@ fn test_codec() {
     );
 
     // Encode and decode the key package.
-    let enc = kpb.encode_detached().unwrap();
+    let enc = kpb.get_key_package().encode_detached().unwrap();
 
     // Decoding fails because this is not a valid key package
     let kp = KeyPackage::decode(&mut Cursor::new(&enc));
@@ -67,7 +70,7 @@ fn test_codec() {
     let kp = kpb.get_key_package_ref_mut();
     kp.add_extension(Box::new(LifetimeExtension::new(60)));
     kp.sign(&ciphersuite, signature_keypair.get_private_key());
-    let enc = kpb.encode_detached().unwrap();
+    let enc = kpb.get_key_package().encode_detached().unwrap();
 
     // Now it's valid.
     let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
@@ -79,8 +82,11 @@ fn key_package_id_extension() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let signature_keypair = ciphersuite.new_signature_keypair();
-    let identity =
-        Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
+    let identity = Identity::new_with_keypair(
+        ciphersuite.clone(),
+        vec![1, 2, 3],
+        signature_keypair.clone(),
+    );
     let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let mut kpb = KeyPackageBundle::new(
         ciphersuite_name,

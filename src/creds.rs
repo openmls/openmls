@@ -198,7 +198,7 @@ impl Codec for Credential {
 }
 
 // TODO: Drop ciphersuite
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct BasicCredential {
     pub identity: Vec<u8>,
     pub ciphersuite: Ciphersuite,
@@ -216,7 +216,7 @@ impl From<&Identity> for BasicCredential {
     fn from(identity: &Identity) -> Self {
         BasicCredential {
             identity: identity.id.clone(),
-            ciphersuite: identity.ciphersuite,
+            ciphersuite: identity.ciphersuite.clone(),
             public_key: identity.keypair.get_public_key().clone(),
         }
     }
@@ -238,6 +238,12 @@ impl Codec for BasicCredential {
             ciphersuite,
             public_key,
         })
+    }
+}
+
+impl PartialEq for BasicCredential {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity == other.identity && self.public_key == other.public_key
     }
 }
 
