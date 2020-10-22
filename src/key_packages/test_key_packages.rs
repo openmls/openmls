@@ -46,8 +46,11 @@ fn test_codec() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let signature_keypair = ciphersuite.new_signature_keypair();
-    let identity =
-        Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
+    let identity = Identity::new_with_keypair(
+        ciphersuite.clone(),
+        vec![1, 2, 3],
+        signature_keypair.clone(),
+    );
     let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let mut kpb = KeyPackageBundle::new(
         ciphersuite_name,
@@ -79,8 +82,11 @@ fn key_package_id_extension() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let signature_keypair = ciphersuite.new_signature_keypair();
-    let identity =
-        Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
+    let identity = Identity::new_with_keypair(
+        ciphersuite.clone(),
+        vec![1, 2, 3],
+        signature_keypair.clone(),
+    );
     let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
     let mut kpb = KeyPackageBundle::new(
         ciphersuite_name,

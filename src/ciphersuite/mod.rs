@@ -110,7 +110,7 @@ pub struct SignatureKeypair {
     public_key: SignaturePublicKey,
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
@@ -170,7 +170,7 @@ impl Ciphersuite {
             Err(e) => panic!("Key generation really shouldn't fail. {:?}", e),
         };
         SignatureKeypair {
-            ciphersuite: *self,
+            ciphersuite: self.clone(),
             private_key: SignaturePrivateKey { value: sk.to_vec() },
             public_key: SignaturePublicKey { value: pk.to_vec() },
         }
