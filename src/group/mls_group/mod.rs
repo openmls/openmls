@@ -104,7 +104,7 @@ impl Api for MlsGroup {
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
             &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
             signature_key,
@@ -127,7 +127,7 @@ impl Api for MlsGroup {
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
             &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
             signature_key,
@@ -152,7 +152,7 @@ impl Api for MlsGroup {
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
             &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
             signature_key,
@@ -199,7 +199,7 @@ impl Api for MlsGroup {
         let content = MLSPlaintextContentType::Application(msg.to_vec());
         let mls_plaintext = MLSPlaintext::new(
             &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
             signature_key,
@@ -290,7 +290,7 @@ impl MlsGroup {
     pub fn tree(&self) -> Ref<RatchetTree> {
         self.tree.borrow()
     }
-    fn get_sender_index(&self) -> LeafIndex {
+    fn sender_index(&self) -> LeafIndex {
         self.tree.borrow().get_own_node_index().into()
     }
     pub(crate) fn ciphersuite(&self) -> &Ciphersuite {

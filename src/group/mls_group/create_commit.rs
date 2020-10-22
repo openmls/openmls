@@ -44,7 +44,7 @@ impl MlsGroup {
 
         let proposal_id_list = proposal_queue.get_proposal_id_list();
 
-        let sender_index = self.get_sender_index();
+        let sender_index = self.sender_index();
         let mut provisional_tree = self.tree.borrow_mut();
 
         // Apply proposals to tree
