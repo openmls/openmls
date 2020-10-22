@@ -19,7 +19,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CodecError {
     EncodingError,
     DecodingError,

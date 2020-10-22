@@ -24,10 +24,15 @@ pub struct KeyIDExtension {
 
 impl KeyIDExtension {
     /// Create a new key identifier extension from a byte slice.
-    pub fn _new(id: &[u8]) -> Self {
+    pub fn new(id: &[u8]) -> Self {
         Self {
             key_id: id.to_vec(),
         }
+    }
+
+    /// Get the value of the key id as byte slice.
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        &self.key_id
     }
 }
 

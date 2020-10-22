@@ -19,12 +19,28 @@ use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
 use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, ParentHashExtension,
+    CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
+    ParentHashExtension,
 };
 
 mod codec;
 
 mod test_key_packages;
+
+#[derive(Debug, PartialEq)]
+pub enum KeyPackageError {
+    ExtensionNotPresent,
+}
+
+impl From<ExtensionError> for KeyPackageError {
+    fn from(e: ExtensionError) -> Self {
+        match e {
+            // TODO: error handling #83
+            ExtensionError::InvalidExtensionType => KeyPackageError::ExtensionNotPresent,
+            ExtensionError::UnknownExtension => KeyPackageError::ExtensionNotPresent,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
@@ -60,9 +76,7 @@ impl KeyPackage {
             extensions,
             signature: Signature::new_empty(),
         };
-        let payload = &key_package.unsigned_payload().unwrap();
-
-        key_package.signature = ciphersuite.sign(signature_key, payload).unwrap();
+        key_package.sign(&ciphersuite, signature_key);
         key_package
     }
 
@@ -100,7 +114,6 @@ impl KeyPackage {
         if !mandatory_extensions_found.is_empty() {
             return false;
         }
-        debug_assert_eq!(mandatory_extensions_found.len(), 0);
 
         // Verify the signature on this key package.
         self.credential
@@ -127,6 +140,15 @@ impl KeyPackage {
         None
     }
 
+    /// Get the ID of this key package as byte slice.
+    /// Returns an error if no Key ID extension is present.
+    pub fn get_id(&self) -> Result<&[u8], KeyPackageError> {
+        if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
+            return Ok(key_id_ext.to_key_id_extension_ref()?.as_slice());
+        }
+        Err(KeyPackageError::ExtensionNotPresent)
+    }
+
     /// Update the parent hash extension of this key package.
     pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
         self.remove_extension(ExtensionType::ParentHash);
@@ -135,12 +157,16 @@ impl KeyPackage {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub(crate) fn _add_extension(&mut self, extension: Box<dyn Extension>) {
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
+    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
         self.remove_extension(extension.get_type());
         self.extensions.push(extension);
     }
 
     /// Remove an extension from the KeyPackage
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions.retain(|e| e.get_type() != extension_type);
     }
@@ -168,6 +194,12 @@ impl KeyPackage {
     /// Get a reference to the extensions of this key package.
     pub fn get_extensions_ref(&self) -> &[Box<dyn Extension>] {
         &self.extensions
+    }
+
+    /// Sign the key package.
+    pub(crate) fn sign(&mut self, ciphersuite: &Ciphersuite, signature_key: &SignaturePrivateKey) {
+        let payload = &self.unsigned_payload().unwrap();
+        self.signature = ciphersuite.sign(signature_key, payload).unwrap();
     }
 }
 
