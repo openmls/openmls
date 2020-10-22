@@ -406,7 +406,7 @@ impl RatchetTree {
     ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
         // Generate new keypair
         let own_index = self.get_own_node_index();
-        let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().into_keys();
+        let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().to_keys();
 
         // Replace the init key in the current KeyPackage
         let key_package_bundle = {

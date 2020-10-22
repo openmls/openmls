@@ -57,7 +57,7 @@ fn test_codec() {
     );
 
     // Encode and decode the key package.
-    let enc = kpb.encode_detached().unwrap();
+    let enc = kpb.get_key_package().encode_detached().unwrap();
 
     // Decoding fails because this is not a valid key package
     let kp = KeyPackage::decode(&mut Cursor::new(&enc));
@@ -67,7 +67,7 @@ fn test_codec() {
     let kp = kpb.get_key_package_ref_mut();
     kp.add_extension(Box::new(LifetimeExtension::new(60)));
     kp.sign(&ciphersuite, signature_keypair.get_private_key());
-    let enc = kpb.encode_detached().unwrap();
+    let enc = kpb.get_key_package().encode_detached().unwrap();
 
     // Now it's valid.
     let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
