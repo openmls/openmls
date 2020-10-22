@@ -352,22 +352,10 @@ impl AeadNonce {
         AeadNonce { value: nonce }
     }
 
-    /// Generate a new random nonce.
-    pub(crate) fn random() -> Self {
-        Self {
-            value: get_random_array(),
-        }
-    }
-
-    /// Get a slice to the nonce value.
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
-    }
-
     /// Xor the first bytes of the nonce with the reuse_guard.
     pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: ReuseGuard) {
         for i in 0..REUSE_GUARD_BYTES {
-            self.value[i] = self.value[i] ^ &reuse_guard.0[i]
+            self.value[i] ^= reuse_guard.0[i]
         }
     }
 }
