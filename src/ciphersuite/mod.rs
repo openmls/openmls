@@ -110,10 +110,11 @@ pub struct SignatureKeypair {
     public_key: SignaturePublicKey,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
+    hpke: Hpke,
     hpke_kem: KemMode,
     hpke_kdf: HpkeKdfMode,
     hpke_aead: HpkeAeadMode,
@@ -122,15 +123,28 @@ pub struct Ciphersuite {
     hmac: HmacMode,
 }
 
+// Cloning a ciphersuite sets up a new one to make sure we don't accidentally
+// carry over anything we don"t want to.
+impl Clone for Ciphersuite {
+    fn clone(&self) -> Self {
+        Self::new(self.name)
+    }
+}
+
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
     pub fn new(name: CiphersuiteName) -> Self {
+        let hpke_kem = get_kem_from_suite(&name);
+        let hpke_kdf = get_hpke_kdf_from_suite(&name);
+        let hpke_aead = get_hpke_aead_from_suite(&name);
+
         Ciphersuite {
             name,
             signature: get_signature_from_suite(&name),
-            hpke_kem: get_kem_from_suite(&name),
-            hpke_kdf: get_hpke_kdf_from_suite(&name),
-            hpke_aead: get_hpke_aead_from_suite(&name),
+            hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
+            hpke_kem,
+            hpke_kdf,
+            hpke_aead,
             aead: get_aead_from_suite(&name),
             hash: get_hash_from_suite(&name),
             hmac: get_kdf_from_suite(&name),
@@ -259,9 +273,10 @@ impl Ciphersuite {
         aad: &[u8],
         ptxt: &[u8],
     ) -> HpkeCiphertext {
-        // TODO: put hpke in the ciphersuite.
-        let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
-        let (kem_output, ciphertext) = hpke.seal(&pk_r, info, aad, ptxt, None, None, None).unwrap();
+        let (kem_output, ciphertext) = self
+            .hpke
+            .seal(&pk_r, info, aad, ptxt, None, None, None)
+            .unwrap();
         HpkeCiphertext {
             kem_output,
             ciphertext,
@@ -276,32 +291,28 @@ impl Ciphersuite {
         info: &[u8],
         aad: &[u8],
     ) -> Vec<u8> {
-        // TODO: put hpke in the ciphersuite.
-        let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
-        hpke.open(
-            &input.kem_output,
-            &sk_r,
-            info,
-            aad,
-            &input.ciphertext,
-            None,
-            None,
-            None,
-        )
-        .unwrap()
+        self.hpke
+            .open(
+                &input.kem_output,
+                &sk_r,
+                info,
+                aad,
+                &input.ciphertext,
+                None,
+                None,
+                None,
+            )
+            .unwrap()
     }
 
     /// Generate a new HPKE key pair and return it.
     pub(crate) fn new_hpke_keypair(&self) -> HPKEKeyPair {
-        // TODO: put hpke in the ciphersuite.
-        let hpke = Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead);
-        hpke.generate_key_pair()
+        self.hpke.generate_key_pair()
     }
 
     /// Generate a new HPKE key pair and return it.
     pub(crate) fn derive_hpke_keypair(&self, ikm: &[u8]) -> HPKEKeyPair {
-        // TODO: put hpke in the ciphersuite.
-        Hpke::new(Mode::Base, self.hpke_kem, self.hpke_kdf, self.hpke_aead).derive_key_pair(ikm)
+        self.hpke.derive_key_pair(ikm)
     }
 }
 
