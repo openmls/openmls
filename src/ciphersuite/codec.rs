@@ -126,15 +126,11 @@ impl Codec for HpkeCiphertext {
 impl Codec for ReuseGuard {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         u32::from_be_bytes(self.0).encode(buffer)?;
-        //(u32::from self.0 as u32).encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let u32_guard: u32 = u32::decode(cursor)?;
         let guard: [u8; REUSE_GUARD_BYTES] = u32_guard.to_be_bytes();
-        //guard.copy_from_slice(u32_guard.to_be_bytes());
-        //let guard: [u8; REUSE_GUARD_BYTES] = u32_guard.to_be_bytes()[0..REUSE_GUARD_BYTES];
         Ok(ReuseGuard(guard))
-        //Ok(u32::from(u8::decode(cursor)?))
     }
 }
