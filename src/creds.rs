@@ -80,6 +80,10 @@ impl Codec for Identity {
     // }
 }
 
+enum CredentialError {
+    UnsupportedCredentialType,
+}
+
 /// Enum for Credential Types. We only need this for encoding/decoding.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u16)]
@@ -92,11 +96,11 @@ pub enum CredentialType {
 impl TryFrom<u16> for CredentialType {
     type Error = &'static str;
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self, CredentialError> {
         match value {
             1 => Ok(CredentialType::Basic),
             2 => Ok(CredentialType::X509),
-            _ => Err("Undefined CredentialType"),
+            _ => Err(CredentialError::UnsupportedCredentialType),
         }
     }
 }
@@ -258,4 +262,49 @@ fn test_protocol_version() {
     assert_eq!(default_e[0], default_version as u8);
     assert_eq!(mls10_e[0], 1);
     assert_eq!(default_e[0], 1);
+}
+
+/// This struct contains a credential and the corresponding private key.
+struct CredentialBundle {
+    credential: Credential,
+    signature_private_key: SignaturePrivateKey,
+}
+
+impl CredentialBundle {
+    /// Create a new `CredentialBundle` of the given credential type for the
+    /// given identity and ciphersuite. The corresponding `SignatureKeyPair` is
+    /// freshly generated.
+    pub fn new(
+        identity: Vec<u8>,
+        credential_type: CredentialType,
+        ciphersuite_name: CiphersuiteName,
+    ) -> Result<Self, CredentialError> {
+        let keypair = Ciphersuite::new(ciphersuite_name).new_signature_keypair();
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
+        let mls_credential = match credential_type {
+            CredentialType::Basic => Ok(BasicCredential {
+                identity,
+                ciphersuite,
+                public_key: keypair.get_public_key().clone(),
+            }),
+            _ => Err(CredentialError::UnsupportedCredentialType),
+        }?;
+        let credential = Credential {
+            credential_type,
+            credential: MLSCredentialType::Basic(mls_credential),
+        };
+        Ok(CredentialBundle {
+            credential,
+            signature_private_key: keypair.get_private_key().clone(),
+        })
+    }
+
+    /// Get a reference to the signature private key.
+    pub(crate) fn signature_private_key(&self) -> &SignaturePrivateKey {
+        &self.signature_private_key
+    }
+
+    pub fn credential(&self) -> &Credential {
+        &self.credential
+    }
 }
