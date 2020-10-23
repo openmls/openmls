@@ -217,7 +217,7 @@ impl MLSCiphertext {
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
         // Prepare the nonce by xoring with the reuse guard.
-        ratchet_nonce.xor_with_reuse_guard(reuse_guard);
+        ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         let ciphertext = ciphersuite
             .aead_seal(
                 &mls_ciphertext_content.encode_detached().unwrap(),
@@ -324,7 +324,7 @@ impl MLSCiphertext {
             Ok(ratchet_secrets) => ratchet_secrets,
             Err(_) => return Err(MLSCiphertextError::GenerationOutOfBound),
         };
-        ratchet_nonce.xor_with_reuse_guard(sender_data.reuse_guard);
+        ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
