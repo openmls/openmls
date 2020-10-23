@@ -59,8 +59,13 @@ fn context_presence() {
 
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
-    let identity = Identity::new(ciphersuite_name, "Random identity".into());
-    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
+
+    let credential_bundle = CredentialBundle::new(
+        "Random identity".into(),
+        CredentialType::Basic,
+        ciphersuite_name,
+    )
+    .unwrap();
     let sender = Sender {
         sender_type: SenderType::Member,
         sender: LeafIndex::from(2u32),
@@ -82,18 +87,15 @@ fn context_presence() {
     };
     let serialized_context = context.encode_detached().unwrap();
     let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.clone()));
-    orig.signature = signature_input.sign(
-        &ciphersuite,
-        identity.get_signature_key_pair().get_private_key(),
-    );
-    assert!(orig.verify(Some(serialized_context.clone()), &credential));
-    assert!(!orig.verify(None, &credential));
+    orig.signature = signature_input.sign(&ciphersuite, credential_bundle.signature_private_key());
+    assert!(orig.verify(
+        Some(serialized_context.clone()),
+        credential_bundle.credential()
+    ));
+    assert!(!orig.verify(None, credential_bundle.credential()));
 
     let signature_input = MLSPlaintextTBS::new_from(&orig, None);
-    orig.signature = signature_input.sign(
-        &ciphersuite,
-        identity.get_signature_key_pair().get_private_key(),
-    );
-    assert!(!orig.verify(Some(serialized_context), &credential));
-    assert!(orig.verify(None, &credential));
+    orig.signature = signature_input.sign(&ciphersuite, credential_bundle.signature_private_key());
+    assert!(!orig.verify(Some(serialized_context), credential_bundle.credential()));
+    assert!(orig.verify(None, credential_bundle.credential()));
 }

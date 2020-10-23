@@ -4,17 +4,10 @@ use crate::{extensions::*, key_packages::*};
 #[test]
 fn generate_key_package() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let ciphersuite = Ciphersuite::new(ciphersuite_name);
-    let signature_keypair = ciphersuite.new_signature_keypair();
-    let identity =
-        Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
-    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
-    let kpb = KeyPackageBundle::new(
-        ciphersuite_name,
-        signature_keypair.get_private_key(),
-        credential,
-        vec![],
-    );
+    let id = vec![1, 2, 3];
+    let credential_bundle =
+        CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
+    let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
     // This is invalid because the lifetime extension is missing.
     assert!(!kpb.get_key_package().verify());
 
@@ -22,8 +15,7 @@ fn generate_key_package() {
     let lifetime_extension = Box::new(LifetimeExtension::new(60));
     let kpb = KeyPackageBundle::new(
         ciphersuite_name,
-        signature_keypair.get_private_key(),
-        Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity))),
+        &credential_bundle,
         vec![lifetime_extension],
     );
     std::thread::sleep(std::time::Duration::from_secs(1));
@@ -33,8 +25,7 @@ fn generate_key_package() {
     let lifetime_extension = Box::new(LifetimeExtension::new(0));
     let kpb = KeyPackageBundle::new(
         ciphersuite_name,
-        signature_keypair.get_private_key(),
-        Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity))),
+        &credential_bundle,
         vec![lifetime_extension],
     );
     std::thread::sleep(std::time::Duration::from_secs(1));
@@ -45,19 +36,10 @@ fn generate_key_package() {
 fn test_codec() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
-    let signature_keypair = ciphersuite.new_signature_keypair();
-    let identity = Identity::new_with_keypair(
-        ciphersuite.clone(),
-        vec![1, 2, 3],
-        signature_keypair.clone(),
-    );
-    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
-    let mut kpb = KeyPackageBundle::new(
-        ciphersuite_name,
-        signature_keypair.get_private_key(),
-        credential,
-        Vec::new(),
-    );
+    let id = vec![1, 2, 3];
+    let credential_bundle =
+        CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
+    let mut kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
 
     // Encode and decode the key package.
     let enc = kpb.get_key_package().encode_detached().unwrap();
@@ -69,7 +51,7 @@ fn test_codec() {
     // Add lifetime extension to make it valid.
     let kp = kpb.get_key_package_ref_mut();
     kp.add_extension(Box::new(LifetimeExtension::new(60)));
-    kp.sign(&ciphersuite, signature_keypair.get_private_key());
+    kp.sign(&ciphersuite, credential_bundle.signature_private_key());
     let enc = kpb.get_key_package().encode_detached().unwrap();
 
     // Now it's valid.
@@ -81,17 +63,12 @@ fn test_codec() {
 fn key_package_id_extension() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
-    let signature_keypair = ciphersuite.new_signature_keypair();
-    let identity = Identity::new_with_keypair(
-        ciphersuite.clone(),
-        vec![1, 2, 3],
-        signature_keypair.clone(),
-    );
-    let credential = Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
+    let id = vec![1, 2, 3];
+    let credential_bundle =
+        CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
     let mut kpb = KeyPackageBundle::new(
         ciphersuite_name,
-        signature_keypair.get_private_key(),
-        credential,
+        &credential_bundle,
         vec![Box::new(LifetimeExtension::new(60))],
     );
     assert!(kpb.get_key_package().verify());
@@ -106,7 +83,7 @@ fn key_package_id_extension() {
 
     // Sign it to make it valid.
     kpb.get_key_package_ref_mut()
-        .sign(&ciphersuite, signature_keypair.get_private_key());
+        .sign(&ciphersuite, credential_bundle.signature_private_key());
     assert!(kpb.get_key_package().verify());
 
     // Check ID

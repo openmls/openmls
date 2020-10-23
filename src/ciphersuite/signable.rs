@@ -21,8 +21,8 @@ pub trait Signable: Sized {
     /// Verifies the payload against the given `id` and `signature`.
     ///
     /// Returns a `true` if the signature is valid and `false` otherwise.
-    fn verify(&self, id: &Identity, signature: &Signature) -> bool {
+    fn verify(&self, credential: &Credential, signature: &Signature) -> bool {
         let payload = self.unsigned_payload().unwrap();
-        id.verify(&payload, signature)
+        credential.verify(&payload, signature)
     }
 }

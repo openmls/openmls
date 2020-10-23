@@ -19,68 +19,8 @@ use crate::codec::*;
 
 use std::convert::TryFrom;
 
-#[derive(Clone)]
-pub struct Identity {
-    pub id: Vec<u8>,
-    pub ciphersuite: Ciphersuite,
-    keypair: SignatureKeypair,
-}
-
-impl Identity {
-    pub fn new(ciphersuite_name: CiphersuiteName, id: Vec<u8>) -> Self {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
-        let keypair = ciphersuite.new_signature_keypair();
-        Self {
-            id,
-            ciphersuite,
-            keypair,
-        }
-    }
-    pub fn new_with_keypair(
-        ciphersuite: Ciphersuite,
-        id: Vec<u8>,
-        keypair: SignatureKeypair,
-    ) -> Self {
-        Self {
-            id,
-            ciphersuite,
-            keypair,
-        }
-    }
-    pub fn sign(&self, payload: &[u8]) -> Signature {
-        self.ciphersuite
-            .sign(self.keypair.get_private_key(), payload)
-            .unwrap()
-    }
-    pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.ciphersuite
-            .verify(signature, self.keypair.get_public_key(), payload)
-    }
-    pub fn get_signature_key_pair(&self) -> &SignatureKeypair {
-        &self.keypair
-    }
-}
-
-impl Codec for Identity {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.id)?;
-        self.ciphersuite.encode(buffer)?;
-        self.keypair.encode(buffer)?;
-        Ok(())
-    }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let id = decode_vec(VecSize::VecU8, cursor)?;
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let keypair = SignatureKeypair::decode(cursor)?;
-    //     Ok(Identity {
-    //         id,
-    //         ciphersuite,
-    //         keypair,
-    //     })
-    // }
-}
-
-enum CredentialError {
+#[derive(Debug)]
+pub enum CredentialError {
     UnsupportedCredentialType,
 }
 
@@ -216,16 +156,6 @@ impl BasicCredential {
     }
 }
 
-impl From<&Identity> for BasicCredential {
-    fn from(identity: &Identity) -> Self {
-        BasicCredential {
-            identity: identity.id.clone(),
-            ciphersuite: identity.ciphersuite.clone(),
-            public_key: identity.keypair.get_public_key().clone(),
-        }
-    }
-}
-
 impl Codec for BasicCredential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
@@ -265,7 +195,7 @@ fn test_protocol_version() {
 }
 
 /// This struct contains a credential and the corresponding private key.
-struct CredentialBundle {
+pub struct CredentialBundle {
     credential: Credential,
     signature_private_key: SignaturePrivateKey,
 }
@@ -300,7 +230,7 @@ impl CredentialBundle {
     }
 
     /// Get a reference to the signature private key.
-    pub(crate) fn signature_private_key(&self) -> &SignaturePrivateKey {
+    pub fn signature_private_key(&self) -> &SignaturePrivateKey {
         &self.signature_private_key
     }
 

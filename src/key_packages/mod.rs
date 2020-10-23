@@ -236,18 +236,11 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new(
         ciphersuite_name: CiphersuiteName,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential, // FIXME: must be reference
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         let keypair = Ciphersuite::new(ciphersuite_name).new_hpke_keypair();
-        Self::new_with_keypair(
-            ciphersuite_name,
-            signature_key,
-            credential,
-            extensions,
-            keypair,
-        )
+        Self::new_with_keypair(ciphersuite_name, credential_bundle, extensions, keypair)
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -256,8 +249,7 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuite_name: CiphersuiteName,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential,
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
     ) -> Self {
@@ -270,8 +262,8 @@ impl KeyPackageBundle {
         let key_package = KeyPackage::new(
             ciphersuite_name,
             public_key,
-            signature_key,
-            credential,
+            credential_bundle.signature_private_key(),
+            credential_bundle.credential().clone(),
             final_extensions,
         );
         KeyPackageBundle {
