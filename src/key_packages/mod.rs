@@ -62,8 +62,7 @@ impl KeyPackage {
     fn new(
         ciphersuite_name: CiphersuiteName,
         hpke_init_key: HPKEPublicKey,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential,
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
@@ -72,11 +71,11 @@ impl KeyPackage {
             protocol_version: ProtocolVersion::default(),
             cipher_suite: ciphersuite_name,
             hpke_init_key,
-            credential,
+            credential: credential_bundle.credential().clone(),
             extensions,
             signature: Signature::new_empty(),
         };
-        key_package.sign(&ciphersuite, signature_key);
+        key_package.sign(&ciphersuite, credential_bundle.signature_private_key());
         key_package
     }
 
@@ -262,8 +261,7 @@ impl KeyPackageBundle {
         let key_package = KeyPackage::new(
             ciphersuite_name,
             public_key,
-            credential_bundle.signature_private_key(),
-            credential_bundle.credential().clone(),
+            credential_bundle,
             final_extensions,
         );
         KeyPackageBundle {
