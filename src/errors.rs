@@ -12,3 +12,9 @@ pub enum ConfigError {
     UnsupportedCiphersuite,
     ExpiredLifetimeExtension,
 }
+
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    DecodingError,
+    UnsupportedCiphersuite,
+}
