@@ -88,14 +88,14 @@ pub struct AeadKey {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct ReuseGuard {
-    reuse_guard: [u8; REUSE_GUARD_BYTES],
+    value: [u8; REUSE_GUARD_BYTES],
 }
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
     pub fn new_from_random() -> Self {
         let reuse_guard: [u8; REUSE_GUARD_BYTES] = random_u32().to_be_bytes();
-        ReuseGuard { reuse_guard }
+        ReuseGuard { value: reuse_guard }
     }
 }
 
@@ -363,7 +363,7 @@ impl AeadNonce {
     /// Xor the first bytes of the nonce with the reuse_guard.
     pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: &ReuseGuard) {
         for i in 0..REUSE_GUARD_BYTES {
-            self.value[i] ^= reuse_guard.reuse_guard[i]
+            self.value[i] ^= reuse_guard.value[i]
         }
     }
 }
