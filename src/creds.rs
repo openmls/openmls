@@ -96,11 +96,11 @@ pub enum CredentialType {
 impl TryFrom<u16> for CredentialType {
     type Error = &'static str;
 
-    fn try_from(value: u16) -> Result<Self, CredentialError> {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(CredentialType::Basic),
             2 => Ok(CredentialType::X509),
-            _ => Err(CredentialError::UnsupportedCredentialType),
+            _ => Err("Undefined CredentialType"),
         }
     }
 }
