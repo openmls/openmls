@@ -189,9 +189,9 @@ impl MLSCiphertext {
     ) -> MLSCiphertext {
         const PADDING_SIZE: usize = 10;
 
-        let ciphersuite = mls_group.get_ciphersuite();
-        let context = mls_group.get_context();
-        let epoch_secrets = mls_group.get_epoch_secrets();
+        let ciphersuite = mls_group.ciphersuite();
+        let context = mls_group.context();
+        let epoch_secrets = mls_group.epoch_secrets();
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
         let sender_data_key_bytes = hkdf_expand_label(
             ciphersuite,
