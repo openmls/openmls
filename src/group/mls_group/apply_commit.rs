@@ -29,7 +29,7 @@ impl MlsGroup {
         proposals: Vec<MLSPlaintext>,
         own_key_packages: Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
-        let ciphersuite = self.get_ciphersuite();
+        let ciphersuite = self.ciphersuite();
         let mut pending_kpbs = own_key_packages;
 
         // Verify epoch

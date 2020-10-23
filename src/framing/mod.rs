@@ -188,9 +188,9 @@ impl MLSCiphertext {
     ) -> MLSCiphertext {
         const PADDING_SIZE: usize = 10;
 
-        let ciphersuite = mls_group.get_ciphersuite();
-        let context = mls_group.get_context();
-        let epoch_secrets = mls_group.get_epoch_secrets();
+        let ciphersuite = mls_group.ciphersuite();
+        let context = mls_group.context();
+        let epoch_secrets = mls_group.epoch_secrets();
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: context.group_id.clone(),
             epoch: context.epoch,
