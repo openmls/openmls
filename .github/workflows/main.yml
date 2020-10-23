@@ -88,11 +88,7 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Stable with fuzz
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        components: fuzz
+    - name: Setup
+      run: cargo install cargo-fuzz
     - name: Fuzz Welcome
       run: cargo fuzz run welcome_fuzz_decode_target -- -runs=100000
