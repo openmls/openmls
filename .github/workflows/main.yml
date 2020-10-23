@@ -88,6 +88,11 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Nightly toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
     - name: Setup
       run: cargo install cargo-fuzz
     - name: Fuzz Welcome
