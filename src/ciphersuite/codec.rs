@@ -26,7 +26,7 @@ impl Codec for CiphersuiteName {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(CiphersuiteName::from(u16::decode(cursor)?))
+        Ok(CiphersuiteName::try_from(u16::decode(cursor)?)?)
     }
 }
 
@@ -36,9 +36,9 @@ impl Codec for Ciphersuite {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(Ciphersuite::new(CiphersuiteName::from(u16::decode(
+        Ok(Ciphersuite::new(CiphersuiteName::try_from(u16::decode(
             cursor,
-        )?)))
+        )?)?))
     }
 }
 
