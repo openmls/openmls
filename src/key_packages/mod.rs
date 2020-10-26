@@ -74,7 +74,7 @@ impl KeyPackage {
             extensions,
             signature: Signature::new_empty(),
         };
-        key_package.sign_self(&credential_bundle);
+        key_package.sign(&credential_bundle);
         key_package
     }
 
@@ -213,7 +213,7 @@ impl KeyPackage {
     }
 
     /// Populate the `signature` field using the `credential_bundle`.
-    pub(crate) fn sign_self(&mut self, credential_bundle: &CredentialBundle) {
+    pub(crate) fn sign(&mut self, credential_bundle: &CredentialBundle) {
         let payload = &self.unsigned_payload().unwrap();
         self.signature = credential_bundle.sign(payload).unwrap();
     }

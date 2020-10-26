@@ -49,7 +49,7 @@ fn test_codec() {
     // Add lifetime extension to make it valid.
     let kp = kpb.get_key_package_ref_mut();
     kp.add_extension(Box::new(LifetimeExtension::new(60)));
-    kp.sign_self(&credential_bundle);
+    kp.sign(&credential_bundle);
     let enc = kpb.get_key_package().encode_detached().unwrap();
 
     // Now it's valid.
@@ -79,7 +79,7 @@ fn key_package_id_extension() {
     assert!(!kpb.get_key_package().verify());
 
     // Sign it to make it valid.
-    kpb.get_key_package_ref_mut().sign_self(&credential_bundle);
+    kpb.get_key_package_ref_mut().sign(&credential_bundle);
     assert!(kpb.get_key_package().verify());
 
     // Check ID

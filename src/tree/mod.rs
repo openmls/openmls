@@ -427,7 +427,7 @@ impl RatchetTree {
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
-        key_package.sign_self(credential_bundle);
+        key_package.sign(credential_bundle);
 
         Ok((
             self.private_tree.get_commit_secret(),
