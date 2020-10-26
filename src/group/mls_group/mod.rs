@@ -21,6 +21,7 @@ mod new_from_welcome;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::creds::CredentialBundle;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -94,7 +95,7 @@ impl Api for MlsGroup {
     fn create_add_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
     ) -> MLSPlaintext {
         let add_proposal = AddProposal {
@@ -103,11 +104,10 @@ impl Api for MlsGroup {
         let proposal = Proposal::Add(add_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
-            &self.ciphersuite,
             self.sender_index(),
             aad,
             content,
-            signature_key,
+            credential_bundle,
             &self.context(),
         )
     }
@@ -119,18 +119,17 @@ impl Api for MlsGroup {
     fn create_update_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
     ) -> MLSPlaintext {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
-            &self.ciphersuite,
             self.sender_index(),
             aad,
             content,
-            signature_key,
+            credential_bundle,
             &self.context(),
         )
     }
@@ -142,7 +141,7 @@ impl Api for MlsGroup {
     fn create_remove_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
     ) -> MLSPlaintext {
         let remove_proposal = RemoveProposal {
@@ -151,11 +150,10 @@ impl Api for MlsGroup {
         let proposal = Proposal::Remove(remove_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
-            &self.ciphersuite,
             self.sender_index(),
             aad,
             content,
-            signature_key,
+            credential_bundle,
             &self.context(),
         )
     }
@@ -172,11 +170,11 @@ impl Api for MlsGroup {
     fn create_commit(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        self.create_commit_internal(aad, signature_key, proposals, force_self_update)
+        self.create_commit_internal(aad, credential_bundle, proposals, force_self_update)
     }
 
     // Apply a Commit message
@@ -194,15 +192,14 @@ impl Api for MlsGroup {
         &mut self,
         aad: &[u8],
         msg: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
     ) -> MLSCiphertext {
         let content = MLSPlaintextContentType::Application(msg.to_vec());
         let mls_plaintext = MLSPlaintext::new(
-            &self.ciphersuite,
             self.sender_index(),
             aad,
             content,
-            signature_key,
+            credential_bundle,
             &self.context(),
         );
         self.encrypt(mls_plaintext)

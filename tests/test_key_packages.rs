@@ -20,17 +20,10 @@ macro_rules! key_package_generation {
             let ciphersuite = Ciphersuite::new($ciphersuite);
             let supported_ciphersuites = Config::supported_ciphersuites();
             assert_eq!($supported, supported_ciphersuites.contains(&$ciphersuite));
-            let signature_keypair = ciphersuite.new_signature_keypair();
-            let identity =
-                Identity::new_with_keypair(ciphersuite, vec![1, 2, 3], signature_keypair.clone());
-            let credential =
-                Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
-            let kpb = KeyPackageBundle::new(
-                $ciphersuite,
-                signature_keypair.get_private_key(),
-                credential,
-                Vec::new(),
-            );
+            let id = vec![1, 2, 3];
+            let credential_bundle =
+                CredentialBundle::new(id, CredentialType::Basic, ciphersuite.get_name()).unwrap();
+            let kpb = KeyPackageBundle::new(ciphersuite.get_name(), &credential_bundle, Vec::new());
 
             let extensions = kpb.get_key_package().get_extensions_ref();
 

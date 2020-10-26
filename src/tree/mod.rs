@@ -400,7 +400,7 @@ impl RatchetTree {
     /// Update the private tree.
     pub(crate) fn refresh_private_tree(
         &mut self,
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         group_context: &[u8],
     ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
         // Generate new keypair
@@ -424,11 +424,10 @@ impl RatchetTree {
         )?;
 
         // Compute the parent hash extension and update the KeyPackage
-        let csuite = self.ciphersuite.clone();
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
-        key_package.sign(&csuite, signature_key);
+        key_package.sign(credential_bundle);
 
         Ok((
             self.private_tree.get_commit_secret(),
