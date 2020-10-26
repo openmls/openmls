@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::{signable::*, *};
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
@@ -194,14 +194,8 @@ impl KeyPackage {
         &self.extensions
     }
 
-    /// Populate the `signature` field using the `credential_bundle`.
-    pub(crate) fn sign_self(&mut self, credential_bundle: &CredentialBundle) {
-        let payload = &self.unsigned_payload().unwrap();
-        self.signature = credential_bundle.sign(payload).unwrap();
-    }
-}
-
-impl Signable for KeyPackage {
+    /// Compile the unsigned payload to create the signature required in the
+    /// signature field.
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
         self.protocol_version.encode(buffer)?;
@@ -216,6 +210,12 @@ impl Signable for KeyPackage {
             .collect();
         encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
         Ok(buffer.to_vec())
+    }
+
+    /// Populate the `signature` field using the `credential_bundle`.
+    pub(crate) fn sign_self(&mut self, credential_bundle: &CredentialBundle) {
+        let payload = &self.unsigned_payload().unwrap();
+        self.signature = credential_bundle.sign(payload).unwrap();
     }
 }
 
