@@ -150,7 +150,7 @@ impl Clone for Ciphersuite {
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
     pub fn new(name: CiphersuiteName) -> Self {
-        let hpke_kem = get_kem_from_suite(&name);
+        let hpke_kem = get_kem_from_suite(&name).unwrap();
         let hpke_kdf = get_hpke_kdf_from_suite(&name);
         let hpke_aead = get_hpke_aead_from_suite(&name);
 

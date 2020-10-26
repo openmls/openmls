@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::*;
+use crate::{ciphersuite::*, errors::Error};
+pub(crate) use std::convert::TryFrom;
 
 impl From<&CiphersuiteName> for u16 {
     fn from(s: &CiphersuiteName) -> u16 {
@@ -22,16 +23,18 @@ impl From<&CiphersuiteName> for u16 {
     }
 }
 
-impl From<u16> for CiphersuiteName {
-    fn from(v: u16) -> Self {
+impl TryFrom<u16> for CiphersuiteName {
+    type Error = Error;
+
+    fn try_from(v: u16) -> Result<Self, Self::Error> {
         match v {
-            0x0001 => CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            0x0002 => CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
-            0x0003 => CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            0x0004 => CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448,
-            0x0005 => CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521,
-            0x0006 => CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
-            _ => panic!("Not implemented."),
+            0x0001 => Ok(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
+            0x0002 => Ok(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256),
+            0x0003 => Ok(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
+            0x0004 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448),
+            0x0005 => Ok(CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521),
+            0x0006 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
+            _ => Err(Error::DecodingError),
         }
     }
 }
@@ -78,19 +81,20 @@ pub(crate) fn get_signature_from_suite(ciphersuite_name: &CiphersuiteName) -> Si
     }
 }
 
-pub(crate) fn get_kem_from_suite(ciphersuite_name: &CiphersuiteName) -> hpke::kem::Mode {
+pub(crate) fn get_kem_from_suite(
+    ciphersuite_name: &CiphersuiteName,
+) -> Result<hpke::kem::Mode, Error> {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
-            hpke::kem::Mode::DhKem25519
+            Ok(hpke::kem::Mode::DhKem25519)
         }
-        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => hpke::kem::Mode::DhKemP256,
+        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => {
+            Ok(hpke::kem::Mode::DhKemP256)
+        }
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            hpke::kem::Mode::DhKem25519
+            Ok(hpke::kem::Mode::DhKem25519)
         }
-        _ => panic!(
-            "KEM for ciphersuite {:?} is not implemented yet.",
-            ciphersuite_name
-        ),
+        _ => Err(Error::UnsupportedCiphersuite),
     }
 }
 
