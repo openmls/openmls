@@ -1,0 +1,36 @@
+
+[package]
+name = "maelstrom-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.3"
+
+[dependencies.maelstrom]
+path = ".."
+
+[patch.crates-io]
+evercrypt = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt" }
+evercrypt-sys = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt-sys" }
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "welcome_fuzz_decode_target"
+path = "fuzz_targets/welcome_fuzz_decode_target.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "decode_key_package_target"
+path = "fuzz_targets/decode_key_package_target.rs"
+test = false
+doc = false
