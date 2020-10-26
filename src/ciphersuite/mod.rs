@@ -355,7 +355,7 @@ impl Signature {
     pub(crate) fn new_empty() -> Signature {
         Signature { value: vec![] }
     }
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub(crate) fn _as_slice(&self) -> &[u8] {
         &self.value
     }
 }

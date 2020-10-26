@@ -31,6 +31,11 @@ use sender::*;
 #[cfg(test)]
 mod test_framing;
 
+#[derive(Debug)]
+pub enum MLSPlaintextError {
+    InvalidContentType,
+}
+#[derive(Debug)]
 pub enum MLSCiphertextError {
     InvalidContentType,
     GenerationOutOfBound,
@@ -111,6 +116,12 @@ impl MLSPlaintext {
     ) -> bool {
         let signature_input = MLSPlaintextTBS::new_from(&self, serialized_context_option);
         signature_input.verify(credential, &self.signature)
+    }
+    pub fn as_application_message(&self) -> Result<&[u8], MLSPlaintextError> {
+        match &self.content {
+            MLSPlaintextContentType::Application(message) => Ok(message),
+            _ => Err(MLSPlaintextError::InvalidContentType),
+        }
     }
 }
 

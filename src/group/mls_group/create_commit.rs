@@ -17,7 +17,6 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
-use crate::extensions::{Extension, RatchetTreeExtension};
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
@@ -45,7 +44,8 @@ impl MlsGroup {
         let proposal_id_list = proposal_queue.get_proposal_id_list();
 
         let sender_index = self.sender_index();
-        let mut provisional_tree = self.tree.borrow_mut();
+        // Make a copy of the current tree to apply proposals safely
+        let mut provisional_tree = self.tree().clone();
 
         // Apply proposals to tree
         let (path_required_by_commit, self_removed, invited_members) = match provisional_tree
@@ -63,7 +63,7 @@ impl MlsGroup {
         let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path_option, path_secrets) = provisional_tree
-                .refresh_private_tree(signature_key, &self.group_context.serialize())
+                .refresh_private_tree(signature_key, &self.context().serialize())
                 .unwrap();
             (commit_secret, path_option, path_secrets)
         } else {
@@ -116,9 +116,10 @@ impl MlsGroup {
         // Check if new members were added an create welcome message
         // TODO: Add support for extensions
         if !invited_members.is_empty() {
-            let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
-            let ratchet_tree_extension = public_tree.to_extension_struct();
-            let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
+            //let public_tree = RatchetTreeExtension::new(provisional_tree.get_public_key_tree());
+            //let ratchet_tree_extension = public_tree.to_extension_struct();
+            //let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
+            let tree_hash = provisional_tree.compute_tree_hash();
             // Create GroupInfo object
             let mut group_info = GroupInfo {
                 group_id: provisional_group_context.group_id.clone(),

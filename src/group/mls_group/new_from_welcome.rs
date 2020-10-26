@@ -112,8 +112,11 @@ impl MlsGroup {
                 .generate_path_keypairs(&ciphersuite, &common_path)
                 .unwrap();
 
-            // Merge new public keys into the tree.
-            tree.merge_public_keys(&new_public_keys, &common_path)?;
+            // Validate public keys
+            match tree.validate_public_keys(&new_public_keys, &common_path) {
+                Ok(_) => {}
+                Err(_) => return Err(WelcomeError::InvalidRatchetTree),
+            }
         }
 
         // Compute state

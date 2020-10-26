@@ -29,6 +29,18 @@ pub(crate) struct PrivateTree {
     path_secrets: PathSecrets,
 }
 
+impl Clone for PrivateTree {
+    fn clone(&self) -> PrivateTree {
+        PrivateTree {
+            node_index: self.node_index,
+            hpke_private_key: HPKEPrivateKey::new(self.get_hpke_private_key().as_slice().to_vec()),
+            path_keys: PathKeys::default(),
+            commit_secret: self.commit_secret.clone(),
+            path_secrets: self.path_secrets.clone(),
+        }
+    }
+}
+
 impl PrivateTree {
     /// Create a minimal `PrivateTree` setting only the private key.
     pub(crate) fn from_private_key(
@@ -42,18 +54,6 @@ impl PrivateTree {
             commit_secret: CommitSecret::default(),
             path_secrets: Vec::default(),
         }
-    }
-
-    /// Generate a new `PrivateTree` based on the input values.
-    pub(crate) fn new_raw(
-        ciphersuite: &Ciphersuite,
-        node_index: NodeIndex,
-        hpke_private_key: HPKEPrivateKey,
-        direct_path: &[NodeIndex],
-    ) -> Result<(Self, Vec<HPKEPublicKey>), TreeError> {
-        let mut out = Self::from_private_key(node_index, hpke_private_key);
-        let public_keys = out.update(ciphersuite, None, direct_path)?;
-        Ok((out, public_keys))
     }
 
     /// Update this tree with a new private key and path
@@ -134,13 +134,13 @@ impl PrivateTree {
     ) {
         let hash_len = ciphersuite.hash_length();
         let start_secret = match start_secret {
-            Some(secret) => hkdf_expand_label(ciphersuite, secret, "path", &[], hash_len),
+            Some(secret) => secret.to_vec(),
             None => self.hpke_private_key.as_slice().to_vec(),
         };
         let mut path_secrets = vec![start_secret];
-        for i in 0..n - 1 {
+        for i in 1..n {
             let path_secret =
-                hkdf_expand_label(ciphersuite, &path_secrets[i], "path", &[], hash_len);
+                hkdf_expand_label(ciphersuite, &path_secrets[i - 1], "path", &[], hash_len);
             path_secrets.push(path_secret);
         }
         self.path_secrets = path_secrets
@@ -211,7 +211,6 @@ impl PrivateTree {
         }
 
         // Store private keys.
-        println!("Path indices: {:?}", path);
         self.path_keys.add(private_keys, &path)?;
 
         // Return public keys.
