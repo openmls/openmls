@@ -21,7 +21,7 @@ use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
-use crate::tree::{index::*, node::*};
+use crate::tree::node::*;
 
 pub struct ManagedGroup {
     pub group: MlsGroup,
@@ -76,7 +76,7 @@ impl ManagedGroup {
     pub fn get_members(&self) -> Vec<Credential> {
         let mut members = Vec::new();
         for i in 0..self.group.get_tree().leaf_count().as_usize() {
-            let node = self.group.get_tree().nodes[NodeIndex::from(i).as_usize()].clone();
+            let node = self.group.get_tree().nodes[i].clone();
             let credential = node.key_package.unwrap().get_credential().clone();
             members.push(credential);
         }

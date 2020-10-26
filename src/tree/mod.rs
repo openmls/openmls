@@ -254,7 +254,7 @@ impl RatchetTree {
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
             let leaf_index = LeafIndex::from(i);
-            if self.nodes[NodeIndex::from(leaf_index).as_usize()].is_blank() {
+            if self.nodes[leaf_index].is_blank() {
                 free_leaves.push(NodeIndex::from(i));
             }
         }
@@ -376,8 +376,7 @@ impl RatchetTree {
         // Merge new nodes into the tree
         self.merge_direct_path_keys(update_path, sender_direct_path)?;
         self.merge_public_keys(&new_path_public_keys, &common_path)?;
-        self.nodes[NodeIndex::from(sender).as_usize()] =
-            Node::new_leaf(Some(update_path.leaf_key_package.clone()));
+        self.nodes[sender] = Node::new_leaf(Some(update_path.leaf_key_package.clone()));
         self.compute_parent_hash(NodeIndex::from(sender));
 
         // TODO: Do we really want to return the commit secret here?

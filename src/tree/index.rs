@@ -1,4 +1,5 @@
 use std::ops::Index;
+use std::ops::IndexMut;
 
 use crate::codec::*;
 
@@ -81,6 +82,12 @@ impl Index<LeafIndex> for Vec<Node> {
 
     fn index(&self, leaf_index: LeafIndex) -> &Self::Output {
         &self[leaf_index.as_usize() * 2]
+    }
+}
+
+impl IndexMut<LeafIndex> for Vec<Node> {
+    fn index_mut(&mut self, leaf_index: LeafIndex) -> &mut Self::Output {
+        &mut self[leaf_index.as_usize() * 2]
     }
 }
 
