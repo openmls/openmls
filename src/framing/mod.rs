@@ -186,8 +186,6 @@ impl MLSCiphertext {
         ratchet_key: AeadKey,
         mut ratchet_nonce: AeadNonce,
     ) -> MLSCiphertext {
-        const PADDING_SIZE: usize = 10;
-
         let ciphersuite = mls_group.ciphersuite();
         let context = mls_group.context();
         let epoch_secrets = mls_group.epoch_secrets();
@@ -199,28 +197,14 @@ impl MLSCiphertext {
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap(); // TODO: error handling;
-                                                                   // TODO: Clean this mess up
-        let padding_offset = mls_plaintext.content.encode_detached().unwrap().len()
-            + mls_plaintext.signature.encode_detached().unwrap().len()
-            + 2
-            + TAG_BYTES;
-        let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
-        if PADDING_SIZE == padding_length {
-            padding_length = 0;
-        }
-        let padding_block = vec![0u8; padding_length];
-        let mls_ciphertext_content = MLSCiphertextContent {
-            content: mls_plaintext.content.clone(),
-            signature: mls_plaintext.signature.clone(),
-            padding: padding_block,
-        };
+
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         let ciphertext = ciphersuite
             .aead_seal(
-                &mls_ciphertext_content.encode_detached().unwrap(),
+                &Self::encode_padded_ciphertext_content_detached(mls_plaintext).unwrap(),
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_key,
                 &ratchet_nonce,
@@ -360,6 +344,23 @@ impl MLSCiphertext {
         let serialized_context = context.encode_detached().unwrap();
         assert!(mls_plaintext.verify(Some(serialized_context), credential));
         Ok(mls_plaintext)
+    }
+
+    fn encode_padded_ciphertext_content_detached(
+        mls_plaintext: &MLSPlaintext,
+    ) -> Result<Vec<u8>, CodecError> {
+        let mut buffer = vec![];
+        mls_plaintext.content.encode(&mut buffer)?;
+        mls_plaintext.signature.encode(&mut buffer)?;
+        let padding_offset = buffer.len() + 2 + TAG_BYTES;
+        const PADDING_SIZE: usize = 10;
+        let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
+        if PADDING_SIZE == padding_length {
+            padding_length = 0;
+        }
+        let padding_block = vec![0u8; padding_length];
+        encode_vec(VecSize::VecU16, &mut buffer, &padding_block)?;
+        Ok(buffer)
     }
 }
 
