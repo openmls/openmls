@@ -9,16 +9,12 @@ pub trait Signable: Sized {
     /// Sign the payload with the given `id`.
     ///
     /// Returns a `Signature`.
-    fn sign(
-        &mut self,
-        ciphersuite: &Ciphersuite,
-        signature_key: &SignaturePrivateKey,
-    ) -> Signature {
+    fn sign(&self, credential_bundle: &CredentialBundle) -> Signature {
         let payload = self.unsigned_payload().unwrap();
-        ciphersuite.sign(signature_key, &payload).unwrap()
+        credential_bundle.sign(&payload).unwrap()
     }
 
-    /// Verifies the payload against the given `id` and `signature`.
+    /// Verifies the payload against the given `credential` and `signature`.
     ///
     /// Returns a `true` if the signature is valid and `false` otherwise.
     fn verify(&self, credential: &Credential, signature: &Signature) -> bool {

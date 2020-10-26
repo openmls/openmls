@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use evercrypt::prelude::SignatureError;
+
 use crate::ciphersuite::*;
 use crate::codec::*;
 
@@ -98,6 +100,14 @@ impl Credential {
         match &self.credential {
             MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
             // TODO: implement getter for identity for X509 certificates. See issue #134.
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+        }
+    }
+
+    /// Get the ciphersuite associated with the credential.
+    pub fn ciphersuite(&self) -> &Ciphersuite {
+        match &self.credential {
+            MLSCredentialType::Basic(basic_credential) => &basic_credential.ciphersuite,
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
@@ -209,13 +219,13 @@ impl CredentialBundle {
         credential_type: CredentialType,
         ciphersuite_name: CiphersuiteName,
     ) -> Result<Self, CredentialError> {
-        let keypair = Ciphersuite::new(ciphersuite_name).new_signature_keypair();
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
+        let (private_key, public_key) = ciphersuite.new_signature_keypair().as_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => Ok(BasicCredential {
                 identity,
                 ciphersuite,
-                public_key: keypair.get_public_key().clone(),
+                public_key,
             }),
             _ => Err(CredentialError::UnsupportedCredentialType),
         }?;
@@ -225,16 +235,18 @@ impl CredentialBundle {
         };
         Ok(CredentialBundle {
             credential,
-            signature_private_key: keypair.get_private_key().clone(),
+            signature_private_key: private_key,
         })
-    }
-
-    /// Get a reference to the signature private key.
-    pub fn signature_private_key(&self) -> &SignaturePrivateKey {
-        &self.signature_private_key
     }
 
     pub fn credential(&self) -> &Credential {
         &self.credential
+    }
+
+    /// Sign a `msg` using the private key of the credential bundle.
+    pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError> {
+        self.credential
+            .ciphersuite()
+            .sign(&self.signature_private_key, msg)
     }
 }

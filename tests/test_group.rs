@@ -43,21 +43,21 @@ fn create_commit_optional_path() {
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
         group_aad,
-        &alice_credential_bundle.signature_private_key(),
+        &bob_credential_bundle,
         bob_key_package.clone(),
     );
 
     // Alice updates
     let alice_update_proposal = group_alice_1234.create_update_proposal(
         group_aad,
-        &alice_credential_bundle.signature_private_key(),
+        &alice_credential_bundle,
         alice_update_key_package.clone(),
     );
 
     // Only AddProposals
     let (commit_mls_plaintext, _welcome_option) = match group_alice_1234.create_commit(
         group_aad,
-        &alice_credential_bundle.signature_private_key(),
+        &alice_credential_bundle,
         vec![bob_add_proposal.clone()],
         false,
     ) {
@@ -73,7 +73,7 @@ fn create_commit_optional_path() {
     // Only AddProposals with forced self update
     let (commit_mls_plaintext, _welcome_option) = match group_alice_1234.create_commit(
         group_aad,
-        &alice_credential_bundle.signature_private_key(),
+        &alice_credential_bundle,
         vec![bob_add_proposal],
         true,
     ) {
@@ -90,7 +90,7 @@ fn create_commit_optional_path() {
     // Own UpdateProposal
     let (commit_mls_plaintext, _welcome_option) = match group_alice_1234.create_commit(
         group_aad,
-        &alice_credential_bundle.signature_private_key(),
+        &alice_credential_bundle,
         vec![alice_update_proposal],
         true,
     ) {
@@ -136,12 +136,12 @@ fn basic_group_setup() {
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
         group_aad,
-        &alice_credential_bundle.signature_private_key(),
+        &alice_credential_bundle,
         bob_key_package.clone(),
     );
     let _commit = match group_alice_1234.create_commit(
         group_aad,
-        &alice_credential_bundle.signature_private_key(),
+        &alice_credential_bundle,
         vec![bob_add_proposal],
         true,
     ) {

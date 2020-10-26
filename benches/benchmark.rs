@@ -30,8 +30,8 @@ fn criterion_kp_bundle(c: &mut Criterion) {
 
         b.iter_with_setup(
             || {
-                let id = vec![1, 2, 3];
-                CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap()
+                CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite_name)
+                    .unwrap()
             },
             |credential_bundle: CredentialBundle| {
                 KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());

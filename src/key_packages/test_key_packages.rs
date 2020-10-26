@@ -4,9 +4,8 @@ use crate::{extensions::*, key_packages::*};
 #[test]
 fn generate_key_package() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let id = vec![1, 2, 3];
     let credential_bundle =
-        CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
+        CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite_name).unwrap();
     let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
     // This is invalid because the lifetime extension is missing.
     assert!(!kpb.get_key_package().verify());
@@ -35,7 +34,6 @@ fn generate_key_package() {
 #[test]
 fn test_codec() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let id = vec![1, 2, 3];
     let credential_bundle =
         CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
@@ -51,7 +49,7 @@ fn test_codec() {
     // Add lifetime extension to make it valid.
     let kp = kpb.get_key_package_ref_mut();
     kp.add_extension(Box::new(LifetimeExtension::new(60)));
-    kp.sign(&ciphersuite, credential_bundle.signature_private_key());
+    kp.sign_self(&credential_bundle);
     let enc = kpb.get_key_package().encode_detached().unwrap();
 
     // Now it's valid.
@@ -62,7 +60,6 @@ fn test_codec() {
 #[test]
 fn key_package_id_extension() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let id = vec![1, 2, 3];
     let credential_bundle =
         CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
@@ -82,8 +79,7 @@ fn key_package_id_extension() {
     assert!(!kpb.get_key_package().verify());
 
     // Sign it to make it valid.
-    kpb.get_key_package_ref_mut()
-        .sign(&ciphersuite, credential_bundle.signature_private_key());
+    kpb.get_key_package_ref_mut().sign_self(&credential_bundle);
     assert!(kpb.get_key_package().verify());
 
     // Check ID

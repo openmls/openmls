@@ -65,7 +65,6 @@ impl KeyPackage {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
@@ -75,7 +74,7 @@ impl KeyPackage {
             extensions,
             signature: Signature::new_empty(),
         };
-        key_package.sign(&ciphersuite, credential_bundle.signature_private_key());
+        key_package.sign_self(&credential_bundle);
         key_package
     }
 
@@ -195,10 +194,10 @@ impl KeyPackage {
         &self.extensions
     }
 
-    /// Sign the key package.
-    pub(crate) fn sign(&mut self, ciphersuite: &Ciphersuite, signature_key: &SignaturePrivateKey) {
+    /// Populate the `signature` field using the `credential_bundle`.
+    pub(crate) fn sign_self(&mut self, credential_bundle: &CredentialBundle) {
         let payload = &self.unsigned_payload().unwrap();
-        self.signature = ciphersuite.sign(signature_key, payload).unwrap();
+        self.signature = credential_bundle.sign(payload).unwrap();
     }
 }
 

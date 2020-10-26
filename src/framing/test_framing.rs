@@ -23,7 +23,9 @@ fn codec() {
 
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
-    let keypair = ciphersuite.new_signature_keypair();
+    let credential_bundle =
+        CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.get_name())
+            .unwrap();
     let sender = Sender {
         sender_type: SenderType::Member,
         sender: LeafIndex::from(2u32),
@@ -45,7 +47,7 @@ fn codec() {
     };
     let serialized_context = context.encode_detached().unwrap();
     let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context));
-    orig.signature = signature_input.sign(&ciphersuite, &keypair.get_private_key());
+    orig.signature = signature_input.sign(&credential_bundle);
 
     let enc = orig.encode_detached().unwrap();
     let copy = MLSPlaintext::from_bytes(&enc).unwrap();
@@ -58,8 +60,6 @@ fn context_presence() {
     use crate::ciphersuite::*;
 
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let ciphersuite = Ciphersuite::new(ciphersuite_name);
-
     let credential_bundle = CredentialBundle::new(
         "Random identity".into(),
         CredentialType::Basic,
@@ -87,7 +87,7 @@ fn context_presence() {
     };
     let serialized_context = context.encode_detached().unwrap();
     let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.clone()));
-    orig.signature = signature_input.sign(&ciphersuite, credential_bundle.signature_private_key());
+    orig.signature = signature_input.sign(&credential_bundle);
     assert!(orig.verify(
         Some(serialized_context.clone()),
         credential_bundle.credential()
@@ -95,7 +95,7 @@ fn context_presence() {
     assert!(!orig.verify(None, credential_bundle.credential()));
 
     let signature_input = MLSPlaintextTBS::new_from(&orig, None);
-    orig.signature = signature_input.sign(&ciphersuite, credential_bundle.signature_private_key());
+    orig.signature = signature_input.sign(&credential_bundle);
     assert!(!orig.verify(Some(serialized_context), credential_bundle.credential()));
     assert!(orig.verify(None, credential_bundle.credential()));
 }
