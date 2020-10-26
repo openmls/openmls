@@ -99,7 +99,7 @@ impl ReuseGuard {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct AeadNonce {
     value: [u8; NONCE_BYTES],
 }
@@ -403,4 +403,24 @@ fn test_sign_verify() {
         .sign(keypair.get_private_key(), payload)
         .unwrap();
     assert!(ciphersuite.verify(&signature, keypair.get_public_key(), payload));
+}
+
+/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
+/// it has changed, xoring it again and testing that it's back in its original
+/// state.
+#[test]
+fn test_xor() {
+    let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
+    let original_nonce = AeadNonce::from_slice(get_random_vec(NONCE_BYTES).as_slice());
+    let mut nonce = original_nonce.clone();
+    nonce.xor_with_reuse_guard(&reuse_guard);
+    assert_ne!(
+        original_nonce, nonce,
+        "xoring with reuse_guard did not change the nonce"
+    );
+    nonce.xor_with_reuse_guard(&reuse_guard);
+    assert_eq!(
+        original_nonce, nonce,
+        "xoring twice changed the original value"
+    );
 }
