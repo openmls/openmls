@@ -224,7 +224,7 @@ impl Api for MlsGroup {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
-            let node = &tree.nodes[NodeIndex::from(i).as_usize()];
+            let node = &tree.nodes[i];
             let credential = if let Some(kp) = &node.key_package {
                 kp.get_credential()
             } else {
