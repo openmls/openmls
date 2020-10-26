@@ -16,10 +16,6 @@ fn create_commit_optional_path() {
     let bob_credential_bundle =
         CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite_name).unwrap();
 
-    // Signature keys, will be addressd in
-    let alice_signature_key = &alice_identity.get_signature_key_pair().get_private_key();
-    let bob_signature_key = &bob_identity.get_signature_key_pair().get_private_key();
-
     // Mandatory extensions, will be fixed in #164
     let capabilities_extension = Box::new(CapabilitiesExtension::default());
     let lifetime_extension = Box::new(LifetimeExtension::new(60));
@@ -42,7 +38,7 @@ fn create_commit_optional_path() {
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
         ciphersuite_name,
-        &alice_credential_bundle
+        &alice_credential_bundle,
         mandatory_extensions,
     );
     let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
@@ -62,7 +58,7 @@ fn create_commit_optional_path() {
     let (mls_plaintext_commit, _welcome_bundle_alice_bob_option) = match group_alice_1234
         .create_commit(
             group_aad,
-            alice_signature_key,
+            &alice_credential_bundle,
             epoch_proposals,
             true, /* force self-update */
         ) {
@@ -85,7 +81,7 @@ fn create_commit_optional_path() {
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option) = match group_alice_1234
         .create_commit(
             group_aad,
-             &alice_credential_bundle,
+            &alice_credential_bundle,
             epoch_proposals.clone(),
             false, /* don't force selfupdate */
         ) {
@@ -123,7 +119,7 @@ fn create_commit_optional_path() {
     // Alice updates
     let alice_update_proposal = group_alice_1234.create_update_proposal(
         group_aad,
-        alice_signature_key,
+        &alice_credential_bundle,
         alice_update_key_package.clone(),
     );
     let proposals = vec![alice_update_proposal];
@@ -222,16 +218,10 @@ fn group_operations() {
         let group_aad = b"Alice's test group";
 
         // Define identities
-        let alice_identity = Identity::new(ciphersuite_name, "Alice".into());
-        let bob_identity = Identity::new(ciphersuite_name, "Bob".into());
-
-        // Define credentials
-        let alice_credential = BasicCredential::from(&alice_identity);
-        let bob_credential = BasicCredential::from(&bob_identity);
-
-        // Signature keys
-        let alice_signature_key = &alice_identity.get_signature_key_pair().get_private_key();
-        let bob_signature_key = &bob_identity.get_signature_key_pair().get_private_key();
+        let alice_credential_bundle =
+            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite_name).unwrap();
+        let bob_credential_bundle =
+            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite_name).unwrap();
 
         // Mandatory extensions
         let capabilities_extension = Box::new(CapabilitiesExtension::default());
@@ -242,15 +232,13 @@ fn group_operations() {
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
             ciphersuite_name,
-            alice_signature_key,
-            Credential::from(MLSCredentialType::Basic(alice_credential)),
+            &alice_credential_bundle,
             mandatory_extensions.clone(),
         );
 
         let bob_key_package_bundle = KeyPackageBundle::new(
             ciphersuite_name,
-            bob_signature_key,
-            Credential::from(MLSCredentialType::Basic(bob_credential)),
+            &bob_credential_bundle,
             mandatory_extensions,
         );
         let bob_key_package = bob_key_package_bundle.get_key_package();
@@ -263,14 +251,14 @@ fn group_operations() {
         // Alice adds Bob
         let bob_add_proposal = group_alice_1234.create_add_proposal(
             group_aad,
-            alice_signature_key,
+            &alice_credential_bundle,
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option) = match group_alice_1234
             .create_commit(
                 group_aad,
-                alice_signature_key,
+                &alice_credential_bundle,
                 epoch_proposals.clone(),
                 false, // TODO force update seems broken
             ) {
@@ -308,8 +296,11 @@ fn group_operations() {
 
         // Alice sends a message to Bob
         let message_alice = [1, 2, 3];
-        let mls_ciphertext_alice =
-            group_alice_1234.create_application_message(&[], &message_alice, &alice_signature_key);
+        let mls_ciphertext_alice = group_alice_1234.create_application_message(
+            &[],
+            &message_alice,
+            &alice_credential_bundle,
+        );
         let mls_plaintext_bob = match group_bob.decrypt(mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
