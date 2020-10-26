@@ -18,11 +18,11 @@ fn create_commit_optional_path() {
     let alice_credential = BasicCredential::from(&alice_identity);
     let bob_credential = BasicCredential::from(&bob_identity);
 
-    // Signature keys
+    // Signature keys, will be addressd in
     let alice_signature_key = &alice_identity.get_signature_key_pair().get_private_key();
     let bob_signature_key = &bob_identity.get_signature_key_pair().get_private_key();
 
-    // Mandatory extensions
+    // Mandatory extensions, will be fixed in #164
     let capabilities_extension = Box::new(CapabilitiesExtension::default());
     let lifetime_extension = Box::new(LifetimeExtension::new(60));
     let mandatory_extensions: Vec<Box<dyn Extension>> =
@@ -65,8 +65,12 @@ fn create_commit_optional_path() {
     );
     let epoch_proposals = vec![bob_add_proposal];
     let (mls_plaintext_commit, _welcome_bundle_alice_bob_option) = match group_alice_1234
-        .create_commit(group_aad, alice_signature_key, epoch_proposals, true)
-    {
+        .create_commit(
+            group_aad,
+            alice_signature_key,
+            epoch_proposals,
+            true, /* force self-update */
+        ) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
@@ -88,7 +92,7 @@ fn create_commit_optional_path() {
             group_aad,
             alice_signature_key,
             epoch_proposals.clone(),
-            false,
+            false, /* don't force selfupdate */
         ) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
@@ -213,106 +217,117 @@ fn basic_group_setup() {
 }
 
 #[test]
+/// This test simulates various group operations like Add, Update, Remove in a small group
 fn group_operations() {
     use maelstrom::extensions::*;
     use maelstrom::utils::*;
-    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let group_aad = b"Alice's test group";
+    //let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let supported_ciphersuites = vec![
+        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+    ];
 
-    // Define identities
-    let alice_identity = Identity::new(ciphersuite_name, "Alice".into());
-    let bob_identity = Identity::new(ciphersuite_name, "Bob".into());
+    for ciphersuite_name in supported_ciphersuites {
+        let group_aad = b"Alice's test group";
 
-    // Define credentials
-    let alice_credential = BasicCredential::from(&alice_identity);
-    let bob_credential = BasicCredential::from(&bob_identity);
+        // Define identities
+        let alice_identity = Identity::new(ciphersuite_name, "Alice".into());
+        let bob_identity = Identity::new(ciphersuite_name, "Bob".into());
 
-    // Signature keys
-    let alice_signature_key = &alice_identity.get_signature_key_pair().get_private_key();
-    let bob_signature_key = &bob_identity.get_signature_key_pair().get_private_key();
+        // Define credentials
+        let alice_credential = BasicCredential::from(&alice_identity);
+        let bob_credential = BasicCredential::from(&bob_identity);
 
-    // Mandatory extensions
-    let capabilities_extension = Box::new(CapabilitiesExtension::default());
-    let lifetime_extension = Box::new(LifetimeExtension::new(60));
-    let mandatory_extensions: Vec<Box<dyn Extension>> =
-        vec![capabilities_extension, lifetime_extension];
+        // Signature keys
+        let alice_signature_key = &alice_identity.get_signature_key_pair().get_private_key();
+        let bob_signature_key = &bob_identity.get_signature_key_pair().get_private_key();
 
-    // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
-        alice_signature_key,
-        Credential::from(MLSCredentialType::Basic(alice_credential)),
-        mandatory_extensions.clone(),
-    );
+        // Mandatory extensions
+        let capabilities_extension = Box::new(CapabilitiesExtension::default());
+        let lifetime_extension = Box::new(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Box<dyn Extension>> =
+            vec![capabilities_extension, lifetime_extension];
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
-        bob_signature_key,
-        Credential::from(MLSCredentialType::Basic(bob_credential)),
-        mandatory_extensions,
-    );
-    let bob_key_package = bob_key_package_bundle.get_key_package();
+        // Generate KeyPackages
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            ciphersuite_name,
+            alice_signature_key,
+            Credential::from(MLSCredentialType::Basic(alice_credential)),
+            mandatory_extensions.clone(),
+        );
 
-    // Alice creates a group
-    let group_id = [1, 2, 3, 4];
-    let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            ciphersuite_name,
+            bob_signature_key,
+            Credential::from(MLSCredentialType::Basic(bob_credential)),
+            mandatory_extensions,
+        );
+        let bob_key_package = bob_key_package_bundle.get_key_package();
 
-    // Alice adds Bob
-    let bob_add_proposal = group_alice_1234.create_add_proposal(
-        group_aad,
-        alice_signature_key,
-        bob_key_package.clone(),
-    );
-    let epoch_proposals = vec![bob_add_proposal];
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option) = match group_alice_1234
-        .create_commit(
+        // Alice creates a group
+        let group_id = [1, 2, 3, 4];
+        let mut group_alice_1234 =
+            MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+
+        // Alice adds Bob
+        let bob_add_proposal = group_alice_1234.create_add_proposal(
             group_aad,
             alice_signature_key,
-            epoch_proposals.clone(),
-            false, // TODO force update seems broken
+            bob_key_package.clone(),
+        );
+        let epoch_proposals = vec![bob_add_proposal];
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option) = match group_alice_1234
+            .create_commit(
+                group_aad,
+                alice_signature_key,
+                epoch_proposals.clone(),
+                false, // TODO force update seems broken
+            ) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
+        let commit = match &mls_plaintext_commit.content {
+            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            _ => panic!(),
+        };
+        assert!(commit.path.is_none());
+
+        match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, vec![]) {
+            Ok(_) => {}
+            Err(e) => panic!("Error applying commit: {:?}", e),
+        };
+        let ratchet_tree = group_alice_1234.tree().get_public_key_tree();
+
+        let mut group_bob = match MlsGroup::new_from_welcome(
+            welcome_bundle_alice_bob_option.unwrap(),
+            Some(ratchet_tree),
+            bob_key_package_bundle,
         ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
-    let commit = match &mls_plaintext_commit.content {
-        MLSPlaintextContentType::Commit((commit, _)) => commit,
-        _ => panic!(),
-    };
-    assert!(commit.path.is_none());
+            Ok(group) => group,
+            Err(e) => panic!("Error creating group from Welcome: {:?}", e),
+        };
 
-    match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, vec![]) {
-        Ok(_) => {}
-        Err(e) => panic!("Error applying commit: {:?}", e),
-    };
-    let ratchet_tree = group_alice_1234.tree().get_public_key_tree();
+        // Make sure that both groups have the same public tree
+        if group_alice_1234.tree().get_public_key_tree()
+            != group_alice_1234.tree().get_public_key_tree()
+        {
+            _print_tree(&group_alice_1234.tree(), "Alice added Bob");
+            panic!("Different public trees");
+        }
 
-    let mut group_bob = match MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
-        Some(ratchet_tree),
-        bob_key_package_bundle,
-    ) {
-        Ok(group) => group,
-        Err(e) => panic!("Error creating group from Welcome: {:?}", e),
-    };
-
-    assert_eq!(
-        group_alice_1234.tree().get_public_key_tree(),
-        group_alice_1234.tree().get_public_key_tree()
-    );
-    _print_tree(&group_alice_1234.tree(), "Alice added Bob");
-
-    // Alice sends a message to Bob
-    let message_alice = [1, 2, 3];
-    let mls_ciphertext_alice =
-        group_alice_1234.create_application_message(&[], &message_alice, &alice_signature_key);
-    let mls_plaintext_bob = match group_bob.decrypt(mls_ciphertext_alice) {
-        Ok(mls_plaintext) => mls_plaintext,
-        Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
-    };
-    assert_eq!(
-        message_alice,
-        mls_plaintext_bob.as_application_message().unwrap()
-    );
+        // Alice sends a message to Bob
+        let message_alice = [1, 2, 3];
+        let mls_ciphertext_alice =
+            group_alice_1234.create_application_message(&[], &message_alice, &alice_signature_key);
+        let mls_plaintext_bob = match group_bob.decrypt(mls_ciphertext_alice) {
+            Ok(mls_plaintext) => mls_plaintext,
+            Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
+        };
+        assert_eq!(
+            message_alice,
+            mls_plaintext_bob.as_application_message().unwrap()
+        );
+    }
 }
 /*
     // Bob updates and commits

@@ -116,9 +116,6 @@ impl MlsGroup {
         // Check if new members were added an create welcome message
         // TODO: Add support for extensions
         if !invited_members.is_empty() {
-            //let public_tree = RatchetTreeExtension::new(provisional_tree.get_public_key_tree());
-            //let ratchet_tree_extension = public_tree.to_extension_struct();
-            //let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
             let tree_hash = provisional_tree.compute_tree_hash();
             // Create GroupInfo object
             let mut group_info = GroupInfo {

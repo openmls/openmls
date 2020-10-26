@@ -11,7 +11,7 @@ use crate::errors::ConfigError;
 use crate::extensions::ExtensionType;
 
 lazy_static! {
-    static ref CONFIG: Config = {
+    pub static ref CONFIG: Config = {
         if let Ok(path) = env::var("OPENMLS_CONFIG") {
             let file = match File::open(path) {
                 Ok(f) => f,
@@ -50,6 +50,18 @@ pub struct Config {
     protocol_versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<CiphersuiteName>,
     extensions: Vec<ExtensionType>,
+}
+
+impl Config {
+    pub fn get_protocol_version_ref(&self) -> &[ProtocolVersion] {
+        &self.protocol_versions
+    }
+    pub fn get_ciphersuites_ref(&self) -> &[CiphersuiteName] {
+        &self.ciphersuites
+    }
+    pub fn get_extensions_ref(&self) -> &[ExtensionType] {
+        &self.extensions
+    }
 }
 
 /// # Protocol Version

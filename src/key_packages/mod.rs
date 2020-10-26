@@ -88,6 +88,7 @@ impl KeyPackage {
     /// * verify that the signature on this key package is valid
     /// * verify that all mandatory extensions are present
     /// * make sure that the lifetime is valid
+    /// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise
     pub fn verify(&self) -> Result<(), KeyPackageError> {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();

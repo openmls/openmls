@@ -35,6 +35,7 @@ pub struct RatchetTreeExtension {
 }
 
 impl RatchetTreeExtension {
+    // Not needed now, but will be when we support this extension
     pub fn _new(tree: Vec<Option<Node>>) -> Self {
         RatchetTreeExtension { tree }
     }
