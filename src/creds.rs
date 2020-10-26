@@ -222,13 +222,13 @@ impl CredentialBundle {
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let (private_key, public_key) = ciphersuite.new_signature_keypair().as_tuple();
         let mls_credential = match credential_type {
-            CredentialType::Basic => Ok(BasicCredential {
+            CredentialType::Basic => BasicCredential {
                 identity,
                 ciphersuite,
                 public_key,
-            }),
-            _ => Err(CredentialError::UnsupportedCredentialType),
-        }?;
+            },
+            _ => return Err(CredentialError::UnsupportedCredentialType),
+        };
         let credential = Credential {
             credential_type,
             credential: MLSCredentialType::Basic(mls_credential),
