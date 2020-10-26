@@ -1,4 +1,8 @@
+use std::ops::Index;
+
 use crate::codec::*;
+
+use super::node::Node;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash, Default)]
 pub struct NodeIndex(u32);
@@ -69,6 +73,14 @@ impl From<usize> for LeafIndex {
 impl From<NodeIndex> for LeafIndex {
     fn from(tree_index: NodeIndex) -> LeafIndex {
         LeafIndex((tree_index.as_u32() + 1) / 2)
+    }
+}
+
+impl Index<LeafIndex> for Vec<Node> {
+    type Output = Node;
+
+    fn index(&self, leaf_index: LeafIndex) -> &Self::Output {
+        &self[leaf_index.as_usize() * 2]
     }
 }
 
