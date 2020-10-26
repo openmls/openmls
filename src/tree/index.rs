@@ -80,6 +80,10 @@ impl From<NodeIndex> for LeafIndex {
 impl Index<LeafIndex> for Vec<Node> {
     type Output = Node;
 
+    /// This converts a `LeafIndex`, which points to a particular leaf in the
+    /// vector of leaves in a tree, to a `NodeIndex`, i.e. it makes it point the
+    /// same leaf, but in the array representing the tree as opposed to the one
+    /// only containing the leaves.
     fn index(&self, leaf_index: LeafIndex) -> &Self::Output {
         &self[leaf_index.as_usize() * 2]
     }
