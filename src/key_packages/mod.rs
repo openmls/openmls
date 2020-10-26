@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::{signable::*, *};
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
@@ -66,21 +66,19 @@ impl KeyPackage {
     fn new(
         ciphersuite_name: CiphersuiteName,
         hpke_init_key: HPKEPublicKey,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential,
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
             cipher_suite: ciphersuite_name,
             hpke_init_key,
-            credential,
+            credential: credential_bundle.credential().clone(),
             extensions,
             signature: Signature::new_empty(),
         };
-        key_package.sign(&ciphersuite, signature_key);
+        key_package.sign(&credential_bundle);
         key_package
     }
 
@@ -208,14 +206,8 @@ impl KeyPackage {
         &self.extensions
     }
 
-    /// Sign the key package.
-    pub(crate) fn sign(&mut self, ciphersuite: &Ciphersuite, signature_key: &SignaturePrivateKey) {
-        let payload = &self.unsigned_payload().unwrap();
-        self.signature = ciphersuite.sign(signature_key, payload).unwrap();
-    }
-}
-
-impl Signable for KeyPackage {
+    /// Compile the unsigned payload to create the signature required in the
+    /// signature field.
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
         self.protocol_version.encode(buffer)?;
@@ -230,6 +222,12 @@ impl Signable for KeyPackage {
             .collect();
         encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
         Ok(buffer.to_vec())
+    }
+
+    /// Populate the `signature` field using the `credential_bundle`.
+    pub(crate) fn sign(&mut self, credential_bundle: &CredentialBundle) {
+        let payload = &self.unsigned_payload().unwrap();
+        self.signature = credential_bundle.sign(payload).unwrap();
     }
 }
 
@@ -248,18 +246,11 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new(
         ciphersuite_name: CiphersuiteName,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential, // FIXME: must be reference
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         let keypair = Ciphersuite::new(ciphersuite_name).new_hpke_keypair();
-        Self::new_with_keypair(
-            ciphersuite_name,
-            signature_key,
-            credential,
-            extensions,
-            keypair,
-        )
+        Self::new_with_keypair(ciphersuite_name, credential_bundle, extensions, keypair)
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -268,8 +259,7 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuite_name: CiphersuiteName,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential,
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
     ) -> Self {
@@ -282,8 +272,7 @@ impl KeyPackageBundle {
         let key_package = KeyPackage::new(
             ciphersuite_name,
             public_key,
-            signature_key,
-            credential,
+            credential_bundle,
             final_extensions,
         );
         KeyPackageBundle {

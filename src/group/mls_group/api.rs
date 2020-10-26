@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use crate::creds::CredentialBundle;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -40,28 +41,28 @@ pub trait Api: Sized {
     fn create_add_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
     ) -> MLSPlaintext;
     /// Create an `UpdateProposal`
     fn create_update_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
     ) -> MLSPlaintext;
     /// Create a `RemoveProposal`
     fn create_remove_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
     ) -> MLSPlaintext;
     /// Create a `Commit` and an optional `Welcome`
     fn create_commit(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult;
@@ -79,7 +80,7 @@ pub trait Api: Sized {
         &mut self,
         aad: &[u8],
         msg: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
     ) -> MLSCiphertext;
 
     /// Encrypt an MLS message

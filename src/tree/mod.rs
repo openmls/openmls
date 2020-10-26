@@ -245,7 +245,7 @@ impl RatchetTree {
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
             let leaf_index = LeafIndex::from(i);
-            if self.nodes[NodeIndex::from(leaf_index).as_usize()].is_blank() {
+            if self.nodes[leaf_index].is_blank() {
                 free_leaves.push(NodeIndex::from(i));
             }
         }
@@ -366,12 +366,9 @@ impl RatchetTree {
         }
 
         // Merge new nodes into the tree
-        self.merge_direct_path_keys(update_path, sender_direct_path.clone())
-            .unwrap();
-        self.merge_public_keys(common_public_keys, &sender_direct_path)
-            .unwrap();
-        self.nodes[NodeIndex::from(sender).as_usize()] =
-            Node::new_leaf(Some(update_path.leaf_key_package.clone()));
+        self.merge_direct_path_keys(update_path, sender_direct_path)?;
+        self.merge_public_keys(&new_path_public_keys, &common_path)?;
+        self.nodes[sender] = Node::new_leaf(Some(update_path.leaf_key_package.clone()));
         self.compute_parent_hash(NodeIndex::from(sender));
 
         // TODO: Do we really want to return the commit secret here?
@@ -395,7 +392,7 @@ impl RatchetTree {
     /// Update the private tree.
     pub(crate) fn refresh_private_tree(
         &mut self,
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         group_context: &[u8],
     ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
         // Generate new keypair
@@ -421,11 +418,10 @@ impl RatchetTree {
             .unwrap();
 
         // Compute the parent hash extension and update the KeyPackage
-        let csuite = self.ciphersuite.clone();
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
-        key_package.sign(&csuite, signature_key);
+        key_package.sign(credential_bundle);
         path.leaf_key_package = key_package.clone();
 
         Ok((

@@ -17,6 +17,8 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
+use crate::creds::CredentialBundle;
+use crate::extensions::{Extension, RatchetTreeExtension};
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
@@ -28,7 +30,7 @@ impl MlsGroup {
     pub(crate) fn create_commit_internal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult {
@@ -63,7 +65,7 @@ impl MlsGroup {
         let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path_option, path_secrets) = provisional_tree
-                .refresh_private_tree(signature_key, &self.context().serialize())
+                .refresh_private_tree(credential_bundle, &self.group_context.serialize())
                 .unwrap();
             (commit_secret, path_option, path_secrets)
         } else {
@@ -106,11 +108,10 @@ impl MlsGroup {
         // Create MLSPlaintext
         let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));
         let mls_plaintext = MLSPlaintext::new(
-            ciphersuite,
             sender_index,
             aad,
             content,
-            signature_key,
+            credential_bundle,
             &self.context(),
         );
         // Check if new members were added an create welcome message
@@ -128,7 +129,7 @@ impl MlsGroup {
                 signer_index: sender_index,
                 signature: Signature::new_empty(),
             };
-            group_info.signature = group_info.sign(ciphersuite, signature_key);
+            group_info.signature = group_info.sign(credential_bundle);
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) =
                 compute_welcome_key_nonce(ciphersuite, &epoch_secret);

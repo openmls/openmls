@@ -54,11 +54,10 @@ pub struct MLSPlaintext {
 
 impl MLSPlaintext {
     pub fn new(
-        ciphersuite: &Ciphersuite,
         sender: LeafIndex,
         authenticated_data: &[u8],
         content: MLSPlaintextContentType,
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         context: &GroupContext,
     ) -> Self {
         let sender = Sender {
@@ -75,7 +74,7 @@ impl MLSPlaintext {
             signature: Signature::new_empty(),
         };
         let serialized_context = context.encode_detached().unwrap();
-        mls_plaintext.sign(ciphersuite, signature_key, Some(serialized_context));
+        mls_plaintext.sign(credential_bundle, Some(serialized_context));
         mls_plaintext
     }
     // XXX: Only used in tests right now.
@@ -102,12 +101,11 @@ impl MLSPlaintext {
     }
     pub fn sign(
         &mut self,
-        ciphersuite: &Ciphersuite,
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         serialized_context_option: Option<Vec<u8>>,
     ) {
         let signature_input = MLSPlaintextTBS::new_from(&self, serialized_context_option);
-        self.signature = signature_input.sign(ciphersuite, signature_key);
+        self.signature = signature_input.sign(credential_bundle);
     }
     pub fn verify(
         &self,
@@ -520,13 +518,9 @@ impl MLSPlaintextTBS {
             payload: mls_plaintext.content.clone(),
         }
     }
-    pub fn sign(
-        &self,
-        ciphersuite: &Ciphersuite,
-        signature_key: &SignaturePrivateKey,
-    ) -> Signature {
+    pub fn sign(&self, credential_bundle: &CredentialBundle) -> Signature {
         let bytes = self.encode_detached().unwrap();
-        ciphersuite.sign(signature_key, &bytes).unwrap()
+        credential_bundle.sign(&bytes).unwrap()
     }
     pub fn verify(&self, credential: &Credential, signature: &Signature) -> bool {
         let bytes = self.encode_detached().unwrap();
