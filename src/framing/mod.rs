@@ -353,6 +353,7 @@ impl MLSCiphertext {
         mls_plaintext.content.encode(&mut buffer)?;
         mls_plaintext.signature.encode(&mut buffer)?;
         let padding_offset = buffer.len() + 2 + TAG_BYTES;
+        // TODO: The PADDING SIZE should be retrieved from the config.
         const PADDING_SIZE: usize = 10;
         let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
         if PADDING_SIZE == padding_length {
