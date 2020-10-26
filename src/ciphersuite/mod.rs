@@ -376,7 +376,7 @@ impl SignatureKeypair {
     }
 
     /// Get the private and public key objects
-    pub fn as_tuple(self) -> (SignaturePrivateKey, SignaturePublicKey) {
+    pub fn into_tuple(self) -> (SignaturePrivateKey, SignaturePublicKey) {
         (self.private_key, self.public_key)
     }
 }

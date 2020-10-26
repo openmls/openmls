@@ -220,7 +220,7 @@ impl CredentialBundle {
         ciphersuite_name: CiphersuiteName,
     ) -> Result<Self, CredentialError> {
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
-        let (private_key, public_key) = ciphersuite.new_signature_keypair().as_tuple();
+        let (private_key, public_key) = ciphersuite.new_signature_keypair().into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity,
