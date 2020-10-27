@@ -72,7 +72,7 @@ pub trait Api: Sized {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: Vec<KeyPackageBundle>,
+        own_key_packages: &mut Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError>;
 
     /// Create application message
