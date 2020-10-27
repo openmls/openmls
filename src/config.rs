@@ -11,7 +11,7 @@ use crate::errors::ConfigError;
 use crate::extensions::ExtensionType;
 
 lazy_static! {
-    pub static ref CONFIG: Config = {
+     static ref CONFIG: Config = {
         if let Ok(path) = env::var("OPENMLS_CONFIG") {
             let file = match File::open(path) {
                 Ok(f) => f,

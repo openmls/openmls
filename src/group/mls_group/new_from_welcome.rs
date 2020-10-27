@@ -113,9 +113,11 @@ impl MlsGroup {
                 .unwrap();
 
             // Validate public keys
-            match tree.validate_public_keys(&new_public_keys, &common_path) {
-                Ok(_) => {}
-                Err(_) => return Err(WelcomeError::InvalidRatchetTree),
+            if tree
+                .validate_public_keys(&new_public_keys, &common_path)
+                .is_err()
+            {
+                return Err(WelcomeError::InvalidRatchetTree);
             }
         }
 

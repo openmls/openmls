@@ -129,7 +129,7 @@ fn create_commit_optional_path() {
         group_aad,
         &alice_credential_bundle,
         proposals.clone(),
-        false,
+        false, /* force self update */
     ) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
@@ -152,10 +152,9 @@ fn create_commit_optional_path() {
         }
     */
 
-    match group_bob_1234.apply_commit(commit_mls_plaintext, proposals, vec![]) {
-        Ok(()) => {}
-        Err(e) => panic!("Error applying commit: {:?}", e),
-    }
+    group_bob_1234
+        .apply_commit(commit_mls_plaintext, proposals, vec![])
+        .expect("Error applying commit");
 }
 #[test]
 fn basic_group_setup() {
@@ -205,6 +204,9 @@ fn basic_group_setup() {
 
 #[test]
 /// This test simulates various group operations like Add, Update, Remove in a small group
+///  - Alice creates a group
+///  - Alice invites Bob
+///  - Alice sends a message to Bob
 fn group_operations() {
     use maelstrom::extensions::*;
     use maelstrom::utils::*;
@@ -260,14 +262,14 @@ fn group_operations() {
                 group_aad,
                 &alice_credential_bundle,
                 epoch_proposals.clone(),
-                false, // TODO force update seems broken
+                false,
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match &mls_plaintext_commit.content {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
-            _ => panic!(),
+            _ => panic!("Wrong content type"),
         };
         assert!(commit.path.is_none());
 

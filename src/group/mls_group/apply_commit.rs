@@ -76,11 +76,8 @@ impl MlsGroup {
         let commit_secret = if let Some(path) = commit.path.clone() {
             // Verify KeyPackage and MLSPlaintext signature
             let kp = &path.leaf_key_package;
-            match kp.verify() {
-                Ok(()) => {}
-                Err(_) => {
-                    return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
-                }
+            if kp.verify().is_err() {
+                return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
             let serialized_context = self.group_context.encode_detached().unwrap();
             if !mls_plaintext.verify(Some(serialized_context.clone()), kp.get_credential()) {
