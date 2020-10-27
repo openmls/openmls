@@ -42,44 +42,10 @@ impl Codec for Ciphersuite {
     }
 }
 
-impl Codec for SignatureKeypair {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
-        self.private_key.encode(buffer)?;
-        self.public_key.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
-        let private_key = SignaturePrivateKey::decode(cursor)?;
-        let public_key = SignaturePublicKey::decode(cursor)?;
-        Ok(Self {
-            ciphersuite,
-            private_key,
-            public_key,
-        })
-    }
-}
-
 impl Codec for SignaturePublicKey {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.value)?;
         Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(Self { value })
-    }
-}
-
-impl Codec for SignaturePrivateKey {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU16, buffer, &self.value)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(Self { value })
     }
 }
 
