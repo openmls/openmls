@@ -54,21 +54,21 @@ fn create_commit_optional_path() {
         bob_key_package.clone(),
     );
     let epoch_proposals = vec![bob_add_proposal];
-    let (mls_plaintext_commit, _welcome_bundle_alice_bob_option) = match group_alice_1234
-        .create_commit(
+    let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) =
+        match group_alice_1234.create_commit(
             group_aad,
             &alice_credential_bundle,
             epoch_proposals,
             true, /* force self-update */
         ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
     let commit = match &mls_plaintext_commit.content {
         MLSPlaintextContentType::Commit((commit, _)) => commit,
         _ => panic!(),
     };
-    assert!(commit.path.is_some());
+    assert!(commit.path.is_some() && kpb_option.is_some());
 
     // Alice adds Bob without forced self-update
     // Since there are only Add Proposals, this does not generate a path field on the Commit
@@ -79,7 +79,7 @@ fn create_commit_optional_path() {
         bob_key_package.clone(),
     );
     let epoch_proposals = vec![bob_add_proposal];
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option) = match group_alice_1234
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice_1234
         .create_commit(
             group_aad,
             &alice_credential_bundle,
@@ -93,7 +93,7 @@ fn create_commit_optional_path() {
         MLSPlaintextContentType::Commit((commit, _)) => commit,
         _ => panic!(),
     };
-    assert!(commit.path.is_none());
+    assert!(commit.path.is_none() && kpb_option.is_none());
 
     // Alice applies the Commit without the forced self-update
     match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, vec![]) {
@@ -126,7 +126,7 @@ fn create_commit_optional_path() {
     let proposals = vec![alice_update_proposal];
 
     // Only UpdateProposal
-    let (commit_mls_plaintext, _welcome_option) = match group_alice_1234.create_commit(
+    let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice_1234.create_commit(
         group_aad,
         &alice_credential_bundle,
         proposals.clone(),
@@ -139,19 +139,17 @@ fn create_commit_optional_path() {
         MLSPlaintextContentType::Commit((commit, confirmation_tag)) => (commit, confirmation_tag),
         _ => panic!(),
     };
-    assert!(commit.path.is_some());
+    assert!(commit.path.is_some() && kpb_option.is_some());
 
     // Apply UpdateProposal
-    /*
-        match group_alice_1234.apply_commit(
-            commit_mls_plaintext.clone(),
-            proposals.clone(),
-            vec![alice_update_key_package_bundle],
-        ) {
-            Ok(()) => {}
-            Err(e) => panic!("Error applying commit: {:?}", e),
-        }
-    */
+    match group_alice_1234.apply_commit(
+        commit_mls_plaintext.clone(),
+        proposals.clone(),
+        vec![kpb_option.unwrap()],
+    ) {
+        Ok(()) => {}
+        Err(e) => panic!("Error applying commit: {:?}", e),
+    }
 
     group_bob_1234
         .apply_commit(commit_mls_plaintext, proposals, vec![])
@@ -258,16 +256,16 @@ fn group_operations() {
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option) = match group_alice_1234
-            .create_commit(
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
+            match group_alice_1234.create_commit(
                 group_aad,
                 &alice_credential_bundle,
                 epoch_proposals.clone(),
                 false,
             ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+                Ok(c) => c,
+                Err(e) => panic!("Error creating commit: {:?}", e),
+            };
         let commit = match &mls_plaintext_commit.content {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),

@@ -57,7 +57,7 @@ impl Api for MlsGroup {
             key_package_bundle.private_key,
             key_package_bundle.key_package,
         );
-        let kpb = KeyPackageBundle::from_values(key_package, private_key);
+        let kpb = KeyPackageBundle::from_values(key_package, private_key, None);
         let tree = RatchetTree::new(ciphersuite_name, kpb);
         let group_context = GroupContext {
             group_id,
@@ -227,8 +227,7 @@ impl Api for MlsGroup {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
-            let leaf_index = LeafIndex::from(i);
-            let node = &tree.nodes[NodeIndex::from(leaf_index).as_usize()];
+            let node = &tree.nodes[LeafIndex::from(i)];
             let credential = if let Some(kp) = &node.key_package {
                 kp.get_credential()
             } else {

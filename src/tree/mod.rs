@@ -34,7 +34,6 @@ pub(crate) mod treemath;
 use hash_input::*;
 use index::*;
 use node::*;
-use path_keys::PathKeys;
 use private_tree::{PathSecrets, PrivateTree};
 
 // Internal tree tests
@@ -73,13 +72,7 @@ impl RatchetTree {
             key_package: Some(kpb.get_key_package().clone()),
             node: None,
         }];
-        let private_tree = PrivateTree::new(
-            kpb.private_key,
-            NodeIndex::from(0u32),
-            PathKeys::default(),
-            CommitSecret(Vec::new()),
-            Vec::new(),
-        );
+        let private_tree = PrivateTree::from_key_package_bundle(NodeIndex::from(0u32), &kpb);
 
         RatchetTree {
             ciphersuite: Ciphersuite::new(ciphersuite_name),
@@ -129,7 +122,7 @@ impl RatchetTree {
 
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
         // Build private tree
-        let private_tree = PrivateTree::from_private_key(own_node_index, kpb.private_key);
+        let private_tree = PrivateTree::from_key_package_bundle(own_node_index, &kpb);
 
         // Build tree.
         Ok(RatchetTree {
@@ -338,11 +331,8 @@ impl RatchetTree {
         let secret = self
             .ciphersuite
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
-        self.private_tree.generate_path_secrets(
-            &self.ciphersuite,
-            Some(&secret),
-            common_path.len(),
-        );
+        self.private_tree
+            .continue_path_secrets(&self.ciphersuite, secret, common_path.len());
         self.private_tree
             .generate_commit_secret(&self.ciphersuite)?;
 
@@ -383,7 +373,7 @@ impl RatchetTree {
         group_context: &[u8],
     ) -> Result<CommitSecret, TreeError> {
         let _path_option = self.replace_private_tree_(
-            key_package_bundle,
+            &key_package_bundle,
             group_context,
             false, /* without update path */
         )?;
@@ -393,53 +383,54 @@ impl RatchetTree {
     /// Update the private tree.
     pub(crate) fn refresh_private_tree(
         &mut self,
+        ciphersuite: &Ciphersuite,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-    ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
+    ) -> Result<(CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle), TreeError> {
         // Generate new keypair
         let own_index = self.get_own_node_index();
-        let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().into_keys();
 
         // Replace the init key in the current KeyPackage
-        let key_package_bundle = {
-            // Generate new keypair and replace it in current KeyPackage
-            let mut key_package = self.get_own_key_package_ref().clone();
-            key_package.set_hpke_init_key(public_key);
-            KeyPackageBundle::from_values(key_package, private_key)
-        };
+        let mut key_package_bundle =
+            KeyPackageBundle::rekey_unsigned(ciphersuite, self.get_own_key_package_ref());
 
         // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
         let mut path = self
             .replace_private_tree_(
-                key_package_bundle,
+                &key_package_bundle,
                 group_context,
                 true, /* with update path */
             )?
             .unwrap();
 
-        // Compute the parent hash extension and update the KeyPackage
+        // Compute the parent hash extension and update the KeyPackage and sign it
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
+        // Sign the KeyPackage
         key_package.sign(credential_bundle);
+        // STore it in the UpdatePath
         path.leaf_key_package = key_package.clone();
+        // Update it in the KeyPackageBundle
+        key_package_bundle.set_key_package(key_package.clone());
 
         Ok((
             self.private_tree.get_commit_secret(),
-            Some(path),
-            Some(self.private_tree.get_path_secrets().to_vec()),
+            path,
+            self.private_tree.get_path_secrets().to_vec(),
+            key_package_bundle,
         ))
     }
 
     /// Replace the private tree with a new one based on the `key_package_bundle`.
     fn replace_private_tree_(
         &mut self,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         with_update_path: bool,
     ) -> Result<Option<UpdatePath>, TreeError> {
-        let (private_key, key_package) = key_package_bundle.into_tuple();
+        let key_package = key_package_bundle.get_key_package().clone();
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
@@ -448,7 +439,7 @@ impl RatchetTree {
         let update_path_option = if self.leaf_count().as_usize() > 1 {
             let new_public_keys = self.private_tree.update(
                 &self.ciphersuite,
-                Some(private_key),
+                key_package_bundle,
                 &direct_path_root,
             )?;
             self.merge_public_keys(&new_public_keys, &direct_path_root)?;
@@ -667,13 +658,7 @@ impl RatchetTree {
                 // Get and remove own KeyPackageBundle from the list of available ones
                 let own_kpb = updates_key_package_bundles.remove(own_kpb_index);
                 // Update the private tree with new values
-                self.private_tree = PrivateTree::new(
-                    own_kpb.private_key,
-                    sender_index,
-                    PathKeys::default(),
-                    CommitSecret(Vec::new()),
-                    Vec::new(),
-                );
+                self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
         }
         for queued_proposal in proposal_queue
