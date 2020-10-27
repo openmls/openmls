@@ -18,7 +18,6 @@ use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
 use crate::creds::CredentialBundle;
-use crate::extensions::{Extension, RatchetTreeExtension};
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;

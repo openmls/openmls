@@ -71,7 +71,7 @@ fn create_commit_optional_path() {
     assert!(commit.path.is_some());
 
     // Alice adds Bob without forced self-update
-    // Since there are on Add Proposals, this not generate a path field on the Commit
+    // Since there are only Add Proposals, this does not generate a path field on the Commit
     let bob_add_proposal = group_alice_1234.create_add_proposal(
         group_aad,
         &alice_credential_bundle,
@@ -272,11 +272,12 @@ fn group_operations() {
             _ => panic!("Wrong content type"),
         };
         assert!(commit.path.is_none());
+        // Check that the fucntion returned a Welcome message
+        assert!(welcome_bundle_alice_bob_option.is_some());
 
-        match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, vec![]) {
-            Ok(_) => {}
-            Err(e) => panic!("Error applying commit: {:?}", e),
-        };
+        group_alice_1234
+            .apply_commit(mls_plaintext_commit, epoch_proposals, vec![])
+            .expect("error applying commit");
         let ratchet_tree = group_alice_1234.tree().get_public_key_tree();
 
         let mut group_bob = match MlsGroup::new_from_welcome(
