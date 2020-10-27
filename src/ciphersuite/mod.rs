@@ -33,6 +33,9 @@ mod codec;
 pub(crate) mod signable;
 use ciphersuites::*;
 
+#[cfg(test)]
+mod test_ciphersuite;
+
 pub const NONCE_BYTES: usize = 12;
 pub const CHACHA_KEY_BYTES: usize = 32;
 pub const AES_128_KEY_BYTES: usize = 16;
