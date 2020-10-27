@@ -155,7 +155,7 @@ impl Ciphersuite {
     }
 
     /// Get the name of this ciphersuite.
-    pub fn get_name(&self) -> CiphersuiteName {
+    pub fn name(&self) -> CiphersuiteName {
         self.name
     }
 
