@@ -57,7 +57,7 @@ impl Api for MlsGroup {
             key_package_bundle.private_key,
             key_package_bundle.key_package,
         );
-        let kpb = KeyPackageBundle::from_values(key_package, private_key);
+        let kpb = KeyPackageBundle::from_values(key_package, private_key, None);
         let tree = RatchetTree::new(ciphersuite_name, kpb);
         let group_context = GroupContext {
             group_id,

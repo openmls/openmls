@@ -22,6 +22,8 @@ use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
     ParentHashExtension,
 };
+use crate::schedule::*;
+use evercrypt::rand_util::*;
 
 mod codec;
 
@@ -235,6 +237,7 @@ impl KeyPackage {
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,
+    pub(crate) leaf_secret_option: Option<Vec<u8>>,
 }
 
 impl KeyPackageBundle {
@@ -249,8 +252,27 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        let keypair = Ciphersuite::new(ciphersuite_name).new_hpke_keypair();
-        Self::new_with_keypair(ciphersuite_name, credential_bundle, extensions, keypair)
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
+        let leaf_secret = get_random_vec(ciphersuite.hash_length());
+        Self::new_from_leaf_secret(ciphersuite_name, credential_bundle, extensions, leaf_secret)
+    }
+
+    pub fn new_from_leaf_secret(
+        ciphersuite_name: CiphersuiteName,
+        credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
+        leaf_secret: Vec<u8>,
+    ) -> Self {
+        let node_secret =
+            Self::derive_node_secret(&Ciphersuite::new(ciphersuite_name), leaf_secret);
+        let keypair = Ciphersuite::new(ciphersuite_name).derive_hpke_keypair(&node_secret);
+        Self::new_with_keypair(
+            ciphersuite_name,
+            credential_bundle,
+            extensions,
+            keypair,
+            Some(node_secret),
+        )
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -262,6 +284,7 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
+        leaf_secret_option: Option<Vec<u8>>,
     ) -> Self {
         // TODO: #85 this must be configurable.
         let mut final_extensions: Vec<Box<dyn Extension>> =
@@ -278,14 +301,32 @@ impl KeyPackageBundle {
         KeyPackageBundle {
             key_package,
             private_key,
+            leaf_secret_option,
         }
     }
 
-    pub fn from_values(key_package: KeyPackage, private_key: HPKEPrivateKey) -> Self {
+    pub fn from_values(
+        key_package: KeyPackage,
+        private_key: HPKEPrivateKey,
+        leaf_secret_option: Option<Vec<u8>>,
+    ) -> Self {
         Self {
             key_package,
             private_key,
+            leaf_secret_option,
         }
+    }
+
+    /// Replace the init key in the current KeyPackage with a random one
+    pub(crate) fn rekey_unsigned(ciphersuite: &Ciphersuite, key_package: &KeyPackage) -> Self {
+        let leaf_secret = get_random_vec(ciphersuite.hash_length());
+        let node_secret = Self::derive_node_secret(ciphersuite, leaf_secret);
+        let (private_key, public_key) = ciphersuite.derive_hpke_keypair(&node_secret).to_keys();
+
+        // Generate new keypair and replace it in current KeyPackage
+        let mut new_key_package = key_package.clone();
+        new_key_package.set_hpke_init_key(public_key);
+        KeyPackageBundle::from_values(new_key_package, private_key, Some(node_secret))
     }
 
     /// Update the private key in the bundle.
@@ -294,7 +335,7 @@ impl KeyPackageBundle {
     }
 
     /// Update the key package in the bundle.
-    pub(crate) fn _set_key_package(&mut self, key_package: KeyPackage) {
+    pub(crate) fn set_key_package(&mut self, key_package: KeyPackage) {
         self.key_package = key_package;
     }
 
@@ -315,7 +356,27 @@ impl KeyPackageBundle {
     }
 
     /// Get a reference to the `HPKEPrivateKey`.
-    pub fn get_private_key(&self) -> &HPKEPrivateKey {
+    pub fn get_private_key(self) -> HPKEPrivateKey {
+        self.private_key
+    }
+
+    /// Get a reference to the `HPKEPrivateKey`.
+    pub fn get_private_key_ref(&self) -> &HPKEPrivateKey {
         &self.private_key
+    }
+
+    /// Get a reference to the `leaf_secret_option`.
+    pub fn get_leaf_secret_option(&self) -> &Option<Vec<u8>> {
+        &self.leaf_secret_option
+    }
+
+    fn derive_node_secret(ciphersuite: &Ciphersuite, leaf_secret: Vec<u8>) -> Vec<u8> {
+        hkdf_expand_label(
+            ciphersuite,
+            &leaf_secret,
+            "node",
+            &[],
+            ciphersuite.hash_length(),
+        )
     }
 }

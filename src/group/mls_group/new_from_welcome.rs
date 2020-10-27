@@ -65,7 +65,7 @@ impl MlsGroup {
 
         let mut tree = RatchetTree::new_from_nodes(
             ciphersuite_name,
-            KeyPackageBundle::from_values(key_package, private_key),
+            KeyPackageBundle::from_values(key_package, private_key, None),
             &nodes,
         )?;
 
@@ -103,9 +103,9 @@ impl MlsGroup {
 
             // Update the private tree.
             let private_tree = tree.get_private_tree_mut();
-            private_tree.generate_path_secrets(
+            private_tree.continue_path_secrets(
                 &ciphersuite,
-                Some(&path_secret.path_secret),
+                path_secret.path_secret,
                 common_path.len(),
             );
             let new_public_keys = private_tree

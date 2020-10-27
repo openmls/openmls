@@ -3,18 +3,20 @@
 #[cfg(test)]
 use super::{index::NodeIndex, private_tree::*, test_util::*};
 #[cfg(test)]
-use crate::{ciphersuite::*, utils::*};
+use crate::{ciphersuite::*, creds::*, key_packages::*, utils::*};
 
 #[cfg(test)]
 // Common setup for tests.
-fn setup(len: usize) -> (Ciphersuite, HPKEPrivateKey, NodeIndex, Vec<NodeIndex>) {
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
-    let hpke_private_key = HPKEPrivateKey::new(randombytes(32));
+fn setup(len: usize) -> (Ciphersuite, KeyPackageBundle, NodeIndex, Vec<NodeIndex>) {
+    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::new(ciphersuite_name);
+    let credential_bundle =
+        CredentialBundle::new("username".into(), CredentialType::Basic, ciphersuite_name).unwrap();
+    let key_package_bundle = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, vec![]);
     let own_index = NodeIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 
-    (ciphersuite, hpke_private_key, own_index, direct_path)
+    (ciphersuite, key_package_bundle, own_index, direct_path)
 }
 
 #[cfg(test)]
@@ -42,12 +44,12 @@ fn test_private_tree(
 #[test]
 fn create_private_tree_from_secret() {
     const PATH_LENGTH: usize = 33;
-    let (ciphersuite, hpke_private_key, own_index, direct_path) = setup(PATH_LENGTH);
+    let (ciphersuite, key_package_bundle, own_index, direct_path) = setup(PATH_LENGTH);
 
-    let mut private_tree = PrivateTree::from_private_key(own_index, hpke_private_key);
+    let mut private_tree = PrivateTree::from_key_package_bundle(own_index, &key_package_bundle);
 
     // Compute path secrets form the leaf.
-    private_tree.generate_path_secrets(&ciphersuite, None, direct_path.len());
+    private_tree.generate_path_secrets(&ciphersuite, direct_path.len());
 
     // Compute commit secret.
     private_tree.generate_commit_secret(&ciphersuite).unwrap();
