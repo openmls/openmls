@@ -53,14 +53,19 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn get_protocol_version_ref(&self) -> &[ProtocolVersion] {
-        &self.protocol_versions
+    /// Get a list of the supported extension types.
+    pub fn supported_extensions() -> &'static [ExtensionType] {
+        &CONFIG.extensions
     }
-    pub fn get_ciphersuites_ref(&self) -> &[CiphersuiteName] {
-        &self.ciphersuites
+
+    /// Get a list of the supported cipher suite names.
+    pub fn supported_ciphersuites() -> &'static [CiphersuiteName] {
+        &CONFIG.ciphersuites
     }
-    pub fn get_extensions_ref(&self) -> &[ExtensionType] {
-        &self.extensions
+
+    /// Get a list of the supported protocol versions.
+    pub fn supported_versions() -> &'static [ProtocolVersion] {
+        &CONFIG.protocol_versions
     }
 }
 
@@ -122,22 +127,5 @@ impl CiphersuiteName {
             }
         }
         false
-    }
-}
-
-impl Config {
-    /// Get a list of the supported extension types.
-    pub fn supported_extensions() -> &'static [ExtensionType] {
-        &CONFIG.extensions
-    }
-
-    /// Get a list of the supported cipher suite names.
-    pub fn supported_ciphersuites() -> &'static [CiphersuiteName] {
-        &CONFIG.ciphersuites
-    }
-
-    /// Get a list of the supported protocol versions.
-    pub fn supported_versions() -> &'static [ProtocolVersion] {
-        &CONFIG.protocol_versions
     }
 }

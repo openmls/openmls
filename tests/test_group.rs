@@ -17,10 +17,8 @@ fn create_commit_optional_path() {
         CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite_name).unwrap();
 
     // Mandatory extensions, will be fixed in #164
-    let capabilities_extension = Box::new(CapabilitiesExtension::default());
     let lifetime_extension = Box::new(LifetimeExtension::new(60));
-    let mandatory_extensions: Vec<Box<dyn Extension>> =
-        vec![capabilities_extension, lifetime_extension];
+    let mandatory_extensions: Vec<Box<dyn Extension>> = vec![lifetime_extension];
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
@@ -48,7 +46,8 @@ fn create_commit_optional_path() {
     let group_id = [1, 2, 3, 4];
     let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
 
-    // Alice adds Bob with forced self-update
+    // Alice proposes to add Bob with forced self-update
+    // Even though there are only Add Proposals, this should generated a path field on the Commit
     let bob_add_proposal = group_alice_1234.create_add_proposal(
         group_aad,
         &alice_credential_bundle,
@@ -72,6 +71,7 @@ fn create_commit_optional_path() {
     assert!(commit.path.is_some());
 
     // Alice adds Bob without forced self-update
+    // Since there are on Add Proposals, this not generate a path field on the Commit
     let bob_add_proposal = group_alice_1234.create_add_proposal(
         group_aad,
         &alice_credential_bundle,
