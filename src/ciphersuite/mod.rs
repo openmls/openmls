@@ -35,6 +35,9 @@ use ciphersuites::*;
 
 use crate::utils::random_u32;
 
+#[cfg(test)]
+mod test_ciphersuite;
+
 pub const NONCE_BYTES: usize = 12;
 pub const REUSE_GUARD_BYTES: usize = 4;
 pub const CHACHA_KEY_BYTES: usize = 32;
