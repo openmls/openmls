@@ -219,10 +219,19 @@ impl KeyPackage {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,
+}
+
+impl Clone for KeyPackageBundle {
+    fn clone(&self) -> Self {
+        KeyPackageBundle {
+            key_package: self.key_package.clone(),
+            private_key: HPKEPrivateKey::new(self.private_key.as_slice().clone().to_vec()),
+        }
+    }
 }
 
 impl KeyPackageBundle {

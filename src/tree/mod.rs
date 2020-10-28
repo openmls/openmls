@@ -655,16 +655,15 @@ impl RatchetTree {
             self.nodes[sender_index.as_usize()] = leaf_node;
             // Check if it is a self-update
             if sender_index == self.get_own_node_index() {
-                let own_kpb_index = match updates_key_package_bundles
+                let own_kpb = match updates_key_package_bundles
                     .iter()
-                    .position(|kpb| kpb.get_key_package() == &update_proposal.key_package)
+                    .find(|kpb| kpb.get_key_package() == &update_proposal.key_package)
                 {
                     Some(i) => i,
                     // We lost the KeyPackageBundle apparently
                     None => return Err(TreeError::InvalidArguments),
-                };
-                // Get and remove own KeyPackageBundle from the list of available ones
-                let own_kpb = updates_key_package_bundles.remove(own_kpb_index);
+                }
+                .clone();
                 // Update the private tree with new values
                 self.private_tree = PrivateTree::new(
                     own_kpb.private_key,

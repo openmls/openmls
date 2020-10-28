@@ -84,16 +84,16 @@ impl MlsGroup {
             }
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles
-                let mut own_kpb_ref: KeyPackageBundle = match own_key_packages
+                let own_kpb: KeyPackageBundle = match own_key_packages
                     .iter()
                     .find(|kpb| kpb.get_key_package() == kp)
                 {
                     Some(i) => i,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
-                };
-                let own_kpb = own_kpb_ref.clone();
+                }
+                .clone();
                 provisional_tree
-                    .replace_private_tree(*own_kpb, &self.group_context.serialize())
+                    .replace_private_tree(own_kpb, &self.group_context.serialize())
                     .unwrap()
             } else {
                 provisional_tree
