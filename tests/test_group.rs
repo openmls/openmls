@@ -96,7 +96,7 @@ fn create_commit_optional_path() {
     assert!(commit.path.is_none());
 
     // Alice applies the Commit without the forced self-update
-    match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, vec![]) {
+    match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, &vec![]) {
         Ok(_) => {}
         Err(e) => panic!("Error applying commit: {:?}", e),
     };
@@ -154,7 +154,7 @@ fn create_commit_optional_path() {
     */
 
     group_bob_1234
-        .apply_commit(commit_mls_plaintext, proposals, vec![])
+        .apply_commit(commit_mls_plaintext, proposals, &vec![])
         .expect("Error applying commit");
 }
 #[test]
@@ -277,7 +277,7 @@ fn group_operations() {
         assert!(welcome_bundle_alice_bob_option.is_some());
 
         group_alice_1234
-            .apply_commit(mls_plaintext_commit, epoch_proposals, vec![])
+            .apply_commit(mls_plaintext_commit, epoch_proposals, &vec![])
             .expect("error applying commit");
         let ratchet_tree = group_alice_1234.tree().get_public_key_tree();
 
