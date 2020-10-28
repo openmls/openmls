@@ -356,6 +356,11 @@ impl KeyPackageBundle {
     }
 
     /// Get a reference to the `HPKEPrivateKey`.
+    pub fn get_private_key(self) -> HPKEPrivateKey {
+        self.private_key
+    }
+
+    /// Get a reference to the `HPKEPrivateKey`.
     pub fn get_private_key_ref(&self) -> &HPKEPrivateKey {
         &self.private_key
     }
