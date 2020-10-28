@@ -114,23 +114,27 @@ impl MlsGroup {
             &self.context(),
         );
         // Check if new members were added an create welcome message
-        // TODO: Add support for extensions
         if !invited_members.is_empty() {
             let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
             let ratchet_tree_extension = public_tree.to_extension_struct();
             let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
+            let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
+                vec![Box::new(public_tree)]
+            } else {
+                Vec::new()
+            };
             // Create GroupInfo object
-            let mut group_info = GroupInfo {
-                group_id: provisional_group_context.group_id.clone(),
-                epoch: provisional_group_context.epoch,
+            let mut group_info = GroupInfo::new(
+                provisional_group_context.group_id.clone(),
+                provisional_group_context.epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                extensions: vec![],
-                confirmation_tag: confirmation_tag.as_slice(),
-                signer_index: sender_index,
-                signature: Signature::new_empty(),
-            };
-            group_info.signature = group_info.sign(credential_bundle);
+                extensions,
+                confirmation_tag.as_slice(),
+                sender_index,
+                Signature::new_empty(),
+            );
+            group_info.set_signature(group_info.sign(credential_bundle));
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) =
                 compute_welcome_key_nonce(ciphersuite, &epoch_secret);
