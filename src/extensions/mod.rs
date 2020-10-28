@@ -27,7 +27,7 @@ mod ratchet_tree_extension;
 
 pub use capabilities_extension::CapabilitiesExtension;
 pub use key_package_id_extension::KeyIDExtension;
-pub(crate) use life_time_extension::LifetimeExtension;
+pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
 
@@ -136,7 +136,8 @@ impl<'a> ExtensionStruct {
     }
 
     /// Get the type of this extension struct.
-    pub(crate) fn get_extension_data(&'a self) -> &'a [u8] {
+    // Not needed now, but will be when we support this extension
+    pub(crate) fn _get_extension_data(&'a self) -> &'a [u8] {
         &self.extension_data
     }
 }

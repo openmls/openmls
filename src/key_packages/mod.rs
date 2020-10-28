@@ -30,6 +30,10 @@ mod test_key_packages;
 #[derive(Debug, PartialEq)]
 pub enum KeyPackageError {
     ExtensionNotPresent,
+    MandatoryExtensionsMissing,
+    InvalidLifetimeExtension,
+    InvalidSignature,
+    LibraryError,
 }
 
 impl From<ExtensionError> for KeyPackageError {
@@ -82,7 +86,8 @@ impl KeyPackage {
     /// * verify that the signature on this key package is valid
     /// * verify that all mandatory extensions are present
     /// * make sure that the lifetime is valid
-    pub(crate) fn verify(&self) -> bool {
+    /// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise
+    pub fn verify(&self) -> Result<(), KeyPackageError> {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
         for extension in self.extensions.iter() {
@@ -97,12 +102,12 @@ impl KeyPackage {
                 match extension.to_lifetime_extension_ref() {
                     Ok(e) => {
                         if !e.is_valid() {
-                            return false;
+                            return Err(KeyPackageError::InvalidLifetimeExtension);
                         }
                     }
                     Err(e) => {
                         println!("Library error. {:?}", e);
-                        return false;
+                        return Err(KeyPackageError::LibraryError);
                     }
                 }
             }
@@ -110,12 +115,18 @@ impl KeyPackage {
 
         // Make sure we found all mandatory extensions.
         if !mandatory_extensions_found.is_empty() {
-            return false;
+            return Err(KeyPackageError::MandatoryExtensionsMissing);
         }
 
         // Verify the signature on this key package.
-        self.credential
+        if self
+            .credential
             .verify(&self.unsigned_payload().unwrap(), &self.signature)
+        {
+            Ok(())
+        } else {
+            Err(KeyPackageError::InvalidSignature)
+        }
     }
 
     /// Compute the hash of the encoding of this key package.
@@ -126,6 +137,7 @@ impl KeyPackage {
 
     /// Get a reference to the extension of `extension_type`.
     /// Returns `Some(extension)` if present and `None` if the extension is not present.
+    #[allow(clippy::borrowed_box)]
     pub(crate) fn get_extension(
         &self,
         extension_type: ExtensionType,

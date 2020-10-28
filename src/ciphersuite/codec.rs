@@ -20,6 +20,8 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 
+use super::REUSE_GUARD_BYTES;
+
 impl Codec for CiphersuiteName {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         u16::from(self).encode(buffer)?;
@@ -84,5 +86,17 @@ impl Codec for HpkeCiphertext {
             kem_output,
             ciphertext,
         })
+    }
+}
+
+impl Codec for ReuseGuard {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        u32::from_be_bytes(self.value).encode(buffer)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let u32_guard: u32 = u32::decode(cursor)?;
+        let guard: [u8; REUSE_GUARD_BYTES] = u32_guard.to_be_bytes();
+        Ok(ReuseGuard { value: guard })
     }
 }
