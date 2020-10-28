@@ -219,7 +219,7 @@ impl KeyPackage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,

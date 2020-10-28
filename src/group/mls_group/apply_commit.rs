@@ -27,10 +27,9 @@ impl MlsGroup {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: &mut Vec<KeyPackageBundle>,
+        own_key_packages: &Vec<KeyPackageBundle>,
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.ciphersuite();
-        let mut pending_kpbs = own_key_packages;
 
         // Verify epoch
         if mls_plaintext.epoch != self.group_context.epoch {
@@ -56,7 +55,7 @@ impl MlsGroup {
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
         let (path_required_by_commit, group_removed, _invited_members) = match provisional_tree
-            .apply_proposals(&commit.proposals, proposal_queue, &mut pending_kpbs)
+            .apply_proposals(&commit.proposals, proposal_queue, &own_key_packages)
         {
             Ok(res) => res,
             Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
@@ -85,16 +84,16 @@ impl MlsGroup {
             }
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles
-                let own_kpb_index = match pending_kpbs
+                let mut own_kpb_ref: KeyPackageBundle = match own_key_packages
                     .iter()
-                    .position(|kpb| kpb.get_key_package() == kp)
+                    .find(|kpb| kpb.get_key_package() == kp)
                 {
                     Some(i) => i,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 };
-                let own_kpb = pending_kpbs.remove(own_kpb_index);
+                let own_kpb = own_kpb_ref.clone();
                 provisional_tree
-                    .replace_private_tree(own_kpb, &self.group_context.serialize())
+                    .replace_private_tree(*own_kpb, &self.group_context.serialize())
                     .unwrap()
             } else {
                 provisional_tree

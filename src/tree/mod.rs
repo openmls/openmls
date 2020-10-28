@@ -630,7 +630,7 @@ impl RatchetTree {
         &mut self,
         proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
-        updates_key_package_bundles: &mut Vec<KeyPackageBundle>,
+        updates_key_package_bundles: &Vec<KeyPackageBundle>,
         // (path_required, self_removed, invitation_list)
     ) -> Result<(bool, bool, InvitationList), TreeError> {
         let mut has_updates = false;
