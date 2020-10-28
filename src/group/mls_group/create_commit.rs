@@ -61,16 +61,25 @@ impl MlsGroup {
         // Determine if Commit needs path field
         let path_required = path_required_by_commit || contains_own_updates || force_self_update;
 
-        let (commit_secret, path, path_secrets_option) = if path_required {
+        let (commit_secret, path, path_secrets_option, kpb_option) = if path_required {
             // If path is needed, compute path values
-            let (commit_secret, path_option, path_secrets) = provisional_tree
-                .refresh_private_tree(credential_bundle, &self.group_context.serialize())
+            let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
+                .refresh_private_tree(
+                    ciphersuite,
+                    credential_bundle,
+                    &self.group_context.serialize(),
+                )
                 .unwrap();
-            (commit_secret, path_option, path_secrets)
+            (
+                commit_secret,
+                Some(path),
+                Some(path_secrets),
+                Some(key_package_bundle),
+            )
         } else {
             // If path is not needed, return empty commit secret
             let commit_secret = CommitSecret(zero(self.ciphersuite().hash_length()));
-            (commit_secret, None, None)
+            (commit_secret, None, None, None)
         };
         // Create commit message
         let commit = Commit {
@@ -194,9 +203,9 @@ impl MlsGroup {
                 secrets,
                 encrypted_group_info,
             );
-            Ok((mls_plaintext, Some(welcome)))
+            Ok((mls_plaintext, Some(welcome), kpb_option))
         } else {
-            Ok((mls_plaintext, None))
+            Ok((mls_plaintext, None, kpb_option))
         }
     }
 }
