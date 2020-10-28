@@ -136,7 +136,7 @@ pub(crate) fn dirpath_long(
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
     let r = root(size);
     if index == r {
-        return Ok(vec![]);
+        return Ok(vec![r]);
     }
 
     let mut x = index;
@@ -156,7 +156,7 @@ pub(crate) fn direct_path_root(
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
     let r = root(size);
     if index == r {
-        return Ok(vec![]);
+        return Ok(vec![r]);
     }
 
     let mut d = vec![];
