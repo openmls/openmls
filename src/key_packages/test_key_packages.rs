@@ -6,7 +6,7 @@ fn generate_key_package() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let credential_bundle =
         CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite_name).unwrap();
-    let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
+    let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new(), None);
     // This is invalid because the lifetime extension is missing.
     assert!(!kpb.get_key_package().verify());
 
@@ -16,6 +16,7 @@ fn generate_key_package() {
         ciphersuite_name,
         &credential_bundle,
         vec![lifetime_extension],
+        None,
     );
     std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(kpb.get_key_package().verify());
@@ -26,6 +27,7 @@ fn generate_key_package() {
         ciphersuite_name,
         &credential_bundle,
         vec![lifetime_extension],
+        None,
     );
     std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(!kpb.get_key_package().verify());
@@ -37,7 +39,7 @@ fn test_codec() {
     let id = vec![1, 2, 3];
     let credential_bundle =
         CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
-    let mut kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
+    let mut kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new(), None);
 
     // Encode and decode the key package.
     let enc = kpb.get_key_package().encode_detached().unwrap();
@@ -67,6 +69,7 @@ fn key_package_id_extension() {
         ciphersuite_name,
         &credential_bundle,
         vec![Box::new(LifetimeExtension::new(60))],
+        None,
     );
     assert!(kpb.get_key_package().verify());
 

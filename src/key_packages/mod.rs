@@ -82,7 +82,7 @@ impl KeyPackage {
     /// * verify that the signature on this key package is valid
     /// * verify that all mandatory extensions are present
     /// * make sure that the lifetime is valid
-    pub(crate) fn verify(&self) -> bool {
+    pub fn verify(&self) -> bool {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
         for extension in self.extensions.iter() {
@@ -213,7 +213,7 @@ impl KeyPackage {
     }
 
     /// Populate the `signature` field using the `credential_bundle`.
-    pub(crate) fn sign(&mut self, credential_bundle: &CredentialBundle) {
+    pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
         let payload = &self.unsigned_payload().unwrap();
         self.signature = credential_bundle.sign(payload).unwrap();
     }
@@ -236,9 +236,16 @@ impl KeyPackageBundle {
         ciphersuite_name: CiphersuiteName,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
+        ciphersuites: Option<&[CiphersuiteName]>,
     ) -> Self {
         let keypair = Ciphersuite::new(ciphersuite_name).new_hpke_keypair();
-        Self::new_with_keypair(ciphersuite_name, credential_bundle, extensions, keypair)
+        Self::new_with_keypair(
+            ciphersuite_name,
+            credential_bundle,
+            extensions,
+            keypair,
+            ciphersuites,
+        )
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -250,10 +257,10 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
+        ciphersuites: Option<&[CiphersuiteName]>,
     ) -> Self {
-        // TODO: #85 this must be configurable.
-        let mut final_extensions: Vec<Box<dyn Extension>> =
-            vec![Box::new(CapabilitiesExtension::default())];
+        let capabilities_extension = CapabilitiesExtension::new(None, ciphersuites, None);
+        let mut final_extensions: Vec<Box<dyn Extension>> = vec![Box::new(capabilities_extension)];
 
         let (private_key, public_key) = key_pair.into_keys();
         final_extensions.extend_from_slice(&extensions);

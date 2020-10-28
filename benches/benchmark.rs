@@ -34,7 +34,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
                     .unwrap()
             },
             |credential_bundle: CredentialBundle| {
-                KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
+                KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new(), None);
             },
         );
     });

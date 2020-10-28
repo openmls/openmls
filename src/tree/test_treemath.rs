@@ -78,7 +78,7 @@ fn test_tree_hash() {
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
         let credential_bundle =
             CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite_name).unwrap();
-        let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
+        let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new(), None);
         kpb
     }
 

@@ -27,7 +27,7 @@ mod ratchet_tree_extension;
 
 pub use capabilities_extension::CapabilitiesExtension;
 pub use key_package_id_extension::KeyIDExtension;
-pub(crate) use life_time_extension::LifetimeExtension;
+pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
 
