@@ -41,7 +41,12 @@ fn create_commit_optional_path() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+    let group_alice_1234 = MlsGroup::new(
+        &group_id,
+        ciphersuite_name,
+        alice_key_package_bundle,
+        GroupConfig::default(),
+    );
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -136,7 +141,12 @@ fn basic_group_setup() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+    let group_alice_1234 = MlsGroup::new(
+        &group_id,
+        ciphersuite_name,
+        alice_key_package_bundle,
+        GroupConfig::default(),
+    );
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
