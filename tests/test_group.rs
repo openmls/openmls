@@ -256,7 +256,7 @@ fn group_operations() {
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) =
             match group_alice_1234.create_commit(
                 group_aad,
                 &alice_credential_bundle,
