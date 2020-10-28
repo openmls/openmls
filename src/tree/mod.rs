@@ -329,9 +329,10 @@ impl RatchetTree {
         let common_path = treemath::dirpath_long(common_ancestor_index, self.leaf_count())
             .expect("update_path: Error when computing direct path.");
 
-        if sender_direct_path.len() < common_path.len() {
-            return Err(TreeError::InvalidArguments);
-        }
+        debug_assert!(
+            sender_direct_path.len() >= common_path.len(),
+            "Library error. Direct path cannot be shorter than common path."
+        );
 
         // Decrypt the secret and derive path secrets
         let secret = self

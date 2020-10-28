@@ -72,6 +72,7 @@ fn create_commit_optional_path() {
 
     // Alice adds Bob without forced self-update
     // Since there are only Add Proposals, this does not generate a path field on the Commit
+    // Creating a second proposal to add the same member should not fail, only committing that proposal should fail
     let bob_add_proposal = group_alice_1234.create_add_proposal(
         group_aad,
         &alice_credential_bundle,
@@ -94,7 +95,7 @@ fn create_commit_optional_path() {
     };
     assert!(commit.path.is_none());
 
-    // Alice applies Commit
+    // Alice applies the Commit without the forced self-update
     match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, vec![]) {
         Ok(_) => {}
         Err(e) => panic!("Error applying commit: {:?}", e),
@@ -272,7 +273,7 @@ fn group_operations() {
             _ => panic!("Wrong content type"),
         };
         assert!(commit.path.is_none());
-        // Check that the fucntion returned a Welcome message
+        // Check that the function returned a Welcome message
         assert!(welcome_bundle_alice_bob_option.is_some());
 
         group_alice_1234

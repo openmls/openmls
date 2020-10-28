@@ -69,6 +69,35 @@ fn verify_binary_test_vector_treemath() {
     assert_eq!(cursor.has_more(), false);
 }
 
+/// Tests the variants of the direct path calculations.
+/// Expected result:
+///  - dirpath contains the direct path
+///  - direct_path_root contains the direct path and the root
+///  - dirpath_long contains the leaf, the direct path and the root
+#[test]
+fn test_dir_path() {
+    use crate::tree::{treemath::*, *};
+    const SIZE: u32 = 100;
+    for size in 0..SIZE {
+        for i in 0..size / 2 {
+            let index = NodeIndex::from(i);
+            let mut dir_path_test = dirpath(index, LeafIndex::from(size)).unwrap();
+            let root = root(LeafIndex::from(size));
+            dir_path_test.extend_from_slice(&[root]);
+            assert_eq!(
+                dir_path_test,
+                direct_path_root(index, LeafIndex::from(size)).unwrap()
+            );
+            let mut dirpath_long_test = vec![index];
+            dirpath_long_test.extend(dir_path_test);
+            assert_eq!(
+                dirpath_long_test,
+                dirpath_long(index, LeafIndex::from(size)).unwrap()
+            );
+        }
+    }
+}
+
 #[test]
 fn test_tree_hash() {
     use crate::ciphersuite::*;
