@@ -105,7 +105,7 @@ impl MlsGroup {
             if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
-            Secret::new_from_bytes(zero(ciphersuite.hash_length()))
+            Secret::from(zero(ciphersuite.hash_length()))
         };
 
         // Create provisional group state
@@ -143,7 +143,7 @@ impl MlsGroup {
         let own_confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &provisional_epoch_secrets.confirmation_key,
-            &Secret::new_from_bytes(confirmed_transcript_hash),
+            &Secret::from(confirmed_transcript_hash),
         );
         if &own_confirmation_tag != received_confirmation_tag {
             return Err(ApplyCommitError::ConfirmationTagMismatch);

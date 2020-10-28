@@ -96,14 +96,15 @@ impl Secret {
     pub(crate) fn new_empty_secret() -> Self {
         Secret { value: vec![] }
     }
-    pub(crate) fn new_from_bytes(bytes: Vec<u8>) -> Self {
-        Secret {
-            value: bytes.clone(),
-        }
-    }
     // TODO: Refactor such that we can remove this.
     pub(crate) fn to_vec(self) -> Vec<u8> {
         self.value
+    }
+}
+
+impl From<Vec<u8>> for Secret {
+    fn from(bytes: Vec<u8>) -> Self {
+        Secret { value: bytes }
     }
 }
 
@@ -416,6 +417,7 @@ impl AeadKey {
 
 impl AeadNonce {
     /// Build a new nonce for an AEAD from `bytes`.
+    #[cfg(test)]
     pub(crate) fn from_slice(bytes: &[u8]) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(bytes);
@@ -427,13 +429,6 @@ impl AeadNonce {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(secret.value.as_slice());
         AeadNonce { value: nonce }
-    }
-
-    /// Generate a new random nonce.
-    pub(crate) fn random() -> Self {
-        Self {
-            value: get_random_array(),
-        }
     }
 
     /// Get a slice to the nonce value.

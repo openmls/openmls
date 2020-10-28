@@ -69,7 +69,7 @@ impl MlsGroup {
             (commit_secret, path_option, path_secrets)
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = Secret::new_from_bytes(zero(self.ciphersuite().hash_length()));
+            let commit_secret = Secret::from(zero(self.ciphersuite().hash_length()));
             (commit_secret, None, None)
         };
         // Create commit message
@@ -102,7 +102,7 @@ impl MlsGroup {
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &provisional_epoch_secrets.confirmation_key,
-            &Secret::new_from_bytes(confirmed_transcript_hash.clone()),
+            &Secret::from(confirmed_transcript_hash.clone()),
         );
         // Create MLSPlaintext
         let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));

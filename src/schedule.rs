@@ -121,10 +121,8 @@ impl EpochSecrets {
             &pre_member_secret,
         );
         let pre_epoch_secret = derive_secret(ciphersuite, &member_secret, "epoch");
-        let epoch_secret = ciphersuite.hkdf_extract(
-            &Secret::new_from_bytes(group_context.serialize()),
-            &pre_epoch_secret,
-        );
+        let epoch_secret =
+            ciphersuite.hkdf_extract(&Secret::from(group_context.serialize()), &pre_epoch_secret);
         let epoch_secrets = Self::derive_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret);
         self.welcome_secret = epoch_secrets.welcome_secret;
         self.sender_data_secret = epoch_secrets.sender_data_secret;

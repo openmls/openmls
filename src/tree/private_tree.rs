@@ -135,7 +135,7 @@ impl PrivateTree {
         let hash_len = ciphersuite.hash_length();
         let start_secret = match start_secret {
             Some(secret) => secret.clone(),
-            None => Secret::new_from_bytes(self.hpke_private_key.as_slice().to_vec()),
+            None => Secret::from(self.hpke_private_key.as_slice().to_vec()),
         };
         let mut path_secrets = vec![start_secret];
         for i in 1..n {

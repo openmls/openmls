@@ -335,7 +335,7 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret = Secret::new_from_bytes(self.ciphersuite.hpke_open(
+        let secret = Secret::from(self.ciphersuite.hpke_open(
             hpke_ciphertext,
             &private_key,
             group_context,
