@@ -264,7 +264,7 @@ impl KeyPackageBundle {
         let mut final_extensions: Vec<Box<dyn Extension>> =
             vec![Box::new(CapabilitiesExtension::default())];
 
-        let (private_key, public_key) = key_pair.to_keys();
+        let (private_key, public_key) = key_pair.into_keys();
         final_extensions.extend_from_slice(&extensions);
         let key_package = KeyPackage::new(
             ciphersuite_name,
