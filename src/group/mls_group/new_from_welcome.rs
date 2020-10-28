@@ -121,19 +121,19 @@ impl MlsGroup {
             group_id: group_info.group_id,
             epoch: group_info.epoch,
             tree_hash: tree.compute_tree_hash(),
-            confirmed_transcript_hash: group_info.confirmed_transcript_hash,
+            confirmed_transcript_hash: group_info.confirmed_transcript_hash.clone(),
         };
         let epoch_secrets = EpochSecrets::derive_epoch_secrets(
             &ciphersuite,
             &group_secrets.joiner_secret,
             Secret::new_empty_secret(),
         );
-        let secret_tree = SecretTree::new(epoch_secrets.encryption_secret, tree.leaf_count());
+        let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, tree.leaf_count());
 
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &epoch_secrets.confirmation_key,
-            &Secret::new_from_bytes(group_context.confirmed_transcript_hash),
+            &Secret::new_from_bytes(group_context.confirmed_transcript_hash.clone()),
         );
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,

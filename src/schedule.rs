@@ -17,7 +17,6 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
-use crate::messages::*;
 
 pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &Secret, label: &str) -> Secret {
     hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())

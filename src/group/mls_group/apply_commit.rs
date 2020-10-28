@@ -173,7 +173,7 @@ impl MlsGroup {
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
         self.secret_tree = RefCell::new(SecretTree::new(
-            self.epoch_secrets.encryption_secret,
+            &self.epoch_secrets.encryption_secret,
             provisional_tree.leaf_count(),
         ));
         Ok(())

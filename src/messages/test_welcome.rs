@@ -1,6 +1,6 @@
 use super::{EncryptedGroupSecrets, GroupInfo, Welcome};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Signature},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret, Signature},
     codec::*,
     config::Config,
     group::{GroupEpoch, GroupId},
@@ -27,15 +27,13 @@ macro_rules! test_welcome_msg {
             let ciphersuite = Ciphersuite::new($suite);
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_slice(
-                &randombytes(ciphersuite.aead_key_length()),
-                ciphersuite.aead_mode(),
-            );
+            let welcome_key = AeadKey::new_from_random(ciphersuite.aead_mode());
             let welcome_nonce =
                 AeadNonce::from_slice(&randombytes(ciphersuite.aead_nonce_length()));
 
             // Generate receiver key pair.
-            let receiver_key_pair = ciphersuite.derive_hpke_keypair(&[1, 2, 3, 4]);
+            let receiver_key_pair = ciphersuite
+                .derive_hpke_keypair(&Secret::new_from_bytes([1u8, 2u8, 3u8, 4u8].to_vec()));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";

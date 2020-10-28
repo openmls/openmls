@@ -6,7 +6,10 @@ fn test_boundaries() {
 
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519);
-    let mut secret_tree = SecretTree::new(&[0u8; 32], LeafIndex::from(2u32));
+    let mut secret_tree = SecretTree::new(
+        &Secret::new_from_bytes([0u8; 32].to_vec()),
+        LeafIndex::from(2u32),
+    );
     let secret_type = SecretType::ApplicationSecret;
     assert!(secret_tree
         .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
@@ -45,7 +48,10 @@ fn test_boundaries() {
         secret_tree.get_secret_for_decryption(&ciphersuite, LeafIndex::from(2u32), secret_type, 0),
         Err(SecretTreeError::IndexOutOfBounds)
     );
-    let mut largetree = SecretTree::new(&[0u8; 32], LeafIndex::from(100_000u32));
+    let mut largetree = SecretTree::new(
+        &Secret::new_from_bytes([0u8; 32].to_vec()),
+        LeafIndex::from(100_000u32),
+    );
     assert!(largetree
         .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
         .is_ok());
@@ -78,7 +84,10 @@ fn increment_generation() {
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
-    let mut secret_tree = SecretTree::new(&[1, 2, 3], LeafIndex::from(SIZE as u32));
+    let mut secret_tree = SecretTree::new(
+        &Secret::new_from_bytes([1u8, 2u8, 3u8].to_vec()),
+        LeafIndex::from(SIZE as u32),
+    );
     for i in 0..SIZE {
         assert_eq!(
             secret_tree.get_generation(LeafIndex::from(i as u32), SecretType::HandshakeSecret),

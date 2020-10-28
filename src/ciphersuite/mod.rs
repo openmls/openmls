@@ -92,11 +92,6 @@ impl Secret {
     pub(crate) fn new_empty_secret() -> Self {
         Secret { value: vec![] }
     }
-    pub(crate) fn new_from_label(label: &str) -> Self {
-        Secret {
-            value: label.as_bytes().to_vec(),
-        }
-    }
     pub(crate) fn new_from_bytes(bytes: Vec<u8>) -> Self {
         Secret {
             value: bytes.clone(),
@@ -331,6 +326,15 @@ impl AeadKey {
         AeadKey {
             aead_mode,
             value: secret.value,
+        }
+    }
+
+    #[cfg(test)]
+    /// Generate a random AEAD Key
+    pub fn new_from_random(aead_mode: AeadMode) -> Self {
+        AeadKey {
+            aead_mode,
+            value: aead_key_gen(aead_mode),
         }
     }
 
