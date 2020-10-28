@@ -241,7 +241,7 @@ impl Clone for KeyPackageBundle {
     fn clone(&self) -> Self {
         KeyPackageBundle {
             key_package: self.key_package.clone(),
-            private_key: HPKEPrivateKey::new(self.private_key.as_slice().to_vec().clone()),
+            private_key: HPKEPrivateKey::new(self.private_key.as_slice().to_vec()),
         }
     }
 }
