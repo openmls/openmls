@@ -33,6 +33,8 @@ mod codec;
 pub(crate) mod signable;
 use ciphersuites::*;
 
+use crate::codec::{encode_vec, Codec, CodecError, VecSize};
+
 #[cfg(test)]
 mod test_ciphersuite;
 
@@ -81,6 +83,38 @@ pub enum AEADError {
     WrongKeyLength,
 }
 
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
+pub struct Secret {
+    value: Vec<u8>,
+}
+
+impl Secret {
+    pub(crate) fn new_empty_secret() -> Self {
+        Secret { value: vec![] }
+    }
+    pub(crate) fn new_from_label(label: &str) -> Self {
+        Secret {
+            value: label.as_bytes().to_vec(),
+        }
+    }
+    pub(crate) fn new_from_bytes(bytes: Vec<u8>) -> Self {
+        Secret {
+            value: bytes.clone(),
+        }
+    }
+    // TODO: Refactor such that we can remove this.
+    pub(crate) fn to_vec(self) -> Vec<u8> {
+        self.value
+    }
+}
+
+impl Codec for Secret {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        encode_vec(VecSize::VecU8, buffer, &self.value)?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct AeadKey {
     pub aead_mode: AeadMode,
@@ -122,7 +156,7 @@ pub struct Ciphersuite {
     hpke_kem: KemMode,
     hpke_kdf: HpkeKdfMode,
     hpke_aead: HpkeAeadMode,
-    aead: AeadMode,
+    aead_mode: AeadMode,
     hash: DigestMode,
     hmac: HmacMode,
 }
@@ -149,20 +183,20 @@ impl Ciphersuite {
             hpke_kem,
             hpke_kdf,
             hpke_aead,
-            aead: get_aead_from_suite(&name),
+            aead_mode: get_aead_from_suite(&name),
             hash: get_hash_from_suite(&name),
             hmac: get_kdf_from_suite(&name),
         }
     }
 
     /// Get the name of this ciphersuite.
-    pub fn get_name(&self) -> CiphersuiteName {
+    pub fn name(&self) -> CiphersuiteName {
         self.name
     }
 
     /// Get the AEAD mode
-    pub fn get_aead(&self) -> AeadMode {
-        self.aead
+    pub fn aead_mode(&self) -> AeadMode {
+        self.aead_mode
     }
 
     /// Sign a `msg` with the given `sk`.
@@ -210,49 +244,29 @@ impl Ciphersuite {
     }
 
     /// HKDF extract.
-    pub(crate) fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Vec<u8> {
-        hkdf_extract(self.hmac, salt, ikm)
+    pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm: &Secret) -> Secret {
+        Secret {
+            value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
+        }
     }
 
     /// HKDF expand
     pub(crate) fn hkdf_expand(
         &self,
-        prk: &[u8],
+        prk: &Secret,
         info: &[u8],
         okm_len: usize,
-    ) -> Result<Vec<u8>, HKDFError> {
-        let key = hkdf_expand(self.hmac, prk, info, okm_len);
+    ) -> Result<Secret, HKDFError> {
+        let key = hkdf_expand(self.hmac, prk.value.as_slice(), info, okm_len);
         if key.is_empty() {
             return Err(HKDFError::InvalidLength);
         }
-        Ok(key)
-    }
-
-    /// AEAD encrypt `msg` with `key`, `aad`, and `nonce`.
-    pub(crate) fn aead_seal(
-        &self,
-        msg: &[u8],
-        aad: &[u8],
-        key: &AeadKey,
-        nonce: &AeadNonce,
-    ) -> Result<Vec<u8>, AEADError> {
-        key.encrypt(msg, aad, nonce)
-    }
-
-    /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
-    pub(crate) fn aead_open(
-        &self,
-        ciphertext: &[u8],
-        aad: &[u8],
-        key: &AeadKey,
-        nonce: &AeadNonce,
-    ) -> Result<Vec<u8>, AEADError> {
-        key.decrypt(ciphertext, aad, nonce)
+        Ok(Secret { value: key })
     }
 
     /// Returns the key size of the used AEAD.
     pub(crate) fn aead_key_length(&self) -> usize {
-        aead_key_size(&self.aead)
+        aead_key_size(&self.aead_mode)
     }
 
     /// Returns the length of the nonce in the AEAD.
@@ -306,28 +320,33 @@ impl Ciphersuite {
     }
 
     /// Generate a new HPKE key pair and return it.
-    pub(crate) fn derive_hpke_keypair(&self, ikm: &[u8]) -> HPKEKeyPair {
-        self.hpke.derive_key_pair(ikm)
+    pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HPKEKeyPair {
+        self.hpke.derive_key_pair(ikm.value.as_slice())
     }
 }
 
 impl AeadKey {
-    // TODO: Create a new function that can only be called by HKDF.
-    /// Build a new key for an AEAD from `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8], aead_mode: AeadMode) -> AeadKey {
+    /// Build a new key for an AEAD from `Secret`.
+    pub(crate) fn from_secret(secret: Secret, aead_mode: AeadMode) -> AeadKey {
         AeadKey {
             aead_mode,
-            value: bytes.to_vec(),
+            value: secret.value,
         }
     }
 
+    #[cfg(test)]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }
 
     /// Encrypt a payload under the AeadKey given a nonce.
-    pub fn encrypt(&self, msg: &[u8], aad: &[u8], nonce: &AeadNonce) -> Result<Vec<u8>, AEADError> {
+    pub fn aead_seal(
+        &self,
+        msg: &[u8],
+        aad: &[u8],
+        nonce: &AeadNonce,
+    ) -> Result<Vec<u8>, AEADError> {
         let (ct, tag) = match aead_encrypt(
             self.aead_mode,
             &self.value.as_slice(),
@@ -344,7 +363,7 @@ impl AeadKey {
     }
 
     /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
-    pub(crate) fn decrypt(
+    pub(crate) fn aead_open(
         &self,
         ciphertext: &[u8],
         aad: &[u8],
@@ -374,6 +393,13 @@ impl AeadNonce {
     pub(crate) fn from_slice(bytes: &[u8]) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(bytes);
+        AeadNonce { value: nonce }
+    }
+
+    /// Build a new nonce for an AEAD from `Secret`.
+    pub(crate) fn from_secret(secret: Secret) -> Self {
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(secret.value.as_slice());
         AeadNonce { value: nonce }
     }
 

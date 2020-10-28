@@ -123,14 +123,17 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: group_info.confirmed_transcript_hash,
         };
-        let epoch_secrets =
-            EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
-        let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, tree.leaf_count());
+        let epoch_secrets = EpochSecrets::derive_epoch_secrets(
+            &ciphersuite,
+            &group_secrets.joiner_secret,
+            Secret::new_empty_secret(),
+        );
+        let secret_tree = SecretTree::new(epoch_secrets.encryption_secret, tree.leaf_count());
 
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &epoch_secrets.confirmation_key,
-            &group_context.confirmed_transcript_hash,
+            &Secret::new_from_bytes(group_context.confirmed_transcript_hash),
         );
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
@@ -184,7 +187,7 @@ impl MlsGroup {
         let (welcome_key, welcome_nonce) =
             compute_welcome_key_nonce(ciphersuite, &group_secrets.joiner_secret);
         let group_info_bytes =
-            match ciphersuite.aead_open(encrypted_group_info, &[], &welcome_key, &welcome_nonce) {
+            match welcome_key.aead_open(encrypted_group_info, &[], &welcome_nonce) {
                 Ok(bytes) => bytes,
                 Err(_) => return Err(WelcomeError::GroupInfoDecryptionFailure),
             };

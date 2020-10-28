@@ -29,7 +29,7 @@ macro_rules! test_welcome_msg {
             // Generate key and nonce for the symmetric cipher.
             let welcome_key = AeadKey::from_slice(
                 &randombytes(ciphersuite.aead_key_length()),
-                ciphersuite.get_aead(),
+                ciphersuite.aead_mode(),
             );
             let welcome_nonce =
                 AeadNonce::from_slice(&randombytes(ciphersuite.aead_nonce_length()));
@@ -50,13 +50,8 @@ macro_rules! test_welcome_msg {
             }];
 
             // Encrypt the group info.
-            let encrypted_group_info = ciphersuite
-                .aead_seal(
-                    &group_info.encode_detached().unwrap(),
-                    &[],
-                    &welcome_key,
-                    &welcome_nonce,
-                )
+            let encrypted_group_info = welcome_key
+                .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
 
             // Now build the welcome message.

@@ -77,7 +77,7 @@ impl RatchetTree {
             kpb.private_key,
             NodeIndex::from(0u32),
             PathKeys::default(),
-            CommitSecret(Vec::new()),
+            Secret::new_empty_secret(),
             Vec::new(),
         );
 
@@ -275,7 +275,7 @@ impl RatchetTree {
         sender: LeafIndex,
         update_path: &UpdatePath,
         group_context: &[u8],
-    ) -> Result<CommitSecret, TreeError> {
+    ) -> Result<Secret, TreeError> {
         let own_index = self.get_own_node_index();
 
         // Find common ancestor of own leaf and sender leaf
@@ -345,9 +345,12 @@ impl RatchetTree {
         let sender_path_offset = sender_direct_path.len() - common_path.len();
 
         // Decrypt the secret and derive path secrets
-        let secret = self
-            .ciphersuite
-            .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
+        let secret = Secret::new_from_bytes(self.ciphersuite.hpke_open(
+            hpke_ciphertext,
+            &private_key,
+            group_context,
+            &[],
+        ));
         self.private_tree.generate_path_secrets(
             &self.ciphersuite,
             Some(&secret),
@@ -388,7 +391,7 @@ impl RatchetTree {
         &mut self,
         key_package_bundle: KeyPackageBundle,
         group_context: &[u8],
-    ) -> Result<CommitSecret, TreeError> {
+    ) -> Result<Secret, TreeError> {
         let _path_option = self.replace_private_tree_(
             key_package_bundle,
             group_context,
@@ -402,7 +405,7 @@ impl RatchetTree {
         &mut self,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-    ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
+    ) -> Result<(Secret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
         // Generate new keypair
         let own_index = self.get_own_node_index();
         let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().into_keys();
@@ -489,13 +492,14 @@ impl RatchetTree {
         let mut direct_path_nodes = vec![];
         let mut ciphertexts = vec![];
         for (path_secret, copath_node) in path_secrets.iter().zip(copath.iter()) {
+            let path_secret_bytes = path_secret.to_vec();
             let node_ciphertexts: Vec<HpkeCiphertext> = self
                 .resolve(*copath_node)
                 .iter()
                 .map(|&x| {
                     let pk = self.nodes[x.as_usize()].get_public_hpke_key().unwrap();
                     self.ciphersuite
-                        .hpke_seal(&pk, group_context, &[], &path_secret)
+                        .hpke_seal(&pk, group_context, &[], &path_secret_bytes)
                 })
                 .collect();
             // TODO Check that all public keys are non-empty
@@ -670,7 +674,7 @@ impl RatchetTree {
                     own_kpb.private_key,
                     sender_index,
                     PathKeys::default(),
-                    CommitSecret(Vec::new()),
+                    Secret::new_empty_secret(),
                     Vec::new(),
                 );
             }

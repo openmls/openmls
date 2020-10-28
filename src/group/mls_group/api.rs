@@ -89,7 +89,7 @@ pub trait Api: Sized {
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, DecryptionError>;
 
     /// Export a secret through the exporter
-    fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
+    fn export_secret(&self, label: &str, key_length: usize) -> Secret;
 }
 
 pub type CreateCommitResult = Result<(MLSPlaintext, Option<Welcome>), CreateCommitError>;

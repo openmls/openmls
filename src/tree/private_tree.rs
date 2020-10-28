@@ -3,12 +3,12 @@
 //!
 
 use super::{index::NodeIndex, path_keys::PathKeys, TreeError};
+use crate::ciphersuite::Secret;
 use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
 use crate::codec::{Codec, CodecError};
-use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
 
-pub(crate) type PathSecrets = Vec<Vec<u8>>;
+pub(crate) type PathSecrets = Vec<Secret>;
 #[derive(Debug)]
 pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
@@ -22,7 +22,7 @@ pub(crate) struct PrivateTree {
     path_keys: PathKeys,
 
     // Commit secret.
-    commit_secret: CommitSecret,
+    commit_secret: Secret,
 
     // Path secrets.
     // The first entry here must be the hpke_private_key.
@@ -39,7 +39,7 @@ impl PrivateTree {
             node_index,
             hpke_private_key,
             path_keys: PathKeys::default(),
-            commit_secret: CommitSecret::default(),
+            commit_secret: Secret::default(),
             path_secrets: Vec::default(),
         }
     }
@@ -87,7 +87,7 @@ impl PrivateTree {
         hpke_private_key: HPKEPrivateKey,
         node_index: NodeIndex,
         path_keys: PathKeys,
-        commit_secret: CommitSecret,
+        commit_secret: Secret,
         path_secrets: PathSecrets,
     ) -> Self {
         Self {
@@ -110,10 +110,10 @@ impl PrivateTree {
     pub(crate) fn get_path_keys(&self) -> &PathKeys {
         &self.path_keys
     }
-    pub(crate) fn get_commit_secret(&self) -> CommitSecret {
+    pub(crate) fn get_commit_secret(&self) -> Secret {
         self.commit_secret.clone()
     }
-    pub(crate) fn get_path_secrets(&self) -> &[Vec<u8>] {
+    pub(crate) fn get_path_secrets(&self) -> &[Secret] {
         &self.path_secrets
     }
 
@@ -129,13 +129,13 @@ impl PrivateTree {
     pub(crate) fn generate_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
-        start_secret: Option<&[u8]>,
+        start_secret: Option<&Secret>,
         n: usize,
     ) {
         let hash_len = ciphersuite.hash_length();
         let start_secret = match start_secret {
             Some(secret) => hkdf_expand_label(ciphersuite, secret, "path", &[], hash_len),
-            None => self.hpke_private_key.as_slice().to_vec(),
+            None => Secret::new_from_bytes(self.hpke_private_key.as_slice().to_vec()),
         };
         let mut path_secrets = vec![start_secret];
         for i in 0..n - 1 {
@@ -164,13 +164,13 @@ impl PrivateTree {
             None => return Err(TreeError::NoneError),
         };
 
-        self.commit_secret = CommitSecret(hkdf_expand_label(
+        self.commit_secret = hkdf_expand_label(
             ciphersuite,
             &path_secret,
             "path",
             &[],
             ciphersuite.hash_length(),
-        ));
+        );
 
         Ok(())
     }

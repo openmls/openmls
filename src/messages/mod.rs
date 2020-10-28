@@ -57,10 +57,14 @@ pub struct ConfirmationTag(pub Vec<u8>);
 impl ConfirmationTag {
     pub fn new(
         ciphersuite: &Ciphersuite,
-        confirmation_key: &[u8],
-        confirmed_transcript_hash: &[u8],
+        confirmation_key: &Secret,
+        confirmed_transcript_hash: &Secret,
     ) -> Self {
-        ConfirmationTag(ciphersuite.hkdf_extract(confirmation_key, confirmed_transcript_hash))
+        ConfirmationTag(
+            ciphersuite
+                .hkdf_extract(confirmation_key, confirmed_transcript_hash)
+                .to_vec(),
+        )
     }
     pub fn new_empty() -> Self {
         ConfirmationTag(vec![])
@@ -78,26 +82,6 @@ impl Codec for ConfirmationTag {
     // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
     //     let inner = decode_vec(VecSize::VecU8, cursor)?;
     //     Ok(ConfirmationTag(inner))
-    // }
-}
-
-#[derive(Debug, PartialEq, Clone, Default)]
-pub struct CommitSecret(pub Vec<u8>);
-
-impl CommitSecret {
-    pub fn as_slice(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl Codec for CommitSecret {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.0)?;
-        Ok(())
-    }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let inner = decode_vec(VecSize::VecU8, cursor)?;
-    //     Ok(CommitSecret(inner))
     // }
 }
 
@@ -187,12 +171,12 @@ impl Signable for GroupInfo {
 }
 
 pub struct PathSecret {
-    pub path_secret: Vec<u8>,
+    pub path_secret: Secret,
 }
 
 impl Codec for PathSecret {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.path_secret)?;
+        self.path_secret.encode(buffer)?;
         Ok(())
     }
     // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
@@ -202,13 +186,13 @@ impl Codec for PathSecret {
 }
 
 pub struct GroupSecrets {
-    pub joiner_secret: Vec<u8>,
+    pub joiner_secret: Secret,
     pub path_secret: Option<PathSecret>,
 }
 
 impl Codec for GroupSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.joiner_secret)?;
+        &self.joiner_secret.encode(buffer)?;
         self.path_secret.encode(buffer)?;
         Ok(())
     }

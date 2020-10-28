@@ -19,7 +19,7 @@ use crate::codec::*;
 use crate::group::*;
 use crate::messages::*;
 
-pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &[u8], label: &str) -> Vec<u8> {
+pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &Secret, label: &str) -> Secret {
     hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
 }
 
@@ -29,7 +29,7 @@ pub fn mls_exporter(
     label: &str,
     group_context: &GroupContext,
     key_length: usize,
-) -> Vec<u8> {
+) -> Secret {
     let secret = &epoch_secrets.exporter_secret;
     let context = &group_context.serialize();
     let context_hash = &ciphersuite.hash(context);
@@ -44,14 +44,14 @@ pub fn mls_exporter(
 
 pub fn hkdf_expand_label(
     ciphersuite: &Ciphersuite,
-    secret: &[u8],
+    secret: &Secret,
     label: &str,
     context: &[u8],
     length: usize,
-) -> Vec<u8> {
+) -> Secret {
     let hkdf_label = HkdfLabel::new(context, label, length);
     let info = &hkdf_label.serialize();
-    ciphersuite.hkdf_expand(&secret, &info, length).unwrap()
+    ciphersuite.hkdf_expand(secret, &info, length).unwrap()
 }
 
 pub struct HkdfLabel {
@@ -81,22 +81,22 @@ impl HkdfLabel {
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct EpochSecrets {
-    pub welcome_secret: Vec<u8>,
-    pub sender_data_secret: Vec<u8>,
-    pub encryption_secret: Vec<u8>,
-    pub exporter_secret: Vec<u8>,
-    pub confirmation_key: Vec<u8>,
-    pub init_secret: Vec<u8>,
+    pub welcome_secret: Secret,
+    pub sender_data_secret: Secret,
+    pub encryption_secret: Secret,
+    pub exporter_secret: Secret,
+    pub confirmation_key: Secret,
+    pub init_secret: Secret,
 }
 
 impl EpochSecrets {
     pub fn new() -> Self {
-        let welcome_secret = vec![];
-        let sender_data_secret = vec![];
-        let encryption_secret = vec![];
-        let exporter_secret = vec![];
-        let confirmation_key = vec![];
-        let init_secret = vec![];
+        let welcome_secret = Secret::new_empty_secret();
+        let sender_data_secret = Secret::new_empty_secret();
+        let encryption_secret = Secret::new_empty_secret();
+        let exporter_secret = Secret::new_empty_secret();
+        let confirmation_key = Secret::new_empty_secret();
+        let init_secret = Secret::new_empty_secret();
         Self {
             welcome_secret,
             sender_data_secret,
@@ -109,18 +109,23 @@ impl EpochSecrets {
     pub fn get_new_epoch_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
-        commit_secret: CommitSecret,
-        psk: Option<&[u8]>,
+        commit_secret: Secret,
+        psk: Option<Secret>,
         group_context: &GroupContext,
-    ) -> Vec<u8> {
+    ) -> Secret {
         let current_init_secret = self.init_secret.clone();
-        let joiner_secret =
-            &ciphersuite.hkdf_extract(commit_secret.as_slice(), &current_init_secret);
+        let joiner_secret = &ciphersuite.hkdf_extract(&commit_secret, &current_init_secret);
         let welcome_secret = derive_secret(ciphersuite, &joiner_secret, "welcome");
         let pre_member_secret = derive_secret(ciphersuite, &joiner_secret, "member");
-        let member_secret = ciphersuite.hkdf_extract(&psk.unwrap_or(&[]), &pre_member_secret);
+        let member_secret = ciphersuite.hkdf_extract(
+            &psk.unwrap_or(Secret::new_empty_secret()),
+            &pre_member_secret,
+        );
         let pre_epoch_secret = derive_secret(ciphersuite, &member_secret, "epoch");
-        let epoch_secret = ciphersuite.hkdf_extract(&group_context.serialize(), &pre_epoch_secret);
+        let epoch_secret = ciphersuite.hkdf_extract(
+            &Secret::new_from_bytes(group_context.serialize()),
+            &pre_epoch_secret,
+        );
         let epoch_secrets = Self::derive_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret);
         self.welcome_secret = epoch_secrets.welcome_secret;
         self.sender_data_secret = epoch_secrets.sender_data_secret;
@@ -133,8 +138,8 @@ impl EpochSecrets {
 
     pub fn derive_epoch_secrets(
         ciphersuite: &Ciphersuite,
-        epoch_secret: &[u8],
-        welcome_secret: Vec<u8>,
+        epoch_secret: &Secret,
+        welcome_secret: Secret,
     ) -> EpochSecrets {
         let sender_data_secret = derive_secret(ciphersuite, epoch_secret, "sender data");
         let encryption_secret = derive_secret(ciphersuite, epoch_secret, "encryption");
@@ -154,28 +159,12 @@ impl EpochSecrets {
 
 impl Codec for EpochSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.welcome_secret)?;
-        encode_vec(VecSize::VecU8, buffer, &self.sender_data_secret)?;
-        encode_vec(VecSize::VecU8, buffer, &self.encryption_secret)?;
-        encode_vec(VecSize::VecU8, buffer, &self.exporter_secret)?;
-        encode_vec(VecSize::VecU8, buffer, &self.confirmation_key)?;
-        encode_vec(VecSize::VecU8, buffer, &self.init_secret)?;
+        &self.welcome_secret.encode(buffer)?;
+        &self.sender_data_secret.encode(buffer)?;
+        &self.encryption_secret.encode(buffer)?;
+        &self.exporter_secret.encode(buffer)?;
+        &self.confirmation_key.encode(buffer)?;
+        &self.init_secret.encode(buffer)?;
         Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let welcome_secret = decode_vec(VecSize::VecU8, cursor)?;
-        let sender_data_secret = decode_vec(VecSize::VecU8, cursor)?;
-        let encryption_secret = decode_vec(VecSize::VecU8, cursor)?;
-        let exporter_secret = decode_vec(VecSize::VecU8, cursor)?;
-        let confirmation_key = decode_vec(VecSize::VecU8, cursor)?;
-        let init_secret = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(EpochSecrets {
-            welcome_secret,
-            sender_data_secret,
-            encryption_secret,
-            exporter_secret,
-            confirmation_key,
-            init_secret,
-        })
     }
 }

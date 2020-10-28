@@ -191,15 +191,17 @@ impl MLSCiphertext {
         let context = mls_group.context();
         let epoch_secrets = mls_group.epoch_secrets();
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
-        let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite,
-            &epoch_secrets.sender_data_secret,
-            "sd key",
-            &[],
-            ciphersuite.aead_key_length(),
+        let sender_data_key = AeadKey::from_secret(
+            hkdf_expand_label(
+                ciphersuite,
+                &epoch_secrets.sender_data_secret,
+                "sd key",
+                &[],
+                ciphersuite.aead_key_length(),
+            ),
+            ciphersuite.aead_mode(),
         );
         let sender_data_nonce = AeadNonce::random();
-        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes, ciphersuite.get_aead());
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             context.group_id.clone(),
             context.epoch,
@@ -209,11 +211,10 @@ impl MLSCiphertext {
         );
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap(); // TODO: error handling
-        let encrypted_sender_data = ciphersuite
+        let encrypted_sender_data = sender_data_key
             .aead_seal(
                 &sender_data.encode_detached().unwrap(),
                 &mls_ciphertext_sender_data_aad_bytes,
-                &sender_data_key,
                 &sender_data_nonce,
             )
             .unwrap();
@@ -253,11 +254,11 @@ impl MLSCiphertext {
             padding: padding_block,
         };
 
-        let ciphertext = ciphersuite
+        let ciphertext = ratchet_secrets
+            .get_key()
             .aead_seal(
                 &mls_ciphertext_content.encode_detached().unwrap(),
                 &mls_ciphertext_content_aad_bytes,
-                ratchet_secrets.get_key(),
                 ratchet_secrets.get_nonce(),
             )
             .unwrap();
@@ -281,14 +282,16 @@ impl MLSCiphertext {
         context: &GroupContext,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
         let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
-        let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite,
-            &epoch_secrets.sender_data_secret,
-            "sd key",
-            &[],
-            ciphersuite.aead_key_length(),
+        let sender_data_key = AeadKey::from_secret(
+            hkdf_expand_label(
+                ciphersuite,
+                &epoch_secrets.sender_data_secret,
+                "sd key",
+                &[],
+                ciphersuite.aead_key_length(),
+            ),
+            ciphersuite.aead_mode(),
         );
-        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes, ciphersuite.get_aead());
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             self.group_id.clone(),
             self.epoch,
@@ -298,11 +301,10 @@ impl MLSCiphertext {
         );
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap();
-        let sender_data_bytes = ciphersuite
+        let sender_data_bytes = &sender_data_key
             .aead_open(
                 &self.encrypted_sender_data,
                 &mls_ciphertext_sender_data_aad_bytes,
-                &sender_data_key,
                 &sender_data_nonce,
             )
             .unwrap();
@@ -330,11 +332,11 @@ impl MLSCiphertext {
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap();
-        let mls_ciphertext_content_bytes = ciphersuite
+        let mls_ciphertext_content_bytes = ratchet_secrets
+            .get_key()
             .aead_open(
                 &self.ciphertext,
                 &mls_ciphertext_content_aad_bytes,
-                ratchet_secrets.get_key(),
                 ratchet_secrets.get_nonce(),
             )
             .unwrap();

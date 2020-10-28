@@ -9,7 +9,7 @@ const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
 pub struct SenderRatchet {
     index: LeafIndex,
     generation: u32,
-    past_secrets: Vec<Vec<u8>>,
+    past_secrets: Vec<Secret>,
 }
 
 impl Codec for SenderRatchet {
@@ -45,11 +45,11 @@ impl Codec for SenderRatchet {
 
 impl SenderRatchet {
     /// Creates e new SenderRatchet
-    pub fn new(index: LeafIndex, secret: &[u8]) -> Self {
+    pub fn new(index: LeafIndex, secret: &Secret) -> Self {
         Self {
             index,
             generation: 0,
-            past_secrets: vec![secret.to_vec()],
+            past_secrets: vec![secret.clone()],
         }
     }
     /// Gets a secret from the SenderRatchet. Returns an error if the generation is out of bound.
@@ -106,7 +106,7 @@ impl SenderRatchet {
         )
     }
     /// Computes the new secret
-    fn ratchet_secret(&self, ciphersuite: &Ciphersuite, secret: &[u8]) -> Vec<u8> {
+    fn ratchet_secret(&self, ciphersuite: &Ciphersuite, secret: &Secret) -> Secret {
         derive_tree_secret(
             ciphersuite,
             secret,
@@ -120,7 +120,7 @@ impl SenderRatchet {
     fn derive_key_nonce(
         &self,
         ciphersuite: &Ciphersuite,
-        secret: &[u8],
+        secret: &Secret,
         generation: u32,
     ) -> RatchetSecrets {
         let nonce = derive_tree_secret(
@@ -140,8 +140,8 @@ impl SenderRatchet {
             ciphersuite.aead_key_length(),
         );
         RatchetSecrets::new(
-            AeadNonce::from_slice(&nonce),
-            AeadKey::from_slice(&key, ciphersuite.get_aead()),
+            AeadNonce::from_secret(nonce),
+            AeadKey::from_secret(key, ciphersuite.aead_mode()),
         )
     }
     /// Gets the current generation
