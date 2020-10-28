@@ -28,7 +28,7 @@ impl Codec for KeyPackage {
         // TODO: #93 check extensions
         // for _ in 0..kp.extensions.len() {}
 
-        if !kp.verify() {
+        if kp.verify().is_err() {
             return Err(CodecError::DecodingError);
         }
         Ok(kp)

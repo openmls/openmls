@@ -61,14 +61,3 @@ fn create_private_tree_from_secret() {
 
     test_private_tree(&private_tree, &direct_path, &public_keys, &ciphersuite);
 }
-
-#[test]
-fn create_private_tree_from_raw() {
-    const PATH_LENGTH: usize = 33;
-    let (ciphersuite, hpke_private_key, own_index, direct_path) = setup(PATH_LENGTH);
-
-    let (private_tree, public_keys) =
-        PrivateTree::new_raw(&ciphersuite, own_index, hpke_private_key, &direct_path).unwrap();
-
-    test_private_tree(&private_tree, &direct_path, &public_keys, &ciphersuite);
-}
