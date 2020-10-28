@@ -14,17 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::{signable::*, *};
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::creds::*;
 use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, ParentHashExtension,
+    CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
+    ParentHashExtension,
 };
 
 mod codec;
 
 mod test_key_packages;
+
+#[derive(Debug, PartialEq)]
+pub enum KeyPackageError {
+    ExtensionNotPresent,
+}
+
+impl From<ExtensionError> for KeyPackageError {
+    fn from(e: ExtensionError) -> Self {
+        match e {
+            // TODO: error handling #83
+            ExtensionError::InvalidExtensionType => KeyPackageError::ExtensionNotPresent,
+            ExtensionError::UnknownExtension => KeyPackageError::ExtensionNotPresent,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
@@ -46,23 +62,19 @@ impl KeyPackage {
     fn new(
         ciphersuite_name: CiphersuiteName,
         hpke_init_key: HPKEPublicKey,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential,
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
             cipher_suite: ciphersuite_name,
             hpke_init_key,
-            credential,
+            credential: credential_bundle.credential().clone(),
             extensions,
             signature: Signature::new_empty(),
         };
-        let payload = &key_package.unsigned_payload().unwrap();
-
-        key_package.signature = ciphersuite.sign(signature_key, payload).unwrap();
+        key_package.sign(&credential_bundle);
         key_package
     }
 
@@ -100,7 +112,6 @@ impl KeyPackage {
         if !mandatory_extensions_found.is_empty() {
             return false;
         }
-        debug_assert_eq!(mandatory_extensions_found.len(), 0);
 
         // Verify the signature on this key package.
         self.credential
@@ -127,6 +138,15 @@ impl KeyPackage {
         None
     }
 
+    /// Get the ID of this key package as byte slice.
+    /// Returns an error if no Key ID extension is present.
+    pub fn get_id(&self) -> Result<&[u8], KeyPackageError> {
+        if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
+            return Ok(key_id_ext.to_key_id_extension_ref()?.as_slice());
+        }
+        Err(KeyPackageError::ExtensionNotPresent)
+    }
+
     /// Update the parent hash extension of this key package.
     pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
         self.remove_extension(ExtensionType::ParentHash);
@@ -135,12 +155,16 @@ impl KeyPackage {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub(crate) fn _add_extension(&mut self, extension: Box<dyn Extension>) {
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
+    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
         self.remove_extension(extension.get_type());
         self.extensions.push(extension);
     }
 
     /// Remove an extension from the KeyPackage
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions.retain(|e| e.get_type() != extension_type);
     }
@@ -169,9 +193,9 @@ impl KeyPackage {
     pub fn get_extensions_ref(&self) -> &[Box<dyn Extension>] {
         &self.extensions
     }
-}
 
-impl Signable for KeyPackage {
+    /// Compile the unsigned payload to create the signature required in the
+    /// signature field.
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
         self.protocol_version.encode(buffer)?;
@@ -186,6 +210,12 @@ impl Signable for KeyPackage {
             .collect();
         encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
         Ok(buffer.to_vec())
+    }
+
+    /// Populate the `signature` field using the `credential_bundle`.
+    pub(crate) fn sign(&mut self, credential_bundle: &CredentialBundle) {
+        let payload = &self.unsigned_payload().unwrap();
+        self.signature = credential_bundle.sign(payload).unwrap();
     }
 }
 
@@ -204,18 +234,11 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new(
         ciphersuite_name: CiphersuiteName,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential, // FIXME: must be reference
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         let keypair = Ciphersuite::new(ciphersuite_name).new_hpke_keypair();
-        Self::new_with_keypair(
-            ciphersuite_name,
-            signature_key,
-            credential,
-            extensions,
-            keypair,
-        )
+        Self::new_with_keypair(ciphersuite_name, credential_bundle, extensions, keypair)
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -224,8 +247,7 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuite_name: CiphersuiteName,
-        signature_key: &SignaturePrivateKey,
-        credential: Credential,
+        credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
     ) -> Self {
@@ -238,8 +260,7 @@ impl KeyPackageBundle {
         let key_package = KeyPackage::new(
             ciphersuite_name,
             public_key,
-            signature_key,
-            credential,
+            credential_bundle,
             final_extensions,
         );
         KeyPackageBundle {

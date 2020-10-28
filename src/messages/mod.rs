@@ -17,11 +17,9 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::ProtocolVersion;
-use crate::creds::*;
 use crate::extensions::*;
 use crate::group::*;
 use crate::tree::{index::*, *};
-use std::fmt;
 
 pub(crate) mod proposals;
 use proposals::*;
@@ -34,69 +32,23 @@ pub enum MessageError {
     UnknownOperation,
 }
 
-pub struct MembershipChanges {
-    pub updates: Vec<Credential>,
-    pub removes: Vec<Credential>,
-    pub adds: Vec<Credential>,
-}
-
-impl MembershipChanges {
-    pub fn path_required(&self) -> bool {
-        !self.updates.is_empty() || !self.removes.is_empty() || self.adds.is_empty()
-    }
-}
-
-impl fmt::Debug for MembershipChanges {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn list_members(f: &mut fmt::Formatter<'_>, members: &[Credential]) -> fmt::Result {
-            for m in members {
-                write!(
-                    f,
-                    "{} ",
-                    String::from_utf8(m.get_identity().clone()).unwrap()
-                )?;
-            }
-            Ok(())
-        }
-        write!(f, "Membership changes:")?;
-        write!(f, "\n\tUpdates: ")?;
-        list_members(f, &self.updates)?;
-        write!(f, "\n\tRemoves: ")?;
-        list_members(f, &self.removes)?;
-        write!(f, "\n\tAdds: ")?;
-        list_members(f, &self.adds)?;
-        writeln!(f)
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Commit {
-    pub updates: Vec<ProposalID>,
-    pub removes: Vec<ProposalID>,
-    pub adds: Vec<ProposalID>,
+    pub proposals: Vec<ProposalID>,
     pub path: Option<UpdatePath>,
 }
 
 impl Codec for Commit {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.updates)?;
-        encode_vec(VecSize::VecU32, buffer, &self.removes)?;
-        encode_vec(VecSize::VecU32, buffer, &self.adds)?;
+        encode_vec(VecSize::VecU32, buffer, &self.proposals)?;
         self.path.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let updates = decode_vec(VecSize::VecU32, cursor)?;
-    //     let removes = decode_vec(VecSize::VecU32, cursor)?;
-    //     let adds = decode_vec(VecSize::VecU32, cursor)?;
-    //     let path = Option::<UpdatePath>::decode(cursor)?;
-    //     Ok(Commit {
-    //         updates,
-    //         removes,
-    //         adds,
-    //         path,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let proposals = decode_vec(VecSize::VecU32, cursor)?;
+        let path = Option::<UpdatePath>::decode(cursor)?;
+        Ok(Commit { proposals, path })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -154,7 +106,6 @@ pub struct GroupInfo {
     pub epoch: GroupEpoch,
     pub tree_hash: Vec<u8>,
     pub confirmed_transcript_hash: Vec<u8>,
-    pub interim_transcript_hash: Vec<u8>,
     pub extensions: Vec<Box<dyn Extension>>,
     pub confirmation_tag: Vec<u8>,
     pub signer_index: LeafIndex,
@@ -168,7 +119,6 @@ impl GroupInfo {
         let epoch = GroupEpoch::decode(&mut cursor)?;
         let tree_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
         let confirmed_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let interim_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
         let extensions = extensions_vec_from_cursor(&mut cursor)?;
         let confirmation_tag = decode_vec(VecSize::VecU8, &mut cursor)?;
         let signer_index = LeafIndex::from(u32::decode(&mut cursor)?);
@@ -178,7 +128,6 @@ impl GroupInfo {
             epoch,
             tree_hash,
             confirmed_transcript_hash,
-            interim_transcript_hash,
             extensions,
             confirmation_tag,
             signer_index,
@@ -224,7 +173,6 @@ impl Signable for GroupInfo {
         self.epoch.encode(buffer)?;
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
         let encoded_extensions: Vec<ExtensionStruct> = self
             .extensions

@@ -21,6 +21,7 @@ mod new_from_welcome;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::creds::CredentialBundle;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -94,7 +95,7 @@ impl Api for MlsGroup {
     fn create_add_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
     ) -> MLSPlaintext {
         let add_proposal = AddProposal {
@@ -103,12 +104,11 @@ impl Api for MlsGroup {
         let proposal = Proposal::Add(add_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
-            &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
-            signature_key,
-            &self.get_context(),
+            credential_bundle,
+            &self.context(),
         )
     }
 
@@ -119,19 +119,18 @@ impl Api for MlsGroup {
     fn create_update_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
     ) -> MLSPlaintext {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
-            &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
-            signature_key,
-            &self.get_context(),
+            credential_bundle,
+            &self.context(),
         )
     }
 
@@ -142,7 +141,7 @@ impl Api for MlsGroup {
     fn create_remove_proposal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
     ) -> MLSPlaintext {
         let remove_proposal = RemoveProposal {
@@ -151,12 +150,11 @@ impl Api for MlsGroup {
         let proposal = Proposal::Remove(remove_proposal);
         let content = MLSPlaintextContentType::Proposal(proposal);
         MLSPlaintext::new(
-            &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
-            signature_key,
-            &self.get_context(),
+            credential_bundle,
+            &self.context(),
         )
     }
 
@@ -172,11 +170,11 @@ impl Api for MlsGroup {
     fn create_commit(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        self.create_commit_internal(aad, signature_key, proposals, force_self_update)
+        self.create_commit_internal(aad, credential_bundle, proposals, force_self_update)
     }
 
     // Apply a Commit message
@@ -194,16 +192,15 @@ impl Api for MlsGroup {
         &mut self,
         aad: &[u8],
         msg: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
     ) -> MLSCiphertext {
         let content = MLSPlaintextContentType::Application(msg.to_vec());
         let mls_plaintext = MLSPlaintext::new(
-            &self.ciphersuite,
-            self.get_sender_index(),
+            self.sender_index(),
             aad,
             content,
-            signature_key,
-            &self.get_context(),
+            credential_bundle,
+            &self.context(),
         );
         self.encrypt(mls_plaintext)
     }
@@ -224,7 +221,7 @@ impl Api for MlsGroup {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
-            let node = &tree.nodes[NodeIndex::from(i).as_usize()];
+            let node = &tree.nodes[i];
             let credential = if let Some(kp) = &node.key_package {
                 kp.get_credential()
             } else {
@@ -245,10 +242,10 @@ impl Api for MlsGroup {
     // Exporter
     fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
         mls_exporter(
-            self.get_ciphersuite(),
+            self.ciphersuite(),
             &self.epoch_secrets,
             label,
-            &self.get_context(),
+            &self.context(),
             key_length,
         )
     }
@@ -287,21 +284,21 @@ impl Codec for MlsGroup {
 }
 
 impl MlsGroup {
-    pub fn get_tree(&self) -> Ref<RatchetTree> {
+    pub fn tree(&self) -> Ref<RatchetTree> {
         self.tree.borrow()
     }
-    fn get_sender_index(&self) -> LeafIndex {
+    fn sender_index(&self) -> LeafIndex {
         self.tree.borrow().get_own_node_index().into()
     }
-    pub(crate) fn get_ciphersuite(&self) -> &Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> &Ciphersuite {
         &self.ciphersuite
     }
 
-    pub(crate) fn get_context(&self) -> &GroupContext {
+    pub(crate) fn context(&self) -> &GroupContext {
         &self.group_context
     }
 
-    pub(crate) fn get_epoch_secrets(&self) -> &EpochSecrets {
+    pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
         &self.epoch_secrets
     }
 }
@@ -319,10 +316,10 @@ fn update_confirmed_transcript_hash(
 
 fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
-    mls_plaintext: &MLSPlaintext,
+    mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Vec<u8> {
-    let commit_auth_data_bytes = &MLSPlaintextCommitAuthData::from(mls_plaintext).serialize();
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.serialize();
     ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
 }
 

@@ -26,7 +26,7 @@ impl Codec for CiphersuiteName {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(CiphersuiteName::from(u16::decode(cursor)?))
+        Ok(CiphersuiteName::try_from(u16::decode(cursor)?)?)
     }
 }
 
@@ -36,9 +36,9 @@ impl Codec for Ciphersuite {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(Ciphersuite::new(CiphersuiteName::from(u16::decode(
+        Ok(Ciphersuite::new(CiphersuiteName::try_from(u16::decode(
             cursor,
-        )?)))
+        )?)?))
     }
 }
 
@@ -94,33 +94,6 @@ impl Codec for Signature {
     }
 }
 
-impl Codec for HPKEKeyPair {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.private_key.encode(buffer)?;
-        self.public_key.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let public_key = HPKEPublicKey::decode(cursor)?;
-        let private_key = HPKEPrivateKey::decode(cursor)?;
-        Ok(Self {
-            private_key,
-            public_key,
-        })
-    }
-}
-
-impl Codec for HPKEPrivateKey {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU16, buffer, &self.value)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let inner = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(Self { value: inner })
-    }
-}
-
 impl Codec for HPKEPublicKey {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, self.as_slice())?;
@@ -128,7 +101,7 @@ impl Codec for HPKEPublicKey {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let inner = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(Self { value: inner })
+        Ok(Self::new(inner))
     }
 }
 

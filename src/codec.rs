@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::errors::ConfigError;
+use crate::errors::{ConfigError, Error};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CodecError {
     EncodingError,
     DecodingError,
@@ -29,6 +29,16 @@ impl From<ConfigError> for CodecError {
     // TODO: tbd in #83
     fn from(_e: ConfigError) -> CodecError {
         CodecError::DecodingError
+    }
+}
+
+impl From<Error> for CodecError {
+    // TODO: tbd in #83, also this direction shouldn't be necessary.
+    fn from(e: Error) -> CodecError {
+        match e {
+            Error::DecodingError => CodecError::DecodingError,
+            Error::UnsupportedCiphersuite => CodecError::DecodingError,
+        }
     }
 }
 

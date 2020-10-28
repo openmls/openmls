@@ -75,7 +75,7 @@ impl MlsGroup {
         }
 
         // Verify GroupInfo signature
-        let signer_node = tree.nodes[NodeIndex::from(group_info.signer_index).as_usize()].clone();
+        let signer_node = tree.nodes[group_info.signer_index].clone();
         let signer_key_package = signer_node.key_package.unwrap();
         let payload = group_info.unsigned_payload().unwrap();
         if !signer_key_package
@@ -127,13 +127,19 @@ impl MlsGroup {
             EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
         let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, tree.leaf_count());
 
-        // Verify confirmation tag
-        if ConfirmationTag::new(
+        let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &epoch_secrets.confirmation_key,
             &group_context.confirmed_transcript_hash,
-        ) != ConfirmationTag(group_info.confirmation_tag)
-        {
+        );
+        let interim_transcript_hash = update_interim_transcript_hash(
+            &ciphersuite,
+            &MLSPlaintextCommitAuthData::from(&confirmation_tag),
+            &group_context.confirmed_transcript_hash,
+        );
+
+        // Verify confirmation tag
+        if confirmation_tag != ConfirmationTag(group_info.confirmation_tag) {
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
@@ -143,7 +149,7 @@ impl MlsGroup {
                 epoch_secrets,
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
-                interim_transcript_hash: group_info.interim_transcript_hash,
+                interim_transcript_hash,
             })
         }
     }

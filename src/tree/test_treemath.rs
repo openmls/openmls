@@ -76,18 +76,10 @@ fn test_tree_hash() {
     use crate::tree::*;
 
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
-        let signature_keypair = ciphersuite.new_signature_keypair();
-        let identity = Identity::new(ciphersuite_name, id.to_vec());
-        let credential =
-            Credential::from(MLSCredentialType::Basic(BasicCredential::from(&identity)));
-        let kbp = KeyPackageBundle::new(
-            ciphersuite_name,
-            signature_keypair.get_private_key(),
-            credential,
-            Vec::new(),
-        );
-        kbp
+        let credential_bundle =
+            CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite_name).unwrap();
+        let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
+        kpb
     }
 
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -103,7 +95,7 @@ fn test_tree_hash() {
     for _ in 0..5 {
         nodes.push(create_identity(b"Tree creator", ciphersuite_name));
     }
-    let key_packages: Vec<KeyPackage> = nodes.iter().map(|kbp| kbp.key_package.clone()).collect();
+    let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
     let _ = tree.add_nodes(&key_packages);
     let tree_hash = tree.compute_tree_hash();
     println!("Tree hash: {:?}", tree_hash);

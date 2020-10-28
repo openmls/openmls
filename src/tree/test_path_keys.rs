@@ -9,7 +9,7 @@ use crate::ciphersuite::*;
 #[test]
 fn test_duplicate_index() {
     fn key() -> HPKEPrivateKey {
-        HPKEPrivateKey::from_slice(&[1, 2, 3, 4, 5, 6])
+        HPKEPrivateKey::new(vec![1, 2, 3, 4, 5, 6])
     }
     let path = [
         NodeIndex::from(1u32),
@@ -25,7 +25,7 @@ fn test_duplicate_index() {
 #[test]
 fn test_insert_retrieve() {
     fn key() -> HPKEPrivateKey {
-        HPKEPrivateKey::from_slice(&[1, 2, 3, 4, 5, 6])
+        HPKEPrivateKey::new(vec![1, 2, 3, 4, 5, 6])
     }
     let path = generate_path_u32(2001);
     let private_keys = (0..1000).map(|_| key()).collect();
@@ -36,10 +36,7 @@ fn test_insert_retrieve() {
     path_keys.add(private_keys, &path[0..1000]).unwrap();
     // The key we look for
     path_keys
-        .add(
-            vec![HPKEPrivateKey::from_slice(&[6, 6, 6])],
-            &path[1000..1001],
-        )
+        .add(vec![HPKEPrivateKey::new(vec![6, 6, 6])], &path[1000..1001])
         .unwrap();
     let private_keys = (0..1000).map(|_| key()).collect();
     // A couple more random keys

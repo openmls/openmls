@@ -1,6 +1,6 @@
 use super::{EncryptedGroupSecrets, GroupInfo, Welcome};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HPKEKeyPair, Signature},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Signature},
     codec::*,
     config::Config,
     group::{GroupEpoch, GroupId},
@@ -18,7 +18,6 @@ macro_rules! test_welcome_msg {
                 epoch: GroupEpoch(123),
                 tree_hash: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 confirmed_transcript_hash: vec![1, 1, 1],
-                interim_transcript_hash: vec![2, 2, 2],
                 extensions: Vec::new(),
                 confirmation_tag: vec![6, 6, 6],
                 signer_index: LeafIndex::from(8u32),
@@ -36,14 +35,14 @@ macro_rules! test_welcome_msg {
                 AeadNonce::from_slice(&randombytes(ciphersuite.aead_nonce_length()));
 
             // Generate receiver key pair.
-            let receiver_key_pair = HPKEKeyPair::derive(&[1, 2, 3, 4], &ciphersuite);
+            let receiver_key_pair = ciphersuite.derive_hpke_keypair(&[1, 2, 3, 4]);
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
             let secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: vec![0, 0, 0, 0],
                 encrypted_group_secrets: ciphersuite.hpke_seal(
-                    &receiver_key_pair._get_public_key(),
+                    receiver_key_pair.get_public_key_ref(),
                     hpke_info,
                     hpke_aad,
                     hpke_input,
@@ -76,7 +75,7 @@ macro_rules! test_welcome_msg {
                 assert_eq!(secret.key_package_hash, secret.key_package_hash);
                 let ptxt = ciphersuite.hpke_open(
                     &secret.encrypted_group_secrets,
-                    receiver_key_pair._get_private_key(),
+                    receiver_key_pair.get_private_key_ref(),
                     hpke_info,
                     hpke_aad,
                 );

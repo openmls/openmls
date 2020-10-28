@@ -3,7 +3,7 @@
 //!
 
 use super::{index::NodeIndex, path_keys::PathKeys, TreeError};
-use crate::ciphersuite::{Ciphersuite, HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
+use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
 use crate::codec::{Codec, CodecError};
 use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
@@ -204,7 +204,7 @@ impl PrivateTree {
         // Derive key pairs for all nodes in the direct path.
         for path_secret in self.path_secrets.iter() {
             let node_secret = hkdf_expand_label(ciphersuite, &path_secret, "node", &[], hash_len);
-            let keypair = HPKEKeyPair::derive(&node_secret, ciphersuite);
+            let keypair = ciphersuite.derive_hpke_keypair(&node_secret);
             let (private_key, public_key) = keypair.into_keys();
             public_keys.push(public_key);
             private_keys.push(private_key);

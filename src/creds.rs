@@ -14,70 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
+use evercrypt::prelude::SignatureError;
+
 use crate::ciphersuite::*;
 use crate::codec::*;
 
 use std::convert::TryFrom;
 
-#[derive(Clone)]
-pub struct Identity {
-    pub id: Vec<u8>,
-    pub ciphersuite: Ciphersuite,
-    keypair: SignatureKeypair,
-}
-
-impl Identity {
-    pub fn new(ciphersuite_name: CiphersuiteName, id: Vec<u8>) -> Self {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
-        let keypair = ciphersuite.new_signature_keypair();
-        Self {
-            id,
-            ciphersuite,
-            keypair,
-        }
-    }
-    pub fn new_with_keypair(
-        ciphersuite: Ciphersuite,
-        id: Vec<u8>,
-        keypair: SignatureKeypair,
-    ) -> Self {
-        Self {
-            id,
-            ciphersuite,
-            keypair,
-        }
-    }
-    pub fn sign(&self, payload: &[u8]) -> Signature {
-        self.ciphersuite
-            .sign(self.keypair.get_private_key(), payload)
-            .unwrap()
-    }
-    pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.ciphersuite
-            .verify(signature, self.keypair.get_public_key(), payload)
-    }
-    pub fn get_signature_key_pair(&self) -> &SignatureKeypair {
-        &self.keypair
-    }
-}
-
-impl Codec for Identity {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.id)?;
-        self.ciphersuite.encode(buffer)?;
-        self.keypair.encode(buffer)?;
-        Ok(())
-    }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let id = decode_vec(VecSize::VecU8, cursor)?;
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let keypair = SignatureKeypair::decode(cursor)?;
-    //     Ok(Identity {
-    //         id,
-    //         ciphersuite,
-    //         keypair,
-    //     })
-    // }
+#[derive(Debug)]
+pub enum CredentialError {
+    UnsupportedCredentialType,
 }
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
@@ -157,6 +103,14 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
+
+    /// Get the ciphersuite associated with the credential.
+    pub fn ciphersuite(&self) -> &Ciphersuite {
+        match &self.credential {
+            MLSCredentialType::Basic(basic_credential) => &basic_credential.ciphersuite,
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+        }
+    }
 }
 
 impl From<MLSCredentialType> for Credential {
@@ -183,17 +137,22 @@ impl Codec for Credential {
         }
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let credential_type = CredentialType::from(u8::decode(cursor)?);
-    //     match credential_type {
-    //         CredentialType::Basic => Ok(Credential::Basic(BasicCredential::decode(cursor)?)),
-    //         _ => Err(CodecError::DecodingError),
-    //     }
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let credential_type = match CredentialType::try_from(u16::decode(cursor)?) {
+            Ok(c) => c,
+            Err(_) => return Err(CodecError::DecodingError),
+        };
+        match credential_type {
+            CredentialType::Basic => Ok(Credential::from(MLSCredentialType::Basic(
+                BasicCredential::decode(cursor)?,
+            ))),
+            _ => Err(CodecError::DecodingError),
+        }
+    }
 }
 
 // TODO: Drop ciphersuite
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct BasicCredential {
     pub identity: Vec<u8>,
     pub ciphersuite: Ciphersuite,
@@ -207,16 +166,6 @@ impl BasicCredential {
     }
 }
 
-impl From<&Identity> for BasicCredential {
-    fn from(identity: &Identity) -> Self {
-        BasicCredential {
-            identity: identity.id.clone(),
-            ciphersuite: identity.ciphersuite,
-            public_key: identity.keypair.get_public_key().clone(),
-        }
-    }
-}
-
 impl Codec for BasicCredential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
@@ -224,16 +173,22 @@ impl Codec for BasicCredential {
         self.public_key.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let identity = decode_vec(VecSize::VecU16, cursor)?;
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let public_key = SignaturePublicKey::decode(cursor)?;
-    //     Ok(BasicCredential {
-    //         identity,
-    //         ciphersuite,
-    //         public_key,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let identity = decode_vec(VecSize::VecU16, cursor)?;
+        let ciphersuite = Ciphersuite::decode(cursor)?;
+        let public_key = SignaturePublicKey::decode(cursor)?;
+        Ok(BasicCredential {
+            identity,
+            ciphersuite,
+            public_key,
+        })
+    }
+}
+
+impl PartialEq for BasicCredential {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity == other.identity && self.public_key == other.public_key
+    }
 }
 
 #[test]
@@ -247,4 +202,51 @@ fn test_protocol_version() {
     assert_eq!(default_e[0], default_version as u8);
     assert_eq!(mls10_e[0], 1);
     assert_eq!(default_e[0], 1);
+}
+
+/// This struct contains a credential and the corresponding private key.
+pub struct CredentialBundle {
+    credential: Credential,
+    signature_private_key: SignaturePrivateKey,
+}
+
+impl CredentialBundle {
+    /// Create a new `CredentialBundle` of the given credential type for the
+    /// given identity and ciphersuite. The corresponding `SignatureKeyPair` is
+    /// freshly generated.
+    pub fn new(
+        identity: Vec<u8>,
+        credential_type: CredentialType,
+        ciphersuite_name: CiphersuiteName,
+    ) -> Result<Self, CredentialError> {
+        let ciphersuite = Ciphersuite::new(ciphersuite_name);
+        let (private_key, public_key) = ciphersuite.new_signature_keypair().into_tuple();
+        let mls_credential = match credential_type {
+            CredentialType::Basic => BasicCredential {
+                identity,
+                ciphersuite,
+                public_key,
+            },
+            _ => return Err(CredentialError::UnsupportedCredentialType),
+        };
+        let credential = Credential {
+            credential_type,
+            credential: MLSCredentialType::Basic(mls_credential),
+        };
+        Ok(CredentialBundle {
+            credential,
+            signature_private_key: private_key,
+        })
+    }
+
+    pub fn credential(&self) -> &Credential {
+        &self.credential
+    }
+
+    /// Sign a `msg` using the private key of the credential bundle.
+    pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError> {
+        self.credential
+            .ciphersuite()
+            .sign(&self.signature_private_key, msg)
+    }
 }

@@ -17,6 +17,7 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
+use crate::creds::CredentialBundle;
 use crate::extensions::{Extension, RatchetTreeExtension};
 use crate::framing::*;
 use crate::group::mls_group::*;
@@ -24,70 +25,63 @@ use crate::group::*;
 use crate::messages::*;
 use crate::tree::treemath;
 use crate::utils::*;
-use rayon::prelude::*;
 
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
         &self,
         aad: &[u8],
-        signature_key: &SignaturePrivateKey,
+        credential_bundle: &CredentialBundle,
         proposals: Vec<MLSPlaintext>,
         force_self_update: bool,
     ) -> CreateCommitResult {
-        let ciphersuite = self.get_ciphersuite();
-        let mut contains_own_updates = false;
-        // Organize proposals
-        let mut proposal_queue = ProposalQueue::new();
-        for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(mls_plaintext, None);
-            if queued_proposal.sender.as_leaf_index() == self.get_sender_index()
-                && queued_proposal.proposal.is_update()
-            {
-                contains_own_updates = true;
-            } else {
-                proposal_queue.add(queued_proposal, &ciphersuite);
-            }
-        }
+        let ciphersuite = self.ciphersuite();
+        // Filter proposals
+        let (proposal_queue, contains_own_updates) = ProposalQueue::filtered_proposals(
+            ciphersuite,
+            proposals,
+            LeafIndex::from(self.tree().get_own_node_index()),
+            self.tree().leaf_count(),
+        );
 
-        // TODO Dedup proposals
-        let proposal_id_list = proposal_queue.get_commit_lists(&ciphersuite);
+        let proposal_id_list = proposal_queue.get_proposal_id_list();
 
-        let sender_index = self.get_sender_index();
+        let sender_index = self.sender_index();
         let mut provisional_tree = self.tree.borrow_mut();
 
         // Apply proposals to tree
-        let (membership_changes, invited_members, group_removed) =
-            provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &mut vec![]);
-        if group_removed {
+        let (path_required_by_commit, self_removed, invited_members) = match provisional_tree
+            .apply_proposals(&proposal_id_list, proposal_queue, &mut vec![])
+        {
+            Ok(res) => res,
+            Err(_) => return Err(CreateCommitError::OwnKeyNotFound),
+        };
+        if self_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
         // Determine if Commit needs path field
-        let path_required =
-            membership_changes.path_required() || contains_own_updates || force_self_update;
+        let path_required = path_required_by_commit || contains_own_updates || force_self_update;
 
         let (commit_secret, path, path_secrets_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path_option, path_secrets) = provisional_tree
-                .refresh_private_tree(signature_key, &self.group_context.serialize())
+                .refresh_private_tree(credential_bundle, &self.group_context.serialize())
                 .unwrap();
             (commit_secret, path_option, path_secrets)
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = CommitSecret(zero(self.get_ciphersuite().hash_length()));
+            let commit_secret = CommitSecret(zero(self.ciphersuite().hash_length()));
             (commit_secret, None, None)
         };
         // Create commit message
         let commit = Commit {
-            updates: proposal_id_list.updates,
-            removes: proposal_id_list.removes,
-            adds: proposal_id_list.adds,
+            proposals: proposal_id_list,
             path,
         };
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
         provisional_epoch.increment();
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
-            self.get_ciphersuite(),
+            self.ciphersuite(),
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
@@ -113,37 +107,30 @@ impl MlsGroup {
         // Create MLSPlaintext
         let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));
         let mls_plaintext = MLSPlaintext::new(
-            ciphersuite,
             sender_index,
             aad,
             content,
-            signature_key,
-            &self.get_context(),
+            credential_bundle,
+            &self.context(),
         );
         // Check if new members were added an create welcome message
         // TODO: Add support for extensions
-        if !membership_changes.adds.is_empty() {
+        if !invited_members.is_empty() {
             let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
             let ratchet_tree_extension = public_tree.to_extension_struct();
             let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
             // Create GroupInfo object
-            let interim_transcript_hash = update_interim_transcript_hash(
-                &ciphersuite,
-                &mls_plaintext,
-                &confirmed_transcript_hash,
-            );
             let mut group_info = GroupInfo {
                 group_id: provisional_group_context.group_id.clone(),
                 epoch: provisional_group_context.epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                interim_transcript_hash,
                 extensions: vec![],
                 confirmation_tag: confirmation_tag.as_slice(),
                 signer_index: sender_index,
                 signature: Signature::new_empty(),
             };
-            group_info.signature = group_info.sign(ciphersuite, signature_key);
+            group_info.signature = group_info.sign(credential_bundle);
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) =
                 compute_welcome_key_nonce(ciphersuite, &epoch_secret);
@@ -193,7 +180,7 @@ impl MlsGroup {
             }
             // Encrypt group secrets
             let secrets = plaintext_secrets
-                .par_iter()
+                .iter()
                 .map(|(init_key, bytes, key_package_hash)| {
                     let encrypted_group_secrets = ciphersuite.hpke_seal(init_key, &[], &[], bytes);
                     EncryptedGroupSecrets {

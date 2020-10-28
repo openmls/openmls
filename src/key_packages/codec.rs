@@ -34,20 +34,3 @@ impl Codec for KeyPackage {
         Ok(kp)
     }
 }
-
-impl Codec for KeyPackageBundle {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.key_package.encode(buffer)?;
-        self.private_key.encode(buffer)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_package = KeyPackage::decode(cursor)?;
-        let private_key = HPKEPrivateKey::decode(cursor)?;
-        Ok(KeyPackageBundle {
-            key_package,
-            private_key,
-        })
-    }
-}
