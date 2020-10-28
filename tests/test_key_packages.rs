@@ -37,48 +37,71 @@ macro_rules! key_package_generation {
             kpb.get_key_package_ref_mut()
                 .add_extension(Box::new(LifetimeExtension::new(60)));
 
-            // THe key package is invalid because the signature is invalid now.
+            // The key package is invalid because the signature is invalid now.
             assert!(!kpb.get_key_package().verify());
 
             // After re-signing the package it is valid.
             kpb.get_key_package_ref_mut().sign(&credential_bundle);
             assert!(kpb.get_key_package().verify());
 
+            {
+                let extensions = kpb.get_key_package().get_extensions_ref();
+
+                // The capabilities extension must be present and valid.
+                // It's added automatically.
+                let capabilities_extension = extensions
+                    .iter()
+                    .find(|e| e.get_type() == ExtensionType::Capabilities)
+                    .expect("Capabilities extension is missing in key package");
+                let capabilities_extension = capabilities_extension
+                    .to_capabilities_extension_ref()
+                    .unwrap();
+
+                // Only the single ciphersuite is set.
+                assert_eq!(1, capabilities_extension.ciphersuites().len());
+                assert_eq!($ciphersuite, capabilities_extension.ciphersuites()[0]);
+
+                // Check supported versions.
+                assert_eq!(
+                    Config::supported_versions(),
+                    capabilities_extension.versions()
+                );
+
+                // Check supported extensions.
+                assert_eq!(
+                    Config::supported_extensions(),
+                    capabilities_extension.extensions()
+                );
+
+                // Get the lifetime extension. There's no public API for this but it
+                // must be present.
+                let lifetime_extension = extensions
+                    .iter()
+                    .find(|e| e.get_type() == ExtensionType::Lifetime)
+                    .expect("Lifetime extension is missing in key package");
+                let _lifetime_extension = lifetime_extension.to_lifetime_extension_ref().unwrap();
+            }
+
+            // Add and retrieve a key package ID.
+            let key_id = [1, 2, 3, 4, 5, 6, 7];
+            kpb.get_key_package_ref_mut()
+                .add_extension(Box::new(KeyIDExtension::new(&key_id)));
+
+            // The key package is invalid because the signature is invalid now.
+            assert!(!kpb.get_key_package().verify());
+
+            // After re-signing the package it is valid.
+            kpb.get_key_package_ref_mut().sign(&credential_bundle);
+            assert!(kpb.get_key_package().verify());
+
+            // Get the key ID extension.
             let extensions = kpb.get_key_package().get_extensions_ref();
-
-            // The capabilities extension must be present and valid.
-            // It's added automatically.
-            let capabilities_extension = extensions
+            let key_id_extension = extensions
                 .iter()
-                .find(|e| e.get_type() == ExtensionType::Capabilities)
-                .expect("Capabilities extension is missing in key package");
-            let capabilities_extension = capabilities_extension
-                .to_capabilities_extension_ref()
-                .unwrap();
-
-            // Only the single ciphersuite is set.
-            assert_eq!(1, capabilities_extension.ciphersuites().len());
-            assert_eq!($ciphersuite, capabilities_extension.ciphersuites()[0]);
-
-            // Check supported versions.
-            assert_eq!(
-                Config::supported_versions(),
-                capabilities_extension.versions()
-            );
-
-            // Check supported extensions.
-            assert_eq!(
-                Config::supported_extensions(),
-                capabilities_extension.extensions()
-            );
-
-            // Get the lifetime extension. There's no public API for this but it
-            // must be present.
-            let lifetime_extension = extensions
-                .iter()
-                .find(|e| e.get_type() == ExtensionType::Lifetime)
-                .expect("Lifetime extension is missing in key package");
-            let _lifetime_extension = lifetime_extension.to_lifetime_extension_ref().unwrap();
+                .find(|e| e.get_type() == ExtensionType::KeyID)
+                .expect("Key ID extension is missing in key package");
+            let key_id_extension = key_id_extension.to_key_id_extension_ref().unwrap();
+            assert_eq!(&key_id, key_id_extension.as_slice());
         }
     };
 }
