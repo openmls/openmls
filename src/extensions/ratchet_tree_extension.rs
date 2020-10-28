@@ -31,12 +31,17 @@ use super::{Extension, ExtensionStruct, ExtensionType};
 
 #[derive(PartialEq, Clone, Debug, Default)]
 pub struct RatchetTreeExtension {
-    pub tree: Vec<Option<Node>>,
+    tree: Vec<Option<Node>>,
 }
 
 impl RatchetTreeExtension {
-    pub fn new(tree: Vec<Option<Node>>) -> Self {
+    /// Build a new extension from a vector of `Node`s.
+    pub(crate) fn new(tree: Vec<Option<Node>>) -> Self {
         RatchetTreeExtension { tree }
+    }
+
+    pub(crate) fn into_vector(self) -> Vec<Option<Node>> {
+        self.tree
     }
 }
 

@@ -16,6 +16,7 @@
 
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
+use crate::extensions::ExtensionType;
 use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
@@ -48,7 +49,7 @@ impl MlsGroup {
         }
 
         // Compute keys to decrypt GroupInfo
-        let (group_info, group_secrets) = Self::decrypt_group_info(
+        let (mut group_info, group_secrets) = Self::decrypt_group_info(
             &ciphersuite,
             &egs,
             &private_key,
@@ -56,11 +57,33 @@ impl MlsGroup {
         )?;
 
         // Build the ratchet tree
-        // TODO: check the extensions to see if the tree is in there
-        let nodes = if let Some(nodes) = nodes_option {
-            nodes
+        // First check the extensions to see if the tree is in there.
+        let ratchet_tree_ext_index = group_info
+            .extensions()
+            .iter()
+            .position(|e| e.get_type() == ExtensionType::RatchetTree);
+        let ratchet_tree_extension = if let Some(i) = ratchet_tree_ext_index {
+            let extension = group_info.extensions_mut().remove(i);
+            match extension.to_ratchet_tree_extension_ref() {
+                Ok(e) => Some(e.clone()),
+                Err(e) => {
+                    println!("Library error retrieving ratchet tree extension ({:?}", e);
+                    None
+                }
+            }
         } else {
-            return Err(WelcomeError::MissingRatchetTree);
+            None
+        };
+        // Set nodes either from the extension or from the `nodes_option`.
+        let nodes = match ratchet_tree_extension {
+            Some(tree) => tree.into_vector(),
+            None => {
+                if let Some(nodes) = nodes_option {
+                    nodes
+                } else {
+                    return Err(WelcomeError::MissingRatchetTree);
+                }
+            }
         };
 
         let mut tree = RatchetTree::new_from_nodes(

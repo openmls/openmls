@@ -174,6 +174,16 @@ impl GroupInfo {
     pub(crate) fn confirmation_tag(&self) -> &[u8] {
         &self.confirmation_tag
     }
+
+    /// Get the extensions.
+    pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
+        &self.extensions
+    }
+
+    /// Get the extensions as mutable reference.
+    pub(crate) fn extensions_mut(&mut self) -> &mut Vec<Box<dyn Extension>> {
+        &mut self.extensions
+    }
 }
 
 impl GroupInfo {

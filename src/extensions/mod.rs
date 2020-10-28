@@ -256,6 +256,16 @@ pub trait Extension: Debug + ExtensionHelper {
             None => Err(ExtensionError::InvalidExtensionType),
         }
     }
+
+    /// Get a reference to the `RatchetTreeExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `RatchetTreeExtension`.
+    fn to_ratchet_tree_extension_ref(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<RatchetTreeExtension>() {
+            Some(e) => Ok(e),
+            None => Err(ExtensionError::InvalidExtensionType),
+        }
+    }
 }
 
 // A slightly hacky work around to make `Extensions` clonable.
