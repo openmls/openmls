@@ -91,29 +91,31 @@ fn increment_generation() {
     }
     for i in 0..MAX_GENERATIONS {
         for j in 0..SIZE {
-            let (next_gen, handshake_secret) = secret_tree.get_secret_for_encryption(
-                &ciphersuite,
-                LeafIndex::from(j as u32),
-                SecretType::HandshakeSecret,
-            );
+            let (next_gen, (handshake_key, handshake_nonce)) = secret_tree
+                .get_secret_for_encryption(
+                    &ciphersuite,
+                    LeafIndex::from(j as u32),
+                    SecretType::HandshakeSecret,
+                );
             assert_eq!(next_gen, i as u32);
             assert!(unique_values
-                .insert(handshake_secret.get_key().as_slice().to_vec(), true)
+                .insert(handshake_key.as_slice().to_vec(), true)
                 .is_none());
             assert!(unique_values
-                .insert(handshake_secret.get_nonce().as_slice().to_vec(), true)
+                .insert(handshake_nonce.as_slice().to_vec(), true)
                 .is_none());
-            let (next_gen, application_secret) = secret_tree.get_secret_for_encryption(
-                &ciphersuite,
-                LeafIndex::from(j as u32),
-                SecretType::ApplicationSecret,
-            );
+            let (next_gen, (application_key, application_nonce)) = secret_tree
+                .get_secret_for_encryption(
+                    &ciphersuite,
+                    LeafIndex::from(j as u32),
+                    SecretType::ApplicationSecret,
+                );
             assert_eq!(next_gen, i as u32);
             assert!(unique_values
-                .insert(application_secret.get_key().as_slice().to_vec(), true)
+                .insert(application_key.as_slice().to_vec(), true)
                 .is_none());
             assert!(unique_values
-                .insert(application_secret.get_nonce().as_slice().to_vec(), true)
+                .insert(application_nonce.as_slice().to_vec(), true)
                 .is_none());
         }
     }

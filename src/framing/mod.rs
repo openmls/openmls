@@ -21,7 +21,6 @@ use crate::group::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, secret_tree::*};
-use crate::utils::*;
 
 use std::convert::TryFrom;
 
@@ -150,7 +149,6 @@ pub struct MLSCiphertext {
     pub epoch: GroupEpoch,
     pub content_type: ContentType,
     pub authenticated_data: Vec<u8>,
-    pub sender_data_nonce: Vec<u8>,
     pub encrypted_sender_data: Vec<u8>,
     pub ciphertext: Vec<u8>,
 }
@@ -183,32 +181,61 @@ impl MLSCiphertext {
         mls_plaintext: &MLSPlaintext,
         mls_group: &MlsGroup,
         generation: u32,
-        ratchet_secrets: &RatchetSecrets,
+        ratchet_key: AeadKey,
+        mut ratchet_nonce: AeadNonce,
     ) -> MLSCiphertext {
-        const PADDING_SIZE: usize = 10;
-
         let ciphersuite = mls_group.ciphersuite();
         let context = mls_group.context();
         let epoch_secrets = mls_group.epoch_secrets();
-        let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation);
+        let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
+            group_id: context.group_id.clone(),
+            epoch: context.epoch,
+            content_type: mls_plaintext.content_type,
+            authenticated_data: mls_plaintext.authenticated_data.to_vec(),
+        };
+        let mls_ciphertext_content_aad_bytes =
+            mls_ciphertext_content_aad.encode_detached().unwrap(); // TODO: error handling;
+
+        // Sample reuse guard uniformly at random.
+        let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
+        // Prepare the nonce by xoring with the reuse guard.
+        ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
+        let ciphertext = ciphersuite
+            .aead_seal(
+                &Self::encode_padded_ciphertext_content_detached(mls_plaintext).unwrap(),
+                &mls_ciphertext_content_aad_bytes,
+                &ratchet_key,
+                &ratchet_nonce,
+            )
+            .unwrap();
+        // Derive key from the key schedule using the ciphertext.
         let sender_data_key_bytes = hkdf_expand_label(
             ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd key",
-            &[],
+            &ciphertext,
             ciphersuite.aead_key_length(),
         );
-        let sender_data_nonce = AeadNonce::random();
+        // Derive initial nonce from the key schedule using the ciphertext.
+        let sender_data_nonce_bytes = &hkdf_expand_label(
+            ciphersuite,
+            &epoch_secrets.sender_data_secret,
+            "sd nonce",
+            &ciphertext,
+            ciphersuite.aead_nonce_length(),
+        );
+        // Compute sender data nonce by xoring reuse guard and key schedule
+        // nonce as per spec.
+        let sender_data_nonce = AeadNonce::from_slice(sender_data_nonce_bytes);
         let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             context.group_id.clone(),
             context.epoch,
             mls_plaintext.content_type,
-            mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce.as_slice().to_vec(),
         );
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap(); // TODO: error handling
+        let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation, reuse_guard);
         let encrypted_sender_data = ciphersuite
             .aead_seal(
                 &sender_data.encode_detached().unwrap(),
@@ -217,56 +244,11 @@ impl MLSCiphertext {
                 &sender_data_nonce,
             )
             .unwrap();
-        let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
-            group_id: context.group_id.clone(),
-            epoch: context.epoch,
-            content_type: mls_plaintext.content_type,
-            authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
-            encrypted_sender_data: encrypted_sender_data.clone(),
-        };
-        let mls_ciphertext_content_aad_bytes =
-            mls_ciphertext_content_aad.encode_detached().unwrap(); // TODO: error handling;
-                                                                   // TODO: Clean this mess up
-        let padding_offset = context.group_id.encode_detached().unwrap().len()
-            + context.epoch.encode_detached().unwrap().len()
-            + mls_plaintext.content_type.encode_detached().unwrap().len()
-            + mls_plaintext.authenticated_data.len()
-            + 4
-            + sender_data_nonce.as_slice().len()
-            + 1
-            + encrypted_sender_data.len()
-            + 1
-            + mls_plaintext.content.encode_detached().unwrap().len()
-            + mls_plaintext.signature.encode_detached().unwrap().len()
-            + 2
-            + TAG_BYTES
-            + 4;
-        let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
-        if PADDING_SIZE == padding_length {
-            padding_length = 0;
-        }
-        let padding_block = vec![0u8; padding_length];
-        let mls_ciphertext_content = MLSCiphertextContent {
-            content: mls_plaintext.content.clone(),
-            signature: mls_plaintext.signature.clone(),
-            padding: padding_block,
-        };
-
-        let ciphertext = ciphersuite
-            .aead_seal(
-                &mls_ciphertext_content.encode_detached().unwrap(),
-                &mls_ciphertext_content_aad_bytes,
-                ratchet_secrets.get_key(),
-                ratchet_secrets.get_nonce(),
-            )
-            .unwrap();
         MLSCiphertext {
             group_id: context.group_id.clone(),
             epoch: context.epoch,
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
-            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
             encrypted_sender_data,
             ciphertext,
         }
@@ -280,22 +262,26 @@ impl MLSCiphertext {
         secret_tree: &mut SecretTree,
         context: &GroupContext,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
-        let sender_data_nonce = AeadNonce::from_slice(&self.sender_data_nonce);
+        // Derive key from the key schedule using the ciphertext.
         let sender_data_key_bytes = hkdf_expand_label(
             ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd key",
-            &[],
+            &self.ciphertext,
             ciphersuite.aead_key_length(),
         );
-        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
-        let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
-            self.group_id.clone(),
-            self.epoch,
-            self.content_type,
-            self.authenticated_data.clone(),
-            sender_data_nonce.as_slice().to_vec(),
+        // Derive initial nonce from the key schedule using the ciphertext.
+        let sender_data_nonce_bytes = &hkdf_expand_label(
+            ciphersuite,
+            &epoch_secrets.sender_data_secret,
+            "sd nonce",
+            &self.ciphertext,
+            ciphersuite.aead_nonce_length(),
         );
+        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
+        let sender_data_nonce = AeadNonce::from_slice(&sender_data_nonce_bytes);
+        let mls_ciphertext_sender_data_aad =
+            MLSCiphertextSenderDataAAD::new(self.group_id.clone(), self.epoch, self.content_type);
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap();
         let sender_data_bytes = ciphersuite
@@ -311,7 +297,7 @@ impl MLSCiphertext {
             Ok(secret_type) => secret_type,
             Err(_) => return Err(MLSCiphertextError::InvalidContentType),
         };
-        let ratchet_secrets = match secret_tree.get_secret_for_decryption(
+        let (ratchet_key, mut ratchet_nonce) = match secret_tree.get_secret_for_decryption(
             ciphersuite,
             sender_data.sender,
             secret_type,
@@ -320,13 +306,12 @@ impl MLSCiphertext {
             Ok(ratchet_secrets) => ratchet_secrets,
             Err(_) => return Err(MLSCiphertextError::GenerationOutOfBound),
         };
+        ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             content_type: self.content_type,
             authenticated_data: self.authenticated_data.clone(),
-            sender_data_nonce: sender_data_nonce.as_slice().to_vec(),
-            encrypted_sender_data: self.encrypted_sender_data.clone(),
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap();
@@ -334,8 +319,8 @@ impl MLSCiphertext {
             .aead_open(
                 &self.ciphertext,
                 &mls_ciphertext_content_aad_bytes,
-                ratchet_secrets.get_key(),
-                ratchet_secrets.get_nonce(),
+                &ratchet_key,
+                &ratchet_nonce,
             )
             .unwrap();
         let mls_ciphertext_content =
@@ -358,6 +343,24 @@ impl MLSCiphertext {
         assert!(mls_plaintext.verify(Some(serialized_context), credential));
         Ok(mls_plaintext)
     }
+
+    fn encode_padded_ciphertext_content_detached(
+        mls_plaintext: &MLSPlaintext,
+    ) -> Result<Vec<u8>, CodecError> {
+        let mut buffer = vec![];
+        mls_plaintext.content.encode(&mut buffer)?;
+        mls_plaintext.signature.encode(&mut buffer)?;
+        let padding_offset = buffer.len() + 2 + TAG_BYTES;
+        // TODO: The PADDING SIZE should be retrieved from the config.
+        const PADDING_SIZE: usize = 10;
+        let mut padding_length = PADDING_SIZE - (padding_offset % PADDING_SIZE);
+        if PADDING_SIZE == padding_length {
+            padding_length = 0;
+        }
+        let padding_block = vec![0u8; padding_length];
+        encode_vec(VecSize::VecU16, &mut buffer, &padding_block)?;
+        Ok(buffer)
+    }
 }
 
 impl Codec for MLSCiphertext {
@@ -366,7 +369,6 @@ impl Codec for MLSCiphertext {
         self.epoch.encode(buffer)?;
         self.content_type.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        encode_vec(VecSize::VecU8, buffer, &self.sender_data_nonce)?;
         encode_vec(VecSize::VecU8, buffer, &self.encrypted_sender_data)?;
         encode_vec(VecSize::VecU32, buffer, &self.ciphertext)?;
         Ok(())
@@ -377,7 +379,6 @@ impl Codec for MLSCiphertext {
         let epoch = GroupEpoch::decode(cursor)?;
         let content_type = ContentType::decode(cursor)?;
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        let sender_data_nonce = decode_vec(VecSize::VecU8, cursor)?;
         let encrypted_sender_data = decode_vec(VecSize::VecU8, cursor)?;
         let ciphertext = decode_vec(VecSize::VecU32, cursor)?;
         Ok(MLSCiphertext {
@@ -385,7 +386,6 @@ impl Codec for MLSCiphertext {
             epoch,
             content_type,
             authenticated_data,
-            sender_data_nonce,
             encrypted_sender_data,
             ciphertext,
         })
@@ -557,7 +557,7 @@ impl Codec for MLSPlaintextTBS {
 pub struct MLSSenderData {
     pub sender: LeafIndex,
     pub generation: u32,
-    pub reuse_guard: u32,
+    pub reuse_guard: ReuseGuard,
 }
 
 impl MLSSenderData {
@@ -565,7 +565,7 @@ impl MLSSenderData {
         let mut cursor = Cursor::new(bytes);
         let sender = LeafIndex::from(u32::decode(&mut cursor)?);
         let generation = u32::decode(&mut cursor)?;
-        let reuse_guard = u32::decode(&mut cursor)?;
+        let reuse_guard = ReuseGuard::decode(&mut cursor)?;
 
         Ok(MLSSenderData {
             sender,
@@ -586,7 +586,7 @@ impl Codec for MLSSenderData {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let sender = LeafIndex::from(u32::decode(cursor)?);
         let generation = u32::decode(cursor)?;
-        let reuse_guard = u32::decode(cursor)?;
+        let reuse_guard = ReuseGuard::decode(cursor)?;
 
         Ok(MLSSenderData {
             sender,
@@ -597,11 +597,11 @@ impl Codec for MLSSenderData {
 }
 
 impl MLSSenderData {
-    pub fn new(sender: LeafIndex, generation: u32) -> Self {
+    pub fn new(sender: LeafIndex, generation: u32, reuse_guard: ReuseGuard) -> Self {
         MLSSenderData {
             sender,
             generation,
-            reuse_guard: random_u32(),
+            reuse_guard,
         }
     }
 }
@@ -611,24 +611,14 @@ struct MLSCiphertextSenderDataAAD {
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
-    authenticated_data: Vec<u8>,
-    sender_data_nonce: Vec<u8>,
 }
 
 impl MLSCiphertextSenderDataAAD {
-    fn new(
-        group_id: GroupId,
-        epoch: GroupEpoch,
-        content_type: ContentType,
-        authenticated_data: Vec<u8>,
-        sender_data_nonce: Vec<u8>,
-    ) -> Self {
+    fn new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -> Self {
         Self {
             group_id,
             epoch,
             content_type,
-            authenticated_data,
-            sender_data_nonce,
         }
     }
 }
@@ -638,8 +628,6 @@ impl Codec for MLSCiphertextSenderDataAAD {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
         self.content_type.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        encode_vec(VecSize::VecU8, buffer, &self.sender_data_nonce)?;
         Ok(())
     }
 
@@ -647,14 +635,10 @@ impl Codec for MLSCiphertextSenderDataAAD {
         let group_id = GroupId::decode(cursor)?;
         let epoch = GroupEpoch::decode(cursor)?;
         let content_type = ContentType::decode(cursor)?;
-        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        let sender_data_nonce = decode_vec(VecSize::VecU8, cursor)?;
         Ok(Self {
             group_id,
             epoch,
             content_type,
-            authenticated_data,
-            sender_data_nonce,
         })
     }
 }
@@ -695,8 +679,6 @@ pub struct MLSCiphertextContentAAD {
     pub epoch: GroupEpoch,
     pub content_type: ContentType,
     pub authenticated_data: Vec<u8>,
-    pub sender_data_nonce: Vec<u8>,
-    pub encrypted_sender_data: Vec<u8>,
 }
 
 impl Codec for MLSCiphertextContentAAD {
@@ -705,8 +687,6 @@ impl Codec for MLSCiphertextContentAAD {
         self.epoch.encode(buffer)?;
         self.content_type.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        encode_vec(VecSize::VecU8, buffer, &self.sender_data_nonce)?;
-        encode_vec(VecSize::VecU8, buffer, &self.encrypted_sender_data)?;
         Ok(())
     }
 
@@ -715,15 +695,11 @@ impl Codec for MLSCiphertextContentAAD {
         let epoch = GroupEpoch::decode(cursor)?;
         let content_type = ContentType::decode(cursor)?;
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        let sender_data_nonce = decode_vec(VecSize::VecU8, cursor)?;
-        let encrypted_sender_data = decode_vec(VecSize::VecU8, cursor)?;
         Ok(MLSCiphertextContentAAD {
             group_id,
             epoch,
             content_type,
             authenticated_data,
-            sender_data_nonce,
-            encrypted_sender_data,
         })
     }
 }

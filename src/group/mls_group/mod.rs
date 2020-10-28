@@ -209,12 +209,18 @@ impl Api for MlsGroup {
     fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let mut secret_tree = self.secret_tree.borrow_mut();
         let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
-        let (generation, ratchet_secrets) = secret_tree.get_secret_for_encryption(
+        let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.get_secret_for_encryption(
             &self.ciphersuite,
             mls_plaintext.sender.sender,
             secret_type,
         );
-        MLSCiphertext::new_from_plaintext(&mls_plaintext, &self, generation, &ratchet_secrets)
+        MLSCiphertext::new_from_plaintext(
+            &mls_plaintext,
+            &self,
+            generation,
+            ratchet_key,
+            ratchet_nonce,
+        )
     }
 
     fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, DecryptionError> {
