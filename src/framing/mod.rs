@@ -211,34 +211,34 @@ impl MLSCiphertext {
         let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
-        let ciphertext = ciphersuite
+        let ciphertext = ratchet_key
             .aead_seal(
                 &Self::encode_padded_ciphertext_content_detached(mls_plaintext).unwrap(),
                 &mls_ciphertext_content_aad_bytes,
-                &ratchet_key,
                 &ratchet_nonce,
             )
             .unwrap();
         // Derive key from the key schedule using the ciphertext.
-        let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite,
-            &epoch_secrets.sender_data_secret,
-            "sd key",
-            &ciphertext,
-            ciphersuite.aead_key_length(),
+        let sender_data_key = AeadKey::from_secret(
+            hkdf_expand_label(
+                ciphersuite,
+                &epoch_secrets.sender_data_secret,
+                "sd key",
+                &ciphertext,
+                ciphersuite.aead_key_length(),
+            ),
+            ciphersuite.aead_mode(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce_bytes = &hkdf_expand_label(
+        let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(
             ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd nonce",
             &ciphertext,
             ciphersuite.aead_nonce_length(),
-        );
+        ));
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
-        let sender_data_nonce = AeadNonce::from_slice(sender_data_nonce_bytes);
-        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
             context.group_id.clone(),
             context.epoch,
@@ -247,7 +247,7 @@ impl MLSCiphertext {
         let mls_ciphertext_sender_data_aad_bytes =
             mls_ciphertext_sender_data_aad.encode_detached().unwrap(); // TODO: error handling
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation, reuse_guard);
-        let encrypted_sender_data = ciphersuite
+        let encrypted_sender_data = sender_data_key
             .aead_seal(
                 &sender_data.encode_detached().unwrap(),
                 &mls_ciphertext_sender_data_aad_bytes,
@@ -273,23 +273,24 @@ impl MLSCiphertext {
         context: &GroupContext,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
         // Derive key from the key schedule using the ciphertext.
-        let sender_data_key_bytes = hkdf_expand_label(
-            ciphersuite,
-            &epoch_secrets.sender_data_secret,
-            "sd key",
-            &self.ciphertext,
-            ciphersuite.aead_key_length(),
+        let sender_data_key = AeadKey::from_secret(
+            hkdf_expand_label(
+                ciphersuite,
+                &epoch_secrets.sender_data_secret,
+                "sd key",
+                &self.ciphertext,
+                ciphersuite.aead_key_length(),
+            ),
+            ciphersuite.aead_mode(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce_bytes = &hkdf_expand_label(
+        let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(
             ciphersuite,
             &epoch_secrets.sender_data_secret,
             "sd nonce",
             &self.ciphertext,
             ciphersuite.aead_nonce_length(),
-        );
-        let sender_data_key = AeadKey::from_slice(&sender_data_key_bytes);
-        let sender_data_nonce = AeadNonce::from_slice(&sender_data_nonce_bytes);
+        ));
         let mls_ciphertext_sender_data_aad =
             MLSCiphertextSenderDataAAD::new(self.group_id.clone(), self.epoch, self.content_type);
         let mls_ciphertext_sender_data_aad_bytes =
@@ -324,12 +325,10 @@ impl MLSCiphertext {
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.encode_detached().unwrap();
-        let mls_ciphertext_content_bytes = ratchet_secrets
-            .get_key()
+        let mls_ciphertext_content_bytes = ratchet_key
             .aead_open(
                 &self.ciphertext,
                 &mls_ciphertext_content_aad_bytes,
-                &ratchet_key,
                 &ratchet_nonce,
             )
             .unwrap();

@@ -143,7 +143,7 @@ impl MlsGroup {
         let own_confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &provisional_epoch_secrets.confirmation_key,
-            &confirmed_transcript_hash,
+            &Secret::new_from_bytes(confirmed_transcript_hash),
         );
         if &own_confirmation_tag != received_confirmation_tag {
             return Err(ApplyCommitError::ConfirmationTagMismatch);
