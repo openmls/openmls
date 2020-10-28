@@ -37,7 +37,7 @@ impl MlsGroup {
         }
 
         // Extract Commit from MLSPlaintext
-        let (commit, confirmation_tag) = match &mls_plaintext.content {
+        let (commit, received_confirmation_tag) = match &mls_plaintext.content {
             MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
                 (commit, confirmation_tag)
             }
@@ -75,11 +75,11 @@ impl MlsGroup {
         let commit_secret = if let Some(path) = commit.path.clone() {
             // Verify KeyPackage and MLSPlaintext signature
             let kp = &path.leaf_key_package;
-            if !kp.verify() {
+            if kp.verify().is_err() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
             let serialized_context = self.group_context.encode_detached().unwrap();
-            if !mls_plaintext.verify(Some(serialized_context), kp.get_credential()) {
+            if !mls_plaintext.verify(Some(serialized_context.clone()), kp.get_credential()) {
                 return Err(ApplyCommitError::PlaintextSignatureFailure);
             }
             if is_own_commit {
@@ -93,11 +93,11 @@ impl MlsGroup {
                 }
                 .clone();
                 provisional_tree
-                    .replace_private_tree(own_kpb, &self.group_context.serialize())
+                    .replace_private_tree(own_kpb, &serialized_context)
                     .unwrap()
             } else {
                 provisional_tree
-                    .update_path(sender, &path, &self.group_context.serialize())
+                    .update_path(sender, &path, &serialized_context)
                     .unwrap()
             }
         } else {
@@ -139,12 +139,12 @@ impl MlsGroup {
         );
 
         // Verify confirmation tag
-        if &ConfirmationTag::new(
+        let own_confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &provisional_epoch_secrets.confirmation_key,
             &confirmed_transcript_hash,
-        ) != confirmation_tag
-        {
+        );
+        if &own_confirmation_tag != received_confirmation_tag {
             return Err(ApplyCommitError::ConfirmationTagMismatch);
         }
 

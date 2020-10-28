@@ -33,10 +33,13 @@ mod codec;
 pub(crate) mod signable;
 use ciphersuites::*;
 
+use crate::utils::random_u32;
+
 #[cfg(test)]
 mod test_ciphersuite;
 
 pub const NONCE_BYTES: usize = 12;
+pub const REUSE_GUARD_BYTES: usize = 4;
 pub const CHACHA_KEY_BYTES: usize = 32;
 pub const AES_128_KEY_BYTES: usize = 16;
 pub const AES_256_KEY_BYTES: usize = 32;
@@ -86,7 +89,20 @@ pub struct AeadKey {
     value: Vec<u8>,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct ReuseGuard {
+    value: [u8; REUSE_GUARD_BYTES],
+}
+
+impl ReuseGuard {
+    /// Samples a fresh reuse guard uniformly at random.
+    pub fn new_from_random() -> Self {
+        let reuse_guard: [u8; REUSE_GUARD_BYTES] = random_u32().to_be_bytes();
+        ReuseGuard { value: reuse_guard }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct AeadNonce {
     value: [u8; NONCE_BYTES],
 }
@@ -341,25 +357,23 @@ impl AeadNonce {
         AeadNonce { value: nonce }
     }
 
-    /// Generate a new random nonce.
-    pub(crate) fn random() -> Self {
-        Self {
-            value: get_random_array(),
-        }
-    }
-
     /// Get a slice to the nonce value.
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
+    }
+
+    /// Xor the first bytes of the nonce with the reuse_guard.
+    pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: &ReuseGuard) {
+        for i in 0..REUSE_GUARD_BYTES {
+            self.value[i] ^= reuse_guard.value[i]
+        }
     }
 }
 
 impl Signature {
     pub(crate) fn new_empty() -> Signature {
         Signature { value: vec![] }
-    }
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
     }
 }
 
@@ -394,4 +408,24 @@ fn test_sign_verify() {
         .sign(keypair.get_private_key(), payload)
         .unwrap();
     assert!(ciphersuite.verify(&signature, keypair.get_public_key(), payload));
+}
+
+/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
+/// it has changed, xoring it again and testing that it's back in its original
+/// state.
+#[test]
+fn test_xor() {
+    let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
+    let original_nonce = AeadNonce::from_slice(get_random_vec(NONCE_BYTES).as_slice());
+    let mut nonce = original_nonce.clone();
+    nonce.xor_with_reuse_guard(&reuse_guard);
+    assert_ne!(
+        original_nonce, nonce,
+        "xoring with reuse_guard did not change the nonce"
+    );
+    nonce.xor_with_reuse_guard(&reuse_guard);
+    assert_eq!(
+        original_nonce, nonce,
+        "xoring twice changed the original value"
+    );
 }

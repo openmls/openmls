@@ -48,6 +48,7 @@ pub enum ApplyCommitError {
     OwnKeyNotFound = 211,
 }
 
+#[derive(Debug)]
 pub enum DecryptionError {
     CiphertextError(MLSCiphertextError),
 }

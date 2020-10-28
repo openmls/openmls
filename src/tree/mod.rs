@@ -49,7 +49,7 @@ mod test_treemath;
 #[cfg(test)]
 mod test_util;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// The ratchet tree.
 pub struct RatchetTree {
     /// The ciphersuite used in this tree.
@@ -129,23 +129,14 @@ impl RatchetTree {
 
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
         // Build private tree
-        let direct_path =
-            treemath::direct_path_root(own_node_index, NodeIndex::from(nodes.len()).into())
-                .expect("new_from_nodes: TreeMath error when computing direct path.");
-        let (private_tree, public_keys) =
-            PrivateTree::new_raw(&ciphersuite, own_node_index, kpb.private_key, &direct_path)?;
+        let private_tree = PrivateTree::from_private_key(own_node_index, kpb.private_key);
 
         // Build tree.
-        let mut out = RatchetTree {
+        Ok(RatchetTree {
             ciphersuite,
             nodes,
             private_tree,
-        };
-
-        // Merge public keys into the tree.
-        out.merge_direct_path(&direct_path, public_keys)?;
-
-        Ok(out)
+        })
     }
 
     /// Return a mutable reference to the `PrivateTree`.
@@ -157,7 +148,7 @@ impl RatchetTree {
         NodeIndex::from(self.nodes.len())
     }
 
-    pub(crate) fn public_key_tree(&self) -> Vec<Option<Node>> {
+    pub fn get_public_key_tree(&self) -> Vec<Option<Node>> {
         let mut tree = vec![];
         for node in self.nodes.iter() {
             if node.is_blank() {
@@ -290,12 +281,12 @@ impl RatchetTree {
             .expect("update_path: Error when computing copath.");
 
         // Find the position of the common ancestor in the sender's direct path
-        let common_ancestor_sender_dirpath_index = sender_direct_path
+        let common_ancestor_sender_dirpath_index = &sender_direct_path
             .iter()
             .position(|&x| x == common_ancestor_index)
             .unwrap();
         let common_ancestor_copath_index =
-            match sender_co_path.get(common_ancestor_sender_dirpath_index) {
+            match sender_co_path.get(*common_ancestor_sender_dirpath_index) {
                 Some(i) => *i,
                 None => return Err(TreeError::InvalidArguments),
             };
@@ -305,11 +296,11 @@ impl RatchetTree {
         let position_in_resolution = resolution.iter().position(|&x| x == own_index).unwrap_or(0);
 
         // Decrypt the ciphertext of that node
-        let common_ancestor_node = match update_path.nodes.get(common_ancestor_sender_dirpath_index)
-        {
-            Some(node) => node,
-            None => return Err(TreeError::InvalidArguments),
-        };
+        let common_ancestor_node =
+            match update_path.nodes.get(*common_ancestor_sender_dirpath_index) {
+                Some(node) => node,
+                None => return Err(TreeError::InvalidArguments),
+            };
         debug_assert_eq!(
             resolution.len(),
             common_ancestor_node.encrypted_path_secret.len()
@@ -338,11 +329,10 @@ impl RatchetTree {
         let common_path = treemath::dirpath_long(common_ancestor_index, self.leaf_count())
             .expect("update_path: Error when computing direct path.");
 
-        debug_assert!(sender_direct_path.len() > common_path.len());
-        if sender_direct_path.len() <= common_path.len() {
-            return Err(TreeError::InvalidArguments);
-        }
-        let sender_path_offset = sender_direct_path.len() - common_path.len();
+        debug_assert!(
+            sender_direct_path.len() >= common_path.len(),
+            "Library error. Direct path cannot be shorter than common path."
+        );
 
         // Decrypt the secret and derive path secrets
         let secret = self
@@ -361,16 +351,19 @@ impl RatchetTree {
             .private_tree
             .generate_path_keypairs(&self.ciphersuite, &common_path)?;
 
-        // Check that the public keys are consistent with the update path.
-        for (i, key) in new_path_public_keys
+        // Extract public keys from UpdatePath
+        let update_path_public_keys: Vec<HPKEPublicKey> = update_path
+            .nodes
             .iter()
-            .enumerate()
-            .take(common_path.len())
-        {
-            debug_assert_eq!(&update_path.nodes[sender_path_offset + i].public_key, key);
-            if &update_path.nodes[sender_path_offset + i].public_key != key {
-                return Err(TreeError::InvalidUpdatePath);
-            }
+            .map(|node| node.public_key.clone())
+            .collect();
+
+        // Check that the public keys are consistent with the update path.
+        let (_, common_public_keys) =
+            update_path_public_keys.split_at(update_path_public_keys.len() - common_path.len());
+
+        if new_path_public_keys != common_public_keys {
+            return Err(TreeError::InvalidUpdatePath);
         }
 
         // Merge new nodes into the tree
@@ -415,23 +408,26 @@ impl RatchetTree {
             KeyPackageBundle::from_values(key_package, private_key)
         };
 
-        // Replace the private tree with a new ine based on the new key package
+        // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
-        let path_option = self.replace_private_tree_(
-            key_package_bundle,
-            group_context,
-            true, /* with update path */
-        )?;
+        let mut path = self
+            .replace_private_tree_(
+                key_package_bundle,
+                group_context,
+                true, /* with update path */
+            )?
+            .unwrap();
 
         // Compute the parent hash extension and update the KeyPackage
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
         key_package.sign(credential_bundle);
+        path.leaf_key_package = key_package.clone();
 
         Ok((
             self.private_tree.get_commit_secret(),
-            path_option,
+            Some(path),
             Some(self.private_tree.get_path_secrets().to_vec()),
         ))
     }
@@ -448,23 +444,30 @@ impl RatchetTree {
         let own_index = self.get_own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
             .expect("replace_private_tree: Error when computing direct path.");
-
         // Update private tree and merge corresponding public keys.
-        let new_public_keys =
-            self.private_tree
-                .update(&self.ciphersuite, Some(private_key), &direct_path_root)?;
-        self.merge_public_keys(&new_public_keys, &direct_path_root)?;
+        let update_path_option = if self.leaf_count().as_usize() > 1 {
+            let new_public_keys = self.private_tree.update(
+                &self.ciphersuite,
+                Some(private_key),
+                &direct_path_root,
+            )?;
+            self.merge_public_keys(&new_public_keys, &direct_path_root)?;
 
-        // Update own leaf node with the new values
-        self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
+            // Update own leaf node with the new values
+            self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
 
-        if !with_update_path {
-            return Ok(None);
-        }
+            if with_update_path {
+                let update_path_nodes = self.encrypt_to_copath(new_public_keys, group_context)?;
+                let update_path = UpdatePath::new(key_package, update_path_nodes);
+                Some(update_path)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
-        let update_path_nodes = self.encrypt_to_copath(new_public_keys, group_context)?;
-        let update_path = UpdatePath::new(key_package, update_path_nodes);
-        Ok(Some(update_path))
+        Ok(update_path_option)
     }
 
     /// Encrypt the path secrets to the co path and return the update path.
@@ -532,26 +535,24 @@ impl RatchetTree {
         Ok(())
     }
 
-    /// Merge public keys along the direct path of the own node.
-    fn merge_direct_path(
-        &mut self,
-        direct_path: &[NodeIndex],
-        keys: Vec<HPKEPublicKey>,
+    /// Validates that the `public_keys` matches the public keys in the tree along `path`
+    pub(crate) fn validate_public_keys(
+        &self,
+        public_keys: &[HPKEPublicKey],
+        path: &[NodeIndex],
     ) -> Result<(), TreeError> {
-        debug_assert_eq!(direct_path.len(), keys.len());
-        if direct_path.len() != keys.len() {
+        if public_keys.len() != path.len() {
             return Err(TreeError::InvalidArguments);
         }
-
-        for (key, path_index) in keys.iter().zip(direct_path) {
-            // TODO: this is pretty ugly
-            let node = match self.nodes.get(path_index.as_usize()) {
-                Some(node) => node.node.clone().unwrap(),
-                None => ParentNode::new(key.clone(), &[], &[]),
-            };
-            self.nodes[path_index.as_usize()].node = Some(node);
+        for (public_key, node_index) in public_keys.iter().zip(path) {
+            if let Some(node) = &self.nodes[node_index.as_usize()].node {
+                if node.get_public_key() != public_key {
+                    return Err(TreeError::InvalidArguments);
+                }
+            } else {
+                return Err(TreeError::InvalidArguments);
+            }
         }
-
         Ok(())
     }
 
@@ -760,20 +761,30 @@ impl RatchetTree {
     }
     /// Computes the parent hash
     pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Vec<u8> {
+        let root = treemath::root(self.leaf_count());
+        // This should only happen when the group only contains one member
+        if index == root {
+            return vec![];
+        }
+        // Calculate the parent's index
         let parent = treemath::parent(index, self.leaf_count())
             .expect("compute_parent_hash: Error when computing node parent.");
-        let parent_hash = if parent == treemath::root(self.leaf_count()) {
+        // If we already reached the tree's root, return the hash of that node
+        let parent_hash = if parent == root {
             let root_node = &self.nodes[parent.as_usize()];
             root_node.hash(&self.ciphersuite).unwrap()
+        // Otherwise return the hash of the next parent
         } else {
             self.compute_parent_hash(parent)
         };
+        // If the current node is a parent, replace the parent hash in that node
         let current_node = &self.nodes[index.as_usize()];
         if let Some(mut parent_node) = current_node.node.clone() {
             parent_node.set_parent_hash(parent_hash);
             self.nodes[index.as_usize()].node = Some(parent_node);
             let updated_parent_node = &self.nodes[index.as_usize()];
             updated_parent_node.hash(&self.ciphersuite).unwrap()
+        // Otherwise we reached the leaf level, just return the hash
         } else {
             parent_hash
         }
@@ -823,7 +834,7 @@ impl RatchetTree {
                             if i % 2 != 0 {
                                 return false;
                             }
-                            if !kp.verify() {
+                            if kp.verify().is_err() {
                                 return false;
                             }
                         }
