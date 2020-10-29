@@ -25,7 +25,7 @@ macro_rules! key_package_generation {
                 CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
             let kpb = KeyPackageBundle::new(ciphersuite.name(), &credential_bundle, Vec::new());
 
-            let extensions = kpb.get_key_package().get_extensions_ref();
+            let extensions = kpb.get_key_package().extensions();
 
             // The capabilities extension must be present and valid.
             // It's added automatically.

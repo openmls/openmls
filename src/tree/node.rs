@@ -49,7 +49,7 @@ impl Node {
         match self.node_type {
             NodeType::Leaf => {
                 if let Some(ref kp) = self.key_package {
-                    Some(kp.get_hpke_init_key())
+                    Some(kp.hpke_init_key())
                 } else {
                     None
                 }

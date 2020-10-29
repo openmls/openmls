@@ -58,7 +58,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                 NodeType::Leaf => {
                     print!("\tL");
                     let key_bytes = if let Some(kp) = &node.key_package {
-                        kp.get_hpke_init_key().as_slice()
+                        kp.hpke_init_key().as_slice()
                     } else {
                         &[]
                     };

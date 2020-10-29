@@ -32,7 +32,7 @@ impl<'a> Validator<'a> {
         match proposal {
             Proposal::Add(add_proposal) => {
                 let kp = add_proposal.key_package.clone();
-                let credential = kp.get_credential();
+                let credential = kp.credential();
                 let in_roster = members.iter().any(|m| m == credential);
                 if in_roster {
                     return false;
@@ -41,7 +41,7 @@ impl<'a> Validator<'a> {
             }
             Proposal::Update(update_proposal) => {
                 let kp = update_proposal.key_package.clone();
-                let credential = kp.get_credential();
+                let credential = kp.credential();
                 let in_roster = members.iter().any(|m| m == credential);
                 if !in_roster {
                     return false;
