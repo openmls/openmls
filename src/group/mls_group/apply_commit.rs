@@ -157,8 +157,7 @@ impl MlsGroup {
                     .leaf_key_package
                     .get_extension(ExtensionType::ParentHash)
                 {
-                    let parent_hash_extension =
-                        received_parent_hash.to_parent_hash_extension()?;
+                    let parent_hash_extension = received_parent_hash.to_parent_hash_extension()?;
                     if parent_hash != parent_hash_extension.parent_hash() {
                         return Err(ApplyCommitError::ParentHashMismatch);
                     }
