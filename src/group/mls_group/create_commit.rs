@@ -18,7 +18,7 @@ use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
 use crate::creds::CredentialBundle;
-use crate::extensions::{Extension, RatchetTreeExtension};
+use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
@@ -46,7 +46,8 @@ impl MlsGroup {
         let proposal_id_list = proposal_queue.get_proposal_id_list();
 
         let sender_index = self.sender_index();
-        let mut provisional_tree = self.tree.borrow_mut();
+        // Make a copy of the current tree to apply proposals safely
+        let mut provisional_tree = self.tree().clone();
 
         // Apply proposals to tree
         let (path_required_by_commit, self_removed, invited_members) = match provisional_tree
@@ -85,10 +86,11 @@ impl MlsGroup {
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
+        let tree_hash = provisional_tree.compute_tree_hash();
         let provisional_group_context = GroupContext {
             group_id: self.group_context.group_id.clone(),
             epoch: provisional_epoch,
-            tree_hash: provisional_tree.compute_tree_hash(),
+            tree_hash: tree_hash.clone(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
         let mut provisional_epoch_secrets = self.epoch_secrets.clone();
@@ -115,11 +117,10 @@ impl MlsGroup {
         );
         // Check if new members were added an create welcome message
         if !invited_members.is_empty() {
-            let public_tree = RatchetTreeExtension::new(provisional_tree.public_key_tree());
-            let ratchet_tree_extension = public_tree.to_extension_struct();
-            let tree_hash = ciphersuite.hash(ratchet_tree_extension.get_extension_data());
             let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
-                vec![Box::new(public_tree)]
+                vec![Box::new(RatchetTreeExtension::new(
+                    provisional_tree.get_public_key_tree(),
+                ))]
             } else {
                 Vec::new()
             };
@@ -196,7 +197,7 @@ impl MlsGroup {
             // Create welcome message
             let welcome = Welcome::new(
                 Config::supported_versions()[0],
-                self.ciphersuite.get_name(),
+                self.ciphersuite.name(),
                 secrets,
                 encrypted_group_info,
             );

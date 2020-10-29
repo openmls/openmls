@@ -22,27 +22,27 @@ macro_rules! key_package_generation {
             assert_eq!($supported, supported_ciphersuites.contains(&$ciphersuite));
             let id = vec![1, 2, 3];
             let credential_bundle =
-                CredentialBundle::new(id, CredentialType::Basic, ciphersuite.get_name()).unwrap();
+                CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
             let mut kpb = KeyPackageBundle::new(
-                ciphersuite.get_name(),
+                ciphersuite.name(),
                 &credential_bundle,
                 Vec::new(),
                 Some(&[$ciphersuite]),
             );
 
             // This key package is not valid because the lifetime extension is missing.
-            assert!(!kpb.get_key_package().verify());
+            assert!(kpb.get_key_package().verify().is_err());
 
             // Adding a lifetime extension.
             kpb.get_key_package_ref_mut()
                 .add_extension(Box::new(LifetimeExtension::new(60)));
 
             // The key package is invalid because the signature is invalid now.
-            assert!(!kpb.get_key_package().verify());
+            assert!(kpb.get_key_package().verify().is_err());
 
             // After re-signing the package it is valid.
             kpb.get_key_package_ref_mut().sign(&credential_bundle);
-            assert!(kpb.get_key_package().verify());
+            assert!(kpb.get_key_package().verify().is_ok());
 
             {
                 let extensions = kpb.get_key_package().get_extensions_ref();
@@ -88,11 +88,11 @@ macro_rules! key_package_generation {
                 .add_extension(Box::new(KeyIDExtension::new(&key_id)));
 
             // The key package is invalid because the signature is invalid now.
-            assert!(!kpb.get_key_package().verify());
+            assert!(kpb.get_key_package().verify().is_err());
 
             // After re-signing the package it is valid.
             kpb.get_key_package_ref_mut().sign(&credential_bundle);
-            assert!(kpb.get_key_package().verify());
+            assert!(kpb.get_key_package().verify().is_ok());
 
             // Get the key ID extension.
             let extensions = kpb.get_key_package().get_extensions_ref();

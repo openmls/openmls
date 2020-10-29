@@ -33,10 +33,13 @@ mod codec;
 pub(crate) mod signable;
 use ciphersuites::*;
 
+use crate::utils::random_u32;
+
 #[cfg(test)]
 mod test_ciphersuite;
 
 pub const NONCE_BYTES: usize = 12;
+pub const REUSE_GUARD_BYTES: usize = 4;
 pub const CHACHA_KEY_BYTES: usize = 32;
 pub const AES_128_KEY_BYTES: usize = 16;
 pub const AES_256_KEY_BYTES: usize = 32;
@@ -86,7 +89,20 @@ pub struct AeadKey {
     value: Vec<u8>,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct ReuseGuard {
+    value: [u8; REUSE_GUARD_BYTES],
+}
+
+impl ReuseGuard {
+    /// Samples a fresh reuse guard uniformly at random.
+    pub fn new_from_random() -> Self {
+        let reuse_guard: [u8; REUSE_GUARD_BYTES] = random_u32().to_be_bytes();
+        ReuseGuard { value: reuse_guard }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct AeadNonce {
     value: [u8; NONCE_BYTES],
 }
@@ -98,11 +114,13 @@ pub struct Signature {
 
 #[derive(Clone)]
 pub struct SignaturePrivateKey {
+    ciphersuite: Ciphersuite,
     value: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct SignaturePublicKey {
+    ciphersuite: Ciphersuite,
     value: Vec<u8>,
 }
 
@@ -155,29 +173,8 @@ impl Ciphersuite {
     }
 
     /// Get the name of this ciphersuite.
-    pub fn get_name(&self) -> CiphersuiteName {
+    pub fn name(&self) -> CiphersuiteName {
         self.name
-    }
-
-    /// Sign a `msg` with the given `sk`.
-    pub(crate) fn sign(
-        &self,
-        sk: &SignaturePrivateKey,
-        msg: &[u8],
-    ) -> Result<Signature, SignatureError> {
-        let (hash, nonce) = match self.signature {
-            SignatureMode::Ed25519 => (None, None),
-            SignatureMode::P256 => (Some(self.hash), Some(p256_ecdsa_random_nonce())),
-        };
-        match sign(self.signature, hash, &sk.value, msg, nonce.as_ref()) {
-            Ok(s) => Ok(Signature { value: s }),
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Verify a `msg` against `sig` and `pk`.
-    pub(crate) fn verify(&self, sig: &Signature, pk: &SignaturePublicKey, msg: &[u8]) -> bool {
-        verify(self.signature, Some(self.hash), &pk.value, &sig.value, msg).unwrap()
     }
 
     /// Create a new signature key pair and return it.
@@ -188,8 +185,14 @@ impl Ciphersuite {
         };
         SignatureKeypair {
             ciphersuite: self.clone(),
-            private_key: SignaturePrivateKey { value: sk.to_vec() },
-            public_key: SignaturePublicKey { value: pk.to_vec() },
+            private_key: SignaturePrivateKey {
+                value: sk.to_vec(),
+                ciphersuite: self.clone(),
+            },
+            public_key: SignaturePublicKey {
+                value: pk.to_vec(),
+                ciphersuite: self.clone(),
+            },
         }
     }
 
@@ -341,16 +344,17 @@ impl AeadNonce {
         AeadNonce { value: nonce }
     }
 
-    /// Generate a new random nonce.
-    pub(crate) fn random() -> Self {
-        Self {
-            value: get_random_array(),
-        }
-    }
-
     /// Get a slice to the nonce value.
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
+    }
+
+    /// Xor the first bytes of the nonce with the reuse_guard.
+    pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: &ReuseGuard) {
+        for i in 0..REUSE_GUARD_BYTES {
+            self.value[i] ^= reuse_guard.value[i]
+        }
     }
 }
 
@@ -358,24 +362,19 @@ impl Signature {
     pub(crate) fn new_empty() -> Signature {
         Signature { value: vec![] }
     }
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
-    }
 }
 
 impl SignatureKeypair {
+    /// Sign the `payload` byte slice with this signature key.
+    /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
-        self.ciphersuite.sign(&self.private_key, payload)
+        self.private_key.sign(&payload)
     }
 
-    /// Get a reference to the private key.
-    pub fn get_private_key(&self) -> &SignaturePrivateKey {
-        &self.private_key
-    }
-
-    /// Get a reference to the public key.
-    pub fn get_public_key(&self) -> &SignaturePublicKey {
-        &self.public_key
+    /// Verify a `Signature` on the `payload` byte slice with the key pair's
+    /// public key.
+    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> bool {
+        self.public_key.verify(signature, payload)
     }
 
     /// Get the private and public key objects
@@ -384,14 +383,71 @@ impl SignatureKeypair {
     }
 }
 
+impl PartialEq for SignaturePublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl SignaturePublicKey {
+    /// Create a new signature public key from raw key bytes.
+    pub fn new(bytes: Vec<u8>, ciphersuite: Ciphersuite) -> Self {
+        Self {
+            value: bytes,
+            ciphersuite,
+        }
+    }
+    /// Verify a `Signature` on the `payload` byte slice with the key pair's
+    /// public key.
+    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> bool {
+        verify(
+            self.ciphersuite.signature,
+            Some(self.ciphersuite.hash),
+            &self.value,
+            &signature.value,
+            payload,
+        )
+        .unwrap()
+    }
+}
+
+impl SignaturePrivateKey {
+    /// Sign the `payload` byte slice with this signature key.
+    /// Returns a `Result` with a `Signature` or a `SignatureError`.
+    pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
+        let (hash, nonce) = match self.ciphersuite.signature {
+            SignatureMode::Ed25519 => (None, None),
+            SignatureMode::P256 => (Some(self.ciphersuite.hash), Some(p256_ecdsa_random_nonce())),
+        };
+        match sign(
+            self.ciphersuite.signature,
+            hash,
+            &self.value,
+            payload,
+            nonce.as_ref(),
+        ) {
+            Ok(s) => Ok(Signature { value: s }),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
+/// it has changed, xoring it again and testing that it's back in its original
+/// state.
 #[test]
-fn test_sign_verify() {
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
-    let keypair = ciphersuite.new_signature_keypair();
-    let payload = &[1, 2, 3];
-    let signature = ciphersuite
-        .sign(keypair.get_private_key(), payload)
-        .unwrap();
-    assert!(ciphersuite.verify(&signature, keypair.get_public_key(), payload));
+fn test_xor() {
+    let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
+    let original_nonce = AeadNonce::from_slice(get_random_vec(NONCE_BYTES).as_slice());
+    let mut nonce = original_nonce.clone();
+    nonce.xor_with_reuse_guard(&reuse_guard);
+    assert_ne!(
+        original_nonce, nonce,
+        "xoring with reuse_guard did not change the nonce"
+    );
+    nonce.xor_with_reuse_guard(&reuse_guard);
+    assert_eq!(
+        original_nonce, nonce,
+        "xoring twice changed the original value"
+    );
 }

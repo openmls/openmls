@@ -286,14 +286,14 @@ impl Codec for GroupSecrets {
         self.path_secret.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let joiner_secret = decode_vec(VecSize::VecU8, cursor)?;
-    //     let path_secret = Option::<PathSecret>::decode(cursor)?;
-    //     Ok(GroupSecrets {
-    //         joiner_secret,
-    //         path_secret,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let joiner_secret = decode_vec(VecSize::VecU8, cursor)?;
+        let path_secret = Option::<PathSecret>::decode(cursor)?;
+        Ok(GroupSecrets {
+            joiner_secret,
+            path_secret,
+        })
+    }
 }
 
 #[derive(Clone, Debug)]

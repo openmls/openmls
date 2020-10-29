@@ -136,7 +136,8 @@ impl<'a> ExtensionStruct {
     }
 
     /// Get the type of this extension struct.
-    pub(crate) fn get_extension_data(&'a self) -> &'a [u8] {
+    // Not needed now, but will be when we support this extension
+    pub(crate) fn _get_extension_data(&'a self) -> &'a [u8] {
         &self.extension_data
     }
 }

@@ -78,7 +78,11 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                     (key_bytes, parent_hash_bytes)
                 }
                 NodeType::Parent => {
-                    print!("\tP");
+                    if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
+                        print!("\tP(R)");
+                    } else {
+                        print!("\tP");
+                    }
                     let key_bytes = if let Some(n) = &node.node {
                         n.get_public_key().as_slice()
                     } else {
@@ -110,7 +114,11 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
             }
             print!("◼︎");
         } else {
-            print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
+            if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
+                print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
+            } else {
+                print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
+            }
             for _ in 0..level * factor {
                 print!(" ");
             }
