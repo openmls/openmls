@@ -64,6 +64,16 @@ impl MlsGroup {
             .position(|e| e.get_type() == ExtensionType::RatchetTree);
         let ratchet_tree_extension = if let Some(i) = ratchet_tree_ext_index {
             let extension = group_info.extensions_mut().remove(i);
+            // Throw an error if we there is another ratchet tree extension.
+            // We have to see if this makes problems later as it's not something
+            // required by the spec right now.
+            if group_info
+                .extensions()
+                .iter()
+                .any(|e| e.get_type() == ExtensionType::RatchetTree)
+            {
+                return Err(WelcomeError::DuplicateRatchetTreeExtension);
+            }
             match extension.to_ratchet_tree_extension_ref() {
                 Ok(e) => Some(e.clone()),
                 Err(e) => {

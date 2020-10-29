@@ -121,7 +121,6 @@ impl GroupInfo {
         extensions: Vec<Box<dyn Extension>>,
         confirmation_tag: Vec<u8>,
         signer_index: LeafIndex,
-        signature: Signature,
     ) -> Self {
         Self {
             group_id,
@@ -131,7 +130,7 @@ impl GroupInfo {
             extensions,
             confirmation_tag,
             signer_index,
-            signature,
+            signature: Signature::new_empty(),
         }
     }
 

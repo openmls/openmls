@@ -23,12 +23,8 @@ macro_rules! key_package_generation {
             let id = vec![1, 2, 3];
             let credential_bundle =
                 CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
-            let mut kpb = KeyPackageBundle::new(
-                ciphersuite.name(),
-                &credential_bundle,
-                Vec::new(),
-                Some(&[$ciphersuite]),
-            );
+            let mut kpb =
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new());
 
             // This key package is not valid because the lifetime extension is missing.
             assert!(kpb.get_key_package().verify().is_err());

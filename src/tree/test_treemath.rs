@@ -107,7 +107,7 @@ fn test_tree_hash() {
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
         let credential_bundle =
             CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite_name).unwrap();
-        KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new(), None)
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new())
     }
 
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;

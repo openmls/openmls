@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see http://www.gnu.org/licenses/.
 
-use crate::ciphersuite::{signable::*, *};
+use crate::ciphersuite::signable::Signable;
 use crate::codec::*;
 use crate::config::Config;
 use crate::creds::CredentialBundle;
@@ -133,7 +133,6 @@ impl MlsGroup {
                 extensions,
                 confirmation_tag.as_slice(),
                 sender_index,
-                Signature::new_empty(),
             );
             group_info.set_signature(group_info.sign(credential_bundle));
             // Encrypt GroupInfo object

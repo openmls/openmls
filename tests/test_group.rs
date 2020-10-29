@@ -22,25 +22,22 @@ fn create_commit_optional_path() {
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions.clone(),
-        None,
     );
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &bob_credential_bundle,
         mandatory_extensions.clone(),
-        None,
     );
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions,
-        None,
     );
     let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
     assert!(alice_update_key_package.verify().is_ok());
@@ -178,18 +175,16 @@ fn basic_group_setup() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &bob_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
-        None,
     );
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
-        None,
     );
 
     // Alice creates a group
@@ -249,17 +244,15 @@ fn group_operations() {
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
-            None,
         );
 
         let bob_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions,
-            None,
         );
         let bob_key_package = bob_key_package_bundle.get_key_package();
 
