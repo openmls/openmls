@@ -24,8 +24,7 @@ fn codec() {
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
     let credential_bundle =
-        CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.get_name())
-            .unwrap();
+        CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.name()).unwrap();
     let sender = Sender {
         sender_type: SenderType::Member,
         sender: LeafIndex::from(2u32),
