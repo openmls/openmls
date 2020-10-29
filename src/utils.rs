@@ -68,7 +68,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                                 .as_any()
                                 .downcast_ref::<ParentHashExtension>()
                                 .expect("Library error");
-                            parent_hash_extension.get_parent_hash_ref().to_vec()
+                            parent_hash_extension.parent_hash().to_vec()
                         } else {
                             vec![]
                         }

@@ -100,11 +100,11 @@ impl Node {
                         key_package.get_extension(ExtensionType::ParentHash);
                     match parent_hash_extension {
                         Some(phe) => {
-                            let phe = match phe.to_parent_hash_extension_ref() {
+                            let phe = match phe.to_parent_hash_extension() {
                                 Ok(phe) => phe,
                                 Err(_) => return None,
                             };
-                            Some(phe.get_parent_hash_ref().to_vec())
+                            Some(phe.parent_hash().to_vec())
                         }
                         None => None,
                     }

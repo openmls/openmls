@@ -158,8 +158,8 @@ impl MlsGroup {
                     .get_extension(ExtensionType::ParentHash)
                 {
                     let parent_hash_extension =
-                        received_parent_hash.to_parent_hash_extension_ref()?;
-                    if parent_hash != parent_hash_extension.get_parent_hash_ref() {
+                        received_parent_hash.to_parent_hash_extension()?;
+                    if parent_hash != parent_hash_extension.parent_hash() {
                         return Err(ApplyCommitError::ParentHashMismatch);
                     }
                 } else {

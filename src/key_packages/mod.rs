@@ -99,7 +99,7 @@ impl KeyPackage {
             }
             // Make sure the lifetime is valid.
             if extension.get_type() == ExtensionType::Lifetime {
-                match extension.to_lifetime_extension_ref() {
+                match extension.to_lifetime_extension() {
                     Ok(e) => {
                         if !e.is_valid() {
                             return Err(KeyPackageError::InvalidLifetimeExtension);
@@ -154,7 +154,7 @@ impl KeyPackage {
     /// Returns an error if no Key ID extension is present.
     pub fn get_id(&self) -> Result<&[u8], KeyPackageError> {
         if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
-            return Ok(key_id_ext.to_key_id_extension_ref()?.as_slice());
+            return Ok(key_id_ext.to_key_id_extension()?.as_slice());
         }
         Err(KeyPackageError::ExtensionNotPresent)
     }

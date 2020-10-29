@@ -34,7 +34,7 @@ macro_rules! key_package_generation {
                 .find(|e| e.get_type() == ExtensionType::Capabilities)
                 .expect("Capabilities extension is missing in key package");
             let _capabilities_extension = capabilities_extension
-                .to_capabilities_extension_ref()
+                .to_capabilities_extension()
                 .unwrap();
             // TODO: #101 test capabilities.
 
