@@ -25,7 +25,7 @@ macro_rules! key_package_generation {
                 CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
             let kpb = KeyPackageBundle::new(ciphersuite.name(), &credential_bundle, Vec::new());
 
-            let extensions = kpb.get_key_package().get_extensions_ref();
+            let extensions = kpb.get_key_package().extensions();
 
             // The capabilities extension must be present and valid.
             // It's added automatically.
@@ -33,9 +33,8 @@ macro_rules! key_package_generation {
                 .iter()
                 .find(|e| e.get_type() == ExtensionType::Capabilities)
                 .expect("Capabilities extension is missing in key package");
-            let _capabilities_extension = capabilities_extension
-                .to_capabilities_extension_ref()
-                .unwrap();
+            let _capabilities_extension =
+                capabilities_extension.to_capabilities_extension().unwrap();
             // TODO: #101 test capabilities.
 
             // Lifetime extension must be present and valid.
