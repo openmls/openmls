@@ -3,16 +3,17 @@
 use super::*;
 use crate::config::Config;
 
-// Spot test to make sure hpke seal works.
+// Spot test to make sure hpke seal/open work.
 #[test]
-fn test_hpke_seal() {
+fn test_hpke_seal_open() {
     // Test through ciphersuites.
     for &suite in Config::supported_ciphersuites() {
         println!("Test {:?}", suite);
         let ciphersuite = Ciphersuite::new(suite);
         println!("Ciphersuite {:?}", ciphersuite);
         let kp = ciphersuite.new_hpke_keypair();
-        ciphersuite.hpke_seal(kp.public_key(), &[], &[], &[1, 2, 3]);
+        let ciphertext = ciphersuite.hpke_seal(kp.public_key(), &[], &[], &[1, 2, 3]);
+        ciphersuite.hpke_open(&ciphertext, kp.private_key(), &[], &[]);
     }
 }
 
