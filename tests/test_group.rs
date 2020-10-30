@@ -104,7 +104,7 @@ fn create_commit_optional_path() {
     let ratchet_tree = group_alice_1234.tree().get_public_key_tree();
 
     // Bob creates group from Welcome
-    let mut group_bob_1234 = match MlsGroup::new_from_welcome(
+    let group_bob_1234 = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -115,7 +115,7 @@ fn create_commit_optional_path() {
 
     assert_eq!(
         group_alice_1234.tree().get_public_key_tree(),
-        group_alice_1234.tree().get_public_key_tree()
+        group_bob_1234.tree().get_public_key_tree()
     );
 
     // Alice updates

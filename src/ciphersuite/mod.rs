@@ -325,11 +325,6 @@ impl Ciphersuite {
     }
 
     /// Generate a new HPKE key pair and return it.
-    pub(crate) fn new_hpke_keypair(&self) -> HPKEKeyPair {
-        self.hpke.generate_key_pair()
-    }
-
-    /// Generate a new HPKE key pair and return it.
     pub(crate) fn derive_hpke_keypair(&self, ikm: &[u8]) -> HPKEKeyPair {
         self.hpke.derive_key_pair(ikm)
     }
