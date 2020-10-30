@@ -33,9 +33,6 @@ mod codec;
 pub(crate) mod signable;
 use ciphersuites::*;
 
-use crate::codec::decode_vec;
-use crate::codec::Cursor;
-use crate::codec::{encode_vec, Codec, CodecError, VecSize};
 use crate::utils::random_u32;
 
 #[cfg(test)]
@@ -105,18 +102,6 @@ impl Secret {
 impl From<Vec<u8>> for Secret {
     fn from(bytes: Vec<u8>) -> Self {
         Secret { value: bytes }
-    }
-}
-
-impl Codec for Secret {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.value)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Secret { value })
     }
 }
 

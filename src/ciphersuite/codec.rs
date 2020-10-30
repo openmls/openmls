@@ -134,3 +134,15 @@ impl Codec for ReuseGuard {
         Ok(ReuseGuard { value: guard })
     }
 }
+
+impl Codec for Secret {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        encode_vec(VecSize::VecU8, buffer, &self.value)?;
+        Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let value = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(Secret { value })
+    }
+}
