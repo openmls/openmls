@@ -204,27 +204,6 @@ impl Ciphersuite {
         self.aead_mode
     }
 
-    /// Sign a `msg` with the given `sk`.
-    pub(crate) fn sign(
-        &self,
-        sk: &SignaturePrivateKey,
-        msg: &[u8],
-    ) -> Result<Signature, SignatureError> {
-        let (hash, nonce) = match self.signature {
-            SignatureMode::Ed25519 => (None, None),
-            SignatureMode::P256 => (Some(self.hash), Some(p256_ecdsa_random_nonce())),
-        };
-        match sign(self.signature, hash, &sk.value, msg, nonce.as_ref()) {
-            Ok(s) => Ok(Signature { value: s }),
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Verify a `msg` against `sig` and `pk`.
-    pub(crate) fn verify(&self, sig: &Signature, pk: &SignaturePublicKey, msg: &[u8]) -> bool {
-        verify(self.signature, Some(self.hash), &pk.value, &sig.value, msg).unwrap()
-    }
-
     /// Create a new signature key pair and return it.
     pub fn new_signature_keypair(&self) -> SignatureKeypair {
         let (sk, pk) = match signature_key_gen(self.signature) {
