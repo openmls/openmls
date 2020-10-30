@@ -166,7 +166,7 @@ impl MlsGroup {
                 };
                 let group_secrets_bytes = group_secrets.encode_detached().unwrap();
                 plaintext_secrets.push((
-                    key_package.get_hpke_init_key().clone(),
+                    key_package.hpke_init_key().clone(),
                     group_secrets_bytes,
                     key_package_hash,
                 ));

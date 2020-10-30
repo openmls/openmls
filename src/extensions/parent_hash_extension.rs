@@ -35,7 +35,7 @@ impl ParentHashExtension {
     }
 
     /// Get a reference to the parent hash value.
-    pub(crate) fn get_parent_hash_ref(&self) -> &[u8] {
+    pub(crate) fn parent_hash(&self) -> &[u8] {
         &self.parent_hash
     }
 }

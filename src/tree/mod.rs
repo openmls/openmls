@@ -24,7 +24,7 @@ use crate::messages::proposals::*;
 pub(crate) mod codec;
 pub(crate) mod hash_input;
 pub(crate) mod index;
-pub(crate) mod node;
+pub mod node;
 pub(crate) mod path_keys;
 pub(crate) mod private_tree;
 pub(crate) mod secret_tree;
@@ -140,7 +140,7 @@ impl RatchetTree {
     }
 
     /// Return a mutable reference to the `PrivateTree`.
-    pub(crate) fn get_private_tree_mut(&mut self) -> &mut PrivateTree {
+    pub(crate) fn private_tree_mut(&mut self) -> &mut PrivateTree {
         &mut self.private_tree
     }
 
@@ -148,16 +148,30 @@ impl RatchetTree {
         NodeIndex::from(self.nodes.len())
     }
 
-    pub fn get_public_key_tree(&self) -> Vec<Option<Node>> {
+    /// Get a vector with all nodes in the tree, containing `None` for blank
+    /// nodes.
+    pub fn public_key_tree(&self) -> Vec<Option<&Node>> {
         let mut tree = vec![];
         for node in self.nodes.iter() {
             if node.is_blank() {
                 tree.push(None)
             } else {
-                tree.push(Some(node.clone()))
+                tree.push(Some(node))
             }
         }
         tree
+    }
+
+    /// Get a vector with a copy of all nodes in the tree, containing `None` for
+    /// blank nodes.
+    pub fn public_key_tree_copy(&self) -> Vec<Option<Node>> {
+        self.public_key_tree()
+            .iter()
+            .map(|&n| match n {
+                Some(v) => Some(v.clone()),
+                None => None,
+            })
+            .collect()
     }
 
     pub(crate) fn leaf_count(&self) -> LeafIndex {
@@ -607,7 +621,7 @@ impl RatchetTree {
                     self.nodes[d.as_usize()].node = Some(parent_node);
                 }
             }
-            added_members.push((leaf_index, new_kp.get_credential().clone()));
+            added_members.push((leaf_index, new_kp.credential().clone()));
         }
         // Add the remaining nodes.
         let mut new_nodes = Vec::with_capacity(num_new_kp * 2);
@@ -618,7 +632,7 @@ impl RatchetTree {
                 Node::new_leaf(Some((*add_proposal).clone())),
             ]);
             let node_index = NodeIndex::from(leaf_index);
-            added_members.push((node_index, add_proposal.get_credential().clone()));
+            added_members.push((node_index, add_proposal.credential().clone()));
             leaf_index += 2;
         }
         self.nodes.extend(new_nodes);
