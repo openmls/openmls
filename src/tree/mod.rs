@@ -495,7 +495,7 @@ impl RatchetTree {
         let mut direct_path_nodes = vec![];
         let mut ciphertexts = vec![];
         for (path_secret, copath_node) in path_secrets.iter().zip(copath.iter()) {
-            let path_secret_bytes = path_secret.clone().to_vec();
+            let path_secret_bytes = path_secret.to_vec();
             let node_ciphertexts: Vec<HpkeCiphertext> = self
                 .resolve(*copath_node)
                 .iter()
