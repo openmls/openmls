@@ -495,14 +495,13 @@ impl RatchetTree {
         let mut direct_path_nodes = vec![];
         let mut ciphertexts = vec![];
         for (path_secret, copath_node) in path_secrets.iter().zip(copath.iter()) {
-            let path_secret_bytes = path_secret.to_vec();
             let node_ciphertexts: Vec<HpkeCiphertext> = self
                 .resolve(*copath_node)
                 .iter()
                 .map(|&x| {
                     let pk = self.nodes[x.as_usize()].get_public_hpke_key().unwrap();
                     self.ciphersuite
-                        .hpke_seal(&pk, group_context, &[], &path_secret_bytes)
+                        .hpke_seal_secret(&pk, group_context, &[], &path_secret)
                 })
                 .collect();
             // TODO Check that all public keys are non-empty

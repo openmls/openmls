@@ -90,10 +90,13 @@ pub struct Secret {
 }
 
 impl Secret {
+    // TODO We shouldn't need this.
     pub(crate) fn new_empty_secret() -> Self {
         Secret { value: vec![] }
     }
-    // TODO: Refactor such that we can remove this.
+    // TODO: The only reason we still need this, is because ConfirmationTag is
+    // currently not a MAC, but a Secret. This should be solved when we're up to
+    // spec.
     pub(crate) fn to_vec(&self) -> Vec<u8> {
         self.value.clone()
     }
@@ -280,6 +283,18 @@ impl Ciphersuite {
             kem_output,
             ciphertext,
         }
+    }
+
+    /// HPKE single-shot encryption specifically to seal a Secret `secret` to
+    /// `pk_r`, using `info` and `aad`.
+    pub(crate) fn hpke_seal_secret(
+        &self,
+        pk_r: &HPKEPublicKey,
+        info: &[u8],
+        aad: &[u8],
+        secret: &Secret,
+    ) -> HpkeCiphertext {
+        self.hpke_seal(pk_r, info, aad, &secret.value)
     }
 
     /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and `aad`.
