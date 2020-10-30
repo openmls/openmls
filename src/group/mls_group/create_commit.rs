@@ -119,7 +119,7 @@ impl MlsGroup {
         if !invited_members.is_empty() {
             let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
                 vec![Box::new(RatchetTreeExtension::new(
-                    provisional_tree.get_public_key_tree(),
+                    provisional_tree.public_key_tree_copy(),
                 ))]
             } else {
                 Vec::new()
@@ -177,7 +177,7 @@ impl MlsGroup {
                 };
                 let group_secrets_bytes = group_secrets.encode_detached().unwrap();
                 plaintext_secrets.push((
-                    key_package.get_hpke_init_key().clone(),
+                    key_package.hpke_init_key().clone(),
                     group_secrets_bytes,
                     key_package_hash,
                 ));

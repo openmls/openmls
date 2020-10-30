@@ -41,7 +41,7 @@ macro_rules! key_package_generation {
             assert!(kpb.get_key_package().verify().is_ok());
 
             {
-                let extensions = kpb.get_key_package().get_extensions_ref();
+                let extensions = kpb.get_key_package().extensions();
 
                 // The capabilities extension must be present and valid.
                 // It's added automatically.
@@ -49,9 +49,8 @@ macro_rules! key_package_generation {
                     .iter()
                     .find(|e| e.get_type() == ExtensionType::Capabilities)
                     .expect("Capabilities extension is missing in key package");
-                let capabilities_extension = capabilities_extension
-                    .to_capabilities_extension_ref()
-                    .unwrap();
+                let capabilities_extension =
+                    capabilities_extension.to_capabilities_extension().unwrap();
 
                 // Only the single ciphersuite is set.
                 assert_eq!(1, capabilities_extension.ciphersuites().len());
@@ -75,7 +74,7 @@ macro_rules! key_package_generation {
                     .iter()
                     .find(|e| e.get_type() == ExtensionType::Lifetime)
                     .expect("Lifetime extension is missing in key package");
-                let _lifetime_extension = lifetime_extension.to_lifetime_extension_ref().unwrap();
+                let _lifetime_extension = lifetime_extension.to_lifetime_extension().unwrap();
             }
 
             // Add and retrieve a key package ID.
@@ -91,12 +90,12 @@ macro_rules! key_package_generation {
             assert!(kpb.get_key_package().verify().is_ok());
 
             // Get the key ID extension.
-            let extensions = kpb.get_key_package().get_extensions_ref();
+            let extensions = kpb.get_key_package().extensions();
             let key_id_extension = extensions
                 .iter()
                 .find(|e| e.get_type() == ExtensionType::KeyID)
                 .expect("Key ID extension is missing in key package");
-            let key_id_extension = key_id_extension.to_key_id_extension_ref().unwrap();
+            let key_id_extension = key_id_extension.to_key_id_extension().unwrap();
             assert_eq!(&key_id, key_id_extension.as_slice());
         }
     };

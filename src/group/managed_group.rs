@@ -82,7 +82,7 @@ impl ManagedGroup {
         let mut members = Vec::new();
         for i in 0..self.group.tree().leaf_count().as_usize() {
             let node = self.group.tree().nodes[i].clone();
-            let credential = node.key_package.unwrap().get_credential().clone();
+            let credential = node.key_package.unwrap().credential().clone();
             members.push(credential);
         }
         members
