@@ -49,7 +49,7 @@ impl Node {
         match self.node_type {
             NodeType::Leaf => {
                 if let Some(ref kp) = self.key_package {
-                    Some(kp.get_hpke_init_key())
+                    Some(kp.hpke_init_key())
                 } else {
                     None
                 }
@@ -100,11 +100,11 @@ impl Node {
                         key_package.get_extension(ExtensionType::ParentHash);
                     match parent_hash_extension {
                         Some(phe) => {
-                            let phe = match phe.to_parent_hash_extension_ref() {
+                            let phe = match phe.to_parent_hash_extension() {
                                 Ok(phe) => phe,
                                 Err(_) => return None,
                             };
-                            Some(phe.get_parent_hash_ref().to_vec())
+                            Some(phe.parent_hash().to_vec())
                         }
                         None => None,
                     }

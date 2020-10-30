@@ -101,7 +101,7 @@ impl KeyPackage {
             }
             // Make sure the lifetime is valid.
             if extension.get_type() == ExtensionType::Lifetime {
-                match extension.to_lifetime_extension_ref() {
+                match extension.to_lifetime_extension() {
                     Ok(e) => {
                         if !e.is_valid() {
                             return Err(KeyPackageError::InvalidLifetimeExtension);
@@ -156,7 +156,7 @@ impl KeyPackage {
     /// Returns an error if no Key ID extension is present.
     pub fn get_id(&self) -> Result<&[u8], KeyPackageError> {
         if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
-            return Ok(key_id_ext.to_key_id_extension_ref()?.as_slice());
+            return Ok(key_id_ext.to_key_id_extension()?.as_slice());
         }
         Err(KeyPackageError::ExtensionNotPresent)
     }
@@ -184,12 +184,12 @@ impl KeyPackage {
     }
 
     /// Get a reference to the credential.
-    pub(crate) fn get_credential(&self) -> &Credential {
+    pub(crate) fn credential(&self) -> &Credential {
         &self.credential
     }
 
     /// Get a reference to the HPKE init key.
-    pub(crate) fn get_hpke_init_key(&self) -> &HPKEPublicKey {
+    pub(crate) fn hpke_init_key(&self) -> &HPKEPublicKey {
         &self.hpke_init_key
     }
 
@@ -198,13 +198,13 @@ impl KeyPackage {
         self.hpke_init_key = hpke_init_key;
     }
 
-    /// Get a reference to the `Ciphersuite`.
-    pub(crate) fn get_cipher_suite(&self) -> CiphersuiteName {
+    /// Get the `CiphersuiteName`.
+    pub(crate) fn cipher_suite(&self) -> CiphersuiteName {
         self.cipher_suite
     }
 
     /// Get a reference to the extensions of this key package.
-    pub fn get_extensions_ref(&self) -> &[Box<dyn Extension>] {
+    pub fn extensions(&self) -> &[Box<dyn Extension>] {
         &self.extensions
     }
 
