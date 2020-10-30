@@ -12,7 +12,7 @@ fn test_hpke_seal() {
         let ciphersuite = Ciphersuite::new(suite);
         println!("Ciphersuite {:?}", ciphersuite);
         let kp = ciphersuite.new_hpke_keypair();
-        ciphersuite.hpke_seal(kp.get_public_key_ref(), &[], &[], &[1, 2, 3]);
+        ciphersuite.hpke_seal(kp.public_key(), &[], &[], &[1, 2, 3]);
     }
 }
 
