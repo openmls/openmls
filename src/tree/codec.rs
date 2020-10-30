@@ -85,7 +85,7 @@ impl Codec for UpdatePath {
 
 impl Codec for SecretTreeNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        &self.secret.encode(buffer)?;
+        self.secret.encode(buffer)?;
         Ok(())
     }
     // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {

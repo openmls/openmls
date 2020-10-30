@@ -192,7 +192,7 @@ pub struct GroupSecrets {
 
 impl Codec for GroupSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        &self.joiner_secret.encode(buffer)?;
+        self.joiner_secret.encode(buffer)?;
         self.path_secret.encode(buffer)?;
         Ok(())
     }

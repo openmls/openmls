@@ -117,7 +117,7 @@ impl EpochSecrets {
         let welcome_secret = derive_secret(ciphersuite, &joiner_secret, "welcome");
         let pre_member_secret = derive_secret(ciphersuite, &joiner_secret, "member");
         let member_secret = ciphersuite.hkdf_extract(
-            &psk.unwrap_or(Secret::new_empty_secret()),
+            &psk.unwrap_or_else(Secret::new_empty_secret),
             &pre_member_secret,
         );
         let pre_epoch_secret = derive_secret(ciphersuite, &member_secret, "epoch");
@@ -156,12 +156,12 @@ impl EpochSecrets {
 
 impl Codec for EpochSecrets {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        &self.welcome_secret.encode(buffer)?;
-        &self.sender_data_secret.encode(buffer)?;
-        &self.encryption_secret.encode(buffer)?;
-        &self.exporter_secret.encode(buffer)?;
-        &self.confirmation_key.encode(buffer)?;
-        &self.init_secret.encode(buffer)?;
+        self.welcome_secret.encode(buffer)?;
+        self.sender_data_secret.encode(buffer)?;
+        self.encryption_secret.encode(buffer)?;
+        self.exporter_secret.encode(buffer)?;
+        self.confirmation_key.encode(buffer)?;
+        self.init_secret.encode(buffer)?;
         Ok(())
     }
 }

@@ -97,8 +97,8 @@ impl Secret {
         Secret { value: vec![] }
     }
     // TODO: Refactor such that we can remove this.
-    pub(crate) fn to_vec(self) -> Vec<u8> {
-        self.value
+    pub(crate) fn to_vec(&self) -> Vec<u8> {
+        self.value.clone()
     }
 }
 
