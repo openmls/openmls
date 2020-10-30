@@ -58,7 +58,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                 NodeType::Leaf => {
                     print!("\tL");
                     let key_bytes = if let Some(kp) = &node.key_package {
-                        kp.get_hpke_init_key().as_slice()
+                        kp.hpke_init_key().as_slice()
                     } else {
                         &[]
                     };
@@ -68,7 +68,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                                 .as_any()
                                 .downcast_ref::<ParentHashExtension>()
                                 .expect("Library error");
-                            parent_hash_extension.get_parent_hash_ref().to_vec()
+                            parent_hash_extension.parent_hash().to_vec()
                         } else {
                             vec![]
                         }
