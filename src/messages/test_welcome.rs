@@ -40,7 +40,7 @@ macro_rules! test_welcome_msg {
             let secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: vec![0, 0, 0, 0],
                 encrypted_group_secrets: ciphersuite.hpke_seal(
-                    receiver_key_pair.get_public_key_ref(),
+                    receiver_key_pair.public_key(),
                     hpke_info,
                     hpke_aad,
                     hpke_input,
@@ -68,7 +68,7 @@ macro_rules! test_welcome_msg {
                 assert_eq!(secret.key_package_hash, secret.key_package_hash);
                 let ptxt = ciphersuite.hpke_open(
                     &secret.encrypted_group_secrets,
-                    receiver_key_pair.get_private_key_ref(),
+                    receiver_key_pair.private_key(),
                     hpke_info,
                     hpke_aad,
                 );

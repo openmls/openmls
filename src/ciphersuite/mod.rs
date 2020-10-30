@@ -136,11 +136,13 @@ pub struct Signature {
 
 #[derive(Clone)]
 pub struct SignaturePrivateKey {
+    ciphersuite: Ciphersuite,
     value: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct SignaturePublicKey {
+    ciphersuite: Ciphersuite,
     value: Vec<u8>,
 }
 
@@ -231,8 +233,14 @@ impl Ciphersuite {
         };
         SignatureKeypair {
             ciphersuite: self.clone(),
-            private_key: SignaturePrivateKey { value: sk.to_vec() },
-            public_key: SignaturePublicKey { value: pk.to_vec() },
+            private_key: SignaturePrivateKey {
+                value: sk.to_vec(),
+                ciphersuite: self.clone(),
+            },
+            public_key: SignaturePublicKey {
+                value: pk.to_vec(),
+                ciphersuite: self.clone(),
+            },
         }
     }
 
@@ -437,18 +445,16 @@ impl Signature {
 }
 
 impl SignatureKeypair {
+    /// Sign the `payload` byte slice with this signature key.
+    /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
-        self.ciphersuite.sign(&self.private_key, payload)
+        self.private_key.sign(&payload)
     }
 
-    /// Get a reference to the private key.
-    pub fn get_private_key(&self) -> &SignaturePrivateKey {
-        &self.private_key
-    }
-
-    /// Get a reference to the public key.
-    pub fn get_public_key(&self) -> &SignaturePublicKey {
-        &self.public_key
+    /// Verify a `Signature` on the `payload` byte slice with the key pair's
+    /// public key.
+    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> bool {
+        self.public_key.verify(signature, payload)
     }
 
     /// Get the private and public key objects
@@ -457,16 +463,53 @@ impl SignatureKeypair {
     }
 }
 
-#[test]
-fn test_sign_verify() {
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
-    let keypair = ciphersuite.new_signature_keypair();
-    let payload = &[1, 2, 3];
-    let signature = ciphersuite
-        .sign(keypair.get_private_key(), payload)
-        .unwrap();
-    assert!(ciphersuite.verify(&signature, keypair.get_public_key(), payload));
+impl PartialEq for SignaturePublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl SignaturePublicKey {
+    /// Create a new signature public key from raw key bytes.
+    pub fn new(bytes: Vec<u8>, ciphersuite: Ciphersuite) -> Self {
+        Self {
+            value: bytes,
+            ciphersuite,
+        }
+    }
+    /// Verify a `Signature` on the `payload` byte slice with the key pair's
+    /// public key.
+    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> bool {
+        verify(
+            self.ciphersuite.signature,
+            Some(self.ciphersuite.hash),
+            &self.value,
+            &signature.value,
+            payload,
+        )
+        .unwrap()
+    }
+}
+
+impl SignaturePrivateKey {
+    /// Sign the `payload` byte slice with this signature key.
+    /// Returns a `Result` with a `Signature` or a `SignatureError`.
+    pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
+        let (hash, nonce) = match self.ciphersuite.signature {
+            SignatureMode::Ed25519 => (None, None),
+            SignatureMode::P256 => (Some(self.ciphersuite.hash), Some(p256_ecdsa_random_nonce())),
+        };
+        match sign(
+            self.ciphersuite.signature,
+            hash,
+            &self.value,
+            payload,
+            nonce.as_ref(),
+        ) {
+            Ok(s) => Ok(Signature { value: s }),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 /// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
