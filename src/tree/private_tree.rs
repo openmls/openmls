@@ -68,16 +68,25 @@ impl PrivateTree {
     }
 
     /// Update this tree with a new private key, leaf secret and path
+    /// The private key is derived from the leaf secret
     pub(crate) fn update(
         &mut self,
         ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         path: &[NodeIndex],
     ) -> Result<Vec<HPKEPublicKey>, TreeError> {
-        let private_tree =
-            PrivateTree::from_key_package_bundle(self.node_index, key_package_bundle);
-        self.leaf_secret = private_tree.leaf_secret;
-        self.hpke_private_key = private_tree.hpke_private_key;
+        let leaf_secret = key_package_bundle.get_leaf_secret();
+
+        let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
+
+        let (private_key, public_key) = keypair.into_keys();
+        if &public_key != key_package_bundle.get_key_package().hpke_init_key() {
+            return Err(TreeError::InvalidArguments);
+        }
+
+        self.hpke_private_key = private_key;
+        self.leaf_secret = leaf_secret.to_vec();
 
         // Compute path secrets.
         self.generate_path_secrets(ciphersuite, path.len());

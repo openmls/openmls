@@ -371,7 +371,10 @@ impl KeyPackageBundle {
     }
 
     /// This function derives the leaf_node_secret from the leaf_secret as described in 5.4 Ratchet Tree Evolution
-    fn derive_leaf_node_secret(ciphersuite: &Ciphersuite, leaf_secret: &[u8]) -> Vec<u8> {
+    pub(crate) fn derive_leaf_node_secret(
+        ciphersuite: &Ciphersuite,
+        leaf_secret: &[u8],
+    ) -> Vec<u8> {
         derive_secret(ciphersuite, &leaf_secret, "node")
     }
 }
