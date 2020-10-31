@@ -89,7 +89,7 @@ impl MlsGroup {
                     .iter()
                     .find(|kpb| kpb.get_key_package() == kp)
                 {
-                    Some(i) => i,
+                    Some(kpb) => kpb,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 }
                 .clone();

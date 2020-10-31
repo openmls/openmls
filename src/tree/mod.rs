@@ -674,7 +674,7 @@ impl RatchetTree {
                     .iter()
                     .find(|kpb| kpb.get_key_package() == &update_proposal.key_package)
                 {
-                    Some(i) => i,
+                    Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
                     None => return Err(TreeError::InvalidArguments),
                 }
