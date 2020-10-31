@@ -54,7 +54,7 @@ impl PrivateTree {
         node_index: NodeIndex,
         key_package_bundle: &KeyPackageBundle,
     ) -> Self {
-        let leaf_secret = key_package_bundle.get_leaf_secret().as_ref().unwrap();
+        let leaf_secret = key_package_bundle.get_leaf_secret();
         Self {
             node_index,
             hpke_private_key: HPKEPrivateKey::new(

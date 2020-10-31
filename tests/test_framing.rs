@@ -13,7 +13,6 @@ fn padding() {
     let credential_bundle =
         CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
     let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
-    assert!(kpb.get_leaf_secret().is_some());
 
     let mut group_alice = MlsGroup::new(&id, ciphersuite_name, kpb);
     const PADDING_SIZE: usize = 10;

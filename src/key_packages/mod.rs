@@ -237,7 +237,7 @@ impl KeyPackage {
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,
-    pub(crate) leaf_secret: Option<Vec<u8>>,
+    pub(crate) leaf_secret: Vec<u8>,
 }
 
 impl KeyPackageBundle {
@@ -270,7 +270,7 @@ impl KeyPackageBundle {
             credential_bundle,
             extensions,
             keypair,
-            Some(leaf_secret),
+            leaf_secret,
         )
     }
 
@@ -283,7 +283,7 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
-        leaf_secret: Option<Vec<u8>>,
+        leaf_secret: Vec<u8>,
     ) -> Self {
         // TODO: #85 this must be configurable.
         let mut final_extensions: Vec<Box<dyn Extension>> =
@@ -308,7 +308,7 @@ impl KeyPackageBundle {
     pub fn new_from_values(
         key_package: KeyPackage,
         private_key: HPKEPrivateKey,
-        leaf_secret: Option<Vec<u8>>,
+        leaf_secret: Vec<u8>,
     ) -> Self {
         Self {
             key_package,
@@ -331,7 +331,7 @@ impl KeyPackageBundle {
         // Generate new keypair and replace it in current KeyPackage
         let mut new_key_package = key_package.clone();
         new_key_package.set_hpke_init_key(public_key);
-        KeyPackageBundle::new_from_values(new_key_package, private_key, Some(leaf_node_secret))
+        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_node_secret)
     }
 
     /// Update the private key in the bundle.
@@ -366,7 +366,7 @@ impl KeyPackageBundle {
     }
 
     /// Get a reference to the `leaf_secret_option`.
-    pub fn get_leaf_secret(&self) -> &Option<Vec<u8>> {
+    pub fn get_leaf_secret(&self) -> &[u8] {
         &self.leaf_secret
     }
 
