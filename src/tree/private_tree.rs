@@ -16,7 +16,7 @@ pub(crate) struct PrivateTree {
 
     // This is the HPKE private key corresponding to the HPKEPublicKey in the
     // node with index `node_index`.
-    hpke_private_key: HPKEPrivateKey,
+    hpke_private_key: Option<HPKEPrivateKey>,
 
     // A vector of HPKEKeyPairs in the path from this leaf.
     path_keys: PathKeys,
@@ -32,19 +32,17 @@ pub(crate) struct PrivateTree {
     path_secrets: PathSecrets,
 }
 
-impl Clone for PrivateTree {
-    fn clone(&self) -> PrivateTree {
+impl PrivateTree {
+    /// Create a new empty placeholder `PrivateTree` with default values and no `HPKEPrivateKey`
+    pub(crate) fn new(node_index: NodeIndex) -> PrivateTree {
         PrivateTree {
-            node_index: self.node_index,
-            hpke_private_key: HPKEPrivateKey::new(self.get_hpke_private_key().as_slice().to_vec()),
+            node_index,
+            hpke_private_key: None,
             path_keys: PathKeys::default(),
-            commit_secret: self.commit_secret.clone(),
-            path_secrets: self.path_secrets.clone(),
+            commit_secret: CommitSecret::default(),
+            path_secrets: PathSecrets::default(),
         }
     }
-}
-
-impl PrivateTree {
     /// Create a minimal `PrivateTree` setting only the private key.
     /// The private key is derived from the leaf secret contained in the KeyPackageBundle.
     pub(crate) fn from_key_package_bundle(
@@ -60,7 +58,7 @@ impl PrivateTree {
 
         Self {
             node_index,
-            hpke_private_key: private_key,
+            hpke_private_key: Some(private_key),
             path_keys: PathKeys::default(),
             commit_secret: CommitSecret::default(),
             path_secrets: vec![],
@@ -97,7 +95,10 @@ impl PrivateTree {
     // === Setter and Getter ===
 
     pub(crate) fn get_hpke_private_key(&self) -> &HPKEPrivateKey {
-        &self.hpke_private_key
+        match &self.hpke_private_key {
+            Some(private_key) => private_key,
+            None => panic!("Library error, private key was never initialised"),
+        }
     }
     pub(crate) fn get_node_index(&self) -> NodeIndex {
         self.node_index

@@ -48,7 +48,7 @@ mod test_treemath;
 #[cfg(test)]
 mod test_util;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// The ratchet tree.
 pub struct RatchetTree {
     /// The ciphersuite used in this tree.
@@ -78,6 +78,16 @@ impl RatchetTree {
             ciphersuite: Ciphersuite::new(ciphersuite_name),
             nodes,
             private_tree,
+        }
+    }
+
+    /// Create a new `RatchetTree` by cloning the public tree nodes from another tree
+    /// and an empty `PrivateTree`
+    pub(crate) fn new_from_public_tree_values(ratchet_tree: &RatchetTree) -> Self {
+        RatchetTree {
+            ciphersuite: ratchet_tree.ciphersuite.clone(),
+            nodes: ratchet_tree.nodes.clone(),
+            private_tree: PrivateTree::new(ratchet_tree.private_tree.get_node_index()),
         }
     }
 
