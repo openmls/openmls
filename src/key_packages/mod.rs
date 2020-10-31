@@ -331,7 +331,7 @@ impl KeyPackageBundle {
         // Generate new keypair and replace it in current KeyPackage
         let mut new_key_package = key_package.clone();
         new_key_package.set_hpke_init_key(public_key);
-        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_node_secret)
+        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)
     }
 
     /// Update the private key in the bundle.
@@ -344,29 +344,24 @@ impl KeyPackageBundle {
         self.key_package = key_package;
     }
 
-    /// Get the key package and HPKE private key separately.
-    /// Consumes self.
-    pub fn into_tuple(self) -> (HPKEPrivateKey, KeyPackage) {
-        (self.private_key, self.key_package)
-    }
-
     /// Get a reference to the `KeyPackage`.
     pub fn get_key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 
     /// Get a reference to the `KeyPackage`.
-    pub fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
+    #[cfg(test)]
+    pub(crate) fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
         &mut self.key_package
     }
 
     /// Get a reference to the `HPKEPrivateKey`.
-    pub fn get_private_key_ref(&self) -> &HPKEPrivateKey {
+    pub(crate) fn get_private_key_ref(&self) -> &HPKEPrivateKey {
         &self.private_key
     }
 
     /// Get a reference to the `leaf_secret_option`.
-    pub fn get_leaf_secret(&self) -> &[u8] {
+    pub(crate) fn get_leaf_secret(&self) -> &[u8] {
         &self.leaf_secret
     }
 

@@ -347,8 +347,6 @@ impl RatchetTree {
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
         self.private_tree
             .continue_path_secrets(&self.ciphersuite, secret, common_path.len());
-        self.private_tree
-            .generate_commit_secret(&self.ciphersuite)?;
 
         // Update path key pairs for the new path secrets generated above.
         let new_path_public_keys = self
@@ -383,10 +381,12 @@ impl RatchetTree {
     /// Update the private tree with the new `KeyPackageBundle`.
     pub(crate) fn replace_private_tree(
         &mut self,
+        ciphersuite: &Ciphersuite,
         key_package_bundle: KeyPackageBundle,
         group_context: &[u8],
     ) -> Result<CommitSecret, TreeError> {
         let _path_option = self.replace_private_tree_(
+            ciphersuite,
             &key_package_bundle,
             group_context,
             false, /* without update path */
@@ -412,6 +412,7 @@ impl RatchetTree {
         // bundle and store the key package in the own node.
         let mut path = self
             .replace_private_tree_(
+                ciphersuite,
                 &key_package_bundle,
                 group_context,
                 true, /* with update path */
@@ -440,6 +441,7 @@ impl RatchetTree {
     /// Replace the private tree with a new one based on the `key_package_bundle`.
     fn replace_private_tree_(
         &mut self,
+        ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         with_update_path: bool,
@@ -451,10 +453,13 @@ impl RatchetTree {
             .expect("replace_private_tree: Error when computing direct path.");
         // Update private tree and merge corresponding public keys.
         if self.leaf_count().as_usize() > 1 {
-            let new_public_keys = self
-                .private_tree
-                .update(&self.ciphersuite, key_package_bundle, &direct_path_root)
-                .unwrap();
+            let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
+                ciphersuite,
+                own_index,
+                key_package_bundle,
+                &direct_path_root,
+            );
+            self.private_tree = private_tree;
             self.merge_public_keys(&new_public_keys, &direct_path_root)
                 .unwrap();
 
