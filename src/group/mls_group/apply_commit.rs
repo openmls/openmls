@@ -83,7 +83,8 @@ impl MlsGroup {
                 return Err(ApplyCommitError::PlaintextSignatureFailure);
             }
             if is_own_commit {
-                // Find the right KeyPackageBundle among the pending bundles
+                // Find the right KeyPackageBundle among the pending bundles and
+                // clone out the one that we need.
                 let own_kpb: KeyPackageBundle = match own_key_packages
                     .iter()
                     .find(|kpb| kpb.get_key_package() == kp)

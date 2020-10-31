@@ -241,6 +241,9 @@ impl Clone for KeyPackageBundle {
     fn clone(&self) -> Self {
         KeyPackageBundle {
             key_package: self.key_package.clone(),
+            // This requires the hpke hazmat feature, which is not something
+            // that should ordinarily be used, as we generally try to avoid
+            // cloning private key material.
             private_key: HPKEPrivateKey::new(self.private_key.as_slice().to_vec()),
         }
     }
