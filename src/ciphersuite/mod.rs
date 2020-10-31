@@ -84,13 +84,16 @@ pub enum AEADError {
     WrongKeyLength,
 }
 
+/// A struct to contain secrets. This is to provide better visibility into where
+/// and how secrets are used and to avoid passing secrets in their raw
+/// representation.
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct Secret {
     value: Vec<u8>,
 }
 
 impl Secret {
-    // TODO We shouldn't need this.
+    /// Create an empty secret.
     pub(crate) fn new_empty_secret() -> Self {
         Secret { value: vec![] }
     }
