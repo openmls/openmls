@@ -68,8 +68,7 @@ impl MlsGroup {
                     ciphersuite,
                     credential_bundle,
                     &self.group_context.serialize(),
-                )
-                .unwrap();
+                );
             (
                 commit_secret,
                 Some(path),

@@ -104,7 +104,7 @@ fn create_commit_optional_path() {
     let ratchet_tree = group_alice_1234.tree().public_key_tree_copy();
 
     // Bob creates group from Welcome
-    let group_bob_1234 = match MlsGroup::new_from_welcome(
+    let _group_bob_1234 = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),
         bob_key_package_bundle,

@@ -390,7 +390,7 @@ impl RatchetTree {
             &key_package_bundle,
             group_context,
             false, /* without update path */
-        )?;
+        );
         Ok(self.private_tree.get_commit_secret())
     }
 
@@ -400,13 +400,13 @@ impl RatchetTree {
         ciphersuite: &Ciphersuite,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-    ) -> Result<(CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle), TreeError> {
+    ) -> (CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.get_own_node_index();
 
         // Replace the init key in the current KeyPackage
         let mut key_package_bundle =
-            KeyPackageBundle::rekey_unsigned(ciphersuite, self.get_own_key_package_ref());
+            KeyPackageBundle::from_rekeyed_key_package(ciphersuite, self.get_own_key_package_ref());
 
         // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
@@ -415,7 +415,7 @@ impl RatchetTree {
                 &key_package_bundle,
                 group_context,
                 true, /* with update path */
-            )?
+            )
             .unwrap();
 
         // Compute the parent hash extension and update the KeyPackage and sign it
@@ -424,17 +424,17 @@ impl RatchetTree {
         key_package.update_parent_hash(&parent_hash);
         // Sign the KeyPackage
         key_package.sign(credential_bundle);
-        // STore it in the UpdatePath
+        // Store it in the UpdatePath
         path.leaf_key_package = key_package.clone();
         // Update it in the KeyPackageBundle
         key_package_bundle.set_key_package(key_package.clone());
 
-        Ok((
+        (
             self.private_tree.get_commit_secret(),
             path,
             self.private_tree.get_path_secrets().to_vec(),
             key_package_bundle,
-        ))
+        )
     }
 
     /// Replace the private tree with a new one based on the `key_package_bundle`.
@@ -443,26 +443,28 @@ impl RatchetTree {
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         with_update_path: bool,
-    ) -> Result<Option<UpdatePath>, TreeError> {
+    ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.get_key_package().clone();
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
             .expect("replace_private_tree: Error when computing direct path.");
         // Update private tree and merge corresponding public keys.
-        let update_path_option = if self.leaf_count().as_usize() > 1 {
-            let new_public_keys = self.private_tree.update(
-                &self.ciphersuite,
-                key_package_bundle,
-                &direct_path_root,
-            )?;
-            self.merge_public_keys(&new_public_keys, &direct_path_root)?;
+        if self.leaf_count().as_usize() > 1 {
+            let new_public_keys = self
+                .private_tree
+                .update(&self.ciphersuite, key_package_bundle, &direct_path_root)
+                .unwrap();
+            self.merge_public_keys(&new_public_keys, &direct_path_root)
+                .unwrap();
 
             // Update own leaf node with the new values
             self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
 
             if with_update_path {
-                let update_path_nodes = self.encrypt_to_copath(new_public_keys, group_context)?;
+                let update_path_nodes = self
+                    .encrypt_to_copath(new_public_keys, group_context)
+                    .unwrap();
                 let update_path = UpdatePath::new(key_package, update_path_nodes);
                 Some(update_path)
             } else {
@@ -470,9 +472,7 @@ impl RatchetTree {
             }
         } else {
             None
-        };
-
-        Ok(update_path_option)
+        }
     }
 
     /// Encrypt the path secrets to the co path and return the update path.

@@ -49,14 +49,12 @@ impl Clone for PrivateTree {
 
 impl PrivateTree {
     /// Create a minimal `PrivateTree` setting only the private key.
+    /// This will clone the HPKE private key from the KeyPackageBundle.
     pub(crate) fn from_key_package_bundle(
         node_index: NodeIndex,
         key_package_bundle: &KeyPackageBundle,
     ) -> Self {
-        let leaf_secret = key_package_bundle
-            .get_leaf_secret_option()
-            .clone()
-            .unwrap_or_default();
+        let leaf_secret = key_package_bundle.get_leaf_secret().as_ref().unwrap();
         Self {
             node_index,
             hpke_private_key: HPKEPrivateKey::new(
@@ -64,7 +62,7 @@ impl PrivateTree {
             ),
             path_keys: PathKeys::default(),
             commit_secret: CommitSecret::default(),
-            leaf_secret,
+            leaf_secret: leaf_secret.to_vec(),
             path_secrets: vec![],
         }
     }
