@@ -221,7 +221,7 @@ pub trait Extension: Debug + ExtensionHelper {
     /// Get a reference to the `ParentHashExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `ParentHashExtension`.
-    fn to_parent_hash_extension_ref(&self) -> Result<&ParentHashExtension, ExtensionError> {
+    fn to_parent_hash_extension(&self) -> Result<&ParentHashExtension, ExtensionError> {
         match self.as_any().downcast_ref::<ParentHashExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),
@@ -231,7 +231,7 @@ pub trait Extension: Debug + ExtensionHelper {
     /// Get a reference to the `CapabilitiesExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `CapabilitiesExtension`.
-    fn to_capabilities_extension_ref(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
+    fn to_capabilities_extension(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
         match self.as_any().downcast_ref::<CapabilitiesExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),
@@ -241,7 +241,7 @@ pub trait Extension: Debug + ExtensionHelper {
     /// Get a reference to the `LifetimeExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `LifetimeExtension`.
-    fn to_lifetime_extension_ref(&self) -> Result<&LifetimeExtension, ExtensionError> {
+    fn to_lifetime_extension(&self) -> Result<&LifetimeExtension, ExtensionError> {
         match self.as_any().downcast_ref::<LifetimeExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),
@@ -251,7 +251,7 @@ pub trait Extension: Debug + ExtensionHelper {
     /// Get a reference to the `KeyIDExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `KeyIDExtension`.
-    fn to_key_id_extension_ref(&self) -> Result<&KeyIDExtension, ExtensionError> {
+    fn to_key_id_extension(&self) -> Result<&KeyIDExtension, ExtensionError> {
         match self.as_any().downcast_ref::<KeyIDExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),

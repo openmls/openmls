@@ -86,11 +86,9 @@ impl Credential {
     /// in a credential.
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => basic_credential.ciphersuite.verify(
-                signature,
-                &basic_credential.public_key,
-                payload,
-            ),
+            MLSCredentialType::Basic(basic_credential) => {
+                basic_credential.public_key.verify(signature, payload)
+            }
             // TODO: implement verification for X509 certificates. See issue #134.
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
@@ -161,8 +159,7 @@ pub struct BasicCredential {
 
 impl BasicCredential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.ciphersuite
-            .verify(signature, &self.public_key, payload)
+        self.public_key.verify(signature, payload)
     }
 }
 
@@ -176,11 +173,11 @@ impl Codec for BasicCredential {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let identity = decode_vec(VecSize::VecU16, cursor)?;
         let ciphersuite = Ciphersuite::decode(cursor)?;
-        let public_key = SignaturePublicKey::decode(cursor)?;
+        let public_key_bytes = decode_vec(VecSize::VecU16, cursor)?;
         Ok(BasicCredential {
             identity,
-            ciphersuite,
-            public_key,
+            ciphersuite: ciphersuite.clone(),
+            public_key: SignaturePublicKey::new(public_key_bytes, ciphersuite),
         })
     }
 }
@@ -245,8 +242,6 @@ impl CredentialBundle {
 
     /// Sign a `msg` using the private key of the credential bundle.
     pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError> {
-        self.credential
-            .ciphersuite()
-            .sign(&self.signature_private_key, msg)
+        self.signature_private_key.sign(msg)
     }
 }

@@ -100,7 +100,7 @@ fn create_commit_optional_path() {
         Ok(_) => {}
         Err(e) => panic!("Error applying commit: {:?}", e),
     };
-    let ratchet_tree = group_alice_1234.tree().get_public_key_tree();
+    let ratchet_tree = group_alice_1234.tree().public_key_tree_copy();
 
     // Bob creates group from Welcome
     let mut group_bob_1234 = match MlsGroup::new_from_welcome(
@@ -113,8 +113,8 @@ fn create_commit_optional_path() {
     };
 
     assert_eq!(
-        group_alice_1234.tree().get_public_key_tree(),
-        group_alice_1234.tree().get_public_key_tree()
+        group_alice_1234.tree().public_key_tree(),
+        group_alice_1234.tree().public_key_tree()
     );
 
     // Alice updates
@@ -279,7 +279,7 @@ fn group_operations() {
         group_alice_1234
             .apply_commit(mls_plaintext_commit, epoch_proposals, &vec![])
             .expect("error applying commit");
-        let ratchet_tree = group_alice_1234.tree().get_public_key_tree();
+        let ratchet_tree = group_alice_1234.tree().public_key_tree_copy();
 
         let mut group_bob = match MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
@@ -291,9 +291,7 @@ fn group_operations() {
         };
 
         // Make sure that both groups have the same public tree
-        if group_alice_1234.tree().get_public_key_tree()
-            != group_alice_1234.tree().get_public_key_tree()
-        {
+        if group_alice_1234.tree().public_key_tree() != group_alice_1234.tree().public_key_tree() {
             _print_tree(&group_alice_1234.tree(), "Alice added Bob");
             panic!("Different public trees");
         }

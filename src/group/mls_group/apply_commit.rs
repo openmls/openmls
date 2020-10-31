@@ -79,7 +79,7 @@ impl MlsGroup {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
             let serialized_context = self.group_context.encode_detached().unwrap();
-            if !mls_plaintext.verify(Some(serialized_context.clone()), kp.get_credential()) {
+            if !mls_plaintext.verify(Some(serialized_context.clone()), kp.credential()) {
                 return Err(ApplyCommitError::PlaintextSignatureFailure);
             }
             if is_own_commit {
@@ -156,9 +156,8 @@ impl MlsGroup {
                     .leaf_key_package
                     .get_extension(ExtensionType::ParentHash)
                 {
-                    let parent_hash_extension =
-                        received_parent_hash.to_parent_hash_extension_ref()?;
-                    if parent_hash != parent_hash_extension.get_parent_hash_ref() {
+                    let parent_hash_extension = received_parent_hash.to_parent_hash_extension()?;
+                    if parent_hash != parent_hash_extension.parent_hash() {
                         return Err(ApplyCommitError::ParentHashMismatch);
                     }
                 } else {
