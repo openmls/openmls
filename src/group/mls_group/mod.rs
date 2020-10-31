@@ -182,7 +182,7 @@ impl Api for MlsGroup {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: &Vec<KeyPackageBundle>,
+        own_key_packages: &[KeyPackageBundle],
     ) -> Result<(), ApplyCommitError> {
         self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)
     }

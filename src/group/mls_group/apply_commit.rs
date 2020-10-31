@@ -27,7 +27,7 @@ impl MlsGroup {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: &Vec<KeyPackageBundle>,
+        own_key_packages: &[KeyPackageBundle],
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.ciphersuite();
 
