@@ -23,7 +23,7 @@ use crate::messages::{proposals::*, *};
 // Tree modules
 pub(crate) mod codec;
 pub(crate) mod hash_input;
-pub(crate) mod index;
+pub mod index;
 pub mod node;
 pub(crate) mod path_keys;
 pub(crate) mod private_tree;
@@ -251,7 +251,7 @@ impl RatchetTree {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
         self.nodes[treemath::root(size).as_usize()].blank();
-        for index in treemath::dirpath(index, size)
+        for index in treemath::direct_path_root(index, size)
             .expect("blank_member: TreeMath error when computing direct path.")
         {
             self.nodes[index.as_usize()].blank();
@@ -355,13 +355,10 @@ impl RatchetTree {
         let secret = self
             .ciphersuite
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
-        self.private_tree
-            .continue_path_secrets(&self.ciphersuite, secret, common_path.len());
-
-        // Update path key pairs for the new path secrets generated above.
-        let new_path_public_keys = self
-            .private_tree
-            .generate_path_keypairs(&self.ciphersuite, &common_path)?;
+        // Derive new path secrets and generate keypairs
+        let new_path_public_keys =
+            self.private_tree
+                .continue_path_secrets(&self.ciphersuite, secret, &common_path);
 
         // Extract public keys from UpdatePath
         let update_path_public_keys: Vec<HPKEPublicKey> = update_path
@@ -696,7 +693,7 @@ impl RatchetTree {
         {
             has_removes = true;
             let remove_proposal = &queued_proposal.get_proposal_ref().as_remove().unwrap();
-            let removed = NodeIndex::from(remove_proposal.removed);
+            let removed = NodeIndex::from(LeafIndex::from(remove_proposal.removed));
             // Check if we got removed from the group
             if removed == self.get_own_node_index() {
                 self_removed = true;

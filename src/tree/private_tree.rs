@@ -2,7 +2,7 @@
 //! belongs to the current client.
 //!
 
-use super::{index::NodeIndex, path_keys::PathKeys, TreeError};
+use super::{index::NodeIndex, path_keys::PathKeys};
 use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
 use crate::key_packages::*;
 use crate::messages::CommitSecret;
@@ -75,20 +75,13 @@ impl PrivateTree {
     ) -> (Self, Vec<HPKEPublicKey>) {
         let mut private_tree = PrivateTree::from_key_package_bundle(node_index, key_package_bundle);
 
-        // Compute path secrets.
-        private_tree.generate_path_secrets(
+        // Compute path secrets and generate keypairs
+        let public_keys = private_tree.generate_path_secrets(
             ciphersuite,
             key_package_bundle.get_leaf_secret(),
-            path.len(),
+            path,
         );
 
-        // Clean the path keys for the update.
-        private_tree.path_keys.clear();
-
-        // Generate key pairs and return.
-        let public_keys = private_tree
-            .generate_path_keypairs(ciphersuite, path)
-            .unwrap();
         (private_tree, public_keys)
     }
 
@@ -126,17 +119,17 @@ impl PrivateTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         leaf_secret: &[u8],
-        n: usize,
-    ) {
+        path: &[NodeIndex],
+    ) -> Vec<HPKEPublicKey> {
         let hash_len = ciphersuite.hash_length();
 
         let mut path_secrets = vec![];
-        if n > 0 {
+        if !path.is_empty() {
             let path_secret = hkdf_expand_label(ciphersuite, leaf_secret, "path", &[], hash_len);
             path_secrets.push(path_secret);
         }
 
-        for i in 1..n {
+        for i in 1..path.len() {
             let path_secret =
                 hkdf_expand_label(ciphersuite, &path_secrets[i - 1], "path", &[], hash_len);
             path_secrets.push(path_secret);
@@ -145,6 +138,9 @@ impl PrivateTree {
 
         // Generate the Commit Secret
         self.generate_commit_secret(ciphersuite);
+
+        // Generate keypair and return public keys
+        self.generate_path_keypairs(ciphersuite, path)
     }
 
     /// Generate `n` path secrets with the given `start_secret`.
@@ -160,11 +156,11 @@ impl PrivateTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         start_secret: Vec<u8>,
-        n: usize,
-    ) {
+        path: &[NodeIndex],
+    ) -> Vec<HPKEPublicKey> {
         let hash_len = ciphersuite.hash_length();
         let mut path_secrets = vec![start_secret];
-        for i in 1..n {
+        for i in 1..path.len() {
             let path_secret =
                 hkdf_expand_label(ciphersuite, &path_secrets[i - 1], "path", &[], hash_len);
             path_secrets.push(path_secret);
@@ -173,6 +169,9 @@ impl PrivateTree {
 
         // Generate the Commit Secret
         self.generate_commit_secret(ciphersuite);
+
+        // Generate keypair and return public keys
+        self.generate_path_keypairs(ciphersuite, path)
     }
 
     /// Generate the commit secret for the given `path_secret`.
@@ -207,17 +206,11 @@ impl PrivateTree {
     /// Note that this **extends** existing `path_keys` in this leaf.
     ///
     /// Returns a vector of `HPKEPublicKey`.
-    pub(crate) fn generate_path_keypairs(
+    fn generate_path_keypairs(
         &mut self,
         ciphersuite: &Ciphersuite,
         path: &[NodeIndex],
-    ) -> Result<Vec<HPKEPublicKey>, TreeError> {
-        // TODO: Get rid of the potential for error here.
-        assert_eq!(self.path_secrets.len(), path.len());
-        if self.path_secrets.len() != path.len() {
-            return Err(TreeError::InvalidArguments);
-        }
-
+    ) -> Vec<HPKEPublicKey> {
         let hash_len = ciphersuite.hash_length();
         let mut private_keys = vec![];
         let mut public_keys = vec![];
@@ -232,9 +225,9 @@ impl PrivateTree {
         }
 
         // Store private keys.
-        self.path_keys.add(private_keys, &path)?;
+        self.path_keys.add(private_keys, &path);
 
         // Return public keys.
-        Ok(public_keys)
+        public_keys
     }
 }

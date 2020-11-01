@@ -48,17 +48,12 @@ fn create_private_tree_from_secret() {
 
     let mut private_tree = PrivateTree::from_key_package_bundle(own_index, &key_package_bundle);
 
-    // Compute path secrets form the leaf.
-    private_tree.generate_path_secrets(
+    // Compute path secrets from the leaf and generate keypairs
+    let public_keys = private_tree.generate_path_secrets(
         &ciphersuite,
         key_package_bundle.get_leaf_secret(),
-        direct_path.len(),
+        &direct_path,
     );
-
-    // Generate key pairs and return.
-    let public_keys = private_tree
-        .generate_path_keypairs(&ciphersuite, &direct_path)
-        .unwrap();
 
     assert_eq!(public_keys.len(), direct_path.len());
 

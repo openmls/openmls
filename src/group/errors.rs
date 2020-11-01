@@ -32,7 +32,7 @@ pub enum WelcomeError {
     GroupInfoDecryptionFailure = 108,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum ApplyCommitError {
     EpochMismatch = 200,
     WrongPlaintextContentType = 201,

@@ -96,14 +96,12 @@ impl MlsGroup {
 
             // Update the private tree.
             let private_tree = tree.private_tree_mut();
-            private_tree.continue_path_secrets(
+            // Derive path secrets and generate keypairs
+            let new_public_keys = private_tree.continue_path_secrets(
                 &ciphersuite,
                 path_secret.path_secret,
-                common_path.len(),
+                &common_path,
             );
-            let new_public_keys = private_tree
-                .generate_path_keypairs(&ciphersuite, &common_path)
-                .unwrap();
 
             // Validate public keys
             if tree
