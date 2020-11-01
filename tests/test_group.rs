@@ -43,7 +43,7 @@ fn create_commit_optional_path() {
 
         // Alice creates a group
         let group_id = [1, 2, 3, 4];
-        let mut group_alice_1234 = MlsGroup::new(
+        let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
@@ -53,22 +53,22 @@ fn create_commit_optional_path() {
 
         // Alice proposes to add Bob with forced self-update
         // Even though there are only Add Proposals, this should generated a path field on the Commit
-        let bob_add_proposal = group_alice_1234.create_add_proposal(
+        let bob_add_proposal = group_alice.create_add_proposal(
             group_aad,
             &alice_credential_bundle,
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) =
-            match group_alice_1234.create_commit(
+        let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) = match group_alice
+            .create_commit(
                 group_aad,
                 &alice_credential_bundle,
                 epoch_proposals,
                 true, /* force self-update */
             ) {
-                Ok(c) => c,
-                Err(e) => panic!("Error creating commit: {:?}", e),
-            };
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
         let commit = match &mls_plaintext_commit.content {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!(),
@@ -79,22 +79,22 @@ fn create_commit_optional_path() {
         // Alice adds Bob without forced self-update
         // Since there are only Add Proposals, this does not generate a path field on the Commit
         // Creating a second proposal to add the same member should not fail, only committing that proposal should fail
-        let bob_add_proposal = group_alice_1234.create_add_proposal(
+        let bob_add_proposal = group_alice.create_add_proposal(
             group_aad,
             &alice_credential_bundle,
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
-            match group_alice_1234.create_commit(
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
+            .create_commit(
                 group_aad,
                 &alice_credential_bundle,
                 epoch_proposals.clone(),
                 false, /* don't force selfupdate */
             ) {
-                Ok(c) => c,
-                Err(e) => panic!("Error creating commit: {:?}", e),
-            };
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
         let commit = match &mls_plaintext_commit.content {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!(),
@@ -102,14 +102,14 @@ fn create_commit_optional_path() {
         assert!(commit.path.is_none() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
-        match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, &[]) {
+        match group_alice.apply_commit(mls_plaintext_commit, epoch_proposals, &[]) {
             Ok(_) => {}
             Err(e) => panic!("Error applying commit: {:?}", e),
         };
-        let ratchet_tree = group_alice_1234.tree().public_key_tree_copy();
+        let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         // Bob creates group from Welcome
-        let _group_bob_1234 = match MlsGroup::new_from_welcome(
+        let _group_bob = match MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
@@ -119,12 +119,12 @@ fn create_commit_optional_path() {
         };
 
         assert_eq!(
-            group_alice_1234.tree().public_key_tree(),
-            group_alice_1234.tree().public_key_tree()
+            group_alice.tree().public_key_tree(),
+            group_alice.tree().public_key_tree()
         );
 
         // Alice updates
-        let alice_update_proposal = group_alice_1234.create_update_proposal(
+        let alice_update_proposal = group_alice.create_update_proposal(
             group_aad,
             &alice_credential_bundle,
             alice_update_key_package.clone(),
@@ -132,13 +132,12 @@ fn create_commit_optional_path() {
         let proposals = vec![alice_update_proposal];
 
         // Only UpdateProposal
-        let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice_1234
-            .create_commit(
-                group_aad,
-                &alice_credential_bundle,
-                proposals.clone(),
-                false, /* force self update */
-            ) {
+        let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice.create_commit(
+            group_aad,
+            &alice_credential_bundle,
+            proposals.clone(),
+            false, /* force self update */
+        ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
@@ -151,7 +150,7 @@ fn create_commit_optional_path() {
         assert!(commit.path.is_some() && kpb_option.is_some());
 
         // Apply UpdateProposal
-        group_alice_1234
+        group_alice
             .apply_commit(
                 commit_mls_plaintext.clone(),
                 proposals,
@@ -191,7 +190,7 @@ fn basic_group_setup() {
 
         // Alice creates a group
         let group_id = [1, 2, 3, 4];
-        let group_alice_1234 = MlsGroup::new(
+        let group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
@@ -200,12 +199,12 @@ fn basic_group_setup() {
         .unwrap();
 
         // Alice adds Bob
-        let bob_add_proposal = group_alice_1234.create_add_proposal(
+        let bob_add_proposal = group_alice.create_add_proposal(
             group_aad,
             &alice_credential_bundle,
             bob_key_package.clone(),
         );
-        let _commit = match group_alice_1234.create_commit(
+        let _commit = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
             vec![bob_add_proposal],
@@ -264,7 +263,7 @@ fn group_operations() {
 
         // === Alice creates a group ===
         let group_id = [1, 2, 3, 4];
-        let mut group_alice_1234 = MlsGroup::new(
+        let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
@@ -273,22 +272,22 @@ fn group_operations() {
         .unwrap();
 
         // === Alice adds Bob ===
-        let bob_add_proposal = group_alice_1234.create_add_proposal(
+        let bob_add_proposal = group_alice.create_add_proposal(
             group_aad,
             &alice_credential_bundle,
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
-            match group_alice_1234.create_commit(
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
+            .create_commit(
                 group_aad,
                 &alice_credential_bundle,
                 epoch_proposals.clone(),
                 false,
             ) {
-                Ok(c) => c,
-                Err(e) => panic!("Error creating commit: {:?}", e),
-            };
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
         let commit = match &mls_plaintext_commit.content {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),
@@ -297,10 +296,10 @@ fn group_operations() {
         // Check that the function returned a Welcome message
         assert!(welcome_bundle_alice_bob_option.is_some());
 
-        group_alice_1234
+        group_alice
             .apply_commit(mls_plaintext_commit, epoch_proposals, &[])
             .expect("error applying commit");
-        let ratchet_tree = group_alice_1234.tree().public_key_tree_copy();
+        let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         let mut group_bob = match MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
@@ -312,18 +311,15 @@ fn group_operations() {
         };
 
         // Make sure that both groups have the same public tree
-        if group_alice_1234.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Alice added Bob");
+        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Alice added Bob");
             panic!("Different public trees");
         }
 
         // === Alice sends a message to Bob ===
         let message_alice = [1, 2, 3];
-        let mls_ciphertext_alice = group_alice_1234.create_application_message(
-            &[],
-            &message_alice,
-            &alice_credential_bundle,
-        );
+        let mls_ciphertext_alice =
+            group_alice.create_application_message(&[], &message_alice, &alice_credential_bundle);
         let mls_plaintext_bob = match group_bob.decrypt(mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
@@ -359,7 +355,7 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice_1234
+        group_alice
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_bob.clone()],
@@ -375,8 +371,8 @@ fn group_operations() {
             .expect("Error applying commit (Bob)");
 
         // Make sure that both groups have the same public tree
-        if group_alice_1234.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Alice added Bob");
+        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Alice added Bob");
             panic!("Different public trees");
         }
 
@@ -388,12 +384,12 @@ fn group_operations() {
         )
         .unwrap();
 
-        let update_proposal_alice = group_alice_1234.create_update_proposal(
+        let update_proposal_alice = group_alice.create_update_proposal(
             &[],
             &alice_credential_bundle,
             alice_update_key_package_bundle.get_key_package().clone(),
         );
-        let (mls_plaintext_commit, _, kpb_option) = match group_alice_1234.create_commit(
+        let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
             vec![update_proposal_alice.clone()],
@@ -406,7 +402,7 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice_1234
+        group_alice
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_alice.clone()],
@@ -422,8 +418,8 @@ fn group_operations() {
             .expect("Error applying commit (Bob)");
 
         // Make sure that both groups have the same public tree
-        if group_alice_1234.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Alice added Bob");
+        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Alice added Bob");
             panic!("Different public trees");
         }
 
@@ -440,7 +436,7 @@ fn group_operations() {
             &bob_credential_bundle,
             bob_update_key_package_bundle.get_key_package().clone(),
         );
-        let (mls_plaintext_commit, _, kpb_option) = match group_alice_1234.create_commit(
+        let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
             vec![update_proposal_bob.clone()],
@@ -453,7 +449,7 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice_1234
+        group_alice
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_bob.clone()],
@@ -469,8 +465,8 @@ fn group_operations() {
             .expect("Error applying commit (Bob)");
 
         // Make sure that both groups have the same public tree
-        if group_alice_1234.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Alice added Bob");
+        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Alice added Bob");
             panic!("Different public trees");
         }
 
@@ -506,7 +502,7 @@ fn group_operations() {
         // Make sure the is a Welcome message for Charlie
         assert!(welcome_for_charlie_option.is_some());
 
-        group_alice_1234
+        group_alice
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![add_charlie_proposal_bob.clone()],
@@ -521,7 +517,7 @@ fn group_operations() {
             )
             .expect("Error applying commit (Bob)");
 
-        let ratchet_tree = group_alice_1234.tree().public_key_tree_copy();
+        let ratchet_tree = group_alice.tree().public_key_tree_copy();
         let mut group_charlie = match MlsGroup::new_from_welcome(
             welcome_for_charlie_option.unwrap(),
             Some(ratchet_tree),
@@ -532,12 +528,12 @@ fn group_operations() {
         };
 
         // Make sure that all groups have the same public tree
-        if group_alice_1234.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Bob added Charlie");
+        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Bob added Charlie");
             panic!("Different public trees");
         }
-        if group_alice_1234.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Bob added Charlie");
+        if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Bob added Charlie");
             panic!("Different public trees");
         }
 
@@ -548,7 +544,7 @@ fn group_operations() {
             &message_charlie,
             &charlie_credential_bundle,
         );
-        let mls_plaintext_alice = match group_alice_1234.decrypt(mls_ciphertext_charlie.clone()) {
+        let mls_plaintext_alice = match group_alice.decrypt(mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
         };
@@ -591,7 +587,7 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice_1234
+        group_alice
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_charlie.clone()],
@@ -614,12 +610,12 @@ fn group_operations() {
             .expect("Error applying commit (Charlie)");
 
         // Make sure that all groups have the same public tree
-        if group_alice_1234.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Charlie updated");
+        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Charlie updated");
             panic!("Different public trees");
         }
-        if group_alice_1234.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Charlie updated");
+        if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Charlie updated");
             panic!("Different public trees");
         }
 
@@ -642,7 +638,7 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice_1234
+        group_alice
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![remove_bob_proposal_charlie.clone()],
@@ -668,12 +664,12 @@ fn group_operations() {
             .expect("Error applying commit (Charlie)");
 
         // Make sure that all groups have the same public tree
-        if group_alice_1234.tree().public_key_tree() == group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Charlie removed Bob");
+        if group_alice.tree().public_key_tree() == group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Charlie removed Bob");
             panic!("Same public trees");
         }
-        if group_alice_1234.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
-            _print_tree(&group_alice_1234.tree(), "Charlie removed Bob");
+        if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Charlie removed Bob");
             panic!("Different public trees");
         }
     }
