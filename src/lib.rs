@@ -12,4 +12,3 @@ pub mod prelude;
 mod schedule;
 mod tree;
 mod utils;
-mod validator;
