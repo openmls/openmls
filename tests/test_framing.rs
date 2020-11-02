@@ -1,10 +1,10 @@
 mod test_utils;
 use test_utils::*;
 
-use maelstrom::ciphersuite::*;
-use maelstrom::creds::*;
-use maelstrom::group::*;
-use maelstrom::key_packages::*;
+use openmls::ciphersuite::*;
+use openmls::creds::*;
+use openmls::group::*;
+use openmls::key_packages::*;
 
 #[test]
 fn padding() {

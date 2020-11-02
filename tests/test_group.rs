@@ -1,12 +1,12 @@
-use maelstrom::ciphersuite::*;
-use maelstrom::creds::*;
-use maelstrom::framing::*;
-use maelstrom::group::*;
-use maelstrom::key_packages::*;
+use openmls::ciphersuite::*;
+use openmls::creds::*;
+use openmls::framing::*;
+use openmls::group::*;
+use openmls::key_packages::*;
 
 #[test]
 fn create_commit_optional_path() {
-    use maelstrom::extensions::*;
+    use openmls::extensions::*;
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let group_aad = b"Alice's test group";
 
@@ -204,8 +204,8 @@ fn basic_group_setup() {
 ///  - Alice invites Bob
 ///  - Alice sends a message to Bob
 fn group_operations() {
-    use maelstrom::extensions::*;
-    use maelstrom::utils::*;
+    use openmls::extensions::*;
+    use openmls::utils::*;
     //let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let supported_ciphersuites = vec![
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
