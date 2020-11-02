@@ -1,13 +1,7 @@
 //! # Key package tests
 //!
 
-use openmls::{
-    ciphersuite::{Ciphersuite, CiphersuiteName},
-    config::Config,
-    creds::*,
-    extensions::*,
-    key_packages::*,
-};
+use openmls::prelude::*;
 
 macro_rules! key_package_generation {
     ($name:ident, $ciphersuite:expr, $supported:literal) => {
