@@ -1,4 +1,4 @@
-use crate::config::ProtocolVersion;
+use crate::config::{Config, ProtocolVersion};
 use crate::extensions::*;
 use crate::key_packages::*;
 
@@ -18,7 +18,7 @@ impl Codec for KeyPackage {
         let signature = Signature::decode(cursor)?;
         let kp = KeyPackage {
             protocol_version,
-            cipher_suite: cipher_suite_name,
+            cipher_suite: Config::ciphersuite(cipher_suite_name)?,
             hpke_init_key,
             credential,
             extensions,

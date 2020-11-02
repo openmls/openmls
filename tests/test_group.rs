@@ -20,20 +20,23 @@ fn create_commit_optional_path() {
         &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions.clone(),
-    );
+    )
+    .unwrap();
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &bob_credential_bundle,
         mandatory_extensions.clone(),
-    );
+    )
+    .unwrap();
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions,
-    );
+    )
+    .unwrap();
     let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
     assert!(alice_update_key_package.verify().is_ok());
 
@@ -44,7 +47,8 @@ fn create_commit_optional_path() {
         ciphersuite_name,
         alice_key_package_bundle,
         GroupConfig::default(),
-    );
+    )
+    .unwrap();
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field on the Commit
@@ -168,14 +172,16 @@ fn basic_group_setup() {
         &[ciphersuite_name],
         &bob_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
-    );
+    )
+    .unwrap();
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &alice_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
-    );
+    )
+    .unwrap();
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
@@ -184,7 +190,8 @@ fn basic_group_setup() {
         ciphersuite_name,
         alice_key_package_bundle,
         GroupConfig::default(),
-    );
+    )
+    .unwrap();
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -234,13 +241,15 @@ fn group_operations() {
             &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
 
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions,
-        );
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.get_key_package();
 
         // Alice creates a group
@@ -250,7 +259,8 @@ fn group_operations() {
             ciphersuite_name,
             alice_key_package_bundle,
             GroupConfig::default(),
-        );
+        )
+        .unwrap();
 
         // Alice adds Bob
         let bob_add_proposal = group_alice_1234.create_add_proposal(
