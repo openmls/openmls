@@ -37,11 +37,6 @@ impl Api for MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
         let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, LeafIndex::from(1u32));
-        //let (private_key, key_package) = (
-        //    key_package_bundle.private_key,
-        //    key_package_bundle.key_package,
-        //);
-        //let kpb = KeyPackageBundle::new_from_values(key_package, private_key, None);
         let tree = RatchetTree::new(ciphersuite_name, key_package_bundle);
         let group_context = GroupContext {
             group_id,

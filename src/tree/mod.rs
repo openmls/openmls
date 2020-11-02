@@ -67,7 +67,7 @@ impl RatchetTree {
 
     /// Create a new `RatchetTree` by cloning the public tree nodes from another tree
     /// and an empty `PrivateTree`
-    pub(crate) fn new_from_public_tree_values(ratchet_tree: &RatchetTree) -> Self {
+    pub(crate) fn new_from_public_tree(ratchet_tree: &RatchetTree) -> Self {
         RatchetTree {
             ciphersuite: ratchet_tree.ciphersuite.clone(),
             nodes: ratchet_tree.nodes.clone(),

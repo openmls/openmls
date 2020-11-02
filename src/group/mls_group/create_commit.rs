@@ -9,8 +9,6 @@ use crate::messages::*;
 use crate::tree::treemath;
 use crate::utils::*;
 
-use std::borrow::Borrow;
-
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
         &self,
@@ -32,7 +30,7 @@ impl MlsGroup {
 
         let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely
-        let mut provisional_tree = RatchetTree::new_from_public_tree_values(self.tree().borrow());
+        let mut provisional_tree = RatchetTree::new_from_public_tree(&self.tree());
 
         // Apply proposals to tree
         let (path_required_by_commit, self_removed, invited_members) = match provisional_tree

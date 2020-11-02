@@ -1,21 +1,20 @@
+use crate::ciphersuite::*;
+use crate::config::*;
+use crate::creds::*;
+use crate::extensions::*;
+use crate::framing::*;
+use crate::group::*;
+use crate::key_packages::*;
+use crate::messages::proposals::*;
+use crate::tree::index::*;
+
 /// This test makes sure ProposalQueue works as intented. This functionality is used in `create_commit` to filter the epoch proposals.
 /// Expected result:
 /// `get_filtered_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {
-    use crate::ciphersuite::*;
-    use crate::config::*;
-    use crate::creds::*;
-    use crate::extensions::*;
-    use crate::framing::*;
-    use crate::group::*;
-    use crate::key_packages::*;
-    use crate::messages::proposals::*;
-    use crate::tree::index::*;
-
     for ciphersuite_name in Config::supported_ciphersuites() {
         let ciphersuite = Ciphersuite::new(*ciphersuite_name);
-        //let ciphersuite = Ciphersuite::new(ciphersuite_name);
 
         // Define identities
         let alice_credential_bundle =
