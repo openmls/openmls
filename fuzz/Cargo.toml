@@ -1,6 +1,6 @@
 
 [package]
-name = "maelstrom-fuzz"
+name = "openmls-fuzz"
 version = "0.0.0"
 authors = ["Automatically generated"]
 publish = false
@@ -12,7 +12,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.3"
 
-[dependencies.maelstrom]
+[dependencies.openmls]
 path = ".."
 
 [patch.crates-io]
