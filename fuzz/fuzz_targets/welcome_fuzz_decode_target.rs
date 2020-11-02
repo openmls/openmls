@@ -1,7 +1,7 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 
-use maelstrom::{
+use openmls::{
     codec::{Codec, Cursor},
     messages::Welcome,
 };
