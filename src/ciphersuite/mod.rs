@@ -20,9 +20,7 @@
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
 use evercrypt::prelude::*;
-use hpke::{
-    aead::Mode as HpkeAeadMode, kdf::Mode as HpkeKdfMode, kem::Mode as KemMode, Hpke, Mode,
-};
+use hpke::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // re-export for other parts of the library when we can use it
@@ -136,7 +134,7 @@ pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
     hpke: Hpke,
-    hpke_kem: KemMode,
+    hpke_kem: HpkeKemMode,
     hpke_kdf: HpkeKdfMode,
     hpke_aead: HpkeAeadMode,
     aead: AeadMode,
