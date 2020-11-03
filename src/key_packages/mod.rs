@@ -231,7 +231,7 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        debug_assert!(ciphersuites.len() >= 1);
+        debug_assert!(!ciphersuites.is_empty());
         let keypair = Ciphersuite::new(ciphersuites[0]).new_hpke_keypair();
         Self::new_with_keypair(ciphersuites, credential_bundle, extensions, keypair)
     }
@@ -251,7 +251,7 @@ impl KeyPackageBundle {
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
     ) -> Self {
-        debug_assert!(ciphersuites.len() >= 1);
+        debug_assert!(!ciphersuites.is_empty());
         let capabilities_extension = CapabilitiesExtension::new(None, Some(ciphersuites), None);
         let mut final_extensions: Vec<Box<dyn Extension>> = vec![Box::new(capabilities_extension)];
 
