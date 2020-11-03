@@ -1,10 +1,7 @@
 mod test_utils;
 use test_utils::*;
 
-use openmls::ciphersuite::*;
-use openmls::creds::*;
-use openmls::group::*;
-use openmls::key_packages::*;
+use openmls::prelude::*;
 
 #[test]
 fn padding() {

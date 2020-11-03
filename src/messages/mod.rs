@@ -11,11 +11,6 @@ use proposals::*;
 #[cfg(test)]
 mod test_welcome;
 
-#[derive(Debug)]
-pub enum MessageError {
-    UnknownOperation,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Commit {
     pub proposals: Vec<ProposalID>,
@@ -363,5 +358,3 @@ impl Codec for Welcome {
         })
     }
 }
-
-pub type WelcomeBundle = (Welcome, ExtensionStruct);

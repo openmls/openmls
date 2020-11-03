@@ -1,12 +1,7 @@
-use openmls::ciphersuite::*;
-use openmls::creds::*;
-use openmls::framing::*;
-use openmls::group::*;
-use openmls::key_packages::*;
+use openmls::prelude::*;
 
 #[test]
 fn create_commit_optional_path() {
-    use openmls::extensions::*;
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let group_aad = b"Alice's test group";
 
@@ -219,9 +214,6 @@ fn basic_group_setup() {
 ///  - Alice invites Bob
 ///  - Alice sends a message to Bob
 fn group_operations() {
-    use openmls::extensions::*;
-    use openmls::utils::*;
-    //let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let supported_ciphersuites = vec![
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
