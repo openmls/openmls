@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["openmls"] = [{"text":"impl&lt;'de&gt; Deserialize&lt;'de&gt; for CiphersuiteName","synthetic":false,"types":[]},{"text":"impl&lt;'de&gt; Deserialize&lt;'de&gt; for Config","synthetic":false,"types":[]},{"text":"impl&lt;'de&gt; Deserialize&lt;'de&gt; for ProtocolVersion","synthetic":false,"types":[]},{"text":"impl&lt;'de&gt; Deserialize&lt;'de&gt; for ExtensionType","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["proposals",""]],"struct":[["Commit",""],["CommitSecret",""],["ConfirmationTag",""],["EncryptedGroupSecrets",""],["GroupInfo",""],["GroupSecrets",""],["PathSecret",""],["Welcome",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["Signable","The `Signable` trait is implemented by all struct that are being signed. The implementation has to provide the `unsigned_payload` function."]]});

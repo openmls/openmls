@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["MAXIMUM_FORWARD_DISTANCE",""],["OUT_OF_ORDER_TOLERANCE",""]],"struct":[["SenderRatchet",""]],"type":[["RatchetSecrets",""]]});

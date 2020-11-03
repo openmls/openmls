@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["openmls"] = [{"text":"impl Serialize for CiphersuiteName","synthetic":false,"types":[]},{"text":"impl Serialize for Config","synthetic":false,"types":[]},{"text":"impl Serialize for ProtocolVersion","synthetic":false,"types":[]},{"text":"impl Serialize for ExtensionType","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
