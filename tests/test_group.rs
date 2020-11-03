@@ -39,7 +39,7 @@ fn create_commit_optional_path() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let mut group_alice_1234 = MlsGroup::new(
+    let mut group_alice = MlsGroup::new(
         &group_id,
         ciphersuite_name,
         alice_key_package_bundle,
@@ -61,9 +61,9 @@ fn create_commit_optional_path() {
             epoch_proposals,
             true, /* force self-update */
         ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
     let commit = match &mls_plaintext_commit.content {
         MLSPlaintextContentType::Commit((commit, _)) => commit,
         _ => panic!(),
@@ -165,15 +165,21 @@ fn basic_group_setup() {
 
     // Generate KeyPackages
     let bob_key_package_bundle =
-        KeyPackageBundle::new(ciphersuite_name, &bob_credential_bundle, Vec::new());
+        KeyPackageBundle::new(&[ciphersuite_name], &bob_credential_bundle, Vec::new());
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_key_package_bundle =
-        KeyPackageBundle::new(ciphersuite_name, &alice_credential_bundle, Vec::new());
+        KeyPackageBundle::new(&[ciphersuite_name], &alice_credential_bundle, Vec::new());
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let group_alice = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+    let group_config = GroupConfig::default();
+    let group_alice = MlsGroup::new(
+        &group_id,
+        ciphersuite_name,
+        alice_key_package_bundle,
+        group_config,
+    );
 
     // Alice adds Bob
     let bob_add_proposal = group_alice.create_add_proposal(
@@ -241,7 +247,13 @@ fn group_operations() {
 
         // === Alice creates a group ===
         let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+        let group_config = GroupConfig::default();
+        let mut group_alice = MlsGroup::new(
+            &group_id,
+            ciphersuite_name,
+            alice_key_package_bundle,
+            group_config,
+        );
 
         // === Alice adds Bob ===
         let bob_add_proposal = group_alice.create_add_proposal(
@@ -257,9 +269,9 @@ fn group_operations() {
                 epoch_proposals.clone(),
                 false,
             ) {
-                Ok(c) => c,
-                Err(e) => panic!("Error creating commit: {:?}", e),
-            };
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
         let commit = match &mls_plaintext_commit.content {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),
@@ -303,7 +315,7 @@ fn group_operations() {
 
         // === Bob updates and commits ===
         let bob_update_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         );
@@ -349,7 +361,7 @@ fn group_operations() {
 
         // === Alice updates and commits ===
         let alice_update_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
         );
@@ -395,7 +407,7 @@ fn group_operations() {
 
         // === Bob updates and Alice commits ===
         let bob_update_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         );
@@ -445,7 +457,7 @@ fn group_operations() {
                 .unwrap();
 
         let charlie_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
         );
@@ -531,7 +543,7 @@ fn group_operations() {
 
         // === Charlie updates and commits ===
         let charlie_update_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
         );
