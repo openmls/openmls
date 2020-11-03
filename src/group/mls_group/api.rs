@@ -11,6 +11,7 @@ pub trait Api: Sized {
         group_id: &[u8],
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
+        config: GroupConfig,
     ) -> Self;
     /// Join a group from a Welcome message
     fn new_from_welcome(
@@ -76,4 +77,5 @@ pub trait Api: Sized {
     fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
 }
 
-pub type CreateCommitResult = Result<(MLSPlaintext, Option<Welcome>), CreateCommitError>;
+pub type CreateCommitResult =
+    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;

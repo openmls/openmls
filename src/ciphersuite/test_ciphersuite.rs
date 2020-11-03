@@ -12,7 +12,7 @@ fn test_hpke_seal_open() {
         let ciphersuite = Ciphersuite::new(suite);
         println!("Ciphersuite {:?}", ciphersuite);
         let plaintext = &[1, 2, 3];
-        let kp = ciphersuite.new_hpke_keypair();
+        let kp = ciphersuite.derive_hpke_keypair(&[1, 2, 3]);
         let ciphertext = ciphersuite.hpke_seal(kp.public_key(), &[], &[], plaintext);
         let decrypted_payload = ciphersuite.hpke_open(&ciphertext, kp.private_key(), &[], &[]);
         assert_eq!(decrypted_payload, plaintext);

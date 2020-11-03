@@ -1,5 +1,6 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
+use crate::extensions::ExtensionType;
 use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
@@ -14,57 +15,82 @@ impl MlsGroup {
     ) -> Result<Self, WelcomeError> {
         let ciphersuite_name = welcome.get_ciphersuite();
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
-        let (private_key, key_package) = (
-            key_package_bundle.private_key,
-            key_package_bundle.key_package,
-        );
 
         // Find key_package in welcome secrets
-        let egs = if let Some(egs) =
-            Self::find_key_package_from_welcome_secrets(&key_package, welcome.get_secrets_ref())
-        {
+        let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
+            key_package_bundle.get_key_package(),
+            welcome.get_secrets_ref(),
+        ) {
             egs
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite_name != key_package.cipher_suite() {
+        if ciphersuite_name != key_package_bundle.get_key_package().cipher_suite() {
             return Err(WelcomeError::CiphersuiteMismatch);
         }
 
         // Compute keys to decrypt GroupInfo
-        let (group_info, group_secrets) = Self::decrypt_group_info(
+        let (mut group_info, group_secrets) = Self::decrypt_group_info(
             &ciphersuite,
             &egs,
-            &private_key,
+            key_package_bundle.get_private_key_ref(),
             welcome.get_encrypted_group_info_ref(),
         )?;
 
         // Build the ratchet tree
-        // TODO: check the extensions to see if the tree is in there
-        let nodes = if let Some(nodes) = nodes_option {
-            nodes
+        // First check the extensions to see if the tree is in there.
+        let ratchet_tree_ext_index = group_info
+            .extensions()
+            .iter()
+            .position(|e| e.get_type() == ExtensionType::RatchetTree);
+        let ratchet_tree_extension = if let Some(i) = ratchet_tree_ext_index {
+            let extension = group_info.extensions_mut().remove(i);
+            // Throw an error if we there is another ratchet tree extension.
+            // We have to see if this makes problems later as it's not something
+            // required by the spec right now.
+            if group_info
+                .extensions()
+                .iter()
+                .any(|e| e.get_type() == ExtensionType::RatchetTree)
+            {
+                return Err(WelcomeError::DuplicateRatchetTreeExtension);
+            }
+            match extension.to_ratchet_tree_extension_ref() {
+                Ok(e) => Some(e.clone()),
+                Err(e) => {
+                    println!("Library error retrieving ratchet tree extension ({:?}", e);
+                    None
+                }
+            }
         } else {
-            return Err(WelcomeError::MissingRatchetTree);
+            None
+        };
+        // Set nodes either from the extension or from the `nodes_option`.
+        let nodes = match ratchet_tree_extension {
+            Some(tree) => tree.into_vector(),
+            None => {
+                if let Some(nodes) = nodes_option {
+                    nodes
+                } else {
+                    return Err(WelcomeError::MissingRatchetTree);
+                }
+            }
         };
 
-        let mut tree = RatchetTree::new_from_nodes(
-            ciphersuite_name,
-            KeyPackageBundle::from_values(key_package, private_key),
-            &nodes,
-        )?;
+        let mut tree = RatchetTree::new_from_nodes(ciphersuite_name, key_package_bundle, &nodes)?;
 
         // Verify tree hash
-        if tree.compute_tree_hash() != group_info.tree_hash {
+        if tree.compute_tree_hash() != group_info.tree_hash() {
             return Err(WelcomeError::TreeHashMismatch);
         }
 
         // Verify GroupInfo signature
-        let signer_node = tree.nodes[group_info.signer_index].clone();
+        let signer_node = tree.nodes[group_info.signer_index()].clone();
         let signer_key_package = signer_node.key_package.unwrap();
         let payload = group_info.unsigned_payload().unwrap();
         if !signer_key_package
             .credential()
-            .verify(&payload, &group_info.signature)
+            .verify(&payload, group_info.signature())
         {
             return Err(WelcomeError::InvalidGroupInfoSignature);
         }
@@ -80,21 +106,19 @@ impl MlsGroup {
         if let Some(path_secret) = group_secrets.path_secret {
             let common_ancestor_index = treemath::common_ancestor_index(
                 tree.get_own_node_index(),
-                NodeIndex::from(group_info.signer_index),
+                NodeIndex::from(group_info.signer_index()),
             );
             let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count())
                 .expect("new_from_welcome_internal: TreeMath error when computing direct path.");
 
             // Update the private tree.
             let private_tree = tree.private_tree_mut();
-            private_tree.generate_path_secrets(
+            // Derive path secrets and generate keypairs
+            let new_public_keys = private_tree.continue_path_secrets(
                 &ciphersuite,
-                Some(&path_secret.path_secret),
-                common_path.len(),
+                path_secret.path_secret,
+                &common_path,
             );
-            let new_public_keys = private_tree
-                .generate_path_keypairs(&ciphersuite, &common_path)
-                .unwrap();
 
             // Validate public keys
             if tree
@@ -107,10 +131,10 @@ impl MlsGroup {
 
         // Compute state
         let group_context = GroupContext {
-            group_id: group_info.group_id,
-            epoch: group_info.epoch,
+            group_id: group_info.group_id().clone(),
+            epoch: group_info.epoch(),
             tree_hash: tree.compute_tree_hash(),
-            confirmed_transcript_hash: group_info.confirmed_transcript_hash,
+            confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
         };
         let epoch_secrets =
             EpochSecrets::derive_epoch_secrets(&ciphersuite, &group_secrets.joiner_secret, vec![]);
@@ -128,7 +152,7 @@ impl MlsGroup {
         );
 
         // Verify confirmation tag
-        if confirmation_tag != ConfirmationTag(group_info.confirmation_tag) {
+        if confirmation_tag.0 != group_info.confirmation_tag() {
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
@@ -139,6 +163,7 @@ impl MlsGroup {
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
+                add_ratchet_tree_extension: false,
             })
         }
     }

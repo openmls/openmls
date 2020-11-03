@@ -6,10 +6,7 @@
 //! * which extensions are supported
 //!
 
-use openmls::{
-    ciphersuite::CiphersuiteName, codec::Codec, config::Config, config::ProtocolVersion,
-    extensions::ExtensionType,
-};
+use openmls::prelude::*;
 
 #[test]
 fn protocol_version() {

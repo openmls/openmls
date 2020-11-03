@@ -78,7 +78,7 @@ impl MlsGroup {
                 };
                 let own_kpb = pending_kpbs.remove(own_kpb_index);
                 provisional_tree
-                    .replace_private_tree(own_kpb, &serialized_context)
+                    .replace_private_tree(ciphersuite, own_kpb, &serialized_context)
                     .unwrap()
             } else {
                 provisional_tree

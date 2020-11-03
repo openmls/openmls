@@ -9,12 +9,10 @@ pub(crate) mod proposals;
 use proposals::*;
 
 #[cfg(test)]
-mod test_welcome;
+mod test_proposals;
 
-#[derive(Debug)]
-pub enum MessageError {
-    UnknownOperation,
-}
+#[cfg(test)]
+mod test_welcome;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Commit {
@@ -86,14 +84,87 @@ impl Codec for CommitSecret {
 }
 
 pub struct GroupInfo {
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub tree_hash: Vec<u8>,
-    pub confirmed_transcript_hash: Vec<u8>,
-    pub extensions: Vec<Box<dyn Extension>>,
-    pub confirmation_tag: Vec<u8>,
-    pub signer_index: LeafIndex,
-    pub signature: Signature,
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    tree_hash: Vec<u8>,
+    confirmed_transcript_hash: Vec<u8>,
+    extensions: Vec<Box<dyn Extension>>,
+    confirmation_tag: Vec<u8>,
+    signer_index: LeafIndex,
+    signature: Signature,
+}
+
+impl GroupInfo {
+    pub(crate) fn new(
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        tree_hash: Vec<u8>,
+        confirmed_transcript_hash: Vec<u8>,
+        extensions: Vec<Box<dyn Extension>>,
+        confirmation_tag: Vec<u8>,
+        signer_index: LeafIndex,
+    ) -> Self {
+        Self {
+            group_id,
+            epoch,
+            tree_hash,
+            confirmed_transcript_hash,
+            extensions,
+            confirmation_tag,
+            signer_index,
+            signature: Signature::new_empty(),
+        }
+    }
+
+    /// Get the tree hash as byte slice.
+    pub(crate) fn tree_hash(&self) -> &[u8] {
+        &self.tree_hash
+    }
+
+    /// Get the signer index.
+    pub(crate) fn signer_index(&self) -> LeafIndex {
+        self.signer_index
+    }
+
+    /// Get the signature.
+    pub(crate) fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    /// Set the signature.
+    pub(crate) fn set_signature(&mut self, signature: Signature) {
+        self.signature = signature;
+    }
+
+    /// Get the group ID.
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.group_id
+    }
+
+    /// Get the epoch.
+    pub(crate) fn epoch(&self) -> GroupEpoch {
+        self.epoch
+    }
+
+    /// Get the confirmed transcript hash.
+    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
+        &self.confirmed_transcript_hash
+    }
+
+    /// Get the confirmed tag.
+    pub(crate) fn confirmation_tag(&self) -> &[u8] {
+        &self.confirmation_tag
+    }
+
+    /// Get the extensions.
+    pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
+        &self.extensions
+    }
+
+    /// Get the extensions as mutable reference.
+    pub(crate) fn extensions_mut(&mut self) -> &mut Vec<Box<dyn Extension>> {
+        &mut self.extensions
+    }
 }
 
 impl GroupInfo {
@@ -290,5 +361,3 @@ impl Codec for Welcome {
         })
     }
 }
-
-pub type WelcomeBundle = (Welcome, ExtensionStruct);

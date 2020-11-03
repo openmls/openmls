@@ -1,13 +1,7 @@
 //! # Key package tests
 //!
 
-use openmls::{
-    ciphersuite::{Ciphersuite, CiphersuiteName},
-    config::Config,
-    creds::*,
-    extensions::*,
-    key_packages::*,
-};
+use openmls::prelude::*;
 
 macro_rules! key_package_generation {
     ($name:ident, $ciphersuite:expr, $supported:literal) => {
@@ -23,33 +17,80 @@ macro_rules! key_package_generation {
             let id = vec![1, 2, 3];
             let credential_bundle =
                 CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
-            let kpb = KeyPackageBundle::new(ciphersuite.name(), &credential_bundle, Vec::new());
+            let mut kpb =
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new());
 
+            // This key package is not valid because the lifetime extension is missing.
+            assert!(kpb.get_key_package().verify().is_err());
+
+            // Adding a lifetime extension.
+            kpb.get_key_package_ref_mut()
+                .add_extension(Box::new(LifetimeExtension::new(60)));
+
+            // The key package is invalid because the signature is invalid now.
+            assert!(kpb.get_key_package().verify().is_err());
+
+            // After re-signing the package it is valid.
+            kpb.get_key_package_ref_mut().sign(&credential_bundle);
+            assert!(kpb.get_key_package().verify().is_ok());
+
+            {
+                let extensions = kpb.get_key_package().extensions();
+
+                // The capabilities extension must be present and valid.
+                // It's added automatically.
+                let capabilities_extension = extensions
+                    .iter()
+                    .find(|e| e.get_type() == ExtensionType::Capabilities)
+                    .expect("Capabilities extension is missing in key package");
+                let capabilities_extension =
+                    capabilities_extension.to_capabilities_extension().unwrap();
+
+                // Only the single ciphersuite is set.
+                assert_eq!(1, capabilities_extension.ciphersuites().len());
+                assert_eq!($ciphersuite, capabilities_extension.ciphersuites()[0]);
+
+                // Check supported versions.
+                assert_eq!(
+                    Config::supported_versions(),
+                    capabilities_extension.versions()
+                );
+
+                // Check supported extensions.
+                assert_eq!(
+                    Config::supported_extensions(),
+                    capabilities_extension.extensions()
+                );
+
+                // Get the lifetime extension. There's no public API for this but it
+                // must be present.
+                let lifetime_extension = extensions
+                    .iter()
+                    .find(|e| e.get_type() == ExtensionType::Lifetime)
+                    .expect("Lifetime extension is missing in key package");
+                let _lifetime_extension = lifetime_extension.to_lifetime_extension().unwrap();
+            }
+
+            // Add and retrieve a key package ID.
+            let key_id = [1, 2, 3, 4, 5, 6, 7];
+            kpb.get_key_package_ref_mut()
+                .add_extension(Box::new(KeyIDExtension::new(&key_id)));
+
+            // The key package is invalid because the signature is invalid now.
+            assert!(kpb.get_key_package().verify().is_err());
+
+            // After re-signing the package it is valid.
+            kpb.get_key_package_ref_mut().sign(&credential_bundle);
+            assert!(kpb.get_key_package().verify().is_ok());
+
+            // Get the key ID extension.
             let extensions = kpb.get_key_package().extensions();
-
-            // The capabilities extension must be present and valid.
-            // It's added automatically.
-            let capabilities_extension = extensions
+            let key_id_extension = extensions
                 .iter()
-                .find(|e| e.get_type() == ExtensionType::Capabilities)
-                .expect("Capabilities extension is missing in key package");
-            let _capabilities_extension =
-                capabilities_extension.to_capabilities_extension().unwrap();
-            // TODO: #101 test capabilities.
-
-            // Lifetime extension must be present and valid.
-            // TODO: #99 add lifetime extension to key packages
-            // let lifetime_extension = extensions
-            //     .iter()
-            //     .find(|e| e.get_type() == ExtensionType::Lifetime)
-            //     .expect("Lifetime extension is missing in key package");
-
-            // Parent hash extension must be present and valid.
-            // TODO: #100 add parent hash extension to key package
-            // let parent_hash_extension = extensions
-            //     .iter()
-            //     .find(|e| e.get_type() == ExtensionType::ParentHash)
-            //     .expect("Parent hash extension is missing in key package");
+                .find(|e| e.get_type() == ExtensionType::KeyID)
+                .expect("Key ID extension is missing in key package");
+            let key_id_extension = key_id_extension.to_key_id_extension().unwrap();
+            assert_eq!(&key_id, key_id_extension.as_slice());
         }
     };
 }
