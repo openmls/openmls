@@ -51,7 +51,7 @@ impl PrivateTree {
         node_index: NodeIndex,
         key_package_bundle: &KeyPackageBundle,
     ) -> Self {
-        let leaf_secret = key_package_bundle.get_leaf_secret();
+        let leaf_secret = key_package_bundle.leaf_secret();
         let ciphersuite = Ciphersuite::new(key_package_bundle.key_package.cipher_suite());
         let leaf_node_secret =
             KeyPackageBundle::derive_leaf_node_secret(&ciphersuite, &leaf_secret);
@@ -78,11 +78,8 @@ impl PrivateTree {
         let mut private_tree = PrivateTree::from_key_package_bundle(node_index, key_package_bundle);
 
         // Compute path secrets and generate keypairs
-        let public_keys = private_tree.generate_path_secrets(
-            ciphersuite,
-            key_package_bundle.get_leaf_secret(),
-            path,
-        );
+        let public_keys =
+            private_tree.generate_path_secrets(ciphersuite, key_package_bundle.leaf_secret(), path);
 
         (private_tree, public_keys)
     }

@@ -51,7 +51,7 @@ fn create_private_tree_from_secret() {
     // Compute path secrets from the leaf and generate keypairs
     let public_keys = private_tree.generate_path_secrets(
         &ciphersuite,
-        key_package_bundle.get_leaf_secret(),
+        key_package_bundle.leaf_secret(),
         &direct_path,
     );
 

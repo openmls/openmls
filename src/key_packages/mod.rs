@@ -301,7 +301,8 @@ impl KeyPackageBundle {
         }
     }
 
-    /// Replace the init key in the current KeyPackage with a random one
+    /// Replace the init key in the `KeyPackage` with a random one and return a `KeyPackageBundle` with
+    /// the corresponding secret values
     pub(crate) fn from_rekeyed_key_package(
         ciphersuite: &Ciphersuite,
         key_package: &KeyPackage,
@@ -344,8 +345,8 @@ impl KeyPackageBundle {
         &self.private_key
     }
 
-    /// Get a reference to the `leaf_secret_option`.
-    pub(crate) fn get_leaf_secret(&self) -> &[u8] {
+    /// Get a reference to the `leaf_secret`.
+    pub(crate) fn leaf_secret(&self) -> &[u8] {
         &self.leaf_secret
     }
 
