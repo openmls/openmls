@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@master
       - name: Build docs
         run: |
-          cargo doc --all-features --no-deps
+          cargo doc --all-features --no-deps --document-private-items
           touch target/doc/.nojekyll
           cat > target/doc/index.html <<EOF
           <!doctype html>
