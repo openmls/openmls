@@ -1,19 +1,3 @@
-// maelstrom
-// Copyright (C) 2020 Raphael Robert
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see http://www.gnu.org/licenses/.
-
 //! Group APIs for MLS
 //!
 //! This file contains the API to interact with groups.
@@ -133,21 +117,17 @@ impl Codec for GroupContext {
     }
 }
 
-#[derive(Clone, Copy)]
+/// Configuration for an MLS group.
+#[derive(Clone, Copy, Debug)]
 pub struct GroupConfig {
-    pub(crate) padding_block_size: u32,
-    pub(crate) additional_as_epochs: u32,
+    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
+    /// Defaults to false.
+    pub add_ratchet_tree_extension: bool,
+    pub padding_block_size: u32,
+    pub additional_as_epochs: u32,
 }
 
 impl GroupConfig {
-    /// Create a new `GroupConfig` with the given ciphersuite.
-    pub fn new() -> Self {
-        Self {
-            padding_block_size: 10,
-            additional_as_epochs: 0,
-        }
-    }
-
     /// Get the padding block size used in this config.
     pub fn get_padding_block_size(&self) -> u32 {
         self.padding_block_size
@@ -157,6 +137,7 @@ impl GroupConfig {
 impl Default for GroupConfig {
     fn default() -> Self {
         Self {
+            add_ratchet_tree_extension: false,
             padding_block_size: 10,
             additional_as_epochs: 0,
         }
@@ -173,6 +154,7 @@ impl Codec for GroupConfig {
         let padding_block_size = u32::decode(cursor)?;
         let additional_as_epochs = u32::decode(cursor)?;
         Ok(GroupConfig {
+            add_ratchet_tree_extension: false,
             padding_block_size,
             additional_as_epochs,
         })

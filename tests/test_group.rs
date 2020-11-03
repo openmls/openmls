@@ -1,12 +1,7 @@
-use maelstrom::ciphersuite::*;
-use maelstrom::creds::*;
-use maelstrom::framing::*;
-use maelstrom::group::*;
-use maelstrom::key_packages::*;
+use openmls::prelude::*;
 
 #[test]
 fn create_commit_optional_path() {
-    use maelstrom::extensions::*;
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let group_aad = b"Alice's test group";
 
@@ -22,20 +17,20 @@ fn create_commit_optional_path() {
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions.clone(),
     );
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &bob_credential_bundle,
         mandatory_extensions.clone(),
     );
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions,
     );
@@ -44,7 +39,12 @@ fn create_commit_optional_path() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let mut group_alice = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+    let mut group_alice_1234 = MlsGroup::new(
+        &group_id,
+        ciphersuite_name,
+        alice_key_package_bundle,
+        GroupConfig::default(),
+    );
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field on the Commit
@@ -61,9 +61,9 @@ fn create_commit_optional_path() {
             epoch_proposals,
             true, /* force self-update */
         ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
     let commit = match &mls_plaintext_commit.content {
         MLSPlaintextContentType::Commit((commit, _)) => commit,
         _ => panic!(),
@@ -205,9 +205,6 @@ fn basic_group_setup() {
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
 fn group_operations() {
-    use maelstrom::extensions::*;
-    use maelstrom::tree::index::*;
-    use maelstrom::utils::*;
     let supported_ciphersuites = vec![
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
@@ -230,13 +227,13 @@ fn group_operations() {
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
         );
 
         let bob_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         );
@@ -260,9 +257,9 @@ fn group_operations() {
                 epoch_proposals.clone(),
                 false,
             ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+                Ok(c) => c,
+                Err(e) => panic!("Error creating commit: {:?}", e),
+            };
         let commit = match &mls_plaintext_commit.content {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),

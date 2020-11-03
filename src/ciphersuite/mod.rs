@@ -1,28 +1,10 @@
-// maelstrom
-// Copyright (C) 2020 Raphael Robert
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see http://www.gnu.org/licenses/.
-
 //! Ciphersuites for MLS
 //!
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
 use evercrypt::prelude::*;
-use hpke::{
-    aead::Mode as HpkeAeadMode, kdf::Mode as HpkeKdfMode, kem::Mode as KemMode, Hpke, Mode,
-};
+use hpke::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // re-export for other parts of the library when we can use it
@@ -136,7 +118,7 @@ pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
     hpke: Hpke,
-    hpke_kem: KemMode,
+    hpke_kem: HpkeKemMode,
     hpke_kdf: HpkeKdfMode,
     hpke_aead: HpkeAeadMode,
     aead: AeadMode,
@@ -309,11 +291,6 @@ impl Ciphersuite {
                 None,
             )
             .unwrap()
-    }
-
-    /// Generate a new HPKE key pair and return it.
-    pub(crate) fn new_hpke_keypair(&self) -> HPKEKeyPair {
-        self.hpke.generate_key_pair()
     }
 
     /// Generate a new HPKE key pair and return it.
