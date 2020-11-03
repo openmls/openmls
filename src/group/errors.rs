@@ -17,7 +17,7 @@ pub enum WelcomeError {
     DuplicateRatchetTreeExtension = 109,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum ApplyCommitError {
     EpochMismatch = 200,
     WrongPlaintextContentType = 201,

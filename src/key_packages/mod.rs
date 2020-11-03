@@ -6,6 +6,8 @@ use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
     ParentHashExtension,
 };
+use crate::schedule::*;
+use evercrypt::rand_util::*;
 
 mod codec;
 
@@ -219,6 +221,7 @@ impl KeyPackage {
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,
+    pub(crate) leaf_secret: Vec<u8>,
 }
 
 impl KeyPackageBundle {
@@ -232,8 +235,28 @@ impl KeyPackageBundle {
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
         debug_assert!(!ciphersuites.is_empty());
-        let keypair = Ciphersuite::new(ciphersuites[0]).new_hpke_keypair();
-        Self::new_with_keypair(ciphersuites, credential_bundle, extensions, keypair)
+        let ciphersuite = Ciphersuite::new(ciphersuites[0]);
+        let leaf_secret = get_random_vec(ciphersuite.hash_length());
+        Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
+    }
+
+    fn new_from_leaf_secret(
+        ciphersuites: &[CiphersuiteName],
+        credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
+        leaf_secret: Vec<u8>,
+    ) -> Self {
+        debug_assert!(!ciphersuites.is_empty());
+        let ciphersuite = &Ciphersuite::new(ciphersuites[0]);
+        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
+        Self::new_with_keypair(
+            ciphersuites,
+            credential_bundle,
+            extensions,
+            keypair,
+            leaf_secret,
+        )
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -250,6 +273,7 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
+        leaf_secret: Vec<u8>,
     ) -> Self {
         debug_assert!(!ciphersuites.is_empty());
         let capabilities_extension = CapabilitiesExtension::new(None, Some(ciphersuites), None);
@@ -266,14 +290,39 @@ impl KeyPackageBundle {
         KeyPackageBundle {
             key_package,
             private_key,
+            leaf_secret,
         }
     }
 
-    pub fn from_values(key_package: KeyPackage, private_key: HPKEPrivateKey) -> Self {
+    /// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey, and a leaf secret
+    pub fn new_from_values(
+        key_package: KeyPackage,
+        private_key: HPKEPrivateKey,
+        leaf_secret: Vec<u8>,
+    ) -> Self {
         Self {
             key_package,
             private_key,
+            leaf_secret,
         }
+    }
+
+    /// Replace the init key in the `KeyPackage` with a random one and return a `KeyPackageBundle` with
+    /// the corresponding secret values
+    pub(crate) fn from_rekeyed_key_package(
+        ciphersuite: &Ciphersuite,
+        key_package: &KeyPackage,
+    ) -> Self {
+        let leaf_secret = get_random_vec(ciphersuite.hash_length());
+        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let (private_key, public_key) = ciphersuite
+            .derive_hpke_keypair(&leaf_node_secret)
+            .into_keys();
+
+        // Generate new keypair and replace it in current KeyPackage
+        let mut new_key_package = key_package.clone();
+        new_key_package.set_hpke_init_key(public_key);
+        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)
     }
 
     /// Update the private key in the bundle.
@@ -282,14 +331,8 @@ impl KeyPackageBundle {
     }
 
     /// Update the key package in the bundle.
-    pub(crate) fn _set_key_package(&mut self, key_package: KeyPackage) {
+    pub(crate) fn set_key_package(&mut self, key_package: KeyPackage) {
         self.key_package = key_package;
-    }
-
-    /// Get the key package and HPKE private key separately.
-    /// Consumes self.
-    pub fn into_tuple(self) -> (HPKEPrivateKey, KeyPackage) {
-        (self.private_key, self.key_package)
     }
 
     /// Get a reference to the `KeyPackage`.
@@ -297,13 +340,26 @@ impl KeyPackageBundle {
         &self.key_package
     }
 
-    /// Get a reference to the `KeyPackage`.
+    /// Get a mutable reference to the `KeyPackage`.
     pub fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
         &mut self.key_package
     }
 
     /// Get a reference to the `HPKEPrivateKey`.
-    pub fn get_private_key(&self) -> &HPKEPrivateKey {
+    pub(crate) fn get_private_key_ref(&self) -> &HPKEPrivateKey {
         &self.private_key
+    }
+
+    /// Get a reference to the `leaf_secret`.
+    pub(crate) fn leaf_secret(&self) -> &[u8] {
+        &self.leaf_secret
+    }
+
+    /// This function derives the leaf_node_secret from the leaf_secret as described in 5.4 Ratchet Tree Evolution
+    pub(crate) fn derive_leaf_node_secret(
+        ciphersuite: &Ciphersuite,
+        leaf_secret: &[u8],
+    ) -> Vec<u8> {
+        derive_secret(ciphersuite, &leaf_secret, "node")
     }
 }

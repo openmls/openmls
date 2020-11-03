@@ -77,4 +77,5 @@ pub trait Api: Sized {
     fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8>;
 }
 
-pub type CreateCommitResult = Result<(MLSPlaintext, Option<Welcome>), CreateCommitError>;
+pub type CreateCommitResult =
+    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;

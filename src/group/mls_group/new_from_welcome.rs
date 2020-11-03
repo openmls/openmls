@@ -15,20 +15,17 @@ impl MlsGroup {
     ) -> Result<Self, WelcomeError> {
         let ciphersuite_name = welcome.get_ciphersuite();
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
-        let (private_key, key_package) = (
-            key_package_bundle.private_key,
-            key_package_bundle.key_package,
-        );
 
         // Find key_package in welcome secrets
-        let egs = if let Some(egs) =
-            Self::find_key_package_from_welcome_secrets(&key_package, welcome.get_secrets_ref())
-        {
+        let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
+            key_package_bundle.get_key_package(),
+            welcome.get_secrets_ref(),
+        ) {
             egs
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite_name != key_package.cipher_suite() {
+        if ciphersuite_name != key_package_bundle.get_key_package().cipher_suite() {
             return Err(WelcomeError::CiphersuiteMismatch);
         }
 
@@ -36,7 +33,7 @@ impl MlsGroup {
         let (mut group_info, group_secrets) = Self::decrypt_group_info(
             &ciphersuite,
             &egs,
-            &private_key,
+            key_package_bundle.get_private_key_ref(),
             welcome.get_encrypted_group_info_ref(),
         )?;
 
@@ -80,11 +77,7 @@ impl MlsGroup {
             }
         };
 
-        let mut tree = RatchetTree::new_from_nodes(
-            ciphersuite_name,
-            KeyPackageBundle::from_values(key_package, private_key),
-            &nodes,
-        )?;
+        let mut tree = RatchetTree::new_from_nodes(ciphersuite_name, key_package_bundle, &nodes)?;
 
         // Verify tree hash
         if tree.compute_tree_hash() != group_info.tree_hash() {
@@ -120,14 +113,12 @@ impl MlsGroup {
 
             // Update the private tree.
             let private_tree = tree.private_tree_mut();
-            private_tree.generate_path_secrets(
+            // Derive path secrets and generate keypairs
+            let new_public_keys = private_tree.continue_path_secrets(
                 &ciphersuite,
-                Some(&path_secret.path_secret),
-                common_path.len(),
+                path_secret.path_secret,
+                &common_path,
             );
-            let new_public_keys = private_tree
-                .generate_path_keypairs(&ciphersuite, &common_path)
-                .unwrap();
 
             // Validate public keys
             if tree

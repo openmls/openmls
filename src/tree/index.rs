@@ -85,13 +85,13 @@ impl Index<LeafIndex> for Vec<Node> {
     /// same leaf, but in the array representing the tree as opposed to the one
     /// only containing the leaves.
     fn index(&self, leaf_index: LeafIndex) -> &Self::Output {
-        &self[leaf_index.as_usize() * 2]
+        &self[NodeIndex::from(leaf_index).as_usize()]
     }
 }
 
 impl IndexMut<LeafIndex> for Vec<Node> {
     fn index_mut(&mut self, leaf_index: LeafIndex) -> &mut Self::Output {
-        &mut self[leaf_index.as_usize() * 2]
+        &mut self[NodeIndex::from(leaf_index).as_usize()]
     }
 }
 

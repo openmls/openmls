@@ -9,6 +9,9 @@ pub(crate) mod proposals;
 use proposals::*;
 
 #[cfg(test)]
+mod test_proposals;
+
+#[cfg(test)]
 mod test_welcome;
 
 #[derive(Debug, PartialEq, Clone)]
