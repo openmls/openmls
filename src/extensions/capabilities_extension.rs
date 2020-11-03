@@ -38,6 +38,44 @@ impl Default for CapabilitiesExtension {
     }
 }
 
+impl CapabilitiesExtension {
+    /// Create a new capabilities extension with the given configuration.
+    /// Any argument that is `None` is filled with the default values from the
+    /// global configuration.
+    pub fn new(
+        versions: Option<&[ProtocolVersion]>,
+        ciphersuites: Option<&[CiphersuiteName]>,
+        extensions: Option<&[ExtensionType]>,
+    ) -> Self {
+        Self {
+            versions: match versions {
+                Some(v) => v.to_vec(),
+                None => Config::supported_versions().to_vec(),
+            },
+            ciphersuites: match ciphersuites {
+                Some(c) => c.to_vec(),
+                None => Config::supported_ciphersuites().to_vec(),
+            },
+            extensions: match extensions {
+                Some(e) => e.to_vec(),
+                None => Config::supported_extensions().to_vec(),
+            },
+        }
+    }
+    /// Get a reference to the list of versions in this extension.
+    pub fn versions(&self) -> &[ProtocolVersion] {
+        &self.versions
+    }
+    /// Get a reference to the list of cipher suites in this extension.
+    pub fn ciphersuites(&self) -> &[CiphersuiteName] {
+        &self.ciphersuites
+    }
+    /// Get a reference to the list of supported extensions.
+    pub fn extensions(&self) -> &[ExtensionType] {
+        &self.extensions
+    }
+}
+
 impl Extension for CapabilitiesExtension {
     fn get_type(&self) -> ExtensionType {
         ExtensionType::Capabilities

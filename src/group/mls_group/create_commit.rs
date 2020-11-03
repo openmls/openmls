@@ -1,7 +1,8 @@
-use crate::ciphersuite::{signable::*, *};
+use crate::ciphersuite::signable::Signable;
 use crate::codec::*;
 use crate::config::Config;
 use crate::creds::CredentialBundle;
+use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
@@ -77,10 +78,11 @@ impl MlsGroup {
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
+        let tree_hash = provisional_tree.compute_tree_hash();
         let provisional_group_context = GroupContext {
             group_id: self.group_context.group_id.clone(),
             epoch: provisional_epoch,
-            tree_hash: provisional_tree.compute_tree_hash(),
+            tree_hash: tree_hash.clone(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
         let mut provisional_epoch_secrets = self.epoch_secrets.clone();
@@ -106,21 +108,25 @@ impl MlsGroup {
             &self.context(),
         );
         // Check if new members were added an create welcome message
-        // TODO: Add support for extensions
         if !invited_members.is_empty() {
-            let tree_hash = provisional_tree.compute_tree_hash();
+            let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
+                vec![Box::new(RatchetTreeExtension::new(
+                    provisional_tree.public_key_tree_copy(),
+                ))]
+            } else {
+                Vec::new()
+            };
             // Create GroupInfo object
-            let mut group_info = GroupInfo {
-                group_id: provisional_group_context.group_id.clone(),
-                epoch: provisional_group_context.epoch,
+            let mut group_info = GroupInfo::new(
+                provisional_group_context.group_id.clone(),
+                provisional_group_context.epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                extensions: vec![],
-                confirmation_tag: confirmation_tag.as_slice(),
-                signer_index: sender_index,
-                signature: Signature::new_empty(),
-            };
-            group_info.signature = group_info.sign(credential_bundle);
+                extensions,
+                confirmation_tag.as_slice(),
+                sender_index,
+            );
+            group_info.set_signature(group_info.sign(credential_bundle));
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) =
                 compute_welcome_key_nonce(ciphersuite, &epoch_secret);

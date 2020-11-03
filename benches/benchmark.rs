@@ -4,9 +4,7 @@ extern crate openmls;
 extern crate rand;
 
 use criterion::Criterion;
-use openmls::ciphersuite::*;
-use openmls::creds::*;
-use openmls::key_packages::*;
+use openmls::prelude::*;
 
 fn criterion_kp_bundle(c: &mut Criterion) {
     c.bench_function("KeyPackage create bundle", |b| {
@@ -18,7 +16,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
                     .unwrap()
             },
             |credential_bundle: CredentialBundle| {
-                KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
+                KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new());
             },
         );
     });

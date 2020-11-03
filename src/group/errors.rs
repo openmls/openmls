@@ -14,6 +14,7 @@ pub enum WelcomeError {
     InvalidRatchetTree = 106,
     InvalidGroupInfoSignature = 107,
     GroupInfoDecryptionFailure = 108,
+    DuplicateRatchetTreeExtension = 109,
 }
 
 #[derive(PartialEq, Debug)]

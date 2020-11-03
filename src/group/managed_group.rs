@@ -22,7 +22,12 @@ impl ManagedGroup {
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
     ) -> Self {
-        let group = MlsGroup::new(&group_id.as_slice(), ciphersuite_name, key_package_bundle);
+        let group = MlsGroup::new(
+            &group_id.as_slice(),
+            ciphersuite_name,
+            key_package_bundle,
+            GroupConfig::default(),
+        );
 
         ManagedGroup {
             group,

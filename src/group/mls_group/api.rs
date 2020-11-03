@@ -11,6 +11,7 @@ pub trait Api: Sized {
         group_id: &[u8],
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
+        config: GroupConfig,
     ) -> Self;
     /// Join a group from a Welcome message
     fn new_from_welcome(
