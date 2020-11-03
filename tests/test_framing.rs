@@ -9,9 +9,9 @@ fn padding() {
     let id = vec![1, 2, 3];
     let credential_bundle =
         CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
-    let kpb = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, Vec::new());
+    let kpb = KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new());
 
-    let mut group_alice = MlsGroup::new(&id, ciphersuite_name, kpb);
+    let mut group_alice = MlsGroup::new(&id, ciphersuite_name, kpb, GroupConfig::default());
     const PADDING_SIZE: usize = 10;
 
     for _ in 0..100 {

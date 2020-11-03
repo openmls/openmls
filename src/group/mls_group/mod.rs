@@ -26,6 +26,10 @@ pub struct MlsGroup {
     secret_tree: RefCell<SecretTree>,
     tree: RefCell<RatchetTree>,
     interim_transcript_hash: Vec<u8>,
+    // Group config.
+    // Set to true if the ratchet tree extension is added to the `GroupInfo`.
+    // Defaults to `false`.
+    add_ratchet_tree_extension: bool,
 }
 
 impl Api for MlsGroup {
@@ -33,6 +37,7 @@ impl Api for MlsGroup {
         id: &[u8],
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
+        config: GroupConfig,
     ) -> MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
@@ -58,6 +63,7 @@ impl Api for MlsGroup {
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
             interim_transcript_hash,
+            add_ratchet_tree_extension: config.add_ratchet_tree_extension,
         }
     }
     // Join a group from a welcome message
@@ -268,6 +274,7 @@ impl Codec for MlsGroup {
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
             interim_transcript_hash,
+            add_ratchet_tree_extension: false,
         };
         Ok(group)
     }

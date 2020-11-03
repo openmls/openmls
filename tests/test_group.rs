@@ -17,20 +17,20 @@ fn create_commit_optional_path() {
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions.clone(),
     );
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &bob_credential_bundle,
         mandatory_extensions.clone(),
     );
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions,
     );
@@ -39,7 +39,12 @@ fn create_commit_optional_path() {
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let mut group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+    let mut group_alice_1234 = MlsGroup::new(
+        &group_id,
+        ciphersuite_name,
+        alice_key_package_bundle,
+        GroupConfig::default(),
+    );
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field on the Commit
@@ -165,21 +170,26 @@ fn basic_group_setup() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &bob_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
     );
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
+        &[ciphersuite_name],
         &alice_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
     );
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
-    let group_alice_1234 = MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+    let group_alice_1234 = MlsGroup::new(
+        &group_id,
+        ciphersuite_name,
+        alice_key_package_bundle,
+        GroupConfig::default(),
+    );
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -226,13 +236,13 @@ fn group_operations() {
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
         );
 
         let bob_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite_name,
+            &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions,
         );
@@ -240,8 +250,12 @@ fn group_operations() {
 
         // Alice creates a group
         let group_id = [1, 2, 3, 4];
-        let mut group_alice_1234 =
-            MlsGroup::new(&group_id, ciphersuite_name, alice_key_package_bundle);
+        let mut group_alice_1234 = MlsGroup::new(
+            &group_id,
+            ciphersuite_name,
+            alice_key_package_bundle,
+            GroupConfig::default(),
+        );
 
         // Alice adds Bob
         let bob_add_proposal = group_alice_1234.create_add_proposal(

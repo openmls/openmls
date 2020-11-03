@@ -31,7 +31,7 @@ impl KeyIDExtension {
     }
 
     /// Get the value of the key id as byte slice.
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub fn as_slice(&self) -> &[u8] {
         &self.key_id
     }
 }
