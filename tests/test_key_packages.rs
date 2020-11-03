@@ -1,7 +1,7 @@
 //! # Key package tests
 //!
 
-use maelstrom::{
+use openmls::{
     ciphersuite::{Ciphersuite, CiphersuiteName},
     config::Config,
     creds::*,
