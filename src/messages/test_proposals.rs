@@ -29,18 +29,18 @@ fn proposal_queue_functions() {
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
-            *ciphersuite_name,
+            &[*ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
         );
         let bob_key_package_bundle = KeyPackageBundle::new(
-            *ciphersuite_name,
+            &[*ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         );
         let bob_key_package = bob_key_package_bundle.get_key_package();
         let alice_update_key_package_bundle = KeyPackageBundle::new(
-            *ciphersuite_name,
+            &[*ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions,
         );

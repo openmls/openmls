@@ -234,21 +234,24 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
+        debug_assert!(!ciphersuites.is_empty());
+        let ciphersuite = Ciphersuite::new(ciphersuites[0]);
         let leaf_secret = get_random_vec(ciphersuite.hash_length());
-        Self::new_from_leaf_secret(&ciphersuite, credential_bundle, extensions, leaf_secret)
+        Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
     }
 
     fn new_from_leaf_secret(
-        ciphersuite: &Ciphersuite,
+        ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         leaf_secret: Vec<u8>,
     ) -> Self {
+        debug_assert!(!ciphersuites.is_empty());
+        let ciphersuite = &Ciphersuite::new(ciphersuites[0]);
         let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
         Self::new_with_keypair(
-            ciphersuite.name(),
+            ciphersuites,
             credential_bundle,
             extensions,
             keypair,
@@ -337,9 +340,8 @@ impl KeyPackageBundle {
         &self.key_package
     }
 
-    /// Get a reference to the `KeyPackage`.
-    #[cfg(test)]
-    pub(crate) fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
+    /// Get a mutable reference to the `KeyPackage`.
+    pub fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
         &mut self.key_package
     }
 

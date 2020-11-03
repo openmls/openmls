@@ -12,7 +12,7 @@ fn setup(len: usize) -> (Ciphersuite, KeyPackageBundle, NodeIndex, Vec<NodeIndex
     let ciphersuite = Ciphersuite::new(ciphersuite_name);
     let credential_bundle =
         CredentialBundle::new("username".into(), CredentialType::Basic, ciphersuite_name).unwrap();
-    let key_package_bundle = KeyPackageBundle::new(ciphersuite_name, &credential_bundle, vec![]);
+    let key_package_bundle = KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![]);
     let own_index = NodeIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 

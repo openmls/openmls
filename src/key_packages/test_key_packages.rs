@@ -36,7 +36,7 @@ fn test_codec() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let id = vec![1, 2, 3];
     let credential_bundle =
-        CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
+        CredentialBundle::new(id, CredentialType::Basic, ciphersuite_name).unwrap();
     let mut kpb = KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new());
 
     // Encode and decode the key package.
