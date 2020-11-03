@@ -117,21 +117,17 @@ impl Codec for GroupContext {
     }
 }
 
-#[derive(Clone, Copy)]
+/// Configuration for an MLS group.
+#[derive(Clone, Copy, Debug)]
 pub struct GroupConfig {
-    pub(crate) padding_block_size: u32,
-    pub(crate) additional_as_epochs: u32,
+    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
+    /// Defaults to false.
+    pub add_ratchet_tree_extension: bool,
+    pub padding_block_size: u32,
+    pub additional_as_epochs: u32,
 }
 
 impl GroupConfig {
-    /// Create a new `GroupConfig` with the given ciphersuite.
-    pub fn new() -> Self {
-        Self {
-            padding_block_size: 10,
-            additional_as_epochs: 0,
-        }
-    }
-
     /// Get the padding block size used in this config.
     pub fn get_padding_block_size(&self) -> u32 {
         self.padding_block_size
@@ -141,6 +137,7 @@ impl GroupConfig {
 impl Default for GroupConfig {
     fn default() -> Self {
         Self {
+            add_ratchet_tree_extension: false,
             padding_block_size: 10,
             additional_as_epochs: 0,
         }
@@ -157,6 +154,7 @@ impl Codec for GroupConfig {
         let padding_block_size = u32::decode(cursor)?;
         let additional_as_epochs = u32::decode(cursor)?;
         Ok(GroupConfig {
+            add_ratchet_tree_extension: false,
             padding_block_size,
             additional_as_epochs,
         })

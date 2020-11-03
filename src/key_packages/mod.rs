@@ -209,7 +209,7 @@ impl KeyPackage {
     }
 
     /// Populate the `signature` field using the `credential_bundle`.
-    pub(crate) fn sign(&mut self, credential_bundle: &CredentialBundle) {
+    pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
         let payload = &self.unsigned_payload().unwrap();
         self.signature = credential_bundle.sign(payload).unwrap();
     }
@@ -222,39 +222,43 @@ pub struct KeyPackageBundle {
 }
 
 impl KeyPackageBundle {
-    /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
-    /// and `extensions`. Note that the capabilities extension gets added
-    /// automatically, based on the configuration.
-    /// This generates a fresh HPKE key pair for this bundle.
+    /// Create a new `KeyPackageBundle` with a fresh `HPKEKeyPair`.
+    /// See `new_with_keypair` for details.
     ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new(
-        ciphersuite_name: CiphersuiteName,
+        ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Self {
-        let keypair = Ciphersuite::new(ciphersuite_name).new_hpke_keypair();
-        Self::new_with_keypair(ciphersuite_name, credential_bundle, extensions, keypair)
+        debug_assert!(!ciphersuites.is_empty());
+        let keypair = Ciphersuite::new(ciphersuites[0]).new_hpke_keypair();
+        Self::new_with_keypair(ciphersuites, credential_bundle, extensions, keypair)
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
     /// and `extensions`, using the given HPKE `key_pair`.
     ///
+    /// Note that the capabilities extension gets added automatically, based on
+    /// the configuration. The ciphersuite for this key package bundle is the
+    /// first one in the `ciphersuites` list. Only the ciphersuites listed in
+    /// `ciphersuites` are enabled in the capabilities extension of the key package.
+    ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
-        ciphersuite_name: CiphersuiteName,
+        ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
     ) -> Self {
-        // TODO: #85 this must be configurable.
-        let mut final_extensions: Vec<Box<dyn Extension>> =
-            vec![Box::new(CapabilitiesExtension::default())];
+        debug_assert!(!ciphersuites.is_empty());
+        let capabilities_extension = CapabilitiesExtension::new(None, Some(ciphersuites), None);
+        let mut final_extensions: Vec<Box<dyn Extension>> = vec![Box::new(capabilities_extension)];
 
         let (private_key, public_key) = key_pair.into_keys();
         final_extensions.extend_from_slice(&extensions);
         let key_package = KeyPackage::new(
-            ciphersuite_name,
+            ciphersuites[0],
             public_key,
             credential_bundle,
             final_extensions,
