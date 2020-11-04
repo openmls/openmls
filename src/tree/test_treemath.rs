@@ -101,6 +101,7 @@ fn test_dir_path() {
 #[test]
 fn test_tree_hash() {
     use crate::ciphersuite::*;
+    use crate::config::*;
     use crate::creds::*;
     use crate::tree::*;
 
@@ -110,21 +111,22 @@ fn test_tree_hash() {
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new())
     }
 
-    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let kbp = create_identity(b"Tree creator", ciphersuite_name);
+    for &ciphersuite_name in Config::supported_ciphersuites() {
+        let kbp = create_identity(b"Tree creator", ciphersuite_name);
 
-    // Initialise tree
-    let mut tree = RatchetTree::new(ciphersuite_name, kbp);
-    let tree_hash = tree.compute_tree_hash();
-    println!("Tree hash: {:?}", tree_hash);
+        // Initialise tree
+        let mut tree = RatchetTree::new(ciphersuite_name, kbp);
+        let tree_hash = tree.compute_tree_hash();
+        println!("Tree hash: {:?}", tree_hash);
 
-    // Add 5 nodes to the tree.
-    let mut nodes = Vec::new();
-    for _ in 0..5 {
-        nodes.push(create_identity(b"Tree creator", ciphersuite_name));
+        // Add 5 nodes to the tree.
+        let mut nodes = Vec::new();
+        for _ in 0..5 {
+            nodes.push(create_identity(b"Tree creator", ciphersuite_name));
+        }
+        let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
+        let _ = tree.add_nodes(&key_packages);
+        let tree_hash = tree.compute_tree_hash();
+        println!("Tree hash: {:?}", tree_hash);
     }
-    let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
-    let _ = tree.add_nodes(&key_packages);
-    let tree_hash = tree.compute_tree_hash();
-    println!("Tree hash: {:?}", tree_hash);
 }
