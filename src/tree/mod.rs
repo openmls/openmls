@@ -373,12 +373,12 @@ impl RatchetTree {
     pub(crate) fn replace_private_tree(
         &mut self,
         ciphersuite: &Ciphersuite,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
     ) -> Result<CommitSecret, TreeError> {
         let _path_option = self.replace_private_tree_(
             ciphersuite,
-            &key_package_bundle,
+            key_package_bundle,
             group_context,
             false, /* without update path */
         );

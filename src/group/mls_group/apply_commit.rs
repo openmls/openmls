@@ -69,14 +69,13 @@ impl MlsGroup {
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles and
                 // clone out the one that we need.
-                let own_kpb: KeyPackageBundle = match own_key_packages
+                let own_kpb = match own_key_packages
                     .iter()
                     .find(|kpb| kpb.get_key_package() == kp)
                 {
                     Some(kpb) => kpb,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
-                }
-                .clone();
+                };
                 provisional_tree
                     .replace_private_tree(ciphersuite, own_kpb, &serialized_context)
                     .unwrap()
