@@ -198,7 +198,6 @@
 <span id="197">197</span>
 <span id="198">198</span>
 <span id="199">199</span>
-<span id="200">200</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Signable</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -236,12 +235,11 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_tree</span> <span class="op">=</span> <span class="ident">RatchetTree</span>::<span class="ident">new_from_public_tree</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">tree</span>());
 
         <span class="comment">// Apply proposals to tree</span>
-        <span class="kw">let</span> (<span class="ident">path_required_by_commit</span>, <span class="ident">self_removed</span>, <span class="ident">invited_members</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">provisional_tree</span>
-            .<span class="ident">apply_proposals</span>(<span class="kw-2">&amp;</span><span class="ident">proposal_id_list</span>, <span class="ident">proposal_queue</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec</span><span class="macro">!</span>[])
-        {
-            <span class="prelude-val">Ok</span>(<span class="ident">res</span>) <span class="op">=&gt;</span> <span class="ident">res</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CreateCommitError</span>::<span class="ident">OwnKeyNotFound</span>),
-        };
+        <span class="kw">let</span> (<span class="ident">path_required_by_commit</span>, <span class="ident">self_removed</span>, <span class="ident">invited_members</span>) <span class="op">=</span>
+            <span class="kw">match</span> <span class="ident">provisional_tree</span>.<span class="ident">apply_proposals</span>(<span class="kw-2">&amp;</span><span class="ident">proposal_id_list</span>, <span class="ident">proposal_queue</span>, <span class="kw-2">&amp;</span>[]) {
+                <span class="prelude-val">Ok</span>(<span class="ident">res</span>) <span class="op">=&gt;</span> <span class="ident">res</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CreateCommitError</span>::<span class="ident">OwnKeyNotFound</span>),
+            };
         <span class="kw">if</span> <span class="ident">self_removed</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CreateCommitError</span>::<span class="ident">CannotRemoveSelf</span>);
         }
