@@ -664,8 +664,7 @@ impl RatchetTree {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
                     None => return Err(TreeError::InvalidArguments),
-                }
-                .clone();
+                };
                 // Update the private tree with new values
                 self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
