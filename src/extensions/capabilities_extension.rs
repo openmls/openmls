@@ -32,7 +32,7 @@ impl Default for CapabilitiesExtension {
     fn default() -> Self {
         CapabilitiesExtension {
             versions: Config::supported_versions().to_vec(),
-            ciphersuites: Config::supported_ciphersuites().to_vec(),
+            ciphersuites: Config::supported_ciphersuite_names().to_vec(),
             extensions: Config::supported_extensions().to_vec(),
         }
     }
@@ -54,7 +54,7 @@ impl CapabilitiesExtension {
             },
             ciphersuites: match ciphersuites {
                 Some(c) => c.to_vec(),
-                None => Config::supported_ciphersuites().to_vec(),
+                None => Config::supported_ciphersuite_names().to_vec(),
             },
             extensions: match extensions {
                 Some(e) => e.to_vec(),

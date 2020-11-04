@@ -1,4 +1,5 @@
 use crate::creds::CredentialBundle;
+use crate::errors::ConfigError;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -12,7 +13,7 @@ pub trait Api: Sized {
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
-    ) -> Self;
+    ) -> Result<Self, ConfigError>;
     /// Join a group from a Welcome message
     fn new_from_welcome(
         welcome: Welcome,
