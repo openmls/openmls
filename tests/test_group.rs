@@ -342,7 +342,7 @@ fn group_operations() {
             &bob_credential_bundle,
             bob_update_key_package_bundle.get_key_package().clone(),
         );
-        let (mls_plaintext_commit, _, kpb_option) = match group_bob.create_commit(
+        let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             &[],
             &bob_credential_bundle,
             vec![update_proposal_bob.clone()],
@@ -354,6 +354,8 @@ fn group_operations() {
 
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
+        // Check there is no Welcome message
+        assert!(welcome_option.is_none());
 
         group_alice
             .apply_commit(
@@ -364,7 +366,7 @@ fn group_operations() {
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
-                mls_plaintext_commit.clone(),
+                mls_plaintext_commit,
                 vec![update_proposal_bob],
                 &[kpb_option.unwrap()],
             )
