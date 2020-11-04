@@ -2,12 +2,25 @@ use evercrypt::prelude::SignatureError;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::config::Config;
+use crate::errors::ConfigError;
 
 use std::convert::TryFrom;
 
 #[derive(Debug)]
 pub enum CredentialError {
+    UnknwonConfigError,
     UnsupportedCredentialType,
+}
+
+impl From<ConfigError> for CredentialError {
+    fn from(e: ConfigError) -> CredentialError {
+        // TODO: #83
+        match e {
+            ConfigError::UnsupportedCiphersuite => CredentialError::UnsupportedCredentialType,
+            _ => CredentialError::UnknwonConfigError,
+        }
+    }
 }
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
@@ -137,7 +150,7 @@ impl Codec for Credential {
 #[derive(Debug, Clone)]
 pub struct BasicCredential {
     pub identity: Vec<u8>,
-    pub ciphersuite: Ciphersuite,
+    pub ciphersuite: &'static Ciphersuite,
     pub public_key: SignaturePublicKey,
 }
 
@@ -150,18 +163,18 @@ impl BasicCredential {
 impl Codec for BasicCredential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
-        self.ciphersuite.encode(buffer)?;
+        self.ciphersuite.name().encode(buffer)?;
         self.public_key.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let identity = decode_vec(VecSize::VecU16, cursor)?;
-        let ciphersuite = Ciphersuite::decode(cursor)?;
+        let ciphersuite = CiphersuiteName::decode(cursor)?;
         let public_key_bytes = decode_vec(VecSize::VecU16, cursor)?;
         Ok(BasicCredential {
             identity,
-            ciphersuite: ciphersuite.clone(),
-            public_key: SignaturePublicKey::new(public_key_bytes, ciphersuite),
+            ciphersuite: Config::ciphersuite(ciphersuite)?,
+            public_key: SignaturePublicKey::new(public_key_bytes, ciphersuite)?,
         })
     }
 }
@@ -200,12 +213,12 @@ impl CredentialBundle {
         credential_type: CredentialType,
         ciphersuite_name: CiphersuiteName,
     ) -> Result<Self, CredentialError> {
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
+        let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let (private_key, public_key) = ciphersuite.new_signature_keypair().into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity,
-                ciphersuite,
+                ciphersuite: Config::ciphersuite(ciphersuite_name)?,
                 public_key,
             },
             _ => return Err(CredentialError::UnsupportedCredentialType),

@@ -48,7 +48,7 @@ fn default_extensions() {
 #[test]
 fn default_ciphersuites() {
     // Make sure the supported ciphersuites are what we expect them to be.
-    let supported_ciphersuites = Config::supported_ciphersuites();
+    let supported_ciphersuites = Config::supported_ciphersuite_names();
     assert_eq!(
         vec![
             CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,

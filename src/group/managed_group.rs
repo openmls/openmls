@@ -1,6 +1,7 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
+use crate::errors::ConfigError;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -21,22 +22,22 @@ impl ManagedGroup {
         group_id: GroupId,
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
-    ) -> Self {
+    ) -> Result<Self, ConfigError> {
         let group = MlsGroup::new(
             &group_id.as_slice(),
             ciphersuite_name,
             key_package_bundle,
             GroupConfig::default(),
-        );
+        )?;
 
-        ManagedGroup {
+        Ok(ManagedGroup {
             group,
             generation: 0,
             plaintext_queue: vec![],
             public_queue: ProposalQueue::new(),
             own_queue: ProposalQueue::new(),
             pending_kpbs: vec![],
-        }
+        })
     }
     pub fn new_from_welcome(
         welcome: Welcome,

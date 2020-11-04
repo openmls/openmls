@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::framing::*;
 
 /// This tests serializing/deserializing MLSPlaintext
@@ -6,7 +7,8 @@ fn codec() {
     use crate::ciphersuite::*;
 
     let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519);
+        Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
+            .unwrap();
     let credential_bundle =
         CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.name()).unwrap();
     let sender = Sender {

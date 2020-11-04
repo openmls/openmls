@@ -1,5 +1,6 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
+use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
@@ -302,7 +303,7 @@ impl Codec for EncryptedGroupSecrets {
 #[derive(Clone, Debug)]
 pub struct Welcome {
     version: ProtocolVersion,
-    cipher_suite: CiphersuiteName,
+    cipher_suite: &'static Ciphersuite,
     secrets: Vec<EncryptedGroupSecrets>,
     encrypted_group_info: Vec<u8>,
 }
@@ -312,7 +313,7 @@ impl Welcome {
     /// Note that secrets and the encrypted group info are consumed.
     pub(crate) fn new(
         version: ProtocolVersion,
-        cipher_suite: CiphersuiteName,
+        cipher_suite: &'static Ciphersuite,
         secrets: Vec<EncryptedGroupSecrets>,
         encrypted_group_info: Vec<u8>,
     ) -> Self {
@@ -325,7 +326,7 @@ impl Welcome {
     }
 
     /// Get a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn get_ciphersuite(&self) -> CiphersuiteName {
+    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
         self.cipher_suite
     }
 
@@ -343,7 +344,7 @@ impl Welcome {
 impl Codec for Welcome {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.version.encode(buffer)?;
-        self.cipher_suite.encode(buffer)?;
+        self.cipher_suite.name().encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.secrets)?;
         encode_vec(VecSize::VecU32, buffer, &self.encrypted_group_info)?;
         Ok(())
@@ -355,7 +356,7 @@ impl Codec for Welcome {
         let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
         Ok(Welcome {
             version,
-            cipher_suite,
+            cipher_suite: Config::ciphersuite(cipher_suite)?,
             secrets,
             encrypted_group_info,
         })
