@@ -305,14 +305,14 @@ fn group_operations() {
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_bob.clone()],
-                vec![],
+                &[],
             )
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
                 mls_plaintext_commit,
                 vec![update_proposal_bob],
-                vec![kpb_option.unwrap()],
+                &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Bob)");
 
@@ -352,14 +352,14 @@ fn group_operations() {
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_alice.clone()],
-                vec![kpb_option.unwrap()],
+                &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_alice],
-                vec![],
+                &[],
             )
             .expect("Error applying commit (Bob)");
 
@@ -399,14 +399,14 @@ fn group_operations() {
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_bob.clone()],
-                vec![kpb_option.unwrap()],
+                &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_bob],
-                vec![bob_update_key_package_bundle],
+                &[bob_update_key_package_bundle],
             )
             .expect("Error applying commit (Bob)");
 
@@ -452,14 +452,14 @@ fn group_operations() {
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![add_charlie_proposal_bob.clone()],
-                vec![],
+                &[],
             )
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![add_charlie_proposal_bob],
-                vec![],
+                &[],
             )
             .expect("Error applying commit (Bob)");
 
@@ -537,21 +537,21 @@ fn group_operations() {
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_charlie.clone()],
-                vec![],
+                &[],
             )
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_charlie.clone()],
-                vec![],
+                &[],
             )
             .expect("Error applying commit (Bob)");
         group_charlie
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![update_proposal_charlie],
-                vec![kpb_option.unwrap()],
+                &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Charlie)");
 
@@ -588,7 +588,7 @@ fn group_operations() {
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![remove_bob_proposal_charlie.clone()],
-                vec![],
+                &[],
             )
             .expect("Error applying commit (Alice)");
         assert!(
@@ -596,7 +596,7 @@ fn group_operations() {
                 .apply_commit(
                     mls_plaintext_commit.clone(),
                     vec![remove_bob_proposal_charlie.clone()],
-                    vec![],
+                    &[],
                 )
                 .unwrap_err()
                 == ApplyCommitError::SelfRemoved
@@ -605,7 +605,7 @@ fn group_operations() {
             .apply_commit(
                 mls_plaintext_commit.clone(),
                 vec![remove_bob_proposal_charlie],
-                vec![kpb_option.unwrap()],
+                &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Charlie)");
 
