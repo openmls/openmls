@@ -20,20 +20,23 @@ fn create_commit_optional_path() {
         &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions.clone(),
-    );
+    )
+    .unwrap();
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &bob_credential_bundle,
         mandatory_extensions.clone(),
-    );
+    )
+    .unwrap();
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions,
-    );
+    )
+    .unwrap();
     let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
     assert!(alice_update_key_package.verify().is_ok());
 
@@ -44,7 +47,8 @@ fn create_commit_optional_path() {
         ciphersuite_name,
         alice_key_package_bundle,
         GroupConfig::default(),
-    );
+    )
+    .unwrap();
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field on the Commit
@@ -190,13 +194,15 @@ fn group_operations() {
             &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
 
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite_name],
             &bob_credential_bundle,
-            mandatory_extensions.clone(),
-        );
+            mandatory_extensions,
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.get_key_package();
 
         // === Alice creates a group ===
@@ -206,8 +212,9 @@ fn group_operations() {
             &group_id,
             ciphersuite_name,
             alice_key_package_bundle,
-            group_config,
-        );
+            GroupConfig::default(),
+        )
+        .unwrap();
 
         // === Alice adds Bob ===
         let bob_add_proposal = group_alice.create_add_proposal(

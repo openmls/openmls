@@ -15,6 +15,8 @@ pub enum WelcomeError {
     InvalidGroupInfoSignature = 107,
     GroupInfoDecryptionFailure = 108,
     DuplicateRatchetTreeExtension = 109,
+    UnsupportedMlsVersion = 110,
+    UnknownError = 111,
 }
 
 #[derive(PartialEq, Debug)]
@@ -56,7 +58,7 @@ impl From<TreeError> for WelcomeError {
             TreeError::DuplicateIndex => WelcomeError::InvalidRatchetTree,
             TreeError::InvalidArguments => WelcomeError::InvalidRatchetTree,
             TreeError::InvalidUpdatePath => WelcomeError::InvalidRatchetTree,
-            TreeError::NoneError => WelcomeError::InvalidRatchetTree,
+            TreeError::UnknownError => WelcomeError::UnknownError,
         }
     }
 }
@@ -73,5 +75,16 @@ impl From<ConfigError> for ApplyCommitError {
 impl From<ExtensionError> for ApplyCommitError {
     fn from(_e: ExtensionError) -> ApplyCommitError {
         ApplyCommitError::NoParentHashExtension
+    }
+}
+
+// TODO: Should get fixed in #83
+impl From<ConfigError> for WelcomeError {
+    fn from(e: ConfigError) -> WelcomeError {
+        match e {
+            ConfigError::UnsupportedMlsVersion => WelcomeError::UnsupportedMlsVersion,
+            ConfigError::UnsupportedCiphersuite => WelcomeError::CiphersuiteMismatch,
+            _ => WelcomeError::UnknownError,
+        }
     }
 }

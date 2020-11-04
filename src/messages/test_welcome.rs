@@ -1,6 +1,8 @@
+#![allow(non_snake_case)]
+
 use super::{EncryptedGroupSecrets, GroupInfo, Welcome};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Signature},
+    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Signature},
     codec::*,
     config::Config,
     group::{GroupEpoch, GroupId},
@@ -9,7 +11,7 @@ use crate::{
 };
 
 macro_rules! test_welcome_msg {
-    ($name:ident, $suite:expr, $version:expr) => {
+    ($name:ident, $ciphersuite:expr, $version:expr) => {
         #[test]
         fn $name() {
             // We use this dummy group info in all test cases.
@@ -24,21 +26,19 @@ macro_rules! test_welcome_msg {
                 signature: Signature::new_empty(),
             };
 
-            let ciphersuite = Ciphersuite::new($suite);
-
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_slice(&randombytes(ciphersuite.aead_key_length()));
+            let welcome_key = AeadKey::from_slice(&randombytes($ciphersuite.aead_key_length()));
             let welcome_nonce =
-                AeadNonce::from_slice(&randombytes(ciphersuite.aead_nonce_length()));
+                AeadNonce::from_slice(&randombytes($ciphersuite.aead_nonce_length()));
 
             // Generate receiver key pair.
-            let receiver_key_pair = ciphersuite.derive_hpke_keypair(&[1, 2, 3, 4]);
+            let receiver_key_pair = $ciphersuite.derive_hpke_keypair(&[1, 2, 3, 4]);
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
             let secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: vec![0, 0, 0, 0],
-                encrypted_group_secrets: ciphersuite.hpke_seal(
+                encrypted_group_secrets: $ciphersuite.hpke_seal(
                     receiver_key_pair.public_key(),
                     hpke_info,
                     hpke_aad,
@@ -47,7 +47,7 @@ macro_rules! test_welcome_msg {
             }];
 
             // Encrypt the group info.
-            let encrypted_group_info = ciphersuite
+            let encrypted_group_info = $ciphersuite
                 .aead_seal(
                     &group_info.encode_detached().unwrap(),
                     &[],
@@ -57,7 +57,12 @@ macro_rules! test_welcome_msg {
                 .unwrap();
 
             // Now build the welcome message.
-            let msg = Welcome::new($version, $suite, secrets, encrypted_group_info.clone());
+            let msg = Welcome::new(
+                $version,
+                $ciphersuite,
+                secrets,
+                encrypted_group_info.clone(),
+            );
 
             // Encode, decode and re-assemble
             let msg_encoded = msg.encode_detached().unwrap();
@@ -67,10 +72,10 @@ macro_rules! test_welcome_msg {
 
             // Check that the welcome message is the same
             assert_eq!(msg_decoded.version, $version);
-            assert_eq!(msg_decoded.cipher_suite, $suite);
+            assert_eq!(msg_decoded.cipher_suite, $ciphersuite);
             for secret in msg_decoded.secrets {
                 assert_eq!(secret.key_package_hash, secret.key_package_hash);
-                let ptxt = ciphersuite.hpke_open(
+                let ptxt = $ciphersuite.hpke_open(
                     &secret.encrypted_group_secrets,
                     receiver_key_pair.private_key(),
                     hpke_info,
@@ -84,20 +89,21 @@ macro_rules! test_welcome_msg {
 }
 
 test_welcome_msg!(
-    test_welcome_1_1,
-    Config::supported_ciphersuites()[0],
+    test_welcome_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap(),
     Config::supported_versions()[0]
 );
 
 test_welcome_msg!(
-    test_welcome_2_1,
-    Config::supported_ciphersuites()[1],
+    test_welcome_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519)
+        .unwrap(),
     Config::supported_versions()[0]
 );
 
 test_welcome_msg!(
-    test_welcome_3_1,
-    Config::supported_ciphersuites()[2],
+    test_welcome_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap(),
     Config::supported_versions()[0]
 );
 

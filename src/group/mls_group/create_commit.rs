@@ -188,7 +188,7 @@ impl MlsGroup {
             // Create welcome message
             let welcome = Welcome::new(
                 Config::supported_versions()[0],
-                self.ciphersuite.name(),
+                self.ciphersuite,
                 secrets,
                 encrypted_group_info,
             );

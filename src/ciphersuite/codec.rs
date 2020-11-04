@@ -16,18 +16,6 @@ impl Codec for CiphersuiteName {
     }
 }
 
-impl Codec for Ciphersuite {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (self.name as u16).encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(Ciphersuite::new(CiphersuiteName::try_from(u16::decode(
-            cursor,
-        )?)?))
-    }
-}
-
 impl Codec for SignaturePublicKey {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.value)?;
