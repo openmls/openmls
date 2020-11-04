@@ -22,9 +22,6 @@ rust-crypto = ["evercrypt/rust-crypto-aes"]
 evercrypt = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt", branch = "0.0.3", features = ["serialization"] }
 evercrypt-sys = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt-sys", branch = "0.0.3" }
 
-[patch."https://github.com/franziskuskiefer/hpke-rs"]
-hpke = { path = "../hpke-rs" }
-
 [dev-dependencies]
 criterion = "^0.2"
 
