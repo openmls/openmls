@@ -1,19 +1,3 @@
-// maelstrom
-// Copyright (C) 2020 Raphael Robert
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see http://www.gnu.org/licenses/.
-
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
@@ -23,7 +7,7 @@ use crate::messages::{proposals::*, *};
 // Tree modules
 pub(crate) mod codec;
 pub(crate) mod hash_input;
-pub(crate) mod index;
+pub mod index;
 pub mod node;
 pub(crate) mod path_keys;
 pub(crate) mod private_tree;
@@ -34,7 +18,6 @@ pub(crate) mod treemath;
 use hash_input::*;
 use index::*;
 use node::*;
-use path_keys::PathKeys;
 use private_tree::{PathSecrets, PrivateTree};
 
 // Internal tree tests
@@ -49,7 +32,7 @@ mod test_treemath;
 #[cfg(test)]
 mod test_util;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// The ratchet tree.
 pub struct RatchetTree {
     /// The ciphersuite used in this tree.
@@ -73,18 +56,22 @@ impl RatchetTree {
             key_package: Some(kpb.get_key_package().clone()),
             node: None,
         }];
-        let private_tree = PrivateTree::new(
-            kpb.private_key,
-            NodeIndex::from(0u32),
-            PathKeys::default(),
-            CommitSecret(Vec::new()),
-            Vec::new(),
-        );
+        let private_tree = PrivateTree::from_key_package_bundle(NodeIndex::from(0u32), &kpb);
 
         RatchetTree {
             ciphersuite: Ciphersuite::new(ciphersuite_name),
             nodes,
             private_tree,
+        }
+    }
+
+    /// Create a new `RatchetTree` by cloning the public tree nodes from another tree
+    /// and an empty `PrivateTree`
+    pub(crate) fn new_from_public_tree(ratchet_tree: &RatchetTree) -> Self {
+        RatchetTree {
+            ciphersuite: ratchet_tree.ciphersuite.clone(),
+            nodes: ratchet_tree.nodes.clone(),
+            private_tree: PrivateTree::new(ratchet_tree.private_tree.get_node_index()),
         }
     }
 
@@ -129,7 +116,7 @@ impl RatchetTree {
 
         let ciphersuite = Ciphersuite::new(ciphersuite_name);
         // Build private tree
-        let private_tree = PrivateTree::from_private_key(own_node_index, kpb.private_key);
+        let private_tree = PrivateTree::from_key_package_bundle(own_node_index, &kpb);
 
         // Build tree.
         Ok(RatchetTree {
@@ -248,7 +235,7 @@ impl RatchetTree {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
         self.nodes[treemath::root(size).as_usize()].blank();
-        for index in treemath::dirpath(index, size)
+        for index in treemath::direct_path_root(index, size)
             .expect("blank_member: TreeMath error when computing direct path.")
         {
             self.nodes[index.as_usize()].blank();
@@ -352,18 +339,10 @@ impl RatchetTree {
         let secret = self
             .ciphersuite
             .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
-        self.private_tree.generate_path_secrets(
-            &self.ciphersuite,
-            Some(&secret),
-            common_path.len(),
-        );
-        self.private_tree
-            .generate_commit_secret(&self.ciphersuite)?;
-
-        // Update path key pairs for the new path secrets generated above.
-        let new_path_public_keys = self
-            .private_tree
-            .generate_path_keypairs(&self.ciphersuite, &common_path)?;
+        // Derive new path secrets and generate keypairs
+        let new_path_public_keys =
+            self.private_tree
+                .continue_path_secrets(&self.ciphersuite, secret, &common_path);
 
         // Extract public keys from UpdatePath
         let update_path_public_keys: Vec<HPKEPublicKey> = update_path
@@ -393,85 +372,95 @@ impl RatchetTree {
     /// Update the private tree with the new `KeyPackageBundle`.
     pub(crate) fn replace_private_tree(
         &mut self,
+        ciphersuite: &Ciphersuite,
         key_package_bundle: KeyPackageBundle,
         group_context: &[u8],
     ) -> Result<CommitSecret, TreeError> {
         let _path_option = self.replace_private_tree_(
-            key_package_bundle,
+            ciphersuite,
+            &key_package_bundle,
             group_context,
             false, /* without update path */
-        )?;
+        );
         Ok(self.private_tree.get_commit_secret())
     }
 
     /// Update the private tree.
     pub(crate) fn refresh_private_tree(
         &mut self,
+        ciphersuite: &Ciphersuite,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-    ) -> Result<(CommitSecret, Option<UpdatePath>, Option<PathSecrets>), TreeError> {
+    ) -> (CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.get_own_node_index();
-        let (private_key, public_key) = self.ciphersuite.new_hpke_keypair().into_keys();
 
         // Replace the init key in the current KeyPackage
-        let key_package_bundle = {
-            // Generate new keypair and replace it in current KeyPackage
-            let mut key_package = self.get_own_key_package_ref().clone();
-            key_package.set_hpke_init_key(public_key);
-            KeyPackageBundle::from_values(key_package, private_key)
-        };
+        let mut key_package_bundle =
+            KeyPackageBundle::from_rekeyed_key_package(ciphersuite, self.get_own_key_package_ref());
 
         // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
         let mut path = self
             .replace_private_tree_(
-                key_package_bundle,
+                ciphersuite,
+                &key_package_bundle,
                 group_context,
                 true, /* with update path */
-            )?
+            )
             .unwrap();
 
-        // Compute the parent hash extension and update the KeyPackage
+        // Compute the parent hash extension and update the KeyPackage and sign it
         let parent_hash = self.compute_parent_hash(own_index);
         let key_package = self.get_own_key_package_ref_mut();
         key_package.update_parent_hash(&parent_hash);
+        // Sign the KeyPackage
         key_package.sign(credential_bundle);
+        // Store it in the UpdatePath
         path.leaf_key_package = key_package.clone();
+        // Update it in the KeyPackageBundle
+        key_package_bundle.set_key_package(key_package.clone());
 
-        Ok((
+        (
             self.private_tree.get_commit_secret(),
-            Some(path),
-            Some(self.private_tree.get_path_secrets().to_vec()),
-        ))
+            path,
+            self.private_tree.get_path_secrets().to_vec(),
+            key_package_bundle,
+        )
     }
 
     /// Replace the private tree with a new one based on the `key_package_bundle`.
     fn replace_private_tree_(
         &mut self,
-        key_package_bundle: KeyPackageBundle,
+        ciphersuite: &Ciphersuite,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         with_update_path: bool,
-    ) -> Result<Option<UpdatePath>, TreeError> {
-        let (private_key, key_package) = key_package_bundle.into_tuple();
+    ) -> Option<UpdatePath> {
+        let key_package = key_package_bundle.get_key_package().clone();
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
             .expect("replace_private_tree: Error when computing direct path.");
         // Update private tree and merge corresponding public keys.
-        let update_path_option = if self.leaf_count().as_usize() > 1 {
-            let new_public_keys = self.private_tree.update(
-                &self.ciphersuite,
-                Some(private_key),
+        if self.leaf_count().as_usize() > 1 {
+            let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
+                ciphersuite,
+                own_index,
+                key_package_bundle,
                 &direct_path_root,
-            )?;
-            self.merge_public_keys(&new_public_keys, &direct_path_root)?;
+            );
+            self.private_tree = private_tree;
+            self.merge_public_keys(&new_public_keys, &direct_path_root)
+                .unwrap();
 
             // Update own leaf node with the new values
             self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
 
             if with_update_path {
-                let update_path_nodes = self.encrypt_to_copath(new_public_keys, group_context)?;
+                let update_path_nodes = self
+                    .encrypt_to_copath(new_public_keys, group_context)
+                    .unwrap();
                 let update_path = UpdatePath::new(key_package, update_path_nodes);
                 Some(update_path)
             } else {
@@ -479,9 +468,7 @@ impl RatchetTree {
             }
         } else {
             None
-        };
-
-        Ok(update_path_option)
+        }
     }
 
     /// Encrypt the path secrets to the co path and return the update path.
@@ -680,13 +667,7 @@ impl RatchetTree {
                 }
                 .clone();
                 // Update the private tree with new values
-                self.private_tree = PrivateTree::new(
-                    own_kpb.private_key,
-                    sender_index,
-                    PathKeys::default(),
-                    CommitSecret(Vec::new()),
-                    Vec::new(),
-                );
+                self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
         }
         for queued_proposal in proposal_queue
@@ -695,7 +676,7 @@ impl RatchetTree {
         {
             has_removes = true;
             let remove_proposal = &queued_proposal.get_proposal_ref().as_remove().unwrap();
-            let removed = NodeIndex::from(remove_proposal.removed);
+            let removed = NodeIndex::from(LeafIndex::from(remove_proposal.removed));
             // Check if we got removed from the group
             if removed == self.get_own_node_index() {
                 self_removed = true;
