@@ -36,7 +36,7 @@
 <span id="35">35</span>
 <span id="36">36</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ProtocolVersion</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 
@@ -56,7 +56,7 @@
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">Signature</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">kp</span> <span class="op">=</span> <span class="ident">KeyPackage</span> {
             <span class="ident">protocol_version</span>,
-            <span class="ident">cipher_suite</span>: <span class="ident">cipher_suite_name</span>,
+            <span class="ident">cipher_suite</span>: <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">cipher_suite_name</span>)<span class="question-mark">?</span>,
             <span class="ident">hpke_init_key</span>,
             <span class="ident">credential</span>,
             <span class="ident">extensions</span>,

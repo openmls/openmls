@@ -73,18 +73,6 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
-<span id="75">75</span>
-<span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Codec implementations for the ciphersuites.</span>
 <span class="doccomment">//! Provides encoding and decoding functionality.</span>
@@ -101,18 +89,6 @@
     }
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">CiphersuiteName</span>::<span class="ident">try_from</span>(<span class="ident">u16</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">Ciphersuite</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        (<span class="self">self</span>.<span class="ident">name</span> <span class="kw">as</span> <span class="ident">u16</span>).<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">Ciphersuite</span>::<span class="ident">new</span>(<span class="ident">CiphersuiteName</span>::<span class="ident">try_from</span>(<span class="ident">u16</span>::<span class="ident">decode</span>(
-            <span class="ident">cursor</span>,
-        )<span class="question-mark">?</span>)<span class="question-mark">?</span>))
     }
 }
 

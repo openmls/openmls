@@ -362,9 +362,11 @@
 <span id="361">361</span>
 <span id="362">362</span>
 <span id="363">363</span>
+<span id="364">364</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ProtocolVersion</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="kw-2">*</span>;
@@ -667,7 +669,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Welcome</span> {
     <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-    <span class="ident">cipher_suite</span>: <span class="ident">CiphersuiteName</span>,
+    <span class="ident">cipher_suite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
     <span class="ident">secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
     <span class="ident">encrypted_group_info</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
@@ -677,7 +679,7 @@
     <span class="doccomment">/// Note that secrets and the encrypted group info are consumed.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-        <span class="ident">cipher_suite</span>: <span class="ident">CiphersuiteName</span>,
+        <span class="ident">cipher_suite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
         <span class="ident">secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
         <span class="ident">encrypted_group_info</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
@@ -690,7 +692,7 @@
     }
 
     <span class="doccomment">/// Get a reference to the ciphersuite in this Welcome message.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">CiphersuiteName</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span> {
         <span class="self">self</span>.<span class="ident">cipher_suite</span>
     }
 
@@ -708,7 +710,7 @@
 <span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">Welcome</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">version</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">cipher_suite</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">cipher_suite</span>.<span class="ident">name</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secrets</span>)<span class="question-mark">?</span>;
         <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encrypted_group_info</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -720,7 +722,7 @@
         <span class="kw">let</span> <span class="ident">encrypted_group_info</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">Welcome</span> {
             <span class="ident">version</span>,
-            <span class="ident">cipher_suite</span>,
+            <span class="ident">cipher_suite</span>: <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">cipher_suite</span>)<span class="question-mark">?</span>,
             <span class="ident">secrets</span>,
             <span class="ident">encrypted_group_info</span>,
         })

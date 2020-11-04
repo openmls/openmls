@@ -893,10 +893,22 @@
 <span id="892">892</span>
 <span id="893">893</span>
 <span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">creds</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
@@ -932,7 +944,7 @@
 <span class="doccomment">/// The ratchet tree.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RatchetTree</span> {
     <span class="doccomment">/// The ciphersuite used in this tree.</span>
-    <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
+    <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
 
     <span class="doccomment">/// All nodes in the tree.</span>
     <span class="doccomment">/// Note that these only hold public values.</span>
@@ -946,7 +958,7 @@
 
 <span class="kw">impl</span> <span class="ident">RatchetTree</span> {
     <span class="doccomment">/// Create a new empty `RatchetTree`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite_name</span>: <span class="ident">CiphersuiteName</span>, <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>) <span class="op">-&gt;</span> <span class="ident">RatchetTree</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>) <span class="op">-&gt;</span> <span class="ident">RatchetTree</span> {
         <span class="kw">let</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Node</span> {
             <span class="ident">node_type</span>: <span class="ident">NodeType</span>::<span class="ident">Leaf</span>,
             <span class="ident">key_package</span>: <span class="prelude-val">Some</span>(<span class="ident">kpb</span>.<span class="ident">get_key_package</span>().<span class="ident">clone</span>()),
@@ -955,7 +967,7 @@
         <span class="kw">let</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree</span>::<span class="ident">from_key_package_bundle</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="number">0u32</span>), <span class="kw-2">&amp;</span><span class="ident">kpb</span>);
 
         <span class="ident">RatchetTree</span> {
-            <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>::<span class="ident">new</span>(<span class="ident">ciphersuite_name</span>),
+            <span class="ident">ciphersuite</span>,
             <span class="ident">nodes</span>,
             <span class="ident">private_tree</span>,
         }
@@ -965,7 +977,7 @@
     <span class="doccomment">/// and an empty `PrivateTree`</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_public_tree</span>(<span class="ident">ratchet_tree</span>: <span class="kw-2">&amp;</span><span class="ident">RatchetTree</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">RatchetTree</span> {
-            <span class="ident">ciphersuite</span>: <span class="ident">ratchet_tree</span>.<span class="ident">ciphersuite</span>.<span class="ident">clone</span>(),
+            <span class="ident">ciphersuite</span>: <span class="ident">ratchet_tree</span>.<span class="ident">ciphersuite</span>,
             <span class="ident">nodes</span>: <span class="ident">ratchet_tree</span>.<span class="ident">nodes</span>.<span class="ident">clone</span>(),
             <span class="ident">private_tree</span>: <span class="ident">PrivateTree</span>::<span class="ident">new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">private_tree</span>.<span class="ident">get_node_index</span>()),
         }
@@ -974,7 +986,7 @@
     <span class="doccomment">/// Generate a new `RatchetTree` from `Node`s with the client&#39;s key package</span>
     <span class="doccomment">/// bundle `kpb`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_nodes</span>(
-        <span class="ident">ciphersuite_name</span>: <span class="ident">CiphersuiteName</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
         <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">node_options</span>: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>],
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RatchetTree</span>, <span class="ident">TreeError</span><span class="op">&gt;</span> {
@@ -1010,7 +1022,6 @@
             }
         }
 
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Ciphersuite</span>::<span class="ident">new</span>(<span class="ident">ciphersuite_name</span>);
         <span class="comment">// Build private tree</span>
         <span class="kw">let</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree</span>::<span class="ident">from_key_package_bundle</span>(<span class="ident">own_node_index</span>, <span class="kw-2">&amp;</span><span class="ident">kpb</span>);
 
@@ -1784,9 +1795,20 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeError</span> {
     <span class="ident">InvalidArguments</span>,
-    <span class="ident">NoneError</span>,
     <span class="ident">DuplicateIndex</span>,
     <span class="ident">InvalidUpdatePath</span>,
+    <span class="ident">UnknownError</span>,
+}
+
+<span class="comment">// TODO: Should get fixed in #83</span>
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ConfigError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TreeError</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">ConfigError</span>) <span class="op">-&gt;</span> <span class="ident">TreeError</span> {
+        <span class="kw">match</span> <span class="ident">e</span> {
+            <span class="ident">ConfigError</span>::<span class="ident">UnsupportedMlsVersion</span> <span class="op">=&gt;</span> <span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span>,
+            <span class="ident">ConfigError</span>::<span class="ident">UnsupportedCiphersuite</span> <span class="op">=&gt;</span> <span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span>,
+            <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">TreeError</span>::<span class="ident">UnknownError</span>,
+        }
+    }
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "openmls";</script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>

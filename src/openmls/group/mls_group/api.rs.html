@@ -80,8 +80,10 @@
 <span id="79">79</span>
 <span id="80">80</span>
 <span id="81">81</span>
+<span id="82">82</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">creds</span>::<span class="ident">CredentialBundle</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
@@ -95,7 +97,7 @@
         <span class="ident">ciphersuite_name</span>: <span class="ident">CiphersuiteName</span>,
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">config</span>: <span class="ident">GroupConfig</span>,
-    ) <span class="op">-&gt;</span> <span class="self">Self</span>;
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span>;
     <span class="doccomment">/// Join a group from a Welcome message</span>
     <span class="kw">fn</span> <span class="ident">new_from_welcome</span>(
         <span class="ident">welcome</span>: <span class="ident">Welcome</span>,
