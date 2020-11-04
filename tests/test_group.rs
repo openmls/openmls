@@ -104,7 +104,7 @@ fn create_commit_optional_path() {
     let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
     // Bob creates group from Welcome
-    let _group_bob = match MlsGroup::new_from_welcome(
+    let group_bob = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -115,7 +115,7 @@ fn create_commit_optional_path() {
 
     assert_eq!(
         group_alice.tree().public_key_tree(),
-        group_alice.tree().public_key_tree()
+        group_bob.tree().public_key_tree()
     );
 
     // Alice updates
@@ -150,52 +150,6 @@ fn create_commit_optional_path() {
             vec![kpb_option.unwrap()],
         )
         .expect("Error applying commit");
-}
-
-#[test]
-fn basic_group_setup() {
-    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let group_aad = b"Alice's test group";
-
-    // Define identities
-    let alice_credential_bundle =
-        CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite_name).unwrap();
-    let bob_credential_bundle =
-        CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite_name).unwrap();
-
-    // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &bob_credential_bundle, Vec::new());
-    let bob_key_package = bob_key_package_bundle.get_key_package();
-
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &alice_credential_bundle, Vec::new());
-
-    // Alice creates a group
-    let group_id = [1, 2, 3, 4];
-    let group_config = GroupConfig::default();
-    let group_alice = MlsGroup::new(
-        &group_id,
-        ciphersuite_name,
-        alice_key_package_bundle,
-        group_config,
-    );
-
-    // Alice adds Bob
-    let bob_add_proposal = group_alice.create_add_proposal(
-        group_aad,
-        &alice_credential_bundle,
-        bob_key_package.clone(),
-    );
-    let _commit = match group_alice.create_commit(
-        group_aad,
-        &alice_credential_bundle,
-        vec![bob_add_proposal],
-        true,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
 }
 
 #[test]
@@ -325,7 +279,7 @@ fn group_operations() {
             &bob_credential_bundle,
             bob_update_key_package_bundle.get_key_package().clone(),
         );
-        let (mls_plaintext_commit, _, kpb_option) = match group_bob.create_commit(
+        let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             &[],
             &bob_credential_bundle,
             vec![update_proposal_bob.clone()],
@@ -337,6 +291,8 @@ fn group_operations() {
 
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
+        // Check there is no Welcome message
+        assert!(welcome_option.is_none());
 
         group_alice
             .apply_commit(
@@ -347,7 +303,7 @@ fn group_operations() {
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
-                mls_plaintext_commit.clone(),
+                mls_plaintext_commit,
                 vec![update_proposal_bob],
                 vec![kpb_option.unwrap()],
             )
