@@ -2,7 +2,7 @@
 //!
 //! ## ConfigError
 //! This error type is thrown when the configuration is invalid or not supported
-//! by maelstrom.
+//! by openmls.
 //!
 
 #[derive(Debug, PartialEq)]

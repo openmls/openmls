@@ -1,15 +1,12 @@
 //! # Test configuration
 //!
-//! Maelstrom can be configured globally to define
+//! openmls can be configured globally to define
 //! * which MLS protocol versions are supported
 //! * which ciphersuites are supported
 //! * which extensions are supported
 //!
 
-use maelstrom::{
-    ciphersuite::CiphersuiteName, codec::Codec, config::Config, config::ProtocolVersion,
-    extensions::ExtensionType,
-};
+use openmls::prelude::*;
 
 #[test]
 fn protocol_version() {

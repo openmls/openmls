@@ -1,19 +1,3 @@
-// maelstrom
-// Copyright (C) 2020 Raphael Robert
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see http://www.gnu.org/licenses/.
-
 use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
 use crate::errors::ConfigError;
 use serde::{Deserialize, Serialize};
@@ -253,6 +237,16 @@ pub trait Extension: Debug + ExtensionHelper {
     /// that's not a `KeyIDExtension`.
     fn to_key_id_extension(&self) -> Result<&KeyIDExtension, ExtensionError> {
         match self.as_any().downcast_ref::<KeyIDExtension>() {
+            Some(e) => Ok(e),
+            None => Err(ExtensionError::InvalidExtensionType),
+        }
+    }
+
+    /// Get a reference to the `RatchetTreeExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `RatchetTreeExtension`.
+    fn to_ratchet_tree_extension_ref(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<RatchetTreeExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),
         }
