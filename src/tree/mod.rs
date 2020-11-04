@@ -373,12 +373,12 @@ impl RatchetTree {
     pub(crate) fn replace_private_tree(
         &mut self,
         ciphersuite: &Ciphersuite,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
     ) -> Result<CommitSecret, TreeError> {
         let _path_option = self.replace_private_tree_(
             ciphersuite,
-            &key_package_bundle,
+            key_package_bundle,
             group_context,
             false, /* without update path */
         );
@@ -632,7 +632,7 @@ impl RatchetTree {
         &mut self,
         proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
-        updates_key_package_bundles: &mut Vec<KeyPackageBundle>,
+        updates_key_package_bundles: &[KeyPackageBundle],
         // (path_required, self_removed, invitation_list)
     ) -> Result<(bool, bool, InvitationList), TreeError> {
         let mut has_updates = false;
@@ -657,16 +657,14 @@ impl RatchetTree {
             self.nodes[sender_index.as_usize()] = leaf_node;
             // Check if it is a self-update
             if sender_index == self.get_own_node_index() {
-                let own_kpb_index = match updates_key_package_bundles
+                let own_kpb = match updates_key_package_bundles
                     .iter()
-                    .position(|kpb| kpb.get_key_package() == &update_proposal.key_package)
+                    .find(|kpb| kpb.get_key_package() == &update_proposal.key_package)
                 {
-                    Some(i) => i,
+                    Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
                     None => return Err(TreeError::InvalidArguments),
                 };
-                // Get and remove own KeyPackageBundle from the list of available ones
-                let own_kpb = updates_key_package_bundles.remove(own_kpb_index);
                 // Update the private tree with new values
                 self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
