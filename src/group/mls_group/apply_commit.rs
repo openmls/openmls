@@ -39,7 +39,7 @@ impl MlsGroup {
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
         let (path_required_by_commit, group_removed, _invited_members) = match provisional_tree
-            .apply_proposals(&commit.proposals, proposal_queue, &own_key_packages)
+            .apply_proposals(&commit.proposals, proposal_queue, own_key_packages)
         {
             Ok(res) => res,
             Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
