@@ -200,14 +200,13 @@ fn group_operations() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite_name],
             &bob_credential_bundle,
-            mandatory_extensions,
+            mandatory_extensions.clone(),
         )
         .unwrap();
         let bob_key_package = bob_key_package_bundle.get_key_package();
 
         // === Alice creates a group ===
         let group_id = [1, 2, 3, 4];
-        let group_config = GroupConfig::default();
         let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite_name,
@@ -279,7 +278,8 @@ fn group_operations() {
             &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
 
         let update_proposal_bob = group_bob.create_update_proposal(
             &[],
@@ -327,7 +327,8 @@ fn group_operations() {
             &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
 
         let update_proposal_alice = group_alice.create_update_proposal(
             &[],
@@ -373,7 +374,8 @@ fn group_operations() {
             &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
 
         let update_proposal_bob = group_bob.create_update_proposal(
             &[],
@@ -423,7 +425,8 @@ fn group_operations() {
             &[ciphersuite_name],
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
         let charlie_key_package = charlie_key_package_bundle.get_key_package().clone();
 
         let add_charlie_proposal_bob =
@@ -509,7 +512,8 @@ fn group_operations() {
             &[ciphersuite_name],
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
 
         let update_proposal_charlie = group_charlie.create_update_proposal(
             &[],
