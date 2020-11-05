@@ -239,7 +239,6 @@ impl KeyPackageBundle {
     ) -> Result<Self, ConfigError> {
         debug_assert!(!ciphersuites.is_empty());
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_secret = get_random_vec(ciphersuite.hash_length());
         let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
     }
