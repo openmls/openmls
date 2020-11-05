@@ -95,7 +95,7 @@ impl MlsGroup {
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &provisional_epoch_secrets.confirmation_key,
-            &Secret::from(confirmed_transcript_hash.clone()),
+            &confirmed_transcript_hash.clone(),
         );
         // Create MLSPlaintext
         let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));

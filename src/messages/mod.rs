@@ -41,11 +41,14 @@ impl ConfirmationTag {
     pub fn new(
         ciphersuite: &Ciphersuite,
         confirmation_key: &Secret,
-        confirmed_transcript_hash: &Secret,
+        confirmed_transcript_hash: &[u8],
     ) -> Self {
         ConfirmationTag(
             ciphersuite
-                .hkdf_extract(confirmation_key, confirmed_transcript_hash)
+                .hkdf_extract(
+                    confirmation_key,
+                    &Secret::from(confirmed_transcript_hash.to_vec()),
+                )
                 .to_vec(),
         )
     }

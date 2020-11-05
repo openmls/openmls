@@ -145,7 +145,7 @@ impl MlsGroup {
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &epoch_secrets.confirmation_key,
-            &Secret::from(group_context.confirmed_transcript_hash.clone()),
+            &group_context.confirmed_transcript_hash.clone(),
         );
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
