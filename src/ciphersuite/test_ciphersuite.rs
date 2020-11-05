@@ -1,6 +1,5 @@
 //! Unit tests for the ciphersuites.
 
-use super::*;
 use crate::config::Config;
 
 // Spot test to make sure hpke seal/open work.
@@ -20,10 +19,7 @@ fn test_hpke_seal_open() {
 
 #[test]
 fn test_sign_verify() {
-    for &ciphersuite_name in Config::supported_ciphersuites() {
-        let ciphersuite =
-        Config::ciphersuite(ciphersuite_name)
-            .unwrap();
+    for ciphersuite in Config::supported_ciphersuites() {
         let keypair = ciphersuite.new_signature_keypair();
         let payload = &[1, 2, 3];
         let signature = keypair.sign(payload).unwrap();

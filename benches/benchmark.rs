@@ -7,11 +7,11 @@ use criterion::Criterion;
 use openmls::prelude::*;
 
 fn criterion_kp_bundle(c: &mut Criterion) {
-    for &ciphersuite_name in Config::supported_ciphersuites() {
+    for ciphersuite in Config::supported_ciphersuites() {
         c.bench_function(
             &format!(
                 "KeyPackage create bundle with ciphersuite: {:?}",
-                ciphersuite_name
+                ciphersuite.name()
             ),
             move |b| {
                 b.iter_with_setup(
@@ -19,12 +19,17 @@ fn criterion_kp_bundle(c: &mut Criterion) {
                         CredentialBundle::new(
                             vec![1, 2, 3],
                             CredentialType::Basic,
-                            ciphersuite_name,
+                            ciphersuite.name(),
                         )
                         .unwrap()
                     },
                     |credential_bundle: CredentialBundle| {
-                        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new());
+                        KeyPackageBundle::new(
+                            &[ciphersuite.name()],
+                            &credential_bundle,
+                            Vec::new(),
+                        )
+                        .unwrap();
                     },
                 );
             },

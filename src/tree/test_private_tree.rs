@@ -3,23 +3,20 @@
 #[cfg(test)]
 use super::{index::NodeIndex, private_tree::*, test_util::*};
 #[cfg(test)]
-use crate::{ciphersuite::*, config::Config, creds::*, key_packages::*, utils::*};
+use crate::{ciphersuite::*, creds::*, key_packages::*, utils::*};
 
 #[cfg(test)]
 // Common setup for tests.
-fn setup(
-    ciphersuite_name: CiphersuiteName,
-    len: usize,
-) -> (&'static Ciphersuite, KeyPackageBundle, NodeIndex, Vec<NodeIndex>) {
-    let ciphersuite = Ciphersuite::new(ciphersuite_name);
+fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, NodeIndex, Vec<NodeIndex>) {
     let credential_bundle =
-        CredentialBundle::new("username".into(), CredentialType::Basic, ciphersuite_name).unwrap();
+        CredentialBundle::new("username".into(), CredentialType::Basic, ciphersuite.name())
+            .unwrap();
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![]).unwrap();
+        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
     let own_index = NodeIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 
-    (ciphersuite, key_package_bundle, own_index, direct_path)
+    (key_package_bundle, own_index, direct_path)
 }
 
 #[cfg(test)]
@@ -48,9 +45,8 @@ fn test_private_tree(
 fn create_private_tree_from_secret() {
     use crate::config::*;
     const PATH_LENGTH: usize = 33;
-    for &ciphersuite_name in Config::supported_ciphersuites() {
-        let (ciphersuite, key_package_bundle, own_index, direct_path) =
-            setup(ciphersuite_name, PATH_LENGTH);
+    for ciphersuite in Config::supported_ciphersuites() {
+        let (key_package_bundle, own_index, direct_path) = setup(ciphersuite, PATH_LENGTH);
 
         let mut private_tree = PrivateTree::from_key_package_bundle(own_index, &key_package_bundle);
 

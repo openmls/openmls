@@ -5,14 +5,15 @@ use openmls::prelude::*;
 
 #[test]
 fn padding() {
-    for &ciphersuite_name in Config::supported_ciphersuites() {
+    for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
         let credential_bundle =
-            CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite_name).unwrap();
-        let kpb = KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+            CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let kpb =
+            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
 
         let mut group_alice =
-            MlsGroup::new(&id, ciphersuite_name, kpb, GroupConfig::default()).unwrap();
+            MlsGroup::new(&id, ciphersuite.name(), kpb, GroupConfig::default()).unwrap();
         const PADDING_SIZE: usize = 10;
 
         for _ in 0..100 {

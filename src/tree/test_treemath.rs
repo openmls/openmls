@@ -1,5 +1,4 @@
 use super::treemath::TreeMathError;
-use crate::config::Config;
 
 /// The following test uses an old test vector that assumes an outdated version
 /// of the treemath defined in the spec. In a few select cases, we should now
@@ -112,9 +111,8 @@ fn test_tree_hash() {
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap()
     }
 
-    for &ciphersuite_name in Config::supported_ciphersuites() {
-        let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
-        let kbp = create_identity(b"Tree creator", ciphersuite_name);
+    for ciphersuite in Config::supported_ciphersuites() {
+        let kbp = create_identity(b"Tree creator", ciphersuite.name());
 
         // Initialise tree
         let mut tree = RatchetTree::new(ciphersuite, kbp);
@@ -124,7 +122,7 @@ fn test_tree_hash() {
         // Add 5 nodes to the tree.
         let mut nodes = Vec::new();
         for _ in 0..5 {
-            nodes.push(create_identity(b"Tree creator", ciphersuite_name));
+            nodes.push(create_identity(b"Tree creator", ciphersuite.name()));
         }
         let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
         let _ = tree.add_nodes(&key_packages);

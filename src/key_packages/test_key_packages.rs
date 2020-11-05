@@ -5,30 +5,34 @@ use crate::{extensions::*, key_packages::*};
 
 #[test]
 fn generate_key_package() {
-    for &ciphersuite_name in Config::supported_ciphersuites() {
+    for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle =
-            CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite_name).unwrap();
-        let kpb = KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new());
+            CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite.name())
+                .unwrap();
+        let kpb =
+            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
         // This is invalid because the lifetime extension is missing.
         assert!(kpb.get_key_package().verify().is_err());
 
         // Now with a lifetime the key package should be valid.
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
         let kpb = KeyPackageBundle::new(
-            &[ciphersuite_name],
+            &[ciphersuite.name()],
             &credential_bundle,
             vec![lifetime_extension],
-        );
+        )
+        .unwrap();
         std::thread::sleep(std::time::Duration::from_secs(1));
         assert!(kpb.get_key_package().verify().is_ok());
 
         // Now we add an invalid lifetime.
         let lifetime_extension = Box::new(LifetimeExtension::new(0));
         let kpb = KeyPackageBundle::new(
-            &[ciphersuite_name],
+            &[ciphersuite.name()],
             &credential_bundle,
             vec![lifetime_extension],
-        );
+        )
+        .unwrap();
         std::thread::sleep(std::time::Duration::from_secs(1));
         assert!(kpb.get_key_package().verify().is_err());
     }
@@ -36,12 +40,12 @@ fn generate_key_package() {
 
 #[test]
 fn test_codec() {
-    for &ciphersuite_name in Config::supported_ciphersuites() {
+    for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
         let credential_bundle =
-            CredentialBundle::new(id, CredentialType::Basic, ciphersuite_name).unwrap();
+            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
         let mut kpb =
-            KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
 
         // Encode and decode the key package.
         let enc = kpb.get_key_package().encode_detached().unwrap();
@@ -64,16 +68,16 @@ fn test_codec() {
 
 #[test]
 fn key_package_id_extension() {
-    for &ciphersuite_name in Config::supported_ciphersuites() {
+    for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
         let credential_bundle =
-            CredentialBundle::new(id, CredentialType::Basic, ciphersuite_name).unwrap();
+            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
         let mut kpb = KeyPackageBundle::new(
-            &[ciphersuite_name],
+            &[ciphersuite.name()],
             &credential_bundle,
             vec![Box::new(LifetimeExtension::new(60))],
         )
-       .unwrap();
+        .unwrap();
         assert!(kpb.get_key_package().verify().is_ok());
 
         // Add an ID to the key package.
