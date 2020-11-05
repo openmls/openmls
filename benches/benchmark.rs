@@ -7,19 +7,34 @@ use criterion::Criterion;
 use openmls::prelude::*;
 
 fn criterion_kp_bundle(c: &mut Criterion) {
-    c.bench_function("KeyPackage create bundle", |b| {
-        let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-
-        b.iter_with_setup(
-            || {
-                CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite_name)
-                    .unwrap()
-            },
-            |credential_bundle: CredentialBundle| {
-                KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+    for ciphersuite in Config::supported_ciphersuites() {
+        c.bench_function(
+            &format!(
+                "KeyPackage create bundle with ciphersuite: {:?}",
+                ciphersuite.name()
+            ),
+            move |b| {
+                b.iter_with_setup(
+                    || {
+                        CredentialBundle::new(
+                            vec![1, 2, 3],
+                            CredentialType::Basic,
+                            ciphersuite.name(),
+                        )
+                        .unwrap()
+                    },
+                    |credential_bundle: CredentialBundle| {
+                        KeyPackageBundle::new(
+                            &[ciphersuite.name()],
+                            &credential_bundle,
+                            Vec::new(),
+                        )
+                        .unwrap();
+                    },
+                );
             },
         );
-    });
+    }
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
