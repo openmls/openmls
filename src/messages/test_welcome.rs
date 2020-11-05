@@ -7,7 +7,6 @@ use crate::{
     config::Config,
     group::{GroupEpoch, GroupId},
     tree::index::LeafIndex,
-    utils::*,
 };
 
 macro_rules! test_welcome_msg {
@@ -28,8 +27,7 @@ macro_rules! test_welcome_msg {
 
             // Generate key and nonce for the symmetric cipher.
             let welcome_key = AeadKey::new_from_random($ciphersuite.aead_mode());
-            let welcome_nonce =
-                AeadNonce::from_slice(&randombytes($ciphersuite.aead_nonce_length()));
+            let welcome_nonce = AeadNonce::new_from_random();
 
             // Generate receiver key pair.
             let receiver_key_pair =

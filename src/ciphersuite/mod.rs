@@ -387,18 +387,17 @@ impl AeadKey {
 }
 
 impl AeadNonce {
-    /// Build a new nonce for an AEAD from `bytes`.
-    #[cfg(test)]
-    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
-        let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(bytes);
-        AeadNonce { value: nonce }
-    }
-
     /// Build a new nonce for an AEAD from `Secret`.
     pub(crate) fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(secret.value.as_slice());
+        AeadNonce { value: nonce }
+    }
+
+    /// Generate a new random nonce.
+    pub fn new_from_random() -> Self {
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(get_random_vec(NONCE_BYTES).as_slice());
         AeadNonce { value: nonce }
     }
 
@@ -506,7 +505,7 @@ impl From<ConfigError> for SignatureError {
 #[test]
 fn test_xor() {
     let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
-    let original_nonce = AeadNonce::from_slice(get_random_vec(NONCE_BYTES).as_slice());
+    let original_nonce = AeadNonce::new_from_random();
     let mut nonce = original_nonce.clone();
     nonce.xor_with_reuse_guard(&reuse_guard);
     assert_ne!(
