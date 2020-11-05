@@ -52,9 +52,8 @@ impl PrivateTree {
         key_package_bundle: &KeyPackageBundle,
     ) -> Self {
         let leaf_secret = key_package_bundle.leaf_secret();
-        let ciphersuite = Ciphersuite::new(key_package_bundle.key_package.cipher_suite());
-        let leaf_node_secret =
-            KeyPackageBundle::derive_leaf_node_secret(&ciphersuite, &leaf_secret);
+        let ciphersuite = key_package_bundle.key_package.cipher_suite();
+        let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
         let (private_key, _) = keypair.into_keys();
 

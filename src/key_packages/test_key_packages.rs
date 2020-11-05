@@ -40,7 +40,8 @@ fn test_codec() {
         let id = vec![1, 2, 3];
         let credential_bundle =
             CredentialBundle::new(id, CredentialType::Basic, ciphersuite_name).unwrap();
-        let mut kpb = KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new());
+        let mut kpb =
+            KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
 
         // Encode and decode the key package.
         let enc = kpb.get_key_package().encode_detached().unwrap();
@@ -71,7 +72,8 @@ fn key_package_id_extension() {
             &[ciphersuite_name],
             &credential_bundle,
             vec![Box::new(LifetimeExtension::new(60))],
-        );
+        )
+       .unwrap();
         assert!(kpb.get_key_package().verify().is_ok());
 
         // Add an ID to the key package.

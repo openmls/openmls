@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{env, fs::File, io::BufReader};
 
-use crate::ciphersuite::CiphersuiteName;
+use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
 use crate::codec::{Codec, CodecError, Cursor};
 use crate::errors::ConfigError;
 use crate::extensions::ExtensionType;
@@ -30,9 +30,9 @@ lazy_static! {
             Config {
                 protocol_versions: vec![ProtocolVersion::Mls10],
                 ciphersuites: vec![
-                    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                    CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256],
+                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
+                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
+                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256)],
                     extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
             }
 
@@ -43,12 +43,10 @@ lazy_static! {
 /// # MLS Configuration
 ///
 /// This is the global configuration for MLS.
-///
-/// TODO: #85 This doesn't do much yet.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     protocol_versions: Vec<ProtocolVersion>,
-    ciphersuites: Vec<CiphersuiteName>,
+    ciphersuites: Vec<Ciphersuite>,
     extensions: Vec<ExtensionType>,
 }
 
@@ -58,14 +56,31 @@ impl Config {
         &CONFIG.extensions
     }
 
-    /// Get a list of the supported cipher suite names.
-    pub fn supported_ciphersuites() -> &'static [CiphersuiteName] {
+    /// Get a list of the supported cipher suites.
+    pub fn supported_ciphersuites() -> &'static [Ciphersuite] {
         &CONFIG.ciphersuites
+    }
+
+    /// Get a list of the supported cipher suites names.
+    pub fn supported_ciphersuite_names() -> Vec<CiphersuiteName> {
+        CONFIG
+            .ciphersuites
+            .iter()
+            .map(|suite| suite.name())
+            .collect()
     }
 
     /// Get a list of the supported protocol versions.
     pub fn supported_versions() -> &'static [ProtocolVersion] {
         &CONFIG.protocol_versions
+    }
+
+    /// Get the ciphersuite of the given name.
+    pub fn ciphersuite(ciphersuite: CiphersuiteName) -> Result<&'static Ciphersuite, ConfigError> {
+        match CONFIG.ciphersuites.iter().find(|s| s.name() == ciphersuite) {
+            Some(c) => Ok(c),
+            None => Err(ConfigError::UnsupportedCiphersuite),
+        }
     }
 }
 
@@ -122,7 +137,7 @@ impl CiphersuiteName {
     /// Returns `true` if the ciphersuite is supported in the current configuration.
     pub(crate) fn is_supported(&self) -> bool {
         for suite in CONFIG.ciphersuites.iter() {
-            if self == suite {
+            if self == &suite.name() {
                 return true;
             }
         }

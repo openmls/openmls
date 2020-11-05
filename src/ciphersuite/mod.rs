@@ -15,6 +15,8 @@ mod codec;
 pub(crate) mod signable;
 use ciphersuites::*;
 
+use crate::config::Config;
+use crate::errors::ConfigError;
 use crate::utils::random_u32;
 
 #[cfg(test)]
@@ -96,31 +98,28 @@ pub struct Signature {
 
 #[derive(Clone)]
 pub struct SignaturePrivateKey {
-    ciphersuite: Ciphersuite,
+    ciphersuite: &'static Ciphersuite,
     value: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SignaturePublicKey {
-    ciphersuite: Ciphersuite,
+    ciphersuite: &'static Ciphersuite,
     value: Vec<u8>,
 }
 
 #[derive(Clone)]
 pub struct SignatureKeypair {
-    ciphersuite: Ciphersuite,
+    ciphersuite: &'static Ciphersuite,
     private_key: SignaturePrivateKey,
     public_key: SignaturePublicKey,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
     hpke: Hpke,
-    hpke_kem: HpkeKemMode,
-    hpke_kdf: HpkeKdfMode,
-    hpke_aead: HpkeAeadMode,
     aead: AeadMode,
     hash: DigestMode,
     hmac: HmacMode,
@@ -134,9 +133,16 @@ impl Clone for Ciphersuite {
     }
 }
 
+// Ciphersuites are equal if they have the same name.
+impl PartialEq for Ciphersuite {
+    fn eq(&self, other: &Ciphersuite) -> bool {
+        self.name == other.name
+    }
+}
+
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
-    pub fn new(name: CiphersuiteName) -> Self {
+    pub(crate) fn new(name: CiphersuiteName) -> Self {
         let hpke_kem = get_kem_from_suite(&name).unwrap();
         let hpke_kdf = get_hpke_kdf_from_suite(&name);
         let hpke_aead = get_hpke_aead_from_suite(&name);
@@ -145,9 +151,6 @@ impl Ciphersuite {
             name,
             signature: get_signature_from_suite(&name),
             hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
-            hpke_kem,
-            hpke_kdf,
-            hpke_aead,
             aead: get_aead_from_suite(&name),
             hash: get_hash_from_suite(&name),
             hmac: get_kdf_from_suite(&name),
@@ -160,20 +163,20 @@ impl Ciphersuite {
     }
 
     /// Create a new signature key pair and return it.
-    pub fn new_signature_keypair(&self) -> SignatureKeypair {
+    pub fn new_signature_keypair(&'static self) -> SignatureKeypair {
         let (sk, pk) = match signature_key_gen(self.signature) {
             Ok((sk, pk)) => (sk, pk),
             Err(e) => panic!("Key generation really shouldn't fail. {:?}", e),
         };
         SignatureKeypair {
-            ciphersuite: self.clone(),
+            ciphersuite: self,
             private_key: SignaturePrivateKey {
                 value: sk.to_vec(),
-                ciphersuite: self.clone(),
+                ciphersuite: self,
             },
             public_key: SignaturePublicKey {
                 value: pk.to_vec(),
-                ciphersuite: self.clone(),
+                ciphersuite: self,
             },
         }
     }
@@ -368,11 +371,11 @@ impl PartialEq for SignaturePublicKey {
 
 impl SignaturePublicKey {
     /// Create a new signature public key from raw key bytes.
-    pub fn new(bytes: Vec<u8>, ciphersuite: Ciphersuite) -> Self {
-        Self {
+    pub fn new(bytes: Vec<u8>, ciphersuite: CiphersuiteName) -> Result<Self, ConfigError> {
+        Ok(Self {
             value: bytes,
-            ciphersuite,
-        }
+            ciphersuite: Config::ciphersuite(ciphersuite)?,
+        })
     }
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
@@ -405,6 +408,16 @@ impl SignaturePrivateKey {
         ) {
             Ok(s) => Ok(Signature { value: s }),
             Err(e) => Err(e),
+        }
+    }
+}
+
+impl From<ConfigError> for SignatureError {
+    fn from(e: ConfigError) -> SignatureError {
+        // TODO: #83
+        match e {
+            ConfigError::UnsupportedCiphersuite => SignatureError::UnkownAlgorithm,
+            _ => SignatureError::UnkownAlgorithm,
         }
     }
 }

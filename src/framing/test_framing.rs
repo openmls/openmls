@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::framing::*;
 
 /// This tests serializing/deserializing MLSPlaintext
@@ -9,6 +10,8 @@ fn codec() {
     for &ciphersuite_name in Config::supported_ciphersuites() {
         let credential_bundle =
             CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite_name).unwrap();
+        let credential_bundle =
+            CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.name()).unwrap();
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),

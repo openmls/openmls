@@ -12,14 +12,14 @@ lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 hpke = {git = "https://github.com/franziskuskiefer/hpke-rs", version = "0.0.2", branch = "0.0.2", features = ["hazmat", "serialization"] }
-evercrypt = { version = "0.0.3" }
+evercrypt = { version = "0.0.3", features = ["serialization"] }
 
 [features]
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
 
 [patch.crates-io]
-evercrypt = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt", branch = "0.0.3" }
+evercrypt = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt", branch = "0.0.3", features = ["serialization"] }
 evercrypt-sys = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt-sys", branch = "0.0.3" }
 
 [dev-dependencies]

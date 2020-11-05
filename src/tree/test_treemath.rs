@@ -1,4 +1,5 @@
 use super::treemath::TreeMathError;
+use crate::config::Config;
 
 /// The following test uses an old test vector that assumes an outdated version
 /// of the treemath defined in the spec. In a few select cases, we should now
@@ -108,14 +109,15 @@ fn test_tree_hash() {
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
         let credential_bundle =
             CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite_name).unwrap();
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap()
     }
 
     for &ciphersuite_name in Config::supported_ciphersuites() {
+        let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
         let kbp = create_identity(b"Tree creator", ciphersuite_name);
 
         // Initialise tree
-        let mut tree = RatchetTree::new(ciphersuite_name, kbp);
+        let mut tree = RatchetTree::new(ciphersuite, kbp);
         let tree_hash = tree.compute_tree_hash();
         println!("Tree hash: {:?}", tree_hash);
 

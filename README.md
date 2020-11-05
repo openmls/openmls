@@ -1,6 +1,6 @@
 # openmls
 
-![build status](https://travis-ci.com/openmls/openmls.svg?branch=master)
+![build status](https://travis-ci.com/openmls/openmls.svg?branch=main)
 
 This is a PoC Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
 
