@@ -288,7 +288,7 @@ impl MlsGroup {
     }
 
     /// Get the ciphersuite implementation used in this group.
-    pub(crate) fn ciphersuite(&self) -> &Ciphersuite {
+    pub fn ciphersuite(&self) -> &Ciphersuite {
         self.ciphersuite
     }
 
