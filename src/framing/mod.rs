@@ -211,7 +211,7 @@ impl MLSCiphertext {
                 &ciphertext,
                 ciphersuite.aead_key_length(),
             ),
-            ciphersuite.aead_mode(),
+            ciphersuite.aead(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(
@@ -265,7 +265,7 @@ impl MLSCiphertext {
                 &self.ciphertext,
                 ciphersuite.aead_key_length(),
             ),
-            ciphersuite.aead_mode(),
+            ciphersuite.aead(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(

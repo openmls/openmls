@@ -142,7 +142,7 @@ impl SenderRatchet {
             ciphersuite.aead_key_length(),
         );
         (
-            AeadKey::from_secret(key, ciphersuite.aead_mode()),
+            AeadKey::from_secret(key, ciphersuite.aead()),
             AeadNonce::from_secret(nonce),
         )
     }

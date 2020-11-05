@@ -149,7 +149,7 @@ pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
     hpke: Hpke,
-    aead_mode: AeadMode,
+    aead: AeadMode,
     hash: DigestMode,
     hmac: HmacMode,
 }
@@ -180,7 +180,7 @@ impl Ciphersuite {
             name,
             signature: get_signature_from_suite(&name),
             hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
-            aead_mode: get_aead_from_suite(&name),
+            aead: get_aead_from_suite(&name),
             hash: get_hash_from_suite(&name),
             hmac: get_kdf_from_suite(&name),
         }
@@ -192,8 +192,8 @@ impl Ciphersuite {
     }
 
     /// Get the AEAD mode
-    pub fn aead_mode(&self) -> AeadMode {
-        self.aead_mode
+    pub fn aead(&self) -> AeadMode {
+        self.aead
     }
 
     /// Create a new signature key pair and return it.
@@ -248,7 +248,7 @@ impl Ciphersuite {
 
     /// Returns the key size of the used AEAD.
     pub(crate) fn aead_key_length(&self) -> usize {
-        aead_key_size(&self.aead_mode)
+        aead_key_size(&self.aead)
     }
 
     /// Returns the length of the nonce in the AEAD.
