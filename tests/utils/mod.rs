@@ -49,10 +49,15 @@ pub(crate) struct TestSetup {
     pub(crate) clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
 }
 
+/// The number of key packages that each client registers with the key store
+/// upon initializing the test setup.
+const KEY_PACKAGE_COUNT: usize = 10;
+
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>> = HashMap::new();
+    // Initialize the clients for which we have configurations.
     for client in config.clients {
         // Set up the client
         let mut credential_bundles = HashMap::new();
@@ -62,13 +67,15 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         for ciphersuite in client.ciphersuites {
             //Initialize KeyStore for that client and ciphersuite.
             key_store.insert((client.name, ciphersuite), Vec::new());
+            // Create a credential_bundle for the given ciphersuite.
             let credential_bundle = CredentialBundle::new(
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
                 ciphersuite,
             )
             .unwrap();
-            for _ in 0..10 {
+            // Create a number of key packages.
+            for _ in 1..KEY_PACKAGE_COUNT {
                 let key_package_bundle: KeyPackageBundle =
                     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, Vec::new()).unwrap();
                 // Register the freshly created KeyPackage in the KeyStore.
@@ -78,8 +85,10 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .push(key_package_bundle.get_key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
+            // Store the credential bundle.
             credential_bundles.insert(ciphersuite, credential_bundle);
         }
+        // Create the client.
         let test_client = TestClient {
             credential_bundles,
             key_package_bundles: RefCell::new(key_package_bundles),
@@ -87,20 +96,24 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         };
         test_clients.insert(client.name, RefCell::new(test_client));
     }
+    // Initialize all of the groups, each group gets assigned a sequential group
+    // id. TODO: Depending on the use case, it might be hard to figure out which
+    // group is which.
     for group_id in 0..config.groups.len() {
         let group_config = &config.groups[group_id];
         // The first party in the members array is going to be the group
-        // initiator. We remove it here and add it back later to avoid borrowing
-        // issues.
+        // initiator.
         let initial_group_member = test_clients
             .get(group_config.members[0].name)
             .unwrap()
             .borrow_mut();
+        // Pull the inital member's KeyPackage from the key_store.
         let initial_key_package = key_store
             .remove(&(group_config.members[0].name, group_config.ciphersuite))
             .unwrap()
             .pop()
             .unwrap();
+        // Figure out which KeyPackageBundle that key package corresponds to.
         let initial_key_package_bundle_position = initial_group_member
             .key_package_bundles
             .borrow()
@@ -111,10 +124,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .key_package_bundles
             .borrow_mut()
             .remove(initial_key_package_bundle_position);
+        // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
             .credential_bundles
             .get(&group_config.ciphersuite)
             .unwrap();
+        // Initialize the group state for the initial member.
         let mls_group = MlsGroup::new(
             &group_id.to_be_bytes(),
             group_config.ciphersuite,
@@ -137,6 +152,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .get(&GroupId::from_slice(&group_id.to_be_bytes()))
                 .unwrap();
             for client_id in 1..group_config.members.len() {
+                // Pull a KeyPackage from the key_store for the new member.
                 let next_member_key_package = key_store
                     .get_mut(&(
                         group_config.members[client_id].name,
@@ -145,6 +161,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .unwrap()
                     .pop()
                     .unwrap();
+                // Have the initial member create an Add proposal using the new
+                // KeyPackage.
                 let add_proposal = mls_group.create_add_proposal(
                     group_aad,
                     initial_credential_bundle,
@@ -152,6 +170,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 );
                 proposal_list.push(add_proposal);
             }
+            // Create the commit based on the previously compiled list of
+            // proposals.
             let (commit_mls_plaintext, welcome_option, _key_package_bundle_option) = mls_group
                 .create_commit(
                     group_aad,
@@ -168,7 +188,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .unwrap()
                     .borrow_mut();
                 // Figure out which key package bundle we should use. This is
-                // very ugly and inefficient.
+                // a bit ugly and inefficient.
                 let member_secret = welcome
                     .get_secrets_ref()
                     .iter()
@@ -194,6 +214,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .key_package_bundles
                     .borrow_mut()
                     .remove(kpb_position);
+                // Create the local group state of the new member based on the
+                // Welcome.
                 let new_group =
                     MlsGroup::new_from_welcome(welcome.clone(), None, key_package_bundle).unwrap();
                 new_group_member

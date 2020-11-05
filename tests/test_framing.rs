@@ -4,6 +4,8 @@ use utils::*;
 
 #[test]
 fn padding() {
+    // Create a test config for a single client supporting all possible
+    // ciphersuites.
     let alice_config = TestClientConfig {
         name: "alice",
         ciphersuites: Config::supported_ciphersuite_names(),
@@ -11,6 +13,7 @@ fn padding() {
 
     let mut test_group_configs = Vec::new();
 
+    // Create a group config for each ciphersuite.
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: ciphersuite_name,
@@ -20,11 +23,13 @@ fn padding() {
         test_group_configs.push(test_group);
     }
 
+    // Create the test setup config.
     let test_setup_config = TestSetupConfig {
         clients: vec![alice_config],
         groups: test_group_configs,
     };
 
+    // Initialize the test setup according to config.
     let test_setup = setup(test_setup_config);
 
     let test_clients = test_setup.clients.borrow();
@@ -32,6 +37,7 @@ fn padding() {
 
     const PADDING_SIZE: usize = 10;
 
+    // Create a message in each group and test the padding.
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
             .credential_bundles
