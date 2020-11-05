@@ -286,7 +286,7 @@ impl MlsGroup {
         &self.ciphersuite
     }
 
-    pub(crate) fn context(&self) -> &GroupContext {
+    pub fn context(&self) -> &GroupContext {
         &self.group_context
     }
 

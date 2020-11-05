@@ -330,7 +330,7 @@ impl Welcome {
     }
 
     /// Get a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn get_secrets_ref(&self) -> &[EncryptedGroupSecrets] {
+    pub fn get_secrets_ref(&self) -> &[EncryptedGroupSecrets] {
         &self.secrets
     }
 
