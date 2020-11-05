@@ -12,40 +12,42 @@ use openmls::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;
 
-// Configurations used as input to setup functions.
-
-/// (client_name, Vec<groups>)
+/// Configuration of a client meant to be used in a test setup.
+#[derive(Clone)]
 pub(crate) struct TestClientConfig {
-    name: &'static str,
-    ciphersuites: Vec<CiphersuiteName>,
-    //key_package_bundles: Vec<CiphersuiteName>,
+    /// Name of the client.
+    pub(crate) name: &'static str,
+    /// Ciphersuites supported by the client.
+    pub(crate) ciphersuites: Vec<CiphersuiteName>,
 }
 
+/// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
-    ciphersuite: CiphersuiteName,
-    config: GroupConfig,
-    members: Vec<TestClientConfig>,
+    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) config: GroupConfig,
+    pub(crate) members: Vec<TestClientConfig>,
 }
 
+/// Configuration of a test setup including clients and groups used in the test
+/// setup.
 pub(crate) struct TestSetupConfig {
-    clients: Vec<TestClientConfig>,
-    groups: Vec<TestGroupConfig>,
+    pub(crate) clients: Vec<TestClientConfig>,
+    pub(crate) groups: Vec<TestGroupConfig>,
 }
 
-// Test setup built based on a configuration
-
+/// A client in a test setup.
 pub(crate) struct TestClient {
-    credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
-    key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
-    group_states: RefCell<HashMap<GroupId, MlsGroup>>,
+    pub(crate) credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
+    pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
+    pub(crate) group_states: RefCell<HashMap<GroupId, MlsGroup>>,
 }
 
+/// The state of a test setup, including the state of the clients and the
+/// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
-    key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
-    clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
+    pub(crate) key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
+    pub(crate) clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
 }
-
-pub(crate) fn initialize_group(group_config: &TestGroupConfig) {}
 
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
@@ -58,6 +60,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         // This currently creates a credential bundle per ciphersuite, (not per
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
+            //Initialize KeyStore for that client and ciphersuite.
+            key_store.insert((client.name, ciphersuite), Vec::new());
             let credential_bundle = CredentialBundle::new(
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
@@ -65,8 +69,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             )
             .unwrap();
             for _ in 0..10 {
-                let key_package_bundle =
-                    KeyPackageBundle::new(&[ciphersuite], &credential_bundle, Vec::new());
+                let key_package_bundle: KeyPackageBundle =
+                    KeyPackageBundle::new(&[ciphersuite], &credential_bundle, Vec::new()).unwrap();
                 // Register the freshly created KeyPackage in the KeyStore.
                 key_store
                     .get_mut(&(client.name, ciphersuite))
@@ -88,7 +92,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         // The first party in the members array is going to be the group
         // initiator. We remove it here and add it back later to avoid borrowing
         // issues.
-        let mut initial_group_member = test_clients
+        let initial_group_member = test_clients
             .get(group_config.members[0].name)
             .unwrap()
             .borrow_mut();
@@ -116,7 +120,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             group_config.ciphersuite,
             initial_key_package_bundle,
             group_config.config,
-        );
+        )
+        .unwrap();
         let mut proposal_list = Vec::new();
         let group_aad = b"";
         initial_group_member
@@ -147,7 +152,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 );
                 proposal_list.push(add_proposal);
             }
-            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
+            let (commit_mls_plaintext, welcome_option, _key_package_bundle_option) = mls_group
                 .create_commit(
                     group_aad,
                     &initial_credential_bundle,
@@ -158,13 +163,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let welcome = welcome_option.unwrap();
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
-                let mut new_group_member = test_clients
+                let new_group_member = test_clients
                     .get(group_config.members[client_id].name)
                     .unwrap()
                     .borrow_mut();
                 // Figure out which key package bundle we should use. This is
                 // very ugly and inefficient.
-                let mut member_secret = welcome
+                let member_secret = welcome
                     .get_secrets_ref()
                     .iter()
                     .find(|x| {
@@ -189,13 +194,6 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .key_package_bundles
                     .borrow_mut()
                     .remove(kpb_position);
-                //let kpb = for secret in welcome.get_secrets_ref().i {
-                //    match
-                //    {
-                //        Some(index) => Some(new_group_member.key_package_bundles.remove(index)),
-                //        None => None,
-                //    };
-                //};
                 let new_group =
                     MlsGroup::new_from_welcome(welcome.clone(), None, key_package_bundle).unwrap();
                 new_group_member
@@ -206,15 +204,14 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // Make all members receive and process the commit message.
             for member in &group_config.members {
                 let group_member = test_clients.get(member.name).unwrap().borrow();
-                let mut key_package_bundles = group_member.key_package_bundles.borrow();
+                let key_package_bundles = group_member.key_package_bundles.borrow();
                 let mut group_states = group_member.group_states.borrow_mut();
                 let group = group_states
                     .get_mut(&commit_mls_plaintext.group_id.clone())
                     .unwrap();
-                group.apply_commit(
+                let _ = group.apply_commit(
                     commit_mls_plaintext.clone(),
                     proposal_list.clone(),
-                    // TODO: This should be fixed soon.
                     &key_package_bundles,
                 );
             }
@@ -234,11 +231,12 @@ pub(crate) fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
 }
 
-pub(crate) fn hex_to_bytes(hex: &str) -> Vec<u8> {
-    let mut bytes = Vec::new();
-    for i in 0..(hex.len() / 2) {
-        let b = u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap();
-        bytes.push(b);
-    }
-    bytes
-}
+// Not currently used.
+//pub(crate) fn hex_to_bytes(hex: &str) -> Vec<u8> {
+//    let mut bytes = Vec::new();
+//    for i in 0..(hex.len() / 2) {
+//        let b = u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap();
+//        bytes.push(b);
+//    }
+//    bytes
+//}
