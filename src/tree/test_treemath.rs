@@ -1,5 +1,4 @@
 use super::treemath::TreeMathError;
-use crate::config::Config;
 
 /// The following test uses an old test vector that assumes an outdated version
 /// of the treemath defined in the spec. In a few select cases, we should now
@@ -102,6 +101,7 @@ fn test_dir_path() {
 #[test]
 fn test_tree_hash() {
     use crate::ciphersuite::*;
+    use crate::config::*;
     use crate::creds::*;
     use crate::tree::*;
 
@@ -111,22 +111,22 @@ fn test_tree_hash() {
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap()
     }
 
-    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
-    let kbp = create_identity(b"Tree creator", ciphersuite_name);
+    for ciphersuite in Config::supported_ciphersuites() {
+        let kbp = create_identity(b"Tree creator", ciphersuite.name());
 
-    // Initialise tree
-    let mut tree = RatchetTree::new(ciphersuite, kbp);
-    let tree_hash = tree.compute_tree_hash();
-    println!("Tree hash: {:?}", tree_hash);
+        // Initialise tree
+        let mut tree = RatchetTree::new(ciphersuite, kbp);
+        let tree_hash = tree.compute_tree_hash();
+        println!("Tree hash: {:?}", tree_hash);
 
-    // Add 5 nodes to the tree.
-    let mut nodes = Vec::new();
-    for _ in 0..5 {
-        nodes.push(create_identity(b"Tree creator", ciphersuite_name));
+        // Add 5 nodes to the tree.
+        let mut nodes = Vec::new();
+        for _ in 0..5 {
+            nodes.push(create_identity(b"Tree creator", ciphersuite.name()));
+        }
+        let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
+        let _ = tree.add_nodes(&key_packages);
+        let tree_hash = tree.compute_tree_hash();
+        println!("Tree hash: {:?}", tree_hash);
     }
-    let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
-    let _ = tree.add_nodes(&key_packages);
-    let tree_hash = tree.compute_tree_hash();
-    println!("Tree hash: {:?}", tree_hash);
 }
