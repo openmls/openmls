@@ -34,12 +34,11 @@ impl MlsGroup {
         let mut provisional_tree = RatchetTree::new_from_public_tree(&self.tree());
 
         // Apply proposals to tree
-        let (path_required_by_commit, self_removed, invited_members) = match provisional_tree
-            .apply_proposals(&proposal_id_list, proposal_queue, &mut vec![])
-        {
-            Ok(res) => res,
-            Err(_) => return Err(CreateCommitError::OwnKeyNotFound),
-        };
+        let (path_required_by_commit, self_removed, invited_members) =
+            match provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &[]) {
+                Ok(res) => res,
+                Err(_) => return Err(CreateCommitError::OwnKeyNotFound),
+            };
         if self_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
@@ -183,7 +182,7 @@ impl MlsGroup {
             // Create welcome message
             let welcome = Welcome::new(
                 Config::supported_versions()[0],
-                self.ciphersuite.name(),
+                self.ciphersuite,
                 secrets,
                 encrypted_group_info,
             );

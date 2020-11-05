@@ -1,6 +1,7 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
+use crate::errors::ConfigError;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
 
@@ -36,7 +37,7 @@ mod test_util;
 /// The ratchet tree.
 pub struct RatchetTree {
     /// The ciphersuite used in this tree.
-    ciphersuite: Ciphersuite,
+    ciphersuite: &'static Ciphersuite,
 
     /// All nodes in the tree.
     /// Note that these only hold public values.
@@ -50,7 +51,7 @@ pub struct RatchetTree {
 
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
-    pub(crate) fn new(ciphersuite_name: CiphersuiteName, kpb: KeyPackageBundle) -> RatchetTree {
+    pub(crate) fn new(ciphersuite: &'static Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
         let nodes = vec![Node {
             node_type: NodeType::Leaf,
             key_package: Some(kpb.get_key_package().clone()),
@@ -59,7 +60,7 @@ impl RatchetTree {
         let private_tree = PrivateTree::from_key_package_bundle(NodeIndex::from(0u32), &kpb);
 
         RatchetTree {
-            ciphersuite: Ciphersuite::new(ciphersuite_name),
+            ciphersuite,
             nodes,
             private_tree,
         }
@@ -69,7 +70,7 @@ impl RatchetTree {
     /// and an empty `PrivateTree`
     pub(crate) fn new_from_public_tree(ratchet_tree: &RatchetTree) -> Self {
         RatchetTree {
-            ciphersuite: ratchet_tree.ciphersuite.clone(),
+            ciphersuite: ratchet_tree.ciphersuite,
             nodes: ratchet_tree.nodes.clone(),
             private_tree: PrivateTree::new(ratchet_tree.private_tree.get_node_index()),
         }
@@ -78,7 +79,7 @@ impl RatchetTree {
     /// Generate a new `RatchetTree` from `Node`s with the client's key package
     /// bundle `kpb`.
     pub(crate) fn new_from_nodes(
-        ciphersuite_name: CiphersuiteName,
+        ciphersuite: &'static Ciphersuite,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
     ) -> Result<RatchetTree, TreeError> {
@@ -114,7 +115,6 @@ impl RatchetTree {
             }
         }
 
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
         // Build private tree
         let private_tree = PrivateTree::from_key_package_bundle(own_node_index, &kpb);
 
@@ -376,12 +376,12 @@ impl RatchetTree {
     pub(crate) fn replace_private_tree(
         &mut self,
         ciphersuite: &Ciphersuite,
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
     ) -> Result<Secret, TreeError> {
         let _path_option = self.replace_private_tree_(
             ciphersuite,
-            &key_package_bundle,
+            key_package_bundle,
             group_context,
             false, /* without update path */
         );
@@ -635,7 +635,7 @@ impl RatchetTree {
         &mut self,
         proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
-        updates_key_package_bundles: &mut Vec<KeyPackageBundle>,
+        updates_key_package_bundles: &[KeyPackageBundle],
         // (path_required, self_removed, invitation_list)
     ) -> Result<(bool, bool, InvitationList), TreeError> {
         let mut has_updates = false;
@@ -660,16 +660,14 @@ impl RatchetTree {
             self.nodes[sender_index.as_usize()] = leaf_node;
             // Check if it is a self-update
             if sender_index == self.get_own_node_index() {
-                let own_kpb_index = match updates_key_package_bundles
+                let own_kpb = match updates_key_package_bundles
                     .iter()
-                    .position(|kpb| kpb.get_key_package() == &update_proposal.key_package)
+                    .find(|kpb| kpb.get_key_package() == &update_proposal.key_package)
                 {
-                    Some(i) => i,
+                    Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
                     None => return Err(TreeError::InvalidArguments),
                 };
-                // Get and remove own KeyPackageBundle from the list of available ones
-                let own_kpb = updates_key_package_bundles.remove(own_kpb_index);
                 // Update the private tree with new values
                 self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
@@ -891,7 +889,18 @@ impl UpdatePath {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TreeError {
     InvalidArguments,
-    NoneError,
     DuplicateIndex,
     InvalidUpdatePath,
+    UnknownError,
+}
+
+// TODO: Should get fixed in #83
+impl From<ConfigError> for TreeError {
+    fn from(e: ConfigError) -> TreeError {
+        match e {
+            ConfigError::UnsupportedMlsVersion => TreeError::InvalidArguments,
+            ConfigError::UnsupportedCiphersuite => TreeError::InvalidArguments,
+            _ => TreeError::UnknownError,
+        }
+    }
 }

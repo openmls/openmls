@@ -13,8 +13,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
-        let ciphersuite_name = welcome.get_ciphersuite();
-        let ciphersuite = Ciphersuite::new(ciphersuite_name);
+        let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
@@ -25,7 +24,7 @@ impl MlsGroup {
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite_name != key_package_bundle.get_key_package().cipher_suite() {
+        if ciphersuite.name() != key_package_bundle.get_key_package().cipher_suite().name() {
             return Err(WelcomeError::CiphersuiteMismatch);
         }
 
@@ -77,7 +76,7 @@ impl MlsGroup {
             }
         };
 
-        let mut tree = RatchetTree::new_from_nodes(ciphersuite_name, key_package_bundle, &nodes)?;
+        let mut tree = RatchetTree::new_from_nodes(ciphersuite, key_package_bundle, &nodes)?;
 
         // Verify tree hash
         if tree.compute_tree_hash() != group_info.tree_hash() {

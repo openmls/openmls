@@ -20,20 +20,23 @@ fn create_commit_optional_path() {
         &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions.clone(),
-    );
+    )
+    .unwrap();
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &bob_credential_bundle,
         mandatory_extensions.clone(),
-    );
+    )
+    .unwrap();
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &alice_credential_bundle,
         mandatory_extensions,
-    );
+    )
+    .unwrap();
     let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
     assert!(alice_update_key_package.verify().is_ok());
 
@@ -44,7 +47,8 @@ fn create_commit_optional_path() {
         ciphersuite_name,
         alice_key_package_bundle,
         GroupConfig::default(),
-    );
+    )
+    .unwrap();
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field on the Commit
@@ -97,7 +101,7 @@ fn create_commit_optional_path() {
     assert!(commit.path.is_none() && kpb_option.is_none());
 
     // Alice applies the Commit without the forced self-update
-    match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, vec![]) {
+    match group_alice_1234.apply_commit(mls_plaintext_commit, epoch_proposals, &[]) {
         Ok(_) => {}
         Err(e) => panic!("Error applying commit: {:?}", e),
     };
@@ -147,7 +151,7 @@ fn create_commit_optional_path() {
         .apply_commit(
             commit_mls_plaintext.clone(),
             proposals,
-            vec![kpb_option.unwrap()],
+            &[kpb_option.unwrap()],
         )
         .expect("Error applying commit");
 }
@@ -168,14 +172,16 @@ fn basic_group_setup() {
         &[ciphersuite_name],
         &bob_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
-    );
+    )
+    .unwrap();
     let bob_key_package = bob_key_package_bundle.get_key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite_name],
         &alice_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
         Vec::new(),
-    );
+    )
+    .unwrap();
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
@@ -184,7 +190,8 @@ fn basic_group_setup() {
         ciphersuite_name,
         alice_key_package_bundle,
         GroupConfig::default(),
-    );
+    )
+    .unwrap();
 
     // Alice adds Bob
     let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -234,13 +241,15 @@ fn group_operations() {
             &[ciphersuite_name],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
 
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite_name],
             &bob_credential_bundle,
             mandatory_extensions,
-        );
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.get_key_package();
 
         // Alice creates a group
@@ -250,7 +259,8 @@ fn group_operations() {
             ciphersuite_name,
             alice_key_package_bundle,
             GroupConfig::default(),
-        );
+        )
+        .unwrap();
 
         // Alice adds Bob
         let bob_add_proposal = group_alice_1234.create_add_proposal(
@@ -278,7 +288,7 @@ fn group_operations() {
         assert!(welcome_bundle_alice_bob_option.is_some());
 
         group_alice_1234
-            .apply_commit(mls_plaintext_commit, epoch_proposals, vec![])
+            .apply_commit(mls_plaintext_commit, epoch_proposals, &[])
             .expect("error applying commit");
         let ratchet_tree = group_alice_1234.tree().public_key_tree_copy();
 

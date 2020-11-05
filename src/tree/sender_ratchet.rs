@@ -55,7 +55,7 @@ impl SenderRatchet {
         }
     }
     /// Gets a secret from the SenderRatchet. Returns an error if the generation is out of bound.
-    pub fn get_secret_for_decryption(
+    pub(crate) fn get_secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
         generation: u32,

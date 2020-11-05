@@ -5,7 +5,9 @@ mod new_from_welcome;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::config::Config;
 use crate::creds::CredentialBundle;
+use crate::errors::ConfigError;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -19,7 +21,7 @@ use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
 
 pub struct MlsGroup {
-    ciphersuite: Ciphersuite,
+    ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
     generation: u32,
     epoch_secrets: EpochSecrets,
@@ -38,11 +40,12 @@ impl Api for MlsGroup {
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
-    ) -> MlsGroup {
+    ) -> Result<Self, ConfigError> {
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::new();
+        let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, LeafIndex::from(1u32));
-        let tree = RatchetTree::new(ciphersuite_name, key_package_bundle);
+        let tree = RatchetTree::new(ciphersuite, key_package_bundle);
         let group_context = GroupContext {
             group_id,
             epoch: GroupEpoch(0),
@@ -50,8 +53,8 @@ impl Api for MlsGroup {
             confirmed_transcript_hash: vec![],
         };
         let interim_transcript_hash = vec![];
-        MlsGroup {
-            ciphersuite: Ciphersuite::new(ciphersuite_name),
+        Ok(MlsGroup {
+            ciphersuite,
             group_context,
             generation: 0,
             epoch_secrets,
@@ -59,8 +62,9 @@ impl Api for MlsGroup {
             tree: RefCell::new(tree),
             interim_transcript_hash,
             add_ratchet_tree_extension: config.add_ratchet_tree_extension,
-        }
+        })
     }
+
     // Join a group from a welcome message
     fn new_from_welcome(
         welcome: Welcome,
@@ -167,7 +171,7 @@ impl Api for MlsGroup {
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<MLSPlaintext>,
-        own_key_packages: Vec<KeyPackageBundle>,
+        own_key_packages: &[KeyPackageBundle],
     ) -> Result<(), ApplyCommitError> {
         self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)
     }
@@ -195,7 +199,7 @@ impl Api for MlsGroup {
         let mut secret_tree = self.secret_tree.borrow_mut();
         let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
         let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.get_secret_for_encryption(
-            &self.ciphersuite,
+            self.ciphersuite(),
             mls_plaintext.sender.sender,
             secret_type,
         );
@@ -222,7 +226,7 @@ impl Api for MlsGroup {
         }
 
         Ok(mls_ciphertext.to_plaintext(
-            &self.ciphersuite,
+            self.ciphersuite(),
             &roster,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
@@ -244,7 +248,7 @@ impl Api for MlsGroup {
 
 impl Codec for MlsGroup {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.encode(buffer)?;
+        self.ciphersuite.name().encode(buffer)?;
         self.group_context.encode(buffer)?;
         self.generation.encode(buffer)?;
         self.epoch_secrets.encode(buffer)?;
@@ -254,7 +258,7 @@ impl Codec for MlsGroup {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = Ciphersuite::decode(cursor)?;
+        let ciphersuite = CiphersuiteName::decode(cursor)?;
         let group_context = GroupContext::decode(cursor)?;
         let generation = u32::decode(cursor)?;
         let epoch_secrets = EpochSecrets::decode(cursor)?;
@@ -262,7 +266,7 @@ impl Codec for MlsGroup {
         let tree = RatchetTree::decode(cursor)?;
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let group = MlsGroup {
-            ciphersuite,
+            ciphersuite: Config::ciphersuite(ciphersuite)?,
             group_context,
             generation,
             epoch_secrets,
@@ -282,8 +286,10 @@ impl MlsGroup {
     fn sender_index(&self) -> LeafIndex {
         self.tree.borrow().get_own_node_index().into()
     }
+
+    /// Get the ciphersuite implementation used in this group.
     pub(crate) fn ciphersuite(&self) -> &Ciphersuite {
-        &self.ciphersuite
+        self.ciphersuite
     }
 
     pub(crate) fn context(&self) -> &GroupContext {
