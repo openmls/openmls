@@ -3,16 +3,24 @@
 #[cfg(test)]
 use super::{index::NodeIndex, private_tree::*, test_util::*};
 #[cfg(test)]
-use crate::{ciphersuite::*, creds::*, key_packages::*, utils::*};
+use crate::{ciphersuite::*, config::Config, creds::*, key_packages::*, utils::*};
 
 #[cfg(test)]
 // Common setup for tests.
-fn setup(len: usize) -> (Ciphersuite, KeyPackageBundle, NodeIndex, Vec<NodeIndex>) {
+fn setup(
+    len: usize,
+) -> (
+    &'static Ciphersuite,
+    KeyPackageBundle,
+    NodeIndex,
+    Vec<NodeIndex>,
+) {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let ciphersuite = Ciphersuite::new(ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let credential_bundle =
         CredentialBundle::new("username".into(), CredentialType::Basic, ciphersuite_name).unwrap();
-    let key_package_bundle = KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![]);
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![]).unwrap();
     let own_index = NodeIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 

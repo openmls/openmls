@@ -1,4 +1,3 @@
-use crate::ciphersuite::*;
 use crate::config::*;
 use crate::creds::*;
 use crate::extensions::*;
@@ -13,15 +12,13 @@ use crate::tree::index::*;
 /// `get_filtered_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {
-    for ciphersuite_name in Config::supported_ciphersuites() {
-        let ciphersuite = Ciphersuite::new(*ciphersuite_name);
-
+    for ciphersuite in Config::supported_ciphersuites() {
         // Define identities
         let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, *ciphersuite_name)
+            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
                 .unwrap();
         let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, *ciphersuite_name).unwrap();
+            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
 
         // Mandatory extensions, will be fixed in #164
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
@@ -29,21 +26,24 @@ fn proposal_queue_functions() {
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
-            &[*ciphersuite_name],
+            &[ciphersuite.name()],
             &alice_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
-            &[*ciphersuite_name],
+            &[ciphersuite.name()],
             &bob_credential_bundle,
             mandatory_extensions.clone(),
-        );
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.get_key_package();
         let alice_update_key_package_bundle = KeyPackageBundle::new(
-            &[*ciphersuite_name],
+            &[ciphersuite.name()],
             &alice_credential_bundle,
             mandatory_extensions,
-        );
+        )
+        .unwrap();
         let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
@@ -66,11 +66,11 @@ fn proposal_queue_functions() {
         };
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-        let proposal_id_add_alice1 = ProposalID::from_proposal(&ciphersuite, &proposal_add_alice1);
+        let proposal_id_add_alice1 = ProposalID::from_proposal(ciphersuite, &proposal_add_alice1);
         let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
-        let proposal_id_add_alice2 = ProposalID::from_proposal(&ciphersuite, &proposal_add_alice2);
+        let proposal_id_add_alice2 = ProposalID::from_proposal(ciphersuite, &proposal_add_alice2);
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
-        let proposal_id_add_bob1 = ProposalID::from_proposal(&ciphersuite, &proposal_add_bob1);
+        let proposal_id_add_bob1 = ProposalID::from_proposal(ciphersuite, &proposal_add_bob1);
 
         // Test proposal types
         assert!(proposal_add_alice1.is_type(ProposalType::Add));
