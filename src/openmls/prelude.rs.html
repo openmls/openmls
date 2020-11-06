@@ -15,6 +15,11 @@
 <span id="14">14</span>
 <span id="15">15</span>
 <span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Prelude for openmls.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of openmls.</span>
@@ -23,6 +28,11 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">ManagedGroup</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">MlsGroup</span>;
+<span class="comment">// Errors</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">DecryptionError</span>, <span class="ident">WelcomeError</span>};
+
+<span class="comment">// Indexes</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::<span class="ident">LeafIndex</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
