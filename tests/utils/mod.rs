@@ -144,7 +144,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .borrow_mut()
             .insert(mls_group.context().group_id.clone(), mls_group);
         // If there is more than one member in the group, prepare proposals and
-        // commit. Then distribute the Welcome and the commit to the other
+        // commit. Then distribute the Welcome message to the new
         // members.
         if group_config.members.len() > 1 {
             let group_states = initial_group_member.group_states.borrow();
@@ -223,20 +223,6 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .group_states
                     .borrow_mut()
                     .insert(new_group.group_id(), new_group);
-            }
-            // Make all members receive and process the commit message.
-            for member in &group_config.members {
-                let group_member = test_clients.get(member.name).unwrap().borrow();
-                let key_package_bundles = group_member.key_package_bundles.borrow();
-                let mut group_states = group_member.group_states.borrow_mut();
-                let group = group_states
-                    .get_mut(&commit_mls_plaintext.group_id.clone())
-                    .unwrap();
-                let _ = group.apply_commit(
-                    commit_mls_plaintext.clone(),
-                    proposal_list.clone(),
-                    &key_package_bundles,
-                );
             }
         }
     }
