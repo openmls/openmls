@@ -207,8 +207,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .find(|y| y.get_key_package().hash() == x.key_package_hash)
-                            .is_some()
+                            .any(|y| y.get_key_package().hash() == x.key_package_hash)
                     })
                     .unwrap();
                 let kpb_position = new_group_member
