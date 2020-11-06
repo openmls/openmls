@@ -249,3 +249,26 @@ pub(crate) fn randombytes(n: usize) -> Vec<u8> {
 //    }
 //    bytes
 //}
+
+#[test]
+fn test_setup() {
+    let test_client_config_a = TestClientConfig {
+        name: "TestClientConfigA",
+        ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+    };
+    let test_client_config_b = TestClientConfig {
+        name: "TestClientConfigB",
+        ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+    };
+    let group_config = GroupConfig::default();
+    let test_group_config = TestGroupConfig {
+        ciphersuite: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        config: group_config,
+        members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
+    };
+    let test_setup_config = TestSetupConfig {
+        clients: vec![test_client_config_a, test_client_config_b],
+        groups: vec![test_group_config],
+    };
+    let _test_setup = setup(test_setup_config);
+}
