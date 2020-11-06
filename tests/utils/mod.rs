@@ -213,8 +213,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group =
-                    MlsGroup::new_from_welcome(welcome.clone(), None, key_package_bundle).unwrap();
+                let new_group = MlsGroup::new_from_welcome(
+                    welcome.clone(),
+                    Some(mls_group.tree().public_key_tree_copy()),
+                    key_package_bundle,
+                )
+                .unwrap();
                 new_group_member
                     .group_states
                     .borrow_mut()
