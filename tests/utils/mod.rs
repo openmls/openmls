@@ -218,7 +218,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 new_group_member
                     .group_states
                     .borrow_mut()
-                    .insert(new_group.context().group_id.clone(), new_group);
+                    .insert(new_group.group_id(), new_group);
             }
             // Make all members receive and process the commit message.
             for member in &group_config.members {

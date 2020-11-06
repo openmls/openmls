@@ -296,6 +296,10 @@ impl MlsGroup {
         &self.group_context
     }
 
+    pub fn group_id(&self) -> GroupId {
+        self.group_context.group_id.clone()
+    }
+
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
         &self.epoch_secrets
     }
