@@ -65,8 +65,6 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         // This currently creates a credential bundle per ciphersuite, (not per
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
-            //Initialize KeyStore for that client and ciphersuite.
-            key_store.insert((client.name, ciphersuite), Vec::new());
             // Create a credential_bundle for the given ciphersuite.
             let credential_bundle = CredentialBundle::new(
                 client.name.as_bytes().to_vec(),
@@ -75,16 +73,20 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             )
             .unwrap();
             // Create a number of key packages.
+            let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
+                let capabilities_extension = Box::new(CapabilitiesExtension::default());
+                let lifetime_extension = Box::new(LifetimeExtension::new(60));
+                let mandatory_extensions: Vec<Box<dyn Extension>> =
+                    vec![capabilities_extension, lifetime_extension];
                 let key_package_bundle: KeyPackageBundle =
-                    KeyPackageBundle::new(&[ciphersuite], &credential_bundle, Vec::new()).unwrap();
-                // Register the freshly created KeyPackage in the KeyStore.
-                key_store
-                    .get_mut(&(client.name, ciphersuite))
-                    .unwrap()
-                    .push(key_package_bundle.get_key_package().clone());
+                    KeyPackageBundle::new(&[ciphersuite], &credential_bundle, mandatory_extensions)
+                        .unwrap();
+                key_packages.push(key_package_bundle.get_key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
+            // Register the freshly created KeyPackages in the KeyStore.
+            key_store.insert((client.name, ciphersuite), key_packages);
             // Store the credential bundle.
             credential_bundles.insert(ciphersuite, credential_bundle);
         }
@@ -147,9 +149,9 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         // commit. Then distribute the Welcome message to the new
         // members.
         if group_config.members.len() > 1 {
-            let group_states = initial_group_member.group_states.borrow();
+            let mut group_states = initial_group_member.group_states.borrow_mut();
             let mls_group = group_states
-                .get(&GroupId::from_slice(&group_id.to_be_bytes()))
+                .get_mut(&GroupId::from_slice(&group_id.to_be_bytes()))
                 .unwrap();
             for client_id in 1..group_config.members.len() {
                 // Pull a KeyPackage from the key_store for the new member.
@@ -172,7 +174,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             }
             // Create the commit based on the previously compiled list of
             // proposals.
-            let (_commit_mls_plaintext, welcome_option, _key_package_bundle_option) = mls_group
+            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
                 .create_commit(
                     group_aad,
                     &initial_credential_bundle,
@@ -181,6 +183,14 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 )
                 .unwrap();
             let welcome = welcome_option.unwrap();
+            let key_package_bundle = key_package_bundle_option.unwrap();
+            // Apply the commit to the initial group member's group state using
+            // the key package bundle returned by the create_commit earlier.
+            match mls_group.apply_commit(commit_mls_plaintext, proposal_list, &[key_package_bundle])
+            {
+                Ok(_) => (),
+                Err(err) => panic!("Error creating new group from Welcome: {:?}", err),
+            }
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
                 let new_group_member = test_clients
@@ -213,12 +223,15 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group = MlsGroup::new_from_welcome(
+                let new_group = match MlsGroup::new_from_welcome(
                     welcome.clone(),
                     Some(mls_group.tree().public_key_tree_copy()),
                     key_package_bundle,
-                )
-                .unwrap();
+                ) {
+                    Ok(group) => group,
+                    Err(err) => panic!("Error creating new group from Welcome: {:?}", err),
+                };
+
                 new_group_member
                     .group_states
                     .borrow_mut()
