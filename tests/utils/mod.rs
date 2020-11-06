@@ -177,7 +177,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     group_aad,
                     &initial_credential_bundle,
                     proposal_list.clone(),
-                    false,
+                    true, /* Set this to true to populate the tree a little bit. */
                 )
                 .unwrap();
             let welcome = welcome_option.unwrap();
