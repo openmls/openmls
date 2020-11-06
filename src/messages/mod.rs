@@ -251,10 +251,10 @@ impl Codec for PathSecret {
         encode_vec(VecSize::VecU8, buffer, &self.path_secret)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let path_secret = decode_vec(VecSize::VecU8, cursor)?;
-    //     Ok(PathSecret { path_secret })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let path_secret = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(PathSecret { path_secret })
+    }
 }
 
 pub struct GroupSecrets {
