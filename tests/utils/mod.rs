@@ -193,15 +193,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .get_secrets_ref()
                     .iter()
                     .find(|x| {
-                        match new_group_member
+                        new_group_member
                             .key_package_bundles
                             .borrow()
                             .iter()
                             .find(|y| y.get_key_package().hash() == x.key_package_hash)
-                        {
-                            Some(_) => true,
-                            None => false,
-                        }
+                            .is_some()
                     })
                     .unwrap();
                 let kpb_position = new_group_member
