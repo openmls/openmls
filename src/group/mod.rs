@@ -29,7 +29,7 @@ impl From<CodecError> for GroupError {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Hash, Eq, Debug, PartialEq, Clone)]
 pub struct GroupId {
     pub value: Vec<u8>,
 }

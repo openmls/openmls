@@ -119,7 +119,7 @@ impl KeyPackage {
     }
 
     /// Compute the hash of the encoding of this key package.
-    pub(crate) fn hash(&self) -> Vec<u8> {
+    pub fn hash(&self) -> Vec<u8> {
         let bytes = self.encode_detached().unwrap();
         self.cipher_suite.hash(&bytes)
     }
