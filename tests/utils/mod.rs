@@ -45,7 +45,7 @@ pub(crate) struct TestClient {
 /// The state of a test setup, including the state of the clients and the
 /// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
-    pub(crate) key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
+    pub(crate) _key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
     pub(crate) clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
 }
 
@@ -172,7 +172,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             }
             // Create the commit based on the previously compiled list of
             // proposals.
-            let (commit_mls_plaintext, welcome_option, _key_package_bundle_option) = mls_group
+            let (_commit_mls_plaintext, welcome_option, _key_package_bundle_option) = mls_group
                 .create_commit(
                     group_aad,
                     &initial_credential_bundle,
@@ -227,7 +227,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         }
     }
     TestSetup {
-        key_store: RefCell::new(key_store),
+        _key_store: RefCell::new(key_store),
         clients: RefCell::new(test_clients),
     }
 }
