@@ -109,7 +109,7 @@ fn create_commit_optional_path() {
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         // Bob creates group from Welcome
-        let _group_bob = match MlsGroup::new_from_welcome(
+        let group_bob = match MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
@@ -120,7 +120,7 @@ fn create_commit_optional_path() {
 
         assert_eq!(
             group_alice.tree().public_key_tree(),
-            group_alice.tree().public_key_tree()
+            group_bob.tree().public_key_tree()
         );
 
         // Alice updates
@@ -165,7 +165,7 @@ fn basic_group_setup() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
 
-        // Define identities
+        // Define credential bundles
         let alice_credential_bundle =
             CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
                 .unwrap();
@@ -173,20 +173,14 @@ fn basic_group_setup() {
             CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
 
         // Generate KeyPackages
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
-            Vec::new(),
-        )
-        .unwrap();
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+                .unwrap();
         let bob_key_package = bob_key_package_bundle.get_key_package();
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle, // TODO: bad API, we shouldn't have to get the private key out here (this function shouldn't exist!)
-            Vec::new(),
-        )
-        .unwrap();
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+                .unwrap();
 
         // Alice creates a group
         let group_id = [1, 2, 3, 4];
@@ -232,7 +226,7 @@ fn group_operations() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
 
-        // Define identities
+        // Define credential bundles
         let alice_credential_bundle =
             CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
                 .unwrap();
