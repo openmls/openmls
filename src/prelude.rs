@@ -5,6 +5,11 @@ pub use crate::group::Api;
 pub use crate::group::GroupConfig;
 pub use crate::group::ManagedGroup;
 pub use crate::group::MlsGroup;
+// Errors
+pub use crate::group::{ApplyCommitError, DecryptionError, WelcomeError};
+
+// Indexes
+pub use crate::tree::index::LeafIndex;
 
 pub use crate::ciphersuite::*;
 pub use crate::codec::*;
