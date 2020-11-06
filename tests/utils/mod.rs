@@ -75,7 +75,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             )
             .unwrap();
             // Create a number of key packages.
-            for _ in 1..KEY_PACKAGE_COUNT {
+            for _ in 0..KEY_PACKAGE_COUNT {
                 let key_package_bundle: KeyPackageBundle =
                     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, Vec::new()).unwrap();
                 // Register the freshly created KeyPackage in the KeyStore.
