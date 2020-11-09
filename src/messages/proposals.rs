@@ -95,15 +95,15 @@ impl Codec for Proposal {
         }
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let proposal_type = ProposalType::from(u8::decode(cursor)?);
-    //     match proposal_type {
-    //         ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
-    //         ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
-    //         ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
-    //         _ => Err(CodecError::DecodingError),
-    //     }
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let proposal_type = ProposalType::from(u8::decode(cursor)?);
+        match proposal_type {
+            ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
+            ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
+            ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
+            _ => Err(CodecError::DecodingError),
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -123,6 +123,10 @@ impl Codec for ProposalID {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.value)?;
         Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let value = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(ProposalID { value })
     }
 }
 
@@ -332,6 +336,10 @@ impl Codec for AddProposal {
         self.key_package.encode(buffer)?;
         Ok(())
     }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let key_package = KeyPackage::decode(cursor)?;
+        Ok(AddProposal { key_package })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -344,6 +352,10 @@ impl Codec for UpdateProposal {
         self.key_package.encode(buffer)?;
         Ok(())
     }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let key_package = KeyPackage::decode(cursor)?;
+        Ok(UpdateProposal { key_package })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -355,5 +367,9 @@ impl Codec for RemoveProposal {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.removed.encode(buffer)?;
         Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let removed = u32::decode(cursor)?;
+        Ok(RemoveProposal { removed })
     }
 }

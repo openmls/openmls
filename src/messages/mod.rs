@@ -58,10 +58,10 @@ impl Codec for ConfirmationTag {
         encode_vec(VecSize::VecU8, buffer, &self.0)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let inner = decode_vec(VecSize::VecU8, cursor)?;
-    //     Ok(ConfirmationTag(inner))
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let inner = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(ConfirmationTag(inner))
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
