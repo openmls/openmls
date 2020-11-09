@@ -5,7 +5,11 @@
 
 use evercrypt::prelude::*;
 use hpke::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
@@ -18,6 +22,7 @@ use ciphersuites::*;
 use crate::config::Config;
 use crate::errors::ConfigError;
 use crate::utils::random_u32;
+use crate::{count, implement_persistence};
 
 #[cfg(test)]
 mod test_ciphersuite;
@@ -91,7 +96,7 @@ pub struct AeadNonce {
     value: [u8; NONCE_BYTES],
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Signature {
     value: Vec<u8>,
 }
@@ -107,6 +112,8 @@ pub struct SignaturePublicKey {
     ciphersuite: &'static Ciphersuite,
     value: Vec<u8>,
 }
+
+implement_persistence!(SignaturePublicKey, value);
 
 #[derive(Clone)]
 pub struct SignatureKeypair {

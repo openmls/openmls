@@ -3,6 +3,8 @@ use crate::codec::*;
 use crate::group::*;
 use crate::messages::*;
 
+use serde::{Deserialize, Serialize};
+
 pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &[u8], label: &str) -> Vec<u8> {
     hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
 }
@@ -63,7 +65,7 @@ impl HkdfLabel {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, Debug, Serialize, Deserialize)]
 pub struct EpochSecrets {
     pub welcome_secret: Vec<u8>,
     pub sender_data_secret: Vec<u8>,

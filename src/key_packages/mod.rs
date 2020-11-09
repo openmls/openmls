@@ -9,8 +9,14 @@ use crate::extensions::{
     ParentHashExtension,
 };
 use crate::schedule::*;
+use crate::{count, implement_persistence};
 
 use evercrypt::rand_util::*;
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 mod codec;
 
@@ -38,12 +44,21 @@ impl From<ExtensionError> for KeyPackageError {
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
     protocol_version: ProtocolVersion,
-    cipher_suite: &'static Ciphersuite,
+    ciphersuite: &'static Ciphersuite,
     hpke_init_key: HPKEPublicKey,
     credential: Credential,
     extensions: Vec<Box<dyn Extension>>,
     signature: Signature,
 }
+
+implement_persistence!(
+    KeyPackage,
+    protocol_version,
+    hpke_init_key,
+    credential,
+    extensions,
+    signature
+);
 
 /// Mandatory extensions for key packages.
 const MANDATORY_EXTENSIONS: [ExtensionType; 2] =
@@ -61,7 +76,7 @@ impl KeyPackage {
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
-            cipher_suite: Config::ciphersuite(ciphersuite_name)?,
+            ciphersuite: Config::ciphersuite(ciphersuite_name)?,
             hpke_init_key,
             credential: credential_bundle.credential().clone(),
             extensions,
@@ -121,7 +136,7 @@ impl KeyPackage {
     /// Compute the hash of the encoding of this key package.
     pub fn hash(&self) -> Vec<u8> {
         let bytes = self.encode_detached().unwrap();
-        self.cipher_suite.hash(&bytes)
+        self.ciphersuite.hash(&bytes)
     }
 
     /// Get a reference to the extension of `extension_type`.
@@ -186,8 +201,8 @@ impl KeyPackage {
     }
 
     /// Get the `Ciphersuite`.
-    pub(crate) fn cipher_suite(&self) -> &Ciphersuite {
-        self.cipher_suite
+    pub(crate) fn ciphersuite(&self) -> &Ciphersuite {
+        self.ciphersuite
     }
 
     /// Get a reference to the extensions of this key package.
@@ -200,7 +215,7 @@ impl KeyPackage {
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
         self.protocol_version.encode(buffer)?;
-        self.cipher_suite.name().encode(buffer)?;
+        self.ciphersuite.name().encode(buffer)?;
         self.hpke_init_key.encode(buffer)?;
         self.credential.encode(buffer)?;
         // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
@@ -220,7 +235,7 @@ impl KeyPackage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,

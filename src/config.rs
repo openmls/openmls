@@ -43,7 +43,7 @@ lazy_static! {
 /// # MLS Configuration
 ///
 /// This is the global configuration for MLS.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     protocol_versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<Ciphersuite>,
@@ -51,6 +51,11 @@ pub struct Config {
 }
 
 impl Config {
+    /// Get a reference to the global Config object.
+    pub(crate) fn get() -> &'static Self {
+        &CONFIG
+    }
+
     /// Get a list of the supported extension types.
     pub fn supported_extensions() -> &'static [ExtensionType] {
         &CONFIG.extensions

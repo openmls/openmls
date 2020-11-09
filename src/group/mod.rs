@@ -14,6 +14,8 @@ use crate::codec::*;
 use crate::tree::*;
 use crate::utils::*;
 
+use serde::{Deserialize, Serialize};
+
 pub use codec::*;
 pub use errors::*;
 pub use managed_group::*;
@@ -29,7 +31,7 @@ impl From<CodecError> for GroupError {
     }
 }
 
-#[derive(Hash, Eq, Debug, PartialEq, Clone)]
+#[derive(Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct GroupId {
     pub value: Vec<u8>,
 }
@@ -61,7 +63,7 @@ impl Codec for GroupId {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct GroupEpoch(pub u64);
 
 impl GroupEpoch {
@@ -81,7 +83,7 @@ impl Codec for GroupEpoch {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupContext {
     pub group_id: GroupId,
     pub epoch: GroupEpoch,

@@ -5,6 +5,7 @@ mod creds;
 mod errors;
 mod extensions;
 mod framing;
+mod fs;
 mod group;
 mod key_packages;
 mod messages;

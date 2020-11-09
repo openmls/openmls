@@ -104,7 +104,7 @@ impl Codec for ExtensionType {
 /// } Extension;
 /// ```
 ///
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ExtensionStruct {
     extension_type: ExtensionType,
     extension_data: Vec<u8>,
@@ -182,6 +182,7 @@ pub(crate) fn extensions_vec_from_cursor(
 /// # Extension
 ///
 /// This trait defines functions to interact with an extension.
+#[typetag::serde(tag = "type")]
 pub trait Extension: Debug + ExtensionHelper {
     /// Build a new extension from a byte slice.
     ///
@@ -287,3 +288,26 @@ impl PartialEq for dyn Extension {
         self.to_extension_struct() == other.to_extension_struct()
     }
 }
+
+// // For persistence we want to implement serialize and deserialize for extensions.
+// // We can't just derive it because of the Sized restriction. Let's do it manually.
+// // This actually serializes the ExtensionStruct containing the extensions.
+// impl Serialize for dyn Extension {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         let extension_struct = self.to_extension_struct();
+//         extension_struct.serialize(serializer)
+//     }
+// }
+
+// impl<'de> Deserialize<'de> for dyn Extension {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//         Self: Sized,
+//     {
+//         deserializer.deserialize_i32(I32Visitor)
+//     }
+// }

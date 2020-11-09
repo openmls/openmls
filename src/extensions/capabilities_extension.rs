@@ -21,7 +21,9 @@ use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 use crate::config::{Config, ProtocolVersion};
 use crate::errors::ConfigError;
 
-#[derive(PartialEq, Clone, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilitiesExtension {
     versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<CiphersuiteName>,
@@ -76,6 +78,7 @@ impl CapabilitiesExtension {
     }
 }
 
+#[typetag::serde]
 impl Extension for CapabilitiesExtension {
     fn get_type(&self) -> ExtensionType {
         ExtensionType::Capabilities

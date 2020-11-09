@@ -6,6 +6,8 @@ use crate::extensions::*;
 use crate::group::*;
 use crate::tree::{index::*, *};
 
+use serde::{Deserialize, Serialize};
+
 pub(crate) mod proposals;
 use proposals::*;
 
@@ -64,7 +66,7 @@ impl Codec for ConfirmationTag {
     // }
 }
 
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct CommitSecret(pub Vec<u8>);
 
 impl CommitSecret {

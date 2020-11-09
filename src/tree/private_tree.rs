@@ -8,8 +8,10 @@ use crate::key_packages::*;
 use crate::messages::CommitSecret;
 use crate::schedule::hkdf_expand_label;
 
+use serde::{Deserialize, Serialize};
+
 pub(crate) type PathSecrets = Vec<Vec<u8>>;
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
     node_index: NodeIndex,
@@ -52,7 +54,7 @@ impl PrivateTree {
         key_package_bundle: &KeyPackageBundle,
     ) -> Self {
         let leaf_secret = key_package_bundle.leaf_secret();
-        let ciphersuite = key_package_bundle.key_package.cipher_suite();
+        let ciphersuite = key_package_bundle.key_package.ciphersuite();
         let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
         let (private_key, _) = keypair.into_keys();

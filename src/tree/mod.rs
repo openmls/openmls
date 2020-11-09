@@ -1,9 +1,11 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::config::Config;
 use crate::creds::*;
 use crate::errors::ConfigError;
 use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
+use crate::{count, implement_persistence};
 
 // Tree modules
 pub(crate) mod codec;
@@ -20,6 +22,12 @@ use hash_input::*;
 use index::*;
 use node::*;
 use private_tree::{PathSecrets, PrivateTree};
+
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 // Internal tree tests
 #[cfg(test)]
@@ -48,6 +56,8 @@ pub struct RatchetTree {
     /// See `PrivateTree` for details.
     private_tree: PrivateTree,
 }
+
+implement_persistence!(RatchetTree, nodes, private_tree);
 
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
