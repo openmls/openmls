@@ -156,7 +156,7 @@ fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension
 }
 
 /// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
-pub(crate) fn extensions_vec_from_cursor(
+pub fn extensions_vec_from_cursor(
     cursor: &mut Cursor,
 ) -> Result<Vec<Box<dyn Extension>>, CodecError> {
     // First parse the extension bytes into the `ExtensionStruct`.

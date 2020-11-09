@@ -14,7 +14,9 @@ impl Codec for KeyPackage {
         let cipher_suite_name = CiphersuiteName::decode(cursor)?;
         let hpke_init_key = HPKEPublicKey::decode(cursor)?;
         let credential = Credential::decode(cursor)?;
+        println!("{:?}", cursor);
         let extensions = extensions_vec_from_cursor(cursor)?;
+        //panic!("Debug");
         let signature = Signature::decode(cursor)?;
         let kp = KeyPackage {
             protocol_version,
