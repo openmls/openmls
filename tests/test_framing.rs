@@ -1,25 +1,52 @@
-mod test_utils;
-use test_utils::*;
-
 use openmls::prelude::*;
+mod utils;
+use utils::*;
 
 #[test]
 fn padding() {
-    for ciphersuite in Config::supported_ciphersuites() {
-        let id = vec![1, 2, 3];
-        let credential_bundle =
-            CredentialBundle::new(id.clone(), CredentialType::Basic, ciphersuite.name()).unwrap();
-        let kpb =
-            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
+    // Create a test config for a single client supporting all possible
+    // ciphersuites.
+    let alice_config = TestClientConfig {
+        name: "alice",
+        ciphersuites: Config::supported_ciphersuite_names(),
+    };
 
-        let mut group_alice =
-            MlsGroup::new(&id, ciphersuite.name(), kpb, GroupConfig::default()).unwrap();
-        const PADDING_SIZE: usize = 10;
+    let mut test_group_configs = Vec::new();
 
+    // Create a group config for each ciphersuite.
+    for ciphersuite_name in Config::supported_ciphersuite_names() {
+        let test_group = TestGroupConfig {
+            ciphersuite: ciphersuite_name,
+            config: GroupConfig::default(),
+            members: vec![alice_config.clone()],
+        };
+        test_group_configs.push(test_group);
+    }
+
+    // Create the test setup config.
+    let test_setup_config = TestSetupConfig {
+        clients: vec![alice_config],
+        groups: test_group_configs,
+    };
+
+    // Initialize the test setup according to config.
+    let test_setup = setup(test_setup_config);
+
+    let test_clients = test_setup.clients.borrow();
+    let alice = test_clients.get("alice").unwrap().borrow();
+
+    const PADDING_SIZE: usize = 10;
+
+    // Create a message in each group and test the padding.
+    for group_state in alice.group_states.borrow_mut().values_mut() {
+        let credential_bundle = alice
+            .credential_bundles
+            .get(&group_state.ciphersuite().name())
+            .unwrap();
         for _ in 0..100 {
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
-            let encrypted_message = group_alice
+            let encrypted_message = group_state
                 .create_application_message(&aad, &message, &credential_bundle)
                 .ciphertext;
             let ciphertext = encrypted_message.as_slice();
@@ -27,9 +54,9 @@ fn padding() {
             let overflow = length % PADDING_SIZE;
             if overflow != 0 {
                 panic!(
-                "Error: padding overflow of {} bytes, message length: {}, padding block size: {}",
-                overflow, length, PADDING_SIZE
-            );
+                    "Error: padding overflow of {} bytes, message length: {}, padding block size: {}",
+                    overflow, length, PADDING_SIZE
+                );
             }
         }
     }

@@ -288,12 +288,16 @@ impl MlsGroup {
     }
 
     /// Get the ciphersuite implementation used in this group.
-    pub(crate) fn ciphersuite(&self) -> &Ciphersuite {
+    pub fn ciphersuite(&self) -> &Ciphersuite {
         self.ciphersuite
     }
 
-    pub(crate) fn context(&self) -> &GroupContext {
+    pub fn context(&self) -> &GroupContext {
         &self.group_context
+    }
+
+    pub fn group_id(&self) -> GroupId {
+        self.group_context.group_id.clone()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
