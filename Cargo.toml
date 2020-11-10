@@ -5,6 +5,9 @@ authors = ["Raphael Robert"]
 edition = "2018"
 description = "This is a PoC Rust implementation of the Messaging Layer Security (MLS) protocol based on draft 9+."
 license = "MIT"
+documentation = "https://openmls.github.io/openmls/"
+repository = "https://github.com/openmls/openmls/"
+readme = "README.md"
 
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }
