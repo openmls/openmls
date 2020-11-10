@@ -302,19 +302,19 @@ impl KeyPackageBundle {
         let capabilities_extension_option = extensions
             .iter()
             .position(|e| e.get_type() == ExtensionType::Capabilities)
-            .and_then(|cap_extension_index| {
+            .map(|cap_extension_index| {
                 let cap_extension = extensions.remove(cap_extension_index);
-                Some(cap_extension.to_capabilities_extension().unwrap().clone())
+                cap_extension.to_capabilities_extension().unwrap().clone()
             });
         // If that is the case, add any missing ciphersuites of the set of input
         // ciphersuites. If there is no capabilities extension, add the default
         // capabilities extension, but with the input ciphersuites.
         let capabilities_extension = match capabilities_extension_option {
             Some(cap_ext) => {
-                let mut cap_cs = cap_ext.ciphersuites().clone().to_vec();
+                let mut cap_cs = cap_ext.ciphersuites().to_vec();
                 for cs in ciphersuites {
                     if !cap_ext.ciphersuites().contains(cs) {
-                        cap_cs.push(cs.clone());
+                        cap_cs.push(*cs);
                     }
                 }
                 CapabilitiesExtension::new(
