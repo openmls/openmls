@@ -3,6 +3,8 @@ name = "openmls"
 version = "0.2.0"
 authors = ["Raphael Robert"]
 edition = "2018"
+description = "This is a PoC Rust implementation of the Messaging Layer Security (MLS) protocol based on draft 9+."
+license = "MIT"
 
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }
