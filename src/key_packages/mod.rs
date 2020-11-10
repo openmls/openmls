@@ -8,6 +8,7 @@ use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
     ParentHashExtension,
 };
+use crate::prelude::LifetimeExtension;
 use crate::schedule::*;
 
 use evercrypt::rand_util::*;
@@ -274,22 +275,69 @@ impl KeyPackageBundle {
     pub fn new_with_keypair(
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
+        mut extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
         leaf_secret: Vec<u8>,
     ) -> Result<Self, ConfigError> {
         debug_assert!(!ciphersuites.is_empty());
-        let capabilities_extension = CapabilitiesExtension::new(None, Some(ciphersuites), None);
-        let mut final_extensions: Vec<Box<dyn Extension>> = vec![Box::new(capabilities_extension)];
 
+        // Check if the extensions contain any duplicates.
+        if (1..extensions.len()).any(|i| extensions[i..].contains(&extensions[i - 1])) {
+            return Err(ConfigError::DuplicateExtension);
+        }
+        //for ext in &extensions {
+        //    if extensions.iter().any(|e|  e.get_type() == ext.get_type()) {
+        //        return Err(ConfigError::DuplicateExtension);
+        //    }
+        //}
+
+        // Check if the `extensions` already contain the mandatory extensions
+        // and in case one of them is a capabilities extension, add the input
+        // ciphersuites. If not, add the default versions of the mandatory
+        // extensions.
+
+        // First, check if one of the input extensions is a capabilities
+        // extension and if there is one, temporarily remove it from the
+        // extensions.
+        let capabilities_extension_option = extensions
+            .iter()
+            .position(|e| e.get_type() == ExtensionType::Capabilities)
+            .and_then(|cap_extension_index| {
+                let cap_extension = extensions.remove(cap_extension_index);
+                Some(cap_extension.to_capabilities_extension().unwrap().clone())
+            });
+        // If that is the case, add any missing ciphersuites of the set of input
+        // ciphersuites. If there is no capabilities extension, add the default
+        // capabilities extension, but with the input ciphersuites.
+        let capabilities_extension = match capabilities_extension_option {
+            Some(cap_ext) => {
+                let mut cap_cs = cap_ext.ciphersuites().clone().to_vec();
+                for cs in ciphersuites {
+                    if !cap_ext.ciphersuites().contains(cs) {
+                        cap_cs.push(cs.clone());
+                    }
+                }
+                CapabilitiesExtension::new(
+                    Some(cap_ext.versions()),
+                    Some(&cap_cs),
+                    Some(cap_ext.extensions()),
+                )
+            }
+            None => CapabilitiesExtension::new(None, Some(ciphersuites), None),
+        };
+        // Finally add the extension back into the array.
+        extensions.push(Box::new(capabilities_extension));
+
+        // Check if there is a lifetime extension. If not, add the default one.
+        if !extensions
+            .iter()
+            .any(|e| e.get_type() == ExtensionType::Lifetime)
+        {
+            extensions.push(Box::new(LifetimeExtension::default()));
+        }
         let (private_key, public_key) = key_pair.into_keys();
-        final_extensions.extend_from_slice(&extensions);
-        let key_package = KeyPackage::new(
-            ciphersuites[0],
-            public_key,
-            credential_bundle,
-            final_extensions,
-        )?;
+        let key_package =
+            KeyPackage::new(ciphersuites[0], public_key, credential_bundle, extensions)?;
         Ok(KeyPackageBundle {
             key_package,
             private_key,
