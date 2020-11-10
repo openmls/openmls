@@ -57,32 +57,97 @@ fn test_encoding() {
                     Err(err) => panic!("Error decoding MLSCiphertext: {:?}", err),
                 };
             assert_eq!(encrypted_message, encrypted_message_decoded);
-
-            let capabilities_extension = Box::new(CapabilitiesExtension::default());
-            let lifetime_extension = Box::new(LifetimeExtension::new(60));
-            let mandatory_extensions: Vec<Box<dyn Extension>> =
-                vec![capabilities_extension, lifetime_extension];
-
-            let key_package_bundle = KeyPackageBundle::new(
-                &[group_state.ciphersuite().name()],
-                credential_bundle,
-                mandatory_extensions,
-            )
-            .unwrap();
-
-            // Test encoding/decoding of Commit messages
-            let commit = group_state.create_update_proposal(
-                &aad,
-                credential_bundle,
-                key_package_bundle.get_key_package().clone(),
-            );
-            let commit_encoded = commit.encode_detached().unwrap();
-            let commit_decoded = match MLSPlaintext::decode(&mut Cursor::new(&commit_encoded)) {
-                Ok(a) => a,
-                Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
-            };
-
-            assert_eq!(commit, commit_decoded);
         }
+        // Test encoding/decoding of Proposal messages
+
+        // Updates
+
+        // TODO: Leaving out Extensions completely still yields a decoding
+        // error! Should be solved by #164.
+        let capabilities_extension = Box::new(CapabilitiesExtension::default());
+        let lifetime_extension = Box::new(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Box<dyn Extension>> =
+            vec![capabilities_extension, lifetime_extension];
+
+        let key_package_bundle = KeyPackageBundle::new(
+            &[group_state.ciphersuite().name()],
+            credential_bundle,
+            mandatory_extensions,
+        )
+        .unwrap();
+        let update = group_state.create_update_proposal(
+            &[],
+            credential_bundle,
+            key_package_bundle.get_key_package().clone(),
+        );
+        let update_encoded = update.encode_detached().unwrap();
+        let update_decoded = match MLSPlaintext::decode(&mut Cursor::new(&update_encoded)) {
+            Ok(a) => a,
+            Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
+        };
+
+        assert_eq!(update, update_decoded);
+
+        // Adds
+        let capabilities_extension = Box::new(CapabilitiesExtension::default());
+        let lifetime_extension = Box::new(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Box<dyn Extension>> =
+            vec![capabilities_extension, lifetime_extension];
+
+        let key_package_bundle = KeyPackageBundle::new(
+            &[group_state.ciphersuite().name()],
+            credential_bundle,
+            mandatory_extensions,
+        )
+        .unwrap();
+        let add = group_state.create_add_proposal(
+            &[],
+            credential_bundle,
+            key_package_bundle.get_key_package().clone(),
+        );
+        let add_encoded = add.encode_detached().unwrap();
+        let add_decoded = match MLSPlaintext::decode(&mut Cursor::new(&add_encoded)) {
+            Ok(a) => a,
+            Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
+        };
+
+        assert_eq!(add, add_decoded);
+
+        // Removes
+        let remove =
+            group_state.create_remove_proposal(&[], credential_bundle, LeafIndex::from(1u32));
+        let remove_encoded = remove.encode_detached().unwrap();
+        let remove_decoded = match MLSPlaintext::decode(&mut Cursor::new(&remove_encoded)) {
+            Ok(a) => a,
+            Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
+        };
+
+        assert_eq!(remove, remove_decoded);
+
+        // Commits
+
+        let proposals = vec![add, remove, update];
+        let (commit, welcome_option, _key_package_bundle_option) = group_state
+            .create_commit(&[], credential_bundle, proposals, true)
+            .unwrap();
+        let commit_encoded = commit.encode_detached().unwrap();
+        let commit_decoded = match MLSPlaintext::decode(&mut Cursor::new(&commit_encoded)) {
+            Ok(a) => a,
+            Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
+        };
+
+        assert_eq!(commit, commit_decoded);
+
+        // Welcome messages
+
+        let welcome = welcome_option.unwrap();
+
+        let welcome_encoded = welcome.encode_detached().unwrap();
+        let welcome_decoded = match Welcome::decode(&mut Cursor::new(&welcome_encoded)) {
+            Ok(a) => a,
+            Err(err) => panic!("Error decoding Welcome message: {:?}", err),
+        };
+
+        assert_eq!(welcome, welcome_decoded);
     }
 }
