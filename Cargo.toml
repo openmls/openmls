@@ -18,10 +18,6 @@ evercrypt = { version = "0.0.3", features = ["serialization"] }
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
 
-[patch.crates-io]
-evercrypt = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt", branch = "0.0.3", features = ["serialization"] }
-evercrypt-sys = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt-sys", branch = "0.0.3" }
-
 [dev-dependencies]
 criterion = "^0.3"
 
