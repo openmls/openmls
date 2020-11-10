@@ -278,7 +278,7 @@ impl Codec for GroupSecrets {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EncryptedGroupSecrets {
     pub key_package_hash: Vec<u8>,
     pub encrypted_group_secrets: HpkeCiphertext,
@@ -300,7 +300,7 @@ impl Codec for EncryptedGroupSecrets {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Welcome {
     version: ProtocolVersion,
     cipher_suite: &'static Ciphersuite,
