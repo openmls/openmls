@@ -58,46 +58,17 @@ fn test_encoding() {
                 };
             assert_eq!(encrypted_message, encrypted_message_decoded);
 
-            // Helper-test: Extensions
             let capabilities_extension = Box::new(CapabilitiesExtension::default());
             let lifetime_extension = Box::new(LifetimeExtension::new(60));
             let mandatory_extensions: Vec<Box<dyn Extension>> =
                 vec![capabilities_extension, lifetime_extension];
-            let mandatory_extensions_struct: Vec<ExtensionStruct> = mandatory_extensions
-                .iter()
-                .map(|e| e.to_extension_struct())
-                .collect();
-            let mut mandatory_extensions_encoded = vec![];
-            encode_vec(
-                VecSize::VecU16,
-                &mut mandatory_extensions_encoded,
-                &mandatory_extensions_struct,
-            )
-            .unwrap();
-            println!("{:?}", mandatory_extensions_encoded);
-            let _mandatory_extensions_decoded =
-                extensions_vec_from_cursor(&mut Cursor::new(&mandatory_extensions_encoded));
-            //assert_eq!(mandatory_extensions, mandatory_extensions_decoded);
 
-            // Helper-test: KeyPackages
             let key_package_bundle = KeyPackageBundle::new(
                 &[group_state.ciphersuite().name()],
                 credential_bundle,
                 mandatory_extensions,
             )
             .unwrap();
-
-            if key_package_bundle.get_key_package().verify().is_err() {
-                panic!("KeyPackage doesn't verify.");
-            }
-
-            let key_package_encoded = key_package_bundle
-                .get_key_package()
-                .encode_detached()
-                .unwrap();
-            let key_package_decoded =
-                KeyPackage::decode(&mut Cursor::new(&key_package_encoded)).unwrap();
-            assert_eq!(key_package_bundle.get_key_package(), &key_package_decoded);
 
             // Test encoding/decoding of Commit messages
             let commit = group_state.create_update_proposal(
