@@ -20,8 +20,7 @@ impl From<Error> for CodecError {
     // TODO: tbd in #83, also this direction shouldn't be necessary.
     fn from(e: Error) -> CodecError {
         match e {
-            Error::DecodingError => CodecError::DecodingError,
-            Error::UnsupportedCiphersuite => CodecError::DecodingError,
+            _ => CodecError::DecodingError,
         }
     }
 }

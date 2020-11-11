@@ -1,7 +1,15 @@
 use openmls::prelude::*;
 
+use flexi_logger;
+
 #[test]
 fn create_commit_optional_path() {
+    flexi_logger::Logger::with_env()
+        .log_to_file()
+        .duplicate_to_stderr(flexi_logger::Duplicate::Info)
+        .start()
+        .unwrap();
+
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
 

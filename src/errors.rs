@@ -17,4 +17,5 @@ pub enum ConfigError {
 pub enum Error {
     DecodingError,
     UnsupportedCiphersuite,
+    CryptoLibraryError,
 }
