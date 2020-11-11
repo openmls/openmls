@@ -239,7 +239,7 @@ impl Codec for PathSecret {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let path_secret = decode_vec(VecSize::VecU8, cursor)?;
+        let path_secret = Secret::decode(cursor)?;
         Ok(PathSecret { path_secret })
     }
 }
