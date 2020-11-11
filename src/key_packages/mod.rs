@@ -280,15 +280,9 @@ impl KeyPackageBundle {
     ) -> Result<Self, ConfigError> {
         debug_assert!(!ciphersuites.is_empty());
 
-        // Check if the extensions contain any duplicates.
-        if (1..extensions.len()).any(|i| extensions[i..].contains(&extensions[i - 1])) {
-            return Err(ConfigError::DuplicateExtension);
-        }
-        //for ext in &extensions {
-        //    if extensions.iter().any(|e|  e.get_type() == ext.get_type()) {
-        //        return Err(ConfigError::DuplicateExtension);
-        //    }
-        //}
+        // Remove any duplicate extensions
+        extensions.sort();
+        extensions.dedup();
 
         // Check if the `extensions` already contain the mandatory extensions
         // and in case one of them is a capabilities extension, add the input
