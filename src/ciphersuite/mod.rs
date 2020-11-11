@@ -84,7 +84,7 @@ impl Secret {
 
     // TODO: The only reason we still need this, is because ConfirmationTag is
     // currently not a MAC, but a Secret. This should be solved when we're up to
-    // spec.
+    // spec, i.e. with issue #147.
     pub(crate) fn to_vec(&self) -> Vec<u8> {
         self.value.clone()
     }
