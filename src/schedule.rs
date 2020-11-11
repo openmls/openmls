@@ -72,8 +72,8 @@ pub struct EpochSecrets {
     pub init_secret: Secret,
 }
 
-impl EpochSecrets {
-    pub fn new() -> Self {
+impl Default for EpochSecrets {
+    fn default() -> Self {
         let welcome_secret = Secret::new_empty_secret();
         let sender_data_secret = Secret::new_empty_secret();
         let encryption_secret = Secret::new_empty_secret();
@@ -89,6 +89,9 @@ impl EpochSecrets {
             init_secret,
         }
     }
+}
+
+impl EpochSecrets {
     pub fn get_new_epoch_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
