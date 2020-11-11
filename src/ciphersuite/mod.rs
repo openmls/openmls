@@ -98,7 +98,7 @@ impl From<Vec<u8>> for Secret {
 
 #[derive(Debug, PartialEq)]
 pub struct AeadKey {
-    pub aead_mode: AeadMode,
+    aead_mode: AeadMode,
     value: Vec<u8>,
 }
 
@@ -239,7 +239,7 @@ impl Ciphersuite {
         info: &[u8],
         okm_len: usize,
     ) -> Result<Secret, HKDFError> {
-        let key = hkdf_expand(self.hmac, prk.value.as_slice(), info, okm_len);
+        let key = hkdf_expand(self.hmac, &prk.value, info, okm_len);
         if key.is_empty() {
             return Err(HKDFError::InvalidLength);
         }
@@ -310,7 +310,7 @@ impl Ciphersuite {
 
     /// Derive a new HPKE keypair from a given Secret.
     pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HPKEKeyPair {
-        self.hpke.derive_key_pair(ikm.value.as_slice())
+        self.hpke.derive_key_pair(&ikm.value)
     }
 }
 
@@ -339,7 +339,7 @@ impl AeadKey {
     }
 
     /// Encrypt a payload under the AeadKey given a nonce.
-    pub fn aead_seal(
+    pub(crate) fn aead_seal(
         &self,
         msg: &[u8],
         aad: &[u8],
@@ -367,7 +367,7 @@ impl AeadKey {
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AEADError> {
-        // TODO: don't hard-code tag bytes
+        // TODO: don't hard-code tag bytes (Issue #205)
         if ciphertext.len() < TAG_BYTES {
             return Err(AEADError::DecryptionError);
         }
