@@ -42,7 +42,7 @@ impl Api for MlsGroup {
         config: GroupConfig,
     ) -> Result<Self, ConfigError> {
         let group_id = GroupId { value: id.to_vec() };
-        let epoch_secrets = EpochSecrets::new();
+        let epoch_secrets = EpochSecrets::default();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, LeafIndex::from(1u32));
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);

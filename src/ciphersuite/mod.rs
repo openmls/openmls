@@ -96,6 +96,14 @@ impl From<Vec<u8>> for Secret {
     }
 }
 
+impl From<&[u8]> for Secret {
+    fn from(bytes: &[u8]) -> Self {
+        Secret {
+            value: bytes.to_vec(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct AeadKey {
     aead_mode: AeadMode,
@@ -109,7 +117,7 @@ pub struct ReuseGuard {
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
-    pub fn new_from_random() -> Self {
+    pub fn from_random() -> Self {
         let reuse_guard: [u8; REUSE_GUARD_BYTES] = random_u32().to_be_bytes();
         ReuseGuard { value: reuse_guard }
     }
@@ -325,7 +333,7 @@ impl AeadKey {
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn new_from_random(aead_mode: AeadMode) -> Self {
+    pub fn from_random(aead_mode: AeadMode) -> Self {
         AeadKey {
             aead_mode,
             value: aead_key_gen(aead_mode),
@@ -395,7 +403,7 @@ impl AeadNonce {
     }
 
     /// Generate a new random nonce.
-    pub fn new_from_random() -> Self {
+    pub fn from_random() -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(get_random_vec(NONCE_BYTES).as_slice());
         AeadNonce { value: nonce }
@@ -504,8 +512,8 @@ impl From<ConfigError> for SignatureError {
 /// state.
 #[test]
 fn test_xor() {
-    let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
-    let original_nonce = AeadNonce::new_from_random();
+    let reuse_guard: ReuseGuard = ReuseGuard::from_random();
+    let original_nonce = AeadNonce::from_random();
     let mut nonce = original_nonce.clone();
     nonce.xor_with_reuse_guard(&reuse_guard);
     assert_ne!(

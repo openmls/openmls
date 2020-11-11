@@ -192,7 +192,7 @@ impl MLSCiphertext {
             mls_ciphertext_content_aad.encode_detached().unwrap(); // TODO: error handling;
 
         // Sample reuse guard uniformly at random.
-        let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
+        let reuse_guard: ReuseGuard = ReuseGuard::from_random();
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         let ciphertext = ratchet_key
