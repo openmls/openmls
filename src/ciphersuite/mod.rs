@@ -71,7 +71,7 @@ pub enum AEADError {
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct Secret {
     value: Vec<u8>,
 }
