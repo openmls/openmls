@@ -45,4 +45,4 @@ Open MLS welcomes contributions! Before contributing, please read the [contribut
 
 ## Code of conduct
 
-Open MLS adheres to the [Contributor Covenant[(https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
+Open MLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
