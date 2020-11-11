@@ -47,12 +47,12 @@ impl TryFrom<&MLSPlaintext> for SecretType {
 /// Derives secrets for inner nodes of a SecretTree
 pub(crate) fn derive_tree_secret(
     ciphersuite: &Ciphersuite,
-    secret: &[u8],
+    secret: &Secret,
     label: &str,
     node: u32,
     generation: u32,
     length: usize,
-) -> Vec<u8> {
+) -> Secret {
     let tree_context = TreeContext { node, generation };
     let serialized_tree_context = tree_context.encode_detached().unwrap();
     hkdf_expand_label(ciphersuite, secret, label, &serialized_tree_context, length)
@@ -78,7 +78,7 @@ impl Codec for TreeContext {
 
 #[derive(Clone)]
 pub struct SecretTreeNode {
-    pub secret: Vec<u8>,
+    pub secret: Secret,
 }
 
 pub struct SecretTree {
@@ -114,12 +114,12 @@ impl SecretTree {
     /// Creates a new SecretTree based on an `encryption_secret` and group size `size`.
     /// The inner nodes of the tree and the SenderRatchets only get initialized when secrets
     /// are requested either through `get_secret()` or `next_secret()`.
-    pub fn new(encryption_secret: &[u8], size: LeafIndex) -> Self {
+    pub fn new(encryption_secret: &Secret, size: LeafIndex) -> Self {
         let root = root(size);
         let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(SecretTreeNode {
-            secret: encryption_secret.to_vec(),
+            secret: encryption_secret.clone(),
         });
 
         SecretTree {

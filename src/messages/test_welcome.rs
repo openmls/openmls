@@ -2,12 +2,11 @@
 
 use super::{EncryptedGroupSecrets, GroupInfo, Welcome};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Signature},
+    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Secret, Signature},
     codec::*,
     config::Config,
     group::{GroupEpoch, GroupId},
     tree::index::LeafIndex,
-    utils::*,
 };
 
 macro_rules! test_welcome_msg {
@@ -27,12 +26,12 @@ macro_rules! test_welcome_msg {
             };
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_slice(&randombytes($ciphersuite.aead_key_length()));
-            let welcome_nonce =
-                AeadNonce::from_slice(&randombytes($ciphersuite.aead_nonce_length()));
+            let welcome_key = AeadKey::from_random($ciphersuite.aead());
+            let welcome_nonce = AeadNonce::from_random();
 
             // Generate receiver key pair.
-            let receiver_key_pair = $ciphersuite.derive_hpke_keypair(&[1, 2, 3, 4]);
+            let receiver_key_pair =
+                $ciphersuite.derive_hpke_keypair(&Secret::from([1u8, 2u8, 3u8, 4u8].to_vec()));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
@@ -47,13 +46,8 @@ macro_rules! test_welcome_msg {
             }];
 
             // Encrypt the group info.
-            let encrypted_group_info = $ciphersuite
-                .aead_seal(
-                    &group_info.encode_detached().unwrap(),
-                    &[],
-                    &welcome_key,
-                    &welcome_nonce,
-                )
+            let encrypted_group_info = welcome_key
+                .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
 
             // Now build the welcome message.
