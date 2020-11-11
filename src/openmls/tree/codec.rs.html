@@ -182,7 +182,7 @@
 
 <span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">SecretTreeNode</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
     <span class="comment">// fn decode(cursor: &amp;mut Cursor) -&gt; Result&lt;Self, CodecError&gt; {</span>

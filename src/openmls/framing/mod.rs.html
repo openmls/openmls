@@ -802,8 +802,6 @@
 <span id="801">801</span>
 <span id="802">802</span>
 <span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -999,37 +997,37 @@
             <span class="ident">mls_ciphertext_content_aad</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(); <span class="comment">// TODO: error handling;</span>
 
         <span class="comment">// Sample reuse guard uniformly at random.</span>
-        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard</span>::<span class="ident">new_from_random</span>();
+        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard</span>::<span class="ident">from_random</span>();
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
         <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
-        <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ciphersuite</span>
+        <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ratchet_key</span>
             .<span class="ident">aead_seal</span>(
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">encode_padded_ciphertext_content_detached</span>(<span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">ratchet_key</span>,
                 <span class="kw-2">&amp;</span><span class="ident">ratchet_nonce</span>,
             )
             .<span class="ident">unwrap</span>();
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key_bytes</span> <span class="op">=</span> <span class="ident">hkdf_expand_label</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>,
-            <span class="string">&quot;sd key&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
-            <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
+        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_secret</span>(
+            <span class="ident">hkdf_expand_label</span>(
+                <span class="ident">ciphersuite</span>,
+                <span class="kw-2">&amp;</span><span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>,
+                <span class="string">&quot;sd key&quot;</span>,
+                <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
+                <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
+            ),
+            <span class="ident">ciphersuite</span>.<span class="ident">aead</span>(),
         );
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce_bytes</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hkdf_expand_label</span>(
+        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_secret</span>(<span class="ident">hkdf_expand_label</span>(
             <span class="ident">ciphersuite</span>,
             <span class="kw-2">&amp;</span><span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>,
             <span class="string">&quot;sd nonce&quot;</span>,
             <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
-        );
+        ));
         <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule</span>
         <span class="comment">// nonce as per spec.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_slice</span>(<span class="ident">sender_data_nonce_bytes</span>);
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data_key_bytes</span>);
         <span class="kw">let</span> <span class="ident">mls_ciphertext_sender_data_aad</span> <span class="op">=</span> <span class="ident">MLSCiphertextSenderDataAAD</span>::<span class="ident">new</span>(
             <span class="ident">context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
             <span class="ident">context</span>.<span class="ident">epoch</span>,
@@ -1038,11 +1036,10 @@
         <span class="kw">let</span> <span class="ident">mls_ciphertext_sender_data_aad_bytes</span> <span class="op">=</span>
             <span class="ident">mls_ciphertext_sender_data_aad</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(); <span class="comment">// TODO: error handling</span>
         <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MLSSenderData</span>::<span class="ident">new</span>(<span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>, <span class="ident">generation</span>, <span class="ident">reuse_guard</span>);
-        <span class="kw">let</span> <span class="ident">encrypted_sender_data</span> <span class="op">=</span> <span class="ident">ciphersuite</span>
+        <span class="kw">let</span> <span class="ident">encrypted_sender_data</span> <span class="op">=</span> <span class="ident">sender_data_key</span>
             .<span class="ident">aead_seal</span>(
                 <span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_sender_data_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">sender_data_key</span>,
                 <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
             )
             .<span class="ident">unwrap</span>();
@@ -1065,32 +1062,32 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span>, <span class="ident">MLSCiphertextError</span><span class="op">&gt;</span> {
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key_bytes</span> <span class="op">=</span> <span class="ident">hkdf_expand_label</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>,
-            <span class="string">&quot;sd key&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>,
-            <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
+        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_secret</span>(
+            <span class="ident">hkdf_expand_label</span>(
+                <span class="ident">ciphersuite</span>,
+                <span class="kw-2">&amp;</span><span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>,
+                <span class="string">&quot;sd key&quot;</span>,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>,
+                <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
+            ),
+            <span class="ident">ciphersuite</span>.<span class="ident">aead</span>(),
         );
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce_bytes</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hkdf_expand_label</span>(
+        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_secret</span>(<span class="ident">hkdf_expand_label</span>(
             <span class="ident">ciphersuite</span>,
             <span class="kw-2">&amp;</span><span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>,
             <span class="string">&quot;sd nonce&quot;</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
-        );
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data_key_bytes</span>);
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data_nonce_bytes</span>);
+        ));
         <span class="kw">let</span> <span class="ident">mls_ciphertext_sender_data_aad</span> <span class="op">=</span>
             <span class="ident">MLSCiphertextSenderDataAAD</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">epoch</span>, <span class="self">self</span>.<span class="ident">content_type</span>);
         <span class="kw">let</span> <span class="ident">mls_ciphertext_sender_data_aad_bytes</span> <span class="op">=</span>
             <span class="ident">mls_ciphertext_sender_data_aad</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">sender_data_bytes</span> <span class="op">=</span> <span class="ident">ciphersuite</span>
+        <span class="kw">let</span> <span class="ident">sender_data_bytes</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">sender_data_key</span>
             .<span class="ident">aead_open</span>(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encrypted_sender_data</span>,
                 <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_sender_data_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">sender_data_key</span>,
                 <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
             )
             .<span class="ident">unwrap</span>();
@@ -1117,11 +1114,10 @@
         };
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span>
             <span class="ident">mls_ciphertext_content_aad</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_bytes</span> <span class="op">=</span> <span class="ident">ciphersuite</span>
+        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_bytes</span> <span class="op">=</span> <span class="ident">ratchet_key</span>
             .<span class="ident">aead_open</span>(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>,
                 <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">ratchet_key</span>,
                 <span class="kw-2">&amp;</span><span class="ident">ratchet_nonce</span>,
             )
             .<span class="ident">unwrap</span>();

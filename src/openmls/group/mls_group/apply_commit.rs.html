@@ -253,7 +253,7 @@
             <span class="kw">if</span> <span class="ident">path_required_by_commit</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">RequiredPathNotFound</span>);
             }
-            <span class="ident">CommitSecret</span>(<span class="ident">zero</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()))
+            <span class="ident">Secret</span>::<span class="ident">from</span>(<span class="ident">zero</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()))
         };
 
         <span class="comment">// Create provisional group state</span>
