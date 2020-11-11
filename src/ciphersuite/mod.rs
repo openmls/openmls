@@ -68,8 +68,45 @@ pub enum AEADError {
     WrongKeyLength,
 }
 
+/// A struct to contain secrets. This is to provide better visibility into where
+/// and how secrets are used and to avoid passing secrets in their raw
+/// representation.
+#[derive(Clone, Debug)]
+pub struct Secret {
+    value: Vec<u8>,
+}
+
+impl Secret {
+    /// Create an empty secret.
+    pub(crate) fn new_empty_secret() -> Self {
+        Secret { value: vec![] }
+    }
+
+    // TODO: The only reason we still need this, is because ConfirmationTag is
+    // currently not a MAC, but a Secret. This should be solved when we're up to
+    // spec, i.e. with issue #147.
+    pub(crate) fn to_vec(&self) -> Vec<u8> {
+        self.value.clone()
+    }
+}
+
+impl From<Vec<u8>> for Secret {
+    fn from(bytes: Vec<u8>) -> Self {
+        Secret { value: bytes }
+    }
+}
+
+impl From<&[u8]> for Secret {
+    fn from(bytes: &[u8]) -> Self {
+        Secret {
+            value: bytes.to_vec(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct AeadKey {
+    aead_mode: AeadMode,
     value: Vec<u8>,
 }
 
@@ -80,7 +117,7 @@ pub struct ReuseGuard {
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
-    pub fn new_from_random() -> Self {
+    pub fn from_random() -> Self {
         let reuse_guard: [u8; REUSE_GUARD_BYTES] = random_u32().to_be_bytes();
         ReuseGuard { value: reuse_guard }
     }
@@ -162,6 +199,11 @@ impl Ciphersuite {
         self.name
     }
 
+    /// Get the AEAD mode
+    pub fn aead(&self) -> AeadMode {
+        self.aead
+    }
+
     /// Create a new signature key pair and return it.
     pub fn new_signature_keypair(&'static self) -> SignatureKeypair {
         let (sk, pk) = match signature_key_gen(self.signature) {
@@ -192,58 +234,24 @@ impl Ciphersuite {
     }
 
     /// HKDF extract.
-    pub(crate) fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Vec<u8> {
-        hkdf_extract(self.hmac, salt, ikm)
+    pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm: &Secret) -> Secret {
+        Secret {
+            value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
+        }
     }
 
     /// HKDF expand
     pub(crate) fn hkdf_expand(
         &self,
-        prk: &[u8],
+        prk: &Secret,
         info: &[u8],
         okm_len: usize,
-    ) -> Result<Vec<u8>, HKDFError> {
-        let key = hkdf_expand(self.hmac, prk, info, okm_len);
+    ) -> Result<Secret, HKDFError> {
+        let key = hkdf_expand(self.hmac, &prk.value, info, okm_len);
         if key.is_empty() {
             return Err(HKDFError::InvalidLength);
         }
-        Ok(key)
-    }
-
-    /// AEAD encrypt `msg` with `key`, `aad`, and `nonce`.
-    pub(crate) fn aead_seal(
-        &self,
-        msg: &[u8],
-        aad: &[u8],
-        key: &AeadKey,
-        nonce: &AeadNonce,
-    ) -> Result<Vec<u8>, AEADError> {
-        let (ct, tag) = match aead_encrypt(self.aead, &key.as_slice(), msg, &nonce.value, aad) {
-            Ok((ct, tag)) => (ct, tag),
-            Err(_) => return Err(AEADError::EncryptionError),
-        };
-        let mut ciphertext = ct;
-        ciphertext.extend_from_slice(&tag);
-        Ok(ciphertext)
-    }
-
-    /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
-    pub(crate) fn aead_open(
-        &self,
-        ciphertext: &[u8],
-        aad: &[u8],
-        key: &AeadKey,
-        nonce: &AeadNonce,
-    ) -> Result<Vec<u8>, AEADError> {
-        // TODO: don't hard-code tag bytes
-        if ciphertext.len() < TAG_BYTES {
-            return Err(AEADError::DecryptionError);
-        }
-        let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);
-        match aead_decrypt(self.aead, key.as_slice(), ct, tag, &nonce.value, aad) {
-            Ok(pt) => Ok(pt),
-            Err(_) => Err(AEADError::DecryptionError),
-        }
+        Ok(Secret { value: key })
     }
 
     /// Returns the key size of the used AEAD.
@@ -274,6 +282,18 @@ impl Ciphersuite {
         }
     }
 
+    /// HPKE single-shot encryption specifically to seal a Secret `secret` to
+    /// `pk_r`, using `info` and `aad`.
+    pub(crate) fn hpke_seal_secret(
+        &self,
+        pk_r: &HPKEPublicKey,
+        info: &[u8],
+        aad: &[u8],
+        secret: &Secret,
+    ) -> HpkeCiphertext {
+        self.hpke_seal(pk_r, info, aad, &secret.value)
+    }
+
     /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and `aad`.
     pub(crate) fn hpke_open(
         &self,
@@ -296,31 +316,96 @@ impl Ciphersuite {
             .unwrap()
     }
 
-    /// Generate a new HPKE key pair and return it.
-    pub(crate) fn derive_hpke_keypair(&self, ikm: &[u8]) -> HPKEKeyPair {
-        self.hpke.derive_key_pair(ikm)
+    /// Derive a new HPKE keypair from a given Secret.
+    pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HPKEKeyPair {
+        self.hpke.derive_key_pair(&ikm.value)
     }
 }
 
 impl AeadKey {
-    /// Build a new key for an AEAD from `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8]) -> AeadKey {
+    /// Build a new key for an AEAD from `Secret`.
+    pub(crate) fn from_secret(secret: Secret, aead_mode: AeadMode) -> AeadKey {
         AeadKey {
-            value: bytes.to_vec(),
+            aead_mode,
+            value: secret.value,
         }
     }
 
+    #[cfg(test)]
+    /// Generate a random AEAD Key
+    pub fn from_random(aead_mode: AeadMode) -> Self {
+        AeadKey {
+            aead_mode,
+            value: aead_key_gen(aead_mode),
+        }
+    }
+
+    #[cfg(test)]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }
+
+    /// Encrypt a payload under the AeadKey given a nonce.
+    pub(crate) fn aead_seal(
+        &self,
+        msg: &[u8],
+        aad: &[u8],
+        nonce: &AeadNonce,
+    ) -> Result<Vec<u8>, AEADError> {
+        let (ct, tag) = match aead_encrypt(
+            self.aead_mode,
+            &self.value.as_slice(),
+            msg,
+            &nonce.value,
+            aad,
+        ) {
+            Ok((ct, tag)) => (ct, tag),
+            Err(_) => return Err(AEADError::EncryptionError),
+        };
+        let mut ciphertext = ct;
+        ciphertext.extend_from_slice(&tag);
+        Ok(ciphertext)
+    }
+
+    /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
+    pub(crate) fn aead_open(
+        &self,
+        ciphertext: &[u8],
+        aad: &[u8],
+        nonce: &AeadNonce,
+    ) -> Result<Vec<u8>, AEADError> {
+        // TODO: don't hard-code tag bytes (Issue #205)
+        if ciphertext.len() < TAG_BYTES {
+            return Err(AEADError::DecryptionError);
+        }
+        let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);
+        match aead_decrypt(
+            self.aead_mode,
+            self.value.as_slice(),
+            ct,
+            tag,
+            &nonce.value,
+            aad,
+        ) {
+            Ok(pt) => Ok(pt),
+            Err(_) => Err(AEADError::DecryptionError),
+        }
+    }
 }
 
 impl AeadNonce {
-    /// Build a new nonce for an AEAD from `bytes`.
-    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+    /// Build a new nonce for an AEAD from `Secret`.
+    pub(crate) fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(bytes);
+        nonce.clone_from_slice(secret.value.as_slice());
+        AeadNonce { value: nonce }
+    }
+
+    /// Generate a new random nonce.
+    pub fn from_random() -> Self {
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(get_random_vec(NONCE_BYTES).as_slice());
         AeadNonce { value: nonce }
     }
 
@@ -427,8 +512,8 @@ impl From<ConfigError> for SignatureError {
 /// state.
 #[test]
 fn test_xor() {
-    let reuse_guard: ReuseGuard = ReuseGuard::new_from_random();
-    let original_nonce = AeadNonce::from_slice(get_random_vec(NONCE_BYTES).as_slice());
+    let reuse_guard: ReuseGuard = ReuseGuard::from_random();
+    let original_nonce = AeadNonce::from_random();
     let mut nonce = original_nonce.clone();
     nonce.xor_with_reuse_guard(&reuse_guard);
     assert_ne!(
