@@ -6,9 +6,8 @@ use crate::creds::*;
 use crate::errors::ConfigError;
 use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
-    ParentHashExtension,
+    LifetimeExtension, ParentHashExtension,
 };
-use crate::prelude::LifetimeExtension;
 use crate::schedule::*;
 
 use evercrypt::rand_util::*;
