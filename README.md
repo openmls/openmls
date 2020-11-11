@@ -1,14 +1,25 @@
-# openmls
+# OpenMLS
 
 ![build status](https://travis-ci.com/openmls/openmls.svg?branch=main)
 
-This is a WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
+A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
 
 ### Supported ciphersuites
 
 - MLS10_128_HPKEX25519_AES128GCM_SHA256_Ed25519 (MTI)
 - MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
 - MLS10_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519
+
+### Supported platforms
+
+- linux x86_64
+- linux arm32
+- linux arm64
+- macOS x86_64
+
+### Dependencies
+
+OpenMLS relies on [EverCrypt](https://github.com/project-everest/hacl-star/tree/master/providers/evercrypt), a high-performance, cross-platform, formally verified modern cryptographic provider through [EverCrypt Rust bindings](https://crates.io/crates/evercrypt).
 
 ## Build
 
@@ -21,3 +32,15 @@ This is a WIP Rust implementation of [Messaging Layer Security](https://github.c
 ## Benchmark
 
 - run `cargo bench`
+
+## License
+
+OpenMLS is licensed under the MIT license. The license can be found [here](https://github.com/openmls/openmls/LICENSE).
+
+## Contributing
+
+Open MLS welcomes contributions! Before contributing, please read the [contributing guidelines[(https://github.com/openmls/openmls/CONTRIBUTING.md)] carefully.
+
+## Code of conduct
+
+Open MLS adheres to the [Contributor Covenant[(https://www.contributor-covenant.org/)] Code of Coduct. Please read the [Code of Conduct](https://github.com/openmls/openmls/CODE_OF_CONDUCT.md) carefully.
