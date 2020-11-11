@@ -1,6 +1,8 @@
 # OpenMLS
 
 ![build status](https://travis-ci.com/openmls/openmls.svg?branch=main)
+[![Build & Test](https://github.com/openmls/openmls/workflows/Build%20&%20Test/badge.svg)](https://github.com/openmls/openmls/actions?query=workflow%3A%22Build+%26+Test%22)
+[![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)](https://openmls.github.io/openmls/openmls/index.html)
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
 
@@ -39,8 +41,8 @@ OpenMLS is licensed under the MIT license. The license can be found [here](https
 
 ## Contributing
 
-Open MLS welcomes contributions! Before contributing, please read the [contributing guidelines[(https://github.com/openmls/openmls/CONTRIBUTING.md)] carefully.
+Open MLS welcomes contributions! Before contributing, please read the [contributing guidelines](CONTRIBUTING.md) carefully.
 
 ## Code of conduct
 
-Open MLS adheres to the [Contributor Covenant[(https://www.contributor-covenant.org/)] Code of Coduct. Please read the [Code of Conduct](https://github.com/openmls/openmls/CODE_OF_CONDUCT.md) carefully.
+Open MLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
