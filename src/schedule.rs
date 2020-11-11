@@ -62,7 +62,7 @@ impl HkdfLabel {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct EpochSecrets {
     pub welcome_secret: Secret,
     pub sender_data_secret: Secret,
