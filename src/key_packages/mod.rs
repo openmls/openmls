@@ -297,11 +297,6 @@ impl KeyPackageBundle {
             return Err(ConfigError::DuplicateExtension);
         }
 
-        // Check if the `extensions` already contain the mandatory extensions
-        // and in case one of them is a capabilities extension, add the input
-        // ciphersuites. If not, add the default versions of the mandatory
-        // extensions.
-
         // First, check if one of the input extensions is a capabilities
         // extension. If there is, check if one of the extensions is a
         // capabilities extensions and if the contained ciphersuites are the
@@ -328,12 +323,14 @@ impl KeyPackageBundle {
             ))),
         };
 
-        // Check if there is a lifetime extension. If not, add the default one.
+        // Check if there is a lifetime extension. If not, add one that is at
+        // least valid. TODO: Add the default LifetimeExtension here as soon as
+        // one is implemented (issue 164).
         if !extensions
             .iter()
             .any(|e| e.get_type() == ExtensionType::Lifetime)
         {
-            extensions.push(Box::new(LifetimeExtension::default()));
+            extensions.push(Box::new(LifetimeExtension::new(60)));
         }
         let (private_key, public_key) = key_pair.into_keys();
         let key_package =
