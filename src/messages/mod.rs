@@ -185,28 +185,6 @@ impl Codec for GroupInfo {
         self.signature.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let group_id = GroupId::decode(cursor)?;
-    //     let epoch = GroupEpoch::decode(cursor)?;
-    //     let tree_hash = decode_vec(VecSize::VecU8, cursor)?;
-    //     let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
-    //     let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
-    //     let extensions = decode_vec(VecSize::VecU16, cursor)?;
-    //     let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;
-    //     let signer_index = LeafIndex::from(u32::decode(cursor)?);
-    //     let signature = Signature::decode(cursor)?;
-    //     Ok(GroupInfo {
-    //         group_id,
-    //         epoch,
-    //         tree_hash,
-    //         confirmed_transcript_hash,
-    //         interim_transcript_hash,
-    //         extensions,
-    //         confirmation_tag,
-    //         signer_index,
-    //         signature,
-    //     })
-    // }
 }
 
 impl Signable for GroupInfo {

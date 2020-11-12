@@ -33,9 +33,6 @@ impl Codec for ProposalType {
         (*self as u8).encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     Ok(ProposalType::from(u8::decode(cursor)?))
-    // }
 }
 
 #[allow(clippy::large_enum_variant)]

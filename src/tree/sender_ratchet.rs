@@ -14,37 +14,6 @@ pub struct SenderRatchet {
     past_secrets: Vec<Secret>,
 }
 
-impl Codec for SenderRatchet {
-    // fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-    //     self.ciphersuite.encode(buffer)?;
-    //     self.index.encode(buffer)?;
-    //     self.generation.encode(buffer)?;
-    //     let len = self.past_secrets.len();
-    //     (len as u32).encode(buffer)?;
-    //     for i in 0..len {
-    //         encode_vec(VecSize::VecU8, buffer, &self.past_secrets[i])?;
-    //     }
-    //     Ok(())
-    // }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let index = LeafIndex::from(u32::decode(cursor)?);
-    //     let generation = u32::decode(cursor)?;
-    //     let len = u32::decode(cursor)? as usize;
-    //     let mut past_secrets = vec![];
-    //     for _ in 0..len {
-    //         let secret = decode_vec(VecSize::VecU8, cursor)?;
-    //         past_secrets.push(secret);
-    //     }
-    //     Ok(SenderRatchet {
-    //         ciphersuite,
-    //         index,
-    //         generation,
-    //         past_secrets,
-    //     })
-    // }
-}
-
 impl SenderRatchet {
     /// Creates e new SenderRatchet
     pub fn new(index: LeafIndex, secret: &Secret) -> Self {

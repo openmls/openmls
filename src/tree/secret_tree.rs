@@ -69,11 +69,6 @@ impl Codec for TreeContext {
         self.generation.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let node = u32::decode(cursor)?;
-    //     let generation = u32::decode(cursor)?;
-    //     Ok(ApplicationContext { node, generation })
-    // }
 }
 
 #[derive(Clone)]
@@ -86,28 +81,6 @@ pub struct SecretTree {
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,
     application_sender_ratchets: Vec<Option<SenderRatchet>>,
     size: LeafIndex,
-}
-
-impl Codec for SecretTree {
-    // fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-    //     self.group.get_ciphersuite().encode(buffer)?;
-    //     encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
-    //     encode_vec(VecSize::VecU32, buffer, &self.sender_ratchets)?;
-    //     self.size.encode(buffer)?;
-    //     Ok(())
-    // }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let nodes = decode_vec(VecSize::VecU32, cursor)?;
-    //     let sender_ratchets = decode_vec(VecSize::VecU32, cursor)?;
-    //     let size = LeafIndex::from(u32::decode(cursor)?);
-    //     Ok(ASTree {
-    //         ciphersuite,
-    //         nodes,
-    //         sender_ratchets,
-    //         size,
-    //     })
-    // }
 }
 
 impl SecretTree {
