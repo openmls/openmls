@@ -224,7 +224,7 @@ impl KeyPackage {
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HPKEPrivateKey,
-    pub(crate) leaf_secret: Vec<u8>,
+    pub(crate) leaf_secret: Secret,
 }
 
 impl KeyPackageBundle {
@@ -239,7 +239,7 @@ impl KeyPackageBundle {
     ) -> Result<Self, ConfigError> {
         debug_assert!(!ciphersuites.is_empty());
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_secret = get_random_vec(ciphersuite.hash_length());
+        let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
     }
 
@@ -247,7 +247,7 @@ impl KeyPackageBundle {
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
-        leaf_secret: Vec<u8>,
+        leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
         debug_assert!(!ciphersuites.is_empty());
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
@@ -276,7 +276,7 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         mut extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
-        leaf_secret: Vec<u8>,
+        leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
         debug_assert!(!ciphersuites.is_empty());
 
@@ -342,7 +342,7 @@ impl KeyPackageBundle {
     pub fn new_from_values(
         key_package: KeyPackage,
         private_key: HPKEPrivateKey,
-        leaf_secret: Vec<u8>,
+        leaf_secret: Secret,
     ) -> Self {
         Self {
             key_package,
@@ -357,7 +357,7 @@ impl KeyPackageBundle {
         ciphersuite: &Ciphersuite,
         key_package: &KeyPackage,
     ) -> Self {
-        let leaf_secret = get_random_vec(ciphersuite.hash_length());
+        let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let (private_key, public_key) = ciphersuite
             .derive_hpke_keypair(&leaf_node_secret)
@@ -395,15 +395,15 @@ impl KeyPackageBundle {
     }
 
     /// Get a reference to the `leaf_secret`.
-    pub(crate) fn leaf_secret(&self) -> &[u8] {
+    pub(crate) fn leaf_secret(&self) -> &Secret {
         &self.leaf_secret
     }
 
     /// This function derives the leaf_node_secret from the leaf_secret as described in 5.4 Ratchet Tree Evolution
     pub(crate) fn derive_leaf_node_secret(
         ciphersuite: &Ciphersuite,
-        leaf_secret: &[u8],
-    ) -> Vec<u8> {
+        leaf_secret: &Secret,
+    ) -> Secret {
         derive_secret(ciphersuite, &leaf_secret, "node")
     }
 }

@@ -88,7 +88,7 @@ impl MlsGroup {
             if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
-            CommitSecret(zero(ciphersuite.hash_length()))
+            Secret::from(zero(ciphersuite.hash_length()))
         };
 
         // Create provisional group state

@@ -3,7 +3,7 @@ use crate::codec::*;
 use crate::creds::*;
 use crate::errors::ConfigError;
 use crate::key_packages::*;
-use crate::messages::{proposals::*, *};
+use crate::messages::proposals::*;
 
 // Tree modules
 pub(crate) mod codec;
@@ -267,7 +267,7 @@ impl RatchetTree {
         sender: LeafIndex,
         update_path: &UpdatePath,
         group_context: &[u8],
-    ) -> Result<CommitSecret, TreeError> {
+    ) -> Result<Secret, TreeError> {
         let own_index = self.get_own_node_index();
 
         // Find common ancestor of own leaf and sender leaf
@@ -336,9 +336,12 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret = self
-            .ciphersuite
-            .hpke_open(hpke_ciphertext, &private_key, group_context, &[]);
+        let secret = Secret::from(self.ciphersuite.hpke_open(
+            hpke_ciphertext,
+            &private_key,
+            group_context,
+            &[],
+        ));
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree
@@ -375,7 +378,7 @@ impl RatchetTree {
         ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
-    ) -> Result<CommitSecret, TreeError> {
+    ) -> Result<Secret, TreeError> {
         let _path_option = self.replace_private_tree_(
             ciphersuite,
             key_package_bundle,
@@ -391,7 +394,7 @@ impl RatchetTree {
         ciphersuite: &Ciphersuite,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-    ) -> (CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
+    ) -> (Secret, UpdatePath, PathSecrets, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.get_own_node_index();
 
@@ -499,7 +502,7 @@ impl RatchetTree {
                 .map(|&x| {
                     let pk = self.nodes[x.as_usize()].get_public_hpke_key().unwrap();
                     self.ciphersuite
-                        .hpke_seal(&pk, group_context, &[], &path_secret)
+                        .hpke_seal_secret(&pk, group_context, &[], &path_secret)
                 })
                 .collect();
             // TODO Check that all public keys are non-empty
