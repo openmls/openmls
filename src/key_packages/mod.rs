@@ -291,30 +291,30 @@ impl KeyPackageBundle {
         // extensions.
 
         // First, check if one of the input extensions is a capabilities
-        // extension and if there is one, temporarily remove it from the
-        // extensions.
-        let capabilities_extension_option = extensions
-            .iter()
-            .position(|e| e.get_type() == ExtensionType::Capabilities)
-            .map(|cap_extension_index| {
-                let cap_extension = extensions.remove(cap_extension_index);
-                cap_extension.to_capabilities_extension().unwrap().clone()
-            });
-        // Check if one of the extensions is a capabilities extensions and if
-        // the contained ciphersuites are the same as the ciphersuites passed as
-        // input. If that is not the case, return an error.
-        let capabilities_extension = match capabilities_extension_option {
-            Some(cap_ext) => {
-                if cap_ext.ciphersuites() != ciphersuites {
+        // extension. If there is, check if one of the extensions is a
+        // capabilities extensions and if the contained ciphersuites are the
+        // same as the ciphersuites passed as input. If that is not the case,
+        // return an error. If none of the extensions is a capabilities
+        // extension, create one that supports the given ciphersuites and that
+        // is otherwise default.
+        for ext_position in 1..extensions.len() {
+            if extensions[ext_position].get_type() == ExtensionType::Capabilities {
+                let cap_extension_trait_obj = extensions.get(ext_position).unwrap();
+                let capabilities_extension =
+                    cap_extension_trait_obj.to_capabilities_extension().unwrap();
+                if capabilities_extension.ciphersuites() != ciphersuites {
                     return Err(ConfigError::InvalidCapabilitiesExtension);
                 }
-                cap_ext
+                break;
+            } else if extensions[ext_position].get_type() > ExtensionType::Capabilities {
+                extensions.push(Box::new(CapabilitiesExtension::new(
+                    None,
+                    Some(ciphersuites),
+                    None,
+                )));
+                break;
             }
-            None => CapabilitiesExtension::new(None, Some(ciphersuites), None),
-        };
-
-        // Finally add the extension back into the array.
-        extensions.push(Box::new(capabilities_extension));
+        }
 
         // Check if there is a lifetime extension. If not, add the default one.
         if !extensions
