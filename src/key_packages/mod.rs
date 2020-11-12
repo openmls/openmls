@@ -267,8 +267,9 @@ impl KeyPackageBundle {
     ///
     /// Note that the capabilities extension gets added automatically, based on
     /// the configuration. The ciphersuite for this key package bundle is the
-    /// first one in the `ciphersuites` list. Only the ciphersuites listed in
-    /// `ciphersuites` are enabled in the capabilities extension of the key package.
+    /// first one in the `ciphersuites` list. If a capabilities extension is
+    /// included in the extensions, its supported ciphersuites have to match the
+    /// `ciphersuites` list.
     ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
@@ -299,25 +300,19 @@ impl KeyPackageBundle {
                 let cap_extension = extensions.remove(cap_extension_index);
                 cap_extension.to_capabilities_extension().unwrap().clone()
             });
-        // If that is the case, add any missing ciphersuites of the set of input
-        // ciphersuites. If there is no capabilities extension, add the default
-        // capabilities extension, but with the input ciphersuites.
+        // Check if one of the extensions is a capabilities extensions and if
+        // the contained ciphersuites are the same as the ciphersuites passed as
+        // input. If that is not the case, return an error.
         let capabilities_extension = match capabilities_extension_option {
             Some(cap_ext) => {
-                let mut cap_cs = cap_ext.ciphersuites().to_vec();
-                for cs in ciphersuites {
-                    if !cap_ext.ciphersuites().contains(cs) {
-                        cap_cs.push(*cs);
-                    }
+                if cap_ext.ciphersuites() != ciphersuites {
+                    return Err(ConfigError::InvalidCapabilitiesExtension);
                 }
-                CapabilitiesExtension::new(
-                    Some(cap_ext.versions()),
-                    Some(&cap_cs),
-                    Some(cap_ext.extensions()),
-                )
+                cap_ext
             }
             None => CapabilitiesExtension::new(None, Some(ciphersuites), None),
         };
+
         // Finally add the extension back into the array.
         extensions.push(Box::new(capabilities_extension));
 
