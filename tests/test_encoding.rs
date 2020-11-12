@@ -76,7 +76,11 @@ fn test_update_proposal_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let capabilities_extension = Box::new(CapabilitiesExtension::default());
+        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+            None,
+            Some(&[group_state.ciphersuite().name()]),
+            None,
+        ));
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Box<dyn Extension>> =
             vec![capabilities_extension, lifetime_extension];
@@ -116,7 +120,11 @@ fn test_add_proposal_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let capabilities_extension = Box::new(CapabilitiesExtension::default());
+        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+            None,
+            Some(&[group_state.ciphersuite().name()]),
+            None,
+        ));
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Box<dyn Extension>> =
             vec![capabilities_extension, lifetime_extension];
@@ -182,7 +190,11 @@ fn test_commit_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let capabilities_extension = Box::new(CapabilitiesExtension::default());
+        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+            None,
+            Some(&[group_state.ciphersuite().name()]),
+            None,
+        ));
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Box<dyn Extension>> =
             vec![capabilities_extension, lifetime_extension];
@@ -246,7 +258,11 @@ fn test_welcome_message_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let capabilities_extension = Box::new(CapabilitiesExtension::default());
+        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+            None,
+            Some(&[group_state.ciphersuite().name()]),
+            None,
+        ));
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Box<dyn Extension>> =
             vec![capabilities_extension, lifetime_extension];
