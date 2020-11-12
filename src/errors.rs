@@ -13,6 +13,7 @@ pub enum ConfigError {
     ExpiredLifetimeExtension,
     DuplicateExtension,
     InvalidCapabilitiesExtension,
+    NoCiphersuitesSupplied,
 }
 
 #[derive(Debug, PartialEq)]

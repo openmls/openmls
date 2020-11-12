@@ -249,7 +249,10 @@ impl KeyPackageBundle {
         extensions: Vec<Box<dyn Extension>>,
         leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
-        debug_assert!(!ciphersuites.is_empty());
+        if ciphersuites.is_empty() {
+            return Err(ConfigError::NoCiphersuitesSupplied);
+        }
+
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
@@ -271,6 +274,9 @@ impl KeyPackageBundle {
     /// included in the extensions, its supported ciphersuites have to match the
     /// `ciphersuites` list.
     ///
+    /// Returns an `DuplicateExtension` error if `extensions` contains multiple
+    /// extensions of the same type.
+    ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuites: &[CiphersuiteName],
@@ -279,11 +285,17 @@ impl KeyPackageBundle {
         key_pair: HPKEKeyPair,
         leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
-        debug_assert!(!ciphersuites.is_empty());
+        if ciphersuites.is_empty() {
+            return Err(ConfigError::NoCiphersuitesSupplied);
+        }
 
-        // Remove any duplicate extensions
+        // Detect duplicate extensions an return an error in case there is one.
+        let extensions_length = extensions.len();
         extensions.sort();
         extensions.dedup();
+        if extensions_length != extensions.len() {
+            return Err(ConfigError::DuplicateExtension);
+        }
 
         // Check if the `extensions` already contain the mandatory extensions
         // and in case one of them is a capabilities extension, add the input
