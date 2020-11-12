@@ -1,5 +1,4 @@
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::tree::{index::LeafIndex, secret_tree::*};
 
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
