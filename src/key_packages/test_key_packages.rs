@@ -9,12 +9,8 @@ fn generate_key_package() {
         let credential_bundle =
             CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite.name())
                 .unwrap();
-        let kpb =
-            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
-        // This is invalid because the lifetime extension is missing.
-        assert!(kpb.get_key_package().verify().is_err());
 
-        // Now with a lifetime the key package should be valid.
+        // Generate a valid KeyPackage.
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -56,14 +52,6 @@ fn test_codec() {
         let mut kpb =
             KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
 
-        // Encode and decode the key package.
-        let enc = kpb.get_key_package().encode_detached().unwrap();
-
-        // Decoding fails because this is not a valid key package
-        let kp = KeyPackage::decode(&mut Cursor::new(&enc));
-        assert_eq!(kp.err(), Some(CodecError::DecodingError));
-
-        // Add lifetime extension to make it valid.
         let kp = kpb.get_key_package_ref_mut();
         kp.add_extension(Box::new(LifetimeExtension::new(60)));
         kp.sign(&credential_bundle);
