@@ -7,6 +7,7 @@ use std::convert::*;
 pub enum CodecError {
     EncodingError,
     DecodingError,
+    Other,
 }
 
 impl From<ConfigError> for CodecError {
@@ -20,7 +21,9 @@ impl From<Error> for CodecError {
     // TODO: tbd in #83, also this direction shouldn't be necessary.
     fn from(e: Error) -> CodecError {
         match e {
-            _ => CodecError::DecodingError,
+            Error::DecodingError => CodecError::DecodingError,
+            Error::UnsupportedCiphersuite => CodecError::Other,
+            Error::CryptoLibraryError => CodecError::Other,
         }
     }
 }
