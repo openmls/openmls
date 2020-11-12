@@ -289,7 +289,7 @@ impl KeyPackageBundle {
             return Err(ConfigError::NoCiphersuitesSupplied);
         }
 
-        // Detect duplicate extensions an return an error in case there is one.
+        // Detect duplicate extensions an return an error in case there is are any.
         let extensions_length = extensions.len();
         extensions.sort();
         extensions.dedup();
