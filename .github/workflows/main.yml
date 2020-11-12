@@ -73,4 +73,5 @@ jobs:
         crate: cargo-fuzz
         version: latest
     - name: Fuzz Welcome
-      run: cargo fuzz run welcome_decode -- -runs=100000
+      run: |
+        - cargo fuzz run welcome_decode -- -runs=100000
