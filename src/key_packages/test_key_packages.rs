@@ -35,6 +35,15 @@ fn generate_key_package() {
         .unwrap();
         std::thread::sleep(std::time::Duration::from_secs(1));
         assert!(kpb.get_key_package().verify().is_err());
+
+        // Now with two lifetime extensions, the key package should be valid.
+        let lifetime_extension = Box::new(LifetimeExtension::new(60));
+        let kpb = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &credential_bundle,
+            vec![lifetime_extension.clone(), lifetime_extension],
+        );
+        assert!(kpb.is_err());
     }
 }
 
