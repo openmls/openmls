@@ -297,24 +297,24 @@ impl KeyPackageBundle {
         // return an error. If none of the extensions is a capabilities
         // extension, create one that supports the given ciphersuites and that
         // is otherwise default.
-        for ext_position in 1..extensions.len() {
-            if extensions[ext_position].get_type() == ExtensionType::Capabilities {
-                let cap_extension_trait_obj = extensions.get(ext_position).unwrap();
-                let capabilities_extension =
-                    cap_extension_trait_obj.to_capabilities_extension().unwrap();
+
+        match extensions
+            .iter()
+            .find(|e| e.get_type() == ExtensionType::Capabilities)
+        {
+            Some(extension) => {
+                let capabilities_extension = extension.to_capabilities_extension().unwrap();
                 if capabilities_extension.ciphersuites() != ciphersuites {
                     return Err(ConfigError::InvalidCapabilitiesExtension);
                 }
-                break;
-            } else if extensions[ext_position].get_type() > ExtensionType::Capabilities {
-                extensions.push(Box::new(CapabilitiesExtension::new(
-                    None,
-                    Some(ciphersuites),
-                    None,
-                )));
-                break;
             }
-        }
+
+            None => extensions.push(Box::new(CapabilitiesExtension::new(
+                None,
+                Some(ciphersuites),
+                None,
+            ))),
+        };
 
         // Check if there is a lifetime extension. If not, add the default one.
         if !extensions
