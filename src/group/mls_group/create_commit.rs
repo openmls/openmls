@@ -61,7 +61,7 @@ impl MlsGroup {
             )
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = CommitSecret(zero(self.ciphersuite().hash_length()));
+            let commit_secret = Secret::from(zero(self.ciphersuite().hash_length()));
             (commit_secret, None, None, None)
         };
         // Create commit message
@@ -129,13 +129,8 @@ impl MlsGroup {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) =
                 compute_welcome_key_nonce(ciphersuite, &epoch_secret);
-            let encrypted_group_info = ciphersuite
-                .aead_seal(
-                    &group_info.encode_detached().unwrap(),
-                    &[],
-                    &welcome_key,
-                    &welcome_nonce,
-                )
+            let encrypted_group_info = welcome_key
+                .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
             // Create group secrets
             let mut plaintext_secrets = vec![];

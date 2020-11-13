@@ -90,7 +90,7 @@ impl Extension for CapabilitiesExtension {
     {
         let cursor = &mut Cursor::new(bytes);
 
-        let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor).unwrap();
+        let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor)?;
         let mut versions = Vec::new();
         for &version_number in version_numbers.iter() {
             versions.push(ProtocolVersion::from(version_number)?)
@@ -100,7 +100,7 @@ impl Extension for CapabilitiesExtension {
             return Err(ConfigError::UnsupportedMlsVersion);
         }
 
-        let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor).unwrap();
+        let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor)?;
         // There must be at least one ciphersuite we support.
         let mut supported_suite = false;
         for suite in ciphersuites.iter() {
@@ -113,7 +113,7 @@ impl Extension for CapabilitiesExtension {
             return Err(ConfigError::UnsupportedCiphersuite);
         }
 
-        let extensions = decode_vec(VecSize::VecU8, cursor).unwrap();
+        let extensions = decode_vec(VecSize::VecU8, cursor)?;
 
         Ok(Self {
             versions,

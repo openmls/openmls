@@ -1,3 +1,5 @@
+use log::{debug, info};
+
 mod api;
 mod apply_commit;
 mod create_commit;
@@ -41,8 +43,10 @@ impl Api for MlsGroup {
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
     ) -> Result<Self, ConfigError> {
+        info!("Created group {:x?}", id);
+        debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
-        let epoch_secrets = EpochSecrets::new();
+        let epoch_secrets = EpochSecrets::default();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, LeafIndex::from(1u32));
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
@@ -235,7 +239,7 @@ impl Api for MlsGroup {
     }
 
     // Exporter
-    fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
+    fn export_secret(&self, label: &str, key_length: usize) -> Secret {
         mls_exporter(
             self.ciphersuite(),
             &self.epoch_secrets,
@@ -327,20 +331,21 @@ fn update_interim_transcript_hash(
 
 fn compute_welcome_key_nonce(
     ciphersuite: &Ciphersuite,
-    joiner_secret: &[u8],
+    joiner_secret: &Secret,
 ) -> (AeadKey, AeadNonce) {
     let welcome_secret = ciphersuite
         .hkdf_expand(joiner_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
         .unwrap();
-    let welcome_nonce = AeadNonce::from_slice(
-        &ciphersuite
+    let welcome_nonce = AeadNonce::from_secret(
+        ciphersuite
             .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
             .unwrap(),
     );
-    let welcome_key = AeadKey::from_slice(
-        &ciphersuite
+    let welcome_key = AeadKey::from_secret(
+        ciphersuite
             .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
             .unwrap(),
+        ciphersuite.aead(),
     );
     (welcome_key, welcome_nonce)
 }

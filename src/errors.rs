@@ -11,10 +11,12 @@ pub enum ConfigError {
     UnsupportedMlsVersion,
     UnsupportedCiphersuite,
     ExpiredLifetimeExtension,
+    DecodingError,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
     DecodingError,
     UnsupportedCiphersuite,
+    CryptoLibraryError,
 }

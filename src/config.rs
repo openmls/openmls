@@ -20,34 +20,54 @@ lazy_static! {
                                   use the default configuration.", e),
             };
             let reader = BufReader::new(file);
-            let config: Config = match serde_json::from_reader(reader) {
+            let config: PersistentConfig = match serde_json::from_reader(reader) {
                 Ok(r) => r,
                 Err(e) => panic!("Error reading configuration file.\n{:?}", e),
             };
-            config
+            config.into()
         } else {
             // Without a config file everything is enabled.
-            Config {
+            let config = PersistentConfig {
                 protocol_versions: vec![ProtocolVersion::Mls10],
                 ciphersuites: vec![
                     Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
                     Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
                     Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256)],
                     extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
-            }
-
+            };
+            config.into()
         }
     };
 }
 
-/// # MLS Configuration
+/// The configuration we use for the library (`Config`) is not exactly the same
+/// as the one we persist.
+#[derive(Debug, Deserialize)]
+struct PersistentConfig {
+    protocol_versions: Vec<ProtocolVersion>,
+    ciphersuites: Vec<Ciphersuite>,
+    extensions: Vec<ExtensionType>,
+}
+
+/// # OpenMLS Configuration
 ///
-/// This is the global configuration for MLS.
-#[derive(Debug, Serialize, Deserialize)]
+/// This is the global configuration for OpenMLS.
+#[derive(Debug)]
 pub struct Config {
     protocol_versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<Ciphersuite>,
     extensions: Vec<ExtensionType>,
+}
+
+// Convert a config that's being read from a file to the config we use.
+impl From<PersistentConfig> for Config {
+    fn from(config: PersistentConfig) -> Self {
+        Self {
+            protocol_versions: config.protocol_versions,
+            ciphersuites: config.ciphersuites,
+            extensions: config.extensions,
+        }
+    }
 }
 
 impl Config {

@@ -1,10 +1,7 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 
-use openmls::{
-    codec::{Codec, Cursor},
-    messages::Welcome,
-};
+use openmls::prelude::*;
 
 fuzz_target!(|data: &[u8]| {
     let mut cursor = Cursor::new(data);
