@@ -252,7 +252,12 @@ impl KeyPackageBundle {
         leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
         if ciphersuites.is_empty() {
-            return Err(ConfigError::NoCiphersuitesSupplied);
+            let error = ConfigError::NoCiphersuitesSupplied;
+            error!(
+                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                error
+            );
+            return Err(error);
         }
 
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
@@ -288,7 +293,12 @@ impl KeyPackageBundle {
         leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
         if ciphersuites.is_empty() {
-            return Err(ConfigError::NoCiphersuitesSupplied);
+            let error = ConfigError::NoCiphersuitesSupplied;
+            error!(
+                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                error
+            );
+            return Err(error);
         }
 
         // Detect duplicate extensions an return an error in case there is are any.
