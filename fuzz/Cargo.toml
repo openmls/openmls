@@ -15,22 +15,18 @@ libfuzzer-sys = "0.3"
 [dependencies.openmls]
 path = ".."
 
-[patch.crates-io]
-evercrypt = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt" }
-evercrypt-sys = { git = "https://github.com/franziskuskiefer/evercrypt-rust", package = "evercrypt-sys" }
-
 # Prevent this from interfering with workspaces
 [workspace]
 members = ["."]
 
 [[bin]]
-name = "welcome_fuzz_decode_target"
-path = "fuzz_targets/welcome_fuzz_decode_target.rs"
+name = "welcome_decode"
+path = "fuzz_targets/welcome_decode.rs"
 test = false
 doc = false
 
 [[bin]]
-name = "decode_key_package_target"
-path = "fuzz_targets/decode_key_package_target.rs"
+name = "key_package_decode"
+path = "fuzz_targets/key_package_decode.rs"
 test = false
 doc = false

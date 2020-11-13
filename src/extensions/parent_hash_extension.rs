@@ -51,7 +51,7 @@ impl Extension for ParentHashExtension {
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
-        let parent_hash = decode_vec(VecSize::VecU8, cursor).unwrap();
+        let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
         Ok(Self { parent_hash })
     }
 

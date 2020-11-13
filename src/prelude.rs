@@ -19,4 +19,5 @@ pub use crate::extensions::*;
 pub use crate::framing::*;
 pub use crate::group::GroupId;
 pub use crate::key_packages::*;
+pub use crate::messages::Welcome;
 pub use crate::utils::*;
