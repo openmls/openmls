@@ -41,12 +41,11 @@ impl ManagedGroup {
         credential_bundle: &CredentialBundle,
         managed_group_config: &ManagedGroupConfig,
         group_id: GroupId,
-        ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, GroupError> {
         let group = MlsGroup::new(
             &group_id.as_slice(),
-            ciphersuite_name,
+            key_package_bundle.get_key_package().cipher_suite().name(),
             key_package_bundle,
             GroupConfig::default(),
         )?;
@@ -74,18 +73,6 @@ impl ManagedGroup {
             proposal_queue: ProposalQueue::new(),
             own_kpbs: vec![],
         })
-    }
-
-    /// Creates a new group with the creator and additional members
-    pub fn new_with_members(
-        credential_bundle: &CredentialBundle,
-        managed_group_config: &ManagedGroupConfig,
-        group_id: GroupId,
-        ciphersuite_name: CiphersuiteName,
-        key_package_bundle: KeyPackageBundle,
-        members: Vec<KeyPackage>,
-    ) -> Result<Self, GroupError> {
-        unimplemented!()
     }
 
     // === Membership management ===
@@ -150,7 +137,7 @@ impl ManagedGroup {
         credential_bundle: &CredentialBundle,
         aad: &[u8],
         message: &[u8],
-    ) {
+    ) -> MLSCiphertext {
         unimplemented!()
     }
 
@@ -241,7 +228,7 @@ impl From<CodecError> for GroupError {
 /// Collection of callback functions that are passed to a `ManagedGroup` as part of the configurations
 /// Callback functions are optional. If no validator function is specified for a certain proposal type, any
 /// semantically valid proposal will be accepted.
-/// Validator fucntions returan a `bool`, epending on whether the proposal is accepted by the application policy.
+/// Validator fucntions returan a `bool`, depending on whether the proposal is accepted by the application policy.
 ///  - `true` means the proposal should be accepted
 ///  - `false` means the proposal should be rejected
 #[derive(Clone)]
