@@ -28,6 +28,16 @@ impl From<Error> for CodecError {
     }
 }
 
+impl From<CodecError> for ConfigError {
+    // TODO: tbd in #83, also this direction shouldn't be necessary.
+    fn from(e: CodecError) -> Self {
+        match e {
+            CodecError::DecodingError => ConfigError::DecodingError,
+            CodecError::EncodingError => ConfigError::DecodingError,
+        }
+    }
+}
+
 pub enum VecSize {
     VecU8,
     VecU16,

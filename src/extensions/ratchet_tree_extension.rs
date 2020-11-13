@@ -56,7 +56,7 @@ impl Extension for RatchetTreeExtension {
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
-        let tree = decode_vec(VecSize::VecU32, cursor).unwrap();
+        let tree = decode_vec(VecSize::VecU32, cursor)?;
         Ok(Self { tree })
     }
 
