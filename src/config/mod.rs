@@ -7,8 +7,10 @@ use std::{env, fs::File, io::BufReader};
 
 use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
 use crate::codec::{Codec, CodecError, Cursor};
-use crate::errors::ConfigError;
 use crate::extensions::ExtensionType;
+
+pub mod errors;
+pub(crate) use errors::ConfigError;
 
 lazy_static! {
      static ref CONFIG: Config = {
@@ -30,9 +32,9 @@ lazy_static! {
             let config = PersistentConfig {
                 protocol_versions: vec![ProtocolVersion::Mls10],
                 ciphersuites: vec![
-                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
-                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
-                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256)],
+                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap(),
+                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).unwrap(),
+                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap()],
                     extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
             };
             config.into()

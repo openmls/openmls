@@ -1,7 +1,6 @@
-use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::creds::*;
-use crate::errors::ConfigError;
+use crate::config::ConfigError;
 use crate::framing::{sender::*, *};
 use crate::group::*;
 use crate::key_packages::*;

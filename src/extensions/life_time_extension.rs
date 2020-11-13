@@ -19,9 +19,8 @@
 //! uint64 not_after;
 //! ```
 //!
-use super::{Extension, ExtensionStruct, ExtensionType};
+use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError};
 use crate::codec::{Codec, Cursor};
-use crate::errors::ConfigError;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -68,7 +67,7 @@ impl Extension for LifetimeExtension {
     }
 
     /// Build a new LifetimeExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
     where
         Self: Sized,
     {
@@ -80,7 +79,7 @@ impl Extension for LifetimeExtension {
             not_after,
         };
         if !out.is_valid() {
-            return Err(ConfigError::ExpiredLifetimeExtension);
+            return Err(ExtensionError::Lifetime(LifetimeExtensionError::Invalid));
         }
         Ok(out)
     }

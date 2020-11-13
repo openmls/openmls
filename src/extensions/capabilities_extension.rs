@@ -15,11 +15,12 @@
 //! ```
 //!
 
-use super::{Extension, ExtensionStruct, ExtensionType};
+use super::{
+    CapabilitiesExtensionError, Extension, ExtensionError, ExtensionStruct, ExtensionType,
+};
 use crate::ciphersuite::CiphersuiteName;
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 use crate::config::{Config, ProtocolVersion};
-use crate::errors::ConfigError;
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct CapabilitiesExtension {
@@ -84,7 +85,7 @@ impl Extension for CapabilitiesExtension {
     /// Build a new CapabilitiesExtension from a byte slice.
     /// Checks that we can work with these capabilities and returns a `ConfigError`
     /// if not.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
     where
         Self: Sized,
     {
@@ -97,7 +98,9 @@ impl Extension for CapabilitiesExtension {
         }
         // There must be at least one version we support.
         if versions.is_empty() {
-            return Err(ConfigError::UnsupportedMlsVersion);
+            let e = ExtensionError::Capabilities(CapabilitiesExtensionError::EmptyVersionsField);
+            log::error!("Error reading capabilities extension form bytes: {:?}", e);
+            return Err(e);
         }
 
         let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor)?;
@@ -110,7 +113,9 @@ impl Extension for CapabilitiesExtension {
             }
         }
         if !supported_suite {
-            return Err(ConfigError::UnsupportedCiphersuite);
+            return Err(ExtensionError::Capabilities(
+                super::CapabilitiesExtensionError::UnsupportedCiphersuite,
+            ));
         }
 
         let extensions = decode_vec(VecSize::VecU8, cursor)?;

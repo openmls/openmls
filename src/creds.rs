@@ -2,8 +2,7 @@ use evercrypt::prelude::SignatureError;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::Config;
-use crate::errors::ConfigError;
+use crate::config::{Config, ConfigError};
 
 use std::convert::TryFrom;
 

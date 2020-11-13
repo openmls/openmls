@@ -24,10 +24,9 @@
 //! ```
 //!
 use crate::codec::*;
-use crate::errors::ConfigError;
 use crate::tree::node::*;
 
-use super::{Extension, ExtensionStruct, ExtensionType};
+use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, RatchetTreeError};
 
 #[derive(PartialEq, Clone, Debug, Default)]
 pub struct RatchetTreeExtension {
@@ -51,13 +50,15 @@ impl Extension for RatchetTreeExtension {
     }
 
     /// Build a new RatchetTreeExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
     where
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
-        let tree = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(Self { tree })
+        match decode_vec(VecSize::VecU32, cursor) {
+            Ok(tree) => Ok(Self { tree }),
+            Err(_) => Err(ExtensionError::RatchetTree(RatchetTreeError::Invalid)),
+        }
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

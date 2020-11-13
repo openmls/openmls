@@ -1,4 +1,4 @@
-use crate::errors::{ConfigError, Error};
+use crate::config::ConfigError;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
@@ -17,24 +17,11 @@ impl From<ConfigError> for CodecError {
     }
 }
 
-impl From<Error> for CodecError {
-    // TODO: tbd in #83, also this direction shouldn't be necessary.
-    fn from(e: Error) -> CodecError {
-        match e {
-            Error::DecodingError => CodecError::DecodingError,
-            Error::UnsupportedCiphersuite => CodecError::Other,
-            Error::CryptoLibraryError => CodecError::Other,
-        }
-    }
-}
-
 impl From<CodecError> for ConfigError {
     // TODO: tbd in #83, also this direction shouldn't be necessary.
     fn from(e: CodecError) -> Self {
         match e {
-            CodecError::DecodingError => ConfigError::DecodingError,
-            CodecError::EncodingError => ConfigError::DecodingError,
-            CodecError::Other => ConfigError::DecodingError,
+            _ => ConfigError::InvalidConfig,
         }
     }
 }

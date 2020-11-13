@@ -1,9 +1,21 @@
-use crate::errors::ConfigError;
+//! # MLS Group errors
+//!
+//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and `CreateCommitError`.
+
+use crate::config::ConfigError;
 use crate::extensions::ExtensionError;
-use crate::framing::*;
+use crate::framing::errors::MLSCiphertextError;
 use crate::tree::TreeError;
 
-#[derive(Debug)]
+
+#[derive(PartialEq, Debug)]
+#[repr(u16)]
+pub enum GroupError {
+    DecryptionError = 0,
+}
+
+#[derive(PartialEq, Debug)]
+#[repr(u16)]
 pub enum WelcomeError {
     CiphersuiteMismatch = 100,
     JoinerSecretNotFound = 101,
@@ -20,6 +32,7 @@ pub enum WelcomeError {
 }
 
 #[derive(PartialEq, Debug)]
+#[repr(u16)]
 pub enum ApplyCommitError {
     EpochMismatch = 200,
     WrongPlaintextContentType = 201,
@@ -36,20 +49,16 @@ pub enum ApplyCommitError {
 }
 
 #[derive(Debug)]
-pub enum DecryptionError {
-    CiphertextError(MLSCiphertextError),
-}
-
-impl From<MLSCiphertextError> for DecryptionError {
-    fn from(e: MLSCiphertextError) -> DecryptionError {
-        DecryptionError::CiphertextError(e)
-    }
-}
-
-#[derive(Debug)]
+#[repr(u16)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
     OwnKeyNotFound = 301,
+}
+
+impl From<MLSCiphertextError> for GroupError {
+    fn from(_e: MLSCiphertextError) -> Self {
+        GroupError::DecryptionError
+    }
 }
 
 impl From<TreeError> for WelcomeError {

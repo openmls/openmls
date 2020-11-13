@@ -5,29 +5,18 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `ManagedGroup`.
 
-mod errors;
+pub mod errors;
 mod managed_group;
 mod mls_group;
 
-use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::tree::*;
 use crate::utils::*;
 
 pub use codec::*;
-pub use errors::*;
+pub(crate) use errors::{ApplyCommitError, CreateCommitError, GroupError, WelcomeError};
 pub use managed_group::*;
 pub use mls_group::*;
-
-pub enum GroupError {
-    Codec(CodecError),
-}
-
-impl From<CodecError> for GroupError {
-    fn from(err: CodecError) -> GroupError {
-        GroupError::Codec(err)
-    }
-}
 
 #[derive(Hash, Eq, Debug, PartialEq, Clone)]
 pub struct GroupId {
