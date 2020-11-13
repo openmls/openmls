@@ -34,6 +34,7 @@ impl From<CodecError> for ConfigError {
         match e {
             CodecError::DecodingError => ConfigError::DecodingError,
             CodecError::EncodingError => ConfigError::DecodingError,
+            CodecError::Other => ConfigError::DecodingError,
         }
     }
 }
