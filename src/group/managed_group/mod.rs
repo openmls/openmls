@@ -8,6 +8,8 @@ use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
 use crate::tree::node::*;
 
+use std::io::{Read, Write};
+
 /// A `ManagedGroup` represents an `MLSGroup` with an easier, high-level API designed to be used in production. The API
 /// exposes high level functions to manage a group by adding/removing members, get the current member list, etc.
 ///
@@ -125,7 +127,8 @@ impl ManagedGroup {
     // === Process messages ===
 
     /// Processes any incoming message from the DS (MLSPlaintext & MLSCiphertext) and triggers the corresponding callback functions
-    pub fn process_message(&mut self, message: MLSMessage) {
+    /// it returns the `aad` field from the message framing
+    pub fn process_message(&mut self, message: MLSMessage) -> Vec<u8> {
         unimplemented!()
     }
 
@@ -135,7 +138,6 @@ impl ManagedGroup {
     pub fn create_message(
         &mut self,
         credential_bundle: &CredentialBundle,
-        aad: &[u8],
         message: &[u8],
     ) -> MLSCiphertext {
         unimplemented!()
@@ -145,6 +147,28 @@ impl ManagedGroup {
 
     /// Exports a secret from the current epoch
     pub fn export_secret(&self) -> Vec<u8> {
+        unimplemented!()
+    }
+
+    // === Configuration ===
+
+    /// Gets the configuration
+    pub fn get_configuration(&self) -> &ManagedGroupConfig {
+        unimplemented!()
+    }
+
+    /// Sets the configuration
+    pub fn set_configuration(&mut self, managed_group_config: &ManagedGroupConfig) {
+        unimplemented!()
+    }
+
+    /// Gets the AAD used in the framing
+    pub fn get_aad(&self) -> &[u8] {
+        unimplemented!()
+    }
+
+    /// Sets the AAD used in the framing
+    pub fn set_aad(&mut self, aad: &[u8]) {
         unimplemented!()
     }
 
@@ -171,15 +195,15 @@ impl ManagedGroup {
         unimplemented!()
     }
 
-    // === Load & save (WIP) ===
+    // === Load & save ===
 
     /// Loads the state from persisted state
-    pub fn load(state: &[u8], managed_group_config: &ManagedGroupConfig) -> ManagedGroup {
+    pub fn load(reader: Box<dyn Read>, managed_group_config: &ManagedGroupConfig) -> ManagedGroup {
         unimplemented!()
     }
 
     /// Persists the state
-    pub fn save(&self, state: &mut Vec<u8>) {}
+    pub fn save(&self, writer: Box<dyn Write>) {}
 }
 /// Specifies the configuration parameters for a managed group
 #[derive(Clone)]
@@ -244,20 +268,20 @@ pub struct ManagedGroupCallbacks {
 }
 
 /// Validator function for AddProposals
-/// `(managed_group: &ManagedGroup, sender: &Sender, aad_porposal: &AddProposal) -> bool`
-pub type ValidateAdd = fn(&ManagedGroup, &Sender, &AddProposal) -> bool;
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_porposal: &AddProposal) -> bool`
+pub type ValidateAdd = fn(&ManagedGroup, &[u8], &Sender, &AddProposal) -> bool;
 /// Validator function for RemoveProposals
-/// `(managed_group: &ManagedGroup, sender: &Sender, remove_porposal: &RemoveProposal) -> bool`
-pub type ValidateRemove = fn(&ManagedGroup, &Sender, &RemoveProposal) -> bool;
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, remove_porposal: &RemoveProposal) -> bool`
+pub type ValidateRemove = fn(&ManagedGroup, &[u8], &Sender, &RemoveProposal) -> bool;
 /// Event listener function for AddProposals
-/// `(managed_group: &ManagedGroup, sender: &Sender, aad_porposal: &AddProposal)`
-pub type MemberAdded = fn(&ManagedGroup, &Sender, &AddProposal);
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_porposal: &AddProposal)`
+pub type MemberAdded = fn(&ManagedGroup, &[u8], &Sender, &AddProposal);
 /// Event listener function for RemoveProposals
-/// `(managed_group: &ManagedGroup, sender: &Sender, remove_porposal: &RemoveProposal)`
-pub type MemberRemoved = fn(&ManagedGroup, &Sender, &RemoveProposal);
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, remove_porposal: &RemoveProposal)`
+pub type MemberRemoved = fn(&ManagedGroup, &[u8], &Sender, &RemoveProposal);
 /// Event listener function for UpdateProposals
-/// `(managed_group: &ManagedGroup, sender: &Sender, update_porposal: &UpdateProposal)`
-pub type MemberUpdated = fn(&ManagedGroup, &Sender, &UpdateProposal);
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, update_porposal: &UpdateProposal)`
+pub type MemberUpdated = fn(&ManagedGroup, &[u8], &Sender, &UpdateProposal);
 /// Event listener function for application messages
-/// `(managed_group: &ManagedGroup, message: &[u8], aad: &[u8])`
+/// `(managed_group: &ManagedGroup, aad: &[u8], message: &[u8])`
 pub type AppMessageReceived = fn(&ManagedGroup, &[u8], &[u8]);
