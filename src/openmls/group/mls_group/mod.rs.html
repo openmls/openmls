@@ -346,7 +346,13 @@
 <span id="345">345</span>
 <span id="346">346</span>
 <span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">info</span>};
+
 <span class="kw">mod</span> <span class="ident">api</span>;
 <span class="kw">mod</span> <span class="ident">apply_commit</span>;
 <span class="kw">mod</span> <span class="ident">create_commit</span>;
@@ -390,6 +396,8 @@
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">config</span>: <span class="ident">GroupConfig</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
+        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, <span class="ident">id</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, <span class="ident">ciphersuite_name</span>, <span class="ident">config</span>);
         <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId</span> { <span class="ident">value</span>: <span class="ident">id</span>.<span class="ident">to_vec</span>() };
         <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">EpochSecrets</span>::<span class="ident">default</span>();
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite_name</span>)<span class="question-mark">?</span>;

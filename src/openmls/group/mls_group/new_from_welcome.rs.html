@@ -211,7 +211,13 @@
 <span id="210">210</span>
 <span id="211">211</span>
 <span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">error</span>};
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="ident">ExtensionType</span>;
@@ -239,7 +245,9 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">JoinerSecretNotFound</span>);
         };
         <span class="kw">if</span> <span class="ident">ciphersuite</span>.<span class="ident">name</span>() <span class="op">!=</span> <span class="ident">key_package_bundle</span>.<span class="ident">get_key_package</span>().<span class="ident">cipher_suite</span>().<span class="ident">name</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">CiphersuiteMismatch</span>);
+            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">WelcomeError</span>::<span class="ident">CiphersuiteMismatch</span>;
+            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;new_from_welcome {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
         }
 
         <span class="comment">// Compute keys to decrypt GroupInfo</span>
@@ -271,7 +279,7 @@
             <span class="kw">match</span> <span class="ident">extension</span>.<span class="ident">to_ratchet_tree_extension_ref</span>() {
                 <span class="prelude-val">Ok</span>(<span class="ident">e</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">e</span>.<span class="ident">clone</span>()),
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=&gt;</span> {
-                    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Library error retrieving ratchet tree extension ({:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Library error retrieving ratchet tree extension ({:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="prelude-val">None</span>
                 }
             }

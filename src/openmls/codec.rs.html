@@ -353,6 +353,9 @@
 <span id="352">352</span>
 <span id="353">353</span>
 <span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::{<span class="ident">ConfigError</span>, <span class="ident">Error</span>};
 <span class="kw">use</span> <span class="ident">byteorder</span>::{<span class="ident">BigEndian</span>, <span class="ident">ReadBytesExt</span>, <span class="ident">WriteBytesExt</span>};
@@ -363,6 +366,7 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CodecError</span> {
     <span class="ident">EncodingError</span>,
     <span class="ident">DecodingError</span>,
+    <span class="ident">Other</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ConfigError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CodecError</span> {
@@ -377,7 +381,8 @@
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">Error</span>) <span class="op">-&gt;</span> <span class="ident">CodecError</span> {
         <span class="kw">match</span> <span class="ident">e</span> {
             <span class="ident">Error</span>::<span class="ident">DecodingError</span> <span class="op">=&gt;</span> <span class="ident">CodecError</span>::<span class="ident">DecodingError</span>,
-            <span class="ident">Error</span>::<span class="ident">UnsupportedCiphersuite</span> <span class="op">=&gt;</span> <span class="ident">CodecError</span>::<span class="ident">DecodingError</span>,
+            <span class="ident">Error</span>::<span class="ident">UnsupportedCiphersuite</span> <span class="op">=&gt;</span> <span class="ident">CodecError</span>::<span class="ident">Other</span>,
+            <span class="ident">Error</span>::<span class="ident">CryptoLibraryError</span> <span class="op">=&gt;</span> <span class="ident">CodecError</span>::<span class="ident">Other</span>,
         }
     }
 }
@@ -388,6 +393,7 @@
         <span class="kw">match</span> <span class="ident">e</span> {
             <span class="ident">CodecError</span>::<span class="ident">DecodingError</span> <span class="op">=&gt;</span> <span class="ident">ConfigError</span>::<span class="ident">DecodingError</span>,
             <span class="ident">CodecError</span>::<span class="ident">EncodingError</span> <span class="op">=&gt;</span> <span class="ident">ConfigError</span>::<span class="ident">DecodingError</span>,
+            <span class="ident">CodecError</span>::<span class="ident">Other</span> <span class="op">=&gt;</span> <span class="ident">ConfigError</span>::<span class="ident">DecodingError</span>,
         }
     }
 }
