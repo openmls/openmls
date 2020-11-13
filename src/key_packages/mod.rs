@@ -306,7 +306,12 @@ impl KeyPackageBundle {
         extensions.sort();
         extensions.dedup();
         if extensions_length != extensions.len() {
-            return Err(ConfigError::DuplicateExtension);
+            let error = ConfigError::DuplicateExtension;
+            error!(
+                "Error creating new KeyPackageBundle: Duplicate Extension {:?}",
+                error
+            );
+            return Err(error);
         }
 
         // First, check if one of the input extensions is a capabilities
@@ -324,7 +329,12 @@ impl KeyPackageBundle {
             Some(extension) => {
                 let capabilities_extension = extension.to_capabilities_extension().unwrap();
                 if capabilities_extension.ciphersuites() != ciphersuites {
-                    return Err(ConfigError::InvalidCapabilitiesExtension);
+                    let error = ConfigError::InvalidCapabilitiesExtension;
+                    error!(
+                        "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
+                        error
+                    );
+                    return Err(error);
                 }
             }
 
