@@ -2,8 +2,6 @@ use openmls::prelude::*;
 mod utils;
 use utils::*;
 
-use pretty_env_logger;
-
 #[test]
 fn padding() {
     pretty_env_logger::init_timed();

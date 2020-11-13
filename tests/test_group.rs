@@ -1,7 +1,5 @@
 use openmls::prelude::*;
 
-use flexi_logger;
-
 #[test]
 fn create_commit_optional_path() {
     flexi_logger::Logger::with_env()
