@@ -22,7 +22,7 @@ fn test_hpke_seal_open() {
 #[test]
 fn test_sign_verify() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let keypair = ciphersuite.new_signature_keypair();
+        let keypair = ciphersuite.new_signature_keypair().unwrap();
         let payload = &[1, 2, 3];
         let signature = keypair.sign(payload).unwrap();
         assert!(keypair.verify(&signature, payload));

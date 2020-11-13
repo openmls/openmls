@@ -14,10 +14,12 @@ pub enum ConfigError {
     DuplicateExtension,
     InvalidCapabilitiesExtension,
     NoCiphersuitesSupplied,
+    DecodingError,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
     DecodingError,
     UnsupportedCiphersuite,
+    CryptoLibraryError,
 }

@@ -1,3 +1,5 @@
+use log::{debug, info};
+
 mod api;
 mod apply_commit;
 mod create_commit;
@@ -40,6 +42,8 @@ impl Api for MlsGroup {
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
     ) -> Result<Self, ConfigError> {
+        info!("Created group {:x?}", id);
+        debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
         let epoch_secrets = EpochSecrets::default();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;

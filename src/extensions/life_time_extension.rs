@@ -73,8 +73,8 @@ impl Extension for LifetimeExtension {
         Self: Sized,
     {
         let mut cursor = Cursor::new(bytes);
-        let not_before = u64::decode(&mut cursor).unwrap();
-        let not_after = u64::decode(&mut cursor).unwrap();
+        let not_before = u64::decode(&mut cursor)?;
+        let not_after = u64::decode(&mut cursor)?;
         let out = Self {
             not_before,
             not_after,

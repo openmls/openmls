@@ -3,6 +3,8 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
+use log::error;
+
 use evercrypt::prelude::*;
 use hpke::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -16,7 +18,7 @@ pub(crate) mod signable;
 use ciphersuites::*;
 
 use crate::config::Config;
-use crate::errors::ConfigError;
+use crate::errors::{ConfigError, Error};
 use crate::utils::random_u32;
 
 #[cfg(test)]
@@ -38,6 +40,12 @@ pub enum CiphersuiteName {
     MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448 = 0x0004,
     MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 = 0x0005,
     MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 = 0x0006,
+}
+
+impl std::fmt::Display for CiphersuiteName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{:?}", self))
+    }
 }
 
 #[derive(Debug)]
@@ -162,6 +170,12 @@ pub struct Ciphersuite {
     hmac: HmacMode,
 }
 
+impl std::fmt::Display for Ciphersuite {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{}", self.name))
+    }
+}
+
 // Cloning a ciphersuite sets up a new one to make sure we don't accidentally
 // carry over anything we don"t want to.
 impl Clone for Ciphersuite {
@@ -205,12 +219,15 @@ impl Ciphersuite {
     }
 
     /// Create a new signature key pair and return it.
-    pub fn new_signature_keypair(&'static self) -> SignatureKeypair {
+    pub fn new_signature_keypair(&'static self) -> Result<SignatureKeypair, Error> {
         let (sk, pk) = match signature_key_gen(self.signature) {
             Ok((sk, pk)) => (sk, pk),
-            Err(e) => panic!("Key generation really shouldn't fail. {:?}", e),
+            Err(e) => {
+                error!("Key generation really shouldn't fail. {:?}", e);
+                return Err(Error::CryptoLibraryError);
+            }
         };
-        SignatureKeypair {
+        Ok(SignatureKeypair {
             ciphersuite: self,
             private_key: SignaturePrivateKey {
                 value: sk.to_vec(),
@@ -220,7 +237,7 @@ impl Ciphersuite {
                 value: pk.to_vec(),
                 ciphersuite: self,
             },
-        }
+        })
     }
 
     /// Hash `payload` and return the digest.
@@ -377,6 +394,7 @@ impl AeadKey {
     ) -> Result<Vec<u8>, AEADError> {
         // TODO: don't hard-code tag bytes (Issue #205)
         if ciphertext.len() < TAG_BYTES {
+            error!("Ciphertext is too short (less than {:?} bytes)", TAG_BYTES);
             return Err(AEADError::DecryptionError);
         }
         let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);

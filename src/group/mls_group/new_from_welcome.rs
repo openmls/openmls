@@ -1,3 +1,5 @@
+use log::{debug, error};
+
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::extensions::ExtensionType;
@@ -25,7 +27,9 @@ impl MlsGroup {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
         if ciphersuite.name() != key_package_bundle.get_key_package().cipher_suite().name() {
-            return Err(WelcomeError::CiphersuiteMismatch);
+            let e = WelcomeError::CiphersuiteMismatch;
+            debug!("new_from_welcome {:?}", e);
+            return Err(e);
         }
 
         // Compute keys to decrypt GroupInfo
@@ -57,7 +61,7 @@ impl MlsGroup {
             match extension.to_ratchet_tree_extension_ref() {
                 Ok(e) => Some(e.clone()),
                 Err(e) => {
-                    println!("Library error retrieving ratchet tree extension ({:?}", e);
+                    error!("Library error retrieving ratchet tree extension ({:?}", e);
                     None
                 }
             }

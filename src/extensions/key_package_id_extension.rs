@@ -47,7 +47,7 @@ impl Extension for KeyIDExtension {
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
-        let key_id = decode_vec(VecSize::VecU16, cursor).unwrap();
+        let key_id = decode_vec(VecSize::VecU16, cursor)?;
         Ok(Self { key_id })
     }
 

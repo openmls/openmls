@@ -1,3 +1,5 @@
+use log::error;
+
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::Config;
@@ -95,7 +97,7 @@ impl KeyPackage {
                         }
                     }
                     Err(e) => {
-                        println!("Library error. {:?}", e);
+                        error!("Library error: {:?}", e);
                         return Err(KeyPackageError::LibraryError);
                     }
                 }
