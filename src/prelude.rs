@@ -3,8 +3,8 @@
 
 pub use crate::group::Api;
 pub use crate::group::GroupConfig;
-pub use crate::group::ManagedGroup;
 pub use crate::group::MlsGroup;
+pub use crate::group::{ManagedGroup, ManagedGroupCallbacks, ManagedGroupConfig};
 // Errors
 pub use crate::group::{ApplyCommitError, DecryptionError, WelcomeError};
 
