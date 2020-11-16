@@ -59,7 +59,13 @@ impl MlsGroup {
                 return Err(WelcomeError::DuplicateRatchetTreeExtension);
             }
             match extension.to_ratchet_tree_extension_ref() {
-                Ok(e) => Some(e.clone()),
+                Ok(e) => {
+                    let ext = Some(e.clone());
+                    // Put the extension back into the GroupInfo, so the
+                    // signature verifies.
+                    group_info.extensions_mut().insert(i, extension);
+                    ext
+                }
                 Err(e) => {
                     error!("Library error retrieving ratchet tree extension ({:?}", e);
                     None
