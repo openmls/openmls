@@ -163,16 +163,6 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -337,16 +327,6 @@
         <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">parent_hash</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
-    <span class="comment">// fn decode(cursor: &amp;mut Cursor) -&gt; Result&lt;Self, CodecError&gt; {</span>
-    <span class="comment">//     let public_key = HPKEPublicKey::decode(cursor)?;</span>
-    <span class="comment">//     let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;</span>
-    <span class="comment">//     let parent_hash = decode_vec(VecSize::VecU8, cursor)?;</span>
-    <span class="comment">//     Ok(ParentNode {</span>
-    <span class="comment">//         public_key,</span>
-    <span class="comment">//         unmerged_leaves,</span>
-    <span class="comment">//         parent_hash,</span>
-    <span class="comment">//     })</span>
-    <span class="comment">// }</span>
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "openmls";</script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>

@@ -315,41 +315,6 @@
 <span id="314">314</span>
 <span id="315">315</span>
 <span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">info</span>};
 
@@ -378,7 +343,6 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroup</span> {
     <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
     <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
-    <span class="ident">generation</span>: <span class="ident">u32</span>,
     <span class="ident">epoch_secrets</span>: <span class="ident">EpochSecrets</span>,
     <span class="ident">secret_tree</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">SecretTree</span><span class="op">&gt;</span>,
     <span class="ident">tree</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">RatchetTree</span><span class="op">&gt;</span>,
@@ -413,7 +377,6 @@
         <span class="prelude-val">Ok</span>(<span class="ident">MlsGroup</span> {
             <span class="ident">ciphersuite</span>,
             <span class="ident">group_context</span>,
-            <span class="ident">generation</span>: <span class="number">0</span>,
             <span class="ident">epoch_secrets</span>,
             <span class="ident">secret_tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">secret_tree</span>),
             <span class="ident">tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">tree</span>),
@@ -600,39 +563,6 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>(),
             <span class="ident">key_length</span>,
         )
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">MlsGroup</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">generation</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">epoch_secrets</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">secret_tree</span>.<span class="ident">borrow</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">borrow</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">CiphersuiteName</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">generation</span> <span class="op">=</span> <span class="ident">u32</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">EpochSecrets</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">SecretTree</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">RatchetTree</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup</span> {
-            <span class="ident">ciphersuite</span>: <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite</span>)<span class="question-mark">?</span>,
-            <span class="ident">group_context</span>,
-            <span class="ident">generation</span>,
-            <span class="ident">epoch_secrets</span>,
-            <span class="ident">secret_tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">secret_tree</span>),
-            <span class="ident">tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">tree</span>),
-            <span class="ident">interim_transcript_hash</span>,
-            <span class="ident">add_ratchet_tree_extension</span>: <span class="bool-val">false</span>,
-        };
-        <span class="prelude-val">Ok</span>(<span class="ident">group</span>)
     }
 }
 

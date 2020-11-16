@@ -369,6 +369,71 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">error</span>;
 
@@ -380,7 +445,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::{
     <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>,
-    <span class="ident">ParentHashExtension</span>,
+    <span class="ident">LifetimeExtension</span>, <span class="ident">ParentHashExtension</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="kw-2">*</span>;
 
@@ -623,7 +688,15 @@
         <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>());
+        <span class="kw">if</span> <span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">NoCiphersuitesSupplied</span>;
+            <span class="macro">error</span><span class="macro">!</span>(
+                <span class="string">&quot;Error creating new KeyPackageBundle: No Ciphersuites specified {:?}&quot;</span>,
+                <span class="ident">error</span>
+            );
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">error</span>);
+        }
+
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuites</span>[<span class="number">0</span>]).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">leaf_node_secret</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">derive_leaf_node_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">leaf_secret</span>);
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="ident">leaf_node_secret</span>);
@@ -641,29 +714,86 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Note that the capabilities extension gets added automatically, based on</span>
     <span class="doccomment">/// the configuration. The ciphersuite for this key package bundle is the</span>
-    <span class="doccomment">/// first one in the `ciphersuites` list. Only the ciphersuites listed in</span>
-    <span class="doccomment">/// `ciphersuites` are enabled in the capabilities extension of the key package.</span>
+    <span class="doccomment">/// first one in the `ciphersuites` list. If a capabilities extension is</span>
+    <span class="doccomment">/// included in the extensions, its supported ciphersuites have to match the</span>
+    <span class="doccomment">/// `ciphersuites` list.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns an `DuplicateExtension` error if `extensions` contains multiple</span>
+    <span class="doccomment">/// extensions of the same type.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns a new `KeyPackageBundle`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_with_keypair</span>(
         <span class="ident">ciphersuites</span>: <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>],
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
-        <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
+        <span class="kw-2">mut</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
         <span class="ident">key_pair</span>: <span class="ident">HPKEKeyPair</span>,
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>());
-        <span class="kw">let</span> <span class="ident">capabilities_extension</span> <span class="op">=</span> <span class="ident">CapabilitiesExtension</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">ciphersuites</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">final_extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">capabilities_extension</span>)];
+        <span class="kw">if</span> <span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">NoCiphersuitesSupplied</span>;
+            <span class="macro">error</span><span class="macro">!</span>(
+                <span class="string">&quot;Error creating new KeyPackageBundle: No Ciphersuites specified {:?}&quot;</span>,
+                <span class="ident">error</span>
+            );
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">error</span>);
+        }
 
+        <span class="comment">// Detect duplicate extensions an return an error in case there is are any.</span>
+        <span class="kw">let</span> <span class="ident">extensions_length</span> <span class="op">=</span> <span class="ident">extensions</span>.<span class="ident">len</span>();
+        <span class="ident">extensions</span>.<span class="ident">sort</span>();
+        <span class="ident">extensions</span>.<span class="ident">dedup</span>();
+        <span class="kw">if</span> <span class="ident">extensions_length</span> <span class="op">!=</span> <span class="ident">extensions</span>.<span class="ident">len</span>() {
+            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">DuplicateExtension</span>;
+            <span class="macro">error</span><span class="macro">!</span>(
+                <span class="string">&quot;Error creating new KeyPackageBundle: Duplicate Extension {:?}&quot;</span>,
+                <span class="ident">error</span>
+            );
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">error</span>);
+        }
+
+        <span class="comment">// First, check if one of the input extensions is a capabilities</span>
+        <span class="comment">// extension. If there is, check if one of the extensions is a</span>
+        <span class="comment">// capabilities extensions and if the contained ciphersuites are the</span>
+        <span class="comment">// same as the ciphersuites passed as input. If that is not the case,</span>
+        <span class="comment">// return an error. If none of the extensions is a capabilities</span>
+        <span class="comment">// extension, create one that supports the given ciphersuites and that</span>
+        <span class="comment">// is otherwise default.</span>
+
+        <span class="kw">match</span> <span class="ident">extensions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_type</span>() <span class="op">==</span> <span class="ident">ExtensionType</span>::<span class="ident">Capabilities</span>)
+        {
+            <span class="prelude-val">Some</span>(<span class="ident">extension</span>) <span class="op">=&gt;</span> {
+                <span class="kw">let</span> <span class="ident">capabilities_extension</span> <span class="op">=</span> <span class="ident">extension</span>.<span class="ident">to_capabilities_extension</span>().<span class="ident">unwrap</span>();
+                <span class="kw">if</span> <span class="ident">capabilities_extension</span>.<span class="ident">ciphersuites</span>() <span class="op">!=</span> <span class="ident">ciphersuites</span> {
+                    <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">InvalidCapabilitiesExtension</span>;
+                    <span class="macro">error</span><span class="macro">!</span>(
+                        <span class="string">&quot;Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}&quot;</span>,
+                        <span class="ident">error</span>
+                    );
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">error</span>);
+                }
+            }
+
+            <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">CapabilitiesExtension</span>::<span class="ident">new</span>(
+                <span class="prelude-val">None</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">ciphersuites</span>),
+                <span class="prelude-val">None</span>,
+            ))),
+        };
+
+        <span class="comment">// Check if there is a lifetime extension. If not, add one that is at</span>
+        <span class="comment">// least valid. TODO: Add the default LifetimeExtension here as soon as</span>
+        <span class="comment">// one is implemented (issue 164).</span>
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">extensions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_type</span>() <span class="op">==</span> <span class="ident">ExtensionType</span>::<span class="ident">Lifetime</span>)
+        {
+            <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">LifetimeExtension</span>::<span class="ident">new</span>(<span class="number">60</span>)));
+        }
         <span class="kw">let</span> (<span class="ident">private_key</span>, <span class="ident">public_key</span>) <span class="op">=</span> <span class="ident">key_pair</span>.<span class="ident">into_keys</span>();
-        <span class="ident">final_extensions</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">extensions</span>);
-        <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">KeyPackage</span>::<span class="ident">new</span>(
-            <span class="ident">ciphersuites</span>[<span class="number">0</span>],
-            <span class="ident">public_key</span>,
-            <span class="ident">credential_bundle</span>,
-            <span class="ident">final_extensions</span>,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span>
+            <span class="ident">KeyPackage</span>::<span class="ident">new</span>(<span class="ident">ciphersuites</span>[<span class="number">0</span>], <span class="ident">public_key</span>, <span class="ident">credential_bundle</span>, <span class="ident">extensions</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">KeyPackageBundle</span> {
             <span class="ident">key_package</span>,
             <span class="ident">private_key</span>,

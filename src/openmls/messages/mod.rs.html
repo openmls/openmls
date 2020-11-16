@@ -328,28 +328,6 @@
 <span id="327">327</span>
 <span id="328">328</span>
 <span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -418,10 +396,10 @@
         <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
-    <span class="comment">// fn decode(cursor: &amp;mut Cursor) -&gt; Result&lt;Self, CodecError&gt; {</span>
-    <span class="comment">//     let inner = decode_vec(VecSize::VecU8, cursor)?;</span>
-    <span class="comment">//     Ok(ConfirmationTag(inner))</span>
-    <span class="comment">// }</span>
+    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">ConfirmationTag</span>(<span class="ident">inner</span>))
+    }
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupInfo</span> {
@@ -538,28 +516,6 @@
         <span class="self">self</span>.<span class="ident">signature</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
-    <span class="comment">// fn decode(cursor: &amp;mut Cursor) -&gt; Result&lt;Self, CodecError&gt; {</span>
-    <span class="comment">//     let group_id = GroupId::decode(cursor)?;</span>
-    <span class="comment">//     let epoch = GroupEpoch::decode(cursor)?;</span>
-    <span class="comment">//     let tree_hash = decode_vec(VecSize::VecU8, cursor)?;</span>
-    <span class="comment">//     let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;</span>
-    <span class="comment">//     let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;</span>
-    <span class="comment">//     let extensions = decode_vec(VecSize::VecU16, cursor)?;</span>
-    <span class="comment">//     let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;</span>
-    <span class="comment">//     let signer_index = LeafIndex::from(u32::decode(cursor)?);</span>
-    <span class="comment">//     let signature = Signature::decode(cursor)?;</span>
-    <span class="comment">//     Ok(GroupInfo {</span>
-    <span class="comment">//         group_id,</span>
-    <span class="comment">//         epoch,</span>
-    <span class="comment">//         tree_hash,</span>
-    <span class="comment">//         confirmed_transcript_hash,</span>
-    <span class="comment">//         interim_transcript_hash,</span>
-    <span class="comment">//         extensions,</span>
-    <span class="comment">//         confirmation_tag,</span>
-    <span class="comment">//         signer_index,</span>
-    <span class="comment">//         signature,</span>
-    <span class="comment">//     })</span>
-    <span class="comment">// }</span>
 }
 
 <span class="kw">impl</span> <span class="ident">Signable</span> <span class="kw">for</span> <span class="ident">GroupInfo</span> {
@@ -618,7 +574,7 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EncryptedGroupSecrets</span> {
     <span class="kw">pub</span> <span class="ident">key_package_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">encrypted_group_secrets</span>: <span class="ident">HpkeCiphertext</span>,
@@ -640,7 +596,7 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Welcome</span> {
     <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
     <span class="ident">cipher_suite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
