@@ -1,6 +1,6 @@
 use crate::codec::*;
-use crate::creds::*;
 use crate::config::ConfigError;
+use crate::creds::*;
 use crate::framing::{sender::*, *};
 use crate::group::*;
 use crate::key_packages::*;

@@ -7,7 +7,6 @@ use crate::extensions::ExtensionError;
 use crate::framing::errors::MLSCiphertextError;
 use crate::tree::TreeError;
 
-
 #[derive(PartialEq, Debug)]
 #[repr(u16)]
 pub enum GroupError {
