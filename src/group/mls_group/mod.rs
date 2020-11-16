@@ -25,7 +25,6 @@ use std::convert::TryFrom;
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
-    generation: u32,
     epoch_secrets: EpochSecrets,
     secret_tree: RefCell<SecretTree>,
     tree: RefCell<RatchetTree>,
@@ -60,7 +59,6 @@ impl Api for MlsGroup {
         Ok(MlsGroup {
             ciphersuite,
             group_context,
-            generation: 0,
             epoch_secrets,
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
@@ -247,39 +245,6 @@ impl Api for MlsGroup {
             &self.context(),
             key_length,
         )
-    }
-}
-
-impl Codec for MlsGroup {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.ciphersuite.name().encode(buffer)?;
-        self.group_context.encode(buffer)?;
-        self.generation.encode(buffer)?;
-        self.epoch_secrets.encode(buffer)?;
-        self.secret_tree.borrow().encode(buffer)?;
-        self.tree.borrow().encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let ciphersuite = CiphersuiteName::decode(cursor)?;
-        let group_context = GroupContext::decode(cursor)?;
-        let generation = u32::decode(cursor)?;
-        let epoch_secrets = EpochSecrets::decode(cursor)?;
-        let secret_tree = SecretTree::decode(cursor)?;
-        let tree = RatchetTree::decode(cursor)?;
-        let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let group = MlsGroup {
-            ciphersuite: Config::ciphersuite(ciphersuite)?,
-            group_context,
-            generation,
-            epoch_secrets,
-            secret_tree: RefCell::new(secret_tree),
-            tree: RefCell::new(tree),
-            interim_transcript_hash,
-            add_ratchet_tree_extension: false,
-        };
-        Ok(group)
     }
 }
 

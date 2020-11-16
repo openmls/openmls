@@ -41,7 +41,7 @@ impl From<ExtensionError> for CodecError {
 ///
 /// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
 ///
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 #[repr(u16)]
 pub enum ExtensionType {
     Reserved = 0,
@@ -285,5 +285,19 @@ impl PartialEq for dyn Extension {
         }
 
         self.to_extension_struct() == other.to_extension_struct()
+    }
+}
+
+impl Eq for dyn Extension {}
+
+impl PartialOrd for dyn Extension {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.get_type().partial_cmp(&other.get_type())
+    }
+}
+
+impl Ord for dyn Extension {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.get_type().cmp(&other.get_type())
     }
 }

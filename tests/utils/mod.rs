@@ -75,7 +75,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
-                let capabilities_extension = Box::new(CapabilitiesExtension::default());
+                let capabilities_extension =
+                    Box::new(CapabilitiesExtension::new(None, Some(&[ciphersuite]), None));
                 let lifetime_extension = Box::new(LifetimeExtension::new(60));
                 let mandatory_extensions: Vec<Box<dyn Extension>> =
                     vec![capabilities_extension, lifetime_extension];
