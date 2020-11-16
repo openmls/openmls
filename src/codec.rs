@@ -45,7 +45,7 @@ pub enum VecSize {
     VecU32,
     VecU64,
 }
-
+#[derive(Debug)]
 pub struct Cursor {
     buffer: Vec<u8>,
     position: usize,

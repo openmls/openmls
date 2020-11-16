@@ -8,7 +8,7 @@ use crate::creds::*;
 use crate::errors::ConfigError;
 use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
-    ParentHashExtension,
+    LifetimeExtension, ParentHashExtension,
 };
 use crate::schedule::*;
 
@@ -251,7 +251,15 @@ impl KeyPackageBundle {
         extensions: Vec<Box<dyn Extension>>,
         leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
-        debug_assert!(!ciphersuites.is_empty());
+        if ciphersuites.is_empty() {
+            let error = ConfigError::NoCiphersuitesSupplied;
+            error!(
+                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                error
+            );
+            return Err(error);
+        }
+
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
@@ -269,29 +277,86 @@ impl KeyPackageBundle {
     ///
     /// Note that the capabilities extension gets added automatically, based on
     /// the configuration. The ciphersuite for this key package bundle is the
-    /// first one in the `ciphersuites` list. Only the ciphersuites listed in
-    /// `ciphersuites` are enabled in the capabilities extension of the key package.
+    /// first one in the `ciphersuites` list. If a capabilities extension is
+    /// included in the extensions, its supported ciphersuites have to match the
+    /// `ciphersuites` list.
+    ///
+    /// Returns an `DuplicateExtension` error if `extensions` contains multiple
+    /// extensions of the same type.
     ///
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
+        mut extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
         leaf_secret: Secret,
     ) -> Result<Self, ConfigError> {
-        debug_assert!(!ciphersuites.is_empty());
-        let capabilities_extension = CapabilitiesExtension::new(None, Some(ciphersuites), None);
-        let mut final_extensions: Vec<Box<dyn Extension>> = vec![Box::new(capabilities_extension)];
+        if ciphersuites.is_empty() {
+            let error = ConfigError::NoCiphersuitesSupplied;
+            error!(
+                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                error
+            );
+            return Err(error);
+        }
 
+        // Detect duplicate extensions an return an error in case there is are any.
+        let extensions_length = extensions.len();
+        extensions.sort();
+        extensions.dedup();
+        if extensions_length != extensions.len() {
+            let error = ConfigError::DuplicateExtension;
+            error!(
+                "Error creating new KeyPackageBundle: Duplicate Extension {:?}",
+                error
+            );
+            return Err(error);
+        }
+
+        // First, check if one of the input extensions is a capabilities
+        // extension. If there is, check if one of the extensions is a
+        // capabilities extensions and if the contained ciphersuites are the
+        // same as the ciphersuites passed as input. If that is not the case,
+        // return an error. If none of the extensions is a capabilities
+        // extension, create one that supports the given ciphersuites and that
+        // is otherwise default.
+
+        match extensions
+            .iter()
+            .find(|e| e.get_type() == ExtensionType::Capabilities)
+        {
+            Some(extension) => {
+                let capabilities_extension = extension.to_capabilities_extension().unwrap();
+                if capabilities_extension.ciphersuites() != ciphersuites {
+                    let error = ConfigError::InvalidCapabilitiesExtension;
+                    error!(
+                        "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
+                        error
+                    );
+                    return Err(error);
+                }
+            }
+
+            None => extensions.push(Box::new(CapabilitiesExtension::new(
+                None,
+                Some(ciphersuites),
+                None,
+            ))),
+        };
+
+        // Check if there is a lifetime extension. If not, add one that is at
+        // least valid. TODO: Add the default LifetimeExtension here as soon as
+        // one is implemented (issue 164).
+        if !extensions
+            .iter()
+            .any(|e| e.get_type() == ExtensionType::Lifetime)
+        {
+            extensions.push(Box::new(LifetimeExtension::new(60)));
+        }
         let (private_key, public_key) = key_pair.into_keys();
-        final_extensions.extend_from_slice(&extensions);
-        let key_package = KeyPackage::new(
-            ciphersuites[0],
-            public_key,
-            credential_bundle,
-            final_extensions,
-        )?;
+        let key_package =
+            KeyPackage::new(ciphersuites[0], public_key, credential_bundle, extensions)?;
         Ok(KeyPackageBundle {
             key_package,
             private_key,

@@ -21,18 +21,7 @@ macro_rules! key_package_generation {
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new())
                     .unwrap();
 
-            // This key package is not valid because the lifetime extension is missing.
-            assert!(kpb.get_key_package().verify().is_err());
-
-            // Adding a lifetime extension.
-            kpb.get_key_package_ref_mut()
-                .add_extension(Box::new(LifetimeExtension::new(60)));
-
-            // The key package is invalid because the signature is invalid now.
-            assert!(kpb.get_key_package().verify().is_err());
-
-            // After re-signing the package it is valid.
-            kpb.get_key_package_ref_mut().sign(&credential_bundle);
+            // After creation, the signature should be ok.
             assert!(kpb.get_key_package().verify().is_ok());
 
             {
@@ -63,8 +52,7 @@ macro_rules! key_package_generation {
                     capabilities_extension.extensions()
                 );
 
-                // Get the lifetime extension. There's no public API for this but it
-                // must be present.
+                // Get the lifetime extension. It's added automatically.
                 let lifetime_extension = extensions
                     .iter()
                     .find(|e| e.get_type() == ExtensionType::Lifetime)
