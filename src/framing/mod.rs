@@ -138,7 +138,7 @@ impl Codec for MLSPlaintext {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MLSCiphertext {
     pub group_id: GroupId,
     pub epoch: GroupEpoch,

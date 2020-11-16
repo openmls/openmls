@@ -5,9 +5,6 @@ impl Codec for NodeType {
         (*self as u8).encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     Ok(NodeType::from(u8::decode(cursor)?))
-    // }
 }
 
 impl Codec for Node {
@@ -17,36 +14,6 @@ impl Codec for Node {
         self.node.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let node_type = NodeType::decode(cursor)?;
-    //     let key_package = Option::<KeyPackage>::decode(cursor)?;
-    //     let node = Option::<ParentNode>::decode(cursor)?;
-    //     Ok(Node {
-    //         node_type,
-    //         key_package,
-    //         node,
-    //     })
-    // }
-}
-
-impl Codec for RatchetTree {
-    // fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-    //     self.ciphersuite.encode(buffer)?;
-    //     encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
-    //     self.path_keypairs.encode(buffer)?;
-    //     self.own_node_index.as_u32().encode(buffer)?;
-    //     Ok(())
-    // }
-    // fn decode(cursor: &mut Cursor) -> Result<RatchetTree, CodecError> {
-    //     let ciphersuite = Ciphersuite::decode(cursor)?;
-    //     let nodes = decode_vec(VecSize::VecU32, cursor)?;
-    //     let private_tree = PrivateTree::decode(cursor)?;
-    //     Ok(RatchetTree {
-    //         ciphersuite,
-    //         nodes,
-    //         private_tree,
-    //     })
-    // }
 }
 
 impl Codec for UpdatePathNode {
@@ -55,14 +22,14 @@ impl Codec for UpdatePathNode {
         encode_vec(VecSize::VecU32, buffer, &self.encrypted_path_secret)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let public_key = HPKEPublicKey::decode(cursor)?;
-    //     let encrypted_path_secret = decode_vec(VecSize::VecU32, cursor)?;
-    //     Ok(UpdatePathNode {
-    //         public_key,
-    //         encrypted_path_secret,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let public_key = HPKEPublicKey::decode(cursor)?;
+        let encrypted_path_secret = decode_vec(VecSize::VecU32, cursor)?;
+        Ok(UpdatePathNode {
+            public_key,
+            encrypted_path_secret,
+        })
+    }
 }
 
 impl Codec for UpdatePath {
@@ -71,14 +38,14 @@ impl Codec for UpdatePath {
         encode_vec(VecSize::VecU16, buffer, &self.nodes)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let leaf_key_package = KeyPackage::decode(cursor)?;
-    //     let nodes = decode_vec(VecSize::VecU16, cursor)?;
-    //     Ok(UpdatePath {
-    //         leaf_key_package,
-    //         nodes,
-    //     })
-    // }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let leaf_key_package = KeyPackage::decode(cursor)?;
+        let nodes = decode_vec(VecSize::VecU16, cursor)?;
+        Ok(UpdatePath {
+            leaf_key_package,
+            nodes,
+        })
+    }
 }
 
 // ASTree Codecs
@@ -88,8 +55,4 @@ impl Codec for SecretTreeNode {
         self.secret.encode(buffer)?;
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     let secret = decode_vec(VecSize::VecU8, cursor)?;
-    //     Ok(ASTreeNode { secret })
-    // }
 }

@@ -164,7 +164,6 @@ impl MlsGroup {
             Ok(MlsGroup {
                 ciphersuite,
                 group_context,
-                generation: 0,
                 epoch_secrets,
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),

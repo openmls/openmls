@@ -11,6 +11,9 @@ pub enum ConfigError {
     UnsupportedMlsVersion,
     UnsupportedCiphersuite,
     ExpiredLifetimeExtension,
+    DuplicateExtension,
+    InvalidCapabilitiesExtension,
+    NoCiphersuitesSupplied,
     DecodingError,
 }
 
