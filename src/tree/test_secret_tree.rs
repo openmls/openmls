@@ -77,7 +77,8 @@ fn test_boundaries() {
     }
 }
 
-// This tests if the generation gets incremented correctly and that the returned values are unique.
+// This tests if the generation gets incremented correctly and that the returned
+// values are unique.
 #[test]
 fn increment_generation() {
     use crate::config::Config;

@@ -4,14 +4,13 @@
 //!
 //! 7.3. KeyPackage Identifiers
 //!
-//! Within MLS, a KeyPackage is identified by its hash (see, e.g., Section 11.2.1).
-//! The key_id extension allows applications to add an explicit,
+//! Within MLS, a KeyPackage is identified by its hash (see, e.g., Section
+//! 11.2.1). The key_id extension allows applications to add an explicit,
 //! application-defined identifier to a KeyPackage.
 //!
 //! ```text
 //! opaque key_id<0..2^16-1>;
 //! ```
-//!
 
 use super::{Extension, ExtensionStruct, ExtensionType};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};

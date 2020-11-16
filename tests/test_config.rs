@@ -4,7 +4,6 @@
 //! * which MLS protocol versions are supported
 //! * which ciphersuites are supported
 //! * which extensions are supported
-//!
 
 use openmls::prelude::*;
 

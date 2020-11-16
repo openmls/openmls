@@ -311,7 +311,8 @@ impl Ciphersuite {
         self.hpke_seal(pk_r, info, aad, &secret.value)
     }
 
-    /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and `aad`.
+    /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and
+    /// `aad`.
     pub(crate) fn hpke_open(
         &self,
         input: &HpkeCiphertext,

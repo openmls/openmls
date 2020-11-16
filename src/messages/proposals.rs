@@ -127,7 +127,8 @@ impl Codec for ProposalID {
     }
 }
 
-/// Alternative representation of a Proposal, where the sender is extracted from the encapsulating MLSPlaintext and the ProposalID is attached.
+/// Alternative representation of a Proposal, where the sender is extracted from
+/// the encapsulating MLSPlaintext and the ProposalID is attached.
 #[derive(Clone)]
 pub struct QueuedProposal {
     proposal: Proposal,
@@ -164,7 +165,8 @@ impl QueuedProposal {
     }
 }
 
-/// Proposal queue that helps filtering and sorting the Proposals from one epoch.
+/// Proposal queue that helps filtering and sorting the Proposals from one
+/// epoch.
 #[derive(Default)]
 pub struct ProposalQueue {
     queued_proposals: HashMap<ProposalID, QueuedProposal>,
@@ -177,7 +179,8 @@ impl ProposalQueue {
             queued_proposals: HashMap::new(),
         }
     }
-    /// Returns a new `ProposalQueue` from proposals that were committed and don't need filtering
+    /// Returns a new `ProposalQueue` from proposals that were committed and
+    /// don't need filtering
     pub(crate) fn new_from_committed_proposals(
         ciphersuite: &Ciphersuite,
         proposals: Vec<MLSPlaintext>,
@@ -194,10 +197,11 @@ impl ProposalQueue {
     /// 11.2 Commit
     /// If there are multiple proposals that apply to the same leaf,
     /// the committer chooses one and includes only that one in the Commit,
-    /// considering the rest invalid. The committer MUST prefer any Remove received,
-    /// or the most recent Update for the leaf if there are no Removes.
-    /// If there are multiple Add proposals for the same client, the committer again
-    /// chooses one to include and considers the rest invalid.
+    /// considering the rest invalid. The committer MUST prefer any Remove
+    /// received, or the most recent Update for the leaf if there are no
+    /// Removes. If there are multiple Add proposals for the same client,
+    /// the committer again chooses one to include and considers the rest
+    /// invalid.
     ///
     /// The function performs the following steps:
     ///
@@ -207,7 +211,8 @@ impl ProposalQueue {
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
-    /// Return a `ProposalQueue` a bool that indicates whether Updates for the own node were included
+    /// Return a `ProposalQueue` a bool that indicates whether Updates for the
+    /// own node were included
     pub(crate) fn filtered_proposals(
         ciphersuite: &Ciphersuite,
         proposals: Vec<MLSPlaintext>,
@@ -279,7 +284,8 @@ impl ProposalQueue {
         proposal_queue.retain(|k, _| valid_proposals.get(k).is_some() || adds.get(k).is_some());
         (proposal_queue, contains_own_updates)
     }
-    /// Returns `true` if all `ProposalID` values from the list are contained in the queue
+    /// Returns `true` if all `ProposalID` values from the list are contained in
+    /// the queue
     pub(crate) fn contains(&self, proposal_id_list: &[ProposalID]) -> bool {
         for proposal_id in proposal_id_list {
             if !self.queued_proposals.contains_key(proposal_id) {

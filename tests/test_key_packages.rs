@@ -1,5 +1,4 @@
 //! # Key package tests
-//!
 
 use openmls::prelude::*;
 
@@ -8,7 +7,8 @@ macro_rules! key_package_generation {
         #[test]
         fn $name() {
             if !$supported {
-                // TODO: enable more testing for unsupported ciphersuites when they return errors.
+                // TODO: enable more testing for unsupported ciphersuites when they return
+                // errors.
                 return;
             }
             let ciphersuite = Config::ciphersuite($ciphersuite).unwrap();

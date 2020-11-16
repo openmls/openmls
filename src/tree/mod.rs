@@ -66,8 +66,8 @@ impl RatchetTree {
         }
     }
 
-    /// Create a new `RatchetTree` by cloning the public tree nodes from another tree
-    /// and an empty `PrivateTree`
+    /// Create a new `RatchetTree` by cloning the public tree nodes from another
+    /// tree and an empty `PrivateTree`
     pub(crate) fn new_from_public_tree(ratchet_tree: &RatchetTree) -> Self {
         RatchetTree {
             ciphersuite: ratchet_tree.ciphersuite,
@@ -261,7 +261,6 @@ impl RatchetTree {
     /// > intermediate nodes in the path above the leaf. The path is ordered
     /// > from the closest node to the leaf to the root; each node MUST be the
     /// > parent of its predecessor.
-    ///
     pub(crate) fn update_path(
         &mut self,
         sender: LeafIndex,
@@ -432,7 +431,8 @@ impl RatchetTree {
         )
     }
 
-    /// Replace the private tree with a new one based on the `key_package_bundle`.
+    /// Replace the private tree with a new one based on the
+    /// `key_package_bundle`.
     fn replace_private_tree_(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -539,7 +539,8 @@ impl RatchetTree {
         Ok(())
     }
 
-    /// Validates that the `public_keys` matches the public keys in the tree along `path`
+    /// Validates that the `public_keys` matches the public keys in the tree
+    /// along `path`
     pub(crate) fn validate_public_keys(
         &self,
         public_keys: &[HPKEPublicKey],
@@ -629,8 +630,10 @@ impl RatchetTree {
 
     /// Applies a list of proposals from a Commit to the tree.
     /// `proposal_id_list` corresponds to the `proposals` field of a Commit
-    /// `proposal_queue` is the queue of proposals received or sent in the current epoch
-    /// `updates_key_package_bundles` is the list of own KeyPackageBundles corresponding to updates or commits sent in the current epoch
+    /// `proposal_queue` is the queue of proposals received or sent in the
+    /// current epoch `updates_key_package_bundles` is the list of own
+    /// KeyPackageBundles corresponding to updates or commits sent in the
+    /// current epoch
     pub fn apply_proposals(
         &mut self,
         proposal_id_list: &[ProposalID],

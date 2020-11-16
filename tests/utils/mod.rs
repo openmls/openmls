@@ -2,7 +2,6 @@
 //!
 //! Most tests require to set up groups, clients, credentials, and identities.
 //! This module implements helpers to do that.
-//!
 
 use std::cell::RefCell;
 use std::collections::HashMap;

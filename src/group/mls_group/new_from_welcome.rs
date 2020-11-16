@@ -99,7 +99,8 @@ impl MlsGroup {
         }
 
         // Verify ratchet tree
-        // TODO: #35 Why does this get the nodes? Shouldn't `new_from_nodes` consume the nodes?
+        // TODO: #35 Why does this get the nodes? Shouldn't `new_from_nodes` consume the
+        // nodes?
         if !RatchetTree::verify_integrity(&ciphersuite, &nodes) {
             return Err(WelcomeError::InvalidRatchetTree);
         }

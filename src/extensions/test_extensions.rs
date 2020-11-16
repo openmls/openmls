@@ -1,7 +1,6 @@
 //! # Extensions Unit tests
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
-//!
 
 use super::*;
 use crate::codec::{Codec, Cursor};
