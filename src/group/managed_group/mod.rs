@@ -153,7 +153,7 @@ impl ManagedGroup {
     // === Configuration ===
 
     /// Gets the configuration
-    pub fn get_configuration(&self) -> &ManagedGroupConfig {
+    pub fn configuration(&self) -> &ManagedGroupConfig {
         unimplemented!()
     }
 
