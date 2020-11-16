@@ -1,4 +1,3 @@
-
 [package]
 name = "openmls-fuzz"
 version = "0.0.0"
@@ -28,5 +27,17 @@ doc = false
 [[bin]]
 name = "key_package_decode"
 path = "fuzz_targets/key_package_decode.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "mls_plaintext_decode"
+path = "fuzz_targets/mls_plaintext_decode.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "mls_ciphertext_decode"
+path = "fuzz_targets/mls_ciphertext_decode.rs"
 test = false
 doc = false
