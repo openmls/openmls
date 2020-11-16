@@ -163,7 +163,7 @@ impl ManagedGroup {
     }
 
     /// Gets the AAD used in the framing
-    pub fn get_aad(&self) -> &[u8] {
+    pub fn aad(&self) -> &[u8] {
         unimplemented!()
     }
 
