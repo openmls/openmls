@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["MANDATORY_EXTENSIONS","Mandatory extensions for key packages."]],"enum":[["KeyPackageError",""]],"mod":[["codec",""],["test_key_packages",""]],"struct":[["KeyPackage",""],["KeyPackageBundle",""]]});
+initSidebarItems({"constant":[["MANDATORY_EXTENSIONS","Mandatory extensions for key packages."]],"mod":[["codec",""],["errors","Key Package errors"]],"struct":[["KeyPackage",""],["KeyPackageBundle",""]]});

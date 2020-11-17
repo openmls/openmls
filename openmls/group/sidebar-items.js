@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["GroupError",""]],"mod":[["errors",""],["managed_group",""],["mls_group",""]],"struct":[["GroupConfig","Configuration for an MLS group."],["GroupContext",""],["GroupEpoch",""],["GroupId",""]]});
+initSidebarItems({"mod":[["errors","MLS Group errors"],["managed_group",""],["mls_group",""]],"struct":[["GroupConfig","Configuration for an MLS group."],["GroupContext",""],["GroupEpoch",""],["GroupId",""]]});

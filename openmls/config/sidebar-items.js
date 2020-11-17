@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ProtocolVersion","Protocol Version"]],"struct":[["CONFIG",""],["Config","OpenMLS Configuration"],["PersistentConfig","The configuration we use for the library (`Config`) is not exactly the same as the one we persist."]]});
+initSidebarItems({"enum":[["ProtocolVersion","Protocol Version"]],"mod":[["errors","Config errors"]],"struct":[["CONFIG",""],["Config","OpenMLS Configuration"],["PersistentConfig","The configuration we use for the library (`Config`) is not exactly the same as the one we persist."]]});

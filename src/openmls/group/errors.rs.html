@@ -89,13 +89,34 @@
 <span id="88">88</span>
 <span id="89">89</span>
 <span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::<span class="ident">ConfigError</span>;
+<span class="doccomment">//! # MLS Group errors</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and</span>
+<span class="doccomment">//! `CreateCommitError`.</span>
+
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="ident">ExtensionError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::<span class="ident">MLSCiphertextError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">TreeError</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupError</span> {
+    <span class="ident">DecryptionError</span> <span class="op">=</span> <span class="number">0</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WelcomeError</span> {
     <span class="ident">CiphersuiteMismatch</span> <span class="op">=</span> <span class="number">100</span>,
     <span class="ident">JoinerSecretNotFound</span> <span class="op">=</span> <span class="number">101</span>,
@@ -112,6 +133,7 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyCommitError</span> {
     <span class="ident">EpochMismatch</span> <span class="op">=</span> <span class="number">200</span>,
     <span class="ident">WrongPlaintextContentType</span> <span class="op">=</span> <span class="number">201</span>,
@@ -128,20 +150,16 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DecryptionError</span> {
-    <span class="ident">CiphertextError</span>(<span class="ident">MLSCiphertextError</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MLSCiphertextError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DecryptionError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">MLSCiphertextError</span>) <span class="op">-&gt;</span> <span class="ident">DecryptionError</span> {
-        <span class="ident">DecryptionError</span>::<span class="ident">CiphertextError</span>(<span class="ident">e</span>)
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreateCommitError</span> {
     <span class="ident">CannotRemoveSelf</span> <span class="op">=</span> <span class="number">300</span>,
     <span class="ident">OwnKeyNotFound</span> <span class="op">=</span> <span class="number">301</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MLSCiphertextError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">GroupError</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">_e</span>: <span class="ident">MLSCiphertextError</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">GroupError</span>::<span class="ident">DecryptionError</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">TreeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WelcomeError</span> {

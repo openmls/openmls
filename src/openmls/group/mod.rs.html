@@ -150,17 +150,6 @@
 <span id="149">149</span>
 <span id="150">150</span>
 <span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
-<span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Group APIs for MLS</span>
 <span class="doccomment">//!</span>
@@ -169,29 +158,18 @@
 <span class="doccomment">//! The low-level standard API is described in the `Api` trait.\</span>
 <span class="doccomment">//! The high-level API is exposed in `ManagedGroup`.</span>
 
-<span class="kw">mod</span> <span class="ident">errors</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">mod</span> <span class="ident">managed_group</span>;
 <span class="kw">mod</span> <span class="ident">mls_group</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">GroupError</span>, <span class="ident">WelcomeError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">managed_group</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mls_group</span>::<span class="kw-2">*</span>;
-
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupError</span> {
-    <span class="ident">Codec</span>(<span class="ident">CodecError</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CodecError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">GroupError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">CodecError</span>) <span class="op">-&gt;</span> <span class="ident">GroupError</span> {
-        <span class="ident">GroupError</span>::<span class="ident">Codec</span>(<span class="ident">err</span>)
-    }
-}
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupId</span> {

@@ -13,20 +13,50 @@
 <span id="12">12</span>
 <span id="13">13</span>
 <span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="doccomment">//! # OpenMLS</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Errors</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Each module has an `errors.rs` defining module specific errors that are used</span>
+<span class="doccomment">//! within the crate. This exposes some of the</span>
+<span class="doccomment">//! module errors that are publicly relevant.</span>
+<span class="doccomment">//! All errors implement `Debug`, `Display`, `PartialEq`, and `description` of</span>
+<span class="doccomment">//! the `Error` trait.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! The C FFI API exposes the errors represented  as u16.</span>
+
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">mod</span> <span class="ident">utils</span>;
+
 <span class="kw">mod</span> <span class="ident">ciphersuite</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="kw">mod</span> <span class="ident">config</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creds</span>;
-<span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">mod</span> <span class="ident">extensions</span>;
-<span class="kw">mod</span> <span class="ident">framing</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">extensions</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">framing</span>;
 <span class="kw">mod</span> <span class="ident">group</span>;
-<span class="kw">mod</span> <span class="ident">key_packages</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">key_packages</span>;
 <span class="kw">mod</span> <span class="ident">messages</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span>;
 <span class="kw">mod</span> <span class="ident">schedule</span>;
 <span class="kw">mod</span> <span class="ident">tree</span>;
-<span class="kw">mod</span> <span class="ident">utils</span>;
+
+<span class="doccomment">/// Single place, re-exporting the most used public functions.</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span>;
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "openmls";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

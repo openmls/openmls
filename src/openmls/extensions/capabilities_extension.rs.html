@@ -135,6 +135,11 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Capabilities Extension</span>
 <span class="doccomment">//!</span>
@@ -152,11 +157,12 @@
 <span class="doccomment">//! } Capabilities;</span>
 <span class="doccomment">//! ```</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Extension</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{
+    <span class="ident">CapabilitiesExtensionError</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>,
+};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CiphersuiteName</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::{<span class="ident">decode_vec</span>, <span class="ident">encode_vec</span>, <span class="ident">Cursor</span>, <span class="ident">VecSize</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::<span class="ident">ConfigError</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CapabilitiesExtension</span> {
@@ -219,9 +225,9 @@
     }
 
     <span class="doccomment">/// Build a new CapabilitiesExtension from a byte slice.</span>
-    <span class="doccomment">/// Checks that we can work with these capabilities and returns a</span>
-    <span class="doccomment">/// `ConfigError` if not.</span>
-    <span class="kw">fn</span> <span class="ident">new_from_bytes</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span>
+    <span class="doccomment">/// Checks that we can work with these capabilities and returns an</span>
+    <span class="doccomment">/// `ExtensionError` if not.</span>
+    <span class="kw">fn</span> <span class="ident">new_from_bytes</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="self">Self</span>: <span class="ident">Sized</span>,
     {
@@ -234,7 +240,9 @@
         }
         <span class="comment">// There must be at least one version we support.</span>
         <span class="kw">if</span> <span class="ident">versions</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConfigError</span>::<span class="ident">UnsupportedMlsVersion</span>);
+            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">ExtensionError</span>::<span class="ident">Capabilities</span>(<span class="ident">CapabilitiesExtensionError</span>::<span class="ident">EmptyVersionsField</span>);
+            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Error reading capabilities extension form bytes: {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
         }
 
         <span class="kw">let</span> <span class="ident">ciphersuites</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CiphersuiteName</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
@@ -247,7 +255,9 @@
             }
         }
         <span class="kw">if</span> <span class="op">!</span><span class="ident">supported_suite</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConfigError</span>::<span class="ident">UnsupportedCiphersuite</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError</span>::<span class="ident">Capabilities</span>(
+                <span class="kw">super</span>::<span class="ident">CapabilitiesExtensionError</span>::<span class="ident">UnsupportedCiphersuite</span>,
+            ));
         }
 
         <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;

@@ -434,49 +434,27 @@
 <span id="433">433</span>
 <span id="434">434</span>
 <span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">error</span>;
 
+<span class="kw">use</span> <span class="ident">evercrypt</span>::<span class="ident">rand_util</span>::<span class="kw-2">*</span>;
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ProtocolVersion</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">creds</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::{
-    <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>,
-    <span class="ident">LifetimeExtension</span>, <span class="ident">ParentHashExtension</span>,
+    <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtension</span>,
+    <span class="ident">ParentHashExtension</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident">evercrypt</span>::<span class="ident">rand_util</span>::<span class="kw-2">*</span>;
-
 <span class="kw">mod</span> <span class="ident">codec</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">tests</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_key_packages</span>;
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageError</span> {
-    <span class="ident">ExtensionNotPresent</span>,
-    <span class="ident">MandatoryExtensionsMissing</span>,
-    <span class="ident">InvalidLifetimeExtension</span>,
-    <span class="ident">InvalidSignature</span>,
-    <span class="ident">LibraryError</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ExtensionError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyPackageError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">ExtensionError</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="kw">match</span> <span class="ident">e</span> {
-            <span class="comment">// TODO: error handling #83</span>
-            <span class="ident">ExtensionError</span>::<span class="ident">InvalidExtensionType</span> <span class="op">=&gt;</span> <span class="ident">KeyPackageError</span>::<span class="ident">ExtensionNotPresent</span>,
-            <span class="ident">ExtensionError</span>::<span class="ident">UnknownExtension</span> <span class="op">=&gt;</span> <span class="ident">KeyPackageError</span>::<span class="ident">ExtensionNotPresent</span>,
-        }
-    }
-}
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyPackage</span> {
@@ -492,29 +470,8 @@
 <span class="kw">const</span> <span class="ident">MANDATORY_EXTENSIONS</span>: [<span class="ident">ExtensionType</span>; <span class="number">2</span>] <span class="op">=</span>
     [<span class="ident">ExtensionType</span>::<span class="ident">Capabilities</span>, <span class="ident">ExtensionType</span>::<span class="ident">Lifetime</span>];
 
+<span class="doccomment">/// Public `KeyPckage` functions.</span>
 <span class="kw">impl</span> <span class="ident">KeyPackage</span> {
-    <span class="doccomment">/// Create a new key package but only with the given `extensions` for the</span>
-    <span class="doccomment">/// given `ciphersuite` and `identity`, and the initial HPKE key pair</span>
-    <span class="doccomment">/// `init_key`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">ciphersuite_name</span>: <span class="ident">CiphersuiteName</span>,
-        <span class="ident">hpke_init_key</span>: <span class="ident">HPKEPublicKey</span>,
-        <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
-        <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="self">Self</span> {
-            <span class="comment">// TODO: #85 Take from global config.</span>
-            <span class="ident">protocol_version</span>: <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
-            <span class="ident">cipher_suite</span>: <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite_name</span>)<span class="question-mark">?</span>,
-            <span class="ident">hpke_init_key</span>,
-            <span class="ident">credential</span>: <span class="ident">credential_bundle</span>.<span class="ident">credential</span>().<span class="ident">clone</span>(),
-            <span class="ident">extensions</span>,
-            <span class="ident">signature</span>: <span class="ident">Signature</span>::<span class="ident">new_empty</span>(),
-        };
-        <span class="ident">key_package</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">key_package</span>)
-    }
-
     <span class="doccomment">/// Verify that this key package is valid:</span>
     <span class="doccomment">/// * verify that the signature on this key package is valid</span>
     <span class="doccomment">/// * verify that all mandatory extensions are present</span>
@@ -568,6 +525,80 @@
         <span class="self">self</span>.<span class="ident">cipher_suite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>)
     }
 
+    <span class="doccomment">/// Get the ID of this key package as byte slice.</span>
+    <span class="doccomment">/// Returns an error if no Key ID extension is present.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_extension</span>(<span class="ident">ExtensionType</span>::<span class="ident">KeyID</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">key_id_ext</span>.<span class="ident">to_key_id_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>());
+        }
+        <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">ExtensionNotPresent</span>)
+    }
+
+    <span class="doccomment">/// Add (or replace) an extension to the KeyPackage.</span>
+    <span class="doccomment">/// Make sure to re-sign the package before using it. It will be invalid</span>
+    <span class="doccomment">/// after calling this function!</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_extension</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">extension</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">remove_extension</span>(<span class="ident">extension</span>.<span class="ident">get_type</span>());
+        <span class="self">self</span>.<span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">extension</span>);
+    }
+
+    <span class="doccomment">/// Get a reference to the extensions of this key package.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">extensions</span>
+    }
+
+    <span class="doccomment">/// Populate the `signature` field using the `credential_bundle`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>) {
+        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">unsigned_payload</span>().<span class="ident">unwrap</span>();
+        <span class="self">self</span>.<span class="ident">signature</span> <span class="op">=</span> <span class="ident">credential_bundle</span>.<span class="ident">sign</span>(<span class="ident">payload</span>).<span class="ident">unwrap</span>();
+    }
+}
+
+<span class="doccomment">/// Private `KeyPackage` functions.</span>
+<span class="kw">impl</span> <span class="ident">KeyPackage</span> {
+    <span class="doccomment">/// Create a new key package but only with the given `extensions` for the</span>
+    <span class="doccomment">/// given `ciphersuite` and `identity`, and the initial HPKE key pair</span>
+    <span class="doccomment">/// `init_key`.</span>
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">ciphersuite_name</span>: <span class="ident">CiphersuiteName</span>,
+        <span class="ident">hpke_init_key</span>: <span class="ident">HPKEPublicKey</span>,
+        <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
+        <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="self">Self</span> {
+            <span class="comment">// TODO: #85 Take from global config.</span>
+            <span class="ident">protocol_version</span>: <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+            <span class="ident">cipher_suite</span>: <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite_name</span>)<span class="question-mark">?</span>,
+            <span class="ident">hpke_init_key</span>,
+            <span class="ident">credential</span>: <span class="ident">credential_bundle</span>.<span class="ident">credential</span>().<span class="ident">clone</span>(),
+            <span class="ident">extensions</span>,
+            <span class="ident">signature</span>: <span class="ident">Signature</span>::<span class="ident">new_empty</span>(),
+        };
+        <span class="ident">key_package</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>);
+        <span class="prelude-val">Ok</span>(<span class="ident">key_package</span>)
+    }
+
+    <span class="doccomment">/// Compile the unsigned payload to create the signature required in the</span>
+    <span class="doccomment">/// signature field.</span>
+    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+        <span class="self">self</span>.<span class="ident">protocol_version</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">cipher_suite</span>.<span class="ident">name</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">hpke_init_key</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">credential</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Get extensions encoded. We need to build a Vec::&lt;ExtensionStruct&gt; first.</span>
+        <span class="kw">let</span> <span class="ident">encoded_extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExtensionStruct</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">extensions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_extension_struct</span>())
+            .<span class="ident">collect</span>();
+        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU16</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="ident">encoded_extensions</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">to_vec</span>())
+    }
+}
+
+<span class="doccomment">/// Crate visible `KeyPackage` functions.</span>
+<span class="kw">impl</span> <span class="ident">KeyPackage</span> {
     <span class="doccomment">/// Get a reference to the extension of `extension_type`.</span>
     <span class="doccomment">/// Returns `Some(extension)` if present and `None` if the extension is not</span>
     <span class="doccomment">/// present.</span>
@@ -584,27 +615,10 @@
         <span class="prelude-val">None</span>
     }
 
-    <span class="doccomment">/// Get the ID of this key package as byte slice.</span>
-    <span class="doccomment">/// Returns an error if no Key ID extension is present.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_extension</span>(<span class="ident">ExtensionType</span>::<span class="ident">KeyID</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">key_id_ext</span>.<span class="ident">to_key_id_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>());
-        }
-        <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">ExtensionNotPresent</span>)
-    }
-
     <span class="doccomment">/// Update the parent hash extension of this key package.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_parent_hash</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">parent_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) {
         <span class="self">self</span>.<span class="ident">remove_extension</span>(<span class="ident">ExtensionType</span>::<span class="ident">ParentHash</span>);
         <span class="kw">let</span> <span class="ident">extension</span> <span class="op">=</span> <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">ParentHashExtension</span>::<span class="ident">new</span>(<span class="ident">parent_hash</span>));
-        <span class="self">self</span>.<span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">extension</span>);
-    }
-
-    <span class="doccomment">/// Add (or replace) an extension to the KeyPackage.</span>
-    <span class="doccomment">/// Make sure to re-sign the package before using it. It will be invalid</span>
-    <span class="doccomment">/// after calling this function!</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_extension</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">extension</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">remove_extension</span>(<span class="ident">extension</span>.<span class="ident">get_type</span>());
         <span class="self">self</span>.<span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">extension</span>);
     }
 
@@ -634,35 +648,6 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">cipher_suite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span> {
         <span class="self">self</span>.<span class="ident">cipher_suite</span>
     }
-
-    <span class="doccomment">/// Get a reference to the extensions of this key package.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">extensions</span>
-    }
-
-    <span class="doccomment">/// Compile the unsigned payload to create the signature required in the</span>
-    <span class="doccomment">/// signature field.</span>
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="self">self</span>.<span class="ident">protocol_version</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">cipher_suite</span>.<span class="ident">name</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">hpke_init_key</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">credential</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Get extensions encoded. We need to build a Vec::&lt;ExtensionStruct&gt; first.</span>
-        <span class="kw">let</span> <span class="ident">encoded_extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExtensionStruct</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">extensions</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_extension_struct</span>())
-            .<span class="ident">collect</span>();
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU16</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="ident">encoded_extensions</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">to_vec</span>())
-    }
-
-    <span class="doccomment">/// Populate the `signature` field using the `credential_bundle`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>) {
-        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">unsigned_payload</span>().<span class="ident">unwrap</span>();
-        <span class="self">self</span>.<span class="ident">signature</span> <span class="op">=</span> <span class="ident">credential_bundle</span>.<span class="ident">sign</span>(<span class="ident">payload</span>).<span class="ident">unwrap</span>();
-    }
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
@@ -672,6 +657,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
 }
 
+<span class="doccomment">/// Public `KeyPackageBundle` functions.</span>
 <span class="kw">impl</span> <span class="ident">KeyPackageBundle</span> {
     <span class="doccomment">/// Create a new `KeyPackageBundle` with a fresh `HPKEKeyPair`.</span>
     <span class="doccomment">/// See `new_with_keypair` for details.</span>
@@ -681,38 +667,11 @@
         <span class="ident">ciphersuites</span>: <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>],
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>());
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuites</span>[<span class="number">0</span>]).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">leaf_secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">from</span>(<span class="ident">get_random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()));
         <span class="self">Self</span>::<span class="ident">new_from_leaf_secret</span>(<span class="ident">ciphersuites</span>, <span class="ident">credential_bundle</span>, <span class="ident">extensions</span>, <span class="ident">leaf_secret</span>)
-    }
-
-    <span class="kw">fn</span> <span class="ident">new_from_leaf_secret</span>(
-        <span class="ident">ciphersuites</span>: <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>],
-        <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
-        <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
-        <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">NoCiphersuitesSupplied</span>;
-            <span class="macro">error</span><span class="macro">!</span>(
-                <span class="string">&quot;Error creating new KeyPackageBundle: No Ciphersuites specified {:?}&quot;</span>,
-                <span class="ident">error</span>
-            );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">error</span>);
-        }
-
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuites</span>[<span class="number">0</span>]).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">leaf_node_secret</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">derive_leaf_node_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">leaf_secret</span>);
-        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="ident">leaf_node_secret</span>);
-        <span class="self">Self</span>::<span class="ident">new_with_keypair</span>(
-            <span class="ident">ciphersuites</span>,
-            <span class="ident">credential_bundle</span>,
-            <span class="ident">extensions</span>,
-            <span class="ident">keypair</span>,
-            <span class="ident">leaf_secret</span>,
-        )
     }
 
     <span class="doccomment">/// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,</span>
@@ -734,9 +693,9 @@
         <span class="kw-2">mut</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
         <span class="ident">key_pair</span>: <span class="ident">HPKEKeyPair</span>,
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">NoCiphersuitesSupplied</span>;
+            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">KeyPackageError</span>::<span class="ident">NoCiphersuitesSupplied</span>;
             <span class="macro">error</span><span class="macro">!</span>(
                 <span class="string">&quot;Error creating new KeyPackageBundle: No Ciphersuites specified {:?}&quot;</span>,
                 <span class="ident">error</span>
@@ -749,7 +708,7 @@
         <span class="ident">extensions</span>.<span class="ident">sort</span>();
         <span class="ident">extensions</span>.<span class="ident">dedup</span>();
         <span class="kw">if</span> <span class="ident">extensions_length</span> <span class="op">!=</span> <span class="ident">extensions</span>.<span class="ident">len</span>() {
-            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">DuplicateExtension</span>;
+            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">KeyPackageError</span>::<span class="ident">DuplicateExtension</span>;
             <span class="macro">error</span><span class="macro">!</span>(
                 <span class="string">&quot;Error creating new KeyPackageBundle: Duplicate Extension {:?}&quot;</span>,
                 <span class="ident">error</span>
@@ -772,7 +731,7 @@
             <span class="prelude-val">Some</span>(<span class="ident">extension</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">capabilities_extension</span> <span class="op">=</span> <span class="ident">extension</span>.<span class="ident">to_capabilities_extension</span>().<span class="ident">unwrap</span>();
                 <span class="kw">if</span> <span class="ident">capabilities_extension</span>.<span class="ident">ciphersuites</span>() <span class="op">!=</span> <span class="ident">ciphersuites</span> {
-                    <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">ConfigError</span>::<span class="ident">InvalidCapabilitiesExtension</span>;
+                    <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">KeyPackageError</span>::<span class="ident">CiphersuiteMismatch</span>;
                     <span class="macro">error</span><span class="macro">!</span>(
                         <span class="string">&quot;Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}&quot;</span>,
                         <span class="ident">error</span>
@@ -807,9 +766,44 @@
         })
     }
 
+    <span class="doccomment">/// Get a reference to the `KeyPackage`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
+    }
+}
+
+<span class="doccomment">/// Private `KeyPackageBundle` functions.</span>
+<span class="kw">impl</span> <span class="ident">KeyPackageBundle</span> {
+    <span class="kw">fn</span> <span class="ident">new_from_leaf_secret</span>(
+        <span class="ident">ciphersuites</span>: <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>],
+        <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
+        <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">KeyPackageError</span>::<span class="ident">NoCiphersuitesSupplied</span>;
+            <span class="macro">error</span><span class="macro">!</span>(
+                <span class="string">&quot;Error creating new KeyPackageBundle: No Ciphersuites specified {:?}&quot;</span>,
+                <span class="ident">error</span>
+            );
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">error</span>);
+        }
+
+        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuites</span>[<span class="number">0</span>]).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">leaf_node_secret</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">derive_leaf_node_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">leaf_secret</span>);
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="ident">leaf_node_secret</span>);
+        <span class="self">Self</span>::<span class="ident">new_with_keypair</span>(
+            <span class="ident">ciphersuites</span>,
+            <span class="ident">credential_bundle</span>,
+            <span class="ident">extensions</span>,
+            <span class="ident">keypair</span>,
+            <span class="ident">leaf_secret</span>,
+        )
+    }
+
     <span class="doccomment">/// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey,</span>
     <span class="doccomment">/// and a leaf secret</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_values</span>(
+    <span class="kw">fn</span> <span class="ident">new_from_values</span>(
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">private_key</span>: <span class="ident">HPKEPrivateKey</span>,
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
@@ -820,7 +814,10 @@
             <span class="ident">leaf_secret</span>,
         }
     }
+}
 
+<span class="doccomment">/// Crate visible `KeyPackageBundle` functions.</span>
+<span class="kw">impl</span> <span class="ident">KeyPackageBundle</span> {
     <span class="doccomment">/// Replace the init key in the `KeyPackage` with a random one and return a</span>
     <span class="doccomment">/// `KeyPackageBundle` with the corresponding secret values</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_rekeyed_key_package</span>(
@@ -847,11 +844,6 @@
     <span class="doccomment">/// Update the key package in the bundle.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_key_package</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>) {
         <span class="self">self</span>.<span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package</span>;
-    }
-
-    <span class="doccomment">/// Get a reference to the `KeyPackage`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
     }
 
     <span class="doccomment">/// Get a mutable reference to the `KeyPackage`.</span>
