@@ -107,7 +107,7 @@ impl Error for ExtensionError {
                     "The versions field in the extension is empty."
                 }
                 CapabilitiesExtensionError::UnsupportedCiphersuite => {
-                    "No supported cihpersuite in the extension."
+                    "No supported ciphersuite in the extension."
                 }
             },
             Self::KeyPackageId(e) => match e {
