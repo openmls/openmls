@@ -40,7 +40,7 @@ pub enum KeyPackageError {
     NoCiphersuitesSupplied = 9,
 
     /// The list of ciphersuites is not consistent with the capabilities extension.
-    InvalidCapabilitiesExtension = 10,
+    CiphersuiteMismatch = 10,
 }
 
 implement_enum_display!(KeyPackageError);
@@ -84,7 +84,7 @@ impl Error for KeyPackageError {
             Self::NoCiphersuitesSupplied => {
                 "Creating a new key package requires at least one ciphersuite."
             }
-            Self::InvalidCapabilitiesExtension => {
+            Self::CiphersuiteMismatch => {
                 "The list of ciphersuites is not consistent with the capabilities extension."
             }
         }

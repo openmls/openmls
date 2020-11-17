@@ -292,7 +292,7 @@ impl KeyPackageBundle {
             Some(extension) => {
                 let capabilities_extension = extension.to_capabilities_extension().unwrap();
                 if capabilities_extension.ciphersuites() != ciphersuites {
-                    let error = KeyPackageError::InvalidCapabilitiesExtension;
+                    let error = KeyPackageError::CiphersuiteMismatch;
                     error!(
                         "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
                         error
