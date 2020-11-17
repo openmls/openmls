@@ -309,7 +309,6 @@ fn test_welcome_message_encoding() {
 
         // This makes Charly decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.
-        let _charly_group_state =
-            MlsGroup::new_from_welcome(welcome, None, charly_key_package_bundle);
+        assert!(MlsGroup::new_from_welcome(welcome, None, charly_key_package_bundle).is_ok());
     }
 }
