@@ -36,22 +36,24 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
+<span id="38">38</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! A data structure holding HPKE key pairs for a path in the tree.</span>
-<span class="doccomment">//!</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">index</span>::<span class="ident">NodeIndex</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">HPKEPrivateKey</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 
-<span class="doccomment">/// A set of keys for a path stored as `HashMap` with entries `(NodeIndex, HPKEPrivateKey)`.</span>
+<span class="doccomment">/// A set of keys for a path stored as `HashMap` with entries `(NodeIndex,</span>
+<span class="doccomment">/// HPKEPrivateKey)`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PathKeys</span> {
     <span class="ident">keys</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeIndex</span>, <span class="ident">HPKEPrivateKey</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PathKeys</span> {
-    <span class="doccomment">/// Add a slice of `HPKEPrivateKey`s with the indices given in `path` to this set of `PathKeys`.</span>
+    <span class="doccomment">/// Add a slice of `HPKEPrivateKey`s with the indices given in `path` to</span>
+    <span class="doccomment">/// this set of `PathKeys`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This consumes the private keys.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">private_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HPKEPrivateKey</span><span class="op">&gt;</span>, <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">NodeIndex</span>]) {

@@ -120,6 +120,7 @@
 <span id="119">119</span>
 <span id="120">120</span>
 <span id="121">121</span>
+<span id="122">122</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">index</span>::<span class="ident">LeafIndex</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>};
@@ -145,7 +146,8 @@
             <span class="ident">past_secrets</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">secret</span>.<span class="ident">clone</span>()],
         }
     }
-    <span class="doccomment">/// Gets a secret from the SenderRatchet. Returns an error if the generation is out of bound.</span>
+    <span class="doccomment">/// Gets a secret from the SenderRatchet. Returns an error if the generation</span>
+    <span class="doccomment">/// is out of bound.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_secret_for_decryption</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,

@@ -220,6 +220,7 @@
 <span id="219">219</span>
 <span id="220">220</span>
 <span id="221">221</span>
+<span id="222">222</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">error</span>};
 
@@ -328,7 +329,8 @@
         }
 
         <span class="comment">// Verify ratchet tree</span>
-        <span class="comment">// TODO: #35 Why does this get the nodes? Shouldn&#39;t `new_from_nodes` consume the nodes?</span>
+        <span class="comment">// TODO: #35 Why does this get the nodes? Shouldn&#39;t `new_from_nodes` consume the</span>
+        <span class="comment">// nodes?</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">RatchetTree</span>::<span class="ident">verify_integrity</span>(<span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">nodes</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>);
         }

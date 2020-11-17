@@ -300,8 +300,6 @@
 <span id="299">299</span>
 <span id="300">300</span>
 <span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::{<span class="ident">decode_vec</span>, <span class="ident">encode_vec</span>, <span class="ident">Codec</span>, <span class="ident">CodecError</span>, <span class="ident">Cursor</span>, <span class="ident">VecSize</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">errors</span>::<span class="ident">ConfigError</span>;
@@ -345,7 +343,6 @@
 <span class="doccomment">/// # Extension types</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)</span>
-<span class="doccomment">///</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExtensionType</span> {
@@ -408,7 +405,6 @@
 <span class="doccomment">///     opaque extension_data&lt;0..2^16-1&gt;;</span>
 <span class="doccomment">/// } Extension;</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExtensionStruct</span> {
     <span class="ident">extension_type</span>: <span class="ident">ExtensionType</span>,
