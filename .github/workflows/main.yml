@@ -45,7 +45,7 @@ jobs:
     - name: Clippy warnings
       uses: actions-rs/clippy-check@v1
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}  
+        token: ${{ secrets.GITHUB_TOKEN }}
         args: --all-features
     - name: Benchmarks
       run: cargo bench --verbose
@@ -74,3 +74,7 @@ jobs:
         version: latest
     - name: Fuzz Welcome
       run: cargo fuzz run welcome_decode -- -runs=100000
+    - name: Fuzz MLSCiphertext
+      run: cargo fuzz run mls_ciphertext_decode -- -runs=100000
+    - name: Fuzz MLSPlaintext
+      run: cargo fuzz run mls_plaintext_decode -- -runs=100000

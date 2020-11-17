@@ -161,4 +161,14 @@ impl Codec for ParentNode {
         encode_vec(VecSize::VecU8, buffer, &self.parent_hash)?;
         Ok(())
     }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let public_key = HPKEPublicKey::decode(cursor)?;
+        let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;
+        let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(ParentNode {
+            public_key,
+            unmerged_leaves,
+            parent_hash,
+        })
+    }
 }
