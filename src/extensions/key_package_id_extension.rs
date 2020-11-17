@@ -12,9 +12,8 @@
 //! opaque key_id<0..2^16-1>;
 //! ```
 
-use super::{Extension, ExtensionStruct, ExtensionType};
+use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, KeyPackageIdError};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
-use crate::errors::ConfigError;
 
 #[derive(PartialEq, Clone, Debug, Default)]
 pub struct KeyIDExtension {
@@ -41,13 +40,15 @@ impl Extension for KeyIDExtension {
     }
 
     /// Build a new KeyIDExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
     where
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
-        let key_id = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(Self { key_id })
+        match decode_vec(VecSize::VecU16, cursor) {
+            Ok(key_id) => Ok(Self { key_id }),
+            Err(_) => Err(ExtensionError::KeyPackageId(KeyPackageIdError::Invalid)),
+        }
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

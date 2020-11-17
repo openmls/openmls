@@ -1,15 +1,17 @@
+use std::{any::Any, convert::TryFrom, fmt::Debug};
+
 use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
-use crate::errors::ConfigError;
 use serde::{Deserialize, Serialize};
-use std::{any::Any, fmt::Debug};
 
 mod capabilities_extension;
+pub mod errors;
 mod key_package_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
 
 pub use capabilities_extension::CapabilitiesExtension;
+pub(crate) use errors::*;
 pub use key_package_id_extension::KeyIDExtension;
 pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
@@ -17,25 +19,6 @@ pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
 
 #[cfg(test)]
 mod test_extensions;
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum ExtensionError {
-    UnknownExtension,
-    InvalidExtensionType,
-}
-
-impl From<ExtensionError> for ConfigError {
-    // TODO: tbd in #83
-    fn from(_e: ExtensionError) -> Self {
-        ConfigError::InvalidConfig
-    }
-}
-
-impl From<ExtensionError> for CodecError {
-    fn from(_e: ExtensionError) -> Self {
-        CodecError::DecodingError
-    }
-}
 
 /// # Extension types
 ///
@@ -59,10 +42,12 @@ impl Default for ExtensionType {
     }
 }
 
-impl ExtensionType {
+impl TryFrom<u16> for ExtensionType {
+    type Error = ExtensionError;
+
     /// Get the `ExtensionType` from a u16.
     /// Returns an error if the extension type is not known.
-    pub(crate) fn from(a: u16) -> Result<ExtensionType, ExtensionError> {
+    fn try_from(a: u16) -> Result<Self, Self::Error> {
         match a {
             0 => Ok(ExtensionType::Reserved),
             1 => Ok(ExtensionType::Capabilities),
@@ -70,7 +55,7 @@ impl ExtensionType {
             3 => Ok(ExtensionType::KeyID),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
-            _ => Err(ExtensionError::UnknownExtension),
+            _ => Err(ExtensionError::InvalidExtensionType),
         }
     }
 }
@@ -83,7 +68,7 @@ impl Codec for ExtensionType {
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let value = u16::decode(cursor)?;
-        Ok(Self::from(value)?)
+        Ok(Self::try_from(value)?)
     }
 }
 
@@ -142,14 +127,14 @@ impl Codec for ExtensionStruct {
 }
 
 /// Build a new extension of the given type from a byte slice.
-fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension>, ConfigError> {
+fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension>, ExtensionError> {
     match ext_type {
         ExtensionType::Capabilities => Ok(Box::new(CapabilitiesExtension::new_from_bytes(bytes)?)),
         ExtensionType::KeyID => Ok(Box::new(KeyIDExtension::new_from_bytes(bytes)?)),
         ExtensionType::Lifetime => Ok(Box::new(LifetimeExtension::new_from_bytes(bytes)?)),
         ExtensionType::ParentHash => Ok(Box::new(ParentHashExtension::new_from_bytes(bytes)?)),
         ExtensionType::RatchetTree => Ok(Box::new(RatchetTreeExtension::new_from_bytes(bytes)?)),
-        _ => Err(ExtensionError::InvalidExtensionType.into()),
+        _ => Err(ExtensionError::InvalidExtensionType),
     }
 }
 
@@ -185,7 +170,7 @@ pub trait Extension: Debug + ExtensionHelper {
     ///
     /// Note that all implementations of this trait are not public such that
     /// this function can't be used outside of the library.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
     where
         Self: Sized;
 

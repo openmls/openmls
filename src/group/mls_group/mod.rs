@@ -1,15 +1,13 @@
 use log::{debug, info};
 
-mod api;
 mod apply_commit;
 mod create_commit;
 mod new_from_welcome;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::Config;
+use crate::config::{Config, ConfigError};
 use crate::creds::CredentialBundle;
-use crate::errors::ConfigError;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -17,10 +15,11 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 
-pub use api::*;
-
 use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
+
+pub type CreateCommitResult =
+    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
 
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
@@ -35,8 +34,9 @@ pub struct MlsGroup {
     add_ratchet_tree_extension: bool,
 }
 
-impl Api for MlsGroup {
-    fn new(
+/// Public `MlsGroup` functions.
+impl MlsGroup {
+    pub fn new(
         id: &[u8],
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
@@ -68,7 +68,7 @@ impl Api for MlsGroup {
     }
 
     // Join a group from a welcome message
-    fn new_from_welcome(
+    pub fn new_from_welcome(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
@@ -83,7 +83,7 @@ impl Api for MlsGroup {
     // struct {
     //     KeyPackage key_package;
     // } Add;
-    fn create_add_proposal(
+    pub fn create_add_proposal(
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
@@ -107,7 +107,7 @@ impl Api for MlsGroup {
     // struct {
     //     KeyPackage key_package;
     // } Update;
-    fn create_update_proposal(
+    pub fn create_update_proposal(
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
@@ -129,7 +129,7 @@ impl Api for MlsGroup {
     // struct {
     //     uint32 removed;
     // } Remove;
-    fn create_remove_proposal(
+    pub fn create_remove_proposal(
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
@@ -158,7 +158,7 @@ impl Api for MlsGroup {
     //     ProposalID proposals<0..2^32-1>;
     //     optional<UpdatePath> path;
     // } Commit;
-    fn create_commit(
+    pub fn create_commit(
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
@@ -169,7 +169,7 @@ impl Api for MlsGroup {
     }
 
     // Apply a Commit message
-    fn apply_commit(
+    pub fn apply_commit(
         &mut self,
         mls_plaintext: MLSPlaintext,
         proposals: Vec<MLSPlaintext>,
@@ -179,7 +179,7 @@ impl Api for MlsGroup {
     }
 
     // Create application message
-    fn create_application_message(
+    pub fn create_application_message(
         &mut self,
         aad: &[u8],
         msg: &[u8],
@@ -197,7 +197,7 @@ impl Api for MlsGroup {
     }
 
     // Encrypt/Decrypt MLS message
-    fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
+    pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let mut secret_tree = self.secret_tree.borrow_mut();
         let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
         let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.get_secret_for_encryption(
@@ -214,7 +214,7 @@ impl Api for MlsGroup {
         )
     }
 
-    fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, DecryptionError> {
+    pub fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
@@ -237,7 +237,7 @@ impl Api for MlsGroup {
     }
 
     // Exporter
-    fn export_secret(&self, label: &str, key_length: usize) -> Secret {
+    pub fn export_secret(&self, label: &str, key_length: usize) -> Secret {
         mls_exporter(
             self.ciphersuite(),
             &self.epoch_secrets,

@@ -60,21 +60,18 @@ impl Codec for SenderType {
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct Sender {
-    pub sender_type: SenderType,
-    pub sender: LeafIndex,
+    pub(crate) sender_type: SenderType,
+    pub(crate) sender: LeafIndex,
 }
 
 impl Sender {
-    pub fn member(sender: LeafIndex) -> Self {
+    pub(crate) fn member(sender: LeafIndex) -> Self {
         Sender {
             sender_type: SenderType::Member,
             sender,
         }
     }
-    pub fn as_leaf_index(&self) -> LeafIndex {
-        self.sender
-    }
-    pub fn as_node_index(self) -> NodeIndex {
+    pub(crate) fn as_node_index(self) -> NodeIndex {
         NodeIndex::from(self.sender)
     }
 }

@@ -31,6 +31,17 @@ fn _bytes_to_hex(bytes: &[u8]) -> String {
     hex
 }
 
+// Implement std::fmt::Display for a given enum type.
+macro_rules! implement_enum_display {
+    ($error:ty) => {
+        impl std::fmt::Display for $error {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_fmt(format_args!("{:?}", self))
+            }
+        }
+    };
+}
+
 pub fn _print_tree(tree: &RatchetTree, message: &str) {
     let factor = 3;
     println!("{}", message);

@@ -14,22 +14,20 @@ pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
 
 mod ciphersuites;
 mod codec;
+mod errors;
 pub(crate) mod signable;
 use ciphersuites::*;
+pub(crate) use errors::*;
 
-use crate::config::Config;
-use crate::errors::{ConfigError, Error};
+use crate::config::{Config, ConfigError};
 use crate::utils::random_u32;
 
 #[cfg(test)]
 mod test_ciphersuite;
 
-pub const NONCE_BYTES: usize = 12;
-pub const REUSE_GUARD_BYTES: usize = 4;
-pub const CHACHA_KEY_BYTES: usize = 32;
-pub const AES_128_KEY_BYTES: usize = 16;
-pub const AES_256_KEY_BYTES: usize = 32;
-pub const TAG_BYTES: usize = 16;
+pub(crate) const NONCE_BYTES: usize = 12;
+pub(crate) const REUSE_GUARD_BYTES: usize = 4;
+pub(crate) const TAG_BYTES: usize = 16;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -42,16 +40,7 @@ pub enum CiphersuiteName {
     MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 = 0x0006,
 }
 
-impl std::fmt::Display for CiphersuiteName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{:?}", self))
-    }
-}
-
-#[derive(Debug)]
-pub enum HKDFError {
-    InvalidLength,
-}
+implement_enum_display!(CiphersuiteName);
 
 /// 7.7. Update Paths
 ///
@@ -65,15 +54,6 @@ pub enum HKDFError {
 pub struct HpkeCiphertext {
     kem_output: Vec<u8>,
     ciphertext: Vec<u8>,
-}
-
-// ===
-
-#[derive(Debug)]
-pub enum AEADError {
-    EncryptionError,
-    DecryptionError,
-    WrongKeyLength,
 }
 
 /// A struct to contain secrets. This is to provide better visibility into where
@@ -180,7 +160,7 @@ impl std::fmt::Display for Ciphersuite {
 // carry over anything we don"t want to.
 impl Clone for Ciphersuite {
     fn clone(&self) -> Self {
-        Self::new(self.name)
+        Self::new(self.name).unwrap()
     }
 }
 
@@ -193,19 +173,19 @@ impl PartialEq for Ciphersuite {
 
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
-    pub(crate) fn new(name: CiphersuiteName) -> Self {
+    pub(crate) fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
         let hpke_kem = get_kem_from_suite(&name).unwrap();
         let hpke_kdf = get_hpke_kdf_from_suite(&name);
         let hpke_aead = get_hpke_aead_from_suite(&name);
 
-        Ciphersuite {
+        Ok(Ciphersuite {
             name,
-            signature: get_signature_from_suite(&name),
+            signature: get_signature_from_suite(&name)?,
             hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
             aead: get_aead_from_suite(&name),
             hash: get_hash_from_suite(&name),
             hmac: get_kdf_from_suite(&name),
-        }
+        })
     }
 
     /// Get the name of this ciphersuite.
@@ -214,17 +194,17 @@ impl Ciphersuite {
     }
 
     /// Get the AEAD mode
-    pub fn aead(&self) -> AeadMode {
+    pub(crate) fn aead(&self) -> AeadMode {
         self.aead
     }
 
     /// Create a new signature key pair and return it.
-    pub fn new_signature_keypair(&'static self) -> Result<SignatureKeypair, Error> {
+    pub(crate) fn new_signature_keypair(&'static self) -> Result<SignatureKeypair, CryptoError> {
         let (sk, pk) = match signature_key_gen(self.signature) {
             Ok((sk, pk)) => (sk, pk),
             Err(e) => {
                 error!("Key generation really shouldn't fail. {:?}", e);
-                return Err(Error::CryptoLibraryError);
+                return Err(CryptoError::CryptoLibraryError);
             }
         };
         Ok(SignatureKeypair {
@@ -370,17 +350,14 @@ impl AeadKey {
         msg: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
-    ) -> Result<Vec<u8>, AEADError> {
-        let (ct, tag) = match aead_encrypt(
+    ) -> Result<Vec<u8>, AeadError> {
+        let (ct, tag) = aead_encrypt(
             self.aead_mode,
             &self.value.as_slice(),
             msg,
             &nonce.value,
             aad,
-        ) {
-            Ok((ct, tag)) => (ct, tag),
-            Err(_) => return Err(AEADError::EncryptionError),
-        };
+        )?;
         let mut ciphertext = ct;
         ciphertext.extend_from_slice(&tag);
         Ok(ciphertext)
@@ -392,24 +369,21 @@ impl AeadKey {
         ciphertext: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
-    ) -> Result<Vec<u8>, AEADError> {
+    ) -> Result<Vec<u8>, AeadError> {
         // TODO: don't hard-code tag bytes (Issue #205)
         if ciphertext.len() < TAG_BYTES {
             error!("Ciphertext is too short (less than {:?} bytes)", TAG_BYTES);
-            return Err(AEADError::DecryptionError);
+            return Err(AeadError::Decrypting);
         }
         let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);
-        match aead_decrypt(
+        aead_decrypt(
             self.aead_mode,
             self.value.as_slice(),
             ct,
             tag,
             &nonce.value,
             aad,
-        ) {
-            Ok(pt) => Ok(pt),
-            Err(_) => Err(AEADError::DecryptionError),
-        }
+        )
     }
 }
 

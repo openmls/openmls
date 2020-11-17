@@ -18,9 +18,8 @@
 //! parent_hash matches the hash of the leaf's parent node when represented as a
 //! ParentNode struct.
 
-use super::{Extension, ExtensionStruct, ExtensionType};
+use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, ParentHashError};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
-use crate::errors::ConfigError;
 
 #[derive(PartialEq, Clone, Debug, Default)]
 pub struct ParentHashExtension {
@@ -46,13 +45,15 @@ impl Extension for ParentHashExtension {
     }
 
     /// Build a new ParentHashExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
+    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
     where
         Self: Sized,
     {
         let cursor = &mut Cursor::new(bytes);
-        let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Self { parent_hash })
+        match decode_vec(VecSize::VecU8, cursor) {
+            Ok(parent_hash) => Ok(Self { parent_hash }),
+            Err(_) => Err(ExtensionError::ParentHash(ParentHashError::Invalid)),
+        }
     }
 
     fn to_extension_struct(&self) -> ExtensionStruct {

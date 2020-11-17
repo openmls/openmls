@@ -1,41 +1,23 @@
 use log::error;
 
+use evercrypt::rand_util::*;
+
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::Config;
-use crate::config::ProtocolVersion;
+use crate::config::{Config, ProtocolVersion};
 use crate::creds::*;
-use crate::errors::ConfigError;
 use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
-    LifetimeExtension, ParentHashExtension,
+    CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, LifetimeExtension,
+    ParentHashExtension,
 };
 use crate::schedule::*;
 
-use evercrypt::rand_util::*;
-
 mod codec;
+pub mod errors;
+pub(crate) use errors::*;
 
+#[cfg(tests)]
 mod test_key_packages;
-
-#[derive(Debug, PartialEq)]
-pub enum KeyPackageError {
-    ExtensionNotPresent,
-    MandatoryExtensionsMissing,
-    InvalidLifetimeExtension,
-    InvalidSignature,
-    LibraryError,
-}
-
-impl From<ExtensionError> for KeyPackageError {
-    fn from(e: ExtensionError) -> Self {
-        match e {
-            // TODO: error handling #83
-            ExtensionError::InvalidExtensionType => KeyPackageError::ExtensionNotPresent,
-            ExtensionError::UnknownExtension => KeyPackageError::ExtensionNotPresent,
-        }
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
@@ -51,29 +33,8 @@ pub struct KeyPackage {
 const MANDATORY_EXTENSIONS: [ExtensionType; 2] =
     [ExtensionType::Capabilities, ExtensionType::Lifetime];
 
+/// Public `KeyPckage` functions.
 impl KeyPackage {
-    /// Create a new key package but only with the given `extensions` for the
-    /// given `ciphersuite` and `identity`, and the initial HPKE key pair
-    /// `init_key`.
-    fn new(
-        ciphersuite_name: CiphersuiteName,
-        hpke_init_key: HPKEPublicKey,
-        credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
-    ) -> Result<Self, ConfigError> {
-        let mut key_package = Self {
-            // TODO: #85 Take from global config.
-            protocol_version: ProtocolVersion::default(),
-            cipher_suite: Config::ciphersuite(ciphersuite_name)?,
-            hpke_init_key,
-            credential: credential_bundle.credential().clone(),
-            extensions,
-            signature: Signature::new_empty(),
-        };
-        key_package.sign(&credential_bundle);
-        Ok(key_package)
-    }
-
     /// Verify that this key package is valid:
     /// * verify that the signature on this key package is valid
     /// * verify that all mandatory extensions are present
@@ -127,6 +88,80 @@ impl KeyPackage {
         self.cipher_suite.hash(&bytes)
     }
 
+    /// Get the ID of this key package as byte slice.
+    /// Returns an error if no Key ID extension is present.
+    pub fn key_id(&self) -> Result<&[u8], KeyPackageError> {
+        if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
+            return Ok(key_id_ext.to_key_id_extension()?.as_slice());
+        }
+        Err(KeyPackageError::ExtensionNotPresent)
+    }
+
+    /// Add (or replace) an extension to the KeyPackage.
+    /// Make sure to re-sign the package before using it. It will be invalid
+    /// after calling this function!
+    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
+        self.remove_extension(extension.get_type());
+        self.extensions.push(extension);
+    }
+
+    /// Get a reference to the extensions of this key package.
+    pub fn extensions(&self) -> &[Box<dyn Extension>] {
+        &self.extensions
+    }
+
+    /// Populate the `signature` field using the `credential_bundle`.
+    pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
+        let payload = &self.unsigned_payload().unwrap();
+        self.signature = credential_bundle.sign(payload).unwrap();
+    }
+}
+
+/// Private `KeyPackage` functions.
+impl KeyPackage {
+    /// Create a new key package but only with the given `extensions` for the
+    /// given `ciphersuite` and `identity`, and the initial HPKE key pair
+    /// `init_key`.
+    fn new(
+        ciphersuite_name: CiphersuiteName,
+        hpke_init_key: HPKEPublicKey,
+        credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
+    ) -> Result<Self, KeyPackageError> {
+        let mut key_package = Self {
+            // TODO: #85 Take from global config.
+            protocol_version: ProtocolVersion::default(),
+            cipher_suite: Config::ciphersuite(ciphersuite_name)?,
+            hpke_init_key,
+            credential: credential_bundle.credential().clone(),
+            extensions,
+            signature: Signature::new_empty(),
+        };
+        key_package.sign(&credential_bundle);
+        Ok(key_package)
+    }
+
+    /// Compile the unsigned payload to create the signature required in the
+    /// signature field.
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        let buffer = &mut Vec::new();
+        self.protocol_version.encode(buffer)?;
+        self.cipher_suite.name().encode(buffer)?;
+        self.hpke_init_key.encode(buffer)?;
+        self.credential.encode(buffer)?;
+        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
+        let encoded_extensions: Vec<ExtensionStruct> = self
+            .extensions
+            .iter()
+            .map(|e| e.to_extension_struct())
+            .collect();
+        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
+        Ok(buffer.to_vec())
+    }
+}
+
+/// Crate visible `KeyPackage` functions.
+impl KeyPackage {
     /// Get a reference to the extension of `extension_type`.
     /// Returns `Some(extension)` if present and `None` if the extension is not
     /// present.
@@ -143,27 +178,10 @@ impl KeyPackage {
         None
     }
 
-    /// Get the ID of this key package as byte slice.
-    /// Returns an error if no Key ID extension is present.
-    pub fn get_id(&self) -> Result<&[u8], KeyPackageError> {
-        if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
-            return Ok(key_id_ext.to_key_id_extension()?.as_slice());
-        }
-        Err(KeyPackageError::ExtensionNotPresent)
-    }
-
     /// Update the parent hash extension of this key package.
     pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
         self.remove_extension(ExtensionType::ParentHash);
         let extension = Box::new(ParentHashExtension::new(parent_hash));
-        self.extensions.push(extension);
-    }
-
-    /// Add (or replace) an extension to the KeyPackage.
-    /// Make sure to re-sign the package before using it. It will be invalid
-    /// after calling this function!
-    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
-        self.remove_extension(extension.get_type());
         self.extensions.push(extension);
     }
 
@@ -193,35 +211,6 @@ impl KeyPackage {
     pub(crate) fn cipher_suite(&self) -> &Ciphersuite {
         self.cipher_suite
     }
-
-    /// Get a reference to the extensions of this key package.
-    pub fn extensions(&self) -> &[Box<dyn Extension>] {
-        &self.extensions
-    }
-
-    /// Compile the unsigned payload to create the signature required in the
-    /// signature field.
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        let buffer = &mut Vec::new();
-        self.protocol_version.encode(buffer)?;
-        self.cipher_suite.name().encode(buffer)?;
-        self.hpke_init_key.encode(buffer)?;
-        self.credential.encode(buffer)?;
-        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
-        let encoded_extensions: Vec<ExtensionStruct> = self
-            .extensions
-            .iter()
-            .map(|e| e.to_extension_struct())
-            .collect();
-        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
-        Ok(buffer.to_vec())
-    }
-
-    /// Populate the `signature` field using the `credential_bundle`.
-    pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
-        let payload = &self.unsigned_payload().unwrap();
-        self.signature = credential_bundle.sign(payload).unwrap();
-    }
 }
 
 #[derive(Debug)]
@@ -231,6 +220,7 @@ pub struct KeyPackageBundle {
     pub(crate) leaf_secret: Secret,
 }
 
+/// Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     /// Create a new `KeyPackageBundle` with a fresh `HPKEKeyPair`.
     /// See `new_with_keypair` for details.
@@ -240,38 +230,11 @@ impl KeyPackageBundle {
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
-    ) -> Result<Self, ConfigError> {
+    ) -> Result<Self, KeyPackageError> {
         debug_assert!(!ciphersuites.is_empty());
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
-    }
-
-    fn new_from_leaf_secret(
-        ciphersuites: &[CiphersuiteName],
-        credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
-        leaf_secret: Secret,
-    ) -> Result<Self, ConfigError> {
-        if ciphersuites.is_empty() {
-            let error = ConfigError::NoCiphersuitesSupplied;
-            error!(
-                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
-                error
-            );
-            return Err(error);
-        }
-
-        let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
-        let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
-        Self::new_with_keypair(
-            ciphersuites,
-            credential_bundle,
-            extensions,
-            keypair,
-            leaf_secret,
-        )
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -293,9 +256,9 @@ impl KeyPackageBundle {
         mut extensions: Vec<Box<dyn Extension>>,
         key_pair: HPKEKeyPair,
         leaf_secret: Secret,
-    ) -> Result<Self, ConfigError> {
+    ) -> Result<Self, KeyPackageError> {
         if ciphersuites.is_empty() {
-            let error = ConfigError::NoCiphersuitesSupplied;
+            let error = KeyPackageError::NoCiphersuitesSupplied;
             error!(
                 "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
                 error
@@ -308,7 +271,7 @@ impl KeyPackageBundle {
         extensions.sort();
         extensions.dedup();
         if extensions_length != extensions.len() {
-            let error = ConfigError::DuplicateExtension;
+            let error = KeyPackageError::DuplicateExtension;
             error!(
                 "Error creating new KeyPackageBundle: Duplicate Extension {:?}",
                 error
@@ -331,7 +294,7 @@ impl KeyPackageBundle {
             Some(extension) => {
                 let capabilities_extension = extension.to_capabilities_extension().unwrap();
                 if capabilities_extension.ciphersuites() != ciphersuites {
-                    let error = ConfigError::InvalidCapabilitiesExtension;
+                    let error = KeyPackageError::CiphersuiteMismatch;
                     error!(
                         "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
                         error
@@ -366,9 +329,44 @@ impl KeyPackageBundle {
         })
     }
 
+    /// Get a reference to the `KeyPackage`.
+    pub fn get_key_package(&self) -> &KeyPackage {
+        &self.key_package
+    }
+}
+
+/// Private `KeyPackageBundle` functions.
+impl KeyPackageBundle {
+    fn new_from_leaf_secret(
+        ciphersuites: &[CiphersuiteName],
+        credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
+        leaf_secret: Secret,
+    ) -> Result<Self, KeyPackageError> {
+        if ciphersuites.is_empty() {
+            let error = KeyPackageError::NoCiphersuitesSupplied;
+            error!(
+                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                error
+            );
+            return Err(error);
+        }
+
+        let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
+        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
+        Self::new_with_keypair(
+            ciphersuites,
+            credential_bundle,
+            extensions,
+            keypair,
+            leaf_secret,
+        )
+    }
+
     /// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey,
     /// and a leaf secret
-    pub fn new_from_values(
+    fn new_from_values(
         key_package: KeyPackage,
         private_key: HPKEPrivateKey,
         leaf_secret: Secret,
@@ -379,7 +377,10 @@ impl KeyPackageBundle {
             leaf_secret,
         }
     }
+}
 
+/// Crate visible `KeyPackageBundle` functions.
+impl KeyPackageBundle {
     /// Replace the init key in the `KeyPackage` with a random one and return a
     /// `KeyPackageBundle` with the corresponding secret values
     pub(crate) fn from_rekeyed_key_package(
@@ -406,11 +407,6 @@ impl KeyPackageBundle {
     /// Update the key package in the bundle.
     pub(crate) fn set_key_package(&mut self, key_package: KeyPackage) {
         self.key_package = key_package;
-    }
-
-    /// Get a reference to the `KeyPackage`.
-    pub fn get_key_package(&self) -> &KeyPackage {
-        &self.key_package
     }
 
     /// Get a mutable reference to the `KeyPackage`.

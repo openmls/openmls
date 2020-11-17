@@ -1,4 +1,6 @@
-use crate::{ciphersuite::*, errors::Error};
+use super::*;
+use crate::{codec::CodecError, config::ConfigError};
+
 pub(crate) use std::convert::TryFrom;
 
 impl From<&CiphersuiteName> for u16 {
@@ -8,7 +10,7 @@ impl From<&CiphersuiteName> for u16 {
 }
 
 impl TryFrom<u16> for CiphersuiteName {
-    type Error = Error;
+    type Error = CodecError;
 
     fn try_from(v: u16) -> Result<Self, Self::Error> {
         match v {
@@ -18,7 +20,7 @@ impl TryFrom<u16> for CiphersuiteName {
             0x0004 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448),
             0x0005 => Ok(CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521),
             0x0006 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
-            _ => Err(Error::DecodingError),
+            _ => Err(CodecError::DecodingError),
         }
     }
 }
@@ -51,21 +53,24 @@ pub(crate) fn get_aead_from_suite(ciphersuite_name: &CiphersuiteName) -> AeadMod
     }
 }
 
-pub(crate) fn get_signature_from_suite(ciphersuite_name: &CiphersuiteName) -> SignatureMode {
+pub(crate) fn get_signature_from_suite(
+    ciphersuite_name: &CiphersuiteName,
+) -> Result<SignatureMode, ConfigError> {
     match ciphersuite_name {
-        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => SignatureMode::Ed25519,
-        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => SignatureMode::P256,
-        CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            SignatureMode::Ed25519
+        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
+            Ok(SignatureMode::Ed25519)
         }
-        _ => panic!(
-            "Signature scheme for ciphersuite {:?} is not implemented yet.",
-            ciphersuite_name
-        ),
+        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(SignatureMode::P256),
+        CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ok(SignatureMode::Ed25519)
+        }
+        _ => Err(ConfigError::UnsupportedSignatureScheme),
     }
 }
 
-pub(crate) fn get_kem_from_suite(ciphersuite_name: &CiphersuiteName) -> Result<HpkeKemMode, Error> {
+pub(crate) fn get_kem_from_suite(
+    ciphersuite_name: &CiphersuiteName,
+) -> Result<HpkeKemMode, ConfigError> {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
             Ok(HpkeKemMode::DhKem25519)
@@ -74,7 +79,7 @@ pub(crate) fn get_kem_from_suite(ciphersuite_name: &CiphersuiteName) -> Result<H
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
             Ok(HpkeKemMode::DhKem25519)
         }
-        _ => Err(Error::UnsupportedCiphersuite),
+        _ => Err(ConfigError::UnsupportedCiphersuite),
     }
 }
 

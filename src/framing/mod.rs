@@ -8,31 +8,23 @@ use crate::tree::{index::*, secret_tree::*};
 
 use std::convert::TryFrom;
 
+pub mod errors;
 pub mod sender;
+pub(crate) use errors::*;
 use sender::*;
 
 #[cfg(test)]
 mod test_framing;
 
-#[derive(Debug)]
-pub enum MLSPlaintextError {
-    InvalidContentType,
-}
-#[derive(Debug)]
-pub enum MLSCiphertextError {
-    InvalidContentType,
-    GenerationOutOfBound,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub sender: Sender,
-    pub authenticated_data: Vec<u8>,
-    pub content_type: ContentType,
+    pub(crate) group_id: GroupId,
+    pub(crate) epoch: GroupEpoch,
+    pub(crate) sender: Sender,
+    pub(crate) authenticated_data: Vec<u8>,
+    pub(crate) content_type: ContentType,
     pub content: MLSPlaintextContentType,
-    pub signature: Signature,
+    pub(crate) signature: Signature,
 }
 
 impl MLSPlaintext {
@@ -101,7 +93,7 @@ impl MLSPlaintext {
     pub fn as_application_message(&self) -> Result<&[u8], MLSPlaintextError> {
         match &self.content {
             MLSPlaintextContentType::Application(message) => Ok(message),
-            _ => Err(MLSPlaintextError::InvalidContentType),
+            _ => Err(MLSPlaintextError::NotAnApplicationMessage),
         }
     }
 }
@@ -475,14 +467,14 @@ impl Codec for MLSPlaintextContentType {
     }
 }
 
-pub struct MLSPlaintextTBS {
-    pub serialized_context_option: Option<Vec<u8>>,
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub sender: LeafIndex,
-    pub authenticated_data: Vec<u8>,
-    pub content_type: ContentType,
-    pub payload: MLSPlaintextContentType,
+struct MLSPlaintextTBS {
+    serialized_context_option: Option<Vec<u8>>,
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    sender: LeafIndex,
+    authenticated_data: Vec<u8>,
+    content_type: ContentType,
+    payload: MLSPlaintextContentType,
 }
 
 impl MLSPlaintextTBS {
@@ -547,10 +539,10 @@ impl Codec for MLSPlaintextTBS {
 }
 
 #[derive(Clone)]
-pub struct MLSSenderData {
-    pub sender: LeafIndex,
-    pub generation: u32,
-    pub reuse_guard: ReuseGuard,
+struct MLSSenderData {
+    sender: LeafIndex,
+    generation: u32,
+    reuse_guard: ReuseGuard,
 }
 
 impl MLSSenderData {
@@ -637,14 +629,14 @@ impl Codec for MLSCiphertextSenderDataAAD {
 }
 
 #[derive(Clone)]
-pub struct MLSCiphertextContent {
-    pub content: MLSPlaintextContentType,
-    pub signature: Signature,
-    pub padding: Vec<u8>,
+struct MLSCiphertextContent {
+    content: MLSPlaintextContentType,
+    signature: Signature,
+    padding: Vec<u8>,
 }
 
 impl MLSCiphertextContent {
-    pub(crate) fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
         let mut cursor = Cursor::new(bytes);
         let content = MLSPlaintextContentType::decode(&mut cursor)?;
         let signature = Signature::decode(&mut cursor)?;
@@ -667,11 +659,11 @@ impl Codec for MLSCiphertextContent {
 }
 
 #[derive(Clone)]
-pub struct MLSCiphertextContentAAD {
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub content_type: ContentType,
-    pub authenticated_data: Vec<u8>,
+struct MLSCiphertextContentAAD {
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    content_type: ContentType,
+    authenticated_data: Vec<u8>,
 }
 
 impl Codec for MLSCiphertextContentAAD {
@@ -697,7 +689,7 @@ impl Codec for MLSCiphertextContentAAD {
     }
 }
 
-pub struct MLSPlaintextCommitContent {
+pub(crate) struct MLSPlaintextCommitContent {
     group_id: GroupId,
     epoch: GroupEpoch,
     sender: Sender,
@@ -761,7 +753,7 @@ impl Codec for MLSPlaintextCommitContent {
     }
 }
 
-pub struct MLSPlaintextCommitAuthData {
+pub(crate) struct MLSPlaintextCommitAuthData {
     pub confirmation_tag: Vec<u8>,
 }
 
