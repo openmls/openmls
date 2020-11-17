@@ -162,7 +162,8 @@ impl KeyPackage {
 /// Crate visible `KeyPackage` functions.
 impl KeyPackage {
     /// Get a reference to the extension of `extension_type`.
-    /// Returns `Some(extension)` if present and `None` if the extension is not present.
+    /// Returns `Some(extension)` if present and `None` if the extension is not
+    /// present.
     #[allow(clippy::borrowed_box)]
     pub(crate) fn get_extension(
         &self,
@@ -421,7 +422,8 @@ impl KeyPackageBundle {
         &self.leaf_secret
     }
 
-    /// This function derives the leaf_node_secret from the leaf_secret as described in 5.4 Ratchet Tree Evolution
+    /// This function derives the leaf_node_secret from the leaf_secret as
+    /// described in 5.4 Ratchet Tree Evolution
     pub(crate) fn derive_leaf_node_secret(
         ciphersuite: &Ciphersuite,
         leaf_secret: &Secret,

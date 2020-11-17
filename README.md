@@ -41,8 +41,8 @@ OpenMLS is licensed under the MIT license. The license can be found [here](https
 
 ## Contributing
 
-Open MLS welcomes contributions! Before contributing, please read the [contributing guidelines](CONTRIBUTING.md) carefully.
+OpenMLS welcomes contributions! Before contributing, please read the [contributing guidelines](CONTRIBUTING.md) carefully.
 
 ## Code of conduct
 
-Open MLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
+OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.

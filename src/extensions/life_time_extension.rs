@@ -18,7 +18,6 @@
 //! uint64 not_before;
 //! uint64 not_after;
 //! ```
-//!
 use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError};
 use crate::codec::{Codec, Cursor};
 

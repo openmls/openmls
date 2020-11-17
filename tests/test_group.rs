@@ -1,7 +1,5 @@
 use openmls::prelude::*;
 
-use flexi_logger;
-
 #[test]
 fn create_commit_optional_path() {
     flexi_logger::Logger::with_env()
@@ -60,7 +58,8 @@ fn create_commit_optional_path() {
         .unwrap();
 
         // Alice proposes to add Bob with forced self-update
-        // Even though there are only Add Proposals, this should generated a path field on the Commit
+        // Even though there are only Add Proposals, this should generated a path field
+        // on the Commit
         let bob_add_proposal = group_alice.create_add_proposal(
             group_aad,
             &alice_credential_bundle,
@@ -85,8 +84,9 @@ fn create_commit_optional_path() {
         assert!(commit.path.is_some() && kpb_option.is_some());
 
         // Alice adds Bob without forced self-update
-        // Since there are only Add Proposals, this does not generate a path field on the Commit
-        // Creating a second proposal to add the same member should not fail, only committing that proposal should fail
+        // Since there are only Add Proposals, this does not generate a path field on
+        // the Commit Creating a second proposal to add the same member should
+        // not fail, only committing that proposal should fail
         let bob_add_proposal = group_alice.create_add_proposal(
             group_aad,
             &alice_credential_bundle,
@@ -219,7 +219,8 @@ fn basic_group_setup() {
 }
 
 #[test]
-/// This test simulates various group operations like Add, Update, Remove in a small group
+/// This test simulates various group operations like Add, Update, Remove in a
+/// small group
 ///  - Alice creates a group
 ///  - Alice adds Bob
 ///  - Alice sends a message to Bob
@@ -352,7 +353,7 @@ fn group_operations() {
             &[],
             &bob_credential_bundle,
             vec![update_proposal_bob.clone()],
-            false, /* force self update*/
+            false, /* force self update */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -401,7 +402,7 @@ fn group_operations() {
             &[],
             &alice_credential_bundle,
             vec![update_proposal_alice.clone()],
-            false, /* force self update*/
+            false, /* force self update */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -448,7 +449,7 @@ fn group_operations() {
             &[],
             &alice_credential_bundle,
             vec![update_proposal_bob.clone()],
-            false, /* force self update*/
+            false, /* force self update */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -499,13 +500,14 @@ fn group_operations() {
                 &[],
                 &bob_credential_bundle,
                 vec![add_charlie_proposal_bob.clone()],
-                false, /* force self update*/
+                false, /* force self update */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
 
-        // Check there is no KeyPackageBundle since there are only Add Proposals and no forced self-update
+        // Check there is no KeyPackageBundle since there are only Add Proposals and no
+        // forced self-update
         assert!(kpb_option.is_none());
         // Make sure the is a Welcome message for Charlie
         assert!(welcome_for_charlie_option.is_some());
@@ -586,7 +588,7 @@ fn group_operations() {
             &[],
             &charlie_credential_bundle,
             vec![update_proposal_charlie.clone()],
-            false, /* force self update*/
+            false, /* force self update */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -637,7 +639,7 @@ fn group_operations() {
             &[],
             &charlie_credential_bundle,
             vec![remove_bob_proposal_charlie.clone()],
-            false, /* force self update*/
+            false, /* force self update */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),

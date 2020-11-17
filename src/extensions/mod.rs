@@ -23,7 +23,6 @@ mod test_extensions;
 /// # Extension types
 ///
 /// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
-///
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 #[repr(u16)]
 pub enum ExtensionType {
@@ -88,7 +87,6 @@ impl Codec for ExtensionType {
 ///     opaque extension_data<0..2^16-1>;
 /// } Extension;
 /// ```
-///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExtensionStruct {
     extension_type: ExtensionType,

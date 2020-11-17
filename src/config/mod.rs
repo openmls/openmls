@@ -1,5 +1,4 @@
 //! This config contains all structs, enums and functions to configure MLS.
-//!
 
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -117,7 +116,6 @@ impl Config {
 ///     (255)
 /// } ProtocolVersion;
 /// ```
-///
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ProtocolVersion {
@@ -156,7 +154,8 @@ impl ProtocolVersion {
 }
 
 impl CiphersuiteName {
-    /// Returns `true` if the ciphersuite is supported in the current configuration.
+    /// Returns `true` if the ciphersuite is supported in the current
+    /// configuration.
     pub(crate) fn is_supported(&self) -> bool {
         for suite in CONFIG.ciphersuites.iter() {
             if self == &suite.name() {

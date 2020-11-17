@@ -9,24 +9,33 @@ use crate::tree::node::*;
 
 use std::io::{Read, Write};
 
-/// A `ManagedGroup` represents an `MLSGroup` with an easier, high-level API designed to be used in production. The API
-/// exposes high level functions to manage a group by adding/removing members, get the current member list, etc.
+/// A `ManagedGroup` represents an `MLSGroup` with an easier, high-level API
+/// designed to be used in production. The API exposes high level functions to
+/// manage a group by adding/removing members, get the current member list, etc.
 ///
-/// The API is modelled such that it can serve as a direct interface to the Delivery Serive. Functions that modify the public state
-/// of the group will return a `Vec<MLSMessage>` that can be sent to the Delivery Service directly. Conversely, incoming messages
-/// from the Delivery Service can be fed into `process_nessage()`.
+/// The API is modelled such that it can serve as a direct interface to the
+/// Delivery Serive. Functions that modify the public state of the group will
+/// return a `Vec<MLSMessage>` that can be sent to the Delivery Service
+/// directly. Conversely, incoming messages from the Delivery Service can be fed
+/// into `process_nessage()`.
 ///
-/// A `ManagedGroup` has an internal queue of pending proposals that builds up as new messages are processed. When creating proposals,
-/// those messages are not automatically appended to this queue, instead they have be processed again through `process_message()`.
-/// This allows the Delivery Service to reject them (e.g. if they reference the wrong epoch).
+/// A `ManagedGroup` has an internal queue of pending proposals that builds up
+/// as new messages are processed. When creating proposals, those messages are
+/// not automatically appended to this queue, instead they have be processed
+/// again through `process_message()`. This allows the Delivery Service to
+/// reject them (e.g. if they reference the wrong epoch).
 ///
-/// If incoming messages or applied operations are semantically or syntactily incorrect, the function will return a corresponding
-/// error message and the state of the group will remain unchanged.
+/// If incoming messages or applied operations are semantically or syntactily
+/// incorrect, the function will return a corresponding error message and the
+/// state of the group will remain unchanged.
 ///
-/// The application policy for the group can be enforced by implementing the validator callback functions and selectively allowing/
-/// disallowing each operation (see `ManagedGroupCallbacks`)
+/// The application policy for the group can be enforced by implementing the
+/// validator callback functions and selectively allowing/ disallowing each
+/// operation (see `ManagedGroupCallbacks`)
 ///
-/// Changes to the group state are dispatched as events through callback functions (see ManagedGroupCallbacks).
+/// Changes to the group state are dispatched as events through callback
+/// functions (see ManagedGroupCallbacks).
+#[allow(dead_code)]
 pub struct ManagedGroup {
     managed_group_config: ManagedGroupConfig,
     group: MlsGroup,
@@ -34,6 +43,7 @@ pub struct ManagedGroup {
     own_kpbs: Vec<KeyPackageBundle>,
 }
 
+#[allow(unused_variables)]
 impl ManagedGroup {
     // === Group creation ===
 
@@ -125,7 +135,8 @@ impl ManagedGroup {
 
     // === Process messages ===
 
-    /// Processes any incoming message from the DS (MLSPlaintext & MLSCiphertext) and triggers the corresponding callback functions
+    /// Processes any incoming message from the DS (MLSPlaintext &
+    /// MLSCiphertext) and triggers the corresponding callback functions
     /// it returns the `aad` field from the message framing
     pub fn process_message(&mut self, message: MLSMessage) -> Vec<u8> {
         unimplemented!()
@@ -248,10 +259,11 @@ impl From<CodecError> for GroupError {
     }
 }
 
-/// Collection of callback functions that are passed to a `ManagedGroup` as part of the configurations
-/// Callback functions are optional. If no validator function is specified for a certain proposal type, any
-/// semantically valid proposal will be accepted.
-/// Validator fucntions returan a `bool`, depending on whether the proposal is accepted by the application policy.
+/// Collection of callback functions that are passed to a `ManagedGroup` as part
+/// of the configurations Callback functions are optional. If no validator
+/// function is specified for a certain proposal type, any semantically valid
+/// proposal will be accepted. Validator fucntions returan a `bool`, depending
+/// on whether the proposal is accepted by the application policy.
 ///  - `true` means the proposal should be accepted
 ///  - `false` means the proposal should be rejected
 #[derive(Clone)]
@@ -267,19 +279,24 @@ pub struct ManagedGroupCallbacks {
 }
 
 /// Validator function for AddProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_porposal: &AddProposal) -> bool`
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_porposal:
+/// &AddProposal) -> bool`
 pub type ValidateAdd = fn(&ManagedGroup, &[u8], &Sender, &AddProposal) -> bool;
 /// Validator function for RemoveProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, remove_porposal: &RemoveProposal) -> bool`
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender,
+/// remove_porposal: &RemoveProposal) -> bool`
 pub type ValidateRemove = fn(&ManagedGroup, &[u8], &Sender, &RemoveProposal) -> bool;
 /// Event listener function for AddProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_porposal: &AddProposal)`
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_porposal:
+/// &AddProposal)`
 pub type MemberAdded = fn(&ManagedGroup, &[u8], &Sender, &AddProposal);
 /// Event listener function for RemoveProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, remove_porposal: &RemoveProposal)`
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender,
+/// remove_porposal: &RemoveProposal)`
 pub type MemberRemoved = fn(&ManagedGroup, &[u8], &Sender, &RemoveProposal);
 /// Event listener function for UpdateProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, update_porposal: &UpdateProposal)`
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender,
+/// update_porposal: &UpdateProposal)`
 pub type MemberUpdated = fn(&ManagedGroup, &[u8], &Sender, &UpdateProposal);
 /// Event listener function for application messages
 /// `(managed_group: &ManagedGroup, aad: &[u8], message: &[u8])`

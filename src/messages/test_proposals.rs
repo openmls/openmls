@@ -7,8 +7,8 @@ use crate::key_packages::*;
 use crate::messages::proposals::*;
 use crate::tree::index::*;
 
-/// This test makes sure ProposalQueue works as intented. This functionality is used in `create_commit` to filter the epoch proposals.
-/// Expected result:
+/// This test makes sure ProposalQueue works as intented. This functionality is
+/// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `get_filtered_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {

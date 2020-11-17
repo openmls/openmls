@@ -27,7 +27,6 @@
 //!     optional<KeyPackage> key_package;
 //! } LeafNodeHashInput;
 //! ```
-//!
 
 use super::index::NodeIndex;
 use super::node::ParentNode;

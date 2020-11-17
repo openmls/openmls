@@ -22,7 +22,8 @@ impl SenderRatchet {
             past_secrets: vec![secret.clone()],
         }
     }
-    /// Gets a secret from the SenderRatchet. Returns an error if the generation is out of bound.
+    /// Gets a secret from the SenderRatchet. Returns an error if the generation
+    /// is out of bound.
     pub(crate) fn get_secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,

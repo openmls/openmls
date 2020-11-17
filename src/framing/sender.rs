@@ -22,7 +22,6 @@
 //!     uint32 sender;
 //! } Sender;
 //! ```
-//!
 
 use crate::codec::*;
 use crate::tree::index::*;
