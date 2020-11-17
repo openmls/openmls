@@ -110,13 +110,13 @@ impl Codec for MLSPlaintext {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let group_id = GroupId::decode(cursor).unwrap();
-        let epoch = GroupEpoch::decode(cursor).unwrap();
-        let sender = Sender::decode(cursor).unwrap();
-        let authenticated_data = decode_vec(VecSize::VecU32, cursor).unwrap();
-        let content_type = ContentType::decode(cursor).unwrap();
-        let content = MLSPlaintextContentType::decode(cursor).unwrap();
-        let signature = Signature::decode(cursor).unwrap();
+        let group_id = GroupId::decode(cursor)?;
+        let epoch = GroupEpoch::decode(cursor)?;
+        let sender = Sender::decode(cursor)?;
+        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
+        let content_type = ContentType::decode(cursor)?;
+        let content = MLSPlaintextContentType::decode(cursor)?;
+        let signature = Signature::decode(cursor)?;
 
         Ok(MLSPlaintext {
             group_id,
