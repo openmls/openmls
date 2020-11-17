@@ -9,7 +9,6 @@
 //! the `Error` trait.
 //!
 //! The C FFI API exposes the errors represented  as u16.
-//!
 
 #[macro_use]
 mod utils;

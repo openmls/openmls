@@ -1,7 +1,8 @@
 //!# Config errors
 //!
 //! A `ConfigError` is thrown when either the configuration itself is invalid or
-//! inconsistent, or if an MLS configuration is being used that is not supported.
+//! inconsistent, or if an MLS configuration is being used that is not
+//! supported.
 use std::error::Error;
 
 #[derive(Debug, PartialEq)]

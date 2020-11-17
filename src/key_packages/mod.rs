@@ -120,7 +120,8 @@ impl KeyPackage {
 /// Private `KeyPackage` functions.
 impl KeyPackage {
     /// Create a new key package but only with the given `extensions` for the
-    /// given `ciphersuite` and `identity`, and the initial HPKE key pair `init_key`.
+    /// given `ciphersuite` and `identity`, and the initial HPKE key pair
+    /// `init_key`.
     fn new(
         ciphersuite_name: CiphersuiteName,
         hpke_init_key: HPKEPublicKey,
@@ -363,7 +364,8 @@ impl KeyPackageBundle {
         )
     }
 
-    /// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey, and a leaf secret
+    /// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey,
+    /// and a leaf secret
     fn new_from_values(
         key_package: KeyPackage,
         private_key: HPKEPrivateKey,
@@ -379,8 +381,8 @@ impl KeyPackageBundle {
 
 /// Crate visible `KeyPackageBundle` functions.
 impl KeyPackageBundle {
-    /// Replace the init key in the `KeyPackage` with a random one and return a `KeyPackageBundle` with
-    /// the corresponding secret values
+    /// Replace the init key in the `KeyPackage` with a random one and return a
+    /// `KeyPackageBundle` with the corresponding secret values
     pub(crate) fn from_rekeyed_key_package(
         ciphersuite: &Ciphersuite,
         key_package: &KeyPackage,

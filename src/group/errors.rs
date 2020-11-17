@@ -1,6 +1,7 @@
 //! # MLS Group errors
 //!
-//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and `CreateCommitError`.
+//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
+//! `CreateCommitError`.
 
 use crate::config::ConfigError;
 use crate::extensions::ExtensionError;

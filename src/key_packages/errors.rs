@@ -39,7 +39,8 @@ pub enum KeyPackageError {
     /// Creating a new key package requires at least one ciphersuite.
     NoCiphersuitesSupplied = 9,
 
-    /// The list of ciphersuites is not consistent with the capabilities extension.
+    /// The list of ciphersuites is not consistent with the capabilities
+    /// extension.
     CiphersuiteMismatch = 10,
 }
 
