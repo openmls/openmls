@@ -1,6 +1,5 @@
 //! A data structure holding information about the leaf node in the tree that
 //! belongs to the current client.
-//!
 
 use super::{index::NodeIndex, path_keys::PathKeys};
 use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
@@ -33,7 +32,8 @@ pub(crate) struct PrivateTree {
 }
 
 impl PrivateTree {
-    /// Create a new empty placeholder `PrivateTree` with default values and no `HPKEPrivateKey`
+    /// Create a new empty placeholder `PrivateTree` with default values and no
+    /// `HPKEPrivateKey`
     pub(crate) fn new(node_index: NodeIndex) -> PrivateTree {
         PrivateTree {
             node_index,
@@ -44,9 +44,10 @@ impl PrivateTree {
         }
     }
     /// Create a minimal `PrivateTree` setting only the private key.
-    /// This function is used to initialize a `PrivateTree` with a `KeyPackageBundle`. Further secrets like path secrets
-    /// and keypairs will only be derived in a further step.
-    /// The HPKE private key is derived from the leaf secret contained in the KeyPackageBundle.
+    /// This function is used to initialize a `PrivateTree` with a
+    /// `KeyPackageBundle`. Further secrets like path secrets and keypairs
+    /// will only be derived in a further step. The HPKE private key is
+    /// derived from the leaf secret contained in the KeyPackageBundle.
     pub(crate) fn from_key_package_bundle(
         node_index: NodeIndex,
         key_package_bundle: &KeyPackageBundle,
@@ -67,7 +68,8 @@ impl PrivateTree {
     }
 
     /// Creates a `PrivateTree` with a new private key, leaf secret and path
-    /// The private key is derived from the leaf secret contained in the KeyPackageBundle.
+    /// The private key is derived from the leaf secret contained in the
+    /// KeyPackageBundle.
     pub(crate) fn new_with_keys(
         ciphersuite: &Ciphersuite,
         node_index: NodeIndex,
@@ -153,8 +155,8 @@ impl PrivateTree {
         self.derive_path_secrets(ciphersuite, path_secrets, path)
     }
 
-    /// This function generates the path secrets internally and is only called from either
-    /// `generate_path_secrets` or `continue_path_secrets`.
+    /// This function generates the path secrets internally and is only called
+    /// from either `generate_path_secrets` or `continue_path_secrets`.
     fn derive_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -182,7 +184,8 @@ impl PrivateTree {
     /// Generate the commit secret for the given `path_secret`.
     ///
     /// From 11.2. Commit:
-    /// `Define commit_secret as the value path_secret[n+1] derived from the path_secret[n] value assigned to the root node.`
+    /// `Define commit_secret as the value path_secret[n+1] derived from the
+    /// path_secret[n] value assigned to the root node.`
     ///
     /// From 5.4. Ratchet Tree Evolution:
     /// `path_secret[n] = DeriveSecret(path_secret[n-1], "path")`

@@ -53,7 +53,8 @@ const MANDATORY_EXTENSIONS: [ExtensionType; 2] =
 
 impl KeyPackage {
     /// Create a new key package but only with the given `extensions` for the
-    /// given `ciphersuite` and `identity`, and the initial HPKE key pair `init_key`.
+    /// given `ciphersuite` and `identity`, and the initial HPKE key pair
+    /// `init_key`.
     fn new(
         ciphersuite_name: CiphersuiteName,
         hpke_init_key: HPKEPublicKey,
@@ -127,7 +128,8 @@ impl KeyPackage {
     }
 
     /// Get a reference to the extension of `extension_type`.
-    /// Returns `Some(extension)` if present and `None` if the extension is not present.
+    /// Returns `Some(extension)` if present and `None` if the extension is not
+    /// present.
     #[allow(clippy::borrowed_box)]
     pub(crate) fn get_extension(
         &self,
@@ -364,7 +366,8 @@ impl KeyPackageBundle {
         })
     }
 
-    /// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey, and a leaf secret
+    /// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey,
+    /// and a leaf secret
     pub fn new_from_values(
         key_package: KeyPackage,
         private_key: HPKEPrivateKey,
@@ -377,8 +380,8 @@ impl KeyPackageBundle {
         }
     }
 
-    /// Replace the init key in the `KeyPackage` with a random one and return a `KeyPackageBundle` with
-    /// the corresponding secret values
+    /// Replace the init key in the `KeyPackage` with a random one and return a
+    /// `KeyPackageBundle` with the corresponding secret values
     pub(crate) fn from_rekeyed_key_package(
         ciphersuite: &Ciphersuite,
         key_package: &KeyPackage,
@@ -425,7 +428,8 @@ impl KeyPackageBundle {
         &self.leaf_secret
     }
 
-    /// This function derives the leaf_node_secret from the leaf_secret as described in 5.4 Ratchet Tree Evolution
+    /// This function derives the leaf_node_secret from the leaf_secret as
+    /// described in 5.4 Ratchet Tree Evolution
     pub(crate) fn derive_leaf_node_secret(
         ciphersuite: &Ciphersuite,
         leaf_secret: &Secret,

@@ -22,7 +22,6 @@
 //!
 //! optional<Node> ratchet_tree<1..2^32-1>;
 //! ```
-//!
 use crate::codec::*;
 use crate::errors::ConfigError;
 use crate::tree::node::*;

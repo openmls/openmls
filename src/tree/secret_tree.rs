@@ -84,9 +84,10 @@ pub struct SecretTree {
 }
 
 impl SecretTree {
-    /// Creates a new SecretTree based on an `encryption_secret` and group size `size`.
-    /// The inner nodes of the tree and the SenderRatchets only get initialized when secrets
-    /// are requested either through `get_secret()` or `next_secret()`.
+    /// Creates a new SecretTree based on an `encryption_secret` and group size
+    /// `size`. The inner nodes of the tree and the SenderRatchets only get
+    /// initialized when secrets are requested either through `get_secret()`
+    /// or `next_secret()`.
     pub fn new(encryption_secret: &Secret, size: LeafIndex) -> Self {
         let root = root(size);
         let num_indices = NodeIndex::from(size).as_usize() - 1;
@@ -111,7 +112,8 @@ impl SecretTree {
         }
     }
 
-    /// Initializes a specific SenderRatchet pair for a given index by calculating and deleteing the appropriate values in the SecretTree
+    /// Initializes a specific SenderRatchet pair for a given index by
+    /// calculating and deleteing the appropriate values in the SecretTree
     fn initialize_sender_ratchets(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -182,8 +184,9 @@ impl SecretTree {
         Ok(())
     }
 
-    /// Return RatchetSecrets for a given index and generation. This should be called when decrypting
-    /// an MLSCiphertext received fromanother member. Returns an error if index or genartion are out of bound.
+    /// Return RatchetSecrets for a given index and generation. This should be
+    /// called when decrypting an MLSCiphertext received fromanother member.
+    /// Returns an error if index or genartion are out of bound.
     pub(crate) fn get_secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -202,7 +205,8 @@ impl SecretTree {
         sender_ratchet.get_secret_for_decryption(ciphersuite, generation)
     }
 
-    /// Return the next RatchetSecrets that should be used for encryption and then increments the generation.
+    /// Return the next RatchetSecrets that should be used for encryption and
+    /// then increments the generation.
     pub(crate) fn get_secret_for_encryption(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -217,7 +221,8 @@ impl SecretTree {
         sender_ratchet.get_secret_for_encryption(ciphersuite)
     }
 
-    /// Returns a mutable reference to a specific SenderRatchet. The SenderRatchet needs to be initialized.
+    /// Returns a mutable reference to a specific SenderRatchet. The
+    /// SenderRatchet needs to be initialized.
     fn get_ratchet_mut(&mut self, index: LeafIndex, secret_type: SecretType) -> &mut SenderRatchet {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
@@ -242,7 +247,8 @@ impl SecretTree {
             .as_ref()
     }
 
-    /// Derives the secrets for the child leaves in a SecretTree and blanks the parent leaf.
+    /// Derives the secrets for the child leaves in a SecretTree and blanks the
+    /// parent leaf.
     fn derive_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
         let hash_len = ciphersuite.hash_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()]

@@ -13,7 +13,6 @@
 //!     ExtensionType extensions<0..255>;
 //! } Capabilities;
 //! ```
-//!
 
 use super::{Extension, ExtensionStruct, ExtensionType};
 use crate::ciphersuite::CiphersuiteName;
@@ -82,8 +81,8 @@ impl Extension for CapabilitiesExtension {
     }
 
     /// Build a new CapabilitiesExtension from a byte slice.
-    /// Checks that we can work with these capabilities and returns a `ConfigError`
-    /// if not.
+    /// Checks that we can work with these capabilities and returns a
+    /// `ConfigError` if not.
     fn new_from_bytes(bytes: &[u8]) -> Result<Self, ConfigError>
     where
         Self: Sized,
