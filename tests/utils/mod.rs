@@ -41,6 +41,19 @@ pub(crate) struct TestClient {
     pub(crate) group_states: RefCell<HashMap<GroupId, MlsGroup>>,
 }
 
+impl TestClient {
+    pub(crate) fn find_key_package_bundle(
+        &self,
+        key_package: &KeyPackage,
+    ) -> Option<KeyPackageBundle> {
+        let mut key_package_bundles = self.key_package_bundles.borrow_mut();
+        key_package_bundles
+            .iter()
+            .position(|x| x.get_key_package().hash() == key_package.hash())
+            .and_then(|index| Some(key_package_bundles.remove(index)))
+    }
+}
+
 /// The state of a test setup, including the state of the clients and the
 /// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
@@ -116,16 +129,9 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .pop()
             .unwrap();
         // Figure out which KeyPackageBundle that key package corresponds to.
-        let initial_key_package_bundle_position = initial_group_member
-            .key_package_bundles
-            .borrow()
-            .iter()
-            .position(|x| x.get_key_package().hash() == initial_key_package.hash())
-            .unwrap();
         let initial_key_package_bundle = initial_group_member
-            .key_package_bundles
-            .borrow_mut()
-            .remove(initial_key_package_bundle_position);
+            .find_key_package_bundle(&initial_key_package)
+            .unwrap();
         // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
             .credential_bundles
@@ -189,7 +195,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             match mls_group.apply_commit(commit_mls_plaintext, proposal_list, &[key_package_bundle])
             {
                 Ok(_) => (),
-                Err(err) => panic!("Error creating new group from Welcome: {:?}", err),
+                Err(err) => panic!("Error applying Commit: {:?}", err),
             }
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {

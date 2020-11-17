@@ -5,6 +5,9 @@ impl Codec for NodeType {
         (*self as u8).encode(buffer)?;
         Ok(())
     }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        Ok(NodeType::from(u8::decode(cursor)?))
+    }
 }
 
 impl Codec for Node {
@@ -13,6 +16,16 @@ impl Codec for Node {
         self.key_package.encode(buffer)?;
         self.node.encode(buffer)?;
         Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let node_type = NodeType::decode(cursor)?;
+        let key_package = Option::<KeyPackage>::decode(cursor)?;
+        let node = Option::<ParentNode>::decode(cursor)?;
+        Ok(Node {
+            node_type,
+            key_package,
+            node,
+        })
     }
 }
 
