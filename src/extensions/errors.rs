@@ -111,7 +111,7 @@ impl Error for ExtensionError {
                 }
             },
             Self::KeyPackageId(e) => match e {
-                KeyPackageIdError::Invalid => "Error decoding a key package id extensions.",
+                KeyPackageIdError::Invalid => "Error decoding a key package id extension.",
             },
             Self::ParentHash(e) => match e {
                 ParentHashError::Invalid => "Error decoding a parent hash extensions.",
