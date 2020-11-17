@@ -120,7 +120,7 @@ impl Error for ExtensionError {
                 RatchetTreeError::Invalid => "Error decoding a ratchet tree extension.",
             },
             Self::Lifetime(e) => match e {
-                LifetimeExtensionError::Invalid => "Invalid lifetime extensions.",
+                LifetimeExtensionError::Invalid => "Invalid lifetime extension.",
                 LifetimeExtensionError::Expired => "Lifetime extension is expired.",
             },
         }
