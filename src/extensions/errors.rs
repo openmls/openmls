@@ -117,7 +117,7 @@ impl Error for ExtensionError {
                 ParentHashError::Invalid => "Error decoding a parent hash extension.",
             },
             Self::RatchetTree(e) => match e {
-                RatchetTreeError::Invalid => "Error decoding a ratchet tree extensions.",
+                RatchetTreeError::Invalid => "Error decoding a ratchet tree extension.",
             },
             Self::Lifetime(e) => match e {
                 LifetimeExtensionError::Invalid => "Invalid lifetime extensions.",
