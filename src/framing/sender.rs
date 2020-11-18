@@ -74,6 +74,9 @@ impl Sender {
     pub(crate) fn as_node_index(self) -> NodeIndex {
         NodeIndex::from(self.sender)
     }
+    pub fn as_leaf_index(self) -> LeafIndex {
+        LeafIndex::from(self.as_node_index())
+    }
 }
 
 impl Codec for Sender {
