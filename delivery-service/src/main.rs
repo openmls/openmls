@@ -27,6 +27,10 @@ use std::sync::Mutex;
 
 pub(crate) use openmls::prelude::*;
 
+// Types needed by the DS and clients interacting with the DS.
+mod types;
+use types::*;
+
 #[cfg(test)]
 mod test;
 
@@ -41,226 +45,17 @@ struct DsData {
     clients: HashMap<String, ClientInfo>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq)]
-struct ClientKeyPackages(Vec<(KeyPackageHash, KeyPackage)>);
-
-impl Codec for ClientKeyPackages {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (self.0.len() as u32).encode(buffer)?;
-        for (hash, key_package) in self.0.iter() {
-            encode_vec(VecSize::VecU16, buffer, &hash)?;
-            key_package.encode(buffer)?;
-        }
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let length = u32::decode(cursor)?;
-        let mut key_packages = Vec::with_capacity(length as usize);
-        for _ in 0..length {
-            let hash = decode_vec(VecSize::VecU16, cursor)?;
-            let key_package = KeyPackage::decode(cursor)?;
-            key_packages.push((hash, key_package));
-        }
-        Ok(ClientKeyPackages(key_packages))
-    }
-}
-
-#[derive(Debug, Default, Clone)]
-pub(crate) struct ClientInfo {
-    client_name: String,
-    key_packages: ClientKeyPackages,
-    msgs: Vec<MLSMessage>,
-    welcome_queue: Vec<Welcome>,
-}
-
-impl Codec for ClientInfo {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        let client_name_bytes = self.client_name.as_bytes();
-        (client_name_bytes.len() as u16).encode(buffer)?;
-        buffer.extend_from_slice(&client_name_bytes);
-
-        (self.key_packages.0.len() as u16).encode(buffer)?;
-        for key_package in self.key_packages.0.iter() {
-            encode_vec(VecSize::VecU16, buffer, &key_package.0)?;
-            key_package.1.encode(buffer)?;
-        }
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let client_name_length = u16::decode(cursor)?;
-        let client_name = std::str::from_utf8(cursor.consume(client_name_length.into())?)
-            .unwrap()
-            .to_string();
-
-        let mut key_packages = Vec::new();
-        let num_key_packages = u16::decode(cursor)?;
-        for _ in 0..num_key_packages {
-            let hash = decode_vec(VecSize::VecU16, cursor)?;
-            let key_package = KeyPackage::decode(cursor)?;
-            key_packages.push((hash, key_package));
-        }
-        Ok(Self::new(client_name, key_packages))
-    }
-}
-
-impl ClientInfo {
-    #[cfg(test)]
-    pub(crate) fn new(
-        client_name: String,
-        key_packages: Vec<(KeyPackageHash, KeyPackage)>,
-    ) -> Self {
-        Self {
-            client_name,
-            key_packages: ClientKeyPackages(key_packages),
-            msgs: Vec::new(),
-            welcome_queue: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Message {
-    MLSMessage(MLSMessage),
-    Welcome(Welcome),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum MLSMessage {
-    MLSCiphertext(MLSCiphertext),
-    MLSPlaintext(MLSPlaintext),
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-pub enum MessageType {
-    MLSCiphertext = 0,
-    MLSPlaintext = 1,
-    Welcome = 2,
-}
-
-impl Codec for MessageType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = u8::decode(cursor)?;
-        match value {
-            0 => Ok(Self::MLSCiphertext),
-            1 => Ok(Self::MLSPlaintext),
-            2 => Ok(Self::Welcome),
-            _ => Err(CodecError::DecodingError),
-        }
-    }
-}
-
-impl Codec for Message {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match self {
-            Message::MLSMessage(m) => match m {
-                MLSMessage::MLSCiphertext(m) => {
-                    MessageType::MLSCiphertext.encode(buffer)?;
-                    m.encode(buffer)?;
-                }
-                MLSMessage::MLSPlaintext(m) => {
-                    MessageType::MLSPlaintext.encode(buffer)?;
-                    m.encode(buffer)?;
-                }
-            },
-            Message::Welcome(m) => {
-                MessageType::Welcome.encode(buffer)?;
-                m.encode(buffer)?;
-            }
-        }
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let msg_type = MessageType::decode(cursor)?;
-        let msg = match msg_type {
-            MessageType::MLSCiphertext => {
-                Message::MLSMessage(MLSMessage::MLSCiphertext(MLSCiphertext::decode(cursor)?))
-            }
-            MessageType::MLSPlaintext => {
-                Message::MLSMessage(MLSMessage::MLSPlaintext(MLSPlaintext::decode(cursor)?))
-            }
-            MessageType::Welcome => Message::Welcome(Welcome::decode(cursor)?),
-        };
-        Ok(msg)
-    }
-}
-
-/// An MLS group message.
-/// This is an `MLSMessage` plus the list of recipients.
-#[derive(Debug)]
-pub struct GroupMessage {
-    msg: MLSMessage,
-    recipients: Vec<String>,
-}
-
-impl GroupMessage {
-    pub fn new(msg: MLSMessage, recipients: &[String]) -> Self {
-        Self {
-            msg,
-            recipients: recipients.to_vec(),
-        }
-    }
-}
-
-impl Codec for GroupMessage {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match &self.msg {
-            MLSMessage::MLSCiphertext(m) => {
-                MessageType::MLSCiphertext.encode(buffer)?;
-                m.encode(buffer)?;
-            }
-            MLSMessage::MLSPlaintext(m) => {
-                MessageType::MLSPlaintext.encode(buffer)?;
-                m.encode(buffer)?;
-            }
-        }
-        (self.recipients.len() as u16).encode(buffer)?;
-        for recipient in self.recipients.iter() {
-            let recipient_bytes = recipient.as_bytes();
-            (recipient_bytes.len() as u16).encode(buffer)?;
-            buffer.extend_from_slice(&recipient_bytes);
-        }
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let msg_type = MessageType::decode(cursor)?;
-        let msg = match msg_type {
-            MessageType::MLSCiphertext => MLSMessage::MLSCiphertext(MLSCiphertext::decode(cursor)?),
-            MessageType::MLSPlaintext => MLSMessage::MLSPlaintext(MLSPlaintext::decode(cursor)?),
-            _ => return Err(CodecError::DecodingError),
-        };
-
-        let num_clients = u16::decode(cursor)?;
-        let mut recipients = Vec::new();
-        for _ in 0..num_clients {
-            let client_name_length = u16::decode(cursor)?;
-            let client_name = std::str::from_utf8(cursor.consume(client_name_length.into())?)
-                .unwrap()
-                .to_string();
-            recipients.push(client_name);
-        }
-        Ok(Self { msg, recipients })
-    }
-}
-
 // === API ===
 
 #[post("/clients/register")]
 async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
-    let mut data = data.lock().unwrap();
-
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.unwrap());
     }
     let info = ClientInfo::decode(&mut Cursor::new(&bytes)).unwrap();
+
+    let mut data = data.lock().unwrap();
     let old = data.clients.insert(info.client_name.clone(), info.clone());
     assert!(old.is_none());
 
@@ -290,14 +85,13 @@ async fn get_client(
 
 #[post("/send/welcome")]
 async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
-    let mut data = data.lock().unwrap();
-
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.unwrap());
     }
     let welcome_msg = Welcome::decode(&mut Cursor::new(&bytes)).unwrap();
 
+    let mut data = data.lock().unwrap();
     for secret in welcome_msg.get_secrets_ref().iter() {
         let key_package_hash = &secret.key_package_hash;
         for (_client_name, client) in data.clients.iter_mut() {
@@ -314,9 +108,6 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
 /// Takes a `GroupMessage`
 #[post("/send/message")]
 async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
-    let mut data = data.lock().unwrap();
-    let data = data.deref_mut();
-
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.unwrap());
@@ -324,6 +115,7 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     let group_msg = GroupMessage::decode(&mut Cursor::new(&bytes)).unwrap();
     println!("MLS msg: {:?}", group_msg);
 
+    let mut data = data.lock().unwrap();
     for recipient in group_msg.recipients.iter() {
         let client = match data.clients.get_mut(recipient) {
             Some(client) => client,
@@ -351,14 +143,10 @@ async fn msg_recv(
     let mut welcomes: Vec<Message> = client
         .welcome_queue
         .drain(..)
-        .map(|m| Message::Welcome(m))
+        .map(Message::Welcome)
         .collect();
     out.append(&mut welcomes);
-    let mut msgs: Vec<Message> = client
-        .msgs
-        .drain(..)
-        .map(|m| Message::MLSMessage(m))
-        .collect();
+    let mut msgs: Vec<Message> = client.msgs.drain(..).map(Message::MLSMessage).collect();
     out.append(&mut msgs);
 
     let mut out_bytes = Vec::new();

@@ -5,6 +5,7 @@ the following operations:
 
 * Registering Clients via a POST request to `/clients/register`
 * Listing Clients via a GET request to `/clients/list`
-* GetClientInfo via a GET request to `/clients/get`
-* CreateGroup via a POST request to `/groups/new`
-* SendMessage via a POST request to `/msg/send`
+* Get a list of key packages of a client via a GET request to `/clients/get/{name}`
+* Send an MLS group message via a POST request to `/send/message`
+* Send a Welcome message via a POST request to `/send/welcome`
+* Get a list of messages for a client via a GET request to `/recv/{name}`
