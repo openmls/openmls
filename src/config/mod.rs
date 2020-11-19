@@ -15,7 +15,7 @@ pub(crate) use errors::ConfigError;
 /// lifetime is configured. The value is in seconds and amounts to 3 * 28 Days,
 /// i.e. about 3 months.
 const DEFAULT_KEY_PACKAGE_LIFETIME: u64 = 60 * 60 * 24 * 28 * 3; // in Seconds
-/// This value is sued as the default amount of time (in seconds) the lifetime
+/// This value is used as the default amount of time (in seconds) the lifetime
 /// of a `KeyPackage` is extended into the past to allow for skewed clocks. The
 /// value is in seconds and amounts to 1h.
 const DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN: u64 = 60 * 60; // in Seconds
