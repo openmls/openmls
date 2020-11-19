@@ -121,36 +121,55 @@ impl ClientInfo {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum Message {
+pub enum Message {
     MLSMessage(MLSMessage),
     Welcome(Welcome),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum MLSMessage {
+pub enum MLSMessage {
     MLSCiphertext(MLSCiphertext),
     MLSPlaintext(MLSPlaintext),
 }
 
-/// The return value for /msg/recv
-#[derive(Debug, PartialEq)]
-pub struct MessageList(Vec<Message>);
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum MessageType {
+    MLSCiphertext = 0,
+    MLSPlaintext = 1,
+    Welcome = 2,
+}
+
+impl Codec for MessageType {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        (*self as u8).encode(buffer)
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let value = u8::decode(cursor)?;
+        match value {
+            0 => Ok(Self::MLSCiphertext),
+            1 => Ok(Self::MLSPlaintext),
+            2 => Ok(Self::Welcome),
+            _ => Err(CodecError::DecodingError),
+        }
+    }
+}
 
 impl Codec for Message {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
             Message::MLSMessage(m) => match m {
                 MLSMessage::MLSCiphertext(m) => {
-                    0u8.encode(buffer)?;
+                    MessageType::MLSCiphertext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
                 MLSMessage::MLSPlaintext(m) => {
-                    1u8.encode(buffer)?;
+                    MessageType::MLSPlaintext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
             },
             Message::Welcome(m) => {
-                2u8.encode(buffer)?;
+                MessageType::Welcome.encode(buffer)?;
                 m.encode(buffer)?;
             }
         }
@@ -158,20 +177,82 @@ impl Codec for Message {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let msg_type = u8::decode(cursor)?;
+        let msg_type = MessageType::decode(cursor)?;
         let msg = match msg_type {
-            0 => Message::MLSMessage(MLSMessage::MLSCiphertext(MLSCiphertext::decode(cursor)?)),
-            1 => Message::MLSMessage(MLSMessage::MLSPlaintext(MLSPlaintext::decode(cursor)?)),
-            2 => Message::Welcome(Welcome::decode(cursor)?),
-            _ => return Err(CodecError::DecodingError),
+            MessageType::MLSCiphertext => {
+                Message::MLSMessage(MLSMessage::MLSCiphertext(MLSCiphertext::decode(cursor)?))
+            }
+            MessageType::MLSPlaintext => {
+                Message::MLSMessage(MLSMessage::MLSPlaintext(MLSPlaintext::decode(cursor)?))
+            }
+            MessageType::Welcome => Message::Welcome(Welcome::decode(cursor)?),
         };
         Ok(msg)
     }
 }
 
+/// An MLS group message.
+/// This is an `MLSMessage` plus the list of recipients.
+#[derive(Debug)]
+pub struct GroupMessage {
+    msg: MLSMessage,
+    recipients: Vec<String>,
+}
+
+impl GroupMessage {
+    pub fn new(msg: MLSMessage, recipients: &[String]) -> Self {
+        Self {
+            msg,
+            recipients: recipients.to_vec(),
+        }
+    }
+}
+
+impl Codec for GroupMessage {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        match &self.msg {
+            MLSMessage::MLSCiphertext(m) => {
+                MessageType::MLSCiphertext.encode(buffer)?;
+                m.encode(buffer)?;
+            }
+            MLSMessage::MLSPlaintext(m) => {
+                MessageType::MLSPlaintext.encode(buffer)?;
+                m.encode(buffer)?;
+            }
+        }
+        (self.recipients.len() as u16).encode(buffer)?;
+        for recipient in self.recipients.iter() {
+            let recipient_bytes = recipient.as_bytes();
+            (recipient_bytes.len() as u16).encode(buffer)?;
+            buffer.extend_from_slice(&recipient_bytes);
+        }
+        Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let msg_type = MessageType::decode(cursor)?;
+        let msg = match msg_type {
+            MessageType::MLSCiphertext => MLSMessage::MLSCiphertext(MLSCiphertext::decode(cursor)?),
+            MessageType::MLSPlaintext => MLSMessage::MLSPlaintext(MLSPlaintext::decode(cursor)?),
+            _ => return Err(CodecError::DecodingError),
+        };
+
+        let num_clients = u16::decode(cursor)?;
+        let mut recipients = Vec::new();
+        for _ in 0..num_clients {
+            let client_name_length = u16::decode(cursor)?;
+            let client_name = std::str::from_utf8(cursor.consume(client_name_length.into())?)
+                .unwrap()
+                .to_string();
+            recipients.push(client_name);
+        }
+        Ok(Self { msg, recipients })
+    }
+}
+
 // === API ===
 
-// curl -X POST localhost:8080/clients/register
+#[post("/clients/register")]
 async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut data = data.lock().unwrap();
 
@@ -186,7 +267,7 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
     actix_web::HttpResponse::Ok().body(format!("Welcome {}!\n", info.client_name))
 }
 
-// curl localhost:8080/clients/list
+#[get("/clients/list")]
 async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let data = data.lock().unwrap();
     actix_web::HttpResponse::Ok().body(format!(
@@ -195,7 +276,7 @@ async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl
     ))
 }
 
-// curl localhost:8080/clients/get/<client_name>
+#[get("/clients/get/{name}")]
 async fn get_client(
     web::Path(name): web::Path<String>,
     data: web::Data<Mutex<DsData>>,
@@ -207,8 +288,8 @@ async fn get_client(
     )))
 }
 
-#[post("/msg/send/welcome")]
-async fn msg_send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+#[post("/send/welcome")]
+async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut data = data.lock().unwrap();
 
     let mut bytes = web::BytesMut::new();
@@ -216,7 +297,6 @@ async fn msg_send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> 
         bytes.extend_from_slice(&item.unwrap());
     }
     let welcome_msg = Welcome::decode(&mut Cursor::new(&bytes)).unwrap();
-    println!("Welcome msg: {:?}", welcome_msg);
 
     for secret in welcome_msg.get_secrets_ref().iter() {
         let key_package_hash = &secret.key_package_hash;
@@ -231,8 +311,30 @@ async fn msg_send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> 
     actix_web::HttpResponse::Ok().finish()
 }
 
-// curl localhost:8080/msg/recv/<client_name>
-#[get("/msg/recv/{name}")]
+/// Takes a `GroupMessage`
+#[post("/send/message")]
+async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+    let mut data = data.lock().unwrap();
+    let data = data.deref_mut();
+
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&item.unwrap());
+    }
+    let group_msg = GroupMessage::decode(&mut Cursor::new(&bytes)).unwrap();
+    println!("MLS msg: {:?}", group_msg);
+
+    for recipient in group_msg.recipients.iter() {
+        let client = match data.clients.get_mut(recipient) {
+            Some(client) => client,
+            None => return actix_web::HttpResponse::NotFound().finish(),
+        };
+        client.msgs.push(group_msg.msg.clone());
+    }
+    actix_web::HttpResponse::Ok().finish()
+}
+
+#[get("/recv/{name}")]
 async fn msg_recv(
     web::Path(name): web::Path<String>,
     data: web::Data<Mutex<DsData>>,
@@ -296,11 +398,12 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
-            .route("/clients/register", web::post().to(register_client))
-            .route("/clients/list", web::get().to(list_clients))
-            .route("/clients/get/{name}", web::get().to(get_client))
-            .service(msg_send_welcome)
+            .service(register_client)
+            .service(list_clients)
+            .service(get_client)
+            .service(send_welcome)
             .service(msg_recv)
+            .service(msg_send)
     })
     .bind(addr)?
     .run()

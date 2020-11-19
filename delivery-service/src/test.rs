@@ -4,13 +4,12 @@ use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
 #[actix_rt::test]
 async fn test_list_clients() {
     let data = web::Data::new(Mutex::new(DsData::default()));
-    // TODO: re-use app from main
     let mut app = test::init_service(
         App::new()
             .app_data(data.clone())
-            .route("/clients/register", web::post().to(register_client))
-            .route("/clients/list", web::get().to(list_clients))
-            .route("/clients/get/{name}", web::get().to(get_client)),
+            .service(get_client)
+            .service(list_clients)
+            .service(register_client),
     )
     .await;
 
@@ -94,15 +93,15 @@ async fn test_list_clients() {
 #[actix_rt::test]
 async fn test_group() {
     let data = web::Data::new(Mutex::new(DsData::default()));
-    // TODO: re-use app from main
     let mut app = test::init_service(
         App::new()
             .app_data(data.clone())
-            .route("/clients/register", web::post().to(register_client))
-            .route("/clients/list", web::get().to(list_clients))
-            .route("/clients/get/{name}", web::get().to(get_client))
-            .service(msg_send_welcome)
-            .service(msg_recv),
+            .service(register_client)
+            .service(list_clients)
+            .service(get_client)
+            .service(send_welcome)
+            .service(msg_recv)
+            .service(msg_send),
     )
     .await;
 
@@ -190,7 +189,7 @@ async fn test_group() {
 
     // Send welcome message for Client2
     let req = test::TestRequest::post()
-        .uri("/msg/send/welcome")
+        .uri("/send/welcome")
         .set_payload(Bytes::copy_from_slice(
             &welcome_msg.encode_detached().unwrap(),
         ))
@@ -199,7 +198,7 @@ async fn test_group() {
     assert_eq!(response.status(), StatusCode::OK);
 
     // There should be a welcome message now for Client2.
-    let path = "/msg/recv/".to_owned() + &clients[1];
+    let path = "/recv/".to_owned() + &clients[1];
     let req = test::TestRequest::with_uri(&path).to_request();
     let mut response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
@@ -222,8 +221,9 @@ async fn test_group() {
         _ => panic!("This is not a welcome message."),
     };
     assert_eq!(welcome_msg, welcome_message);
+    assert!(messages.is_empty());
 
-    let group_on_client2 = MlsGroup::new_from_welcome(
+    let mut group_on_client2 = MlsGroup::new_from_welcome(
         welcome_message,
         Some(group.tree().public_key_tree_copy()), // delivered out of band
         key_package_bundles.remove(0),
@@ -233,5 +233,59 @@ async fn test_group() {
     assert_eq!(
         group.tree().public_key_tree(),
         group_on_client2.tree().public_key_tree()
+    );
+
+    // === Client2 sends a message to the group ===
+    let client2_message = b"Thanks for adding me Client1.";
+    let mls_ciphertext =
+        group_on_client2.create_application_message(&[], &client2_message[..], &credentials[1]);
+
+    // Send mls_ciphertext to the group
+    let msg = GroupMessage::new(
+        MLSMessage::MLSCiphertext(mls_ciphertext),
+        &["Client1".to_string()],
+    );
+    let req = test::TestRequest::post()
+        .uri("/send/message")
+        .set_payload(Bytes::copy_from_slice(&msg.encode_detached().unwrap()))
+        .to_request();
+    let response = test::call_service(&mut app, req).await;
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Client1 retrieves messages from the DS
+    let path = "/recv/".to_owned() + &clients[0];
+    let req = test::TestRequest::with_uri(&path).to_request();
+    let mut response = test::call_service(&mut app, req).await;
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let response_body = response.response_mut().take_body();
+    let response_body = response_body.as_ref().unwrap();
+    let mut messages: Vec<Message> = match response_body {
+        Body::Bytes(b) => {
+            decode_vec(VecSize::VecU16, &mut Cursor::new(b.as_ref())).expect("Invalid message list")
+        }
+        _ => panic!("Unexpected server response."),
+    };
+
+    let mls_ciphertext = messages
+        .iter()
+        .position(|m| matches!(m, Message::MLSMessage(_)))
+        .expect("Didn't get an MLS application message from the server.");
+    let mls_ciphertext = match messages.remove(mls_ciphertext) {
+        Message::MLSMessage(m) => match m {
+            MLSMessage::MLSCiphertext(m) => m,
+            _ => panic!("This is not an MLSCiphertext but an MLSPlaintext (or something else)."),
+        },
+        _ => panic!("This is not an MLS message."),
+    };
+    assert!(messages.is_empty());
+
+    // Decrypt the message on Client1
+    let mls_plaintext = group
+        .decrypt(mls_ciphertext)
+        .expect("Error decrypting MLSCiphertext");
+    assert_eq!(
+        client2_message,
+        mls_plaintext.as_application_message().unwrap()
     );
 }
