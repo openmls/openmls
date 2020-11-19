@@ -18,7 +18,7 @@ mod test_framing;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
-    pub(crate) group_id: GroupId,
+    pub group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) sender: Sender,
     pub(crate) authenticated_data: Vec<u8>,

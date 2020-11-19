@@ -211,6 +211,11 @@ impl KeyPackage {
     pub(crate) fn cipher_suite(&self) -> &Ciphersuite {
         self.cipher_suite
     }
+
+    /// Get the `CiphersuiteName`.
+    pub fn ciphersuite(&self) -> CiphersuiteName {
+        self.cipher_suite.name()
+    }
 }
 
 #[derive(Debug)]
