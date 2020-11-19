@@ -55,7 +55,7 @@ impl ManagedGroup {
         managed_group_config: &ManagedGroupConfig,
         group_id: GroupId,
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<Self, GroupError> {
+    ) -> Result<Self, ManagedGroupError> {
         let group = MlsGroup::new(
             &group_id.as_slice(),
             key_package_bundle.get_key_package().cipher_suite().name(),
@@ -95,7 +95,7 @@ impl ManagedGroup {
         &mut self,
         credential_bundle: &CredentialBundle,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MLSMessage>, Welcome), GroupError> {
+    ) -> Result<(Vec<MLSMessage>, Welcome), ManagedGroupError> {
         unimplemented!()
     }
 
@@ -104,7 +104,7 @@ impl ManagedGroup {
         &mut self,
         credential_bundle: &CredentialBundle,
         members: &[usize],
-    ) -> Result<Vec<MLSMessage>, GroupError> {
+    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         unimplemented!()
     }
 
@@ -112,9 +112,8 @@ impl ManagedGroup {
     pub fn propose_add_members(
         &mut self,
         credential_bundle: &CredentialBundle,
-        aad: &[u8],
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MLSMessage>, Welcome), GroupError> {
+    ) -> Result<(Vec<MLSMessage>, Welcome), ManagedGroupError> {
         unimplemented!()
     }
 
@@ -122,9 +121,8 @@ impl ManagedGroup {
     pub fn propose_remove_members(
         &mut self,
         credential_bundle: &CredentialBundle,
-        aad: &[u8],
         members: &[usize],
-    ) -> Result<Vec<MLSMessage>, GroupError> {
+    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         unimplemented!()
     }
 
@@ -187,7 +185,7 @@ impl ManagedGroup {
     pub fn self_update(
         &mut self,
         credential_bundle: &CredentialBundle,
-    ) -> Result<Vec<MLSMessage>, GroupError> {
+    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         unimplemented!()
     }
 
@@ -195,7 +193,7 @@ impl ManagedGroup {
     pub fn propose_self_update(
         &mut self,
         credential_bundle: &CredentialBundle,
-    ) -> Result<Vec<MLSMessage>, GroupError> {
+    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         unimplemented!()
     }
 
@@ -217,7 +215,7 @@ impl ManagedGroup {
     // === Interface for callbacks ===
 
     /// Get group ID
-    pub fn group_id(&self) -> GroupId {
+    pub fn group_id(&self) -> &GroupId {
         unimplemented!()
     }
 
@@ -238,11 +236,17 @@ impl ManagedGroup {
         unimplemented!()
     }
 }
+
+#[derive(Clone)]
+pub enum HandshakeMessageFormat {
+    Plaintext,
+    Ciphertext,
+}
 /// Specifies the configuration parameters for a managed group
 #[derive(Clone)]
 pub struct ManagedGroupConfig {
     /// Defines whether handshake messages should be encrypted
-    encrypt_hs_messages: bool,
+    encrypt_hs_messages: HandshakeMessageFormat,
     /// Defines the update policy
     update_policy: UpdatePolicy,
     /// Callbacks
@@ -251,7 +255,7 @@ pub struct ManagedGroupConfig {
 
 impl ManagedGroupConfig {
     pub fn new(
-        encrypt_hs_messages: bool,
+        encrypt_hs_messages: HandshakeMessageFormat,
         update_policy: UpdatePolicy,
         callbacks: ManagedGroupCallbacks,
     ) -> Self {
@@ -304,20 +308,21 @@ impl From<MLSCiphertext> for MLSMessage {
 }
 
 #[derive(Debug)]
-pub enum GroupError {
+pub enum ManagedGroupError {
     Codec(CodecError),
     Config(ConfigError),
+    UseAfterEviction,
 }
 
-impl From<ConfigError> for GroupError {
-    fn from(err: ConfigError) -> GroupError {
-        GroupError::Config(err)
+impl From<ConfigError> for ManagedGroupError {
+    fn from(err: ConfigError) -> ManagedGroupError {
+        ManagedGroupError::Config(err)
     }
 }
 
-impl From<CodecError> for GroupError {
-    fn from(err: CodecError) -> GroupError {
-        GroupError::Codec(err)
+impl From<CodecError> for ManagedGroupError {
+    fn from(err: CodecError) -> ManagedGroupError {
+        ManagedGroupError::Codec(err)
     }
 }
 
@@ -339,8 +344,10 @@ pub struct ManagedGroupCallbacks {
     member_updated: Option<MemberUpdated>,
     app_message_received: Option<AppMessageReceived>,
     invalid_message_received: Option<InvalidMessageReceived>,
+    error_occured: Option<ErrorOccured>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl ManagedGroupCallbacks {
     pub fn new(
         validate_add: Option<ValidateAdd>,
@@ -350,6 +357,7 @@ impl ManagedGroupCallbacks {
         member_updated: Option<MemberUpdated>,
         app_message_received: Option<AppMessageReceived>,
         invalid_message_received: Option<InvalidMessageReceived>,
+        error_occured: Option<ErrorOccured>,
     ) -> Self {
         Self {
             validate_add,
@@ -359,6 +367,7 @@ impl ManagedGroupCallbacks {
             member_updated,
             app_message_received,
             invalid_message_received,
+            error_occured,
         }
     }
 }
@@ -392,6 +401,9 @@ pub type AppMessageReceived = fn(&ManagedGroup, &[u8], &Sender, &[u8]);
 /// Option<&Sender>, error: InvalidMessageError)`
 pub type InvalidMessageReceived =
     fn(&ManagedGroup, Option<&[u8]>, Option<&Sender>, InvalidMessageError);
+/// Event listener function for errors that occur
+/// `(managed_group: &ManagedGroup, error: ManagedGroupError)`
+pub type ErrorOccured = fn(&ManagedGroup, ManagedGroupError);
 
 #[derive(Debug)]
 pub enum InvalidMessageError {

@@ -71,11 +71,11 @@ impl Sender {
             sender,
         }
     }
-    pub(crate) fn as_node_index(self) -> NodeIndex {
+    pub(crate) fn to_node_index(self) -> NodeIndex {
         NodeIndex::from(self.sender)
     }
-    pub fn as_leaf_index(self) -> LeafIndex {
-        LeafIndex::from(self.as_node_index())
+    pub fn to_leaf_index(self) -> LeafIndex {
+        LeafIndex::from(self.to_node_index())
     }
 }
 

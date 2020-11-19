@@ -38,7 +38,7 @@ fn member_added(
         "AddProposal received in group {} by {}: {} added {}",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.as_leaf_index()).get_identity()).unwrap(),
+        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
         str::from_utf8(add_proposal.key_package.credential().get_identity()).unwrap(),
     );
 }
@@ -55,7 +55,7 @@ fn member_removed(
         "RemoveProposal received in group {} by {}: {} removed {}",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.as_leaf_index()).get_identity()).unwrap(),
+        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
         str::from_utf8(
             managed_group
                 .member(LeafIndex::from(remove_proposal.removed))
@@ -77,7 +77,7 @@ fn member_updated(
         "UpdateProposal received in group {} by {}: {}",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.as_leaf_index()).get_identity()).unwrap(),
+        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
     );
 }
 /// Event listener function for application messages
@@ -93,7 +93,7 @@ fn app_message_received(
         "Message received in group {} by {} from {}: {}",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.as_leaf_index()).get_identity()).unwrap(),
+        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
         str::from_utf8(message).unwrap()
     );
 }
@@ -118,9 +118,18 @@ fn invalid_message_received(
     if let Some(sender) = sender_option {
         println!(
             " >>> Sender: {:?}",
-            managed_group.member(sender.as_leaf_index())
+            managed_group.member(sender.to_leaf_index())
         );
     }
+}
+/// Event listener function for errors that occur
+/// `(managed_group: &ManagedGroup, error: ManagedGroupError)`
+fn error_occured(managed_group: &ManagedGroup, error: ManagedGroupError) {
+    println!(
+        "Error occured in group {}: {:?}",
+        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
+        error
+    );
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -166,8 +175,10 @@ fn managed_group_operations() {
             Some(member_updated),
             Some(app_message_received),
             Some(invalid_message_received),
+            Some(error_occured),
         );
-        let managed_group_config = ManagedGroupConfig::new(false, update_policy, callbacks);
+        let managed_group_config =
+            ManagedGroupConfig::new(HandshakeMessageFormat::Plaintext, update_policy, callbacks);
 
         // === Alice creates a group ===
         let mut alice_group = ManagedGroup::new(
@@ -189,6 +200,11 @@ fn managed_group_operations() {
 
         // Check that the group now has two members
         assert_eq!(alice_group.get_members().len(), 2);
+
+        // Check that Alice & Bob are the members of the group
+        let members = alice_group.get_members();
+        assert_eq!(members[0].get_identity(), b"Alice");
+        assert_eq!(members[1].get_identity(), b"Bob");
 
         let mut bob_group = match ManagedGroup::new_from_welcome(
             &bob_credential_bundle,
@@ -283,6 +299,12 @@ fn managed_group_operations() {
             charlie_group.export_ratchet_tree()
         );
 
+        // Check that Alice, Bob & Charlie are the members of the group
+        let members = alice_group.get_members();
+        assert_eq!(members[0].get_identity(), b"Alice");
+        assert_eq!(members[1].get_identity(), b"Bob");
+        assert_eq!(members[1].get_identity(), b"Charlie");
+
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
         let queued_message =
@@ -337,5 +359,10 @@ fn managed_group_operations() {
 
         // Make sure the group only contains two members
         assert_eq!(alice_group.get_members().len(), 2);
+
+        // Check that Alice & Bob are the members of the group
+        let members = alice_group.get_members();
+        assert_eq!(members[0].get_identity(), b"Alice");
+        assert_eq!(members[1].get_identity(), b"Charlie");
     }
 }
