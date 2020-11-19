@@ -25,22 +25,16 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::Mutex;
 
-pub(crate) use openmls::prelude::*;
-
-// Types needed by the DS and clients interacting with the DS.
-mod types;
-use types::*;
+use openmls::prelude::*;
+use ds_lib::*;
 
 #[cfg(test)]
 mod test;
 
 // === DS Server State ===
 
-// The client identity is a hash of the identity used for message delivery.
-type KeyPackageHash = Vec<u8>;
-
 #[derive(Default, Debug)]
-struct DsData {
+pub struct DsData {
     // (ClientName, ClientInfo)
     clients: HashMap<String, ClientInfo>,
 }

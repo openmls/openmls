@@ -1,17 +1,20 @@
-use super::*;
+use openmls::prelude::*;
+
+// The client identity is a hash of the identity used for message delivery.
+type KeyPackageHash = Vec<u8>;
 
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to `/clients/register`.
 #[derive(Debug, Default, Clone)]
-pub(crate) struct ClientInfo {
-    pub(crate) client_name: String,
-    pub(crate) key_packages: ClientKeyPackages,
-    pub(crate) msgs: Vec<MLSMessage>,
-    pub(crate) welcome_queue: Vec<Welcome>,
+pub struct ClientInfo {
+    pub client_name: String,
+    pub key_packages: ClientKeyPackages,
+    pub msgs: Vec<MLSMessage>,
+    pub welcome_queue: Vec<Welcome>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub(crate) struct ClientKeyPackages(pub(crate) Vec<(KeyPackageHash, KeyPackage)>);
+pub struct ClientKeyPackages(pub Vec<(KeyPackageHash, KeyPackage)>);
 
 impl Codec for ClientKeyPackages {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -67,7 +70,7 @@ impl Codec for ClientInfo {
 }
 
 impl ClientInfo {
-    pub(crate) fn new(
+    pub fn new(
         client_name: String,
         key_packages: Vec<(KeyPackageHash, KeyPackage)>,
     ) -> Self {
@@ -156,8 +159,8 @@ impl Codec for Message {
 /// This is an `MLSMessage` plus the list of recipients.
 #[derive(Debug)]
 pub struct GroupMessage {
-    pub(crate) msg: MLSMessage,
-    pub(crate) recipients: Vec<String>,
+    pub msg: MLSMessage,
+    pub recipients: Vec<String>,
 }
 
 impl GroupMessage {
