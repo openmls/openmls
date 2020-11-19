@@ -132,14 +132,14 @@ impl Config {
     }
 
     /// Get the default `KeyPackage` lifetime (in seconds).
-    pub fn default_key_package_lifetime() -> &'static u64 {
-        &CONFIG.constants.default_key_package_lifetime
+    pub fn default_key_package_lifetime() -> u64 {
+        CONFIG.constants.default_key_package_lifetime
     }
 
     /// Get the margin in which `KeyPackage` lifetimes are already considered
     /// valid. (in seconds).
-    pub fn key_package_lifetime_margin() -> &'static u64 {
-        &CONFIG.constants.key_package_lifetime_margin
+    pub fn key_package_lifetime_margin() -> u64 {
+        CONFIG.constants.key_package_lifetime_margin
     }
 }
 

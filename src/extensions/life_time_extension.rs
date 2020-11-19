@@ -37,7 +37,7 @@ impl LifetimeExtension {
     /// Note that the lifetime is extended 1h into the past to adapt to skewed
     /// clocks.
     pub fn new(t: u64) -> Self {
-        let lifetime_margin: u64 = Config::key_package_lifetime_margin().clone();
+        let lifetime_margin: u64 = Config::key_package_lifetime_margin();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("SystemTime before UNIX EPOCH!")
