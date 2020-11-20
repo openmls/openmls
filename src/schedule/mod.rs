@@ -162,13 +162,10 @@ impl EpochSecrets {
     /// Consume the `encryption_secret` from the `EpochSecrets`, replacing it
     /// with `None` and return it.
     fn consume_encryption_secret(&mut self) -> Result<Secret, KeyScheduleError> {
-        // Remove the encryption secret by replacing it with `None`.
         let encryption_secret = match self.encryption_secret.take() {
             Some(es) => es,
             None => return Err(KeyScheduleError::SecretReuseError),
         };
-        // Pass ownership to the `SecretTree` constructor, so that the
-        // `encryption_secret` is dropped afterwards.
         Ok(encryption_secret)
     }
 
