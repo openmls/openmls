@@ -93,7 +93,7 @@ impl SecretTree {
         let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(SecretTreeNode {
-            secret: encryption_secret.clone(),
+            secret: encryption_secret,
         });
 
         SecretTree {

@@ -71,12 +71,12 @@ impl HkdfLabel {
 
 #[derive(Clone, Debug)]
 pub struct EpochSecrets {
-    pub welcome_secret: Secret,
-    pub sender_data_secret: Secret,
+    welcome_secret: Secret,
+    sender_data_secret: Secret,
     encryption_secret: Option<Secret>,
-    pub exporter_secret: Secret,
-    pub confirmation_key: Secret,
-    pub init_secret: Secret,
+    exporter_secret: Secret,
+    confirmation_key: Secret,
+    init_secret: Secret,
 }
 
 impl Default for EpochSecrets {
@@ -158,5 +158,15 @@ impl EpochSecrets {
         // Pass ownership to the `SecretTree` constructor, so that the
         // `encryption_secret` is dropped afterwards.
         Ok(encryption_secret)
+    }
+
+    /// Get the sender_data secret.
+    pub(crate) fn sender_data_secret(&self) -> &Secret {
+        &self.sender_data_secret
+    }
+
+    /// Get the confirmation key.
+    pub(crate) fn confirmation_key(&self) -> &Secret {
+        &self.confirmation_key
     }
 }

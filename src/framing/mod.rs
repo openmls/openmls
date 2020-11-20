@@ -198,7 +198,7 @@ impl MLSCiphertext {
         let sender_data_key = AeadKey::from_secret(
             hkdf_expand_label(
                 ciphersuite,
-                &epoch_secrets.sender_data_secret,
+                &epoch_secrets.sender_data_secret(),
                 "sd key",
                 &ciphertext,
                 ciphersuite.aead_key_length(),
@@ -208,7 +208,7 @@ impl MLSCiphertext {
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(
             ciphersuite,
-            &epoch_secrets.sender_data_secret,
+            &epoch_secrets.sender_data_secret(),
             "sd nonce",
             &ciphertext,
             ciphersuite.aead_nonce_length(),
@@ -252,7 +252,7 @@ impl MLSCiphertext {
         let sender_data_key = AeadKey::from_secret(
             hkdf_expand_label(
                 ciphersuite,
-                &epoch_secrets.sender_data_secret,
+                &epoch_secrets.sender_data_secret(),
                 "sd key",
                 &self.ciphertext,
                 ciphersuite.aead_key_length(),
@@ -262,7 +262,7 @@ impl MLSCiphertext {
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(
             ciphersuite,
-            &epoch_secrets.sender_data_secret,
+            &epoch_secrets.sender_data_secret(),
             "sd nonce",
             &self.ciphertext,
             ciphersuite.aead_nonce_length(),
