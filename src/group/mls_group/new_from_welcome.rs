@@ -7,7 +7,7 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::{index::*, node::*, secret_tree::*, treemath, *};
+use crate::tree::{index::*, node::*, treemath, *};
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -151,10 +151,7 @@ impl MlsGroup {
             &group_secrets.joiner_secret,
             Secret::new_empty_secret(),
         );
-        let secret_tree = SecretTree::new(
-            epoch_secrets.consume_encryption_secret().unwrap(),
-            tree.leaf_count(),
-        );
+        let secret_tree = epoch_secrets.create_secret_tree(tree.leaf_count()).unwrap();
 
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,

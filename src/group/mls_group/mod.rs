@@ -51,10 +51,9 @@ impl MlsGroup {
         // constructor, so that the `encryption_secret` is dropped afterwards.
         // TODO: We're currently creating a secret tree from an empty secret
         // here. This should be solved by #60.
-        let secret_tree = SecretTree::new(
-            epoch_secrets.consume_encryption_secret().unwrap(),
-            LeafIndex::from(1u32),
-        );
+        let secret_tree = epoch_secrets
+            .create_secret_tree(LeafIndex::from(1u32))
+            .unwrap();
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
         let group_context = GroupContext {
             group_id,

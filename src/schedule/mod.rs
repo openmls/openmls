@@ -1,6 +1,8 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
+use crate::tree::index::LeafIndex;
+use crate::tree::secret_tree::SecretTree;
 
 use self::errors::KeyScheduleError;
 
@@ -146,10 +148,20 @@ impl EpochSecrets {
             init_secret,
         }
     }
+    /// Create a `SecretTree` from the `encryption_secret` contained in the
+    /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
+    /// process, allowing us to achieve FS.
+    pub fn create_secret_tree(
+        &mut self,
+        treesize: LeafIndex,
+    ) -> Result<SecretTree, KeyScheduleError> {
+        let encryption_secret = self.consume_encryption_secret()?;
+        Ok(SecretTree::new(encryption_secret, treesize))
+    }
 
     /// Consume the `encryption_secret` from the `EpochSecrets`, replacing it
     /// with `None` and return it.
-    pub fn consume_encryption_secret(&mut self) -> Result<Secret, KeyScheduleError> {
+    fn consume_encryption_secret(&mut self) -> Result<Secret, KeyScheduleError> {
         // Remove the encryption secret by replacing it with `None`.
         let encryption_secret = match self.encryption_secret.take() {
             Some(es) => es,
