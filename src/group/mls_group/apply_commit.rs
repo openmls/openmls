@@ -154,8 +154,10 @@ impl MlsGroup {
         self.group_context = provisional_group_context;
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
+        // Pass ownership of the `encryption_secret` to the `SecretTree`
+        // constructor, so that the `encryption_secret` is dropped afterwards.
         self.secret_tree = RefCell::new(SecretTree::new(
-            &self.epoch_secrets.encryption_secret,
+            self.epoch_secrets.remove_encryption_secret().unwrap(),
             provisional_tree.leaf_count(),
         ));
         Ok(())

@@ -151,7 +151,10 @@ impl MlsGroup {
             &group_secrets.joiner_secret,
             Secret::new_empty_secret(),
         );
-        let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, tree.leaf_count());
+        let secret_tree = SecretTree::new(
+            epoch_secrets.remove_encryption_secret().unwrap(),
+            tree.leaf_count(),
+        );
 
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
