@@ -52,7 +52,7 @@ impl MlsGroup {
         // TODO: We're currently creating a secret tree from an empty secret
         // here. This should be solved by #60.
         let secret_tree = SecretTree::new(
-            epoch_secrets.remove_encryption_secret().unwrap(),
+            epoch_secrets.consume_encryption_secret().unwrap(),
             LeafIndex::from(1u32),
         );
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);

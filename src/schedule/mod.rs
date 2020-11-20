@@ -147,9 +147,9 @@ impl EpochSecrets {
         }
     }
 
-    /// Remove the `encryption_secret` from the `EpochSecrets`, replacing it
+    /// Consume the `encryption_secret` from the `EpochSecrets`, replacing it
     /// with `None` and return it.
-    pub fn remove_encryption_secret(&mut self) -> Result<Secret, KeyScheduleError> {
+    pub fn consume_encryption_secret(&mut self) -> Result<Secret, KeyScheduleError> {
         // Remove the encryption secret by replacing it with `None`.
         let encryption_secret = match self.encryption_secret.take() {
             Some(es) => es,

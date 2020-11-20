@@ -152,7 +152,7 @@ impl MlsGroup {
             Secret::new_empty_secret(),
         );
         let secret_tree = SecretTree::new(
-            epoch_secrets.remove_encryption_secret().unwrap(),
+            epoch_secrets.consume_encryption_secret().unwrap(),
             tree.leaf_count(),
         );
 
