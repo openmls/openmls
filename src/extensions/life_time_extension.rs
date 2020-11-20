@@ -62,7 +62,7 @@ impl LifetimeExtension {
 
 impl Default for LifetimeExtension {
     fn default() -> Self {
-        LifetimeExtension::new(Config::default_key_package_lifetime().clone())
+        LifetimeExtension::new(Config::default_key_package_lifetime())
     }
 }
 
