@@ -146,7 +146,7 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
         };
-        let epoch_secrets = EpochSecrets::derive_epoch_secrets(
+        let mut epoch_secrets = EpochSecrets::derive_epoch_secrets(
             &ciphersuite,
             &group_secrets.joiner_secret,
             Secret::new_empty_secret(),

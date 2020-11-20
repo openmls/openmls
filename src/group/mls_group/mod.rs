@@ -45,7 +45,7 @@ impl MlsGroup {
         info!("Created group {:x?}", id);
         debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
-        let epoch_secrets = EpochSecrets::default();
+        let mut epoch_secrets = EpochSecrets::default();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         // Pass ownership of the `encryption_secret` to the `SecretTree`
         // constructor, so that the `encryption_secret` is dropped afterwards.

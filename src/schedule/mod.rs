@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
@@ -75,7 +73,7 @@ impl HkdfLabel {
 pub struct EpochSecrets {
     pub welcome_secret: Secret,
     pub sender_data_secret: Secret,
-    encryption_secret: RefCell<Option<Secret>>,
+    encryption_secret: Option<Secret>,
     pub exporter_secret: Secret,
     pub confirmation_key: Secret,
     pub init_secret: Secret,
@@ -85,7 +83,7 @@ impl Default for EpochSecrets {
     fn default() -> Self {
         let welcome_secret = Secret::new_empty_secret();
         let sender_data_secret = Secret::new_empty_secret();
-        let encryption_secret = RefCell::new(Some(Secret::new_empty_secret()));
+        let encryption_secret = Some(Secret::new_empty_secret());
         let exporter_secret = Secret::new_empty_secret();
         let confirmation_key = Secret::new_empty_secret();
         let init_secret = Secret::new_empty_secret();
@@ -135,8 +133,7 @@ impl EpochSecrets {
         welcome_secret: Secret,
     ) -> EpochSecrets {
         let sender_data_secret = derive_secret(ciphersuite, epoch_secret, "sender data");
-        let encryption_secret =
-            RefCell::new(Some(derive_secret(ciphersuite, epoch_secret, "encryption")));
+        let encryption_secret = Some(derive_secret(ciphersuite, epoch_secret, "encryption"));
         let exporter_secret = derive_secret(ciphersuite, epoch_secret, "exporter");
         let confirmation_key = derive_secret(ciphersuite, epoch_secret, "confirm");
         let init_secret = derive_secret(ciphersuite, epoch_secret, "init");
@@ -152,26 +149,14 @@ impl EpochSecrets {
 
     /// Remove the `encryption_secret` from the `EpochSecrets`, replacing it
     /// with `None` and return it.
-    pub fn remove_encryption_secret(&self) -> Result<Secret, KeyScheduleError> {
+    pub fn remove_encryption_secret(&mut self) -> Result<Secret, KeyScheduleError> {
         // Remove the encryption secret by replacing it with `None`.
-        let encryption_secret = match self.encryption_secret.replace(None) {
+        let encryption_secret = match self.encryption_secret.take() {
             Some(es) => es,
             None => return Err(KeyScheduleError::SecretReuseError),
         };
         // Pass ownership to the `SecretTree` constructor, so that the
         // `encryption_secret` is dropped afterwards.
         Ok(encryption_secret)
-    }
-}
-
-impl Codec for EpochSecrets {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.welcome_secret.encode(buffer)?;
-        self.sender_data_secret.encode(buffer)?;
-        self.encryption_secret.borrow().encode(buffer)?;
-        self.exporter_secret.encode(buffer)?;
-        self.confirmation_key.encode(buffer)?;
-        self.init_secret.encode(buffer)?;
-        Ok(())
     }
 }
