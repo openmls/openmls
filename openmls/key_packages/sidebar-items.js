@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["MANDATORY_EXTENSIONS","Mandatory extensions for key packages."]],"mod":[["codec",""],["errors","Key Package errors"]],"struct":[["KeyPackage",""],["KeyPackageBundle",""]]});
+initSidebarItems({"constant":[["MANDATORY_EXTENSIONS","Mandatory extensions for key packages."]],"mod":[["codec",""],["errors","Key Package errors`KeyPackageError` are thrown on errors handling `KeyPackage`s and `KeyPackageBundle`s."]],"struct":[["KeyPackage",""],["KeyPackageBundle",""]]});
