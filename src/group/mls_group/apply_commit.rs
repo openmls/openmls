@@ -53,7 +53,7 @@ impl MlsGroup {
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender.sender;
         let is_own_commit =
-            mls_plaintext.sender.as_node_index() == provisional_tree.get_own_node_index(); // XXX: correct?
+            mls_plaintext.sender.to_node_index() == provisional_tree.get_own_node_index(); // XXX: correct?
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
