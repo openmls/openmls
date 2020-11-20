@@ -45,13 +45,7 @@ impl MlsGroup {
         info!("Created group {:x?}", id);
         debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
-        let mut epoch_secrets = EpochSecrets::default();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        // TODO: We're currently creating a secret tree from an empty secret
-        // here. This should be solved by #60.
-        let secret_tree = epoch_secrets
-            .create_secret_tree(LeafIndex::from(1u32))
-            .unwrap();
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
         let group_context = GroupContext {
             group_id,
@@ -59,6 +53,14 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: vec![],
         };
+        let commit_secret = tree.private_tree_mut().get_commit_secret();
+        let member_secret =
+            MemberSecret::derive_initial_member_secret(ciphersuite, commit_secret, None);
+        let (epoch_secrets, encryption_secret) =
+            EpochSecrets::derive_epoch_secrets(ciphersuite, member_secret, &group_context);
+        let secret_tree = encryption_secret
+            .create_secret_tree(LeafIndex::from(1u32))
+            .unwrap();
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {
             ciphersuite,
@@ -242,9 +244,8 @@ impl MlsGroup {
 
     // Exporter
     pub fn export_secret(&self, label: &str, key_length: usize) -> Secret {
-        mls_exporter(
+        self.epoch_secrets.derive_exported_secret(
             self.ciphersuite(),
-            &self.epoch_secrets,
             label,
             &self.context(),
             key_length,
@@ -296,25 +297,4 @@ fn update_interim_transcript_hash(
 ) -> Vec<u8> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data.serialize();
     ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
-}
-
-fn compute_welcome_key_nonce(
-    ciphersuite: &Ciphersuite,
-    joiner_secret: &Secret,
-) -> (AeadKey, AeadNonce) {
-    let welcome_secret = ciphersuite
-        .hkdf_expand(joiner_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
-        .unwrap();
-    let welcome_nonce = AeadNonce::from_secret(
-        ciphersuite
-            .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
-            .unwrap(),
-    );
-    let welcome_key = AeadKey::from_secret(
-        ciphersuite
-            .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
-            .unwrap(),
-        ciphersuite.aead(),
-    );
-    (welcome_key, welcome_nonce)
 }

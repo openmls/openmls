@@ -4,6 +4,7 @@ use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
+use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
 pub(crate) mod proposals;
@@ -223,7 +224,7 @@ impl Codec for PathSecret {
 }
 
 pub struct GroupSecrets {
-    pub joiner_secret: Secret,
+    pub joiner_secret: JoinerSecret,
     pub path_secret: Option<PathSecret>,
 }
 
@@ -234,7 +235,7 @@ impl Codec for GroupSecrets {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let joiner_secret = Secret::decode(cursor)?;
+        let joiner_secret = JoinerSecret::decode(cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
         Ok(GroupSecrets {
             joiner_secret,

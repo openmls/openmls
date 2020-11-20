@@ -10,7 +10,7 @@ fn test_encryption_secret_removal() {
         let epoch_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         let welcome_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         let mut epoch_secrets =
-            EpochSecrets::derive_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret);
+            EpochSecrets::derive_initial_epoch_secrets(ciphersuite, &epoch_secret, welcome_secret);
         // Getting the encryption secret once should not be a problem.
         let encryption_secret = epoch_secrets.consume_encryption_secret();
         assert!(encryption_secret.is_ok());

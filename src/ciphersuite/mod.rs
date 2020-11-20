@@ -76,6 +76,13 @@ impl Secret {
     pub(crate) fn to_vec(&self) -> Vec<u8> {
         self.value.clone()
     }
+
+    /// Randomly sample a fresh `Secret`.
+    pub(crate) fn from_random(length: usize) -> Self {
+        Secret {
+            value: get_random_vec(length),
+        }
+    }
 }
 
 impl From<Vec<u8>> for Secret {

@@ -146,12 +146,13 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
         };
-        let mut epoch_secrets = EpochSecrets::derive_epoch_secrets(
-            &ciphersuite,
-            &group_secrets.joiner_secret,
-            Secret::new_empty_secret(),
-        );
-        let secret_tree = epoch_secrets.create_secret_tree(tree.leaf_count()).unwrap();
+        let member_secret =
+            MemberSecret::derive_member_secret(ciphersuite, &group_secrets.joiner_secret, None);
+        let (epoch_secrets, encryption_secret) =
+            EpochSecrets::derive_epoch_secrets(&ciphersuite, member_secret, &group_context);
+        let secret_tree = encryption_secret
+            .create_secret_tree(tree.leaf_count())
+            .unwrap();
 
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
@@ -207,8 +208,10 @@ impl MlsGroup {
             &[],
         );
         let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
-        let (welcome_key, welcome_nonce) =
-            compute_welcome_key_nonce(ciphersuite, &group_secrets.joiner_secret);
+        // TODO: Currently the PSK is None. This should be fixed with issue #141
+        let member_secret =
+            MemberSecret::derive_member_secret(ciphersuite, &group_secrets.joiner_secret, None);
+        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
         let group_info_bytes =
             match welcome_key.aead_open(encrypted_group_info, &[], &welcome_nonce) {
                 Ok(bytes) => bytes,

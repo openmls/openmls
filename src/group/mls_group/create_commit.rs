@@ -7,8 +7,8 @@ use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::messages::*;
+use crate::tree::private_tree::CommitSecret;
 use crate::tree::treemath;
-use crate::utils::*;
 
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
@@ -61,8 +61,8 @@ impl MlsGroup {
             )
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = Secret::from(zero(self.ciphersuite().hash_length()));
-            (commit_secret, None, None, None)
+            let commit_secret = CommitSecret::zero_commit_secret(ciphersuite);
+            (&commit_secret, None, None, None)
         };
         // Create commit message
         let commit = Commit {
@@ -84,11 +84,16 @@ impl MlsGroup {
             tree_hash: tree_hash.clone(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
-        let mut provisional_epoch_secrets = self.epoch_secrets.clone();
-        let epoch_secret = provisional_epoch_secrets.get_new_epoch_secrets(
+        let epoch_secrets_clone = self.epoch_secrets.clone();
+        let joiner_secret =
+            JoinerSecret::derive_joiner_secret(ciphersuite, commit_secret, epoch_secrets_clone);
+        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
+        // Derive the welcome key material before consuming the `MemberSecret`
+        // immediately afterwards.
+        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
+        let (provisional_epoch_secrets, encryption_secret) = EpochSecrets::derive_epoch_secrets(
             &ciphersuite,
-            commit_secret,
-            None,
+            member_secret,
             &provisional_group_context,
         );
         // Compute confirmation tag
@@ -127,8 +132,6 @@ impl MlsGroup {
             );
             group_info.set_signature(group_info.sign(credential_bundle));
             // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) =
-                compute_welcome_key_nonce(ciphersuite, &epoch_secret);
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
@@ -158,7 +161,7 @@ impl MlsGroup {
                     None
                 };
                 let group_secrets = GroupSecrets {
-                    joiner_secret: epoch_secret.clone(),
+                    joiner_secret: joiner_secret.clone(),
                     path_secret,
                 };
                 let group_secrets_bytes = group_secrets.encode_detached().unwrap();

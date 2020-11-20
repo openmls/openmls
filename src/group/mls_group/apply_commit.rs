@@ -4,7 +4,7 @@ use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
-use crate::utils::*;
+use crate::tree::private_tree::CommitSecret;
 
 impl MlsGroup {
     pub(crate) fn apply_commit_internal(
@@ -88,7 +88,7 @@ impl MlsGroup {
             if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
-            Secret::from(zero(ciphersuite.hash_length()))
+            &CommitSecret::zero_commit_secret(ciphersuite)
         };
 
         // Create provisional group state
@@ -108,11 +108,13 @@ impl MlsGroup {
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
 
-        let mut provisional_epoch_secrets = self.epoch_secrets.clone();
-        provisional_epoch_secrets.get_new_epoch_secrets(
-            &ciphersuite,
-            commit_secret,
-            None,
+        let epoch_secrets = self.epoch_secrets.clone();
+        let joiner_secret =
+            JoinerSecret::derive_joiner_secret(ciphersuite, commit_secret, epoch_secrets);
+        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
+        let (provisional_epoch_secrets, encryption_secret) = EpochSecrets::derive_epoch_secrets(
+            ciphersuite,
+            member_secret,
             &provisional_group_context,
         );
 
@@ -157,7 +159,7 @@ impl MlsGroup {
         // Create a secret_tree, dropping the `encryption_secret` in the
         // process.
         self.secret_tree = RefCell::new(
-            self.epoch_secrets
+            encryption_secret
                 .create_secret_tree(provisional_tree.leaf_count())
                 .unwrap(),
         );
