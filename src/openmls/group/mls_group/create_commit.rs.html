@@ -292,7 +292,7 @@
         <span class="comment">// Compute confirmation tag</span>
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">ConfirmationTag</span>::<span class="ident">new</span>(
             <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">provisional_epoch_secrets</span>.<span class="ident">confirmation_key</span>,
+            <span class="kw-2">&amp;</span><span class="ident">provisional_epoch_secrets</span>.<span class="ident">confirmation_key</span>(),
             <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>,
         );
         <span class="comment">// Create MLSPlaintext</span>

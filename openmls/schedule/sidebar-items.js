@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["derive_secret",""],["hkdf_expand_label",""],["mls_exporter",""]],"struct":[["EpochSecrets",""],["HkdfLabel",""]]});
+initSidebarItems({"fn":[["derive_secret",""],["hkdf_expand_label",""],["mls_exporter",""]],"mod":[["errors",""]],"struct":[["EpochSecrets",""],["HkdfLabel",""]]});
