@@ -88,12 +88,12 @@ impl SecretTree {
     /// `size`. The inner nodes of the tree and the SenderRatchets only get
     /// initialized when secrets are requested either through `get_secret()`
     /// or `next_secret()`.
-    pub fn new(encryption_secret: &Secret, size: LeafIndex) -> Self {
+    pub fn new(encryption_secret: Secret, size: LeafIndex) -> Self {
         let root = root(size);
         let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(SecretTreeNode {
-            secret: encryption_secret.clone(),
+            secret: encryption_secret,
         });
 
         SecretTree {

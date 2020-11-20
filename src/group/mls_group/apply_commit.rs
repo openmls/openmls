@@ -125,7 +125,7 @@ impl MlsGroup {
         // Verify confirmation tag
         let own_confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
-            &provisional_epoch_secrets.confirmation_key,
+            &provisional_epoch_secrets.confirmation_key(),
             &confirmed_transcript_hash,
         );
         if &own_confirmation_tag != received_confirmation_tag {
@@ -154,10 +154,13 @@ impl MlsGroup {
         self.group_context = provisional_group_context;
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
-        self.secret_tree = RefCell::new(SecretTree::new(
-            &self.epoch_secrets.encryption_secret,
-            provisional_tree.leaf_count(),
-        ));
+        // Create a secret_tree, dropping the `encryption_secret` in the
+        // process.
+        self.secret_tree = RefCell::new(
+            self.epoch_secrets
+                .create_secret_tree(provisional_tree.leaf_count())
+                .unwrap(),
+        );
         Ok(())
     }
 }
