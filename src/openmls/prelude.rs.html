@@ -23,13 +23,22 @@
 <span id="20">20</span>
 <span id="21">21</span>
 <span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="doccomment">//! Prelude for openmls.</span>
-<span class="doccomment">//! Include this to get access to all the public functions of openmls.</span>
+<span class="doccomment">//! Prelude for OpenMLS.</span>
+<span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">MlsGroup</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">ManagedGroup</span>, <span class="ident">ManagedGroupCallbacks</span>, <span class="ident">ManagedGroupConfig</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{
+    <span class="ident">HandshakeMessageFormat</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">ManagedGroup</span>, <span class="ident">ManagedGroupCallbacks</span>,
+    <span class="ident">ManagedGroupConfig</span>, <span class="ident">ManagedGroupError</span>, <span class="ident">UpdatePolicy</span>,
+};
 <span class="comment">// Errors</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">errors</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">GroupError</span>, <span class="ident">WelcomeError</span>};
 
@@ -41,10 +50,13 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">creds</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::{<span class="ident">sender</span>::<span class="ident">Sender</span>, <span class="kw-2">*</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupId</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">Welcome</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::{
+    <span class="ident">proposals</span>::{<span class="ident">AddProposal</span>, <span class="ident">RemoveProposal</span>, <span class="ident">UpdateProposal</span>},
+    <span class="ident">Welcome</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utils</span>::<span class="kw-2">*</span>;
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "openmls";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

@@ -94,6 +94,9 @@
 <span id="91">91</span>
 <span id="92">92</span>
 <span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Section  9. Message Framing</span>
 <span class="doccomment">//!</span>
@@ -168,8 +171,11 @@
             <span class="ident">sender</span>,
         }
     }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_node_index</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">NodeIndex</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_node_index</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">NodeIndex</span> {
         <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="self">self</span>.<span class="ident">sender</span>)
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_leaf_index</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LeafIndex</span> {
+        <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="self">self</span>.<span class="ident">to_node_index</span>())
     }
 }
 
