@@ -3,11 +3,10 @@ use openmls::prelude::*;
 use std::str;
 
 /// Validator function for AddProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_porposal:
-/// &AddProposal) -> bool`
+/// `(managed_group: &ManagedGroup, sender: &Sender, aad_proposal: &AddProposal)
+/// -> bool`
 fn validate_add(
     _managed_group: &ManagedGroup,
-    _aad: &[u8],
     _sender: &Sender,
     _add_proposal: &AddProposal,
 ) -> bool {
@@ -15,18 +14,17 @@ fn validate_add(
 }
 
 /// Validator function for RemoveProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender,
-/// remove_porposal: &RemoveProposal) -> bool`
+/// `(managed_group: &ManagedGroup, sender: &Sender, remove_proposal:
+/// &RemoveProposal) -> bool`
 fn validate_remove(
     _managed_group: &ManagedGroup,
-    _aad: &[u8],
     _sender: &Sender,
     _remove_porposal: &RemoveProposal,
 ) -> bool {
     true
 }
 /// Event listener function for AddProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, aad_proposal:
+/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Sender, add_proposal:
 /// &AddProposal)`
 fn member_added(
     managed_group: &ManagedGroup,
@@ -35,10 +33,16 @@ fn member_added(
     add_proposal: &AddProposal,
 ) {
     println!(
-        "AddProposal received in group {} by {}: {} added {}",
+        "AddProposal received in group '{}' by '{}': '{}' added '{}'",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
+        str::from_utf8(
+            managed_group
+                .member(sender.to_leaf_index())
+                .unwrap()
+                .get_identity()
+        )
+        .unwrap(),
         str::from_utf8(add_proposal.key_package.credential().get_identity()).unwrap(),
     );
 }
@@ -52,16 +56,17 @@ fn member_removed(
     remove_proposal: &RemoveProposal,
 ) {
     println!(
-        "RemoveProposal received in group {} by {}: {} removed {}",
+        "RemoveProposal received in group '{}' by '{}': '{}' removed '{}'",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
         str::from_utf8(
             managed_group
-                .member(LeafIndex::from(remove_proposal.removed))
+                .member(sender.to_leaf_index())
+                .unwrap()
                 .get_identity()
         )
         .unwrap(),
+        remove_proposal.removed,
     );
 }
 /// Event listener function for UpdateProposals
@@ -74,10 +79,16 @@ fn member_updated(
     _update_proposal: &UpdateProposal,
 ) {
     println!(
-        "UpdateProposal received in group {} by {}: {}",
+        "UpdateProposal received in group '{}' by '{}': '{}'",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
+        str::from_utf8(
+            managed_group
+                .member(sender.to_leaf_index())
+                .unwrap()
+                .get_identity()
+        )
+        .unwrap(),
     );
 }
 /// Event listener function for application messages
@@ -90,36 +101,38 @@ fn app_message_received(
     message: &[u8],
 ) {
     println!(
-        "Message received in group {} by {} from {}: {}",
+        "Message received in group '{}' by '{}' from '{}': {}",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
         str::from_utf8(&managed_group.client_id()).unwrap(),
-        str::from_utf8(managed_group.member(sender.to_leaf_index()).get_identity()).unwrap(),
+        str::from_utf8(
+            managed_group
+                .member(sender.to_leaf_index())
+                .unwrap()
+                .get_identity()
+        )
+        .unwrap(),
         str::from_utf8(message).unwrap()
     );
 }
 /// Event listener function for invalid messages
 /// `(managed_group: &ManagedGroup, aad_option: Option<&[u8]>, sender_option:
 /// Option<&Sender>, error: InvalidMessageError)`
-fn invalid_message_received(
-    managed_group: &ManagedGroup,
-    aad_option: Option<&[u8]>,
-    sender_option: Option<&Sender>,
-    error: InvalidMessageError,
-) {
-    println!(
-        "Invalid message received in group {} by {}, error: {}",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&managed_group.client_id()).unwrap(),
-        error,
-    );
-    if let Some(aad) = aad_option {
-        println!(" >>> AAD: {:?}", aad);
-    }
-    if let Some(sender) = sender_option {
-        println!(
-            " >>> Sender: {:?}",
-            managed_group.member(sender.to_leaf_index())
-        );
+fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageError) {
+    match error {
+        InvalidMessageError::InvalidCiphertext(aad) => {
+            println!(
+                "Invalid ciphertext message received in group '{}' by '{}' with AAD {:?}",
+                str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
+                str::from_utf8(&managed_group.client_id()).unwrap(),
+                aad
+            );
+        }
+        InvalidMessageError::CommitWithInvalidProposals => {
+            println!("A Commit message with one ore more invalid proposals was received");
+        }
+        InvalidMessageError::CommitError(e) => {
+            println!("An error occured when applying a Commit message: {:?}", e);
+        }
     }
 }
 /// Event listener function for errors that occur
@@ -144,10 +157,10 @@ fn error_occured(managed_group: &ManagedGroup, error: ManagedGroupError) {
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
 #[test]
-#[should_panic]
+//#[should_panic]
 fn managed_group_operations() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let group_id = GroupId::from_slice(b"Test group");
+        let group_id = GroupId::from_slice(b"Test Group");
 
         // Define credential bundles
         let alice_credential_bundle =
@@ -181,13 +194,8 @@ fn managed_group_operations() {
             ManagedGroupConfig::new(HandshakeMessageFormat::Plaintext, update_policy, callbacks);
 
         // === Alice creates a group ===
-        let mut alice_group = ManagedGroup::new(
-            &alice_credential_bundle,
-            &managed_group_config,
-            group_id,
-            alice_key_package_bundle,
-        )
-        .unwrap();
+        let mut alice_group =
+            ManagedGroup::new(&managed_group_config, group_id, alice_key_package_bundle).unwrap();
 
         // === Alice adds Bob ===
         let (queued_messages, welcome) =
@@ -207,7 +215,6 @@ fn managed_group_operations() {
         assert_eq!(members[1].get_identity(), b"Bob");
 
         let mut bob_group = match ManagedGroup::new_from_welcome(
-            &bob_credential_bundle,
             &managed_group_config,
             welcome,
             Some(alice_group.export_ratchet_tree()),
@@ -222,7 +229,11 @@ fn managed_group_operations() {
 
         // === Alice sends a message to Bob ===
         let message_alice = b"Hi, I'm Alice!";
-        let queued_message = alice_group.create_message(&alice_credential_bundle, message_alice);
+        let queued_message =
+            match alice_group.create_message(&alice_credential_bundle, message_alice) {
+                Ok(m) => m,
+                Err(e) => panic!("Error creating application message: {:?}", e),
+            };
         bob_group.process_messages(&[queued_message]);
 
         // === Bob updates and commits ===
@@ -234,7 +245,10 @@ fn managed_group_operations() {
         bob_group.process_messages(&queued_messages);
 
         // Check that both groups have the same state
-        assert_eq!(alice_group.export_secret(&[]), bob_group.export_secret(&[]));
+        assert_eq!(
+            alice_group.export_secret("", 32),
+            bob_group.export_secret("", 32)
+        );
 
         // Make sure that both groups have the same public tree
         assert_eq!(
@@ -251,7 +265,10 @@ fn managed_group_operations() {
         bob_group.process_messages(&queued_messages);
 
         // Check that both groups have the same state
-        assert_eq!(alice_group.export_secret(&[]), bob_group.export_secret(&[]));
+        assert_eq!(
+            alice_group.export_secret("", 32),
+            bob_group.export_secret("", 32)
+        );
 
         // Make sure that both groups have the same public tree
         assert_eq!(
@@ -279,7 +296,6 @@ fn managed_group_operations() {
         bob_group.process_messages(&queued_messages);
 
         let mut charlie_group = match ManagedGroup::new_from_welcome(
-            &charlie_credential_bundle,
             &managed_group_config,
             welcome,
             Some(bob_group.export_ratchet_tree()),
@@ -303,12 +319,15 @@ fn managed_group_operations() {
         let members = alice_group.get_members();
         assert_eq!(members[0].get_identity(), b"Alice");
         assert_eq!(members[1].get_identity(), b"Bob");
-        assert_eq!(members[1].get_identity(), b"Charlie");
+        assert_eq!(members[2].get_identity(), b"Charlie");
 
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
         let queued_message =
-            charlie_group.create_message(&charlie_credential_bundle, message_charlie);
+            match charlie_group.create_message(&charlie_credential_bundle, message_charlie) {
+                Ok(m) => m,
+                Err(e) => panic!("Error creating application message: {:?}", e),
+            };
         alice_group.process_messages(&[queued_message.clone()]);
         bob_group.process_messages(&[queued_message]);
 
@@ -322,10 +341,13 @@ fn managed_group_operations() {
         charlie_group.process_messages(&queued_messages);
 
         // Check that all groups have the same state
-        assert_eq!(alice_group.export_secret(&[]), bob_group.export_secret(&[]));
         assert_eq!(
-            alice_group.export_secret(&[]),
-            charlie_group.export_secret(&[])
+            alice_group.export_secret("", 32),
+            bob_group.export_secret("", 32)
+        );
+        assert_eq!(
+            alice_group.export_secret("", 32),
+            charlie_group.export_secret("", 32)
         );
 
         // Make sure that all groups have the same public tree
@@ -350,19 +372,20 @@ fn managed_group_operations() {
         // Make sure that all groups have the same public tree
         assert_eq!(
             alice_group.export_ratchet_tree(),
-            bob_group.export_ratchet_tree(),
-        );
-        assert_eq!(
-            alice_group.export_ratchet_tree(),
             charlie_group.export_ratchet_tree()
         );
 
         // Make sure the group only contains two members
         assert_eq!(alice_group.get_members().len(), 2);
 
-        // Check that Alice & Bob are the members of the group
+        // Check that Alice & Charlie are the members of the group
         let members = alice_group.get_members();
         assert_eq!(members[0].get_identity(), b"Alice");
         assert_eq!(members[1].get_identity(), b"Charlie");
+
+        // Check that Bob can no longer send messages
+        assert!(bob_group
+            .create_message(&bob_credential_bundle, b"Should not go through")
+            .is_err());
     }
 }

@@ -77,7 +77,7 @@ impl MlsGroup {
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 };
                 provisional_tree
-                    .replace_private_tree(ciphersuite, own_kpb, &serialized_context)
+                    .replace_private_tree(own_kpb, &serialized_context)
                     .unwrap()
             } else {
                 provisional_tree

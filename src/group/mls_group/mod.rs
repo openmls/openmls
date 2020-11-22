@@ -166,7 +166,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: Vec<MLSPlaintext>,
+        proposals: &[MLSPlaintext],
         force_self_update: bool,
     ) -> CreateCommitResult {
         self.create_commit_internal(aad, credential_bundle, proposals, force_self_update)
@@ -218,7 +218,7 @@ impl MlsGroup {
         )
     }
 
-    pub fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
+    pub fn decrypt(&mut self, mls_ciphertext: &MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
@@ -269,8 +269,8 @@ impl MlsGroup {
         &self.group_context
     }
 
-    pub fn group_id(&self) -> GroupId {
-        self.group_context.group_id.clone()
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_context.group_id
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {

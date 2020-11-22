@@ -50,7 +50,7 @@ impl TestClient {
         key_package_bundles
             .iter()
             .position(|x| x.get_key_package().hash() == key_package.hash())
-            .and_then(|index| Some(key_package_bundles.remove(index)))
+            .map(|index| key_package_bundles.remove(index))
     }
 }
 
@@ -184,7 +184,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .create_commit(
                     group_aad,
                     &initial_credential_bundle,
-                    proposal_list.clone(),
+                    &proposal_list,
                     true, /* Set this to true to populate the tree a little bit. */
                 )
                 .unwrap();
@@ -240,7 +240,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 new_group_member
                     .group_states
                     .borrow_mut()
-                    .insert(new_group.group_id(), new_group);
+                    .insert(new_group.group_id().clone(), new_group);
             }
         }
     }

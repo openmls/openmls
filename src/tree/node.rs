@@ -116,6 +116,11 @@ impl Node {
         }
     }
 
+    /// Get a reference to the key package in this node.
+    pub(crate) fn get_key_package_ref(&self) -> Option<&KeyPackage> {
+        self.key_package.as_ref()
+    }
+
     /// Get a mutable reference to the key package in this node.
     pub(crate) fn get_key_package_ref_mut(&mut self) -> Option<&mut KeyPackage> {
         self.key_package.as_mut()

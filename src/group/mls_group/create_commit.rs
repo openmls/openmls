@@ -15,7 +15,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: Vec<MLSPlaintext>,
+        proposals: &[MLSPlaintext],
         force_self_update: bool,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
@@ -48,11 +48,7 @@ impl MlsGroup {
         let (commit_secret, path, path_secrets_option, kpb_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
-                .refresh_private_tree(
-                    ciphersuite,
-                    credential_bundle,
-                    &self.group_context.serialize(),
-                );
+                .refresh_private_tree(credential_bundle, &self.group_context.serialize());
             (
                 commit_secret,
                 Some(path),

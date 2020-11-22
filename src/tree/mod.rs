@@ -213,7 +213,7 @@ impl RatchetTree {
     }
 
     /// Get a reference to the own key package.
-    fn get_own_key_package_ref(&self) -> &KeyPackage {
+    pub fn get_own_key_package_ref(&self) -> &KeyPackage {
         let own_node = &self.nodes[self.get_own_node_index().as_usize()];
         own_node.key_package.as_ref().unwrap()
     }
@@ -374,12 +374,10 @@ impl RatchetTree {
     /// Update the private tree with the new `KeyPackageBundle`.
     pub(crate) fn replace_private_tree(
         &mut self,
-        ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
     ) -> Result<Secret, TreeError> {
         let _path_option = self.replace_private_tree_(
-            ciphersuite,
             key_package_bundle,
             group_context,
             false, /* without update path */
@@ -390,7 +388,6 @@ impl RatchetTree {
     /// Update the private tree.
     pub(crate) fn refresh_private_tree(
         &mut self,
-        ciphersuite: &Ciphersuite,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
     ) -> (Secret, UpdatePath, PathSecrets, KeyPackageBundle) {
@@ -399,13 +396,12 @@ impl RatchetTree {
 
         // Replace the init key in the current KeyPackage
         let mut key_package_bundle =
-            KeyPackageBundle::from_rekeyed_key_package(ciphersuite, self.get_own_key_package_ref());
+            KeyPackageBundle::from_rekeyed_key_package(self.get_own_key_package_ref());
 
         // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
         let mut path = self
             .replace_private_tree_(
-                ciphersuite,
                 &key_package_bundle,
                 group_context,
                 true, /* with update path */
@@ -435,12 +431,12 @@ impl RatchetTree {
     /// `key_package_bundle`.
     fn replace_private_tree_(
         &mut self,
-        ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         with_update_path: bool,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.get_key_package().clone();
+        let ciphersuite = key_package.cipher_suite();
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
