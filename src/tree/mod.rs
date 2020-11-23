@@ -654,7 +654,7 @@ impl RatchetTree {
         {
             has_updates = true;
             let update_proposal = &queued_proposal.get_proposal_ref().as_update().unwrap();
-            let sender_index = queued_proposal.get_sender_ref().as_node_index();
+            let sender_index = queued_proposal.get_sender_ref().to_node_index();
             // Prepare leaf node
             let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
             // Blank the direct path of that leaf node

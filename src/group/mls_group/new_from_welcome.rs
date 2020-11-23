@@ -7,7 +7,7 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::{index::*, node::*, secret_tree::*, treemath, *};
+use crate::tree::{index::*, node::*, treemath, *};
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -146,16 +146,16 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
         };
-        let epoch_secrets = EpochSecrets::derive_epoch_secrets(
+        let mut epoch_secrets = EpochSecrets::derive_epoch_secrets(
             &ciphersuite,
             &group_secrets.joiner_secret,
             Secret::new_empty_secret(),
         );
-        let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, tree.leaf_count());
+        let secret_tree = epoch_secrets.create_secret_tree(tree.leaf_count()).unwrap();
 
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
-            &epoch_secrets.confirmation_key,
+            &epoch_secrets.confirmation_key(),
             &group_context.confirmed_transcript_hash,
         );
         let interim_transcript_hash = update_interim_transcript_hash(
