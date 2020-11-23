@@ -45,7 +45,6 @@ use openmls::prelude::*;
 #[cfg(test)]
 mod test;
 
-
 /// The DS state.
 /// It holds a list of clients and their information.
 #[derive(Default, Debug)]
