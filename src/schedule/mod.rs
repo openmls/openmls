@@ -1,8 +1,7 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
-use crate::messages::*;
-use crate::prelude::AddProposal;
+use crate::messages::{proposals::AddProposal, GroupSecrets, PathSecret};
 use crate::tree::index::LeafIndex;
 use crate::tree::index::NodeIndex;
 use crate::tree::private_tree::CommitSecret;
@@ -18,8 +17,9 @@ pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &Secret, label: &str) ->
     hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
 }
 
-/// It's necessary to clone this to be able to create a provisional group state,
-/// which includes the `InitSecret`.
+/// The `InitSecret` is used to start the connect the next epoch to the current
+/// one. It's necessary to be able clone this to create a provisional group
+/// state, which includes the `InitSecret`.
 #[derive(Debug, Clone)]
 pub struct InitSecret {
     secret: Secret,
@@ -56,11 +56,10 @@ impl JoinerSecret {
     pub(crate) fn derive_joiner_secret(
         ciphersuite: &Ciphersuite,
         commit_secret: &CommitSecret,
-        epoch_secrets: EpochSecrets,
+        init_secret: InitSecret,
     ) -> Self {
         JoinerSecret {
-            secret: ciphersuite
-                .hkdf_extract(commit_secret.secret(), &epoch_secrets.init_secret.secret),
+            secret: ciphersuite.hkdf_extract(commit_secret.secret(), &init_secret.secret),
         }
     }
 
@@ -179,6 +178,7 @@ impl MemberSecret {
         }
     }
 
+    /// Derive a welcome key and nonce pair to decrypt a `Welcome` message.
     pub(crate) fn derive_welcome_key_nonce(
         &self,
         ciphersuite: &Ciphersuite,
@@ -231,6 +231,7 @@ pub struct EncryptionSecret {
 }
 
 impl EncryptionSecret {
+    /// Derive an encryption secret from a reference to an `EpochSecret`.
     fn derive_encryption_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         EncryptionSecret {
             secret: derive_secret(ciphersuite, &epoch_secret.secret, "encryption"),
@@ -260,12 +261,11 @@ impl EncryptionSecret {
 /// The `EpochSecrets` contain keys (or secrets), which are accessible outside
 /// of the `KeySchedule` and which don't get consumed immediately upon first
 /// use.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct EpochSecrets {
     sender_data_secret: Secret,
     exporter_secret: Secret,
     confirmation_key: Secret,
-    init_secret: InitSecret,
 }
 
 impl EpochSecrets {
@@ -285,7 +285,7 @@ impl EpochSecrets {
         ciphersuite: &Ciphersuite,
         member_secret: MemberSecret,
         group_context: &GroupContext,
-    ) -> (Self, EncryptionSecret) {
+    ) -> (Self, InitSecret, EncryptionSecret) {
         let epoch_secret =
             EpochSecret::derive_epoch_secret(ciphersuite, group_context, member_secret);
         let sender_data_secret = derive_secret(ciphersuite, &epoch_secret.secret, "sender data");
@@ -298,9 +298,8 @@ impl EpochSecrets {
             sender_data_secret,
             exporter_secret,
             confirmation_key,
-            init_secret,
         };
-        (epoch_secrets, encryption_secret)
+        (epoch_secrets, init_secret, encryption_secret)
     }
 
     /// Derive a `Secret` from the exporter secret.
@@ -336,7 +335,7 @@ pub fn hkdf_expand_label(
     ciphersuite.hkdf_expand(secret, &info, length).unwrap()
 }
 
-pub struct HkdfLabel {
+struct HkdfLabel {
     length: u16,
     label: String,
     context: Vec<u8>,

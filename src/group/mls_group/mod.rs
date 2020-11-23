@@ -25,6 +25,7 @@ pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
     epoch_secrets: EpochSecrets,
+    init_secret: InitSecret,
     secret_tree: RefCell<SecretTree>,
     tree: RefCell<RatchetTree>,
     interim_transcript_hash: Vec<u8>,
@@ -56,7 +57,7 @@ impl MlsGroup {
         let commit_secret = tree.private_tree().get_commit_secret();
         let member_secret =
             MemberSecret::derive_initial_member_secret(ciphersuite, commit_secret, None);
-        let (epoch_secrets, encryption_secret) =
+        let (epoch_secrets, init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(ciphersuite, member_secret, &group_context);
         let secret_tree = encryption_secret
             .create_secret_tree(LeafIndex::from(1u32))
@@ -66,6 +67,7 @@ impl MlsGroup {
             ciphersuite,
             group_context,
             epoch_secrets,
+            init_secret,
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
             interim_transcript_hash,

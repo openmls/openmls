@@ -76,9 +76,12 @@ impl MlsGroup {
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
-        let epoch_secrets_clone = self.epoch_secrets.clone();
-        let joiner_secret =
-            JoinerSecret::derive_joiner_secret(ciphersuite, commit_secret, epoch_secrets_clone);
+        //let epoch_secrets_clone = self.epoch_secrets.clone();
+        let joiner_secret = JoinerSecret::derive_joiner_secret(
+            ciphersuite,
+            commit_secret,
+            self.init_secret.clone(),
+        );
         // Create group secrets
         let plaintext_secrets = joiner_secret.create_group_secrets(
             &invited_members,
@@ -98,7 +101,9 @@ impl MlsGroup {
             tree_hash: tree_hash.clone(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
-        let (provisional_epoch_secrets, _provisional_encryption_secret) =
+        // The init- and encryption secrets are not used here. They come into
+        // play when the provisional group state is applied in `apply_commit`.
+        let (provisional_epoch_secrets, _provisional_init_secret, _provisional_encryption_secret) =
             EpochSecrets::derive_epoch_secrets(
                 &ciphersuite,
                 member_secret,

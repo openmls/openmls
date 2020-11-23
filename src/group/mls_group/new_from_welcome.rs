@@ -148,7 +148,7 @@ impl MlsGroup {
         };
         let member_secret =
             MemberSecret::derive_member_secret(ciphersuite, &group_secrets.joiner_secret, None);
-        let (epoch_secrets, encryption_secret) =
+        let (epoch_secrets, init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(&ciphersuite, member_secret, &group_context);
         let secret_tree = encryption_secret
             .create_secret_tree(tree.leaf_count())
@@ -173,6 +173,7 @@ impl MlsGroup {
                 ciphersuite,
                 group_context,
                 epoch_secrets,
+                init_secret,
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
