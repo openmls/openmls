@@ -8,7 +8,7 @@ fn test_boundaries() {
 
     for ciphersuite in Config::supported_ciphersuites() {
         let mut secret_tree =
-            SecretTree::new(&Secret::from([0u8; 32].to_vec()), LeafIndex::from(2u32));
+            SecretTree::new(Secret::from([0u8; 32].to_vec()), LeafIndex::from(2u32));
         let secret_type = SecretType::ApplicationSecret;
         assert!(secret_tree
             .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
@@ -53,7 +53,7 @@ fn test_boundaries() {
             Err(SecretTreeError::IndexOutOfBounds)
         );
         let mut largetree = SecretTree::new(
-            &Secret::from([0u8; 32].to_vec()),
+            Secret::from([0u8; 32].to_vec()),
             LeafIndex::from(100_000u32),
         );
         assert!(largetree
@@ -91,7 +91,7 @@ fn increment_generation() {
     for ciphersuite in Config::supported_ciphersuites() {
         let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
         let mut secret_tree = SecretTree::new(
-            &Secret::from([1, 2, 3].to_vec()),
+            Secret::from([1, 2, 3].to_vec()),
             LeafIndex::from(SIZE as u32),
         );
         for i in 0..SIZE {

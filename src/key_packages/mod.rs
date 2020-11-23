@@ -110,6 +110,11 @@ impl KeyPackage {
         &self.extensions
     }
 
+    /// Get a reference to the credential.
+    pub fn credential(&self) -> &Credential {
+        &self.credential
+    }
+
     /// Populate the `signature` field using the `credential_bundle`.
     pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
         let payload = &self.unsigned_payload().unwrap();
@@ -190,11 +195,6 @@ impl KeyPackage {
     /// after calling this function!
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions.retain(|e| e.get_type() != extension_type);
-    }
-
-    /// Get a reference to the credential.
-    pub(crate) fn credential(&self) -> &Credential {
-        &self.credential
     }
 
     /// Get a reference to the HPKE init key.

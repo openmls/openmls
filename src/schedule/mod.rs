@@ -1,6 +1,15 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
+use crate::tree::index::LeafIndex;
+use crate::tree::secret_tree::SecretTree;
+
+use self::errors::KeyScheduleError;
+
+pub mod errors;
+
+#[cfg(test)]
+mod test_schedule;
 
 pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &Secret, label: &str) -> Secret {
     hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
@@ -64,19 +73,19 @@ impl HkdfLabel {
 
 #[derive(Clone, Debug)]
 pub struct EpochSecrets {
-    pub welcome_secret: Secret,
-    pub sender_data_secret: Secret,
-    pub encryption_secret: Secret,
-    pub exporter_secret: Secret,
-    pub confirmation_key: Secret,
-    pub init_secret: Secret,
+    welcome_secret: Secret,
+    sender_data_secret: Secret,
+    encryption_secret: Option<Secret>,
+    exporter_secret: Secret,
+    confirmation_key: Secret,
+    init_secret: Secret,
 }
 
 impl Default for EpochSecrets {
     fn default() -> Self {
         let welcome_secret = Secret::new_empty_secret();
         let sender_data_secret = Secret::new_empty_secret();
-        let encryption_secret = Secret::new_empty_secret();
+        let encryption_secret = Some(Secret::new_empty_secret());
         let exporter_secret = Secret::new_empty_secret();
         let confirmation_key = Secret::new_empty_secret();
         let init_secret = Secret::new_empty_secret();
@@ -126,7 +135,7 @@ impl EpochSecrets {
         welcome_secret: Secret,
     ) -> EpochSecrets {
         let sender_data_secret = derive_secret(ciphersuite, epoch_secret, "sender data");
-        let encryption_secret = derive_secret(ciphersuite, epoch_secret, "encryption");
+        let encryption_secret = Some(derive_secret(ciphersuite, epoch_secret, "encryption"));
         let exporter_secret = derive_secret(ciphersuite, epoch_secret, "exporter");
         let confirmation_key = derive_secret(ciphersuite, epoch_secret, "confirm");
         let init_secret = derive_secret(ciphersuite, epoch_secret, "init");
@@ -139,16 +148,34 @@ impl EpochSecrets {
             init_secret,
         }
     }
-}
+    /// Create a `SecretTree` from the `encryption_secret` contained in the
+    /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
+    /// process, allowing us to achieve FS.
+    pub fn create_secret_tree(
+        &mut self,
+        treesize: LeafIndex,
+    ) -> Result<SecretTree, KeyScheduleError> {
+        let encryption_secret = self.consume_encryption_secret()?;
+        Ok(SecretTree::new(encryption_secret, treesize))
+    }
 
-impl Codec for EpochSecrets {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.welcome_secret.encode(buffer)?;
-        self.sender_data_secret.encode(buffer)?;
-        self.encryption_secret.encode(buffer)?;
-        self.exporter_secret.encode(buffer)?;
-        self.confirmation_key.encode(buffer)?;
-        self.init_secret.encode(buffer)?;
-        Ok(())
+    /// Consume the `encryption_secret` from the `EpochSecrets`, replacing it
+    /// with `None` and return it.
+    fn consume_encryption_secret(&mut self) -> Result<Secret, KeyScheduleError> {
+        let encryption_secret = match self.encryption_secret.take() {
+            Some(es) => es,
+            None => return Err(KeyScheduleError::SecretReuseError),
+        };
+        Ok(encryption_secret)
+    }
+
+    /// Get the sender_data secret.
+    pub(crate) fn sender_data_secret(&self) -> &Secret {
+        &self.sender_data_secret
+    }
+
+    /// Get the confirmation key.
+    pub(crate) fn confirmation_key(&self) -> &Secret {
+        &self.confirmation_key
     }
 }

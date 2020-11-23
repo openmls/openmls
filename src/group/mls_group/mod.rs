@@ -45,9 +45,13 @@ impl MlsGroup {
         info!("Created group {:x?}", id);
         debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
-        let epoch_secrets = EpochSecrets::default();
+        let mut epoch_secrets = EpochSecrets::default();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let secret_tree = SecretTree::new(&epoch_secrets.encryption_secret, LeafIndex::from(1u32));
+        // TODO: We're currently creating a secret tree from an empty secret
+        // here. This should be solved by #60.
+        let secret_tree = epoch_secrets
+            .create_secret_tree(LeafIndex::from(1u32))
+            .unwrap();
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
         let group_context = GroupContext {
             group_id,
