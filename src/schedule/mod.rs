@@ -82,7 +82,7 @@ impl JoinerSecret {
     /// include a `path_secret` into the `GroupSecrets`.
     pub(crate) fn create_group_secrets(
         &self,
-        invited_members: &Vec<(NodeIndex, AddProposal)>,
+        invited_members: &[(NodeIndex, AddProposal)],
         ciphersuite: &Ciphersuite,
         path_required: bool,
         provisional_tree: &RatchetTree,
@@ -90,11 +90,13 @@ impl JoinerSecret {
     ) -> Vec<(HPKEPublicKey, Vec<u8>, Vec<u8>)> {
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members.clone() {
-            let key_package = add_proposal.key_package;
+            let key_package = &add_proposal.key_package;
             let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
             let path_secret = if path_required {
-                let common_ancestor_index =
-                    treemath::common_ancestor_index(index, provisional_tree.get_own_node_index());
+                let common_ancestor_index = treemath::common_ancestor_index(
+                    index.clone(),
+                    provisional_tree.get_own_node_index(),
+                );
                 let dirpath = treemath::direct_path_root(
                     provisional_tree.get_own_node_index(),
                     provisional_tree.leaf_count(),
