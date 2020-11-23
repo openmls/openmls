@@ -57,3 +57,12 @@ fn default_ciphersuites() {
         supported_ciphersuites
     );
 }
+
+#[test]
+fn default_constants() {
+    // Make sure the supported ciphersuites are what we expect them to be.
+    let default_key_package_lifetime = Config::default_key_package_lifetime();
+    let key_package_lifetime_margin = Config::key_package_lifetime_margin();
+    assert_eq!(60 * 60 * 24 * 28 * 3, default_key_package_lifetime);
+    assert_eq!(60 * 60, key_package_lifetime_margin);
+}
