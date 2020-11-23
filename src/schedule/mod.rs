@@ -1,16 +1,18 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
+use crate::messages::*;
+use crate::prelude::AddProposal;
 use crate::tree::index::LeafIndex;
+use crate::tree::index::NodeIndex;
 use crate::tree::private_tree::CommitSecret;
 use crate::tree::secret_tree::SecretTree;
+use crate::tree::treemath;
+use crate::tree::RatchetTree;
 
 use self::errors::KeyScheduleError;
 
 pub mod errors;
-
-#[cfg(test)]
-mod test_schedule;
 
 pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &Secret, label: &str) -> Secret {
     hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
@@ -74,6 +76,53 @@ impl JoinerSecret {
         JoinerSecret {
             secret: ciphersuite.hkdf_extract(commit_secret.secret(), &initial_init_secret.secret),
         }
+    }
+
+    /// Create the `GroupSecrets` for a number of `invited_members` based on a
+    /// provisional `RatchetTree`. `path_required` indicates if we need to
+    /// include a `path_secret` into the `GroupSecrets`.
+    pub(crate) fn create_group_secrets(
+        &self,
+        invited_members: &Vec<(NodeIndex, AddProposal)>,
+        ciphersuite: &Ciphersuite,
+        path_required: bool,
+        provisional_tree: &RatchetTree,
+        path_secrets_option: Option<Vec<Secret>>,
+    ) -> Vec<(HPKEPublicKey, Vec<u8>, Vec<u8>)> {
+        let mut plaintext_secrets = vec![];
+        for (index, add_proposal) in invited_members.clone() {
+            let key_package = add_proposal.key_package;
+            let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
+            let path_secret = if path_required {
+                let common_ancestor_index =
+                    treemath::common_ancestor_index(index, provisional_tree.get_own_node_index());
+                let dirpath = treemath::direct_path_root(
+                    provisional_tree.get_own_node_index(),
+                    provisional_tree.leaf_count(),
+                )
+                .expect("create_commit_internal: TreeMath error when computing direct path.");
+                let position = dirpath
+                    .iter()
+                    .position(|&x| x == common_ancestor_index)
+                    .unwrap();
+                let path_secrets = path_secrets_option.clone().unwrap();
+                let path_secret = path_secrets[position].clone();
+                Some(PathSecret { path_secret })
+            } else {
+                None
+            };
+            let group_secrets = GroupSecrets {
+                joiner_secret: self.clone(),
+                path_secret,
+            };
+            let group_secrets_bytes = group_secrets.encode_detached().unwrap();
+            plaintext_secrets.push((
+                key_package.hpke_init_key().clone(),
+                group_secrets_bytes,
+                key_package_hash,
+            ));
+        }
+        plaintext_secrets
     }
 }
 
@@ -152,23 +201,6 @@ impl MemberSecret {
     }
 }
 
-pub struct WelcomeSecret {
-    secret: Secret,
-}
-
-impl WelcomeSecret {
-    /// Derive a `WelcomeSecret` without consuming the `MemberSecret`, which we
-    /// still need to derive the `EpochSecrets`.
-    pub(crate) fn derive_welcome_secret(
-        ciphersuite: &Ciphersuite,
-        member_secret: &MemberSecret,
-    ) -> Self {
-        WelcomeSecret {
-            secret: derive_secret(ciphersuite, &member_secret.secret, "welcome"),
-        }
-    }
-}
-
 struct EpochSecret {
     secret: Secret,
 }
@@ -214,6 +246,14 @@ impl EncryptionSecret {
 
     pub(crate) fn consume_secret(self) -> Secret {
         self.secret
+    }
+
+    /// Create a random `EncryptionSecret`. For testing purposes only.
+    #[cfg(test)]
+    pub fn from_random(length: usize) -> Self {
+        EncryptionSecret {
+            secret: Secret::from_random(length),
+        }
     }
 }
 
@@ -262,35 +302,6 @@ impl EpochSecrets {
         };
         (epoch_secrets, encryption_secret)
     }
-
-    /// Derive `EpochSecrets`, as well as an `EncryptionSecret` and an
-    /// `InitSecret` from a `MemberSecret` and a given `GroupContext`.
-    //pub(crate) fn derive_epoch_secrets(
-    //    self,
-    //    ciphersuite: &Ciphersuite,
-    //    commit_secret: &CommitSecret,
-    //    psk: Option<Secret>,
-    //    group_context: &GroupContext,
-    //) -> (Self, EncryptionSecret) {
-    //    let member_secret =
-    //        MemberSecret::derive_member_secret(ciphersuite, self, commit_secret, psk);
-    //    let epoch_secret =
-    //        EpochSecret::derive_epoch_secret(ciphersuite, group_context, member_secret);
-    //    EpochSecret::derive_epoch_secret(ciphersuite, group_context, member_secret);
-    //    let sender_data_secret = derive_secret(ciphersuite, &epoch_secret.secret, "sender data");
-    //    let encryption_secret =
-    //        EncryptionSecret::derive_encryption_secret(ciphersuite, &epoch_secret);
-    //    let exporter_secret = derive_secret(ciphersuite, &epoch_secret.secret, "exporter");
-    //    let confirmation_key = derive_secret(ciphersuite, &epoch_secret.secret, "confirm");
-    //    let init_secret = InitSecret::derive_init_secret(ciphersuite, &epoch_secret);
-    //    let epoch_secrets = EpochSecrets {
-    //        sender_data_secret,
-    //        exporter_secret,
-    //        confirmation_key,
-    //        init_secret,
-    //    };
-    //    (epoch_secrets, encryption_secret)
-    //}
 
     /// Derive a `Secret` from the exporter secret.
     pub fn derive_exported_secret(

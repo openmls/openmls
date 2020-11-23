@@ -133,6 +133,11 @@ impl RatchetTree {
         &mut self.private_tree
     }
 
+    /// Return a reference to the `PrivateTree`.
+    pub(crate) fn private_tree(&self) -> &PrivateTree {
+        &self.private_tree
+    }
+
     fn tree_size(&self) -> NodeIndex {
         NodeIndex::from(self.nodes.len())
     }

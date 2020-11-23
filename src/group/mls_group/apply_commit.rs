@@ -56,6 +56,7 @@ impl MlsGroup {
             mls_plaintext.sender.to_node_index() == provisional_tree.get_own_node_index(); // XXX: correct?
 
         // Determine if Commit has a path
+        let zero_commit_secret = &CommitSecret::zero_commit_secret(ciphersuite);
         let commit_secret = if let Some(path) = commit.path.clone() {
             // Verify KeyPackage and MLSPlaintext signature
             let kp = &path.leaf_key_package;
@@ -88,7 +89,7 @@ impl MlsGroup {
             if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
-            &CommitSecret::zero_commit_secret(ciphersuite)
+            zero_commit_secret
         };
 
         // Create provisional group state
@@ -101,17 +102,17 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         );
 
+        let epoch_secrets = self.epoch_secrets.clone();
+        let joiner_secret =
+            JoinerSecret::derive_joiner_secret(ciphersuite, commit_secret, epoch_secrets);
+        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
+
         let provisional_group_context = GroupContext {
             group_id: self.group_context.group_id.clone(),
             epoch: provisional_epoch,
             tree_hash: provisional_tree.compute_tree_hash(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
-
-        let epoch_secrets = self.epoch_secrets.clone();
-        let joiner_secret =
-            JoinerSecret::derive_joiner_secret(ciphersuite, commit_secret, epoch_secrets);
-        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
         let (provisional_epoch_secrets, encryption_secret) = EpochSecrets::derive_epoch_secrets(
             ciphersuite,
             member_secret,

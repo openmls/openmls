@@ -8,7 +8,6 @@ use crate::group::mls_group::*;
 use crate::group::*;
 use crate::messages::*;
 use crate::tree::private_tree::CommitSecret;
-use crate::tree::treemath;
 
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
@@ -45,6 +44,7 @@ impl MlsGroup {
         // Determine if Commit needs path field
         let path_required = path_required_by_commit || contains_own_updates || force_self_update;
 
+        let zero_commit_secret = CommitSecret::zero_commit_secret(ciphersuite);
         let (commit_secret, path, path_secrets_option, kpb_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
@@ -61,8 +61,7 @@ impl MlsGroup {
             )
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = CommitSecret::zero_commit_secret(ciphersuite);
-            (&commit_secret, None, None, None)
+            (&zero_commit_secret, None, None, None)
         };
         // Create commit message
         let commit = Commit {
@@ -77,6 +76,21 @@ impl MlsGroup {
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
+        let epoch_secrets_clone = self.epoch_secrets.clone();
+        let joiner_secret =
+            JoinerSecret::derive_joiner_secret(ciphersuite, commit_secret, epoch_secrets_clone);
+        // Create group secrets
+        let plaintext_secrets = joiner_secret.create_group_secrets(
+            &invited_members,
+            ciphersuite,
+            path_required,
+            &provisional_tree,
+            path_secrets_option,
+        );
+        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
+        // Derive the welcome key material before consuming the `MemberSecret`
+        // immediately afterwards.
+        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
         let tree_hash = provisional_tree.compute_tree_hash();
         let provisional_group_context = GroupContext {
             group_id: self.group_context.group_id.clone(),
@@ -84,18 +98,12 @@ impl MlsGroup {
             tree_hash: tree_hash.clone(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
-        let epoch_secrets_clone = self.epoch_secrets.clone();
-        let joiner_secret =
-            JoinerSecret::derive_joiner_secret(ciphersuite, commit_secret, epoch_secrets_clone);
-        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
-        // Derive the welcome key material before consuming the `MemberSecret`
-        // immediately afterwards.
-        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
-        let (provisional_epoch_secrets, encryption_secret) = EpochSecrets::derive_epoch_secrets(
-            &ciphersuite,
-            member_secret,
-            &provisional_group_context,
-        );
+        let (provisional_epoch_secrets, _provisional_encryption_secret) =
+            EpochSecrets::derive_epoch_secrets(
+                &ciphersuite,
+                member_secret,
+                &provisional_group_context,
+            );
         // Compute confirmation tag
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
@@ -135,42 +143,6 @@ impl MlsGroup {
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
-            // Create group secrets
-            let mut plaintext_secrets = vec![];
-            for (index, add_proposal) in invited_members.clone() {
-                let key_package = add_proposal.key_package;
-                let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
-                let path_secret = if path_required {
-                    let common_ancestor_index = treemath::common_ancestor_index(
-                        index,
-                        provisional_tree.get_own_node_index(),
-                    );
-                    let dirpath = treemath::direct_path_root(
-                        provisional_tree.get_own_node_index(),
-                        provisional_tree.leaf_count(),
-                    )
-                    .expect("create_commit_internal: TreeMath error when computing direct path.");
-                    let position = dirpath
-                        .iter()
-                        .position(|&x| x == common_ancestor_index)
-                        .unwrap();
-                    let path_secrets = path_secrets_option.clone().unwrap();
-                    let path_secret = path_secrets[position].clone();
-                    Some(PathSecret { path_secret })
-                } else {
-                    None
-                };
-                let group_secrets = GroupSecrets {
-                    joiner_secret: joiner_secret.clone(),
-                    path_secret,
-                };
-                let group_secrets_bytes = group_secrets.encode_detached().unwrap();
-                plaintext_secrets.push((
-                    key_package.hpke_init_key().clone(),
-                    group_secrets_bytes,
-                    key_package_hash,
-                ));
-            }
             // Encrypt group secrets
             let secrets = plaintext_secrets
                 .iter()

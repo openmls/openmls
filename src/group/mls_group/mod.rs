@@ -53,7 +53,7 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: vec![],
         };
-        let commit_secret = tree.private_tree_mut().get_commit_secret();
+        let commit_secret = tree.private_tree().get_commit_secret();
         let member_secret =
             MemberSecret::derive_initial_member_secret(ciphersuite, commit_secret, None);
         let (epoch_secrets, encryption_secret) =
