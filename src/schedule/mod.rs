@@ -89,14 +89,12 @@ impl JoinerSecret {
         path_secrets_option: Option<Vec<Secret>>,
     ) -> Vec<(HPKEPublicKey, Vec<u8>, Vec<u8>)> {
         let mut plaintext_secrets = vec![];
-        for (index, add_proposal) in invited_members.clone() {
+        for (index, add_proposal) in invited_members {
             let key_package = &add_proposal.key_package;
             let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
             let path_secret = if path_required {
-                let common_ancestor_index = treemath::common_ancestor_index(
-                    index.clone(),
-                    provisional_tree.get_own_node_index(),
-                );
+                let common_ancestor_index =
+                    treemath::common_ancestor_index(*index, provisional_tree.get_own_node_index());
                 let dirpath = treemath::direct_path_root(
                     provisional_tree.get_own_node_index(),
                     provisional_tree.leaf_count(),
