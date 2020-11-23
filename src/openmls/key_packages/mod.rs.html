@@ -435,7 +435,6 @@
 <span id="432">432</span>
 <span id="433">433</span>
 <span id="434">434</span>
-<span id="435">435</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">error</span>;
 
@@ -750,13 +749,12 @@
         };
 
         <span class="comment">// Check if there is a lifetime extension. If not, add one that is at</span>
-        <span class="comment">// least valid. TODO: Add the default LifetimeExtension here as soon as</span>
-        <span class="comment">// one is implemented (issue 164).</span>
+        <span class="comment">// least valid.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">extensions</span>
             .<span class="ident">iter</span>()
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ExtensionType</span>::<span class="ident">Lifetime</span>)
         {
-            <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">LifetimeExtension</span>::<span class="ident">new</span>(<span class="number">60</span>)));
+            <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">LifetimeExtension</span>::<span class="ident">default</span>()));
         }
         <span class="kw">let</span> (<span class="ident">private_key</span>, <span class="ident">public_key</span>) <span class="op">=</span> <span class="ident">key_pair</span>.<span class="ident">into_keys</span>();
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span>
