@@ -161,7 +161,7 @@ impl MlsGroup {
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
         self.init_secret = provisional_init_secret;
-        // Create a secret_tree, dropping the `encryption_secret` in the
+        // Create a secret_tree, consuming the `encryption_secret` in the
         // process.
         self.secret_tree = RefCell::new(
             encryption_secret

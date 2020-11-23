@@ -146,6 +146,7 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
         };
+        // Derive the member secret without a PSK. TODO: This should change with #141.
         let member_secret =
             MemberSecret::derive_member_secret(ciphersuite, &group_secrets.joiner_secret, None);
         let (epoch_secrets, init_secret, encryption_secret) =

@@ -55,6 +55,9 @@ impl MlsGroup {
             confirmed_transcript_hash: vec![],
         };
         let commit_secret = tree.private_tree().get_commit_secret();
+        // Derive an initial member secret based on the commit secret.
+        // Internally, this derives a random `InitSecret` and uses it in the
+        // derivation.
         let member_secret =
             MemberSecret::derive_initial_member_secret(ciphersuite, commit_secret, None);
         let (epoch_secrets, init_secret, encryption_secret) =

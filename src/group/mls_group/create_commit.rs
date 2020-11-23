@@ -76,13 +76,15 @@ impl MlsGroup {
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
-        //let epoch_secrets_clone = self.epoch_secrets.clone();
+        // We clone the init secret here, as the `joiner_secret` is only for the
+        // provisional group state.
         let joiner_secret = JoinerSecret::derive_joiner_secret(
             ciphersuite,
             commit_secret,
             self.init_secret.clone(),
         );
-        // Create group secrets
+        // Create group secrets for later use, so we can afterwards consume the
+        // `joiner_secret`.
         let plaintext_secrets = joiner_secret.create_group_secrets(
             &invited_members,
             ciphersuite,
