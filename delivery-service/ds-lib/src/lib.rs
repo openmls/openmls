@@ -1,10 +1,15 @@
+//! # OpenMLS Delivery Service Library
+//!
+//! This library provides structs and necessary implementations to interact with
+//! the OpenMLS DS.
+//!
+//! Clients are represented by the `ClientInfo` struct.
+
 use openmls::prelude::*;
 
-// The client identity is a hash of the identity used for message delivery.
-type KeyPackageHash = Vec<u8>;
-
 /// Information about a client.
-/// To register a new client create a new `ClientInfo` and send it to `/clients/register`.
+/// To register a new client create a new `ClientInfo` and send it to
+/// `/clients/register`.
 #[derive(Debug, Default, Clone)]
 pub struct ClientInfo {
     pub client_name: String,
@@ -13,8 +18,82 @@ pub struct ClientInfo {
     pub welcome_queue: Vec<Welcome>,
 }
 
+/// The DS returns a list of key packages for a client as `ClientKeyPackages`.
+/// This is a tuple struct holding a vector of `(Vec<u8>, KeyPackage)` tuples,
+/// where the first value is the key package hash (output of `KeyPackage::hash`)
+/// and the second value is the corresponding key package.
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct ClientKeyPackages(pub Vec<(KeyPackageHash, KeyPackage)>);
+pub struct ClientKeyPackages(pub Vec<(Vec<u8>, KeyPackage)>);
+
+impl ClientInfo {
+    /// Create a new `ClientInfo` struct for a given client name and vector of
+    /// key packages with corresponding hashes.
+    pub fn new(client_name: String, key_packages: Vec<(Vec<u8>, KeyPackage)>) -> Self {
+        Self {
+            client_name,
+            key_packages: ClientKeyPackages(key_packages),
+            msgs: Vec::new(),
+            welcome_queue: Vec::new(),
+        }
+    }
+}
+
+/// The DS returns a list of messages on `/recv/{name}`, which is a `Vec<Message>`.
+/// A `Message` is either an `MLSMessage` or a `Welcome` message (see OpenMLS)
+/// for details.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Message {
+    /// An `MLSMessage` is either an OpenMLS `MLSCiphertext` or `MLSPlaintext`.
+    MLSMessage(MLSMessage),
+
+    /// An OpenMLS `Welcome` message.
+    Welcome(Welcome),
+}
+
+/// A generalisation of the `MLSCiphertext` and `MLSPlaintext` messages from
+/// OpenMLS.
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq)]
+pub enum MLSMessage {
+    /// An OpenMLS `MLSCiphertext`.
+    MLSCiphertext(MLSCiphertext),
+
+    /// An OpenMLS `MLSPlaintext`.
+    MLSPlaintext(MLSPlaintext),
+}
+
+/// Enum defining encodings for the different message types/
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum MessageType {
+    /// An MLSCiphertext message.
+    MLSCiphertext = 0,
+
+    /// An MLSPlaintext message.
+    MLSPlaintext = 1,
+
+    /// A Welcome message.
+    Welcome = 2,
+}
+
+/// An MLS group message.
+/// This is an `MLSMessage` plus the list of recipients as a vector of client names.
+#[derive(Debug)]
+pub struct GroupMessage {
+    pub msg: MLSMessage,
+    pub recipients: Vec<String>,
+}
+
+impl GroupMessage {
+    /// Create a new `GroupMessage` taking an `MLSMessage` and slice of recipient
+    /// names.
+    pub fn new(msg: MLSMessage, recipients: &[String]) -> Self {
+        Self {
+            msg,
+            recipients: recipients.to_vec(),
+        }
+    }
+}
 
 impl Codec for ClientKeyPackages {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -69,41 +148,6 @@ impl Codec for ClientInfo {
     }
 }
 
-impl ClientInfo {
-    pub fn new(
-        client_name: String,
-        key_packages: Vec<(KeyPackageHash, KeyPackage)>,
-    ) -> Self {
-        Self {
-            client_name,
-            key_packages: ClientKeyPackages(key_packages),
-            msgs: Vec::new(),
-            welcome_queue: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Message {
-    MLSMessage(MLSMessage),
-    Welcome(Welcome),
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, PartialEq)]
-pub enum MLSMessage {
-    MLSCiphertext(MLSCiphertext),
-    MLSPlaintext(MLSPlaintext),
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-pub enum MessageType {
-    MLSCiphertext = 0,
-    MLSPlaintext = 1,
-    Welcome = 2,
-}
-
 impl Codec for MessageType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)
@@ -152,23 +196,6 @@ impl Codec for Message {
             MessageType::Welcome => Message::Welcome(Welcome::decode(cursor)?),
         };
         Ok(msg)
-    }
-}
-
-/// An MLS group message.
-/// This is an `MLSMessage` plus the list of recipients.
-#[derive(Debug)]
-pub struct GroupMessage {
-    pub msg: MLSMessage,
-    pub recipients: Vec<String>,
-}
-
-impl GroupMessage {
-    pub fn new(msg: MLSMessage, recipients: &[String]) -> Self {
-        Self {
-            msg,
-            recipients: recipients.to_vec(),
-        }
     }
 }
 

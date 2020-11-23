@@ -1,14 +1,28 @@
-//! The main Delivery Service (DS).
+//! # The OpenMLS Delivery Service (DS).
 //!
-//! This is a minimal implementation of 2.3. Delivery Service in [The MLS Architecture](https://messaginglayersecurity.rocks/mls-architecture/draft-ietf-mls-architecture.html).
+//! This is a minimal implementation of 2.3. Delivery Service in
+//! [The MLS Architecture](https://messaginglayersecurity.rocks/mls-architecture/draft-ietf-mls-architecture.html).
+//! It is used for end-to-end testing of OpenMLS and can be used by other
+//! implementations. However it should never be used in any sort of production
+//! environment.
+//!
+//! Because the infrastructure description doesn't give a lot of guidelines on
+//! the design of the DS we take a couple of deliberate design decisions here:
+//! * The DS does not know about groups.
+//! * Clients have to send a list of clients (group members) along with each
+//!   message for the DS to know where to send the message.
+//! * The DS stores and delivers key packages.
 //!
 //! This is a very basic delivery service that allows to register clients and
-//! send messages to other registered clients.
-//! Note that there are a lot of limitations to this service
-//! * no persistence layer such that all information gets lost when the process shuts down.
-//! * no authentication for clients
+//! send messages to MLS groups.
+//! Note that there are a lot of limitations to this service:
+//! * No persistence layer such that all information gets lost when the process
+//!   shuts down.
+//! * No authentication for clients.
+//! * Key packages can't be updated, changed or deleted at the moment.
+//! * Messages lost in transit are gone.
 //!
-//! **DON'T EXPECT ANY SECURITY OR PRIVACY FROM THIS!**
+//! **⚠️ DON'T EXPECT ANY SECURITY OR PRIVACY FROM THIS!**
 //!
 //! The server always listens on localhost and should be run behind a TLS server
 //! if accessible on the public internet.
@@ -25,14 +39,15 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::Mutex;
 
-use openmls::prelude::*;
 use ds_lib::*;
+use openmls::prelude::*;
 
 #[cfg(test)]
 mod test;
 
-// === DS Server State ===
 
+/// The DS state.
+/// It holds a list of clients and their information.
 #[derive(Default, Debug)]
 pub struct DsData {
     // (ClientName, ClientInfo)
@@ -41,6 +56,9 @@ pub struct DsData {
 
 // === API ===
 
+/// Registering a new client takes a serialised `ClientInfo` object and returns
+/// a simple "Welcome {client name}" on success.
+/// An HTTP conflict (409) is returned if a client with this name exists already.
 #[post("/clients/register")]
 async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
@@ -51,11 +69,16 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
 
     let mut data = data.lock().unwrap();
     let old = data.clients.insert(info.client_name.clone(), info.clone());
-    assert!(old.is_none());
+    if old.is_some() {
+        return actix_web::HttpResponse::Conflict().finish();
+    }
 
     actix_web::HttpResponse::Ok().body(format!("Welcome {}!\n", info.client_name))
 }
 
+/// Returns a list of clients.
+/// This is informational only right now and a simple string with all registered
+/// client names.
 #[get("/clients/list")]
 async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let data = data.lock().unwrap();
@@ -65,6 +88,9 @@ async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl
     ))
 }
 
+/// Get the list of key packages for a given client `{name}`.
+/// This returns a serialised vector of `ClientKeyPackages` (see the `ds-lib` for
+/// details).
 #[get("/clients/get/{name}")]
 async fn get_client(
     web::Path(name): web::Path<String>,
@@ -77,6 +103,9 @@ async fn get_client(
     )))
 }
 
+/// Send a welcome message to a client.
+/// This takes a serialised `Welcome` message and stores the message for all
+/// clients in the welcome message.
 #[post("/send/welcome")]
 async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
@@ -99,7 +128,9 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
     actix_web::HttpResponse::Ok().finish()
 }
 
-/// Takes a `GroupMessage`
+/// Send an MLS message to a set of clients (group).
+/// This takes a serialised `GroupMessage` and stores the message for each client
+/// in the recipient list.
 #[post("/send/message")]
 async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
@@ -107,7 +138,6 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
         bytes.extend_from_slice(&item.unwrap());
     }
     let group_msg = GroupMessage::decode(&mut Cursor::new(&bytes)).unwrap();
-    println!("MLS msg: {:?}", group_msg);
 
     let mut data = data.lock().unwrap();
     for recipient in group_msg.recipients.iter() {
@@ -120,6 +150,10 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     actix_web::HttpResponse::Ok().finish()
 }
 
+/// Receive all messages stored the client `{name}`.
+/// This returns a serialised vector of `Message`s (see the `ds-lib` for details)
+/// the DS has stored for the given client.
+/// The messages are deleted on the DS when sent out.
 #[get("/recv/{name}")]
 async fn msg_recv(
     web::Path(name): web::Path<String>,
@@ -156,9 +190,9 @@ async fn msg_recv(
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Configure App and command line arguments.
-    let matches = ClapApp::new("MLS DS")
-        .version("0.0.1")
-        .author("Wire")
+    let matches = ClapApp::new("OpenMLS DS")
+        .version("0.1.0")
+        .author("OpenMLS Developers")
         .about("PoC MLS Delivery Service")
         .arg("-p, --port=[NUMBER] 'Sets a custom port number'")
         .get_matches();
