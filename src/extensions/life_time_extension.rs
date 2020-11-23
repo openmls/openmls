@@ -20,29 +20,29 @@
 //! ```
 use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError};
 use crate::codec::{Codec, Cursor};
+use crate::config::Config;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The lifetime extension holds a not before and a not after time measured in
 /// seconds since the Unix epoch (1970-01-01T00:00:00Z).
-#[derive(PartialEq, Clone, Debug, Default)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct LifetimeExtension {
     not_before: u64,
     not_after: u64,
 }
 
 impl LifetimeExtension {
-    /// Create a new lifetime extensions with lifetime `t`.
+    /// Create a new lifetime extensions with lifetime `t` (in seconds).
     /// Note that the lifetime is extended 1h into the past to adapt to skewed
     /// clocks.
     pub fn new(t: u64) -> Self {
-        // TODO: #85 make the margin configurable.
-        const LIFETIME_MARGIN: u64 = 60 * 60;
+        let lifetime_margin: u64 = Config::key_package_lifetime_margin();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("SystemTime before UNIX EPOCH!")
             .as_secs();
-        let not_before = now - LIFETIME_MARGIN;
+        let not_before = now - lifetime_margin;
         let not_after = now + t;
         Self {
             not_before,
@@ -57,6 +57,12 @@ impl LifetimeExtension {
             .expect("SystemTime before UNIX EPOCH!")
             .as_secs();
         self.not_before < now && now < self.not_after
+    }
+}
+
+impl Default for LifetimeExtension {
+    fn default() -> Self {
+        LifetimeExtension::new(Config::default_key_package_lifetime())
     }
 }
 
