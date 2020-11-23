@@ -42,11 +42,8 @@ fn key_package_id() {
 
 #[test]
 fn lifetime() {
-    const LIFETIME_1_MINUTE: u64 = 60;
-    const LIFETIME_1_HOUR: u64 = 60 * LIFETIME_1_MINUTE;
-
     // A freshly created extensions must be valid.
-    let ext = LifetimeExtension::new(LIFETIME_1_HOUR);
+    let ext = LifetimeExtension::default();
     assert!(ext.is_valid());
 
     // An extension without lifetime is invalid (waiting for 1 second).
