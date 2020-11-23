@@ -103,7 +103,7 @@ impl ManagedGroup {
             .iter()
             .map(|key_package| {
                 self.group
-                    .create_add_proposal(&[], &credential_bundle, key_package.clone())
+                    .create_add_proposal(&self.aad, &credential_bundle, key_package.clone())
             })
             .collect();
 
@@ -114,7 +114,7 @@ impl ManagedGroup {
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) =
             self.group
-                .create_commit(&[], &credential_bundle, &messages_to_commit, false)?;
+                .create_commit(&self.aad, &credential_bundle, &messages_to_commit, false)?;
 
         // Add the Commit message to the other pending messages
         plaintext_messages.append(&mut vec![commit]);
@@ -144,8 +144,11 @@ impl ManagedGroup {
         let mut plaintext_messages: Vec<MLSPlaintext> = members
             .iter()
             .map(|member| {
-                self.group
-                    .create_remove_proposal(&[], &credential_bundle, LeafIndex::from(*member))
+                self.group.create_remove_proposal(
+                    &self.aad,
+                    &credential_bundle,
+                    LeafIndex::from(*member),
+                )
             })
             .collect();
 
@@ -156,7 +159,7 @@ impl ManagedGroup {
         // Create Commit over all proposals
         let (commit, _, kpb_option) =
             self.group
-                .create_commit(&[], &credential_bundle, &messages_to_commit, false)?;
+                .create_commit(&self.aad, &credential_bundle, &messages_to_commit, false)?;
 
         // Add the Commit message to the other pending messages
         plaintext_messages.append(&mut vec![commit]);
@@ -183,7 +186,7 @@ impl ManagedGroup {
             .iter()
             .map(|key_package| {
                 self.group
-                    .create_add_proposal(&[], &credential_bundle, key_package.clone())
+                    .create_add_proposal(&self.aad, &credential_bundle, key_package.clone())
             })
             .collect();
 
@@ -201,8 +204,11 @@ impl ManagedGroup {
         let plaintext_messages: Vec<MLSPlaintext> = members
             .iter()
             .map(|member| {
-                self.group
-                    .create_remove_proposal(&[], &credential_bundle, LeafIndex::from(*member))
+                self.group.create_remove_proposal(
+                    &self.aad,
+                    &credential_bundle,
+                    LeafIndex::from(*member),
+                )
             })
             .collect();
 
@@ -217,7 +223,7 @@ impl ManagedGroup {
         credential_bundle: &CredentialBundle,
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         let remove_proposal = self.group.create_remove_proposal(
-            &[],
+            &self.aad,
             &credential_bundle,
             LeafIndex::from(self.group.tree().get_own_node_index()),
         );
@@ -366,7 +372,7 @@ impl ManagedGroup {
         // Create Commit over all proposals
         let (commit, _, kpb_option) =
             self.group
-                .create_commit(&[], &credential_bundle, &plaintext_messages, false)?;
+                .create_commit(&self.aad, &credential_bundle, &plaintext_messages, false)?;
 
         // Add the Commit message to the other pending messages
         plaintext_messages.append(&mut vec![commit]);
@@ -419,27 +425,40 @@ impl ManagedGroup {
         &mut self,
         credential_bundle: &CredentialBundle,
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+        // Create new KeyPackageBundle for own leaf
         let tree = self.group.tree();
         let existing_key_package = tree.get_own_key_package_ref();
         let key_package_bundle = KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
+        drop(tree);
 
+        // Create UpdateProposal
         let mut plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
             credential_bundle,
             key_package_bundle.get_key_package().clone(),
         )];
+
+        // Include pending proposals into Commit
+        let mut messages_to_commit = self.pending_proposals.clone();
+        messages_to_commit.extend_from_slice(&plaintext_messages);
+
+        // Create Commit over all proposals
         let (commit, _welcome_option, kpb_option) =
             self.group
-                .create_commit(&[], &credential_bundle, &plaintext_messages, false)?;
-        plaintext_messages.append(&mut vec![commit]);
-        drop(tree);
+                .create_commit(&self.aad, &credential_bundle, &messages_to_commit, false)?;
 
+        // Add the Commit message to the other pending messages
+        plaintext_messages.append(&mut vec![commit]);
+
+        // Take the new KeyPackageBundle and save it for later
         let kpb = match kpb_option {
             Some(kpb) => kpb,
             None => return Err(ManagedGroupError::Unknown),
         };
         self.own_kpbs.push(kpb);
 
+        // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
+        // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
         Ok(mls_messages)
@@ -533,13 +552,15 @@ impl ManagedGroup {
     ) -> Vec<MLSMessage> {
         plaintext_messages
             .into_iter()
-            .map(|plaintext| match self.configuration().encrypt_hs_messages {
-                HandshakeMessageFormat::Plaintext => MLSMessage::Plaintext(plaintext),
-                HandshakeMessageFormat::Ciphertext => {
-                    let ciphertext = self.group.encrypt(plaintext);
-                    MLSMessage::Ciphertext(ciphertext)
-                }
-            })
+            .map(
+                |plaintext| match self.configuration().handshake_message_format {
+                    HandshakeMessageFormat::Plaintext => MLSMessage::Plaintext(plaintext),
+                    HandshakeMessageFormat::Ciphertext => {
+                        let ciphertext = self.group.encrypt(plaintext);
+                        MLSMessage::Ciphertext(ciphertext)
+                    }
+                },
+            )
             .collect()
     }
 
@@ -633,7 +654,7 @@ pub enum HandshakeMessageFormat {
 #[derive(Clone)]
 pub struct ManagedGroupConfig {
     /// Defines whether handshake messages should be encrypted
-    encrypt_hs_messages: HandshakeMessageFormat,
+    handshake_message_format: HandshakeMessageFormat,
     /// Defines the update policy
     update_policy: UpdatePolicy,
     /// Callbacks
@@ -642,12 +663,12 @@ pub struct ManagedGroupConfig {
 
 impl ManagedGroupConfig {
     pub fn new(
-        encrypt_hs_messages: HandshakeMessageFormat,
+        handshake_message_format: HandshakeMessageFormat,
         update_policy: UpdatePolicy,
         callbacks: ManagedGroupCallbacks,
     ) -> Self {
         ManagedGroupConfig {
-            encrypt_hs_messages,
+            handshake_message_format,
             update_policy,
             callbacks,
         }
