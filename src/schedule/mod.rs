@@ -5,6 +5,7 @@
 //! The flow of the key schedule is as follows (from Section 8 of the MLS
 //! specification):
 //!
+//! ```text
 //!                    init_secret_[n-1]
 //!                          |
 //!                          V
@@ -33,6 +34,7 @@
 //!                          |
 //!                          V
 //!                    init_secret_[n]
+//! ```
 //!
 //! Each of the secrets in the key schedule (with exception of the
 //! welcome_secret) is represented by its own struct to ensure that the keys are
