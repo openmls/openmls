@@ -10,7 +10,6 @@ use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, LifetimeExtension,
     ParentHashExtension,
 };
-use crate::schedule::*;
 
 mod codec;
 pub mod errors;
@@ -429,6 +428,6 @@ impl KeyPackageBundle {
         ciphersuite: &Ciphersuite,
         leaf_secret: &Secret,
     ) -> Secret {
-        derive_secret(ciphersuite, &leaf_secret, "node")
+        leaf_secret.derive_secret(ciphersuite, "node")
     }
 }

@@ -47,7 +47,7 @@ impl ConfirmationTag {
         ConfirmationTag(
             ciphersuite
                 .hkdf_extract(
-                    confirmation_key,
+                    Some(confirmation_key),
                     &Secret::from(confirmed_transcript_hash.to_vec()),
                 )
                 .to_vec(),

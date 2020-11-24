@@ -7,7 +7,6 @@ use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::messages::*;
-use crate::tree::private_tree::CommitSecret;
 
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
@@ -44,7 +43,6 @@ impl MlsGroup {
         // Determine if Commit needs path field
         let path_required = path_required_by_commit || contains_own_updates || force_self_update;
 
-        let zero_commit_secret = CommitSecret::zero_commit_secret(ciphersuite);
         let (commit_secret, path, path_secrets_option, kpb_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
@@ -54,14 +52,14 @@ impl MlsGroup {
                     &self.group_context.serialize(),
                 );
             (
-                commit_secret,
+                Some(commit_secret),
                 Some(path),
                 Some(path_secrets),
                 Some(key_package_bundle),
             )
         } else {
             // If path is not needed, return empty commit secret
-            (&zero_commit_secret, None, None, None)
+            (None, None, None, None)
         };
         // Create commit message
         let commit = Commit {
@@ -78,21 +76,17 @@ impl MlsGroup {
         );
         // We clone the init secret here, as the `joiner_secret` is only for the
         // provisional group state.
-        let joiner_secret = JoinerSecret::derive_joiner_secret(
+        let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
             ciphersuite,
             commit_secret,
             self.init_secret.clone(),
         );
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
-        let plaintext_secrets = joiner_secret.create_group_secrets(
-            &invited_members,
-            ciphersuite,
-            path_required,
-            &provisional_tree,
-            path_secrets_option,
-        );
-        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
+        let plaintext_secrets =
+            joiner_secret.group_secrets(invited_members, &provisional_tree, path_secrets_option);
+        let member_secret =
+            MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
         // Derive the welcome key material before consuming the `MemberSecret`
         // immediately afterwards.
         let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
@@ -127,7 +121,7 @@ impl MlsGroup {
             &self.context(),
         );
         // Check if new members were added an create welcome message
-        if !invited_members.is_empty() {
+        if !plaintext_secrets.is_empty() {
             let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
                 vec![Box::new(RatchetTreeExtension::new(
                     provisional_tree.public_key_tree_copy(),

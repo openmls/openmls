@@ -55,7 +55,7 @@ pub(crate) fn derive_tree_secret(
 ) -> Secret {
     let tree_context = TreeContext { node, generation };
     let serialized_tree_context = tree_context.encode_detached().unwrap();
-    hkdf_expand_label(ciphersuite, secret, label, &serialized_tree_context, length)
+    secret.hkdf_expand_label(ciphersuite, label, &serialized_tree_context, length)
 }
 
 pub struct TreeContext {

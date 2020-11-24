@@ -1,3 +1,44 @@
+//! This module represents the key schedule as introduced in Section 8 of the
+//! MLS specification. The key schedule evolves in epochs, where in each epoch
+//! new key material is injected.
+//!
+//! The flow of the key schedule is as follows (from Section 8 of the MLS
+//! specification):
+//!
+//!                    init_secret_[n-1]
+//!                          |
+//!                          V
+//!    commit_secret -> KDF.Extract = joiner_secret
+//!                          |
+//!                          V
+//!                    Derive-Secret(., "member")
+//!                          |
+//!                          V
+//!    psk_secret (or 0) -> KDF.Extract = member_secret
+//!                          |
+//!                          +--> Derive-Secret(., "welcome")
+//!                          |    = welcome_secret
+//!                          |
+//!                          V
+//!                    ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
+//!                          |
+//!                          V
+//!                     epoch_secret
+//!                          |
+//!                          +--> Derive-Secret(., <label>)
+//!                          |    = <secret>
+//!                          |
+//!                          V
+//!                    Derive-Secret(., "init")
+//!                          |
+//!                          V
+//!                    init_secret_[n]
+//!
+//! Each of the secrets in the key schedule (with exception of the
+//! welcome_secret) is represented by its own struct to ensure that the keys are
+//! not confused with one-another and/or that the schedule is not derived
+//! out-of-order.
+
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
@@ -9,17 +50,9 @@ use crate::tree::secret_tree::SecretTree;
 use crate::tree::treemath;
 use crate::tree::RatchetTree;
 
-use self::errors::KeyScheduleError;
-
-pub mod errors;
-
-pub fn derive_secret(ciphersuite: &Ciphersuite, secret: &Secret, label: &str) -> Secret {
-    hkdf_expand_label(ciphersuite, secret, label, &[], ciphersuite.hash_length())
-}
-
-/// The `InitSecret` is used to start the connect the next epoch to the current
-/// one. It's necessary to be able clone this to create a provisional group
-/// state, which includes the `InitSecret`.
+/// The `InitSecret` is used to connect the next epoch to the current one. It's
+/// necessary to be able clone this to create a provisional group state, which
+/// includes the `InitSecret`.
 #[derive(Debug, Clone)]
 pub struct InitSecret {
     secret: Secret,
@@ -27,14 +60,14 @@ pub struct InitSecret {
 
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
-    fn derive_init_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         InitSecret {
-            secret: derive_secret(ciphersuite, &epoch_secret.secret, "init"),
+            secret: epoch_secret.secret.derive_secret(ciphersuite, "init"),
         }
     }
 
-    /// Sample a fresh, random `InitiSecret` for the creation of a new group.
-    pub(crate) fn from_random(length: usize) -> Self {
+    /// Sample a fresh, random `InitSecret` for the creation of a new group.
+    pub(crate) fn random(length: usize) -> Self {
         InitSecret {
             secret: Secret::from_random(length),
         }
@@ -49,17 +82,19 @@ pub struct JoinerSecret {
 }
 
 impl JoinerSecret {
-    /// Derive a `JoinerSecret` from a `CommitSecret` and an `EpochSecrets`
-    /// object, which onctains the necessary `InitSecret`. TODO: For now, this
-    /// takes a reference to a `CommitSecret` as input. This should change with
-    /// #224.
-    pub(crate) fn derive_joiner_secret(
+    /// Derive a `JoinerSecret` from an optional `CommitSecret` and an
+    /// `EpochSecrets` object, which contains the necessary `InitSecret`. The
+    /// `CommitSecret` needs to be present if the current commit is not an
+    /// Add-only commit. TODO: For now, this takes a reference to a
+    /// `CommitSecret` as input. This should change with #224.
+    pub(crate) fn from_commit_and_epoch_secret(
         ciphersuite: &Ciphersuite,
-        commit_secret: &CommitSecret,
+        commit_secret_option: Option<&CommitSecret>,
         init_secret: InitSecret,
     ) -> Self {
+        let commit_secret_value = commit_secret_option.map(|commit_secret| commit_secret.secret());
         JoinerSecret {
-            secret: ciphersuite.hkdf_extract(commit_secret.secret(), &init_secret.secret),
+            secret: ciphersuite.hkdf_extract(commit_secret_value, &init_secret.secret),
         }
     }
 
@@ -67,49 +102,58 @@ impl JoinerSecret {
     /// `CommitSecret`. The `InitSecret` is randomly generated. TODO:
     /// For now, this takes a reference to a `CommitSecret` as input. This
     /// should change with #224.
-    fn derive_initial_joiner_secret(
-        ciphersuite: &Ciphersuite,
-        commit_secret: &CommitSecret,
-    ) -> Self {
-        let initial_init_secret = InitSecret::from_random(ciphersuite.hash_length());
+    fn from_commit_secret(ciphersuite: &Ciphersuite, commit_secret: &CommitSecret) -> Self {
+        let initial_init_secret = InitSecret::random(ciphersuite.hash_length());
         JoinerSecret {
-            secret: ciphersuite.hkdf_extract(commit_secret.secret(), &initial_init_secret.secret),
+            secret: ciphersuite
+                .hkdf_extract(Some(commit_secret.secret()), &initial_init_secret.secret),
         }
     }
 
     /// Create the `GroupSecrets` for a number of `invited_members` based on a
-    /// provisional `RatchetTree`. `path_required` indicates if we need to
+    /// provisional `RatchetTree`. If `path_secret_option` is `Some`, we need to
     /// include a `path_secret` into the `GroupSecrets`.
-    pub(crate) fn create_group_secrets(
+    pub(crate) fn group_secrets(
         &self,
-        invited_members: &[(NodeIndex, AddProposal)],
-        ciphersuite: &Ciphersuite,
-        path_required: bool,
+        invited_members: Vec<(NodeIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
-        path_secrets_option: Option<Vec<Secret>>,
+        mut path_secrets_option: Option<Vec<Secret>>,
     ) -> Vec<(HPKEPublicKey, Vec<u8>, Vec<u8>)> {
+        // Get a Vector containing the node indices of the direct path to the
+        // root from our own leaf.
+        let dirpath = treemath::direct_path_root(
+            provisional_tree.get_own_node_index(),
+            provisional_tree.leaf_count(),
+        )
+        .expect("create_commit_internal: TreeMath error when computing direct path.");
+
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
             let key_package = &add_proposal.key_package;
-            let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
-            let path_secret = if path_required {
-                let common_ancestor_index =
-                    treemath::common_ancestor_index(*index, provisional_tree.get_own_node_index());
-                let dirpath = treemath::direct_path_root(
-                    provisional_tree.get_own_node_index(),
-                    provisional_tree.leaf_count(),
-                )
-                .expect("create_commit_internal: TreeMath error when computing direct path.");
-                let position = dirpath
-                    .iter()
-                    .position(|&x| x == common_ancestor_index)
-                    .unwrap();
-                let path_secrets = path_secrets_option.clone().unwrap();
-                let path_secret = path_secrets[position].clone();
-                Some(PathSecret { path_secret })
-            } else {
-                None
+            let key_package_hash = key_package.hash();
+            let path_secret = match path_secrets_option {
+                Some(ref mut path_secrets) => {
+                    // Compute the index of the common ancestor lowest in the
+                    // tree of our own leaf and the given index.
+                    let common_ancestor_index = treemath::common_ancestor_index(
+                        index,
+                        provisional_tree.get_own_node_index(),
+                    );
+                    // Get the position of the node index that represents the
+                    // common ancestor in the direct path. We can unwrap here,
+                    // because the direct path must contain the shared ancestor.
+                    let position = dirpath
+                        .iter()
+                        .position(|&x| x == common_ancestor_index)
+                        .unwrap();
+                    // We have to clone the element of the vector here to
+                    // preserve its order.
+                    let path_secret = path_secrets[position].clone();
+                    Some(PathSecret { path_secret })
+                }
+                None => None,
             };
+            // Create the groupsecrets object for the respective member.
             let group_secrets = GroupSecrets {
                 joiner_secret: self.clone(),
                 path_secret,
@@ -136,7 +180,9 @@ impl Codec for JoinerSecret {
     }
 }
 
-pub struct MemberSecret {
+/// An intermediate secret in the key schedule. It can be used to derive the
+/// `EpochSecret` and the secrets required to decrypt the `Welcome` message.
+pub(crate) struct MemberSecret {
     secret: Secret,
 }
 
@@ -146,35 +192,30 @@ impl MemberSecret {
     /// it later in the `create_commit` function to create `GroupSecret`
     /// objects. TODO: The PSK should get its own dedicated type in the process
     /// of tackling issue #141.
-    pub(crate) fn derive_member_secret(
+    pub(crate) fn from_joiner_secret_and_psk(
         ciphersuite: &Ciphersuite,
-        joiner_secret: &JoinerSecret,
+        joiner_secret: JoinerSecret,
         psk: Option<Secret>,
     ) -> Self {
-        let intermediate_secret = derive_secret(ciphersuite, &joiner_secret.secret, "member");
+        let intermediate_secret = joiner_secret.secret.derive_secret(ciphersuite, "member");
         MemberSecret {
-            secret: ciphersuite.hkdf_extract(
-                &psk.unwrap_or_else(Secret::new_empty_secret),
-                &intermediate_secret,
-            ),
+            secret: ciphersuite.hkdf_extract(psk.as_ref(), &intermediate_secret),
         }
     }
 
-    /// Derive an initial `MemberSecret` when creating a new group. TODO: The
-    /// PSK should get its own dedicated type in the process of tackling issue
-    /// #141.
-    pub(crate) fn derive_initial_member_secret(
+    /// Derive an initial `MemberSecret` when creating a new group. This
+    /// function should not be used when computing secrets in an existing group.
+    /// TODO: The PSK should get its own dedicated type in the process of
+    /// tackling issue #141.
+    pub(crate) fn from_commit_secret_and_psk(
         ciphersuite: &Ciphersuite,
         commit_secret: &CommitSecret,
         psk: Option<Secret>,
     ) -> Self {
-        let joiner_secret = JoinerSecret::derive_initial_joiner_secret(ciphersuite, commit_secret);
-        let intermediate_secret = derive_secret(ciphersuite, &joiner_secret.secret, "member");
+        let joiner_secret = JoinerSecret::from_commit_secret(ciphersuite, commit_secret);
+        let intermediate_secret = joiner_secret.secret.derive_secret(ciphersuite, "member");
         MemberSecret {
-            secret: ciphersuite.hkdf_extract(
-                &psk.unwrap_or_else(Secret::new_empty_secret),
-                &intermediate_secret,
-            ),
+            secret: ciphersuite.hkdf_extract(psk.as_ref(), &intermediate_secret),
         }
     }
 
@@ -201,23 +242,24 @@ impl MemberSecret {
     }
 }
 
+/// An intermediate secret in the key schedule, the `EpochSecret` is used to
+/// create an `EpochSecrets` object and is finally consumed when creating that
+/// epoch's `InitSecret`.
 struct EpochSecret {
     secret: Secret,
 }
 
 impl EpochSecret {
-    /// Derive a `WelcomeSecret` and an `EpochSecret` from a `MemberSecret`,
-    /// consuming it in the process. The `WelcomeSecret` can be obtained by
-    /// calling
-    fn derive_epoch_secret(
+    /// Derive an `EpochSecret` from a `MemberSecret`, consuming it in the
+    /// process.
+    fn from_member_secret(
         ciphersuite: &Ciphersuite,
         group_context: &GroupContext,
         member_secret: MemberSecret,
     ) -> Self {
         EpochSecret {
-            secret: hkdf_expand_label(
+            secret: member_secret.secret.hkdf_expand_label(
                 ciphersuite,
-                &member_secret.secret,
                 "epoch",
                 &group_context.serialize(),
                 ciphersuite.hash_length(),
@@ -226,23 +268,24 @@ impl EpochSecret {
     }
 }
 
+/// The `EncryptionSecret` is used to create a `SecretTree`.
 pub struct EncryptionSecret {
     secret: Secret,
 }
 
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
-    fn derive_encryption_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         EncryptionSecret {
-            secret: derive_secret(ciphersuite, &epoch_secret.secret, "encryption"),
+            secret: epoch_secret.secret.derive_secret(ciphersuite, "encryption"),
         }
     }
 
     /// Create a `SecretTree` from the `encryption_secret` contained in the
     /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
     /// process, allowing us to achieve FS.
-    pub fn create_secret_tree(self, treesize: LeafIndex) -> Result<SecretTree, KeyScheduleError> {
-        Ok(SecretTree::new(self, treesize))
+    pub fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
+        SecretTree::new(self, treesize)
     }
 
     pub(crate) fn consume_secret(self) -> Secret {
@@ -287,13 +330,14 @@ impl EpochSecrets {
         group_context: &GroupContext,
     ) -> (Self, InitSecret, EncryptionSecret) {
         let epoch_secret =
-            EpochSecret::derive_epoch_secret(ciphersuite, group_context, member_secret);
-        let sender_data_secret = derive_secret(ciphersuite, &epoch_secret.secret, "sender data");
-        let encryption_secret =
-            EncryptionSecret::derive_encryption_secret(ciphersuite, &epoch_secret);
-        let exporter_secret = derive_secret(ciphersuite, &epoch_secret.secret, "exporter");
-        let confirmation_key = derive_secret(ciphersuite, &epoch_secret.secret, "confirm");
-        let init_secret = InitSecret::derive_init_secret(ciphersuite, &epoch_secret);
+            EpochSecret::from_member_secret(ciphersuite, group_context, member_secret);
+        let sender_data_secret = epoch_secret
+            .secret
+            .derive_secret(ciphersuite, "sender data");
+        let encryption_secret = EncryptionSecret::from_epoch_secret(ciphersuite, &epoch_secret);
+        let exporter_secret = epoch_secret.secret.derive_secret(ciphersuite, "exporter");
+        let confirmation_key = epoch_secret.secret.derive_secret(ciphersuite, "confirm");
+        let init_secret = InitSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let epoch_secrets = EpochSecrets {
             sender_data_secret,
             exporter_secret,
@@ -313,49 +357,11 @@ impl EpochSecrets {
         let secret = &self.exporter_secret;
         let context = &group_context.serialize();
         let context_hash = &ciphersuite.hash(context);
-        hkdf_expand_label(
+        secret.derive_secret(ciphersuite, label).hkdf_expand_label(
             ciphersuite,
-            &derive_secret(ciphersuite, secret, label),
             label,
             context_hash,
             key_length,
         )
-    }
-}
-
-pub fn hkdf_expand_label(
-    ciphersuite: &Ciphersuite,
-    secret: &Secret,
-    label: &str,
-    context: &[u8],
-    length: usize,
-) -> Secret {
-    let hkdf_label = HkdfLabel::new(context, label, length);
-    let info = &hkdf_label.serialize();
-    ciphersuite.hkdf_expand(secret, &info, length).unwrap()
-}
-
-struct HkdfLabel {
-    length: u16,
-    label: String,
-    context: Vec<u8>,
-}
-
-impl HkdfLabel {
-    pub fn new(context: &[u8], label: &str, length: usize) -> Self {
-        let full_label = "mls10 ".to_owned() + label;
-        HkdfLabel {
-            length: length as u16,
-            label: full_label,
-            context: context.to_vec(),
-        }
-    }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buffer = Vec::new();
-        (self.length as u16).encode(&mut buffer).unwrap();
-        encode_vec(VecSize::VecU8, &mut buffer, self.label.as_bytes()).unwrap();
-        encode_vec(VecSize::VecU32, &mut buffer, &self.context).unwrap();
-        buffer
     }
 }

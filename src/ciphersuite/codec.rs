@@ -84,3 +84,13 @@ impl Codec for Secret {
         Ok(Secret { value })
     }
 }
+
+impl HkdfLabel {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        (self.length as u16).encode(&mut buffer).unwrap();
+        encode_vec(VecSize::VecU8, &mut buffer, self.label.as_bytes()).unwrap();
+        encode_vec(VecSize::VecU32, &mut buffer, &self.context).unwrap();
+        buffer
+    }
+}

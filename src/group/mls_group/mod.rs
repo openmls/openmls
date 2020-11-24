@@ -48,23 +48,20 @@ impl MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
-        let group_context = GroupContext {
+        let group_context = GroupContext::create_initial_group_context(
+            ciphersuite,
             group_id,
-            epoch: GroupEpoch(0),
-            tree_hash: tree.compute_tree_hash(),
-            confirmed_transcript_hash: vec![],
-        };
+            tree.compute_tree_hash(),
+        );
         let commit_secret = tree.private_tree().get_commit_secret();
         // Derive an initial member secret based on the commit secret.
         // Internally, this derives a random `InitSecret` and uses it in the
         // derivation.
         let member_secret =
-            MemberSecret::derive_initial_member_secret(ciphersuite, commit_secret, None);
+            MemberSecret::from_commit_secret_and_psk(ciphersuite, commit_secret, None);
         let (epoch_secrets, init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(ciphersuite, member_secret, &group_context);
-        let secret_tree = encryption_secret
-            .create_secret_tree(LeafIndex::from(1u32))
-            .unwrap();
+        let secret_tree = encryption_secret.create_secret_tree(LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {
             ciphersuite,

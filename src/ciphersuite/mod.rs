@@ -56,6 +56,24 @@ pub struct HpkeCiphertext {
     ciphertext: Vec<u8>,
 }
 
+/// A label which can be used to expand a `Secret` using an HKDF.
+struct HkdfLabel {
+    length: u16,
+    label: String,
+    context: Vec<u8>,
+}
+
+impl HkdfLabel {
+    pub fn new(context: &[u8], label: &str, length: usize) -> Self {
+        let full_label = "mls10 ".to_owned() + label;
+        HkdfLabel {
+            length: length as u16,
+            label: full_label,
+            context: context.to_vec(),
+        }
+    }
+}
+
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
@@ -82,6 +100,26 @@ impl Secret {
         Secret {
             value: get_random_vec(length),
         }
+    }
+
+    /// Expand a `Secret` to a new `Secret` of length `length` including a
+    /// `label` and a `context`.
+    pub fn hkdf_expand_label(
+        &self,
+        ciphersuite: &Ciphersuite,
+        label: &str,
+        context: &[u8],
+        length: usize,
+    ) -> Secret {
+        let hkdf_label = HkdfLabel::new(context, label, length);
+        let info = &hkdf_label.serialize();
+        ciphersuite.hkdf_expand(&self, &info, length).unwrap()
+    }
+
+    /// Derive a new `Secret` from the this one by expanding it with the given
+    /// `label` and an empty `context`.
+    pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
+        self.hkdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
     }
 }
 
@@ -238,7 +276,9 @@ impl Ciphersuite {
     }
 
     /// HKDF extract.
-    pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm: &Secret) -> Secret {
+    pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
+        let empyt_secret = Secret::new_empty_secret();
+        let salt = salt_option.unwrap_or(&empyt_secret);
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
         }

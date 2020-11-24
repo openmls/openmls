@@ -4,7 +4,6 @@ use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
-use crate::tree::private_tree::CommitSecret;
 
 impl MlsGroup {
     pub(crate) fn apply_commit_internal(
@@ -56,7 +55,6 @@ impl MlsGroup {
             mls_plaintext.sender.to_node_index() == provisional_tree.get_own_node_index(); // XXX: correct?
 
         // Determine if Commit has a path
-        let zero_commit_secret = &CommitSecret::zero_commit_secret(ciphersuite);
         let commit_secret = if let Some(path) = commit.path.clone() {
             // Verify KeyPackage and MLSPlaintext signature
             let kp = &path.leaf_key_package;
@@ -77,19 +75,23 @@ impl MlsGroup {
                     Some(kpb) => kpb,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 };
-                provisional_tree
-                    .replace_private_tree(ciphersuite, own_kpb, &serialized_context)
-                    .unwrap()
+                Some(
+                    provisional_tree
+                        .replace_private_tree(ciphersuite, own_kpb, &serialized_context)
+                        .unwrap(),
+                )
             } else {
-                provisional_tree
-                    .update_path(sender, &path, &serialized_context)
-                    .unwrap()
+                Some(
+                    provisional_tree
+                        .update_path(sender, &path, &serialized_context)
+                        .unwrap(),
+                )
             }
         } else {
             if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
-            zero_commit_secret
+            None
         };
 
         // Create provisional group state
@@ -102,12 +104,13 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         );
 
-        let joiner_secret = JoinerSecret::derive_joiner_secret(
+        let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
             ciphersuite,
             commit_secret,
             self.init_secret.clone(),
         );
-        let member_secret = MemberSecret::derive_member_secret(ciphersuite, &joiner_secret, None);
+        let member_secret =
+            MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
 
         let provisional_group_context = GroupContext {
             group_id: self.group_context.group_id.clone(),
@@ -163,11 +166,8 @@ impl MlsGroup {
         self.init_secret = provisional_init_secret;
         // Create a secret_tree, consuming the `encryption_secret` in the
         // process.
-        self.secret_tree = RefCell::new(
-            encryption_secret
-                .create_secret_tree(provisional_tree.leaf_count())
-                .unwrap(),
-        );
+        self.secret_tree =
+            RefCell::new(encryption_secret.create_secret_tree(provisional_tree.leaf_count()));
         Ok(())
     }
 }
