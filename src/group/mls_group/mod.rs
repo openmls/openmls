@@ -245,8 +245,8 @@ impl MlsGroup {
     }
 
     // Exporter
-    pub fn export_secret(&self, label: &str, key_length: usize) -> Secret {
-        self.epoch_secrets.derive_exported_secret(
+    pub fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
+        self.epoch_secrets.exporter_secret.derive_exported_secret(
             self.ciphersuite(),
             label,
             &self.context(),

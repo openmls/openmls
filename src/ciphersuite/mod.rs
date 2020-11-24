@@ -20,6 +20,8 @@ use ciphersuites::*;
 pub(crate) use errors::*;
 
 use crate::config::{Config, ConfigError};
+use crate::group::GroupContext;
+use crate::schedule::ExporterSecret;
 use crate::utils::random_u32;
 
 #[cfg(test)]
@@ -134,6 +136,25 @@ impl From<&[u8]> for Secret {
         Secret {
             value: bytes.to_vec(),
         }
+    }
+}
+
+impl ExporterSecret {
+    /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
+    /// it can be used outside of OpenMLS.
+    pub(crate) fn derive_exported_secret(
+        &self,
+        ciphersuite: &Ciphersuite,
+        label: &str,
+        group_context: &GroupContext,
+        key_length: usize,
+    ) -> Vec<u8> {
+        let context = &group_context.serialize();
+        let context_hash = &ciphersuite.hash(context);
+        self.secret()
+            .derive_secret(ciphersuite, label)
+            .hkdf_expand_label(ciphersuite, label, context_hash, key_length)
+            .value
     }
 }
 

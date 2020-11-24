@@ -247,7 +247,7 @@ impl MemberSecret {
 /// An intermediate secret in the key schedule, the `EpochSecret` is used to
 /// create an `EpochSecrets` object and is finally consumed when creating that
 /// epoch's `InitSecret`.
-struct EpochSecret {
+pub(crate) struct EpochSecret {
     secret: Secret,
 }
 
@@ -268,6 +268,8 @@ impl EpochSecret {
             ),
         }
     }
+
+    //
 }
 
 /// The `EncryptionSecret` is used to create a `SecretTree`.
@@ -303,13 +305,32 @@ impl EncryptionSecret {
     }
 }
 
+/// A secret that we can derive secrets from, that are used outside of OpenMLS.
+#[derive(Debug)]
+pub(crate) struct ExporterSecret {
+    secret: Secret,
+}
+
+impl ExporterSecret {
+    /// Derive an `ExporterSecret` from an `EpochSecret`.
+    pub(crate) fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret(ciphersuite, "exporter");
+        ExporterSecret { secret }
+    }
+
+    /// Get the `Secret` of the `ExporterSecret`.
+    pub(crate) fn secret(&self) -> &Secret {
+        &self.secret
+    }
+}
+
 /// The `EpochSecrets` contain keys (or secrets), which are accessible outside
 /// of the `KeySchedule` and which don't get consumed immediately upon first
 /// use.
 #[derive(Debug)]
 pub struct EpochSecrets {
     sender_data_secret: Secret,
-    exporter_secret: Secret,
+    pub(crate) exporter_secret: ExporterSecret,
     confirmation_key: Secret,
 }
 
@@ -337,7 +358,7 @@ impl EpochSecrets {
             .secret
             .derive_secret(ciphersuite, "sender data");
         let encryption_secret = EncryptionSecret::from_epoch_secret(ciphersuite, &epoch_secret);
-        let exporter_secret = epoch_secret.secret.derive_secret(ciphersuite, "exporter");
+        let exporter_secret = ExporterSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let confirmation_key = epoch_secret.secret.derive_secret(ciphersuite, "confirm");
         let init_secret = InitSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let epoch_secrets = EpochSecrets {
@@ -346,24 +367,5 @@ impl EpochSecrets {
             confirmation_key,
         };
         (epoch_secrets, init_secret, encryption_secret)
-    }
-
-    /// Derive a `Secret` from the exporter secret.
-    pub fn derive_exported_secret(
-        &self,
-        ciphersuite: &Ciphersuite,
-        label: &str,
-        group_context: &GroupContext,
-        key_length: usize,
-    ) -> Secret {
-        let secret = &self.exporter_secret;
-        let context = &group_context.serialize();
-        let context_hash = &ciphersuite.hash(context);
-        secret.derive_secret(ciphersuite, label).hkdf_expand_label(
-            ciphersuite,
-            label,
-            context_hash,
-            key_length,
-        )
     }
 }

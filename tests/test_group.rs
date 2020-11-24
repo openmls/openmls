@@ -682,5 +682,10 @@ fn group_operations() {
             _print_tree(&group_alice.tree(), "Charlie removed Bob");
             panic!("Different public trees");
         }
+
+        // Make sure all groups export the same key
+        let alice_exporter = group_alice.export_secret("export test", 32);
+        let charlie_exporter = group_charlie.export_secret("export test", 32);
+        assert_eq!(alice_exporter, charlie_exporter);
     }
 }
