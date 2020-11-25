@@ -245,13 +245,18 @@ impl MlsGroup {
     }
 
     // Exporter
-    pub fn export_secret(&self, label: &str, key_length: usize) -> Vec<u8> {
-        self.epoch_secrets.exporter_secret.derive_exported_secret(
+    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, ExporterError> {
+        // TODO: This should throw an error. Generally, keys length should be
+        // checked. (see #228).
+        if key_length > u16::MAX.into() {
+            return Err(ExporterError::KeyLengthTooLong);
+        }
+        Ok(self.epoch_secrets.exporter_secret.derive_exported_secret(
             self.ciphersuite(),
             label,
             &self.context(),
             key_length,
-        )
+        ))
     }
 }
 

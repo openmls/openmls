@@ -684,8 +684,14 @@ fn group_operations() {
         }
 
         // Make sure all groups export the same key
-        let alice_exporter = group_alice.export_secret("export test", 32);
-        let charlie_exporter = group_charlie.export_secret("export test", 32);
+        let alice_exporter = group_alice.export_secret("export test", 32).unwrap();
+        let charlie_exporter = group_charlie.export_secret("export test", 32).unwrap();
         assert_eq!(alice_exporter, charlie_exporter);
+
+        // Now alice tries to derive an exporter with too large of a key length.
+        let exporter_length: usize = u16::MAX.into();
+        let exporter_length = exporter_length + 1;
+        let alice_exporter = group_alice.export_secret("export test", exporter_length);
+        assert!(alice_exporter.is_err())
     }
 }

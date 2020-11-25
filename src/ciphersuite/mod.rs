@@ -67,6 +67,11 @@ struct HkdfLabel {
 
 impl HkdfLabel {
     pub fn new(context: &[u8], label: &str, length: usize) -> Self {
+        // TODO: This should throw an error. Generally, keys length should be
+        // checked. (see #228).
+        if length > u16::MAX.into() {
+            panic!("Library error: Trying to derive a key with a too large length field!")
+        }
         let full_label = "mls10 ".to_owned() + label;
         HkdfLabel {
             length: length as u16,
