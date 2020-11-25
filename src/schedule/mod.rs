@@ -71,7 +71,7 @@ impl InitSecret {
     /// Sample a fresh, random `InitSecret` for the creation of a new group.
     pub(crate) fn random(length: usize) -> Self {
         InitSecret {
-            secret: Secret::from_random(length),
+            secret: Secret::random(length),
         }
     }
 }
@@ -221,25 +221,47 @@ impl MemberSecret {
         }
     }
 
-    /// Derive a welcome key and nonce pair to decrypt a `Welcome` message.
+    /// Derive an `AeadKey` and an `AeadNonce` from the `WelcomeSecret`,
+    /// consuming it in the process.
     pub(crate) fn derive_welcome_key_nonce(
         &self,
         ciphersuite: &Ciphersuite,
     ) -> (AeadKey, AeadNonce) {
-        let welcome_secret = ciphersuite
-            .hkdf_expand(&self.secret, b"mls 1.0 welcome", ciphersuite.hash_length())
+        let welcome_secret = WelcomeSecret::from_member_secret(&self, ciphersuite);
+        welcome_secret.derive_welcome_key_nonce(ciphersuite)
+    }
+}
+
+pub(crate) struct WelcomeSecret {
+    secret: Secret,
+}
+
+impl WelcomeSecret {
+    /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
+    pub(crate) fn from_member_secret(
+        member_secret: &MemberSecret,
+        ciphersuite: &Ciphersuite,
+    ) -> Self {
+        let secret = ciphersuite
+            .hkdf_expand(
+                &member_secret.secret,
+                b"mls 1.0 welcome",
+                ciphersuite.hash_length(),
+            )
             .unwrap();
-        let welcome_nonce = AeadNonce::from_secret(
-            ciphersuite
-                .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
-                .unwrap(),
-        );
-        let welcome_key = AeadKey::from_secret(
-            ciphersuite
-                .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
-                .unwrap(),
-            ciphersuite.aead(),
-        );
+        WelcomeSecret { secret }
+    }
+
+    /// Get the `Secret` of the `WelcomeSecret`.
+    pub(crate) fn secret(&self) -> &Secret {
+        &self.secret
+    }
+
+    /// Derive an `AeadKey` and an `AeadNonce` from the `WelcomeSecret`,
+    /// consuming it in the process.
+    fn derive_welcome_key_nonce(self, ciphersuite: &Ciphersuite) -> (AeadKey, AeadNonce) {
+        let welcome_nonce = AeadNonce::from_welcome_secret(ciphersuite, &self);
+        let welcome_key = AeadKey::from_welcome_secret(ciphersuite, &self);
         (welcome_key, welcome_nonce)
     }
 }
@@ -300,7 +322,7 @@ impl EncryptionSecret {
     #[cfg(test)]
     pub fn from_random(length: usize) -> Self {
         EncryptionSecret {
-            secret: Secret::from_random(length),
+            secret: Secret::random(length),
         }
     }
 }
@@ -324,19 +346,40 @@ impl ExporterSecret {
     }
 }
 
+/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
+#[derive(Debug)]
+pub(crate) struct SenderDataSecret {
+    secret: Secret,
+}
+
+impl SenderDataSecret {
+    /// Derive an `ExporterSecret` from an `EpochSecret`.
+    pub(crate) fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret
+            .secret
+            .derive_secret(ciphersuite, "sender data");
+        SenderDataSecret { secret }
+    }
+
+    /// Get the `Secret` of the `ExporterSecret`.
+    pub(crate) fn secret(&self) -> &Secret {
+        &self.secret
+    }
+}
+
 /// The `EpochSecrets` contain keys (or secrets), which are accessible outside
 /// of the `KeySchedule` and which don't get consumed immediately upon first
 /// use.
 #[derive(Debug)]
 pub struct EpochSecrets {
-    sender_data_secret: Secret,
+    sender_data_secret: SenderDataSecret,
     pub(crate) exporter_secret: ExporterSecret,
     confirmation_key: Secret,
 }
 
 impl EpochSecrets {
     /// Get the sender_data secret.
-    pub(crate) fn sender_data_secret(&self) -> &Secret {
+    pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
         &self.sender_data_secret
     }
 
@@ -354,9 +397,7 @@ impl EpochSecrets {
     ) -> (Self, InitSecret, EncryptionSecret) {
         let epoch_secret =
             EpochSecret::from_member_secret(ciphersuite, group_context, member_secret);
-        let sender_data_secret = epoch_secret
-            .secret
-            .derive_secret(ciphersuite, "sender data");
+        let sender_data_secret = SenderDataSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let encryption_secret = EncryptionSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let exporter_secret = ExporterSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let confirmation_key = epoch_secret.secret.derive_secret(ciphersuite, "confirm");

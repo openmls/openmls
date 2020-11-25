@@ -22,6 +22,8 @@ pub(crate) use errors::*;
 use crate::config::{Config, ConfigError};
 use crate::group::GroupContext;
 use crate::schedule::ExporterSecret;
+use crate::schedule::SenderDataSecret;
+use crate::schedule::WelcomeSecret;
 use crate::utils::random_u32;
 
 #[cfg(test)]
@@ -92,7 +94,7 @@ pub struct Secret {
 
 impl Secret {
     /// Create an empty secret.
-    pub(crate) fn new_empty_secret() -> Self {
+    pub(crate) fn empty_secret() -> Self {
         Secret { value: vec![] }
     }
 
@@ -104,7 +106,7 @@ impl Secret {
     }
 
     /// Randomly sample a fresh `Secret`.
-    pub(crate) fn from_random(length: usize) -> Self {
+    pub(crate) fn random(length: usize) -> Self {
         Secret {
             value: get_random_vec(length),
         }
@@ -266,6 +268,7 @@ impl Ciphersuite {
     }
 
     /// Get the AEAD mode
+    #[cfg(test)]
     pub(crate) fn aead(&self) -> AeadMode {
         self.aead
     }
@@ -304,7 +307,7 @@ impl Ciphersuite {
 
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
-        let empyt_secret = Secret::new_empty_secret();
+        let empyt_secret = Secret::empty_secret();
         let salt = salt_option.unwrap_or(&empyt_secret);
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
@@ -395,11 +398,52 @@ impl Ciphersuite {
 }
 
 impl AeadKey {
-    /// Build a new key for an AEAD from `Secret`.
-    pub(crate) fn from_secret(secret: Secret, aead_mode: AeadMode) -> AeadKey {
+    /// Create an `AeadKey` from a `Secret`. TODO: This function should
+    /// disappear when tackling issue #103.
+    pub(crate) fn from_secret(ciphersuite: &Ciphersuite, secret: Secret) -> Self {
         AeadKey {
-            aead_mode,
+            aead_mode: ciphersuite.aead,
             value: secret.value,
+        }
+    }
+
+    fn expand_from_secret(ciphersuite: &Ciphersuite, ciphertext: &[u8], secret: &Secret) -> Self {
+        let key = secret.kdf_expand_label(
+            ciphersuite,
+            "key",
+            &ciphertext,
+            ciphersuite.aead_key_length(),
+        );
+        AeadKey {
+            aead_mode: ciphersuite.aead,
+            value: key.value,
+        }
+    }
+
+    /// Derive a new AEAD key from a `SenderDataSecret`.
+    pub(crate) fn from_sender_data_secret(
+        ciphersuite: &Ciphersuite,
+        ciphertext: &[u8],
+        sender_data_secret: &SenderDataSecret,
+    ) -> Self {
+        Self::expand_from_secret(ciphersuite, ciphertext, sender_data_secret.secret())
+    }
+
+    /// Derive a new AEAD key from a `WelcomeSecret`.
+    pub(crate) fn from_welcome_secret(
+        ciphersuite: &Ciphersuite,
+        welcome_secret: &WelcomeSecret,
+    ) -> AeadKey {
+        let aead_secret = ciphersuite
+            .hkdf_expand(
+                &welcome_secret.secret(),
+                b"key",
+                ciphersuite.aead_key_length(),
+            )
+            .unwrap();
+        AeadKey {
+            aead_mode: ciphersuite.aead,
+            value: aead_secret.value,
         }
     }
 
@@ -462,10 +506,44 @@ impl AeadKey {
 }
 
 impl AeadNonce {
-    /// Build a new nonce for an AEAD from `Secret`.
-    pub(crate) fn from_secret(secret: Secret) -> Self {
+    /// Create an `AeadNonce` from a `Secret`. TODO: This function should
+    /// disappear when tackling issue #103.
+    pub fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(secret.value.as_slice());
+        nonce.clone_from_slice(&secret.value);
+        AeadNonce { value: nonce }
+    }
+    /// Derive a new AEAD nonce from a `SenderDataSecret`.
+    pub(crate) fn from_sender_data_secret(
+        ciphersuite: &Ciphersuite,
+        ciphertext: &[u8],
+        sender_data_secret: &SenderDataSecret,
+    ) -> Self {
+        let nonce_secret = sender_data_secret.secret().kdf_expand_label(
+            ciphersuite,
+            "nonce",
+            &ciphertext,
+            ciphersuite.aead_nonce_length(),
+        );
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(nonce_secret.value.as_slice());
+        AeadNonce { value: nonce }
+    }
+
+    /// Derive a new AEAD key from a `WelcomeSecret`.
+    pub(crate) fn from_welcome_secret(
+        ciphersuite: &Ciphersuite,
+        welcome_secret: &WelcomeSecret,
+    ) -> Self {
+        let nonce_secret = ciphersuite
+            .hkdf_expand(
+                &welcome_secret.secret(),
+                b"nonce",
+                ciphersuite.aead_nonce_length(),
+            )
+            .unwrap();
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(nonce_secret.value.as_slice());
         AeadNonce { value: nonce }
     }
 
