@@ -7,7 +7,7 @@ async fn test_list_clients() {
     let mut app = test::init_service(
         App::new()
             .app_data(data.clone())
-            .service(get_client)
+            .service(get_key_packages)
             .service(list_clients)
             .service(register_client),
     )
@@ -24,7 +24,11 @@ async fn test_list_clients() {
 
     assert_eq!(
         response_body,
-        &Body::Bytes(Bytes::from(format!("I know these clients []!\n")))
+        &Body::from_slice(
+            web::Json(serde_json::to_string(&Vec::<String>::new()).unwrap())
+                .to_string()
+                .as_bytes()
+        )
     );
 
     // Add a client.
@@ -64,13 +68,15 @@ async fn test_list_clients() {
 
     assert_eq!(
         response_body,
-        &Body::Bytes(Bytes::from(format!(
-            "I know these clients [\"Client1\"]!\n"
-        )))
+        &Body::from_slice(
+            web::Json(serde_json::to_string(&vec![client_name]).unwrap())
+                .to_string()
+                .as_bytes()
+        )
     );
 
     // Get Client1 key packages.
-    let path = "/clients/get/".to_owned() + &client_name;
+    let path = "/clients/key_packages/".to_owned() + &client_name;
     let req = test::TestRequest::with_uri(&path).to_request();
 
     let mut response = test::call_service(&mut app, req).await;
@@ -98,7 +104,7 @@ async fn test_group() {
             .app_data(data.clone())
             .service(register_client)
             .service(list_clients)
-            .service(get_client)
+            .service(get_key_packages)
             .service(send_welcome)
             .service(msg_recv)
             .service(msg_send),
@@ -139,7 +145,7 @@ async fn test_group() {
     }
 
     // Client1 creates MyFirstGroup
-    let group_id = b"MyFristGroup";
+    let group_id = b"MyFirstGroup";
     let group_aad = b"MyFirstGroup AAD";
     let group_ciphersuite = key_package_bundles[0].get_key_package().ciphersuite();
     let mut group = MlsGroup::new(
@@ -152,7 +158,7 @@ async fn test_group() {
 
     // === Client1 invites Client2 ===
     // First we need to get the key package for Client2 from the DS.
-    let path = "/clients/get/".to_owned() + &clients[1];
+    let path = "/clients/key_packages/".to_owned() + &clients[1];
     let req = test::TestRequest::with_uri(&path).to_request();
 
     let mut response = test::call_service(&mut app, req).await;

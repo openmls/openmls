@@ -42,6 +42,10 @@ jobs:
       run: cargo test --verbose
     - name: Cargo fmt
       run: cargo fmt -- --check
+    - name: Test DS
+      run: cargo test --verbose -p mls-ds
+    - name: Test DS lib
+      run: cargo test --verbose -p ds-lib
     - name: Clippy warnings
       uses: actions-rs/clippy-check@v1
       with:

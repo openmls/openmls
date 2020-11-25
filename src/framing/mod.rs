@@ -19,7 +19,7 @@ mod test_framing;
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
     pub group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
+    pub epoch: GroupEpoch,
     pub(crate) sender: Sender,
     pub(crate) authenticated_data: Vec<u8>,
     pub(crate) content_type: ContentType,
@@ -96,6 +96,11 @@ impl MLSPlaintext {
             _ => Err(MLSPlaintextError::NotAnApplicationMessage),
         }
     }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        self.content_type.is_handshake_message()
+    }
 }
 
 impl Codec for MLSPlaintext {
@@ -141,25 +146,6 @@ pub struct MLSCiphertext {
 }
 
 impl MLSCiphertext {
-    // pub fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
-    //     let mut cursor = Cursor::new(bytes);
-    //     let group_id = GroupId::decode(&mut cursor)?;
-    //     let epoch = GroupEpoch::decode(&mut cursor)?;
-    //     let content_type = ContentType::decode(&mut cursor)?;
-    //     let authenticated_data = decode_vec(VecSize::VecU32, &mut cursor)?;
-    //     let sender_data_nonce = decode_vec(VecSize::VecU8, &mut cursor)?;
-    //     let encrypted_sender_data = decode_vec(VecSize::VecU8, &mut cursor)?;
-    //     let ciphertext = decode_vec(VecSize::VecU32, &mut cursor)?;
-    //     Ok(MLSCiphertext {
-    //         group_id,
-    //         epoch,
-    //         content_type,
-    //         authenticated_data,
-    //         sender_data_nonce,
-    //         encrypted_sender_data,
-    //         ciphertext,
-    //     })
-    // }
     pub fn as_slice(&self) -> Vec<u8> {
         self.encode_detached().unwrap()
     }
@@ -329,6 +315,11 @@ impl MLSCiphertext {
         Ok(mls_plaintext)
     }
 
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        self.content_type.is_handshake_message()
+    }
+
     fn encode_padded_ciphertext_content_detached(
         mls_plaintext: &MLSPlaintext,
     ) -> Result<Vec<u8>, CodecError> {
@@ -416,6 +407,12 @@ impl Codec for ContentType {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         Ok(ContentType::from(u8::decode(cursor)?))
+    }
+}
+
+impl ContentType {
+    fn is_handshake_message(&self) -> bool {
+        self == &ContentType::Proposal || self == &ContentType::Commit
     }
 }
 

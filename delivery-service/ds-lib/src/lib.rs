@@ -10,7 +10,7 @@ use openmls::prelude::*;
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to
 /// `/clients/register`.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ClientInfo {
     pub client_name: String,
     pub key_packages: ClientKeyPackages,
@@ -62,6 +62,32 @@ pub enum MLSMessage {
     MLSPlaintext(MLSPlaintext),
 }
 
+impl MLSMessage {
+    /// Get the group ID as plain byte vector.
+    pub fn group_id(&self) -> Vec<u8> {
+        match self {
+            MLSMessage::MLSCiphertext(m) => m.group_id.as_slice(),
+            MLSMessage::MLSPlaintext(m) => m.group_id.as_slice(),
+        }
+    }
+
+    /// Get the epoch as plain u64.
+    pub fn epoch(&self) -> u64 {
+        match self {
+            MLSMessage::MLSCiphertext(m) => m.epoch.0,
+            MLSMessage::MLSPlaintext(m) => m.epoch.0,
+        }
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        match self {
+            MLSMessage::MLSCiphertext(m) => m.is_handshake_message(),
+            MLSMessage::MLSPlaintext(m) => m.is_handshake_message(),
+        }
+    }
+}
+
 /// Enum defining encodings for the different message types/
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -92,6 +118,21 @@ impl GroupMessage {
             msg,
             recipients: recipients.to_vec(),
         }
+    }
+
+    /// Get the group ID as plain byte vector.
+    pub fn group_id(&self) -> Vec<u8> {
+        self.msg.group_id()
+    }
+
+    /// Get the epoch as plain u64.
+    pub fn epoch(&self) -> u64 {
+        self.msg.epoch()
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        self.msg.is_handshake_message()
     }
 }
 
