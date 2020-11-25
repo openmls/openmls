@@ -93,11 +93,6 @@ pub struct Secret {
 }
 
 impl Secret {
-    /// Create an empty secret.
-    pub(crate) fn empty_secret() -> Self {
-        Secret { value: vec![] }
-    }
-
     // TODO: The only reason we still need this, is because ConfirmationTag is
     // currently not a MAC, but a Secret. This should be solved when we're up to
     // spec, i.e. with issue #147.
@@ -130,6 +125,20 @@ impl Secret {
     /// `label` and an empty `context`.
     pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
         self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
+    }
+}
+
+impl Default for Secret {
+    fn default() -> Self {
+        Secret { value: vec![] }
+    }
+}
+
+static EMPTY_SECRET: Secret = Secret { value: vec![] };
+
+impl Default for &Secret {
+    fn default() -> Self {
+        &EMPTY_SECRET
     }
 }
 
@@ -307,8 +316,7 @@ impl Ciphersuite {
 
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
-        let empyt_secret = Secret::empty_secret();
-        let salt = salt_option.unwrap_or(&empyt_secret);
+        let salt = salt_option.unwrap_or_default();
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
         }

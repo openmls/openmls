@@ -50,7 +50,7 @@ impl PrivateTree {
             hpke_private_key: None,
             path_keys: PathKeys::default(),
             commit_secret: CommitSecret {
-                secret: Secret::empty_secret(),
+                secret: Secret::default(),
             },
             path_secrets: PathSecrets::default(),
         }
@@ -75,7 +75,7 @@ impl PrivateTree {
             hpke_private_key: Some(private_key),
             path_keys: PathKeys::default(),
             commit_secret: CommitSecret {
-                secret: Secret::empty_secret(),
+                secret: Secret::default(),
             },
             path_secrets: Vec::default(),
         }
