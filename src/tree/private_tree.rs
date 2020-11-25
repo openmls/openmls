@@ -138,7 +138,7 @@ impl PrivateTree {
         let path_secrets = if path.is_empty() {
             vec![]
         } else {
-            vec![leaf_secret.hkdf_expand_label(ciphersuite, "path", &[], ciphersuite.hash_length())]
+            vec![leaf_secret.kdf_expand_label(ciphersuite, "path", &[], ciphersuite.hash_length())]
         };
 
         self.derive_path_secrets(ciphersuite, path_secrets, path)
@@ -177,7 +177,7 @@ impl PrivateTree {
 
         for i in 1..path.len() {
             let path_secret =
-                path_secrets[i - 1].hkdf_expand_label(ciphersuite, "path", &[], hash_len);
+                path_secrets[i - 1].kdf_expand_label(ciphersuite, "path", &[], hash_len);
             path_secrets.push(path_secret);
         }
         self.path_secrets = path_secrets;
@@ -203,7 +203,7 @@ impl PrivateTree {
         let path_secret = self.path_secrets.last().unwrap();
 
         self.commit_secret = CommitSecret {
-            secret: path_secret.hkdf_expand_label(
+            secret: path_secret.kdf_expand_label(
                 ciphersuite,
                 "path",
                 &[],
@@ -234,7 +234,7 @@ impl PrivateTree {
 
         // Derive key pairs for all nodes in the direct path.
         for path_secret in self.path_secrets.iter() {
-            let node_secret = path_secret.hkdf_expand_label(ciphersuite, "node", &[], hash_len);
+            let node_secret = path_secret.kdf_expand_label(ciphersuite, "node", &[], hash_len);
             let keypair = ciphersuite.derive_hpke_keypair(&node_secret);
             let (private_key, public_key) = keypair.into_keys();
             public_keys.push(public_key);

@@ -85,7 +85,7 @@ impl Codec for Secret {
     }
 }
 
-impl HkdfLabel {
+impl KdfLabel {
     pub fn serialize(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
         (self.length as u16).encode(&mut buffer).unwrap();

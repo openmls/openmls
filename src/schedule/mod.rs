@@ -260,7 +260,7 @@ impl EpochSecret {
         member_secret: MemberSecret,
     ) -> Self {
         EpochSecret {
-            secret: member_secret.secret.hkdf_expand_label(
+            secret: member_secret.secret.kdf_expand_label(
                 ciphersuite,
                 "epoch",
                 &group_context.serialize(),

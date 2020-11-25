@@ -18,6 +18,8 @@ use crate::tree::{index::*, node::*, secret_tree::*, *};
 use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
 
+use super::errors::ExporterError;
+
 pub type CreateCommitResult =
     Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
 

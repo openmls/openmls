@@ -58,14 +58,15 @@ pub struct HpkeCiphertext {
     ciphertext: Vec<u8>,
 }
 
-/// A label which can be used to expand a `Secret` using an HKDF.
-struct HkdfLabel {
+/// `KdfLabel` is later serialized and used in the `label` field of
+/// `kdf_expand_label`.
+struct KdfLabel {
     length: u16,
     label: String,
     context: Vec<u8>,
 }
 
-impl HkdfLabel {
+impl KdfLabel {
     pub fn new(context: &[u8], label: &str, length: usize) -> Self {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
@@ -73,7 +74,7 @@ impl HkdfLabel {
             panic!("Library error: Trying to derive a key with a too large length field!")
         }
         let full_label = "mls10 ".to_owned() + label;
-        HkdfLabel {
+        KdfLabel {
             length: length as u16,
             label: full_label,
             context: context.to_vec(),
@@ -111,14 +112,14 @@ impl Secret {
 
     /// Expand a `Secret` to a new `Secret` of length `length` including a
     /// `label` and a `context`.
-    pub fn hkdf_expand_label(
+    pub fn kdf_expand_label(
         &self,
         ciphersuite: &Ciphersuite,
         label: &str,
         context: &[u8],
         length: usize,
     ) -> Secret {
-        let hkdf_label = HkdfLabel::new(context, label, length);
+        let hkdf_label = KdfLabel::new(context, label, length);
         let info = &hkdf_label.serialize();
         ciphersuite.hkdf_expand(&self, &info, length).unwrap()
     }
@@ -126,7 +127,7 @@ impl Secret {
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
     pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
-        self.hkdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
+        self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
     }
 }
 
@@ -158,7 +159,7 @@ impl ExporterSecret {
         let context_hash = &ciphersuite.hash(context);
         self.secret()
             .derive_secret(ciphersuite, label)
-            .hkdf_expand_label(ciphersuite, label, context_hash, key_length)
+            .kdf_expand_label(ciphersuite, label, context_hash, key_length)
             .value
     }
 }

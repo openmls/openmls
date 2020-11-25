@@ -196,7 +196,7 @@ impl MLSCiphertext {
             .unwrap();
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = AeadKey::from_secret(
-            epoch_secrets.sender_data_secret().hkdf_expand_label(
+            epoch_secrets.sender_data_secret().kdf_expand_label(
                 ciphersuite,
                 "sd key",
                 &ciphertext,
@@ -206,7 +206,7 @@ impl MLSCiphertext {
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce =
-            AeadNonce::from_secret(epoch_secrets.sender_data_secret().hkdf_expand_label(
+            AeadNonce::from_secret(epoch_secrets.sender_data_secret().kdf_expand_label(
                 ciphersuite,
                 "sd nonce",
                 &ciphertext,
@@ -249,7 +249,7 @@ impl MLSCiphertext {
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = AeadKey::from_secret(
-            epoch_secrets.sender_data_secret().hkdf_expand_label(
+            epoch_secrets.sender_data_secret().kdf_expand_label(
                 ciphersuite,
                 "sd key",
                 &self.ciphertext,
@@ -259,7 +259,7 @@ impl MLSCiphertext {
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce =
-            AeadNonce::from_secret(epoch_secrets.sender_data_secret().hkdf_expand_label(
+            AeadNonce::from_secret(epoch_secrets.sender_data_secret().kdf_expand_label(
                 ciphersuite,
                 "sd nonce",
                 &self.ciphertext,
