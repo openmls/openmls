@@ -3,6 +3,7 @@
 ![build status](https://travis-ci.com/openmls/openmls.svg?branch=main)
 [![Build & Test](https://github.com/openmls/openmls/workflows/Build%20&%20Test/badge.svg)](https://github.com/openmls/openmls/actions?query=workflow%3A%22Build+%26+Test%22)
 [![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)](https://openmls.github.io/openmls/openmls/index.html)
+[![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
 

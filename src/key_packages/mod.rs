@@ -316,13 +316,12 @@ impl KeyPackageBundle {
         };
 
         // Check if there is a lifetime extension. If not, add one that is at
-        // least valid. TODO: Add the default LifetimeExtension here as soon as
-        // one is implemented (issue 164).
+        // least valid.
         if !extensions
             .iter()
             .any(|e| e.get_type() == ExtensionType::Lifetime)
         {
-            extensions.push(Box::new(LifetimeExtension::new(60)));
+            extensions.push(Box::new(LifetimeExtension::default()));
         }
         let (private_key, public_key) = key_pair.into_keys();
         let key_package =
