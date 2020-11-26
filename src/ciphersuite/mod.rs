@@ -117,8 +117,8 @@ impl Secret {
         length: usize,
     ) -> Secret {
         let hkdf_label = KdfLabel::new(context, label, length);
-        let info = &hkdf_label.serialize();
-        ciphersuite.hkdf_expand(&self, &info, length).unwrap()
+        let info = hkdf_label.serialize();
+        ciphersuite.hkdf_expand(self, &info, length).unwrap()
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
