@@ -158,7 +158,8 @@ impl From<&[u8]> for Secret {
 
 impl ExporterSecret {
     /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
-    /// it can be used outside of OpenMLS.
+    /// it can be used outside of OpenMLS. This function is made available for
+    /// use from the outside through [`crate::group::mls_group::export_secret`].
     pub(crate) fn derive_exported_secret(
         &self,
         ciphersuite: &Ciphersuite,
