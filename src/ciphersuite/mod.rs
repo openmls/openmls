@@ -69,18 +69,19 @@ struct KdfLabel {
 }
 
 impl KdfLabel {
-    pub fn new(context: &[u8], label: &str, length: usize) -> Self {
+    pub fn to_serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if length > u16::MAX.into() {
             panic!("Library error: Trying to derive a key with a too large length field!")
         }
         let full_label = "mls10 ".to_owned() + label;
-        KdfLabel {
+        let kdf_label = KdfLabel {
             length: length as u16,
             label: full_label,
             context: context.to_vec(),
-        }
+        };
+        kdf_label.serialize()
     }
 }
 
@@ -116,8 +117,7 @@ impl Secret {
         context: &[u8],
         length: usize,
     ) -> Secret {
-        let hkdf_label = KdfLabel::new(context, label, length);
-        let info = hkdf_label.serialize();
+        let info = KdfLabel::to_serialized_label(context, label, length);
         ciphersuite.hkdf_expand(self, &info, length).unwrap()
     }
 
