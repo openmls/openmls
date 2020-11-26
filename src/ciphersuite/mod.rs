@@ -416,8 +416,13 @@ impl AeadKey {
         }
     }
 
-    fn expand_from_secret(ciphersuite: &Ciphersuite, ciphertext: &[u8], secret: &Secret) -> Self {
-        let key = secret.kdf_expand_label(
+    /// Derive a new AEAD key from a `SenderDataSecret`.
+    pub(crate) fn from_sender_data_secret(
+        ciphersuite: &Ciphersuite,
+        ciphertext: &[u8],
+        sender_data_secret: &SenderDataSecret,
+    ) -> Self {
+        let key = sender_data_secret.secret().kdf_expand_label(
             ciphersuite,
             "key",
             &ciphertext,
@@ -427,15 +432,6 @@ impl AeadKey {
             aead_mode: ciphersuite.aead,
             value: key.value,
         }
-    }
-
-    /// Derive a new AEAD key from a `SenderDataSecret`.
-    pub(crate) fn from_sender_data_secret(
-        ciphersuite: &Ciphersuite,
-        ciphertext: &[u8],
-        sender_data_secret: &SenderDataSecret,
-    ) -> Self {
-        Self::expand_from_secret(ciphersuite, ciphertext, sender_data_secret.secret())
     }
 
     /// Derive a new AEAD key from a `WelcomeSecret`.
