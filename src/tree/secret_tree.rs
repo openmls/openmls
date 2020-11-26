@@ -105,7 +105,8 @@ impl SecretTree {
     }
 
     /// Get current generation for a specific SenderRatchet
-    pub fn get_generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
+    #[cfg(test)]
+    pub(crate) fn get_generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
         match self.get_ratchet_opt(index, secret_type) {
             Some(sender_ratchet) => sender_ratchet.get_generation(),
             None => 0,
