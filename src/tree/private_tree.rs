@@ -11,6 +11,14 @@ pub(crate) struct CommitSecret {
     secret: Secret,
 }
 
+impl Default for CommitSecret {
+    fn default() -> Self {
+        CommitSecret {
+            secret: Secret::default(),
+        }
+    }
+}
+
 impl CommitSecret {
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
@@ -49,9 +57,7 @@ impl PrivateTree {
             node_index,
             hpke_private_key: None,
             path_keys: PathKeys::default(),
-            commit_secret: CommitSecret {
-                secret: Secret::default(),
-            },
+            commit_secret: CommitSecret::default(),
             path_secrets: PathSecrets::default(),
         }
     }
