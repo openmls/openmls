@@ -233,7 +233,7 @@ impl MLSCiphertext {
         }
     }
 
-    pub fn to_plaintext(
+    pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
         roster: &[&Credential],

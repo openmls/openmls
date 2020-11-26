@@ -371,7 +371,7 @@ impl SenderDataSecret {
 /// of the `KeySchedule` and which don't get consumed immediately upon first
 /// use.
 #[derive(Debug)]
-pub struct EpochSecrets {
+pub(crate) struct EpochSecrets {
     sender_data_secret: SenderDataSecret,
     pub(crate) exporter_secret: ExporterSecret,
     confirmation_key: Secret,
