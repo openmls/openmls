@@ -69,7 +69,7 @@ struct KdfLabel {
 }
 
 impl KdfLabel {
-    pub fn to_serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
+    pub fn serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if length > u16::MAX.into() {
@@ -117,7 +117,7 @@ impl Secret {
         context: &[u8],
         length: usize,
     ) -> Secret {
-        let info = KdfLabel::to_serialized_label(context, label, length);
+        let info = KdfLabel::serialized_label(context, label, length);
         ciphersuite.hkdf_expand(self, &info, length).unwrap()
     }
 
