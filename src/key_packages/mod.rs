@@ -239,7 +239,7 @@ impl KeyPackageBundle {
 
     /// Replace the init key in the `KeyPackage` with a random one and return a
     /// `KeyPackageBundle` with the corresponding secret values
-    pub fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
+    pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
         let ciphersuite = key_package.cipher_suite();
         let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);

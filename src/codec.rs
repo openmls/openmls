@@ -19,10 +19,8 @@ impl From<ConfigError> for CodecError {
 
 impl From<CodecError> for ConfigError {
     // TODO: tbd in #83, also this direction shouldn't be necessary.
-    fn from(e: CodecError) -> Self {
-        match e {
-            _ => ConfigError::InvalidConfig,
-        }
+    fn from(_e: CodecError) -> Self {
+        ConfigError::InvalidConfig
     }
 }
 

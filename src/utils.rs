@@ -42,48 +42,6 @@ macro_rules! implement_enum_display {
     };
 }
 
-pub enum ValueOrRef<'a, T: Clone> {
-    Ref(&'a T),
-    Value(T),
-}
-
-impl<'a, T> ValueOrRef<'a, T>
-where
-    T: Clone,
-{
-    pub fn to_ref(&'a self) -> &'a T {
-        match self {
-            Self::Ref(r) => r,
-            Self::Value(v) => &v,
-        }
-    }
-
-    pub fn into_value_or_clone(self) -> T {
-        match self {
-            Self::Ref(r) => r.clone(),
-            Self::Value(v) => v,
-        }
-    }
-}
-
-impl<'a, T> From<T> for ValueOrRef<'a, T>
-where
-    T: Clone,
-{
-    fn from(v: T) -> Self {
-        Self::Value(v)
-    }
-}
-
-impl<'a, T> From<&'a T> for ValueOrRef<'a, T>
-where
-    T: Clone,
-{
-    fn from(r: &'a T) -> Self {
-        Self::Ref(r)
-    }
-}
-
 pub fn _print_tree(tree: &RatchetTree, message: &str) {
     let factor = 3;
     println!("{}", message);

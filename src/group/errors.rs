@@ -48,7 +48,7 @@ pub enum ApplyCommitError {
     OwnKeyNotFound = 211,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 #[repr(u16)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
