@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 //! # Pre shared keys.
 
+// TODO: Implement PSK support #141.
+
 /// enum {
 ///   reserved(0),
 ///   external(1),

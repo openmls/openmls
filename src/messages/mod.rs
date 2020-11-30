@@ -76,13 +76,13 @@ impl Welcome {
         self.cipher_suite
     }
 
-    /// Get a reference to the ciphersuite in this Welcome message.
-    pub fn get_secrets_ref(&self) -> &[EncryptedGroupSecrets] {
+    /// Get a reference to the encrypted group secrets in this Welcome message.
+    pub fn secrets(&self) -> &[EncryptedGroupSecrets] {
         &self.secrets
     }
 
     /// Get a reference to the encrypted group info.
-    pub(crate) fn get_encrypted_group_info_ref(&self) -> &[u8] {
+    pub(crate) fn encrypted_group_info(&self) -> &[u8] {
         &self.encrypted_group_info
     }
 }
