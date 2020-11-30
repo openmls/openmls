@@ -16,6 +16,8 @@ pub(crate) mod secret_tree;
 pub(crate) mod sender_ratchet;
 pub(crate) mod treemath;
 
+pub(crate) mod newtree;
+
 use hash_input::*;
 use index::*;
 use node::*;
