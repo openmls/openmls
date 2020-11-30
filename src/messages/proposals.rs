@@ -186,8 +186,8 @@ impl ProposalQueue {
         proposals: Vec<MLSPlaintext>,
     ) -> Self {
         let mut proposal_queue = ProposalQueue::new();
-        for mls_plaintext in proposals.iter() {
-            let queued_proposal = QueuedProposal::new(ciphersuite, mls_plaintext);
+        for mls_plaintext in proposals {
+            let queued_proposal = QueuedProposal::new(ciphersuite, &mls_plaintext);
             proposal_queue.add(queued_proposal);
         }
         proposal_queue

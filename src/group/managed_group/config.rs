@@ -1,5 +1,9 @@
 use crate::group::*;
 
+/// Defines whether handshake messages (Proposals & Commits) are encrypted.
+/// Application are always encrypted regardless. `Plaintext`: Handshake messages
+/// are returned as MLSPlaintext messages `Ciphertext`: Handshake messages are
+/// returned as MLSCiphertext messages
 #[derive(Clone)]
 pub enum HandshakeMessageFormat {
     Plaintext,

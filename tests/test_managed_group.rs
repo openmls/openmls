@@ -165,16 +165,15 @@ fn managed_group_operations() {
         // Define the managed group configuration
 
         let update_policy = UpdatePolicy::default();
-        let callbacks = ManagedGroupCallbacks::new(
-            Some(validate_add),
-            Some(validate_remove),
-            Some(member_added),
-            Some(member_removed),
-            Some(member_updated),
-            Some(app_message_received),
-            Some(invalid_message_received),
-            Some(error_occured),
-        );
+        let callbacks = ManagedGroupCallbacks::new()
+            .with_validate_add(validate_add)
+            .with_validate_remove(validate_remove)
+            .with_member_added(member_added)
+            .with_member_removed(member_removed)
+            .with_member_updated(member_updated)
+            .with_app_message_received(app_message_received)
+            .with_invalid_message_received(invalid_message_received)
+            .with_error_occured(error_occured);
         let managed_group_config =
             ManagedGroupConfig::new(HandshakeMessageFormat::Plaintext, update_policy, callbacks);
 
@@ -193,7 +192,9 @@ fn managed_group_operations() {
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };
 
-        alice_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Check that the group now has two members
         assert_eq!(alice_group.members().len(), 2);
@@ -203,36 +204,39 @@ fn managed_group_operations() {
         assert_eq!(members[0].get_identity(), b"Alice");
         assert_eq!(members[1].get_identity(), b"Bob");
 
-        let mut bob_group = match ManagedGroup::new_from_welcome(
+        let mut bob_group = ManagedGroup::new_from_welcome(
             &bob_credential_bundle,
             &managed_group_config,
             welcome,
             Some(alice_group.export_ratchet_tree()),
             bob_key_package_bundle,
-        ) {
-            Ok(group) => group,
-            Err(e) => panic!("Error creating group from Welcome: {:?}", e),
-        };
+        )
+        .expect("Error creating group from Welcome");
 
         // Make sure that both groups have the same members
         assert_eq!(alice_group.members(), bob_group.members());
 
         // === Alice sends a message to Bob ===
         let message_alice = b"Hi, I'm Alice!";
-        let queued_message = match alice_group.create_message(message_alice) {
-            Ok(m) => m,
-            Err(e) => panic!("Error creating application message: {:?}", e),
-        };
-        bob_group.process_messages(vec![queued_message]);
+        let queued_message = alice_group
+            .create_message(message_alice)
+            .expect("Error creating application message");
+        bob_group
+            .process_messages(vec![queued_message])
+            .expect("The group is no longer active");
 
         // === Bob updates and commits ===
         let queued_messages = match bob_group.self_update(None) {
             Ok(qm) => qm,
             Err(e) => panic!("Error performing self-update: {:?}", e),
         };
-        alice_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
         println!("Alice processed messages");
-        bob_group.process_messages(queued_messages.clone());
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Check that both groups have the same state
         assert_eq!(
@@ -247,12 +251,27 @@ fn managed_group_operations() {
         );
 
         // === Alice updates and commits ===
-        let queued_messages = match alice_group.self_update(None) {
+        let queued_messages = match alice_group.propose_self_update(None) {
             Ok(qm) => qm,
             Err(e) => panic!("Error performing self-update: {:?}", e),
         };
-        alice_group.process_messages(queued_messages.clone());
-        bob_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+
+        let (queued_messages, _welcome_option) = match alice_group.process_pending_proposals() {
+            Ok(qm) => qm,
+            Err(e) => panic!("Error performing self-update: {:?}", e),
+        };
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Check that both groups have the same state
         assert_eq!(
@@ -281,19 +300,21 @@ fn managed_group_operations() {
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };
 
-        alice_group.process_messages(queued_messages.clone());
-        bob_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
-        let mut charlie_group = match ManagedGroup::new_from_welcome(
+        let mut charlie_group = ManagedGroup::new_from_welcome(
             &charlie_credential_bundle,
             &managed_group_config,
             welcome,
             Some(bob_group.export_ratchet_tree()),
             charlie_key_package_bundle,
-        ) {
-            Ok(group) => group,
-            Err(e) => panic!("Error creating group from Welcome: {:?}", e),
-        };
+        )
+        .expect("Error creating group from Welcome");
 
         // Make sure that all groups have the same public tree
         assert_eq!(
@@ -313,21 +334,30 @@ fn managed_group_operations() {
 
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
-        let queued_message = match charlie_group.create_message(message_charlie) {
-            Ok(m) => m,
-            Err(e) => panic!("Error creating application message: {:?}", e),
-        };
-        alice_group.process_messages(vec![queued_message.clone()]);
-        bob_group.process_messages(vec![queued_message]);
+        let queued_message = charlie_group
+            .create_message(message_charlie)
+            .expect("Error creating application message");
+        alice_group
+            .process_messages(vec![queued_message.clone()])
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(vec![queued_message])
+            .expect("The group is no longer active");
 
         // === Charlie updates and commits ===
         let queued_messages = match charlie_group.self_update(None) {
             Ok(qm) => qm,
             Err(e) => panic!("Error performing self-update: {:?}", e),
         };
-        alice_group.process_messages(queued_messages.clone());
-        bob_group.process_messages(queued_messages.clone());
-        charlie_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        charlie_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Check that all groups have the same state
         assert_eq!(
@@ -358,9 +388,15 @@ fn managed_group_operations() {
         // Check that Bob's group is still active
         assert!(bob_group.is_active());
 
-        alice_group.process_messages(queued_messages.clone());
-        bob_group.process_messages(queued_messages.clone());
-        charlie_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        charlie_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Check that Bob's group is no longer active
         assert!(!bob_group.is_active());
@@ -393,22 +429,34 @@ fn managed_group_operations() {
         let queued_messages = alice_group
             .propose_remove_members(&[2])
             .expect("Could not create proposal to remove Charlie");
-        alice_group.process_messages(queued_messages.clone());
-        charlie_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        charlie_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Create AddProposal and process it
         let queued_messages = alice_group
             .propose_add_members(&[bob_key_package])
             .expect("Could not create proposal to add Bob");
-        alice_group.process_messages(queued_messages.clone());
-        charlie_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        charlie_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Commit to the proposals and process it
         let (queued_messages, welcome_option) = alice_group
             .process_pending_proposals()
             .expect("Could not flush proposals");
-        alice_group.process_messages(queued_messages.clone());
-        charlie_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        charlie_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Make sure the group contains two members
         assert_eq!(alice_group.members().len(), 2);
@@ -419,16 +467,14 @@ fn managed_group_operations() {
         assert_eq!(members[1].get_identity(), b"Bob");
 
         // Bob creates a new group
-        let mut bob_group = match ManagedGroup::new_from_welcome(
+        let mut bob_group = ManagedGroup::new_from_welcome(
             &bob_credential_bundle,
             &managed_group_config,
             welcome_option.expect("Welcome was not returned"),
             Some(alice_group.export_ratchet_tree()),
             bob_key_package_bundle,
-        ) {
-            Ok(group) => group,
-            Err(e) => panic!("Error creating group from Welcome: {:?}", e),
-        };
+        )
+        .expect("Error creating group from Welcome");
 
         // Make sure the group contains two members
         assert_eq!(alice_group.members().len(), 2);
@@ -448,18 +494,23 @@ fn managed_group_operations() {
 
         // === lice sends a message to the group ===
         let message_alice = b"Hi, I'm Alice!";
-        let queued_message = match alice_group.create_message(message_alice) {
-            Ok(m) => m,
-            Err(e) => panic!("Error creating application message: {:?}", e),
-        };
-        bob_group.process_messages(vec![queued_message.clone()]);
+        let queued_message = alice_group
+            .create_message(message_alice)
+            .expect("Error creating application message");
+        bob_group
+            .process_messages(vec![queued_message.clone()])
+            .expect("The group is no longer active");
 
         // === Bob leaves the group ===
 
         let queued_messages = bob_group.leave_group().expect("Could not leave group");
 
-        alice_group.process_messages(queued_messages.clone());
-        bob_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Should fail because you cannot remove yourself from a group
         assert_eq!(
@@ -476,8 +527,12 @@ fn managed_group_operations() {
         // Check that Bob's group is still active
         assert!(bob_group.is_active());
 
-        alice_group.process_messages(queued_messages.clone());
-        bob_group.process_messages(queued_messages.clone());
+        alice_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
+        bob_group
+            .process_messages(queued_messages.clone())
+            .expect("The group is no longer active");
 
         // Check that Bob's group is no longer active
         assert!(!bob_group.is_active());

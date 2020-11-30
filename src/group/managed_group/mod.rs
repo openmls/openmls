@@ -17,21 +17,23 @@ pub use callbacks::*;
 pub use config::*;
 pub use errors::{InvalidMessageError, ManagedGroupError};
 
-/// A `ManagedGroup` represents an `MLSGroup` with an easier, high-level API
-/// designed to be used in production. The API exposes high level functions to
-/// manage a group by adding/removing members, get the current member list, etc.
+/// A `ManagedGroup` represents an [MlsGroup] with
+/// an easier, high-level API designed to be used in production. The API exposes
+/// high level functions to manage a group by adding/removing members, get the
+/// current member list, etc.
 ///
 /// The API is modeled such that it can serve as a direct interface to the
 /// Delivery Service. Functions that modify the public state of the group will
-/// return a `Vec<MLSMessage>` that can be sent to the Delivery Service
-/// directly. Conversely, incoming messages from the Delivery Service can be fed
-/// into `process_nessage()`.
+/// return a `Vec<MLSMessage>` that can be sent to the Delivery
+/// Service directly. Conversely, incoming messages from the Delivery Service
+/// can be fed into [process_messages()](`ManagedGroup::process_messages()`).
 ///
 /// A `ManagedGroup` has an internal queue of pending proposals that builds up
 /// as new messages are processed. When creating proposals, those messages are
 /// not automatically appended to this queue, instead they have to be processed
-/// again through `process_message()`. This allows the Delivery Service to
-/// reject them (e.g. if they reference the wrong epoch).
+/// again through [process_messages()](`ManagedGroup::process_messages()`). This
+/// allows the Delivery Service to reject them (e.g. if they reference the wrong
+/// epoch).
 ///
 /// If incoming messages or applied operations are semantically or syntactically
 /// incorrect, a callback function will be called with a corresponding error
@@ -39,10 +41,10 @@ pub use errors::{InvalidMessageError, ManagedGroupError};
 ///
 /// The application policy for the group can be enforced by implementing the
 /// validator callback functions and selectively allowing/ disallowing each
-/// operation (see `ManagedGroupCallbacks`)
+/// operation (see [`ManagedGroupCallbacks`])
 ///
 /// Changes to the group state are dispatched as events through callback
-/// functions (see ManagedGroupCallbacks).
+/// functions (see [`ManagedGroupCallbacks`]).
 pub struct ManagedGroup<'a> {
     // CredentialBundle used to sign messages
     credential_bundle: &'a CredentialBundle,
@@ -149,7 +151,7 @@ impl<'a> ManagedGroup<'a> {
         )?;
 
         // Add the Commit message to the other pending messages
-        plaintext_messages.append(&mut vec![commit]);
+        plaintext_messages.push(commit);
 
         // If it was a full Commit, we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {
@@ -199,9 +201,9 @@ impl<'a> ManagedGroup<'a> {
         )?;
 
         // Add the Commit message to the other pending messages
-        plaintext_messages.append(&mut vec![commit]);
+        plaintext_messages.push(commit);
 
-        // It has to a full Commit and we have to save the KeyPackageBundle for later
+        // It has to be a full Commit and we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {
             self.own_kpbs.push(kpb);
         } else {
@@ -296,9 +298,9 @@ impl<'a> ManagedGroup<'a> {
 
     /// Processes any incoming messages from the DS (MLSPlaintext &
     /// MLSCiphertext) and triggers the corresponding callback functions
-    pub fn process_messages(&mut self, messages: Vec<MLSMessage>) {
+    pub fn process_messages(&mut self, messages: Vec<MLSMessage>) -> Result<(), ManagedGroupError> {
         if !self.active {
-            return;
+            return Err(ManagedGroupError::UseAfterEviction);
         }
         // Iterate over all incoming messages
         for message in messages {
@@ -354,8 +356,8 @@ impl<'a> ManagedGroup<'a> {
                                 self.send_events(indexed_members);
                                 // We don't need the pending proposals and key package bundles any
                                 // longer
-                                self.pending_proposals = vec![];
-                                self.own_kpbs = vec![];
+                                self.pending_proposals.clear();
+                                self.own_kpbs.clear();
                             }
                             Err(apply_commit_error) => match apply_commit_error {
                                 ApplyCommitError::SelfRemoved => {
@@ -388,6 +390,7 @@ impl<'a> ManagedGroup<'a> {
                 }
             }
         }
+        Ok(())
     }
 
     // === Application messages ===
@@ -540,7 +543,7 @@ impl<'a> ManagedGroup<'a> {
         )?;
 
         // Add the Commit message to the other pending messages
-        plaintext_messages.append(&mut vec![commit]);
+        plaintext_messages.push(commit);
 
         // Take the new KeyPackageBundle and save it for later
         let kpb = match kpb_option {
@@ -559,18 +562,21 @@ impl<'a> ManagedGroup<'a> {
     /// Creates a proposal to update the own leaf node
     pub fn propose_self_update(
         &mut self,
-        credential_bundle: &CredentialBundle,
+        key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction);
         }
         let tree = self.group.tree();
         let existing_key_package = tree.own_key_package();
-        let key_package_bundle = KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
+        let key_package_bundle = match key_package_bundle_option {
+            Some(kpb) => kpb,
+            None => KeyPackageBundle::from_rekeyed_key_package(existing_key_package),
+        };
 
         let plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
-            credential_bundle,
+            &self.credential_bundle,
             key_package_bundle.get_key_package().clone(),
         )];
         drop(tree);
