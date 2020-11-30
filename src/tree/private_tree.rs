@@ -5,6 +5,7 @@ use super::{index::NodeIndex, path_keys::PathKeys};
 use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
 use crate::key_packages::*;
 use crate::prelude::Secret;
+use crate::utils::zero;
 
 #[derive(Debug)]
 pub(crate) struct CommitSecret {
@@ -22,6 +23,14 @@ impl Default for CommitSecret {
 impl CommitSecret {
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
+    }
+
+    /// Create a CommitSecret consisting of an all-zero string of length
+    /// `hash_length`.
+    pub(crate) fn zero_secret(ciphersuite: &Ciphersuite) -> Self {
+        CommitSecret {
+            secret: Secret::from(zero(ciphersuite.hash_length())),
+        }
     }
 }
 

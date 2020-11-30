@@ -4,6 +4,7 @@ use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
+use crate::tree::private_tree::CommitSecret;
 
 impl MlsGroup {
     pub(crate) fn apply_commit_internal(
@@ -54,6 +55,7 @@ impl MlsGroup {
         let is_own_commit =
             mls_plaintext.sender.to_node_index() == provisional_tree.get_own_node_index(); // XXX: correct?
 
+        let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
             // Verify KeyPackage and MLSPlaintext signature
@@ -75,23 +77,19 @@ impl MlsGroup {
                     Some(kpb) => kpb,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 };
-                Some(
-                    provisional_tree
-                        .replace_private_tree(ciphersuite, own_kpb, &serialized_context)
-                        .unwrap(),
-                )
+                provisional_tree
+                    .replace_private_tree(ciphersuite, own_kpb, &serialized_context)
+                    .unwrap()
             } else {
-                Some(
-                    provisional_tree
-                        .update_path(sender, &path, &serialized_context)
-                        .unwrap(),
-                )
+                provisional_tree
+                    .update_path(sender, &path, &serialized_context)
+                    .unwrap()
             }
         } else {
             if path_required_by_commit {
                 return Err(ApplyCommitError::RequiredPathNotFound);
             }
-            None
+            &zero_commit_secret
         };
 
         // Create provisional group state
@@ -106,7 +104,7 @@ impl MlsGroup {
 
         let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
             ciphersuite,
-            commit_secret,
+            Some(commit_secret),
             self.init_secret.clone(),
         );
         let member_secret =
