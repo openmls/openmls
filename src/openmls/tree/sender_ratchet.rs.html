@@ -237,7 +237,7 @@
             <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
         );
         (
-            <span class="ident">AeadKey</span>::<span class="ident">from_secret</span>(<span class="ident">key</span>, <span class="ident">ciphersuite</span>.<span class="ident">aead</span>()),
+            <span class="ident">AeadKey</span>::<span class="ident">from_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">key</span>),
             <span class="ident">AeadNonce</span>::<span class="ident">from_secret</span>(<span class="ident">nonce</span>),
         )
     }

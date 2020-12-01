@@ -171,27 +171,6 @@
 <span id="168">168</span>
 <span id="169">169</span>
 <span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Signable</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -202,8 +181,6 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">mls_group</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">treemath</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_commit_internal</span>(
@@ -249,15 +226,14 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">serialize</span>(),
                 );
             (
-                <span class="ident">commit_secret</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">commit_secret</span>),
                 <span class="prelude-val">Some</span>(<span class="ident">path</span>),
                 <span class="prelude-val">Some</span>(<span class="ident">path_secrets</span>),
                 <span class="prelude-val">Some</span>(<span class="ident">key_package_bundle</span>),
             )
         } <span class="kw">else</span> {
             <span class="comment">// If path is not needed, return empty commit secret</span>
-            <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">from</span>(<span class="ident">zero</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>().<span class="ident">hash_length</span>()));
-            (<span class="ident">commit_secret</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
         };
         <span class="comment">// Create commit message</span>
         <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">Commit</span> {
@@ -272,6 +248,22 @@
             <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitContent</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>, <span class="ident">sender_index</span>, <span class="ident">commit</span>.<span class="ident">clone</span>()),
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>,
         );
+        <span class="comment">// We clone the init secret here, as the `joiner_secret` is only for the</span>
+        <span class="comment">// provisional group state.</span>
+        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">from_commit_and_epoch_secret</span>(
+            <span class="ident">ciphersuite</span>,
+            <span class="ident">commit_secret</span>,
+            <span class="self">self</span>.<span class="ident">init_secret</span>.<span class="ident">clone</span>(),
+        );
+        <span class="comment">// Create group secrets for later use, so we can afterwards consume the</span>
+        <span class="comment">// `joiner_secret`.</span>
+        <span class="kw">let</span> <span class="ident">plaintext_secrets</span> <span class="op">=</span>
+            <span class="ident">joiner_secret</span>.<span class="ident">group_secrets</span>(<span class="ident">invited_members</span>, <span class="kw-2">&amp;</span><span class="ident">provisional_tree</span>, <span class="ident">path_secrets_option</span>);
+        <span class="kw">let</span> <span class="ident">member_secret</span> <span class="op">=</span>
+            <span class="ident">MemberSecret</span>::<span class="ident">from_joiner_secret_and_psk</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="prelude-val">None</span>);
+        <span class="comment">// Derive the welcome key material before consuming the `MemberSecret`</span>
+        <span class="comment">// immediately afterwards.</span>
+        <span class="kw">let</span> (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>) <span class="op">=</span> <span class="ident">member_secret</span>.<span class="ident">derive_welcome_key_nonce</span>(<span class="ident">ciphersuite</span>);
         <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">compute_tree_hash</span>();
         <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span> {
             <span class="ident">group_id</span>: <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
@@ -279,13 +271,14 @@
             <span class="ident">tree_hash</span>: <span class="ident">tree_hash</span>.<span class="ident">clone</span>(),
             <span class="ident">confirmed_transcript_hash</span>: <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">epoch_secrets</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span> <span class="ident">provisional_epoch_secrets</span>.<span class="ident">get_new_epoch_secrets</span>(
-            <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
-            <span class="ident">commit_secret</span>,
-            <span class="prelude-val">None</span>,
-            <span class="kw-2">&amp;</span><span class="ident">provisional_group_context</span>,
-        );
+        <span class="comment">// The init- and encryption secrets are not used here. They come into</span>
+        <span class="comment">// play when the provisional group state is applied in `apply_commit`.</span>
+        <span class="kw">let</span> (<span class="ident">provisional_epoch_secrets</span>, <span class="ident">_provisional_init_secret</span>, <span class="ident">_provisional_encryption_secret</span>) <span class="op">=</span>
+            <span class="ident">EpochSecrets</span>::<span class="ident">derive_epoch_secrets</span>(
+                <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
+                <span class="ident">member_secret</span>,
+                <span class="kw-2">&amp;</span><span class="ident">provisional_group_context</span>,
+            );
         <span class="comment">// Compute confirmation tag</span>
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">ConfirmationTag</span>::<span class="ident">new</span>(
             <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
@@ -302,7 +295,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>(),
         );
         <span class="comment">// Check if new members were added an create welcome message</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">invited_members</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">plaintext_secrets</span>.<span class="ident">is_empty</span>() {
             <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">add_ratchet_tree_extension</span> {
                 <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RatchetTreeExtension</span>::<span class="ident">new</span>(
                     <span class="ident">provisional_tree</span>.<span class="ident">public_key_tree_copy</span>(),
@@ -322,44 +315,9 @@
             );
             <span class="ident">group_info</span>.<span class="ident">set_signature</span>(<span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="ident">credential_bundle</span>));
             <span class="comment">// Encrypt GroupInfo object</span>
-            <span class="kw">let</span> (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>) <span class="op">=</span>
-                <span class="ident">compute_welcome_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
             <span class="kw">let</span> <span class="ident">encrypted_group_info</span> <span class="op">=</span> <span class="ident">welcome_key</span>
                 .<span class="ident">aead_seal</span>(<span class="kw-2">&amp;</span><span class="ident">group_info</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="ident">welcome_nonce</span>)
                 .<span class="ident">unwrap</span>();
-            <span class="comment">// Create group secrets</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plaintext_secrets</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
-            <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">add_proposal</span>) <span class="kw">in</span> <span class="ident">invited_members</span>.<span class="ident">clone</span>() {
-                <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">add_proposal</span>.<span class="ident">key_package</span>;
-                <span class="kw">let</span> <span class="ident">key_package_hash</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">key_package</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>());
-                <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">path_required</span> {
-                    <span class="kw">let</span> <span class="ident">common_ancestor_index</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">common_ancestor_index</span>(
-                        <span class="ident">index</span>,
-                        <span class="ident">provisional_tree</span>.<span class="ident">get_own_node_index</span>(),
-                    );
-                    <span class="kw">let</span> <span class="ident">dirpath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(
-                        <span class="ident">provisional_tree</span>.<span class="ident">get_own_node_index</span>(),
-                        <span class="ident">provisional_tree</span>.<span class="ident">leaf_count</span>(),
-                    )
-                    .<span class="ident">expect</span>(<span class="string">&quot;create_commit_internal: TreeMath error when computing direct path.&quot;</span>);
-                    <span class="kw">let</span> <span class="ident">position</span> <span class="op">=</span> <span class="ident">dirpath</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="op">=</span><span class="op">=</span> <span class="ident">common_ancestor_index</span>)
-                        .<span class="ident">unwrap</span>();
-                    <span class="kw">let</span> <span class="ident">path_secrets</span> <span class="op">=</span> <span class="ident">path_secrets_option</span>.<span class="ident">clone</span>().<span class="ident">unwrap</span>();
-                    <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="ident">path_secrets</span>[<span class="ident">position</span>].<span class="ident">clone</span>();
-                    <span class="prelude-val">Some</span>(<span class="ident">PathSecret</span> { <span class="ident">path_secret</span> })
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">None</span>
-                };
-                <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">new</span>(<span class="ident">epoch_secret</span>.<span class="ident">clone</span>(), <span class="ident">path_secret</span>);
-                <span class="kw">let</span> <span class="ident">group_secrets_bytes</span> <span class="op">=</span> <span class="ident">group_secrets</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
-                <span class="ident">plaintext_secrets</span>.<span class="ident">push</span>((
-                    <span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">clone</span>(),
-                    <span class="ident">group_secrets_bytes</span>,
-                    <span class="ident">key_package_hash</span>,
-                ));
-            }
             <span class="comment">// Encrypt group secrets</span>
             <span class="kw">let</span> <span class="ident">secrets</span> <span class="op">=</span> <span class="ident">plaintext_secrets</span>
                 .<span class="ident">iter</span>()
