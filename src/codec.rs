@@ -19,6 +19,7 @@ impl From<ConfigError> for CodecError {
 
 impl From<CodecError> for ConfigError {
     // TODO: tbd in #83, also this direction shouldn't be necessary.
+    #[allow(clippy::match_single_binding)]
     fn from(e: CodecError) -> Self {
         match e {
             _ => ConfigError::InvalidConfig,

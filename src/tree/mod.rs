@@ -384,14 +384,14 @@ impl RatchetTree {
         ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
-    ) -> Result<&CommitSecret, TreeError> {
+    ) -> &CommitSecret {
         let _path_option = self.replace_private_tree_(
             ciphersuite,
             key_package_bundle,
             group_context,
             false, /* without update path */
         );
-        Ok(self.private_tree.get_commit_secret())
+        self.private_tree.get_commit_secret()
     }
 
     /// Update the private tree.

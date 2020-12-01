@@ -206,7 +206,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 // Figure out which key package bundle we should use. This is
                 // a bit ugly and inefficient.
                 let member_secret = welcome
-                    .get_secrets_ref()
+                    .secrets()
                     .iter()
                     .find(|x| {
                         new_group_member

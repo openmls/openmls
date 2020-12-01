@@ -764,7 +764,7 @@ impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
 impl From<&ConfirmationTag> for MLSPlaintextCommitAuthData {
     fn from(confirmation_tag: &ConfirmationTag) -> Self {
         MLSPlaintextCommitAuthData {
-            confirmation_tag: confirmation_tag.as_slice(),
+            confirmation_tag: confirmation_tag.to_vec(),
         }
     }
 }

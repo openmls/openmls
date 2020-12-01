@@ -52,6 +52,8 @@ use crate::tree::secret_tree::SecretTree;
 use crate::tree::treemath;
 use crate::tree::RatchetTree;
 
+pub(crate) mod psk;
+
 /// The `InitSecret` is used to connect the next epoch to the current one. It's
 /// necessary to be able clone this to create a provisional group state, which
 /// includes the `InitSecret`.
@@ -131,7 +133,7 @@ impl JoinerSecret {
 
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
-            let key_package = &add_proposal.key_package;
+            let key_package = add_proposal.key_package;
             let key_package_hash = key_package.hash();
             let path_secret = match path_secrets_option {
                 Some(ref mut path_secrets) => {
@@ -156,10 +158,7 @@ impl JoinerSecret {
                 None => None,
             };
             // Create the groupsecrets object for the respective member.
-            let group_secrets = GroupSecrets {
-                joiner_secret: self.clone(),
-                path_secret,
-            };
+            let group_secrets = GroupSecrets::new(self.clone(), path_secret);
             let group_secrets_bytes = group_secrets.encode_detached().unwrap();
             plaintext_secrets.push((
                 key_package.hpke_init_key().clone(),

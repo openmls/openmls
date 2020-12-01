@@ -20,7 +20,7 @@ impl MlsGroup {
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
             key_package_bundle.get_key_package(),
-            welcome.get_secrets_ref(),
+            welcome.secrets(),
         ) {
             egs
         } else {
@@ -37,7 +37,7 @@ impl MlsGroup {
             &ciphersuite,
             &egs,
             key_package_bundle.get_private_key_ref(),
-            welcome.get_encrypted_group_info_ref(),
+            welcome.encrypted_group_info(),
         )?;
 
         // Build the ratchet tree
