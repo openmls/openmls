@@ -20,6 +20,8 @@ use super::RatchetTreeBundle;
 
 #[allow(dead_code)]
 pub(crate) struct ProvisionalTree<'a> {
+    /// A reference to the RatchetTreeBundle from which the `ProvisionalTree`
+    /// was created.
     original_tree: Option<&'a RatchetTreeBundle>,
 
     /// If the `original_tree` is `Some`, the `node_index` should be equal to
@@ -31,13 +33,23 @@ pub(crate) struct ProvisionalTree<'a> {
     /// `RatchetTree`.
     provisional_public_tree: BinaryTree<Option<Node>>,
 
+    /// The provisional private key. If the `ProvisionalTree` is created from a
+    /// `KeyPackageBundle`, either to create a fresh group or from a `Welcome`
+    /// message, it should be `Some`. If the `ProvisionalTree` is created from a
+    /// `RatchetTreeBundle`, it is `None` initially and might be set later if
+    /// the owner's leaf key is updated.
     provisional_private_key: Option<HPKEPrivateKey>,
+
+    /// The `provisional_path_keys` are always initialized as an empty `HashMap`
+    /// and populated either in the process of creating the `ProvisionalTree` or
+    /// when applying commits.
     provisional_path_keys: HashMap<NodeIndex, HPKEPrivateKey>,
 }
 
 #[allow(dead_code, unused_variables)]
 impl<'a> ProvisionalTree<'a> {
     /// Create a `ProvisionalTree` from a given `RatchetTreeBundle` reference.
+    /// This should happen in the process of creating or applying a commit.
     pub(crate) fn from_ratchet_tree_bundle(original_tree: &'a RatchetTreeBundle) -> Self {
         let mut tree = Vec::new();
         tree.resize(original_tree.public_tree.size(), None);
@@ -117,25 +129,25 @@ impl<'a> ProvisionalTree<'a> {
         unimplemented!()
     }
 
-    /// Verifies the integrity of the original tree as if the changes of the
+    /// Verify the integrity of the original tree as if the changes of the
     /// provisional tree had been applied.
     pub fn verify_integrity(&self, ciphersuite: &Ciphersuite) -> bool {
         unimplemented!()
     }
 
-    /// Computes the tree hash of the original tree as if the changes of the
+    /// Compute the tree hash of the original tree as if the changes of the
     /// provisional tree had been applied.
     pub fn compute_tree_hash(&self) -> Vec<u8> {
         unimplemented!()
     }
 
-    /// Computes the parent hash of the original tree as if the changes of the
+    /// Compute the parent hash of the original tree as if the changes of the
     /// provisional tree had been applied.
     pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Vec<u8> {
         unimplemented!()
     }
 
-    /// Computes the confirmation tag based on the original tree as if the
+    /// Compute the confirmation tag based on the original tree as if the
     /// changes of the provisional tree had been applied. TODO: I think we only
     /// need the confirmation key directly after applying a commit, so it should
     /// not be part of the `EpochSecrets` and instead derived seperately, so it

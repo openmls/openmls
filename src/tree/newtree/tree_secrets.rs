@@ -5,7 +5,6 @@ use evercrypt::prelude::get_random_vec;
 use hpke::HPKEKeyPair;
 
 use crate::ciphersuite::*;
-use crate::schedule::derive_secret;
 
 #[derive(Debug)]
 pub(crate) struct CommitSecret {
@@ -41,9 +40,9 @@ impl PathSecret {
         self,
         ciphersuite: &Ciphersuite,
     ) -> (HPKEKeyPair, PathSecret) {
-        let node_secret = derive_secret(ciphersuite, &self.secret, "node");
+        let node_secret = self.secret.derive_secret(ciphersuite, "node");
         let hpke_key_pair = ciphersuite.derive_hpke_keypair(&node_secret);
-        let path_secret_value = derive_secret(ciphersuite, &self.secret, "path");
+        let path_secret_value = self.secret.derive_secret(ciphersuite, "path");
         let path_secret = PathSecret {
             secret: path_secret_value,
         };
