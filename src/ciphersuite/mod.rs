@@ -60,7 +60,7 @@ implement_enum_display!(CiphersuiteName);
 ///     opaque ciphertext<0..2^16-1>;
 /// } HPKECiphertext;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct HpkeCiphertext {
     kem_output: Vec<u8>,
     ciphertext: Vec<u8>,

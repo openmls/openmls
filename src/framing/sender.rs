@@ -26,7 +26,9 @@
 use crate::codec::*;
 use crate::tree::index::*;
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum SenderType {
     Invalid = 0,
@@ -58,7 +60,7 @@ impl Codec for SenderType {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Sender {
     pub(crate) sender_type: SenderType,
     pub(crate) sender: LeafIndex,

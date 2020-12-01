@@ -858,7 +858,7 @@ pub type InvitationList = Vec<(NodeIndex, AddProposal)>;
 ///     HPKECiphertext encrypted_path_secret<0..2^32-1>;
 /// } UpdatePathNode;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdatePathNode {
     pub public_key: HPKEPublicKey,
     pub encrypted_path_secret: Vec<HpkeCiphertext>,
@@ -872,7 +872,7 @@ pub struct UpdatePathNode {
 ///     UpdatePathNode nodes<0..2^32-1>;
 /// } UpdatePath;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdatePath {
     pub leaf_key_package: KeyPackage,
     pub nodes: Vec<UpdatePathNode>,

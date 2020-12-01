@@ -8,6 +8,8 @@ use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
+use serde::{Deserialize, Serialize};
+
 mod codec;
 
 pub(crate) mod proposals;
@@ -89,7 +91,7 @@ impl Welcome {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Commit {
     pub(crate) proposals: Vec<ProposalID>,
     pub(crate) path: Option<UpdatePath>,
@@ -102,7 +104,7 @@ impl Commit {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Vec<u8>);
 
 impl ConfirmationTag {

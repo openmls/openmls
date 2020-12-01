@@ -12,6 +12,7 @@ use crate::{
     key_packages::KeyPackageBundle,
 };
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
 use std::{
     fs::File,
     io::{BufReader, Error, Write},
@@ -64,6 +65,7 @@ impl std::fmt::Debug for State {
 }
 
 impl State {
+    #[cfg(test)]
     pub fn new(
         config: &'static Config,
         groups: Vec<MlsGroup>,
@@ -80,6 +82,7 @@ impl State {
         }
     }
 
+    #[cfg(test)]
     pub fn read(file: &Path) -> Result<Self, Error> {
         let file = File::open(file)?;
         let reader = BufReader::new(file);
@@ -87,6 +90,7 @@ impl State {
         Ok(state)
     }
 
+    #[cfg(test)]
     pub fn write(&self, file: &Path) -> Result<(), Error> {
         let mut file = File::create(file)?;
         let state_out = serde_json::to_string_pretty(self)?;
@@ -109,7 +113,7 @@ fn test_persistence() {
         identities,
     );
 
-    let state_file = Path::new("test_state.json");
+    let state_file = Path::new("target/test_state.json");
     state.write(&state_file).unwrap();
 
     let new_state = State::read(&state_file).unwrap();

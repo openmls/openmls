@@ -1,6 +1,7 @@
 pub mod callbacks;
 pub mod config;
 pub mod errors;
+mod ser;
 
 use crate::creds::{Credential, CredentialBundle};
 use crate::framing::*;
@@ -11,11 +12,12 @@ use crate::tree::index::LeafIndex;
 use crate::tree::node::Node;
 
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::{Error, Read, Write};
 
 pub use callbacks::*;
 pub use config::*;
 pub use errors::{InvalidMessageError, ManagedGroupError};
+use ser::*;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
@@ -592,15 +594,20 @@ impl<'a> ManagedGroup<'a> {
     // === Load & save ===
 
     /// Loads the state from persisted state
-    pub fn load(
-        _reader: Box<dyn Read>,
-        _managed_group_config: &ManagedGroupConfig,
-    ) -> ManagedGroup {
-        unimplemented!()
+    pub fn load<R: Read>(
+        reader: R,
+        credential_bundle: &'a CredentialBundle,
+        callbacks: ManagedGroupCallbacks,
+    ) -> Result<ManagedGroup<'a>, Error> {
+        let serialized_group: SerializedGroup = serde_json::from_reader(reader)?;
+        Ok(serialized_group.into_managed_group(credential_bundle, callbacks))
     }
 
     /// Persists the state
-    pub fn save(&self, _writer: Box<dyn Write>) {}
+    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+        let serialized_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_group.into_bytes())
+    }
 
     // === Extensions ===
 

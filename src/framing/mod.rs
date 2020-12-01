@@ -6,6 +6,7 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, secret_tree::*};
 
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 pub mod errors;
@@ -16,7 +17,7 @@ use sender::*;
 #[cfg(test)]
 mod test_framing;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct MLSPlaintext {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
@@ -367,7 +368,7 @@ impl Codec for MLSCiphertext {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ContentType {
     Invalid = 0,
@@ -410,7 +411,7 @@ impl Codec for ContentType {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MLSPlaintextContentType {
     Application(Vec<u8>),
     Proposal(Proposal),
