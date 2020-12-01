@@ -3,6 +3,8 @@ use self::node::Node;
 
 mod binary_tree;
 mod node;
+mod private_tree;
+mod tree_secrets;
 
 pub(crate) struct RatchetTreeBundle {
     /// The public part of the ratchet tree.
