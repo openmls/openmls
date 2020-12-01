@@ -7,8 +7,6 @@ use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::messages::*;
-use crate::tree::treemath;
-use crate::utils::*;
 
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
@@ -54,15 +52,14 @@ impl MlsGroup {
                     &self.group_context.serialize(),
                 );
             (
-                commit_secret,
+                Some(commit_secret),
                 Some(path),
                 Some(path_secrets),
                 Some(key_package_bundle),
             )
         } else {
             // If path is not needed, return empty commit secret
-            let commit_secret = Secret::from(zero(self.ciphersuite().hash_length()));
-            (commit_secret, None, None, None)
+            (None, None, None, None)
         };
         // Create commit message
         let commit = Commit {
@@ -77,6 +74,22 @@ impl MlsGroup {
             &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
             &self.interim_transcript_hash,
         );
+        // We clone the init secret here, as the `joiner_secret` is only for the
+        // provisional group state.
+        let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
+            ciphersuite,
+            commit_secret,
+            self.init_secret.clone(),
+        );
+        // Create group secrets for later use, so we can afterwards consume the
+        // `joiner_secret`.
+        let plaintext_secrets =
+            joiner_secret.group_secrets(invited_members, &provisional_tree, path_secrets_option);
+        let member_secret =
+            MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
+        // Derive the welcome key material before consuming the `MemberSecret`
+        // immediately afterwards.
+        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
         let tree_hash = provisional_tree.compute_tree_hash();
         let provisional_group_context = GroupContext {
             group_id: self.group_context.group_id.clone(),
@@ -84,13 +97,14 @@ impl MlsGroup {
             tree_hash: tree_hash.clone(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
-        let mut provisional_epoch_secrets = self.epoch_secrets.clone();
-        let epoch_secret = provisional_epoch_secrets.get_new_epoch_secrets(
-            &ciphersuite,
-            commit_secret,
-            None,
-            &provisional_group_context,
-        );
+        // The init- and encryption secrets are not used here. They come into
+        // play when the provisional group state is applied in `apply_commit`.
+        let (provisional_epoch_secrets, _provisional_init_secret, _provisional_encryption_secret) =
+            EpochSecrets::derive_epoch_secrets(
+                &ciphersuite,
+                member_secret,
+                &provisional_group_context,
+            );
         // Compute confirmation tag
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
@@ -107,7 +121,7 @@ impl MlsGroup {
             &self.context(),
         );
         // Check if new members were added an create welcome message
-        if !invited_members.is_empty() {
+        if !plaintext_secrets.is_empty() {
             let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
                 vec![Box::new(RatchetTreeExtension::new(
                     provisional_tree.public_key_tree_copy(),
@@ -127,44 +141,9 @@ impl MlsGroup {
             );
             group_info.set_signature(group_info.sign(credential_bundle));
             // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) =
-                compute_welcome_key_nonce(ciphersuite, &epoch_secret);
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
-            // Create group secrets
-            let mut plaintext_secrets = vec![];
-            for (index, add_proposal) in invited_members.clone() {
-                let key_package = add_proposal.key_package;
-                let key_package_hash = ciphersuite.hash(&key_package.encode_detached().unwrap());
-                let path_secret = if path_required {
-                    let common_ancestor_index = treemath::common_ancestor_index(
-                        index,
-                        provisional_tree.get_own_node_index(),
-                    );
-                    let dirpath = treemath::direct_path_root(
-                        provisional_tree.get_own_node_index(),
-                        provisional_tree.leaf_count(),
-                    )
-                    .expect("create_commit_internal: TreeMath error when computing direct path.");
-                    let position = dirpath
-                        .iter()
-                        .position(|&x| x == common_ancestor_index)
-                        .unwrap();
-                    let path_secrets = path_secrets_option.clone().unwrap();
-                    let path_secret = path_secrets[position].clone();
-                    Some(PathSecret { path_secret })
-                } else {
-                    None
-                };
-                let group_secrets = GroupSecrets::new(epoch_secret.clone(), path_secret);
-                let group_secrets_bytes = group_secrets.encode_detached().unwrap();
-                plaintext_secrets.push((
-                    key_package.hpke_init_key().clone(),
-                    group_secrets_bytes,
-                    key_package_hash,
-                ));
-            }
             // Encrypt group secrets
             let secrets = plaintext_secrets
                 .iter()

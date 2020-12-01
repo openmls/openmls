@@ -5,6 +5,7 @@ use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
+use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
 mod codec;
@@ -120,7 +121,7 @@ impl ConfirmationTag {
         ConfirmationTag(
             ciphersuite
                 .hkdf_extract(
-                    confirmation_key,
+                    Some(confirmation_key),
                     &Secret::from(confirmed_transcript_hash.to_vec()),
                 )
                 .to_vec(),
@@ -303,14 +304,14 @@ pub(crate) struct PathSecret {
 /// ```
 #[allow(dead_code)]
 pub(crate) struct GroupSecrets {
-    pub(crate) joiner_secret: Secret,
+    pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
     pub(crate) psks: Option<PreSharedKeys>,
 }
 
 impl GroupSecrets {
     /// Create a new group secret.
-    pub(crate) fn new(joiner_secret: Secret, path_secret: Option<PathSecret>) -> Self {
+    pub(crate) fn new(joiner_secret: JoinerSecret, path_secret: Option<PathSecret>) -> Self {
         Self {
             joiner_secret,
             path_secret,

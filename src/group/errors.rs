@@ -55,6 +55,12 @@ pub enum CreateCommitError {
     OwnKeyNotFound = 301,
 }
 
+#[derive(PartialEq, Debug)]
+#[repr(u16)]
+pub enum ExporterError {
+    KeyLengthTooLong = 400,
+}
+
 impl From<MLSCiphertextError> for GroupError {
     fn from(_e: MLSCiphertextError) -> Self {
         GroupError::DecryptionError

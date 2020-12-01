@@ -195,24 +195,17 @@ impl MLSCiphertext {
             )
             .unwrap();
         // Derive key from the key schedule using the ciphertext.
-        let sender_data_key = AeadKey::from_secret(
-            hkdf_expand_label(
-                ciphersuite,
-                &epoch_secrets.sender_data_secret(),
-                "sd key",
-                &ciphertext,
-                ciphersuite.aead_key_length(),
-            ),
-            ciphersuite.aead(),
+        let sender_data_key = AeadKey::from_sender_data_secret(
+            ciphersuite,
+            &ciphertext,
+            epoch_secrets.sender_data_secret(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(
+        let sender_data_nonce = AeadNonce::from_sender_data_secret(
             ciphersuite,
-            &epoch_secrets.sender_data_secret(),
-            "sd nonce",
             &ciphertext,
-            ciphersuite.aead_nonce_length(),
-        ));
+            epoch_secrets.sender_data_secret(),
+        );
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
@@ -240,7 +233,7 @@ impl MLSCiphertext {
         }
     }
 
-    pub fn to_plaintext(
+    pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
         roster: &[&Credential],
@@ -249,24 +242,17 @@ impl MLSCiphertext {
         context: &GroupContext,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
         // Derive key from the key schedule using the ciphertext.
-        let sender_data_key = AeadKey::from_secret(
-            hkdf_expand_label(
-                ciphersuite,
-                &epoch_secrets.sender_data_secret(),
-                "sd key",
-                &self.ciphertext,
-                ciphersuite.aead_key_length(),
-            ),
-            ciphersuite.aead(),
+        let sender_data_key = AeadKey::from_sender_data_secret(
+            ciphersuite,
+            &self.ciphertext,
+            epoch_secrets.sender_data_secret(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = AeadNonce::from_secret(hkdf_expand_label(
+        let sender_data_nonce = AeadNonce::from_sender_data_secret(
             ciphersuite,
-            &epoch_secrets.sender_data_secret(),
-            "sd nonce",
             &self.ciphertext,
-            ciphersuite.aead_nonce_length(),
-        ));
+            epoch_secrets.sender_data_secret(),
+        );
         let mls_ciphertext_sender_data_aad =
             MLSCiphertextSenderDataAAD::new(self.group_id.clone(), self.epoch, self.content_type);
         let mls_ciphertext_sender_data_aad_bytes =

@@ -9,6 +9,7 @@ pub mod errors;
 mod managed_group;
 mod mls_group;
 
+use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::tree::*;
 use crate::utils::*;
@@ -79,6 +80,20 @@ pub struct GroupContext {
 }
 
 impl GroupContext {
+    /// Create the `GroupContext` needed upon creation of a new group.
+    pub fn create_initial_group_context(
+        ciphersuite: &Ciphersuite,
+        group_id: GroupId,
+        tree_hash: Vec<u8>,
+    ) -> Self {
+        GroupContext {
+            group_id,
+            epoch: GroupEpoch(0),
+            tree_hash,
+            confirmed_transcript_hash: zero(ciphersuite.hash_length()),
+        }
+    }
+
     pub fn serialize(&self) -> Vec<u8> {
         self.encode_detached().unwrap()
     }
