@@ -98,7 +98,8 @@ impl Node {
                 Some(parent_node.parent_hash.clone())
             }
             (NodeType::Leaf, Some(NodeContents::LeafContents(key_package))) => {
-                let parent_hash_extension = key_package.get_extension(ExtensionType::ParentHash);
+                let parent_hash_extension =
+                    key_package.extension_with_type(ExtensionType::ParentHash);
                 match parent_hash_extension {
                     Some(phe) => {
                         let phe = match phe.to_parent_hash_extension() {
