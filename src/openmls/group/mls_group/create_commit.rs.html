@@ -192,9 +192,6 @@
 <span id="189">189</span>
 <span id="190">190</span>
 <span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Signable</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -320,7 +317,7 @@
                 <span class="ident">tree_hash</span>,
                 <span class="ident">confirmed_transcript_hash</span>,
                 <span class="ident">extensions</span>,
-                <span class="ident">confirmation_tag</span>.<span class="ident">as_slice</span>(),
+                <span class="ident">confirmation_tag</span>.<span class="ident">to_vec</span>(),
                 <span class="ident">sender_index</span>,
             );
             <span class="ident">group_info</span>.<span class="ident">set_signature</span>(<span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="ident">credential_bundle</span>));
@@ -355,10 +352,7 @@
                 } <span class="kw">else</span> {
                     <span class="prelude-val">None</span>
                 };
-                <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span> {
-                    <span class="ident">joiner_secret</span>: <span class="ident">epoch_secret</span>.<span class="ident">clone</span>(),
-                    <span class="ident">path_secret</span>,
-                };
+                <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">new</span>(<span class="ident">epoch_secret</span>.<span class="ident">clone</span>(), <span class="ident">path_secret</span>);
                 <span class="kw">let</span> <span class="ident">group_secrets_bytes</span> <span class="op">=</span> <span class="ident">group_secrets</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
                 <span class="ident">plaintext_secrets</span>.<span class="ident">push</span>((
                     <span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">clone</span>(),

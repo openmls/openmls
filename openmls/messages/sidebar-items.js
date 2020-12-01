@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["proposals",""]],"struct":[["Commit",""],["ConfirmationTag",""],["EncryptedGroupSecrets",""],["GroupInfo",""],["GroupSecrets",""],["PathSecret",""],["Welcome",""]]});
+initSidebarItems({"mod":[["codec","Codec implementations for message structs."],["proposals",""]],"struct":[["Commit",""],["ConfirmationTag",""],["EncryptedGroupSecrets","EncryptedGroupSecrets"],["GroupInfo","GroupInfo"],["GroupSecrets","GroupSecrets"],["PathSecret","PathSecret"],["Welcome","Welcome Messages"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["PSKType","enum { reserved(0), external(1), reinit(2), branch(3), (255) } PSKType;"],["Psk",""]],"struct":[["BranchPsk",""],["ExternalPsk",""],["PreSharedKeyID",""],["PreSharedKeys","struct { PreSharedKeyID psks<0..2^16-1>; } PreSharedKeys;"],["ReinitPsk",""]]});

@@ -321,15 +321,6 @@
 <span id="318">318</span>
 <span id="319">319</span>
 <span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -337,9 +328,12 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ProtocolVersion</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">psk</span>::<span class="ident">PreSharedKeys</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
+<span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">proposals</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -348,29 +342,100 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_welcome</span>;
 
+<span class="doccomment">/// Welcome Messages</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// &gt; 11.2.2. Welcoming New Members</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```text</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///   ProtocolVersion version = mls10;</span>
+<span class="doccomment">///   CipherSuite cipher_suite;</span>
+<span class="doccomment">///   EncryptedGroupSecrets secrets&lt;0..2^32-1&gt;;</span>
+<span class="doccomment">///   opaque encrypted_group_info&lt;1..2^32-1&gt;;</span>
+<span class="doccomment">/// } Welcome;</span>
+<span class="doccomment">/// ```</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Welcome</span> {
+    <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
+    <span class="ident">cipher_suite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+    <span class="ident">secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
+    <span class="ident">encrypted_group_info</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+}
+
+<span class="doccomment">/// EncryptedGroupSecrets</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// &gt; 11.2.2. Welcoming New Members</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```text</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///   opaque key_package_hash&lt;1..255&gt;;</span>
+<span class="doccomment">///   HPKECiphertext encrypted_group_secrets;</span>
+<span class="doccomment">/// } EncryptedGroupSecrets;</span>
+<span class="doccomment">/// ```</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EncryptedGroupSecrets</span> {
+    <span class="kw">pub</span> <span class="ident">key_package_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">encrypted_group_secrets</span>: <span class="ident">HpkeCiphertext</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Welcome</span> {
+    <span class="doccomment">/// Create a new welcome message from the provided data.</span>
+    <span class="doccomment">/// Note that secrets and the encrypted group info are consumed.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
+        <span class="ident">cipher_suite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+        <span class="ident">secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
+        <span class="ident">encrypted_group_info</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">version</span>,
+            <span class="ident">cipher_suite</span>,
+            <span class="ident">secrets</span>,
+            <span class="ident">encrypted_group_info</span>,
+        }
+    }
+
+    <span class="doccomment">/// Get a reference to the ciphersuite in this Welcome message.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span> {
+        <span class="self">self</span>.<span class="ident">cipher_suite</span>
+    }
+
+    <span class="doccomment">/// Get a reference to the encrypted group secrets in this Welcome message.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">EncryptedGroupSecrets</span>] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secrets</span>
+    }
+
+    <span class="doccomment">/// Get a reference to the encrypted group info.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">encrypted_group_info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encrypted_group_info</span>
+    }
+}
+
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Commit</span> {
-    <span class="kw">pub</span> <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalID</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdatePath</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalID</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdatePath</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">Commit</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposals</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">proposals</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="prelude-ty">Option</span>::<span class="op">&lt;</span><span class="ident">UpdatePath</span><span class="op">&gt;</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Commit</span> { <span class="ident">proposals</span>, <span class="ident">path</span> })
+<span class="kw">impl</span> <span class="ident">Commit</span> {
+    <span class="doccomment">/// Returns `true` if the commit contains an update path. `false` otherwise.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_path</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">is_some</span>()
     }
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConfirmationTag</span>(<span class="kw">pub</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConfirmationTag</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ConfirmationTag</span> {
+    <span class="doccomment">/// Create a new confirmation tag.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// &gt;  11.2. Commit</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ```text</span>
+    <span class="doccomment">/// MLSPlaintext.confirmation_tag =</span>
+    <span class="doccomment">///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)</span>
+    <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">confirmation_key</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
@@ -385,26 +450,30 @@
                 .<span class="ident">to_vec</span>(),
         )
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_empty</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">ConfirmationTag</span>(<span class="macro">vec</span><span class="macro">!</span>[])
-    }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+
+    <span class="doccomment">/// Get a copy of the raw byte vector.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_vec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_vec</span>()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">ConfirmationTag</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">ConfirmationTag</span>(<span class="ident">inner</span>))
-    }
-}
-
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupInfo</span> {
+<span class="doccomment">/// GroupInfo</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// &gt; 11.2.2. Welcoming New Members</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```text</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///   opaque group_id&lt;0..255&gt;;</span>
+<span class="doccomment">///   uint64 epoch;</span>
+<span class="doccomment">///   opaque tree_hash&lt;0..255&gt;;</span>
+<span class="doccomment">///   opaque confirmed_transcript_hash&lt;0..255&gt;;</span>
+<span class="doccomment">///   Extension extensions&lt;0..2^32-1&gt;;</span>
+<span class="doccomment">///   MAC confirmation_tag;</span>
+<span class="doccomment">///   uint32 signer_index;</span>
+<span class="doccomment">///   opaque signature&lt;0..2^16-1&gt;;</span>
+<span class="doccomment">/// } GroupInfo;</span>
+<span class="doccomment">/// ```</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">GroupInfo</span> {
     <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
     <span class="ident">tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
@@ -512,14 +581,6 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">GroupInfo</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">buffer</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">unsigned_payload</span>()<span class="question-mark">?</span>);
-        <span class="self">self</span>.<span class="ident">signature</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
 <span class="kw">impl</span> <span class="ident">Signable</span> <span class="kw">for</span> <span class="ident">GroupInfo</span> {
     <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec</span><span class="macro">!</span>[];
@@ -540,124 +601,45 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PathSecret</span> {
+<span class="doccomment">/// PathSecret</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// &gt; 11.2.2. Welcoming New Members</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```text</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///   opaque path_secret&lt;1..255&gt;;</span>
+<span class="doccomment">/// } PathSecret;</span>
+<span class="doccomment">/// ```</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PathSecret</span> {
     <span class="kw">pub</span> <span class="ident">path_secret</span>: <span class="ident">Secret</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PathSecret</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">path_secret</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">PathSecret</span> { <span class="ident">path_secret</span> })
-    }
+<span class="doccomment">/// GroupSecrets</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// &gt; 11.2.2. Welcoming New Members</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```text</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///   opaque joiner_secret&lt;1..255&gt;;</span>
+<span class="doccomment">///   optional&lt;PathSecret&gt; path_secret;</span>
+<span class="doccomment">///   optional&lt;PreSharedKeys&gt; psks;</span>
+<span class="doccomment">/// } GroupSecrets;</span>
+<span class="doccomment">/// ```</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">GroupSecrets</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">joiner_secret</span>: <span class="ident">Secret</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">path_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psks</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PreSharedKeys</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupSecrets</span> {
-    <span class="kw">pub</span> <span class="ident">joiner_secret</span>: <span class="ident">Secret</span>,
-    <span class="kw">pub</span> <span class="ident">path_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">GroupSecrets</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">joiner_secret</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">path_secret</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="prelude-ty">Option</span>::<span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">GroupSecrets</span> {
+<span class="kw">impl</span> <span class="ident">GroupSecrets</span> {
+    <span class="doccomment">/// Create a new group secret.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">joiner_secret</span>: <span class="ident">Secret</span>, <span class="ident">path_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
             <span class="ident">joiner_secret</span>,
             <span class="ident">path_secret</span>,
-        })
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EncryptedGroupSecrets</span> {
-    <span class="kw">pub</span> <span class="ident">key_package_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">encrypted_group_secrets</span>: <span class="ident">HpkeCiphertext</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">EncryptedGroupSecrets</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package_hash</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">encrypted_group_secrets</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">key_package_hash</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">encrypted_group_secrets</span> <span class="op">=</span> <span class="ident">HpkeCiphertext</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">EncryptedGroupSecrets</span> {
-            <span class="ident">key_package_hash</span>,
-            <span class="ident">encrypted_group_secrets</span>,
-        })
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Welcome</span> {
-    <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-    <span class="ident">cipher_suite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
-    <span class="ident">secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
-    <span class="ident">encrypted_group_info</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Welcome</span> {
-    <span class="doccomment">/// Create a new welcome message from the provided data.</span>
-    <span class="doccomment">/// Note that secrets and the encrypted group info are consumed.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-        <span class="ident">cipher_suite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
-        <span class="ident">secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
-        <span class="ident">encrypted_group_info</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">version</span>,
-            <span class="ident">cipher_suite</span>,
-            <span class="ident">secrets</span>,
-            <span class="ident">encrypted_group_info</span>,
+            <span class="ident">psks</span>: <span class="prelude-val">None</span>,
         }
-    }
-
-    <span class="doccomment">/// Get a reference to the ciphersuite in this Welcome message.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span> {
-        <span class="self">self</span>.<span class="ident">cipher_suite</span>
-    }
-
-    <span class="doccomment">/// Get a reference to the ciphersuite in this Welcome message.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_secrets_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">EncryptedGroupSecrets</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secrets</span>
-    }
-
-    <span class="doccomment">/// Get a reference to the encrypted group info.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_encrypted_group_info_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encrypted_group_info</span>
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">Welcome</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">version</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">cipher_suite</span>.<span class="ident">name</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secrets</span>)<span class="question-mark">?</span>;
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encrypted_group_info</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">ProtocolVersion</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">cipher_suite</span> <span class="op">=</span> <span class="ident">CiphersuiteName</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">secrets</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">encrypted_group_info</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Welcome</span> {
-            <span class="ident">version</span>,
-            <span class="ident">cipher_suite</span>: <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">cipher_suite</span>)<span class="question-mark">?</span>,
-            <span class="ident">secrets</span>,
-            <span class="ident">encrypted_group_info</span>,
-        })
     }
 }
 </pre></div>

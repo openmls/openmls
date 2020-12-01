@@ -246,7 +246,7 @@
         <span class="comment">// Find key_package in welcome secrets</span>
         <span class="kw">let</span> <span class="ident">egs</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">egs</span>) <span class="op">=</span> <span class="self">Self</span>::<span class="ident">find_key_package_from_welcome_secrets</span>(
             <span class="ident">key_package_bundle</span>.<span class="ident">get_key_package</span>(),
-            <span class="ident">welcome</span>.<span class="ident">get_secrets_ref</span>(),
+            <span class="ident">welcome</span>.<span class="ident">secrets</span>(),
         ) {
             <span class="ident">egs</span>
         } <span class="kw">else</span> {
@@ -263,7 +263,7 @@
             <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
             <span class="kw-2">&amp;</span><span class="ident">egs</span>,
             <span class="ident">key_package_bundle</span>.<span class="ident">get_private_key_ref</span>(),
-            <span class="ident">welcome</span>.<span class="ident">get_encrypted_group_info_ref</span>(),
+            <span class="ident">welcome</span>.<span class="ident">encrypted_group_info</span>(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Build the ratchet tree</span>
