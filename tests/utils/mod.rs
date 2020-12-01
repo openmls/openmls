@@ -184,7 +184,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .create_commit(
                     group_aad,
                     &initial_credential_bundle,
-                    &proposal_list,
+                    &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
                     true, /* Set this to true to populate the tree a little bit. */
                 )
                 .unwrap();

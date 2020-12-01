@@ -139,8 +139,11 @@ impl<'a> ManagedGroup<'a> {
             .collect();
 
         // Include pending proposals into Commit
-        let mut messages_to_commit = self.pending_proposals.clone();
-        messages_to_commit.extend_from_slice(&plaintext_messages);
+        let messages_to_commit: Vec<&MLSPlaintext> = self
+            .pending_proposals
+            .iter()
+            .chain(plaintext_messages.iter())
+            .collect();
 
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
@@ -189,8 +192,11 @@ impl<'a> ManagedGroup<'a> {
             .collect();
 
         // Include pending proposals into Commit
-        let mut messages_to_commit = self.pending_proposals.clone();
-        messages_to_commit.extend_from_slice(&plaintext_messages);
+        let messages_to_commit: Vec<&MLSPlaintext> = self
+            .pending_proposals
+            .iter()
+            .chain(plaintext_messages.iter())
+            .collect();
 
         // Create Commit over all proposals
         let (commit, _, kpb_option) = self.group.create_commit(
@@ -417,11 +423,14 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction);
         }
+        // Include pending proposals into Commit
+        let messages_to_commit: Vec<&MLSPlaintext> = self.pending_proposals.iter().collect();
+
         // Create Commit over all pending proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             &self.credential_bundle,
-            &self.pending_proposals,
+            &messages_to_commit,
             true,
         )?;
 
@@ -514,7 +523,7 @@ impl<'a> ManagedGroup<'a> {
             Some(kpb) => kpb,
             None => {
                 let existing_key_package = tree.own_key_package();
-                KeyPackageBundle::from_rekeyed_key_package(existing_key_package)
+                existing_key_package.rekey()
             }
         };
         drop(tree);
@@ -527,8 +536,11 @@ impl<'a> ManagedGroup<'a> {
         )];
 
         // Include pending proposals into Commit
-        let mut messages_to_commit = self.pending_proposals.clone();
-        messages_to_commit.extend_from_slice(&plaintext_messages);
+        let messages_to_commit: Vec<&MLSPlaintext> = self
+            .pending_proposals
+            .iter()
+            .chain(plaintext_messages.iter())
+            .collect();
 
         // Create Commit over all proposals
         let (commit, _welcome_option, kpb_option) = self.group.create_commit(
@@ -567,7 +579,7 @@ impl<'a> ManagedGroup<'a> {
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
-            None => KeyPackageBundle::from_rekeyed_key_package(existing_key_package),
+            None => existing_key_package.rekey(),
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(

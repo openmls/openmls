@@ -13,7 +13,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: &[MLSPlaintext],
+        proposals: &[&MLSPlaintext],
         force_self_update: bool,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
