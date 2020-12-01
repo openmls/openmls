@@ -176,7 +176,7 @@ pub trait Extension: Debug + ExtensionHelper {
 
     /// Each extension has an extension type.
     /// This should be an associated constant really.
-    /// See https://github.com/rust-lang/rust/issues/46969 for reference.
+    /// See <https://github.com/rust-lang/rust/issues/46969> for reference.
     fn get_type(&self) -> ExtensionType;
 
     /// Get the extension as `ExtensionStruct` for encoding.

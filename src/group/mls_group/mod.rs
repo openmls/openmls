@@ -18,6 +18,8 @@ use crate::tree::{index::*, node::*, secret_tree::*, *};
 use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
 
+use super::errors::ExporterError;
+
 pub type CreateCommitResult =
     Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
 
@@ -25,6 +27,7 @@ pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
     epoch_secrets: EpochSecrets,
+    init_secret: InitSecret,
     secret_tree: RefCell<SecretTree>,
     tree: RefCell<RatchetTree>,
     interim_transcript_hash: Vec<u8>,
@@ -45,25 +48,28 @@ impl MlsGroup {
         info!("Created group {:x?}", id);
         debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
-        let mut epoch_secrets = EpochSecrets::default();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        // TODO: We're currently creating a secret tree from an empty secret
-        // here. This should be solved by #60.
-        let secret_tree = epoch_secrets
-            .create_secret_tree(LeafIndex::from(1u32))
-            .unwrap();
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
-        let group_context = GroupContext {
+        let group_context = GroupContext::create_initial_group_context(
+            ciphersuite,
             group_id,
-            epoch: GroupEpoch(0),
-            tree_hash: tree.compute_tree_hash(),
-            confirmed_transcript_hash: vec![],
-        };
+            tree.compute_tree_hash(),
+        );
+        let commit_secret = tree.private_tree().get_commit_secret();
+        // Derive an initial member secret based on the commit secret.
+        // Internally, this derives a random `InitSecret` and uses it in the
+        // derivation.
+        let member_secret =
+            MemberSecret::from_commit_secret_and_psk(ciphersuite, commit_secret, None);
+        let (epoch_secrets, init_secret, encryption_secret) =
+            EpochSecrets::derive_epoch_secrets(ciphersuite, member_secret, &group_context);
+        let secret_tree = encryption_secret.create_secret_tree(LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {
             ciphersuite,
             group_context,
             epoch_secrets,
+            init_secret,
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
             interim_transcript_hash,
@@ -166,7 +172,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: Vec<MLSPlaintext>,
+        proposals: &[MLSPlaintext],
         force_self_update: bool,
     ) -> CreateCommitResult {
         self.create_commit_internal(aad, credential_bundle, proposals, force_self_update)
@@ -218,7 +224,7 @@ impl MlsGroup {
         )
     }
 
-    pub fn decrypt(&mut self, mls_ciphertext: MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
+    pub fn decrypt(&mut self, mls_ciphertext: &MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
@@ -241,14 +247,18 @@ impl MlsGroup {
     }
 
     // Exporter
-    pub fn export_secret(&self, label: &str, key_length: usize) -> Secret {
-        mls_exporter(
+    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, ExporterError> {
+        // TODO: This should throw an error. Generally, keys length should be
+        // checked. (see #228).
+        if key_length > u16::MAX.into() {
+            return Err(ExporterError::KeyLengthTooLong);
+        }
+        Ok(self.epoch_secrets.exporter_secret.derive_exported_secret(
             self.ciphersuite(),
-            &self.epoch_secrets,
             label,
             &self.context(),
             key_length,
-        )
+        ))
     }
 }
 
@@ -269,8 +279,8 @@ impl MlsGroup {
         &self.group_context
     }
 
-    pub fn group_id(&self) -> GroupId {
-        self.group_context.group_id.clone()
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_context.group_id
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
@@ -296,25 +306,4 @@ fn update_interim_transcript_hash(
 ) -> Vec<u8> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data.serialize();
     ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
-}
-
-fn compute_welcome_key_nonce(
-    ciphersuite: &Ciphersuite,
-    joiner_secret: &Secret,
-) -> (AeadKey, AeadNonce) {
-    let welcome_secret = ciphersuite
-        .hkdf_expand(joiner_secret, b"mls 1.0 welcome", ciphersuite.hash_length())
-        .unwrap();
-    let welcome_nonce = AeadNonce::from_secret(
-        ciphersuite
-            .hkdf_expand(&welcome_secret, b"nonce", ciphersuite.aead_nonce_length())
-            .unwrap(),
-    );
-    let welcome_key = AeadKey::from_secret(
-        ciphersuite
-            .hkdf_expand(&welcome_secret, b"key", ciphersuite.aead_key_length())
-            .unwrap(),
-        ciphersuite.aead(),
-    );
-    (welcome_key, welcome_nonce)
 }

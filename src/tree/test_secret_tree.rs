@@ -1,4 +1,4 @@
-use crate::prelude::Secret;
+use crate::schedule::EncryptionSecret;
 
 // This tests the boundaries of the generations from a SecretTree
 #[test]
@@ -7,8 +7,8 @@ fn test_boundaries() {
     use crate::tree::{index::*, secret_tree::*};
 
     for ciphersuite in Config::supported_ciphersuites() {
-        let mut secret_tree =
-            SecretTree::new(Secret::from([0u8; 32].to_vec()), LeafIndex::from(2u32));
+        let encryption_secret = EncryptionSecret::from_random(32);
+        let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
         let secret_type = SecretType::ApplicationSecret;
         assert!(secret_tree
             .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
@@ -52,10 +52,8 @@ fn test_boundaries() {
             ),
             Err(SecretTreeError::IndexOutOfBounds)
         );
-        let mut largetree = SecretTree::new(
-            Secret::from([0u8; 32].to_vec()),
-            LeafIndex::from(100_000u32),
-        );
+        let encryption_secret = EncryptionSecret::from_random(32);
+        let mut largetree = SecretTree::new(encryption_secret, LeafIndex::from(100_000u32));
         assert!(largetree
             .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
             .is_ok());
@@ -90,10 +88,8 @@ fn increment_generation() {
 
     for ciphersuite in Config::supported_ciphersuites() {
         let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
-        let mut secret_tree = SecretTree::new(
-            Secret::from([1, 2, 3].to_vec()),
-            LeafIndex::from(SIZE as u32),
-        );
+        let encryption_secret = EncryptionSecret::from_random(32);
+        let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(SIZE as u32));
         for i in 0..SIZE {
             assert_eq!(
                 secret_tree.get_generation(LeafIndex::from(i as u32), SecretType::HandshakeSecret),

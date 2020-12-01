@@ -20,6 +20,10 @@ use ciphersuites::*;
 pub(crate) use errors::*;
 
 use crate::config::{Config, ConfigError};
+use crate::group::GroupContext;
+use crate::schedule::ExporterSecret;
+use crate::schedule::SenderDataSecret;
+use crate::schedule::WelcomeSecret;
 use crate::utils::random_u32;
 
 #[cfg(test)]
@@ -56,6 +60,31 @@ pub struct HpkeCiphertext {
     ciphertext: Vec<u8>,
 }
 
+/// `KdfLabel` is later serialized and used in the `label` field of
+/// `kdf_expand_label`.
+struct KdfLabel {
+    length: u16,
+    label: String,
+    context: Vec<u8>,
+}
+
+impl KdfLabel {
+    pub fn serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
+        // TODO: This should throw an error. Generally, keys length should be
+        // checked. (see #228).
+        if length > u16::MAX.into() {
+            panic!("Library error: Trying to derive a key with a too large length field!")
+        }
+        let full_label = "mls10 ".to_owned() + label;
+        let kdf_label = KdfLabel {
+            length: length as u16,
+            label: full_label,
+            context: context.to_vec(),
+        };
+        kdf_label.serialize()
+    }
+}
+
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
@@ -65,16 +94,51 @@ pub struct Secret {
 }
 
 impl Secret {
-    /// Create an empty secret.
-    pub(crate) fn new_empty_secret() -> Self {
-        Secret { value: vec![] }
-    }
-
     // TODO: The only reason we still need this, is because ConfirmationTag is
     // currently not a MAC, but a Secret. This should be solved when we're up to
     // spec, i.e. with issue #147.
     pub(crate) fn to_vec(&self) -> Vec<u8> {
         self.value.clone()
+    }
+
+    /// Randomly sample a fresh `Secret`.
+    pub(crate) fn random(length: usize) -> Self {
+        Secret {
+            value: get_random_vec(length),
+        }
+    }
+
+    /// Expand a `Secret` to a new `Secret` of length `length` including a
+    /// `label` and a `context`.
+    pub fn kdf_expand_label(
+        &self,
+        ciphersuite: &Ciphersuite,
+        label: &str,
+        context: &[u8],
+        length: usize,
+    ) -> Secret {
+        let info = KdfLabel::serialized_label(context, label, length);
+        ciphersuite.hkdf_expand(self, &info, length).unwrap()
+    }
+
+    /// Derive a new `Secret` from the this one by expanding it with the given
+    /// `label` and an empty `context`.
+    pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
+        self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
+    }
+}
+
+impl Default for Secret {
+    fn default() -> Self {
+        Secret { value: vec![] }
+    }
+}
+
+static EMPTY_SECRET: Secret = Secret { value: vec![] };
+
+impl Default for &Secret {
+    fn default() -> Self {
+        &EMPTY_SECRET
     }
 }
 
@@ -89,6 +153,26 @@ impl From<&[u8]> for Secret {
         Secret {
             value: bytes.to_vec(),
         }
+    }
+}
+
+impl ExporterSecret {
+    /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
+    /// it can be used outside of OpenMLS. This function is made available for
+    /// use from the outside through [`crate::group::mls_group::export_secret`].
+    pub(crate) fn derive_exported_secret(
+        &self,
+        ciphersuite: &Ciphersuite,
+        label: &str,
+        group_context: &GroupContext,
+        key_length: usize,
+    ) -> Vec<u8> {
+        let context = &group_context.serialize();
+        let context_hash = &ciphersuite.hash(context);
+        self.secret()
+            .derive_secret(ciphersuite, label)
+            .kdf_expand_label(ciphersuite, label, context_hash, key_length)
+            .value
     }
 }
 
@@ -194,6 +278,7 @@ impl Ciphersuite {
     }
 
     /// Get the AEAD mode
+    #[cfg(test)]
     pub(crate) fn aead(&self) -> AeadMode {
         self.aead
     }
@@ -231,7 +316,8 @@ impl Ciphersuite {
     }
 
     /// HKDF extract.
-    pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm: &Secret) -> Secret {
+    pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
+        let salt = salt_option.unwrap_or_default();
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
         }
@@ -321,11 +407,48 @@ impl Ciphersuite {
 }
 
 impl AeadKey {
-    /// Build a new key for an AEAD from `Secret`.
-    pub(crate) fn from_secret(secret: Secret, aead_mode: AeadMode) -> AeadKey {
+    /// Create an `AeadKey` from a `Secret`. TODO: This function should
+    /// disappear when tackling issue #103.
+    pub(crate) fn from_secret(ciphersuite: &Ciphersuite, secret: Secret) -> Self {
         AeadKey {
-            aead_mode,
+            aead_mode: ciphersuite.aead,
             value: secret.value,
+        }
+    }
+
+    /// Derive a new AEAD key from a `SenderDataSecret`.
+    pub(crate) fn from_sender_data_secret(
+        ciphersuite: &Ciphersuite,
+        ciphertext: &[u8],
+        sender_data_secret: &SenderDataSecret,
+    ) -> Self {
+        let key = sender_data_secret.secret().kdf_expand_label(
+            ciphersuite,
+            "key",
+            &ciphertext,
+            ciphersuite.aead_key_length(),
+        );
+        AeadKey {
+            aead_mode: ciphersuite.aead,
+            value: key.value,
+        }
+    }
+
+    /// Derive a new AEAD key from a `WelcomeSecret`.
+    pub(crate) fn from_welcome_secret(
+        ciphersuite: &Ciphersuite,
+        welcome_secret: &WelcomeSecret,
+    ) -> AeadKey {
+        let aead_secret = ciphersuite
+            .hkdf_expand(
+                &welcome_secret.secret(),
+                b"key",
+                ciphersuite.aead_key_length(),
+            )
+            .unwrap();
+        AeadKey {
+            aead_mode: ciphersuite.aead,
+            value: aead_secret.value,
         }
     }
 
@@ -388,10 +511,44 @@ impl AeadKey {
 }
 
 impl AeadNonce {
-    /// Build a new nonce for an AEAD from `Secret`.
-    pub(crate) fn from_secret(secret: Secret) -> Self {
+    /// Create an `AeadNonce` from a `Secret`. TODO: This function should
+    /// disappear when tackling issue #103.
+    pub fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(secret.value.as_slice());
+        nonce.clone_from_slice(&secret.value);
+        AeadNonce { value: nonce }
+    }
+    /// Derive a new AEAD nonce from a `SenderDataSecret`.
+    pub(crate) fn from_sender_data_secret(
+        ciphersuite: &Ciphersuite,
+        ciphertext: &[u8],
+        sender_data_secret: &SenderDataSecret,
+    ) -> Self {
+        let nonce_secret = sender_data_secret.secret().kdf_expand_label(
+            ciphersuite,
+            "nonce",
+            &ciphertext,
+            ciphersuite.aead_nonce_length(),
+        );
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(nonce_secret.value.as_slice());
+        AeadNonce { value: nonce }
+    }
+
+    /// Derive a new AEAD key from a `WelcomeSecret`.
+    pub(crate) fn from_welcome_secret(
+        ciphersuite: &Ciphersuite,
+        welcome_secret: &WelcomeSecret,
+    ) -> Self {
+        let nonce_secret = ciphersuite
+            .hkdf_expand(
+                &welcome_secret.secret(),
+                b"nonce",
+                ciphersuite.aead_nonce_length(),
+            )
+            .unwrap();
+        let mut nonce = [0u8; NONCE_BYTES];
+        nonce.clone_from_slice(nonce_secret.value.as_slice());
         AeadNonce { value: nonce }
     }
 
