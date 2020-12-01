@@ -37,12 +37,12 @@ pub struct ParentNode {
 #[derive(Debug, PartialEq, Clone)]
 /// Nodes without contents are blanks.
 pub struct Node {
-    pub node_type: NodeType,
-    pub node_contents: Option<NodeContents>,
+    pub(crate) node_type: NodeType,
+    pub(crate) node_contents: Option<NodeContents>,
 }
 
 impl Node {
-    pub fn new_leaf(contents_option: Option<NodeContents>) -> Self {
+    pub(crate) fn new_leaf(contents_option: Option<NodeContents>) -> Self {
         Node {
             node_type: NodeType::Leaf,
             node_contents: contents_option,
@@ -55,7 +55,7 @@ impl Node {
         }
     }
     pub fn public_key(&self) -> Option<&HPKEPublicKey> {
-        match (self.node_type, self.node_contents) {
+        match (self.node_type, &self.node_contents) {
             (NodeType::Leaf, None) => None,
             (NodeType::Leaf, Some(NodeContents::LeafContents(key_package))) => {
                 Some(key_package.hpke_init_key())
@@ -91,7 +91,7 @@ impl Node {
         if self.is_blank() {
             return None;
         }
-        match (self.node_type, self.node_contents) {
+        match (self.node_type, &self.node_contents) {
             (NodeType::Parent, Some(NodeContents::ParentContents(parent_node))) => {
                 Some(parent_node.parent_hash.clone())
             }
