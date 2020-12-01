@@ -9,7 +9,7 @@ use crate::tree::index::*;
 
 /// This test makes sure ProposalQueue works as intented. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
-/// `get_filtered_proposals` returns only proposals of a certain type
+/// `filtered_queued_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {
     for ciphersuite in Config::supported_ciphersuites() {
@@ -37,14 +37,14 @@ fn proposal_queue_functions() {
             mandatory_extensions.clone(),
         )
         .unwrap();
-        let bob_key_package = bob_key_package_bundle.get_key_package();
+        let bob_key_package = bob_key_package_bundle.key_package();
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
             mandatory_extensions,
         )
         .unwrap();
-        let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
+        let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
         let group_context = GroupContext {
@@ -56,10 +56,10 @@ fn proposal_queue_functions() {
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
-            key_package: alice_key_package_bundle.get_key_package().clone(),
+            key_package: alice_key_package_bundle.key_package().clone(),
         };
         let add_proposal_alice2 = AddProposal {
-            key_package: alice_key_package_bundle.get_key_package().clone(),
+            key_package: alice_key_package_bundle.key_package().clone(),
         };
         let add_proposal_bob1 = AddProposal {
             key_package: bob_key_package.clone(),
@@ -121,11 +121,9 @@ fn proposal_queue_functions() {
 
         // Get filtered proposals
         let filtered_proposals =
-            proposal_queue.get_filtered_proposals(valid_proposal_id_list, ProposalType::Add);
+            proposal_queue.filtered_queued_proposals(valid_proposal_id_list, ProposalType::Add);
         for filtered_proposal in filtered_proposals {
-            assert!(filtered_proposal
-                .get_proposal_ref()
-                .is_type(ProposalType::Add));
+            assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
         }
     }
 }

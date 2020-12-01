@@ -22,16 +22,16 @@ macro_rules! key_package_generation {
                     .unwrap();
 
             // After creation, the signature should be ok.
-            assert!(kpb.get_key_package().verify().is_ok());
+            assert!(kpb.key_package().verify().is_ok());
 
             {
-                let extensions = kpb.get_key_package().extensions();
+                let extensions = kpb.key_package().extensions();
 
                 // The capabilities extension must be present and valid.
                 // It's added automatically.
                 let capabilities_extension = extensions
                     .iter()
-                    .find(|e| e.get_type() == ExtensionType::Capabilities)
+                    .find(|e| e.extension_type() == ExtensionType::Capabilities)
                     .expect("Capabilities extension is missing in key package");
                 let capabilities_extension =
                     capabilities_extension.to_capabilities_extension().unwrap();
@@ -55,28 +55,28 @@ macro_rules! key_package_generation {
                 // Get the lifetime extension. It's added automatically.
                 let lifetime_extension = extensions
                     .iter()
-                    .find(|e| e.get_type() == ExtensionType::Lifetime)
+                    .find(|e| e.extension_type() == ExtensionType::Lifetime)
                     .expect("Lifetime extension is missing in key package");
                 let _lifetime_extension = lifetime_extension.to_lifetime_extension().unwrap();
             }
 
             // Add and retrieve a key package ID.
             let key_id = [1, 2, 3, 4, 5, 6, 7];
-            kpb.get_key_package_ref_mut()
+            kpb.key_package_mut()
                 .add_extension(Box::new(KeyIDExtension::new(&key_id)));
 
             // The key package is invalid because the signature is invalid now.
-            assert!(kpb.get_key_package().verify().is_err());
+            assert!(kpb.key_package().verify().is_err());
 
             // After re-signing the package it is valid.
-            kpb.get_key_package_ref_mut().sign(&credential_bundle);
-            assert!(kpb.get_key_package().verify().is_ok());
+            kpb.key_package_mut().sign(&credential_bundle);
+            assert!(kpb.key_package().verify().is_ok());
 
             // Get the key ID extension.
-            let extensions = kpb.get_key_package().extensions();
+            let extensions = kpb.key_package().extensions();
             let key_id_extension = extensions
                 .iter()
-                .find(|e| e.get_type() == ExtensionType::KeyID)
+                .find(|e| e.extension_type() == ExtensionType::KeyID)
                 .expect("Key ID extension is missing in key package");
             let key_id_extension = key_id_extension.to_key_id_extension().unwrap();
             assert_eq!(&key_id, key_id_extension.as_slice());

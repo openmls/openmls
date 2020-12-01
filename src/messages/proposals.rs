@@ -44,7 +44,7 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub(crate) fn get_type(&self) -> ProposalType {
+    pub(crate) fn proposal_type(&self) -> ProposalType {
         match self {
             Proposal::Add(ref _a) => ProposalType::Add,
             Proposal::Update(ref _u) => ProposalType::Update,
@@ -52,7 +52,7 @@ impl Proposal {
         }
     }
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
-        self.get_type() == proposal_type
+        self.proposal_type() == proposal_type
     }
     pub(crate) fn as_add(&self) -> Option<AddProposal> {
         match self {
@@ -152,15 +152,15 @@ impl QueuedProposal {
         }
     }
     /// Returns the `Proposal` as a reference
-    pub(crate) fn get_proposal_ref(&self) -> &Proposal {
+    pub(crate) fn proposal(&self) -> &Proposal {
         &self.proposal
     }
     /// Returns the `ProposalID` as a reference
-    pub(crate) fn get_proposal_id_ref(&self) -> &ProposalID {
+    pub(crate) fn proposal_id(&self) -> &ProposalID {
         &self.proposal_id
     }
     /// Returns the `Sender` as a reference
-    pub(crate) fn get_sender_ref(&self) -> &Sender {
+    pub(crate) fn sender(&self) -> &Sender {
         &self.sender
     }
 }
@@ -213,7 +213,7 @@ impl ProposalQueue {
     ///
     /// Return a `ProposalQueue` a bool that indicates whether Updates for the
     /// own node were included
-    pub(crate) fn filtered_proposals(
+    pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
         proposals: &[MLSPlaintext],
         own_index: LeafIndex,
@@ -239,9 +239,9 @@ impl ProposalQueue {
         // Parse proposals and build adds and member list
         for mls_plaintext in proposals.iter() {
             let queued_proposal = QueuedProposal::new(ciphersuite, mls_plaintext);
-            match queued_proposal.proposal.get_type() {
+            match queued_proposal.proposal.proposal_type() {
                 ProposalType::Add => {
-                    adds.insert(queued_proposal.get_proposal_id_ref().clone());
+                    adds.insert(queued_proposal.proposal_id().clone());
                     proposal_queue.add(queued_proposal);
                 }
                 ProposalType::Update => {
@@ -271,13 +271,11 @@ impl ProposalQueue {
                 // Delete all Updates when a Remove is found
                 member.updates = Vec::new();
                 // Only keep the last Remove
-                valid_proposals
-                    .insert(member.removes.last().unwrap().get_proposal_id_ref().clone());
+                valid_proposals.insert(member.removes.last().unwrap().proposal_id().clone());
             }
             if !member.updates.is_empty() {
                 // Only keep the last Update
-                valid_proposals
-                    .insert(member.updates.last().unwrap().get_proposal_id_ref().clone());
+                valid_proposals.insert(member.updates.last().unwrap().proposal_id().clone());
             }
         }
         // Only retain valid proposals
@@ -308,11 +306,11 @@ impl ProposalQueue {
         self.queued_proposals.retain(f);
     }
     /// Gets the list of all `ProposalID`
-    pub(crate) fn get_proposal_id_list(&self) -> Vec<ProposalID> {
+    pub(crate) fn proposal_id_list(&self) -> Vec<ProposalID> {
         self.queued_proposals.keys().into_iter().cloned().collect()
     }
     /// Return a list of fileterd `QueuedProposal`
-    pub(crate) fn get_filtered_proposals(
+    pub(crate) fn filtered_queued_proposals(
         &self,
         proposal_id_list: &[ProposalID],
         proposal_type: ProposalType,

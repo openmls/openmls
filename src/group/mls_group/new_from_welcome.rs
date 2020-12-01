@@ -19,14 +19,14 @@ impl MlsGroup {
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
-            key_package_bundle.get_key_package(),
+            key_package_bundle.key_package(),
             welcome.secrets(),
         ) {
             egs
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite.name() != key_package_bundle.get_key_package().cipher_suite().name() {
+        if ciphersuite.name() != key_package_bundle.key_package().cipher_suite().name() {
             let e = WelcomeError::CiphersuiteMismatch;
             debug!("new_from_welcome {:?}", e);
             return Err(e);
@@ -36,7 +36,7 @@ impl MlsGroup {
         let (mut group_info, member_secret, path_secret_option) = Self::decrypt_group_info(
             &ciphersuite,
             &egs,
-            key_package_bundle.get_private_key_ref(),
+            key_package_bundle.private_key(),
             welcome.encrypted_group_info(),
         )?;
 
@@ -45,7 +45,7 @@ impl MlsGroup {
         let ratchet_tree_ext_index = group_info
             .extensions()
             .iter()
-            .position(|e| e.get_type() == ExtensionType::RatchetTree);
+            .position(|e| e.extension_type() == ExtensionType::RatchetTree);
         let ratchet_tree_extension = if let Some(i) = ratchet_tree_ext_index {
             let extension = group_info.extensions_mut().remove(i);
             // Throw an error if we there is another ratchet tree extension.
@@ -54,11 +54,11 @@ impl MlsGroup {
             if group_info
                 .extensions()
                 .iter()
-                .any(|e| e.get_type() == ExtensionType::RatchetTree)
+                .any(|e| e.extension_type() == ExtensionType::RatchetTree)
             {
                 return Err(WelcomeError::DuplicateRatchetTreeExtension);
             }
-            match extension.to_ratchet_tree_extension_ref() {
+            match extension.as_ratchet_tree_extension() {
                 Ok(e) => {
                     let ext = Some(e.clone());
                     // Put the extension back into the GroupInfo, so the
@@ -115,7 +115,7 @@ impl MlsGroup {
         // TODO: #36 check if path_secret has to be optional
         if let Some(path_secret) = path_secret_option {
             let common_ancestor_index = treemath::common_ancestor_index(
-                tree.get_own_node_index(),
+                tree.own_node_index(),
                 NodeIndex::from(group_info.signer_index()),
             );
             let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count())

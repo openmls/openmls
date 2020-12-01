@@ -35,7 +35,7 @@ impl KeyIDExtension {
 }
 
 impl Extension for KeyIDExtension {
-    fn get_type(&self) -> ExtensionType {
+    fn extension_type(&self) -> ExtensionType {
         ExtensionType::KeyID
     }
 

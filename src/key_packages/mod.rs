@@ -45,12 +45,12 @@ impl KeyPackage {
         for extension in self.extensions.iter() {
             if let Some(p) = mandatory_extensions_found
                 .iter()
-                .position(|&e| e == extension.get_type())
+                .position(|&e| e == extension.extension_type())
             {
                 let _ = mandatory_extensions_found.remove(p);
             }
             // Make sure the lifetime is valid.
-            if extension.get_type() == ExtensionType::Lifetime {
+            if extension.extension_type() == ExtensionType::Lifetime {
                 match extension.to_lifetime_extension() {
                     Ok(e) => {
                         if !e.is_valid() {
@@ -90,7 +90,7 @@ impl KeyPackage {
     /// Get the ID of this key package as byte slice.
     /// Returns an error if no Key ID extension is present.
     pub fn key_id(&self) -> Result<&[u8], KeyPackageError> {
-        if let Some(key_id_ext) = self.get_extension(ExtensionType::KeyID) {
+        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::KeyID) {
             return Ok(key_id_ext.to_key_id_extension()?.as_slice());
         }
         Err(KeyPackageError::ExtensionNotPresent)
@@ -100,7 +100,7 @@ impl KeyPackage {
     /// Make sure to re-sign the package before using it. It will be invalid
     /// after calling this function!
     pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
-        self.remove_extension(extension.get_type());
+        self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
     }
 
@@ -170,12 +170,12 @@ impl KeyPackage {
     /// Returns `Some(extension)` if present and `None` if the extension is not
     /// present.
     #[allow(clippy::borrowed_box)]
-    pub(crate) fn get_extension(
+    pub(crate) fn extension_with_type(
         &self,
         extension_type: ExtensionType,
     ) -> Option<&Box<dyn Extension>> {
         for e in &self.extensions {
-            if e.get_type() == extension_type {
+            if e.extension_type() == extension_type {
                 return Some(e);
             }
         }
@@ -193,7 +193,8 @@ impl KeyPackage {
     /// Make sure to re-sign the package before using it. It will be invalid
     /// after calling this function!
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
-        self.extensions.retain(|e| e.get_type() != extension_type);
+        self.extensions
+            .retain(|e| e.extension_type() != extension_type);
     }
 
     /// Get a reference to the HPKE init key.
@@ -304,7 +305,7 @@ impl KeyPackageBundle {
 
         match extensions
             .iter()
-            .find(|e| e.get_type() == ExtensionType::Capabilities)
+            .find(|e| e.extension_type() == ExtensionType::Capabilities)
         {
             Some(extension) => {
                 let capabilities_extension = extension.to_capabilities_extension().unwrap();
@@ -329,7 +330,7 @@ impl KeyPackageBundle {
         // least valid.
         if !extensions
             .iter()
-            .any(|e| e.get_type() == ExtensionType::Lifetime)
+            .any(|e| e.extension_type() == ExtensionType::Lifetime)
         {
             extensions.push(Box::new(LifetimeExtension::default()));
         }
@@ -344,7 +345,7 @@ impl KeyPackageBundle {
     }
 
     /// Get a reference to the `KeyPackage`.
-    pub fn get_key_package(&self) -> &KeyPackage {
+    pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 }
@@ -406,12 +407,12 @@ impl KeyPackageBundle {
     }
 
     /// Get a mutable reference to the `KeyPackage`.
-    pub fn get_key_package_ref_mut(&mut self) -> &mut KeyPackage {
+    pub fn key_package_mut(&mut self) -> &mut KeyPackage {
         &mut self.key_package
     }
 
     /// Get a reference to the `HPKEPrivateKey`.
-    pub(crate) fn get_private_key_ref(&self) -> &HPKEPrivateKey {
+    pub(crate) fn private_key(&self) -> &HPKEPrivateKey {
         &self.private_key
     }
 

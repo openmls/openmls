@@ -11,19 +11,19 @@ fn test_boundaries() {
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
         let secret_type = SecretType::ApplicationSecret;
         assert!(secret_tree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
             .is_ok());
         assert!(secret_tree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(1u32), secret_type, 0)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(1u32), secret_type, 0)
             .is_ok());
         assert!(secret_tree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1)
             .is_ok());
         assert!(secret_tree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1_000)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1_000)
             .is_ok());
         assert_eq!(
-            secret_tree.get_secret_for_decryption(
+            secret_tree.secret_for_decryption(
                 &ciphersuite,
                 LeafIndex::from(1u32),
                 secret_type,
@@ -32,10 +32,10 @@ fn test_boundaries() {
             Err(SecretTreeError::TooDistantInTheFuture)
         );
         assert!(secret_tree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 996)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 996)
             .is_ok());
         assert_eq!(
-            secret_tree.get_secret_for_decryption(
+            secret_tree.secret_for_decryption(
                 &ciphersuite,
                 LeafIndex::from(0u32),
                 secret_type,
@@ -44,27 +44,22 @@ fn test_boundaries() {
             Err(SecretTreeError::TooDistantInThePast)
         );
         assert_eq!(
-            secret_tree.get_secret_for_decryption(
-                &ciphersuite,
-                LeafIndex::from(2u32),
-                secret_type,
-                0
-            ),
+            secret_tree.secret_for_decryption(&ciphersuite, LeafIndex::from(2u32), secret_type, 0),
             Err(SecretTreeError::IndexOutOfBounds)
         );
         let encryption_secret = EncryptionSecret::from_random(32);
         let mut largetree = SecretTree::new(encryption_secret, LeafIndex::from(100_000u32));
         assert!(largetree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
             .is_ok());
         assert!(largetree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 0)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 0)
             .is_ok());
         assert!(largetree
-            .get_secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 1_000)
+            .secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 1_000)
             .is_ok());
         assert_eq!(
-            largetree.get_secret_for_decryption(
+            largetree.secret_for_decryption(
                 &ciphersuite,
                 LeafIndex::from(100_000u32),
                 secret_type,
@@ -92,19 +87,18 @@ fn increment_generation() {
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(SIZE as u32));
         for i in 0..SIZE {
             assert_eq!(
-                secret_tree.get_generation(LeafIndex::from(i as u32), SecretType::HandshakeSecret),
+                secret_tree.generation(LeafIndex::from(i as u32), SecretType::HandshakeSecret),
                 0
             );
             assert_eq!(
-                secret_tree
-                    .get_generation(LeafIndex::from(i as u32), SecretType::ApplicationSecret),
+                secret_tree.generation(LeafIndex::from(i as u32), SecretType::ApplicationSecret),
                 0
             );
         }
         for i in 0..MAX_GENERATIONS {
             for j in 0..SIZE {
                 let (next_gen, (handshake_key, handshake_nonce)) = secret_tree
-                    .get_secret_for_encryption(
+                    .secret_for_encryption(
                         ciphersuite,
                         LeafIndex::from(j as u32),
                         SecretType::HandshakeSecret,
@@ -117,7 +111,7 @@ fn increment_generation() {
                     .insert(handshake_nonce.as_slice().to_vec(), true)
                     .is_none());
                 let (next_gen, (application_key, application_nonce)) = secret_tree
-                    .get_secret_for_encryption(
+                    .secret_for_encryption(
                         ciphersuite,
                         LeafIndex::from(j as u32),
                         SecretType::ApplicationSecret,

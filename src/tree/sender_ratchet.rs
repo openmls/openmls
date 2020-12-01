@@ -24,7 +24,7 @@ impl SenderRatchet {
     }
     /// Gets a secret from the SenderRatchet. Returns an error if the generation
     /// is out of bound.
-    pub(crate) fn get_secret_for_decryption(
+    pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
         generation: u32,
@@ -62,13 +62,10 @@ impl SenderRatchet {
         }
     }
     /// Gets a secret from the SenderRatchet and ratchets forward
-    pub fn get_secret_for_encryption(
-        &mut self,
-        ciphersuite: &Ciphersuite,
-    ) -> (u32, RatchetSecrets) {
+    pub fn secret_for_encryption(&mut self, ciphersuite: &Ciphersuite) -> (u32, RatchetSecrets) {
         let current_path_secret = self.past_secrets[0].clone();
         let next_path_secret = self.ratchet_secret(ciphersuite, &current_path_secret);
-        let generation = self.get_generation();
+        let generation = self.generation();
         self.past_secrets = vec![next_path_secret];
         self.generation += 1;
         (
@@ -116,7 +113,7 @@ impl SenderRatchet {
         )
     }
     /// Gets the current generation
-    pub(crate) fn get_generation(&self) -> u32 {
+    pub(crate) fn generation(&self) -> u32 {
         self.generation
     }
 }

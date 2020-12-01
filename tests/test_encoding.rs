@@ -15,8 +15,8 @@ fn create_encoding_test_setup() -> TestSetup {
         name: "bob",
         ciphersuites: Config::supported_ciphersuite_names(),
     };
-    let charly_config = TestClientConfig {
-        name: "charly",
+    let charlie_config = TestClientConfig {
+        name: "charlie",
         ciphersuites: Config::supported_ciphersuite_names(),
     };
 
@@ -38,7 +38,7 @@ fn create_encoding_test_setup() -> TestSetup {
 
     // Create the test setup config.
     let test_setup_config = TestSetupConfig {
-        clients: vec![alice_config, bob_config, charly_config],
+        clients: vec![alice_config, bob_config, charlie_config],
         groups: test_group_configs,
     };
 
@@ -108,7 +108,7 @@ fn test_update_proposal_encoding() {
         let update = group_state.create_update_proposal(
             &[],
             credential_bundle,
-            key_package_bundle.get_key_package().clone(),
+            key_package_bundle.key_package().clone(),
         );
         let update_encoded = update.encode_detached().unwrap();
         let update_decoded = match MLSPlaintext::decode(&mut Cursor::new(&update_encoded)) {
@@ -153,7 +153,7 @@ fn test_add_proposal_encoding() {
         let add = group_state.create_add_proposal(
             &[],
             credential_bundle,
-            key_package_bundle.get_key_package().clone(),
+            key_package_bundle.key_package().clone(),
         );
         let add_encoded = add.encode_detached().unwrap();
         let add_decoded = match MLSPlaintext::decode(&mut Cursor::new(&add_encoded)) {
@@ -225,21 +225,21 @@ fn test_commit_encoding() {
         let update = group_state.create_update_proposal(
             &[],
             alice_credential_bundle,
-            alice_key_package_bundle.get_key_package().clone(),
+            alice_key_package_bundle.key_package().clone(),
         );
 
-        // Alice adds Charly to the group
-        let charly_key_package = test_setup
+        // Alice adds Charlie to the group
+        let charlie_key_package = test_setup
             ._key_store
             .borrow_mut()
-            .get_mut(&("charly", group_state.ciphersuite().name()))
+            .get_mut(&("charlie", group_state.ciphersuite().name()))
             .unwrap()
             .pop()
             .unwrap();
         let add = group_state.create_add_proposal(
             &[],
             alice_credential_bundle,
-            charly_key_package.clone(),
+            charlie_key_package.clone(),
         );
 
         // Alice removes Bob
@@ -274,16 +274,16 @@ fn test_welcome_message_encoding() {
 
         // Create a few proposals to put into the commit
 
-        // Alice adds Charly to the group
-        let charly_key_package = test_setup
+        // Alice adds Charlie to the group
+        let charlie_key_package = test_setup
             ._key_store
             .borrow_mut()
-            .get_mut(&("charly", group_state.ciphersuite().name()))
+            .get_mut(&("charlie", group_state.ciphersuite().name()))
             .unwrap()
             .pop()
             .unwrap();
         let add =
-            group_state.create_add_proposal(&[], credential_bundle, charly_key_package.clone());
+            group_state.create_add_proposal(&[], credential_bundle, charlie_key_package.clone());
 
         let proposals = vec![add];
         let (_commit, welcome_option, _key_package_bundle_option) = group_state
@@ -302,13 +302,14 @@ fn test_welcome_message_encoding() {
 
         assert_eq!(welcome, welcome_decoded);
 
-        let charly = test_clients.get("charly").unwrap().borrow();
+        let charlie = test_clients.get("charlie").unwrap().borrow();
 
-        let charly_key_package_bundle =
-            charly.find_key_package_bundle(&charly_key_package).unwrap();
+        let charlie_key_package_bundle = charlie
+            .find_key_package_bundle(&charlie_key_package)
+            .unwrap();
 
-        // This makes Charly decode the internals of the Welcome message, for
+        // This makes Charlie decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.
-        assert!(MlsGroup::new_from_welcome(welcome, None, charly_key_package_bundle).is_ok());
+        assert!(MlsGroup::new_from_welcome(welcome, None, charlie_key_package_bundle).is_ok());
     }
 }
