@@ -10,7 +10,7 @@ use crate::group::*;
 ///  - `false` means the proposal should be rejected
 ///
 /// The validator functions are:
-/// ```rust
+/// ```
 /// # use openmls::prelude::{ManagedGroup, Credential};
 /// pub type ValidateAdd =
 ///     fn(managed_group: &ManagedGroup, sender: &Credential, added_member: &Credential) -> bool;
@@ -20,7 +20,7 @@ use crate::group::*;
 ///
 /// Event listeners get called when certain messages are parsed, or other events
 /// occur. The event listeners are:
-/// ```rust
+/// ```
 /// # use openmls::prelude::{ManagedGroup, Credential, Removal, ManagedGroupError, InvalidMessageError};
 /// pub type MemberAdded = fn(
 ///     managed_group: &ManagedGroup,
@@ -110,19 +110,16 @@ impl<'a> ManagedGroupCallbacks {
 
 /// This enum lists the 4 different variants of a removal, depending on who the
 /// remover and who the leaver is.
-///
-///  - `WeLeft`: We previously issued a RemoveProposal for ourselves and this
-///    was now commited by someone else
-///  - `TheyLeft`: Another member issued a RemoveProposal for itself that was
-///    now committed
-///  - `WeWereRemoved`: Another member issued a RemoveProposal for ourselves
-///    that was now committed
-///  - `TheyWereRemovedBy`: Member A issued a RemoveProposal for member B that
-///    was now commited
 pub enum Removal<'a> {
+    ///  We previously issued a RemoveProposal for ourselves and this was now
+    /// commited by someone else
     WeLeft,
+    /// Another member issued a RemoveProposal for itself that was now committed
     TheyLeft(&'a Credential),
+    /// Another member issued a RemoveProposal for ourselves that was now
+    /// committed
     WeWereRemovedBy(&'a Credential),
+    /// Member A issued a RemoveProposal for member B that was now commited
     TheyWereRemovedBy(&'a Credential, &'a Credential),
 }
 

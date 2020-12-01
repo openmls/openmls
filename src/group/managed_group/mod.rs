@@ -305,87 +305,83 @@ impl<'a> ManagedGroup<'a> {
         // Iterate over all incoming messages
         for message in messages {
             // Check the type of message we received
-            let (plaintext_option, aad_option) = match message {
+            let (plaintext, aad_option) = match message {
                 // If it is a ciphertext we decrypt it and return the plaintext by value
                 MLSMessage::Ciphertext(ciphertext) => {
                     let aad = ciphertext.authenticated_data.clone();
                     match self.group.decrypt(&ciphertext) {
-                        Ok(plaintext) => (Some(plaintext), Some(aad)),
+                        Ok(plaintext) => (plaintext, Some(aad)),
                         Err(_) => {
                             // If there is a callback for that event we should call it
                             self.invalid_message_event(InvalidMessageError::InvalidCiphertext(
                                 aad.to_vec(),
                             ));
-                            (None, Some(aad))
+                            // Since we cannot decrypt the MLSCiphertext to a MLSPlaintext we move
+                            // to the next message
+                            continue;
                         }
                     }
                 }
                 // If it is a plaintext message we just return the reference
-                MLSMessage::Plaintext(plaintext) => (Some(plaintext), None),
+                MLSMessage::Plaintext(plaintext) => (plaintext, None),
             };
-            // If it was a plaintext message or if the decryption succeeded we continue,
-            // otherwise we move to the next message
-            if let Some(plaintext) = plaintext_option {
-                // Save the current member list for validation end events
-                let indexed_members = self.indexed_members();
-                // See what kind of message it is
-                match plaintext.content {
-                    MLSPlaintextContentType::Proposal(_) => {
-                        // Incoming proposals are validated against the application validation
-                        // policy and then appended to the internal `pending_proposal` list.
-                        // TODO #133: Semantic validation of proposals
-                        if self.validate_proposal(&plaintext, indexed_members) {
-                            self.pending_proposals.push(plaintext);
-                        } else {
-                            self.invalid_message_event(
-                                InvalidMessageError::CommitWithInvalidProposals,
-                            );
-                        }
+            // Save the current member list for validation end events
+            let indexed_members = self.indexed_members();
+            // See what kind of message it is
+            match plaintext.content {
+                MLSPlaintextContentType::Proposal(_) => {
+                    // Incoming proposals are validated against the application validation
+                    // policy and then appended to the internal `pending_proposal` list.
+                    // TODO #133: Semantic validation of proposals
+                    if self.validate_proposal(&plaintext, indexed_members) {
+                        self.pending_proposals.push(plaintext);
+                    } else {
+                        self.invalid_message_event(InvalidMessageError::CommitWithInvalidProposals);
                     }
-                    MLSPlaintextContentType::Commit(_) => {
-                        // If all proposals were valid, we continue with applying the Commit
-                        // message
-                        match self.group.apply_commit(
-                            plaintext,
-                            self.pending_proposals.clone(),
-                            &self.own_kpbs,
-                        ) {
-                            Ok(()) => {
-                                // Since the Commit was applied without errors, we can call all
-                                // corresponding callback functions for the whole proposal list
+                }
+                MLSPlaintextContentType::Commit(_) => {
+                    // If all proposals were valid, we continue with applying the Commit
+                    // message
+                    match self.group.apply_commit(
+                        plaintext,
+                        self.pending_proposals.clone(),
+                        &self.own_kpbs,
+                    ) {
+                        Ok(()) => {
+                            // Since the Commit was applied without errors, we can call all
+                            // corresponding callback functions for the whole proposal list
+                            self.send_events(indexed_members);
+                            // We don't need the pending proposals and key package bundles any
+                            // longer
+                            self.pending_proposals.clear();
+                            self.own_kpbs.clear();
+                        }
+                        Err(apply_commit_error) => match apply_commit_error {
+                            ApplyCommitError::SelfRemoved => {
+                                // Send out events
                                 self.send_events(indexed_members);
-                                // We don't need the pending proposals and key package bundles any
-                                // longer
-                                self.pending_proposals.clear();
-                                self.own_kpbs.clear();
+                                // The group is no longer active
+                                self.active = false;
                             }
-                            Err(apply_commit_error) => match apply_commit_error {
-                                ApplyCommitError::SelfRemoved => {
-                                    // Send out events
-                                    self.send_events(indexed_members);
-                                    // The group is no longer active
-                                    self.active = false;
-                                }
-                                _ => {
-                                    self.invalid_message_event(InvalidMessageError::CommitError(
-                                        apply_commit_error,
-                                    ));
-                                }
-                            },
-                        }
+                            _ => {
+                                self.invalid_message_event(InvalidMessageError::CommitError(
+                                    apply_commit_error,
+                                ));
+                            }
+                        },
                     }
-                    MLSPlaintextContentType::Application(ref app_message) => {
-                        // If there is a callback for that event we should call it
-                        if let Some(app_message_received) =
-                            self.managed_group_config.callbacks.app_message_received
-                        {
-                            app_message_received(
-                                &self,
-                                &aad_option.unwrap(),
-                                &indexed_members[&plaintext.sender.to_leaf_index()],
-                                app_message,
-                            );
-                        }
+                }
+                MLSPlaintextContentType::Application(ref app_message) => {
+                    // If there is a callback for that event we should call it
+                    if let Some(app_message_received) =
+                        self.managed_group_config.callbacks.app_message_received
+                    {
+                        app_message_received(
+                            &self,
+                            &aad_option.unwrap(),
+                            &indexed_members[&plaintext.sender.to_leaf_index()],
+                            app_message,
+                        );
                     }
                 }
             }
