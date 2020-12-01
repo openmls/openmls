@@ -220,23 +220,19 @@ impl RatchetTree {
     }
 
     /// Get a reference to the own key package.
-    fn get_own_key_package_ref(&self) -> &KeyPackage {
+    pub fn own_key_package(&self) -> &KeyPackage {
         let own_node = &self.nodes[self.get_own_node_index().as_usize()];
         own_node.key_package.as_ref().unwrap()
     }
 
     /// Get a mutable reference to the own key package.
-    fn get_own_key_package_ref_mut(&mut self) -> &mut KeyPackage {
+    fn own_key_package_mut(&mut self) -> &mut KeyPackage {
         let own_node = self
             .nodes
             .get_mut(self.private_tree.get_node_index().as_usize())
             .unwrap();
-        own_node.get_key_package_ref_mut().unwrap()
+        own_node.key_package_mut().unwrap()
     }
-
-    // fn get_own_private_key(&self) -> &HPKEPrivateKey {
-    //     &self.own_private_key
-    // }
 
     fn blank_member(&mut self, index: NodeIndex) {
         let size = self.leaf_count();
@@ -248,13 +244,14 @@ impl RatchetTree {
             self.nodes[index.as_usize()].blank();
         }
     }
+
     fn free_leaves(&self) -> Vec<NodeIndex> {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
             let leaf_index = LeafIndex::from(i);
             if self.nodes[leaf_index].is_blank() {
-                free_leaves.push(NodeIndex::from(i));
+                free_leaves.push(NodeIndex::from(leaf_index));
             }
         }
         free_leaves
@@ -381,12 +378,10 @@ impl RatchetTree {
     /// Update the private tree with the new `KeyPackageBundle`.
     pub(crate) fn replace_private_tree(
         &mut self,
-        ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
     ) -> &CommitSecret {
         let _path_option = self.replace_private_tree_(
-            ciphersuite,
             key_package_bundle,
             group_context,
             false, /* without update path */
@@ -397,7 +392,6 @@ impl RatchetTree {
     /// Update the private tree.
     pub(crate) fn refresh_private_tree(
         &mut self,
-        ciphersuite: &Ciphersuite,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
     ) -> (&CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
@@ -406,13 +400,12 @@ impl RatchetTree {
 
         // Replace the init key in the current KeyPackage
         let mut key_package_bundle =
-            KeyPackageBundle::from_rekeyed_key_package(ciphersuite, self.get_own_key_package_ref());
+            KeyPackageBundle::from_rekeyed_key_package(self.own_key_package());
 
         // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
         let mut path = self
             .replace_private_tree_(
-                ciphersuite,
                 &key_package_bundle,
                 group_context,
                 true, /* with update path */
@@ -421,7 +414,7 @@ impl RatchetTree {
 
         // Compute the parent hash extension and update the KeyPackage and sign it
         let parent_hash = self.compute_parent_hash(own_index);
-        let key_package = self.get_own_key_package_ref_mut();
+        let key_package = self.own_key_package_mut();
         key_package.update_parent_hash(&parent_hash);
         // Sign the KeyPackage
         key_package.sign(credential_bundle);
@@ -442,40 +435,36 @@ impl RatchetTree {
     /// `key_package_bundle`.
     fn replace_private_tree_(
         &mut self,
-        ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         with_update_path: bool,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.get_key_package().clone();
+        let ciphersuite = key_package.cipher_suite();
         // Compute the direct path and keypairs along it
         let own_index = self.get_own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
             .expect("replace_private_tree: Error when computing direct path.");
         // Update private tree and merge corresponding public keys.
-        if self.leaf_count().as_usize() > 1 {
-            let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
-                ciphersuite,
-                own_index,
-                key_package_bundle,
-                &direct_path_root,
-            );
-            self.private_tree = private_tree;
-            self.merge_public_keys(&new_public_keys, &direct_path_root)
+        let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
+            ciphersuite,
+            own_index,
+            key_package_bundle,
+            &direct_path_root,
+        );
+        self.private_tree = private_tree;
+
+        self.merge_public_keys(&new_public_keys, &direct_path_root)
+            .unwrap();
+
+        // Update own leaf node with the new values
+        self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
+        if with_update_path {
+            let update_path_nodes = self
+                .encrypt_to_copath(new_public_keys, group_context)
                 .unwrap();
-
-            // Update own leaf node with the new values
-            self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
-
-            if with_update_path {
-                let update_path_nodes = self
-                    .encrypt_to_copath(new_public_keys, group_context)
-                    .unwrap();
-                let update_path = UpdatePath::new(key_package, update_path_nodes);
-                Some(update_path)
-            } else {
-                None
-            }
+            let update_path = UpdatePath::new(key_package, update_path_nodes);
+            Some(update_path)
         } else {
             None
         }
@@ -489,6 +478,10 @@ impl RatchetTree {
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
         let copath = treemath::copath(self.private_tree.get_node_index(), self.leaf_count())
             .expect("encrypt_to_copath: Error when computing copath.");
+        // Return if the length of the copath is zero
+        if copath.is_empty() {
+            return Ok(vec![]);
+        }
         let path_secrets = self.private_tree.get_path_secrets();
 
         debug_assert_eq!(path_secrets.len(), copath.len());

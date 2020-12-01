@@ -5,10 +5,10 @@ pub use crate::group::GroupConfig;
 pub use crate::group::MlsGroup;
 pub use crate::group::{
     HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,
-    ManagedGroupConfig, ManagedGroupError, UpdatePolicy,
+    ManagedGroupConfig, ManagedGroupError, Removal, UpdatePolicy,
 };
 // Errors
-pub use crate::group::errors::{ApplyCommitError, GroupError, WelcomeError};
+pub use crate::group::errors::{ApplyCommitError, CreateCommitError, GroupError, WelcomeError};
 
 // Indexes
 pub use crate::tree::index::LeafIndex;

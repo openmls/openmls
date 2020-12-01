@@ -23,7 +23,7 @@ pub struct MLSPlaintext {
     pub(crate) sender: Sender,
     pub(crate) authenticated_data: Vec<u8>,
     pub(crate) content_type: ContentType,
-    pub content: MLSPlaintextContentType,
+    pub(crate) content: MLSPlaintextContentType,
     pub(crate) signature: Signature,
 }
 
@@ -73,6 +73,10 @@ impl MLSPlaintext {
             content,
             signature,
         })
+    }
+    /// Returns a reference to the `content` field
+    pub fn content(&self) -> &MLSPlaintextContentType {
+        &self.content
     }
     pub fn sign(
         &mut self,

@@ -236,6 +236,22 @@ impl KeyPackageBundle {
         Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
     }
 
+    /// Replace the init key in the `KeyPackage` with a random one and return a
+    /// `KeyPackageBundle` with the corresponding secret values
+    pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
+        let ciphersuite = key_package.cipher_suite();
+        let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
+        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let (private_key, public_key) = ciphersuite
+            .derive_hpke_keypair(&leaf_node_secret)
+            .into_keys();
+
+        // Generate new keypair and replace it in current KeyPackage
+        let mut new_key_package = key_package.clone();
+        new_key_package.set_hpke_init_key(public_key);
+        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)
+    }
+
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
     /// and `extensions`, using the given HPKE `key_pair`.
     ///
@@ -379,24 +395,6 @@ impl KeyPackageBundle {
 
 /// Crate visible `KeyPackageBundle` functions.
 impl KeyPackageBundle {
-    /// Replace the init key in the `KeyPackage` with a random one and return a
-    /// `KeyPackageBundle` with the corresponding secret values
-    pub(crate) fn from_rekeyed_key_package(
-        ciphersuite: &Ciphersuite,
-        key_package: &KeyPackage,
-    ) -> Self {
-        let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
-        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
-        let (private_key, public_key) = ciphersuite
-            .derive_hpke_keypair(&leaf_node_secret)
-            .into_keys();
-
-        // Generate new keypair and replace it in current KeyPackage
-        let mut new_key_package = key_package.clone();
-        new_key_package.set_hpke_init_key(public_key);
-        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)
-    }
-
     /// Update the private key in the bundle.
     pub(crate) fn _set_private_key(&mut self, private_key: HPKEPrivateKey) {
         self.private_key = private_key;

@@ -15,7 +15,9 @@ use crate::tree::*;
 use crate::utils::*;
 
 pub use codec::*;
-pub(crate) use errors::{ApplyCommitError, CreateCommitError, GroupError, WelcomeError};
+pub(crate) use errors::{
+    ApplyCommitError, CreateCommitError, ExporterError, GroupError, WelcomeError,
+};
 pub use managed_group::*;
 pub use mls_group::*;
 
