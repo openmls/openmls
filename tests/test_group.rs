@@ -80,8 +80,8 @@ fn create_commit_optional_path() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!(),
         };
-        assert!(commit.path.is_some());
-        assert!(commit.path.is_some() && kpb_option.is_some());
+        assert!(commit.has_path());
+        assert!(commit.has_path() && kpb_option.is_some());
 
         // Alice adds Bob without forced self-update
         // Since there are only Add Proposals, this does not generate a path field on
@@ -107,7 +107,7 @@ fn create_commit_optional_path() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!(),
         };
-        assert!(commit.path.is_none() && kpb_option.is_none());
+        assert!(!commit.has_path() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
         match group_alice.apply_commit(mls_plaintext_commit, epoch_proposals, &[]) {
@@ -155,7 +155,7 @@ fn create_commit_optional_path() {
             }
             _ => panic!(),
         };
-        assert!(commit.path.is_some() && kpb_option.is_some());
+        assert!(commit.has_path() && kpb_option.is_some());
 
         // Apply UpdateProposal
         group_alice
@@ -299,7 +299,7 @@ fn group_operations() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),
         };
-        assert!(commit.path.is_none() && kpb_option.is_none());
+        assert!(!commit.has_path() && kpb_option.is_none());
         // Check that the function returned a Welcome message
         assert!(welcome_bundle_alice_bob_option.is_some());
 

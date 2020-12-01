@@ -7,6 +7,7 @@ use crate::tree::secret_tree::SecretTree;
 use self::errors::KeyScheduleError;
 
 pub mod errors;
+pub(crate) mod psk;
 
 #[cfg(test)]
 mod test_schedule;

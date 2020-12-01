@@ -122,7 +122,7 @@ impl MlsGroup {
                 tree_hash,
                 confirmed_transcript_hash,
                 extensions,
-                confirmation_tag.as_slice(),
+                confirmation_tag.to_vec(),
                 sender_index,
             );
             group_info.set_signature(group_info.sign(credential_bundle));
@@ -157,10 +157,7 @@ impl MlsGroup {
                 } else {
                     None
                 };
-                let group_secrets = GroupSecrets {
-                    joiner_secret: epoch_secret.clone(),
-                    path_secret,
-                };
+                let group_secrets = GroupSecrets::new(epoch_secret.clone(), path_secret);
                 let group_secrets_bytes = group_secrets.encode_detached().unwrap();
                 plaintext_secrets.push((
                     key_package.hpke_init_key().clone(),
