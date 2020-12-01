@@ -4,9 +4,12 @@ use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
+use crate::schedule::psk::PreSharedKeys;
 use crate::tree::{index::*, *};
 
+mod codec;
 pub(crate) mod proposals;
+pub use codec::*;
 use proposals::*;
 
 #[cfg(test)]
@@ -15,29 +18,100 @@ mod test_proposals;
 #[cfg(test)]
 mod test_welcome;
 
+/// Welcome Messages
+///
+/// > 11.2.2. Welcoming New Members
+///
+/// ```text
+/// struct {
+///   ProtocolVersion version = mls10;
+///   CipherSuite cipher_suite;
+///   EncryptedGroupSecrets secrets<0..2^32-1>;
+///   opaque encrypted_group_info<1..2^32-1>;
+/// } Welcome;
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct Welcome {
+    version: ProtocolVersion,
+    cipher_suite: &'static Ciphersuite,
+    secrets: Vec<EncryptedGroupSecrets>,
+    encrypted_group_info: Vec<u8>,
+}
+
+/// EncryptedGroupSecrets
+///
+/// > 11.2.2. Welcoming New Members
+///
+/// ```text
+/// struct {
+///   opaque key_package_hash<1..255>;
+///   HPKECiphertext encrypted_group_secrets;
+/// } EncryptedGroupSecrets;
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct EncryptedGroupSecrets {
+    pub key_package_hash: Vec<u8>,
+    pub encrypted_group_secrets: HpkeCiphertext,
+}
+
+impl Welcome {
+    /// Create a new welcome message from the provided data.
+    /// Note that secrets and the encrypted group info are consumed.
+    pub(crate) fn new(
+        version: ProtocolVersion,
+        cipher_suite: &'static Ciphersuite,
+        secrets: Vec<EncryptedGroupSecrets>,
+        encrypted_group_info: Vec<u8>,
+    ) -> Self {
+        Self {
+            version,
+            cipher_suite,
+            secrets,
+            encrypted_group_info,
+        }
+    }
+
+    /// Get a reference to the ciphersuite in this Welcome message.
+    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+        self.cipher_suite
+    }
+
+    /// Get a reference to the encrypted group secrets in this Welcome message.
+    pub fn secrets(&self) -> &[EncryptedGroupSecrets] {
+        &self.secrets
+    }
+
+    /// Get a reference to the encrypted group info.
+    pub(crate) fn encrypted_group_info(&self) -> &[u8] {
+        &self.encrypted_group_info
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Commit {
-    pub proposals: Vec<ProposalID>,
-    pub path: Option<UpdatePath>,
+    pub(crate) proposals: Vec<ProposalID>,
+    pub(crate) path: Option<UpdatePath>,
 }
 
-impl Codec for Commit {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU32, buffer, &self.proposals)?;
-        self.path.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let proposals = decode_vec(VecSize::VecU32, cursor)?;
-        let path = Option::<UpdatePath>::decode(cursor)?;
-        Ok(Commit { proposals, path })
+impl Commit {
+    /// Returns `true` if the commit contains an update path. `false` otherwise.
+    pub fn has_path(&self) -> bool {
+        self.path.is_some()
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ConfirmationTag(pub Vec<u8>);
+pub struct ConfirmationTag(pub(crate) Vec<u8>);
 
 impl ConfirmationTag {
+    /// Create a new confirmation tag.
+    ///
+    /// >  11.2. Commit
+    ///
+    /// ```text
+    /// MLSPlaintext.confirmation_tag =
+    ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
+    /// ```
     pub fn new(
         ciphersuite: &Ciphersuite,
         confirmation_key: &Secret,
@@ -52,26 +126,30 @@ impl ConfirmationTag {
                 .to_vec(),
         )
     }
-    pub fn new_empty() -> Self {
-        ConfirmationTag(vec![])
-    }
-    pub fn as_slice(&self) -> Vec<u8> {
+
+    /// Get a copy of the raw byte vector.
+    pub(crate) fn to_vec(&self) -> Vec<u8> {
         self.0.to_vec()
     }
 }
 
-impl Codec for ConfirmationTag {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.0)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let inner = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ConfirmationTag(inner))
-    }
-}
-
-pub struct GroupInfo {
+/// GroupInfo
+///
+/// > 11.2.2. Welcoming New Members
+///
+/// ```text
+/// struct {
+///   opaque group_id<0..255>;
+///   uint64 epoch;
+///   opaque tree_hash<0..255>;
+///   opaque confirmed_transcript_hash<0..255>;
+///   Extension extensions<0..2^32-1>;
+///   MAC confirmation_tag;
+///   uint32 signer_index;
+///   opaque signature<0..2^16-1>;
+/// } GroupInfo;
+/// ```
+pub(crate) struct GroupInfo {
     group_id: GroupId,
     epoch: GroupEpoch,
     tree_hash: Vec<u8>,
@@ -179,14 +257,6 @@ impl GroupInfo {
     }
 }
 
-impl Codec for GroupInfo {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        buffer.append(&mut self.unsigned_payload()?);
-        self.signature.encode(buffer)?;
-        Ok(())
-    }
-}
-
 impl Signable for GroupInfo {
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut vec![];
@@ -207,123 +277,44 @@ impl Signable for GroupInfo {
     }
 }
 
-pub struct PathSecret {
+/// PathSecret
+///
+/// > 11.2.2. Welcoming New Members
+///
+/// ```text
+/// struct {
+///   opaque path_secret<1..255>;
+/// } PathSecret;
+/// ```
+pub(crate) struct PathSecret {
     pub path_secret: Secret,
 }
 
-impl Codec for PathSecret {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.path_secret.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let path_secret = Secret::decode(cursor)?;
-        Ok(PathSecret { path_secret })
-    }
+/// GroupSecrets
+///
+/// > 11.2.2. Welcoming New Members
+///
+/// ```text
+/// struct {
+///   opaque joiner_secret<1..255>;
+///   optional<PathSecret> path_secret;
+///   optional<PreSharedKeys> psks;
+/// } GroupSecrets;
+/// ```
+#[allow(dead_code)]
+pub(crate) struct GroupSecrets {
+    pub(crate) joiner_secret: Secret,
+    pub(crate) path_secret: Option<PathSecret>,
+    pub(crate) psks: Option<PreSharedKeys>,
 }
 
-pub struct GroupSecrets {
-    pub joiner_secret: Secret,
-    pub path_secret: Option<PathSecret>,
-}
-
-impl Codec for GroupSecrets {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.joiner_secret.encode(buffer)?;
-        self.path_secret.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let joiner_secret = Secret::decode(cursor)?;
-        let path_secret = Option::<PathSecret>::decode(cursor)?;
-        Ok(GroupSecrets {
+impl GroupSecrets {
+    /// Create a new group secret.
+    pub(crate) fn new(joiner_secret: Secret, path_secret: Option<PathSecret>) -> Self {
+        Self {
             joiner_secret,
             path_secret,
-        })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct EncryptedGroupSecrets {
-    pub key_package_hash: Vec<u8>,
-    pub encrypted_group_secrets: HpkeCiphertext,
-}
-
-impl Codec for EncryptedGroupSecrets {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.key_package_hash)?;
-        self.encrypted_group_secrets.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_package_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let encrypted_group_secrets = HpkeCiphertext::decode(cursor)?;
-        Ok(EncryptedGroupSecrets {
-            key_package_hash,
-            encrypted_group_secrets,
-        })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Welcome {
-    version: ProtocolVersion,
-    cipher_suite: &'static Ciphersuite,
-    secrets: Vec<EncryptedGroupSecrets>,
-    encrypted_group_info: Vec<u8>,
-}
-
-impl Welcome {
-    /// Create a new welcome message from the provided data.
-    /// Note that secrets and the encrypted group info are consumed.
-    pub(crate) fn new(
-        version: ProtocolVersion,
-        cipher_suite: &'static Ciphersuite,
-        secrets: Vec<EncryptedGroupSecrets>,
-        encrypted_group_info: Vec<u8>,
-    ) -> Self {
-        Self {
-            version,
-            cipher_suite,
-            secrets,
-            encrypted_group_info,
+            psks: None,
         }
-    }
-
-    /// Get a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
-        self.cipher_suite
-    }
-
-    /// Get a reference to the ciphersuite in this Welcome message.
-    pub fn get_secrets_ref(&self) -> &[EncryptedGroupSecrets] {
-        &self.secrets
-    }
-
-    /// Get a reference to the encrypted group info.
-    pub(crate) fn get_encrypted_group_info_ref(&self) -> &[u8] {
-        &self.encrypted_group_info
-    }
-}
-
-impl Codec for Welcome {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.version.encode(buffer)?;
-        self.cipher_suite.name().encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.secrets)?;
-        encode_vec(VecSize::VecU32, buffer, &self.encrypted_group_info)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let version = ProtocolVersion::decode(cursor)?;
-        let cipher_suite = CiphersuiteName::decode(cursor)?;
-        let secrets = decode_vec(VecSize::VecU32, cursor)?;
-        let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(Welcome {
-            version,
-            cipher_suite: Config::ciphersuite(cipher_suite)?,
-            secrets,
-            encrypted_group_info,
-        })
     }
 }
