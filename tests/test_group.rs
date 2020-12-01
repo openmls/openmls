@@ -285,16 +285,14 @@ fn group_operations() {
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
                 &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
                 false,
-            ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+            )
+            .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),
