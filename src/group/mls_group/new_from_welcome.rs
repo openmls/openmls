@@ -58,7 +58,7 @@ impl MlsGroup {
             {
                 return Err(WelcomeError::DuplicateRatchetTreeExtension);
             }
-            match extension.to_ratchet_tree_extension() {
+            match extension.as_ratchet_tree_extension() {
                 Ok(e) => {
                     let ext = Some(e.clone());
                     // Put the extension back into the GroupInfo, so the

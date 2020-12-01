@@ -228,7 +228,7 @@ pub trait Extension: Debug + ExtensionHelper {
     /// Get a reference to the `RatchetTreeExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `RatchetTreeExtension`.
-    fn to_ratchet_tree_extension(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
+    fn as_ratchet_tree_extension(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
         match self.as_any().downcast_ref::<RatchetTreeExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),
