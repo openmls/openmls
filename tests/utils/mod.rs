@@ -49,7 +49,7 @@ impl TestClient {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles
             .iter()
-            .position(|x| x.get_key_package().hash() == key_package.hash())
+            .position(|x| x.key_package().hash() == key_package.hash())
             .map(|index| key_package_bundles.remove(index))
     }
 }
@@ -95,7 +95,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 let key_package_bundle: KeyPackageBundle =
                     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, mandatory_extensions)
                         .unwrap();
-                key_packages.push(key_package_bundle.get_key_package().clone());
+                key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
             // Register the freshly created KeyPackages in the KeyStore.
@@ -213,14 +213,14 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .any(|y| y.get_key_package().hash() == x.key_package_hash)
+                            .any(|y| y.key_package().hash() == x.key_package_hash)
                     })
                     .unwrap();
                 let kpb_position = new_group_member
                     .key_package_bundles
                     .borrow()
                     .iter()
-                    .position(|y| y.get_key_package().hash() == member_secret.key_package_hash)
+                    .position(|y| y.key_package().hash() == member_secret.key_package_hash)
                     .unwrap();
                 let key_package_bundle = new_group_member
                     .key_package_bundles

@@ -273,7 +273,7 @@ impl MLSCiphertext {
             Ok(secret_type) => secret_type,
             Err(_) => return Err(MLSCiphertextError::InvalidContentType),
         };
-        let (ratchet_key, mut ratchet_nonce) = match secret_tree.get_secret_for_decryption(
+        let (ratchet_key, mut ratchet_nonce) = match secret_tree.secret_for_decryption(
             ciphersuite,
             sender_data.sender,
             secret_type,

@@ -19,7 +19,7 @@ fn generate_key_package() {
         )
         .unwrap();
         std::thread::sleep(std::time::Duration::from_secs(1));
-        assert!(kpb.get_key_package().verify().is_ok());
+        assert!(kpb.key_package().verify().is_ok());
 
         // Now we add an invalid lifetime.
         let lifetime_extension = Box::new(LifetimeExtension::new(0));
@@ -30,7 +30,7 @@ fn generate_key_package() {
         )
         .unwrap();
         std::thread::sleep(std::time::Duration::from_secs(1));
-        assert!(kpb.get_key_package().verify().is_err());
+        assert!(kpb.key_package().verify().is_err());
 
         // Now with two lifetime extensions, the key package should be invalid.
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
@@ -52,10 +52,10 @@ fn test_codec() {
         let mut kpb =
             KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
 
-        let kp = kpb.get_key_package_ref_mut();
+        let kp = kpb.key_package_mut();
         kp.add_extension(Box::new(LifetimeExtension::new(60)));
         kp.sign(&credential_bundle);
-        let enc = kpb.get_key_package().encode_detached().unwrap();
+        let enc = kpb.key_package().encode_detached().unwrap();
 
         // Now it's valid.
         let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
@@ -75,21 +75,21 @@ fn key_package_id_extension() {
             vec![Box::new(LifetimeExtension::new(60))],
         )
         .unwrap();
-        assert!(kpb.get_key_package().verify().is_ok());
+        assert!(kpb.key_package().verify().is_ok());
 
         // Add an ID to the key package.
         let id = [1, 2, 3, 4];
-        kpb.get_key_package_ref_mut()
+        kpb.key_package_mut()
             .add_extension(Box::new(KeyIDExtension::new(&id)));
 
         // This is invalid now.
-        assert!(kpb.get_key_package().verify().is_err());
+        assert!(kpb.key_package().verify().is_err());
 
         // Sign it to make it valid.
-        kpb.get_key_package_ref_mut().sign(&credential_bundle);
-        assert!(kpb.get_key_package().verify().is_ok());
+        kpb.key_package_mut().sign(&credential_bundle);
+        assert!(kpb.key_package().verify().is_ok());
 
         // Check ID
-        assert_eq!(&id[..], &kpb.get_key_package().get_id().unwrap()[..]);
+        assert_eq!(&id[..], &kpb.key_package().id().unwrap()[..]);
     }
 }

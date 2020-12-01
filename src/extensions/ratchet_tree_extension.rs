@@ -44,7 +44,7 @@ impl RatchetTreeExtension {
 }
 
 impl Extension for RatchetTreeExtension {
-    fn get_type(&self) -> ExtensionType {
+    fn extension_type(&self) -> ExtensionType {
         ExtensionType::RatchetTree
     }
 

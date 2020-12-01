@@ -25,7 +25,7 @@ impl TryFrom<u16> for CiphersuiteName {
     }
 }
 
-pub(crate) fn get_hash_from_suite(ciphersuite_name: &CiphersuiteName) -> DigestMode {
+pub(crate) fn hash_from_suite(ciphersuite_name: &CiphersuiteName) -> DigestMode {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => DigestMode::Sha256,
         CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => DigestMode::Sha256,
@@ -38,7 +38,7 @@ pub(crate) fn get_hash_from_suite(ciphersuite_name: &CiphersuiteName) -> DigestM
     }
 }
 
-pub(crate) fn get_aead_from_suite(ciphersuite_name: &CiphersuiteName) -> AeadMode {
+pub(crate) fn aead_from_suite(ciphersuite_name: &CiphersuiteName) -> AeadMode {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => AeadMode::Aes128Gcm,
         CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => AeadMode::Aes128Gcm,
@@ -53,7 +53,7 @@ pub(crate) fn get_aead_from_suite(ciphersuite_name: &CiphersuiteName) -> AeadMod
     }
 }
 
-pub(crate) fn get_signature_from_suite(
+pub(crate) fn signature_from_suite(
     ciphersuite_name: &CiphersuiteName,
 ) -> Result<SignatureMode, ConfigError> {
     match ciphersuite_name {
@@ -68,7 +68,7 @@ pub(crate) fn get_signature_from_suite(
     }
 }
 
-pub(crate) fn get_kem_from_suite(
+pub(crate) fn kem_from_suite(
     ciphersuite_name: &CiphersuiteName,
 ) -> Result<HpkeKemMode, ConfigError> {
     match ciphersuite_name {
@@ -83,7 +83,7 @@ pub(crate) fn get_kem_from_suite(
     }
 }
 
-pub(crate) fn get_kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> HmacMode {
+pub(crate) fn kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> HmacMode {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
         | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
@@ -96,7 +96,7 @@ pub(crate) fn get_kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> HmacMode
     }
 }
 
-pub(crate) fn get_hpke_kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeKdfMode {
+pub(crate) fn hpke_kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeKdfMode {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
         | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
@@ -111,7 +111,7 @@ pub(crate) fn get_hpke_kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> Hpk
     }
 }
 
-pub(crate) fn get_hpke_aead_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeAeadMode {
+pub(crate) fn hpke_aead_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeAeadMode {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => HpkeAeadMode::AesGcm128,
         CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeAeadMode::AesGcm128,

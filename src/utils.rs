@@ -58,7 +58,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                         &[]
                     };
                     let parent_hash_bytes = if let Some(kp) = &node.key_package {
-                        if let Some(phe) = kp.get_extension(ExtensionType::ParentHash) {
+                        if let Some(phe) = kp.extension_with_type(ExtensionType::ParentHash) {
                             let parent_hash_extension: &ParentHashExtension = phe
                                 .as_any()
                                 .downcast_ref::<ParentHashExtension>()
@@ -79,7 +79,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                         print!("\tP");
                     }
                     let key_bytes = if let Some(n) = &node.node {
-                        n.get_public_key().as_slice()
+                        n.public_key().as_slice()
                     } else {
                         &[]
                     };

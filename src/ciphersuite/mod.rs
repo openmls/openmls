@@ -258,17 +258,17 @@ impl PartialEq for Ciphersuite {
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
     pub(crate) fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
-        let hpke_kem = get_kem_from_suite(&name).unwrap();
-        let hpke_kdf = get_hpke_kdf_from_suite(&name);
-        let hpke_aead = get_hpke_aead_from_suite(&name);
+        let hpke_kem = kem_from_suite(&name).unwrap();
+        let hpke_kdf = hpke_kdf_from_suite(&name);
+        let hpke_aead = hpke_aead_from_suite(&name);
 
         Ok(Ciphersuite {
             name,
-            signature: get_signature_from_suite(&name)?,
+            signature: signature_from_suite(&name)?,
             hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
-            aead: get_aead_from_suite(&name),
-            hash: get_hash_from_suite(&name),
-            hmac: get_kdf_from_suite(&name),
+            aead: aead_from_suite(&name),
+            hash: hash_from_suite(&name),
+            hmac: kdf_from_suite(&name),
         })
     }
 

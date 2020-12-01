@@ -30,7 +30,7 @@ fn key_package_id() {
     // A key package extension with the default values for openmls.
     let data = [0, 8, 1, 2, 3, 4, 5, 6, 6, 6];
     let kpi = KeyIDExtension::new(&data[2..]);
-    assert_eq!(ExtensionType::KeyID, kpi.get_type());
+    assert_eq!(ExtensionType::KeyID, kpi.extension_type());
 
     let kpi_from_bytes = KeyIDExtension::new_from_bytes(&data).unwrap();
     assert_eq!(kpi, kpi_from_bytes);

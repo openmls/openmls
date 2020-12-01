@@ -45,7 +45,7 @@ impl Node {
             node: None,
         }
     }
-    pub fn get_public_hpke_key(&self) -> Option<&HPKEPublicKey> {
+    pub fn public_hpke_key(&self) -> Option<&HPKEPublicKey> {
         match self.node_type {
             NodeType::Leaf => {
                 if let Some(ref kp) = self.key_package {
@@ -97,7 +97,7 @@ impl Node {
             NodeType::Leaf => {
                 if let Some(key_package) = &self.key_package {
                     let parent_hash_extension =
-                        key_package.get_extension(ExtensionType::ParentHash);
+                        key_package.extension_with_type(ExtensionType::ParentHash);
                     match parent_hash_extension {
                         Some(phe) => {
                             let phe = match phe.to_parent_hash_extension() {
@@ -142,19 +142,19 @@ impl ParentNode {
             parent_hash: parent_hash.to_vec(),
         }
     }
-    pub fn get_public_key(&self) -> &HPKEPublicKey {
+    pub fn public_key(&self) -> &HPKEPublicKey {
         &self.public_key
     }
-    pub fn get_parent_hash(&self) -> &[u8] {
+    pub fn parent_hash(&self) -> &[u8] {
         &self.parent_hash
     }
     pub fn set_parent_hash(&mut self, hash: Vec<u8>) {
         self.parent_hash = hash;
     }
-    pub fn get_unmerged_leaves(&self) -> &[u32] {
+    pub fn unmerged_leaves(&self) -> &[u32] {
         &self.unmerged_leaves
     }
-    pub fn get_unmerged_leaves_mut(&mut self) -> &mut Vec<u32> {
+    pub fn unmerged_leaves_mut(&mut self) -> &mut Vec<u32> {
         &mut self.unmerged_leaves
     }
 }

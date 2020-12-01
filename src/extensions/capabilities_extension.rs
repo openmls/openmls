@@ -77,7 +77,7 @@ impl CapabilitiesExtension {
 }
 
 impl Extension for CapabilitiesExtension {
-    fn get_type(&self) -> ExtensionType {
+    fn extension_type(&self) -> ExtensionType {
         ExtensionType::Capabilities
     }
 

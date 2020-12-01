@@ -53,7 +53,7 @@ impl MlsGroup {
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender.sender;
         let is_own_commit =
-            mls_plaintext.sender.to_node_index() == provisional_tree.get_own_node_index(); // XXX: correct?
+            mls_plaintext.sender.to_node_index() == provisional_tree.own_node_index(); // XXX: correct?
 
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
         // Determine if Commit has a path
@@ -70,10 +70,7 @@ impl MlsGroup {
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles and
                 // clone out the one that we need.
-                let own_kpb = match own_key_packages
-                    .iter()
-                    .find(|kpb| kpb.get_key_package() == kp)
-                {
+                let own_kpb = match own_key_packages.iter().find(|kpb| kpb.key_package() == kp) {
                     Some(kpb) => kpb,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 };
@@ -143,7 +140,7 @@ impl MlsGroup {
                 let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
-                    .get_extension(ExtensionType::ParentHash)
+                    .extension_with_type(ExtensionType::ParentHash)
                 {
                     let parent_hash_extension = received_parent_hash.to_parent_hash_extension()?;
                     if parent_hash != parent_hash_extension.parent_hash() {

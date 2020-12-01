@@ -90,7 +90,7 @@ impl Credential {
         }
     }
     /// Get the identity of a given credential.
-    pub fn get_identity(&self) -> &Vec<u8> {
+    pub fn identity(&self) -> &Vec<u8> {
         match &self.credential {
             MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
             // TODO: implement getter for identity for X509 certificates. See issue #134.

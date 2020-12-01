@@ -36,7 +36,7 @@ fn create_commit_optional_path() {
             mandatory_extensions.clone(),
         )
         .unwrap();
-        let bob_key_package = bob_key_package_bundle.get_key_package();
+        let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -44,7 +44,7 @@ fn create_commit_optional_path() {
             mandatory_extensions,
         )
         .unwrap();
-        let alice_update_key_package = alice_update_key_package_bundle.get_key_package();
+        let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
         // Alice creates a group
@@ -184,7 +184,7 @@ fn basic_group_setup() {
         let bob_key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
                 .unwrap();
-        let bob_key_package = bob_key_package_bundle.get_key_package();
+        let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
@@ -266,7 +266,7 @@ fn group_operations() {
             mandatory_extensions.clone(),
         )
         .unwrap();
-        let bob_key_package = bob_key_package_bundle.get_key_package();
+        let bob_key_package = bob_key_package_bundle.key_package();
 
         // === Alice creates a group ===
         let group_id = [1, 2, 3, 4];
@@ -343,7 +343,7 @@ fn group_operations() {
         let update_proposal_bob = group_bob.create_update_proposal(
             &[],
             &bob_credential_bundle,
-            bob_update_key_package_bundle.get_key_package().clone(),
+            bob_update_key_package_bundle.key_package().clone(),
         );
         let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             &[],
@@ -392,7 +392,7 @@ fn group_operations() {
         let update_proposal_alice = group_alice.create_update_proposal(
             &[],
             &alice_credential_bundle,
-            alice_update_key_package_bundle.get_key_package().clone(),
+            alice_update_key_package_bundle.key_package().clone(),
         );
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
@@ -439,7 +439,7 @@ fn group_operations() {
         let update_proposal_bob = group_bob.create_update_proposal(
             &[],
             &bob_credential_bundle,
-            bob_update_key_package_bundle.get_key_package().clone(),
+            bob_update_key_package_bundle.key_package().clone(),
         );
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
@@ -486,7 +486,7 @@ fn group_operations() {
             mandatory_extensions.clone(),
         )
         .unwrap();
-        let charlie_key_package = charlie_key_package_bundle.get_key_package().clone();
+        let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
         let add_charlie_proposal_bob =
             group_bob.create_add_proposal(&[], &bob_credential_bundle, charlie_key_package);
@@ -578,7 +578,7 @@ fn group_operations() {
         let update_proposal_charlie = group_charlie.create_update_proposal(
             &[],
             &charlie_credential_bundle,
-            charlie_update_key_package_bundle.get_key_package().clone(),
+            charlie_update_key_package_bundle.key_package().clone(),
         );
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
