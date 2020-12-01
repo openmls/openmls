@@ -116,22 +116,22 @@ impl PrivateTree {
 
     // === Setter and Getter ===
 
-    pub(crate) fn get_hpke_private_key(&self) -> &HPKEPrivateKey {
+    pub(crate) fn hpke_private_key(&self) -> &HPKEPrivateKey {
         match &self.hpke_private_key {
             Some(private_key) => private_key,
             None => panic!("Library error, private key was never initialized"),
         }
     }
-    pub(crate) fn get_node_index(&self) -> NodeIndex {
+    pub(crate) fn node_index(&self) -> NodeIndex {
         self.node_index
     }
-    pub(crate) fn get_path_keys(&self) -> &PathKeys {
+    pub(crate) fn path_keys(&self) -> &PathKeys {
         &self.path_keys
     }
-    pub(crate) fn get_commit_secret(&self) -> &CommitSecret {
+    pub(crate) fn commit_secret(&self) -> &CommitSecret {
         &self.commit_secret
     }
-    pub(crate) fn get_path_secrets(&self) -> &[Secret] {
+    pub(crate) fn path_secrets(&self) -> &[Secret] {
         &self.path_secrets
     }
 

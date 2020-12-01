@@ -31,7 +31,7 @@ fn test_private_tree(
     let path_index = 15;
     let index = direct_path[path_index];
     let public_key = &public_keys[path_index];
-    let private_key = private_tree.get_path_keys().get(index).unwrap();
+    let private_key = private_tree.path_keys().get(index).unwrap();
     let data = randombytes(55);
     let info = b"PrivateTree Test Info";
     let aad = b"PrivateTree Test AAD";

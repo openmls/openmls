@@ -80,7 +80,7 @@ impl<'a> ManagedGroup<'a> {
     ) -> Result<Self, ManagedGroupError> {
         let group = MlsGroup::new(
             &group_id.as_slice(),
-            key_package_bundle.get_key_package().cipher_suite().name(),
+            key_package_bundle.key_package().cipher_suite().name(),
             key_package_bundle,
             GroupConfig::default(),
         )?;
@@ -273,7 +273,7 @@ impl<'a> ManagedGroup<'a> {
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
             &self.credential_bundle,
-            LeafIndex::from(self.group.tree().get_own_node_index()),
+            LeafIndex::from(self.group.tree().own_node_index()),
         );
 
         let mls_messages = self.plaintext_to_mls_messages(vec![remove_proposal]);
@@ -472,7 +472,7 @@ impl<'a> ManagedGroup<'a> {
         &self.aad
     }
 
-    /// Sets the AAD used in the framingget_own_key_package
+    /// Sets the AAD used in the framing
     pub fn set_aad(&mut self, aad: &[u8]) {
         self.aad = aad.to_vec()
     }
@@ -523,7 +523,7 @@ impl<'a> ManagedGroup<'a> {
         let mut plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
             &self.credential_bundle,
-            key_package_bundle.get_key_package().clone(),
+            key_package_bundle.key_package().clone(),
         )];
 
         // Include pending proposals into Commit
@@ -573,7 +573,7 @@ impl<'a> ManagedGroup<'a> {
         let plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
             &self.credential_bundle,
-            key_package_bundle.get_key_package().clone(),
+            key_package_bundle.key_package().clone(),
         )];
         drop(tree);
 
@@ -585,7 +585,7 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Returns a list of proposal
-    pub fn get_pending_proposals(&self) -> &[MLSPlaintext] {
+    pub fn pending_proposals(&self) -> &[MLSPlaintext] {
         &self.pending_proposals
     }
 

@@ -67,7 +67,7 @@ impl Default for LifetimeExtension {
 }
 
 impl Extension for LifetimeExtension {
-    fn get_type(&self) -> ExtensionType {
+    fn extension_type(&self) -> ExtensionType {
         ExtensionType::Lifetime
     }
 

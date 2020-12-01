@@ -135,7 +135,7 @@ pub struct GroupConfig {
 
 impl GroupConfig {
     /// Get the padding block size used in this config.
-    pub fn get_padding_block_size(&self) -> u32 {
+    pub fn padding_block_size(&self) -> u32 {
         self.padding_block_size
     }
 }

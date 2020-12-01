@@ -18,14 +18,14 @@ impl MlsGroup {
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
-        let (proposal_queue, contains_own_updates) = ProposalQueue::filtered_proposals(
+        let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             proposals,
-            LeafIndex::from(self.tree().get_own_node_index()),
+            LeafIndex::from(self.tree().own_node_index()),
             self.tree().leaf_count(),
         );
 
-        let proposal_id_list = proposal_queue.get_proposal_id_list();
+        let proposal_id_list = proposal_queue.proposal_id_list();
 
         let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely

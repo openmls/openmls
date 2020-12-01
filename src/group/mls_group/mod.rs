@@ -55,7 +55,7 @@ impl MlsGroup {
             group_id,
             tree.compute_tree_hash(),
         );
-        let commit_secret = tree.private_tree().get_commit_secret();
+        let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial member secret based on the commit secret.
         // Internally, this derives a random `InitSecret` and uses it in the
         // derivation.
@@ -210,7 +210,7 @@ impl MlsGroup {
     pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let mut secret_tree = self.secret_tree.borrow_mut();
         let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
-        let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.get_secret_for_encryption(
+        let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.secret_for_encryption(
             self.ciphersuite(),
             mls_plaintext.sender.sender,
             secret_type,
@@ -267,7 +267,7 @@ impl MlsGroup {
         self.tree.borrow()
     }
     fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().get_own_node_index().into()
+        self.tree.borrow().own_node_index().into()
     }
 
     /// Get the ciphersuite implementation used in this group.

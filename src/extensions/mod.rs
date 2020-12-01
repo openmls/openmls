@@ -104,7 +104,7 @@ impl<'a> ExtensionStruct {
 
     /// Get the type of this extension struct.
     // Not needed now, but will be when we support this extension
-    pub(crate) fn _get_extension_data(&'a self) -> &'a [u8] {
+    pub(crate) fn _extension_data(&'a self) -> &'a [u8] {
         &self.extension_data
     }
 }
@@ -151,7 +151,7 @@ pub(crate) fn extensions_vec_from_cursor(
         // Make sure there are no duplicate extensions.
         if result
             .iter()
-            .any(|e| e.get_type() == extension.extension_type)
+            .any(|e| e.extension_type() == extension.extension_type)
         {
             return Err(CodecError::DecodingError);
         }
@@ -177,7 +177,7 @@ pub trait Extension: Debug + ExtensionHelper {
     /// Each extension has an extension type.
     /// This should be an associated constant really.
     /// See <https://github.com/rust-lang/rust/issues/46969> for reference.
-    fn get_type(&self) -> ExtensionType;
+    fn extension_type(&self) -> ExtensionType;
 
     /// Get the extension as `ExtensionStruct` for encoding.
     fn to_extension_struct(&self) -> ExtensionStruct;
@@ -228,7 +228,7 @@ pub trait Extension: Debug + ExtensionHelper {
     /// Get a reference to the `RatchetTreeExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `RatchetTreeExtension`.
-    fn to_ratchet_tree_extension_ref(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
+    fn to_ratchet_tree_extension(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
         match self.as_any().downcast_ref::<RatchetTreeExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType),
@@ -263,7 +263,7 @@ impl Clone for Box<dyn Extension> {
 
 impl PartialEq for dyn Extension {
     fn eq(&self, other: &Self) -> bool {
-        if self.get_type() != other.get_type() {
+        if self.extension_type() != other.extension_type() {
             return false;
         }
 
@@ -275,12 +275,12 @@ impl Eq for dyn Extension {}
 
 impl PartialOrd for dyn Extension {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.get_type().partial_cmp(&other.get_type())
+        self.extension_type().partial_cmp(&other.extension_type())
     }
 }
 
 impl Ord for dyn Extension {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.get_type().cmp(&other.get_type())
+        self.extension_type().cmp(&other.extension_type())
     }
 }
