@@ -520,10 +520,10 @@
 
 <span class="kw">impl</span> <span class="ident">QueuedProposal</span> {
     <span class="doccomment">/// Creates a new `QueuedProposal` from an `MLSPlaintext`</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">mls_plaintext</span>: <span class="ident">MLSPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">mls_plaintext</span>.<span class="ident">content_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ContentType</span>::<span class="ident">Proposal</span>);
-        <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mls_plaintext</span>.<span class="ident">content</span> {
-            <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>,
+        <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">content</span> {
+            <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>.<span class="ident">clone</span>(),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;API misuse. Only proposals can end up in the proposal queue&quot;</span>),
         };
         <span class="kw">let</span> <span class="ident">proposal_id</span> <span class="op">=</span> <span class="ident">ProposalID</span>::<span class="ident">from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">proposal</span>);
@@ -569,7 +569,7 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue</span>::<span class="ident">new</span>();
         <span class="kw">for</span> <span class="ident">mls_plaintext</span> <span class="kw">in</span> <span class="ident">proposals</span> {
-            <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="ident">QueuedProposal</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>);
+            <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="ident">QueuedProposal</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>);
             <span class="ident">proposal_queue</span>.<span class="ident">add</span>(<span class="ident">queued_proposal</span>);
         }
         <span class="ident">proposal_queue</span>
@@ -597,7 +597,7 @@
     <span class="doccomment">/// own node were included</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">filtered_proposals</span>(
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span>,
+        <span class="ident">proposals</span>: <span class="kw-2">&amp;</span>[<span class="ident">MLSPlaintext</span>],
         <span class="ident">own_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">tree_size</span>: <span class="ident">LeafIndex</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> (<span class="self">Self</span>, <span class="ident">bool</span>) {
@@ -619,7 +619,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">contains_own_updates</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
         <span class="comment">// Parse proposals and build adds and member list</span>
-        <span class="kw">for</span> <span class="ident">mls_plaintext</span> <span class="kw">in</span> <span class="ident">proposals</span> {
+        <span class="kw">for</span> <span class="ident">mls_plaintext</span> <span class="kw">in</span> <span class="ident">proposals</span>.<span class="ident">iter</span>() {
             <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="ident">QueuedProposal</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>);
             <span class="kw">match</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">get_type</span>() {
                 <span class="ident">ProposalType</span>::<span class="ident">Add</span> <span class="op">=</span><span class="op">&gt;</span> {

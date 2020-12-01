@@ -30,8 +30,24 @@
 <span id="27">27</span>
 <span id="28">28</span>
 <span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # OpenMLS</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## High-level API</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! See [ManagedGroup](`prelude::ManagedGroup`)</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Low-level API</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! See [MlsGroup](`prelude::MlsGroup`)</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Errors</span>
 <span class="doccomment">//!</span>
@@ -48,12 +64,12 @@
 
 <span class="kw">mod</span> <span class="ident">ciphersuite</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
+<span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creds</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">extensions</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">framing</span>;
+<span class="kw">mod</span> <span class="ident">extensions</span>;
+<span class="kw">mod</span> <span class="ident">framing</span>;
 <span class="kw">mod</span> <span class="ident">group</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">key_packages</span>;
+<span class="kw">mod</span> <span class="ident">key_packages</span>;
 <span class="kw">mod</span> <span class="ident">messages</span>;
 <span class="kw">mod</span> <span class="ident">schedule</span>;
 <span class="kw">mod</span> <span class="ident">tree</span>;
