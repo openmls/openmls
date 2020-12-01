@@ -21,6 +21,8 @@ use index::*;
 use node::*;
 use private_tree::{PathSecrets, PrivateTree};
 
+use self::private_tree::CommitSecret;
+
 // Internal tree tests
 #[cfg(test)]
 mod test_path_keys;
@@ -129,6 +131,11 @@ impl RatchetTree {
     /// Return a mutable reference to the `PrivateTree`.
     pub(crate) fn private_tree_mut(&mut self) -> &mut PrivateTree {
         &mut self.private_tree
+    }
+
+    /// Return a reference to the `PrivateTree`.
+    pub(crate) fn private_tree(&self) -> &PrivateTree {
+        &self.private_tree
     }
 
     fn tree_size(&self) -> NodeIndex {
@@ -263,7 +270,7 @@ impl RatchetTree {
         sender: LeafIndex,
         update_path: &UpdatePath,
         group_context: &[u8],
-    ) -> Result<Secret, TreeError> {
+    ) -> Result<&CommitSecret, TreeError> {
         let own_index = self.get_own_node_index();
 
         // Find common ancestor of own leaf and sender leaf
@@ -373,13 +380,13 @@ impl RatchetTree {
         &mut self,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
-    ) -> Result<Secret, TreeError> {
+    ) -> &CommitSecret {
         let _path_option = self.replace_private_tree_(
             key_package_bundle,
             group_context,
             false, /* without update path */
         );
-        Ok(self.private_tree.get_commit_secret())
+        self.private_tree.get_commit_secret()
     }
 
     /// Update the private tree.
@@ -387,7 +394,7 @@ impl RatchetTree {
         &mut self,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-    ) -> (Secret, UpdatePath, PathSecrets, KeyPackageBundle) {
+    ) -> (&CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.get_own_node_index();
 

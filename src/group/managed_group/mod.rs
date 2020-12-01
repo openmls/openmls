@@ -453,7 +453,7 @@ impl<'a> ManagedGroup<'a> {
         key_length: usize,
     ) -> Result<Vec<u8>, ManagedGroupError> {
         if self.active {
-            Ok(self.group.export_secret(label, key_length).to_vec())
+            Ok(self.group.export_secret(label, key_length)?)
         } else {
             Err(ManagedGroupError::UseAfterEviction)
         }

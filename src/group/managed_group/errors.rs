@@ -7,7 +7,7 @@
 
 use crate::codec::CodecError;
 use crate::config::ConfigError;
-use crate::group::{ApplyCommitError, CreateCommitError, GroupError};
+use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, GroupError};
 
 use std::error::Error;
 
@@ -20,6 +20,7 @@ pub enum ManagedGroupError {
     CreateCommit(CreateCommitError),
     UseAfterEviction,
     PendingProposalsExist,
+    Exporter(ExporterError),
 }
 
 impl From<ConfigError> for ManagedGroupError {
@@ -43,6 +44,12 @@ impl From<GroupError> for ManagedGroupError {
 impl From<CreateCommitError> for ManagedGroupError {
     fn from(err: CreateCommitError) -> ManagedGroupError {
         ManagedGroupError::CreateCommit(err)
+    }
+}
+
+impl From<ExporterError> for ManagedGroupError {
+    fn from(err: ExporterError) -> ManagedGroupError {
+        ManagedGroupError::Exporter(err)
     }
 }
 
