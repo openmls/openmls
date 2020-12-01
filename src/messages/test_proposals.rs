@@ -9,7 +9,7 @@ use crate::tree::index::*;
 
 /// This test makes sure ProposalQueue works as intented. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
-/// `filtered_proposals` returns only proposals of a certain type
+/// `filtered_queued_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {
     for ciphersuite in Config::supported_ciphersuites() {
