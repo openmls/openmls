@@ -22,7 +22,7 @@ impl From<u8> for NodeType {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum NodeContents {
+pub(crate) enum NodeContents {
     LeafContents(KeyPackage),
     ParentContents(ParentNode),
 }
