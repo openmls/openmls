@@ -902,14 +902,6 @@
 <span id="899">899</span>
 <span id="900">900</span>
 <span id="901">901</span>
-<span id="902">902</span>
-<span id="903">903</span>
-<span id="904">904</span>
-<span id="905">905</span>
-<span id="906">906</span>
-<span id="907">907</span>
-<span id="908">908</span>
-<span id="909">909</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -969,7 +961,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">RatchetTree</span> {
         <span class="kw">let</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Node</span> {
             <span class="ident">node_type</span>: <span class="ident">NodeType</span>::<span class="ident">Leaf</span>,
-            <span class="ident">key_package</span>: <span class="prelude-val">Some</span>(<span class="ident">kpb</span>.<span class="ident">get_key_package</span>().<span class="ident">clone</span>()),
+            <span class="ident">key_package</span>: <span class="prelude-val">Some</span>(<span class="ident">kpb</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>()),
             <span class="ident">node</span>: <span class="prelude-val">None</span>,
         }];
         <span class="kw">let</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree</span>::<span class="ident">from_key_package_bundle</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="number">0u32</span>), <span class="kw-2">&amp;</span><span class="ident">kpb</span>);
@@ -987,7 +979,7 @@
         <span class="ident">RatchetTree</span> {
             <span class="ident">ciphersuite</span>: <span class="ident">ratchet_tree</span>.<span class="ident">ciphersuite</span>,
             <span class="ident">nodes</span>: <span class="ident">ratchet_tree</span>.<span class="ident">nodes</span>.<span class="ident">clone</span>(),
-            <span class="ident">private_tree</span>: <span class="ident">PrivateTree</span>::<span class="ident">new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">private_tree</span>.<span class="ident">get_node_index</span>()),
+            <span class="ident">private_tree</span>: <span class="ident">PrivateTree</span>::<span class="ident">new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">private_tree</span>.<span class="ident">node_index</span>()),
         }
     }
 
@@ -1015,7 +1007,7 @@
         }
 
         <span class="comment">// Find the own node in the list of nodes.</span>
-        <span class="kw">let</span> <span class="ident">own_node_index</span> <span class="op">=</span> <span class="ident">find_kp_in_tree</span>(<span class="ident">kpb</span>.<span class="ident">get_key_package</span>(), <span class="ident">node_options</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">own_node_index</span> <span class="op">=</span> <span class="ident">find_kp_in_tree</span>(<span class="ident">kpb</span>.<span class="ident">key_package</span>(), <span class="ident">node_options</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Build a full set of nodes for the tree based on the potentially incomplete</span>
         <span class="comment">// input nodes.</span>
@@ -1101,7 +1093,7 @@
             <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">index</span>.<span class="ident">as_usize</span>()].<span class="ident">node</span>.<span class="ident">as_ref</span>();
             <span class="ident">unmerged_leaves</span>.<span class="ident">extend</span>(
                 <span class="ident">node</span>.<span class="ident">unwrap</span>()
-                    .<span class="ident">get_unmerged_leaves</span>()
+                    .<span class="ident">unmerged_leaves</span>()
                     .<span class="ident">iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="kw-2">*</span><span class="ident">n</span>)),
             );
@@ -1119,22 +1111,14 @@
         <span class="ident">left</span>
     }
 
-    <span class="comment">// fn get_path_keypairs(&amp;self) -&gt; &amp;PathKeypairs {</span>
-    <span class="comment">//     &amp;self.path_keypairs</span>
-    <span class="comment">// }</span>
-
-    <span class="comment">// pub(crate) fn set_path_keypairs(&amp;mut self, path_keypairs: PathKeypairs) {</span>
-    <span class="comment">//     self.path_keypairs = path_keypairs;</span>
-    <span class="comment">// }</span>
-
     <span class="doccomment">/// Get the index of the own node.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_own_node_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">NodeIndex</span> {
-        <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_node_index</span>()
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">own_node_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">NodeIndex</span> {
+        <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">node_index</span>()
     }
 
     <span class="doccomment">/// Get a reference to the own key package.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">own_key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
-        <span class="kw">let</span> <span class="ident">own_node</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="self">self</span>.<span class="ident">get_own_node_index</span>().<span class="ident">as_usize</span>()];
+        <span class="kw">let</span> <span class="ident">own_node</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="self">self</span>.<span class="ident">own_node_index</span>().<span class="ident">as_usize</span>()];
         <span class="ident">own_node</span>.<span class="ident">key_package</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
     }
 
@@ -1142,7 +1126,7 @@
     <span class="kw">fn</span> <span class="ident">own_key_package_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">KeyPackage</span> {
         <span class="kw">let</span> <span class="ident">own_node</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">nodes</span>
-            .<span class="ident">get_mut</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_node_index</span>().<span class="ident">as_usize</span>())
+            .<span class="ident">get_mut</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">node_index</span>().<span class="ident">as_usize</span>())
             .<span class="ident">unwrap</span>();
         <span class="ident">own_node</span>.<span class="ident">key_package_mut</span>().<span class="ident">unwrap</span>()
     }
@@ -1184,7 +1168,7 @@
         <span class="ident">update_path</span>: <span class="kw-2">&amp;</span><span class="ident">UpdatePath</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CommitSecret</span>, <span class="ident">TreeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_own_node_index</span>();
+        <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>();
 
         <span class="comment">// Find common ancestor of own leaf and sender leaf</span>
         <span class="kw">let</span> <span class="ident">common_ancestor_index</span> <span class="op">=</span>
@@ -1230,11 +1214,11 @@
         <span class="comment">// Get the HPKE private key.</span>
         <span class="comment">// It&#39;s either the own key or must be in the path of the private tree.</span>
         <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">resolution</span>[<span class="ident">position_in_resolution</span>] <span class="op">=</span><span class="op">=</span> <span class="ident">own_index</span> {
-            <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_hpke_private_key</span>()
+            <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">hpke_private_key</span>()
         } <span class="kw">else</span> {
             <span class="kw">match</span> <span class="self">self</span>
                 .<span class="ident">private_tree</span>
-                .<span class="ident">get_path_keys</span>()
+                .<span class="ident">path_keys</span>()
                 .<span class="ident">get</span>(<span class="ident">common_ancestor_copath_index</span>)
             {
                 <span class="prelude-val">Some</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>,
@@ -1285,7 +1269,7 @@
         <span class="self">self</span>.<span class="ident">compute_parent_hash</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">sender</span>));
 
         <span class="comment">// TODO: Do we really want to return the commit secret here?</span>
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_commit_secret</span>())
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">commit_secret</span>())
     }
 
     <span class="doccomment">/// Update the private tree with the new `KeyPackageBundle`.</span>
@@ -1299,7 +1283,7 @@
             <span class="ident">group_context</span>,
             <span class="bool-val">false</span>, <span class="comment">/* without update path */</span>
         );
-        <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_commit_secret</span>()
+        <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">commit_secret</span>()
     }
 
     <span class="doccomment">/// Update the private tree.</span>
@@ -1309,7 +1293,7 @@
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> (<span class="kw-2">&amp;</span><span class="ident">CommitSecret</span>, <span class="ident">UpdatePath</span>, <span class="ident">PathSecrets</span>, <span class="ident">KeyPackageBundle</span>) {
         <span class="comment">// Generate new keypair</span>
-        <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_own_node_index</span>();
+        <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>();
 
         <span class="comment">// Replace the init key in the current KeyPackage</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
@@ -1337,9 +1321,9 @@
         <span class="ident">key_package_bundle</span>.<span class="ident">set_key_package</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>());
 
         (
-            <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_commit_secret</span>(),
+            <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">commit_secret</span>(),
             <span class="ident">path</span>,
-            <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_path_secrets</span>().<span class="ident">to_vec</span>(),
+            <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">path_secrets</span>().<span class="ident">to_vec</span>(),
             <span class="ident">key_package_bundle</span>,
         )
     }
@@ -1352,10 +1336,10 @@
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">with_update_path</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdatePath</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">get_key_package</span>().<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">cipher_suite</span>();
         <span class="comment">// Compute the direct path and keypairs along it</span>
-        <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_own_node_index</span>();
+        <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>();
         <span class="kw">let</span> <span class="ident">direct_path_root</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(<span class="ident">own_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;replace_private_tree: Error when computing direct path.&quot;</span>);
         <span class="comment">// Update private tree and merge corresponding public keys.</span>
@@ -1389,13 +1373,13 @@
         <span class="ident">public_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HPKEPublicKey</span><span class="op">&gt;</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span>, <span class="ident">TreeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">copath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">copath</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_node_index</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>())
+        <span class="kw">let</span> <span class="ident">copath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">copath</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">node_index</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;encrypt_to_copath: Error when computing copath.&quot;</span>);
         <span class="comment">// Return if the length of the copath is zero</span>
         <span class="kw">if</span> <span class="ident">copath</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[]);
         }
-        <span class="kw">let</span> <span class="ident">path_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">get_path_secrets</span>();
+        <span class="kw">let</span> <span class="ident">path_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">path_secrets</span>();
 
         <span class="macro">debug_assert_eq</span><span class="macro">!</span>(<span class="ident">path_secrets</span>.<span class="ident">len</span>(), <span class="ident">copath</span>.<span class="ident">len</span>());
         <span class="kw">if</span> <span class="ident">path_secrets</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">copath</span>.<span class="ident">len</span>() {
@@ -1413,7 +1397,7 @@
                 .<span class="ident">resolve</span>(<span class="kw-2">*</span><span class="ident">copath_node</span>)
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">x</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">pk</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">x</span>.<span class="ident">as_usize</span>()].<span class="ident">get_public_hpke_key</span>().<span class="ident">unwrap</span>();
+                    <span class="kw">let</span> <span class="ident">pk</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">x</span>.<span class="ident">as_usize</span>()].<span class="ident">public_hpke_key</span>().<span class="ident">unwrap</span>();
                     <span class="self">self</span>.<span class="ident">ciphersuite</span>
                         .<span class="ident">hpke_seal_secret</span>(<span class="kw-2">&amp;</span><span class="ident">pk</span>, <span class="ident">group_context</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="ident">path_secret</span>)
                 })
@@ -1464,7 +1448,7 @@
         }
         <span class="kw">for</span> (<span class="ident">public_key</span>, <span class="ident">node_index</span>) <span class="kw">in</span> <span class="ident">public_keys</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">path</span>) {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">node_index</span>.<span class="ident">as_usize</span>()].<span class="ident">node</span> {
-                <span class="kw">if</span> <span class="ident">node</span>.<span class="ident">get_public_key</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">public_key</span> {
+                <span class="kw">if</span> <span class="ident">node</span>.<span class="ident">public_key</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">public_key</span> {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span>);
                 }
             } <span class="kw">else</span> {
@@ -1516,8 +1500,8 @@
                     <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">d</span>.<span class="ident">as_u32</span>();
                     <span class="comment">// TODO handle error</span>
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parent_node</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">node</span>.<span class="ident">clone</span>().<span class="ident">unwrap</span>();
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">parent_node</span>.<span class="ident">get_unmerged_leaves</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>) {
-                        <span class="ident">parent_node</span>.<span class="ident">get_unmerged_leaves_mut</span>().<span class="ident">push</span>(<span class="ident">index</span>);
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">parent_node</span>.<span class="ident">unmerged_leaves</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>) {
+                        <span class="ident">parent_node</span>.<span class="ident">unmerged_leaves_mut</span>().<span class="ident">push</span>(<span class="ident">index</span>);
                     }
                     <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">d</span>.<span class="ident">as_usize</span>()].<span class="ident">node</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">parent_node</span>);
                 }
@@ -1562,12 +1546,12 @@
 
         <span class="comment">// Process updates first</span>
         <span class="kw">for</span> <span class="ident">queued_proposal</span> <span class="kw">in</span> <span class="ident">proposal_queue</span>
-            .<span class="ident">get_filtered_proposals</span>(<span class="ident">proposal_id_list</span>, <span class="ident">ProposalType</span>::<span class="ident">Update</span>)
+            .<span class="ident">filtered_queued_proposals</span>(<span class="ident">proposal_id_list</span>, <span class="ident">ProposalType</span>::<span class="ident">Update</span>)
             .<span class="ident">iter</span>()
         {
             <span class="ident">has_updates</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">get_proposal_ref</span>().<span class="ident">as_update</span>().<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">get_sender_ref</span>().<span class="ident">to_node_index</span>();
+            <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>().<span class="ident">as_update</span>().<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">sender</span>().<span class="ident">to_node_index</span>();
             <span class="comment">// Prepare leaf node</span>
             <span class="kw">let</span> <span class="ident">leaf_node</span> <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">new_leaf</span>(<span class="prelude-val">Some</span>(<span class="ident">update_proposal</span>.<span class="ident">key_package</span>.<span class="ident">clone</span>()));
             <span class="comment">// Blank the direct path of that leaf node</span>
@@ -1575,10 +1559,10 @@
             <span class="comment">// Replace the leaf node</span>
             <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">sender_index</span>.<span class="ident">as_usize</span>()] <span class="op">=</span> <span class="ident">leaf_node</span>;
             <span class="comment">// Check if it is a self-update</span>
-            <span class="kw">if</span> <span class="ident">sender_index</span> <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_own_node_index</span>() {
+            <span class="kw">if</span> <span class="ident">sender_index</span> <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>() {
                 <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">updates_key_package_bundles</span>
                     .<span class="ident">iter</span>()
-                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">get_key_package</span>() <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">update_proposal</span>.<span class="ident">key_package</span>)
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">key_package</span>() <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">update_proposal</span>.<span class="ident">key_package</span>)
                 {
                     <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kpb</span>,
                     <span class="comment">// We lost the KeyPackageBundle apparently</span>
@@ -1589,14 +1573,14 @@
             }
         }
         <span class="kw">for</span> <span class="ident">queued_proposal</span> <span class="kw">in</span> <span class="ident">proposal_queue</span>
-            .<span class="ident">get_filtered_proposals</span>(<span class="ident">proposal_id_list</span>, <span class="ident">ProposalType</span>::<span class="ident">Remove</span>)
+            .<span class="ident">filtered_queued_proposals</span>(<span class="ident">proposal_id_list</span>, <span class="ident">ProposalType</span>::<span class="ident">Remove</span>)
             .<span class="ident">iter</span>()
         {
             <span class="ident">has_removes</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">get_proposal_ref</span>().<span class="ident">as_remove</span>().<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>().<span class="ident">as_remove</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">remove_proposal</span>.<span class="ident">removed</span>));
             <span class="comment">// Check if we got removed from the group</span>
-            <span class="kw">if</span> <span class="ident">removed</span> <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_own_node_index</span>() {
+            <span class="kw">if</span> <span class="ident">removed</span> <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>() {
                 <span class="ident">self_removed</span> <span class="op">=</span> <span class="bool-val">true</span>;
             }
             <span class="comment">// Blank the direct path of the removed member</span>
@@ -1605,10 +1589,10 @@
 
         <span class="comment">// Process adds</span>
         <span class="kw">let</span> <span class="ident">add_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddProposal</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proposal_queue</span>
-            .<span class="ident">get_filtered_proposals</span>(<span class="ident">proposal_id_list</span>, <span class="ident">ProposalType</span>::<span class="ident">Add</span>)
+            .<span class="ident">filtered_queued_proposals</span>(<span class="ident">proposal_id_list</span>, <span class="ident">ProposalType</span>::<span class="ident">Add</span>)
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">queued_proposal</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">get_proposal_ref</span>();
+                <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>();
                 <span class="ident">proposal</span>.<span class="ident">as_add</span>().<span class="ident">unwrap</span>()
             })
             .<span class="ident">collect</span>();

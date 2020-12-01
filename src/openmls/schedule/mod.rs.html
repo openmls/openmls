@@ -410,8 +410,6 @@
 <span id="407">407</span>
 <span id="408">408</span>
 <span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
@@ -541,7 +539,7 @@
         <span class="comment">// Get a Vector containing the node indices of the direct path to the</span>
         <span class="comment">// root from our own leaf.</span>
         <span class="kw">let</span> <span class="ident">dirpath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(
-            <span class="ident">provisional_tree</span>.<span class="ident">get_own_node_index</span>(),
+            <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>(),
             <span class="ident">provisional_tree</span>.<span class="ident">leaf_count</span>(),
         )
         .<span class="ident">expect</span>(<span class="string">&quot;create_commit_internal: TreeMath error when computing direct path.&quot;</span>);
@@ -554,10 +552,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">path_secrets</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// Compute the index of the common ancestor lowest in the</span>
                     <span class="comment">// tree of our own leaf and the given index.</span>
-                    <span class="kw">let</span> <span class="ident">common_ancestor_index</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">common_ancestor_index</span>(
-                        <span class="ident">index</span>,
-                        <span class="ident">provisional_tree</span>.<span class="ident">get_own_node_index</span>(),
-                    );
+                    <span class="kw">let</span> <span class="ident">common_ancestor_index</span> <span class="op">=</span>
+                        <span class="ident">treemath</span>::<span class="ident">common_ancestor_index</span>(<span class="ident">index</span>, <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>());
                     <span class="comment">// Get the position of the node index that represents the</span>
                     <span class="comment">// common ancestor in the direct path. We can unwrap here,</span>
                     <span class="comment">// because the direct path must contain the shared ancestor.</span>

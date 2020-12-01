@@ -940,17 +940,17 @@
 <span class="kw">impl</span> <span class="ident">Ciphersuite</span> {
     <span class="doccomment">/// Create a new ciphersuite from the given `name`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">CiphersuiteName</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">hpke_kem</span> <span class="op">=</span> <span class="ident">get_kem_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">hpke_kdf</span> <span class="op">=</span> <span class="ident">get_hpke_kdf_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>);
-        <span class="kw">let</span> <span class="ident">hpke_aead</span> <span class="op">=</span> <span class="ident">get_hpke_aead_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>);
+        <span class="kw">let</span> <span class="ident">hpke_kem</span> <span class="op">=</span> <span class="ident">kem_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">hpke_kdf</span> <span class="op">=</span> <span class="ident">hpke_kdf_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>);
+        <span class="kw">let</span> <span class="ident">hpke_aead</span> <span class="op">=</span> <span class="ident">hpke_aead_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>);
 
         <span class="prelude-val">Ok</span>(<span class="ident">Ciphersuite</span> {
             <span class="ident">name</span>,
-            <span class="ident">signature</span>: <span class="ident">get_signature_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>)<span class="question-mark">?</span>,
+            <span class="ident">signature</span>: <span class="ident">signature_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>)<span class="question-mark">?</span>,
             <span class="ident">hpke</span>: <span class="ident">Hpke</span>::<span class="ident">new</span>(<span class="ident">Mode</span>::<span class="ident">Base</span>, <span class="ident">hpke_kem</span>, <span class="ident">hpke_kdf</span>, <span class="ident">hpke_aead</span>),
-            <span class="ident">aead</span>: <span class="ident">get_aead_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
-            <span class="ident">hash</span>: <span class="ident">get_hash_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
-            <span class="ident">hmac</span>: <span class="ident">get_kdf_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
+            <span class="ident">aead</span>: <span class="ident">aead_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
+            <span class="ident">hash</span>: <span class="ident">hash_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
+            <span class="ident">hmac</span>: <span class="ident">kdf_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
         })
     }
 

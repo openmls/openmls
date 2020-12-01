@@ -167,9 +167,6 @@
 <span id="164">164</span>
 <span id="165">165</span>
 <span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
@@ -226,7 +223,7 @@
         <span class="comment">// Determine if Commit is own Commit</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>;
         <span class="kw">let</span> <span class="ident">is_own_commit</span> <span class="op">=</span>
-            <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">to_node_index</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">get_own_node_index</span>(); <span class="comment">// XXX: correct?</span>
+            <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">to_node_index</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>(); <span class="comment">// XXX: correct?</span>
 
         <span class="kw">let</span> <span class="ident">zero_commit_secret</span> <span class="op">=</span> <span class="ident">CommitSecret</span>::<span class="ident">zero_secret</span>(<span class="ident">ciphersuite</span>);
         <span class="comment">// Determine if Commit has a path</span>
@@ -243,10 +240,7 @@
             <span class="kw">if</span> <span class="ident">is_own_commit</span> {
                 <span class="comment">// Find the right KeyPackageBundle among the pending bundles and</span>
                 <span class="comment">// clone out the one that we need.</span>
-                <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">own_key_packages</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">get_key_package</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">kp</span>)
-                {
+                <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">own_key_packages</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">key_package</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">kp</span>) {
                     <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kpb</span>,
                     <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">MissingOwnKeyPackage</span>),
                 };
@@ -316,7 +310,7 @@
                 <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">compute_parent_hash</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">sender</span>));
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">received_parent_hash</span>) <span class="op">=</span> <span class="ident">path</span>
                     .<span class="ident">leaf_key_package</span>
-                    .<span class="ident">get_extension</span>(<span class="ident">ExtensionType</span>::<span class="ident">ParentHash</span>)
+                    .<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType</span>::<span class="ident">ParentHash</span>)
                 {
                     <span class="kw">let</span> <span class="ident">parent_hash_extension</span> <span class="op">=</span> <span class="ident">received_parent_hash</span>.<span class="ident">to_parent_hash_extension</span>()<span class="question-mark">?</span>;
                     <span class="kw">if</span> <span class="ident">parent_hash</span> <span class="op">!</span><span class="op">=</span> <span class="ident">parent_hash_extension</span>.<span class="ident">parent_hash</span>() {

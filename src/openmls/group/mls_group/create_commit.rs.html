@@ -188,14 +188,14 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CreateCommitResult</span> {
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
         <span class="comment">// Filter proposals</span>
-        <span class="kw">let</span> (<span class="ident">proposal_queue</span>, <span class="ident">contains_own_updates</span>) <span class="op">=</span> <span class="ident">ProposalQueue</span>::<span class="ident">filtered_proposals</span>(
+        <span class="kw">let</span> (<span class="ident">proposal_queue</span>, <span class="ident">contains_own_updates</span>) <span class="op">=</span> <span class="ident">ProposalQueue</span>::<span class="ident">filter_proposals</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">proposals</span>,
-            <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="self">self</span>.<span class="ident">tree</span>().<span class="ident">get_own_node_index</span>()),
+            <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="self">self</span>.<span class="ident">tree</span>().<span class="ident">own_node_index</span>()),
             <span class="self">self</span>.<span class="ident">tree</span>().<span class="ident">leaf_count</span>(),
         );
 
-        <span class="kw">let</span> <span class="ident">proposal_id_list</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">get_proposal_id_list</span>();
+        <span class="kw">let</span> <span class="ident">proposal_id_list</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">proposal_id_list</span>();
 
         <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender_index</span>();
         <span class="comment">// Make a copy of the current tree to apply proposals safely</span>
