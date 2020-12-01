@@ -70,13 +70,13 @@ fn create_commit_optional_path() {
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
-                epoch_proposals,
+                &epoch_proposals,
                 true, /* force self-update */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-        let commit = match &mls_plaintext_commit.content {
+        let commit = match mls_plaintext_commit.content() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!(),
         };
@@ -97,13 +97,13 @@ fn create_commit_optional_path() {
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
-                epoch_proposals.clone(),
+                &epoch_proposals,
                 false, /* don't force selfupdate */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-        let commit = match &mls_plaintext_commit.content {
+        let commit = match mls_plaintext_commit.content() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!(),
         };
@@ -143,13 +143,13 @@ fn create_commit_optional_path() {
         let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
-            proposals.clone(),
+            &proposals,
             false, /* force self update */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-        let (commit, _confirmation_tag) = match &commit_mls_plaintext.content {
+        let (commit, _confirmation_tag) = match commit_mls_plaintext.content() {
             MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
                 (commit, confirmation_tag)
             }
@@ -209,7 +209,7 @@ fn basic_group_setup() {
         let _commit = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
-            vec![bob_add_proposal],
+            &[bob_add_proposal],
             true,
         ) {
             Ok(c) => c,
@@ -286,16 +286,12 @@ fn group_operations() {
         );
         let epoch_proposals = vec![bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
-            .create_commit(
-                group_aad,
-                &alice_credential_bundle,
-                epoch_proposals.clone(),
-                false,
-            ) {
+            .create_commit(group_aad, &alice_credential_bundle, &epoch_proposals, false)
+        {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-        let commit = match &mls_plaintext_commit.content {
+        let commit = match mls_plaintext_commit.content() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),
         };
@@ -327,7 +323,7 @@ fn group_operations() {
         let message_alice = [1, 2, 3];
         let mls_ciphertext_alice =
             group_alice.create_application_message(&[], &message_alice, &alice_credential_bundle);
-        let mls_plaintext_bob = match group_bob.decrypt(mls_ciphertext_alice) {
+        let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
         };
@@ -352,7 +348,7 @@ fn group_operations() {
         let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             &[],
             &bob_credential_bundle,
-            vec![update_proposal_bob.clone()],
+            &[update_proposal_bob.clone()],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -401,7 +397,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
-            vec![update_proposal_alice.clone()],
+            &[update_proposal_alice.clone()],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -448,7 +444,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
-            vec![update_proposal_bob.clone()],
+            &[update_proposal_bob.clone()],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -499,7 +495,7 @@ fn group_operations() {
             .create_commit(
                 &[],
                 &bob_credential_bundle,
-                vec![add_charlie_proposal_bob.clone()],
+                &[add_charlie_proposal_bob.clone()],
                 false, /* force self update */
             ) {
             Ok(c) => c,
@@ -554,11 +550,11 @@ fn group_operations() {
             &message_charlie,
             &charlie_credential_bundle,
         );
-        let mls_plaintext_alice = match group_alice.decrypt(mls_ciphertext_charlie.clone()) {
+        let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
         };
-        let mls_plaintext_bob = match group_bob.decrypt(mls_ciphertext_charlie) {
+        let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
         };
@@ -587,7 +583,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,
-            vec![update_proposal_charlie.clone()],
+            &[update_proposal_charlie.clone()],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -638,7 +634,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,
-            vec![remove_bob_proposal_charlie.clone()],
+            &[remove_bob_proposal_charlie.clone()],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -682,5 +678,16 @@ fn group_operations() {
             _print_tree(&group_alice.tree(), "Charlie removed Bob");
             panic!("Different public trees");
         }
+
+        // Make sure all groups export the same key
+        let alice_exporter = group_alice.export_secret("export test", 32).unwrap();
+        let charlie_exporter = group_charlie.export_secret("export test", 32).unwrap();
+        assert_eq!(alice_exporter, charlie_exporter);
+
+        // Now alice tries to derive an exporter with too large of a key length.
+        let exporter_length: usize = u16::MAX.into();
+        let exporter_length = exporter_length + 1;
+        let alice_exporter = group_alice.export_secret("export test", exporter_length);
+        assert!(alice_exporter.is_err())
     }
 }

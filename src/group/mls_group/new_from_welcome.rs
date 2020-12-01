@@ -33,7 +33,7 @@ impl MlsGroup {
         }
 
         // Compute keys to decrypt GroupInfo
-        let (mut group_info, group_secrets) = Self::decrypt_group_info(
+        let (mut group_info, member_secret, path_secret_option) = Self::decrypt_group_info(
             &ciphersuite,
             &egs,
             key_package_bundle.get_private_key_ref(),
@@ -113,7 +113,7 @@ impl MlsGroup {
 
         // Compute path secrets
         // TODO: #36 check if path_secret has to be optional
-        if let Some(path_secret) = group_secrets.path_secret {
+        if let Some(path_secret) = path_secret_option {
             let common_ancestor_index = treemath::common_ancestor_index(
                 tree.get_own_node_index(),
                 NodeIndex::from(group_info.signer_index()),
@@ -146,12 +146,9 @@ impl MlsGroup {
             tree_hash: tree.compute_tree_hash(),
             confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
         };
-        let mut epoch_secrets = EpochSecrets::derive_epoch_secrets(
-            &ciphersuite,
-            &group_secrets.joiner_secret,
-            Secret::new_empty_secret(),
-        );
-        let secret_tree = epoch_secrets.create_secret_tree(tree.leaf_count()).unwrap();
+        let (epoch_secrets, init_secret, encryption_secret) =
+            EpochSecrets::derive_epoch_secrets(&ciphersuite, member_secret, &group_context);
+        let secret_tree = encryption_secret.create_secret_tree(tree.leaf_count());
 
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
@@ -172,6 +169,7 @@ impl MlsGroup {
                 ciphersuite,
                 group_context,
                 epoch_secrets,
+                init_secret,
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
@@ -199,7 +197,7 @@ impl MlsGroup {
         encrypted_group_secrets: &EncryptedGroupSecrets,
         private_key: &HPKEPrivateKey,
         encrypted_group_info: &[u8],
-    ) -> Result<(GroupInfo, GroupSecrets), WelcomeError> {
+    ) -> Result<(GroupInfo, MemberSecret, Option<PathSecret>), WelcomeError> {
         let group_secrets_bytes = ciphersuite.hpke_open(
             &encrypted_group_secrets.encrypted_group_secrets,
             &private_key,
@@ -207,8 +205,13 @@ impl MlsGroup {
             &[],
         );
         let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
-        let (welcome_key, welcome_nonce) =
-            compute_welcome_key_nonce(ciphersuite, &group_secrets.joiner_secret);
+        // TODO: Currently the PSK is None. This should be fixed with issue #141
+        let member_secret = MemberSecret::from_joiner_secret_and_psk(
+            ciphersuite,
+            group_secrets.joiner_secret,
+            None,
+        );
+        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
         let group_info_bytes =
             match welcome_key.aead_open(encrypted_group_info, &[], &welcome_nonce) {
                 Ok(bytes) => bytes,
@@ -216,7 +219,8 @@ impl MlsGroup {
             };
         Ok((
             GroupInfo::from_bytes(&group_info_bytes).unwrap(),
-            group_secrets,
+            member_secret,
+            group_secrets.path_secret,
         ))
     }
 }

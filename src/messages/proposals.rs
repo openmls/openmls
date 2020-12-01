@@ -138,10 +138,10 @@ pub struct QueuedProposal {
 
 impl QueuedProposal {
     /// Creates a new `QueuedProposal` from an `MLSPlaintext`
-    pub(crate) fn new(ciphersuite: &Ciphersuite, mls_plaintext: MLSPlaintext) -> Self {
+    pub(crate) fn new(ciphersuite: &Ciphersuite, mls_plaintext: &MLSPlaintext) -> Self {
         debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
-        let proposal = match mls_plaintext.content {
-            MLSPlaintextContentType::Proposal(p) => p,
+        let proposal = match &mls_plaintext.content {
+            MLSPlaintextContentType::Proposal(p) => p.clone(),
             _ => panic!("API misuse. Only proposals can end up in the proposal queue"),
         };
         let proposal_id = ProposalID::from_proposal(ciphersuite, &proposal);
@@ -187,7 +187,7 @@ impl ProposalQueue {
     ) -> Self {
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(ciphersuite, mls_plaintext);
+            let queued_proposal = QueuedProposal::new(ciphersuite, &mls_plaintext);
             proposal_queue.add(queued_proposal);
         }
         proposal_queue
@@ -215,7 +215,7 @@ impl ProposalQueue {
     /// own node were included
     pub(crate) fn filtered_proposals(
         ciphersuite: &Ciphersuite,
-        proposals: Vec<MLSPlaintext>,
+        proposals: &[MLSPlaintext],
         own_index: LeafIndex,
         tree_size: LeafIndex,
     ) -> (Self, bool) {
@@ -237,7 +237,7 @@ impl ProposalQueue {
         let mut contains_own_updates = false;
 
         // Parse proposals and build adds and member list
-        for mls_plaintext in proposals {
+        for mls_plaintext in proposals.iter() {
             let queued_proposal = QueuedProposal::new(ciphersuite, mls_plaintext);
             match queued_proposal.proposal.get_type() {
                 ProposalType::Add => {

@@ -55,7 +55,7 @@ pub(crate) fn derive_tree_secret(
 ) -> Secret {
     let tree_context = TreeContext { node, generation };
     let serialized_tree_context = tree_context.encode_detached().unwrap();
-    hkdf_expand_label(ciphersuite, secret, label, &serialized_tree_context, length)
+    secret.kdf_expand_label(ciphersuite, label, &serialized_tree_context, length)
 }
 
 pub struct TreeContext {
@@ -88,12 +88,12 @@ impl SecretTree {
     /// `size`. The inner nodes of the tree and the SenderRatchets only get
     /// initialized when secrets are requested either through `get_secret()`
     /// or `next_secret()`.
-    pub fn new(encryption_secret: Secret, size: LeafIndex) -> Self {
+    pub fn new(encryption_secret: EncryptionSecret, size: LeafIndex) -> Self {
         let root = root(size);
         let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(SecretTreeNode {
-            secret: encryption_secret,
+            secret: encryption_secret.consume_secret(),
         });
 
         SecretTree {
@@ -105,7 +105,8 @@ impl SecretTree {
     }
 
     /// Get current generation for a specific SenderRatchet
-    pub fn get_generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
+    #[cfg(test)]
+    pub(crate) fn get_generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
         match self.get_ratchet_opt(index, secret_type) {
             Some(sender_ratchet) => sender_ratchet.get_generation(),
             None => 0,

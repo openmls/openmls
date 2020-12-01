@@ -48,11 +48,17 @@ pub enum ApplyCommitError {
     OwnKeyNotFound = 211,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 #[repr(u16)]
 pub enum CreateCommitError {
     CannotRemoveSelf = 300,
     OwnKeyNotFound = 301,
+}
+
+#[derive(PartialEq, Debug)]
+#[repr(u16)]
+pub enum ExporterError {
+    KeyLengthTooLong = 400,
 }
 
 impl From<MLSCiphertextError> for GroupError {

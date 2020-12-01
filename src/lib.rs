@@ -1,5 +1,13 @@
 //! # OpenMLS
 //!
+//! ## High-level API
+//!
+//! See [ManagedGroup](`prelude::ManagedGroup`)
+//!
+//! ## Low-level API
+//!
+//! See [MlsGroup](`prelude::MlsGroup`)
+//!
 //! ## Errors
 //!
 //! Each module has an `errors.rs` defining module specific errors that are used
@@ -15,12 +23,12 @@ mod utils;
 
 mod ciphersuite;
 mod codec;
-pub mod config;
+mod config;
 mod creds;
-pub mod extensions;
-pub mod framing;
+mod extensions;
+mod framing;
 mod group;
-pub mod key_packages;
+mod key_packages;
 mod messages;
 mod schedule;
 mod tree;
