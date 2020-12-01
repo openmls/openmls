@@ -89,7 +89,7 @@ impl State {
 
     pub fn write(&self, file: &Path) -> Result<(), Error> {
         let mut file = File::create(file)?;
-        let state_out = serde_json::to_string(self)?;
+        let state_out = serde_json::to_string_pretty(self)?;
         file.write_all(&state_out.into_bytes())
     }
 }

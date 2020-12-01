@@ -22,6 +22,7 @@ mod errors;
 pub(crate) mod signable;
 use ciphersuites::*;
 pub(crate) use errors::*;
+mod ser;
 
 use crate::config::{Config, ConfigError};
 use crate::group::GroupContext;
@@ -231,7 +232,7 @@ pub struct SignatureKeypair {
     public_key: SignaturePublicKey,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
