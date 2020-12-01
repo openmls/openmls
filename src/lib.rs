@@ -27,6 +27,7 @@ mod config;
 mod creds;
 mod extensions;
 mod framing;
+mod fs;
 mod group;
 mod key_packages;
 mod messages;

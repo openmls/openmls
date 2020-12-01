@@ -21,7 +21,9 @@
 use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, ParentHashError};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 
-#[derive(PartialEq, Clone, Debug, Default)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ParentHashExtension {
     parent_hash: Vec<u8>,
 }
@@ -39,6 +41,7 @@ impl ParentHashExtension {
     }
 }
 
+#[typetag::serde]
 impl Extension for ParentHashExtension {
     fn extension_type(&self) -> ExtensionType {
         ExtensionType::ParentHash

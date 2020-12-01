@@ -1,10 +1,15 @@
 use evercrypt::prelude::SignatureError;
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
+use std::convert::TryFrom;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ConfigError};
-
-use std::convert::TryFrom;
+use crate::{count, implement_persistence};
 
 #[derive(Debug)]
 pub enum CredentialError {
@@ -23,7 +28,7 @@ impl From<ConfigError> for CredentialError {
 }
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum CredentialType {
     Reserved = 0,
@@ -58,20 +63,20 @@ impl Codec for CredentialType {
 }
 
 /// Struct containing an X509 certificate chain, as per Spec.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
 /// This enum contains the different available credentials.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MLSCredentialType {
     Basic(BasicCredential),
     X509(Certificate),
 }
 
 /// Struct containing MLS credential data, where the data depends on the type.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Credential {
     credential_type: CredentialType,
     credential: MLSCredentialType,
@@ -152,6 +157,8 @@ pub struct BasicCredential {
     pub ciphersuite: &'static Ciphersuite,
     pub public_key: SignaturePublicKey,
 }
+
+implement_persistence!(BasicCredential, identity, public_key);
 
 impl BasicCredential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {

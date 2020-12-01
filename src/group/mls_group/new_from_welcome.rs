@@ -26,7 +26,7 @@ impl MlsGroup {
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite.name() != key_package_bundle.key_package().cipher_suite().name() {
+        if ciphersuite.name() != key_package_bundle.key_package().ciphersuite().name() {
             let e = WelcomeError::CiphersuiteMismatch;
             debug!("new_from_welcome {:?}", e);
             return Err(e);

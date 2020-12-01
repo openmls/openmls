@@ -18,7 +18,7 @@ impl Codec for KeyPackage {
         let signature = Signature::decode(cursor)?;
         let kp = KeyPackage {
             protocol_version,
-            cipher_suite: Config::ciphersuite(cipher_suite_name)?,
+            ciphersuite: Config::ciphersuite(cipher_suite_name)?,
             hpke_init_key,
             credential,
             extensions,

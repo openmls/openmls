@@ -80,7 +80,7 @@ impl<'a> ManagedGroup<'a> {
     ) -> Result<Self, ManagedGroupError> {
         let group = MlsGroup::new(
             &group_id.as_slice(),
-            key_package_bundle.key_package().cipher_suite().name(),
+            key_package_bundle.key_package().ciphersuite().name(),
             key_package_bundle,
             GroupConfig::default(),
         )?;

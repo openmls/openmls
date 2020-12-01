@@ -56,7 +56,7 @@ lazy_static! {
 }
 
 /// Constants that are used throughout the library.
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct Constants {
     /// The default lifetime of a key package in seconds.
     default_key_package_lifetime: u64, // in Seconds
@@ -77,8 +77,8 @@ struct PersistentConfig {
 
 /// # OpenMLS Configuration
 ///
-/// This is the global configuration for OpenMLS.
-#[derive(Debug)]
+/// This is the global configuration for MLS.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     protocol_versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<Ciphersuite>,
@@ -99,6 +99,11 @@ impl From<PersistentConfig> for Config {
 }
 
 impl Config {
+    /// Get a reference to the global Config object.
+    pub(crate) fn _get() -> &'static Self {
+        &CONFIG
+    }
+
     /// Get a list of the supported extension types.
     pub fn supported_extensions() -> &'static [ExtensionType] {
         &CONFIG.extensions

@@ -14,6 +14,15 @@ use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
+use crate::{count, implement_persistence};
+
+//pub use api::*;
+
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
@@ -36,6 +45,17 @@ pub struct MlsGroup {
     // Defaults to `false`.
     add_ratchet_tree_extension: bool,
 }
+
+implement_persistence!(
+    MlsGroup,
+    group_context,
+    init_secret,
+    epoch_secrets,
+    secret_tree,
+    tree,
+    interim_transcript_hash,
+    add_ratchet_tree_extension
+);
 
 /// Public `MlsGroup` functions.
 impl MlsGroup {

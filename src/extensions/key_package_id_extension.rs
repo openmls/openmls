@@ -15,7 +15,9 @@
 use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, KeyPackageIdError};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 
-#[derive(PartialEq, Clone, Debug, Default)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct KeyIDExtension {
     key_id: Vec<u8>,
 }
@@ -34,6 +36,7 @@ impl KeyIDExtension {
     }
 }
 
+#[typetag::serde]
 impl Extension for KeyIDExtension {
     fn extension_type(&self) -> ExtensionType {
         ExtensionType::KeyID

@@ -1,9 +1,10 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::ConfigError;
+use crate::config::{Config, ConfigError};
 use crate::creds::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
+use crate::{count, implement_persistence};
 
 // Tree modules
 pub(crate) mod codec;
@@ -22,6 +23,11 @@ use node::*;
 use private_tree::{PathSecrets, PrivateTree};
 
 use self::private_tree::CommitSecret;
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 // Internal tree tests
 #[cfg(test)]
@@ -50,6 +56,8 @@ pub struct RatchetTree {
     /// See `PrivateTree` for details.
     private_tree: PrivateTree,
 }
+
+implement_persistence!(RatchetTree, nodes, private_tree);
 
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
@@ -432,7 +440,7 @@ impl RatchetTree {
         with_update_path: bool,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.key_package().clone();
-        let ciphersuite = key_package.cipher_suite();
+        let ciphersuite = key_package.ciphersuite();
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())

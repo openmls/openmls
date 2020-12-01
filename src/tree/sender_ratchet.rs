@@ -1,12 +1,14 @@
 use crate::ciphersuite::*;
 use crate::tree::{index::LeafIndex, secret_tree::*};
 
+use serde::{Deserialize, Serialize};
+
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
 
 pub type RatchetSecrets = (AeadKey, AeadNonce);
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SenderRatchet {
     index: LeafIndex,
     generation: u32,

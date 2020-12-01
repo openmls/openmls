@@ -9,6 +9,7 @@ use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
 mod codec;
+
 pub(crate) mod proposals;
 pub use codec::*;
 use proposals::*;

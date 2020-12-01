@@ -1,11 +1,13 @@
-use std::ops::Index;
-use std::ops::IndexMut;
+use serde::{Deserialize, Serialize};
+use std::ops::{Index, IndexMut};
 
 use crate::codec::*;
 
 use super::node::Node;
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash, Default)]
+#[derive(
+    Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash, Default, Serialize, Deserialize,
+)]
 pub struct NodeIndex(u32);
 
 impl NodeIndex {
@@ -35,7 +37,7 @@ impl From<LeafIndex> for NodeIndex {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Copy, Clone)]
+#[derive(Debug, Ord, PartialOrd, Hash, Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct LeafIndex(u32);
 
 impl LeafIndex {
