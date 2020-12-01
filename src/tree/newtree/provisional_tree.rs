@@ -18,6 +18,7 @@ use super::tree_secrets::CommitSecret;
 use super::tree_secrets::PathSecret;
 use super::RatchetTreeBundle;
 
+#[allow(dead_code)]
 pub(crate) struct ProvisionalTree<'a> {
     original_tree: Option<&'a RatchetTreeBundle>,
 
@@ -34,6 +35,7 @@ pub(crate) struct ProvisionalTree<'a> {
     provisional_path_keys: HashMap<NodeIndex, HPKEPrivateKey>,
 }
 
+#[allow(dead_code, unused_variables)]
 impl<'a> ProvisionalTree<'a> {
     /// Create a `ProvisionalTree` from a given `RatchetTreeBundle` reference.
     pub(crate) fn from_ratchet_tree_bundle(original_tree: &'a RatchetTreeBundle) -> Self {

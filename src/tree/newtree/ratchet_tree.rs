@@ -9,6 +9,7 @@ pub(crate) struct RatchetTree {
     tree: BinaryTree<Node>,
 }
 
+#[allow(dead_code)]
 impl RatchetTree {
     /// Trim the `RatchetTree`
     fn trim(&mut self) {
@@ -16,6 +17,7 @@ impl RatchetTree {
     }
 
     /// Blank the node with index `index`.
+    #[allow(unused_variables)]
     fn blank_member(&mut self, index: NodeIndex) {
         unimplemented!()
     }

@@ -13,6 +13,7 @@ impl<T> From<Vec<T>> for BinaryTree<T> {
     }
 }
 
+#[allow(unused_variables, dead_code)]
 impl<T> BinaryTree<T> {
     /// Create a new, empty binary tree.
     pub(crate) fn new() -> Self {

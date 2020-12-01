@@ -12,6 +12,7 @@ pub(crate) struct CommitSecret {
     secret: Secret,
 }
 
+#[allow(dead_code)]
 impl CommitSecret {
     /// Convert a `PathSecret`, which should be the result of calling
     /// `to_path_secret_and_key_pair` on the `PathSecret` corresponding to the
@@ -32,6 +33,7 @@ pub(crate) struct PathSecret {
     secret: Secret,
 }
 
+#[allow(dead_code)]
 impl PathSecret {
     /// Derive a `PathSecret` and (via a an intermediate secret) an
     /// `HPKEKeyPair` from a `PathSecret`, consuming it in the process.
@@ -65,13 +67,14 @@ impl PathSecret {
     }
 }
 
-#[derive(Debug)]
 /// The LeafSecret is essentially a path secret that is freshly sampled for one
 /// of the leaves.
+#[derive(Debug)]
 pub(crate) struct LeafSecret {
     secret: Secret,
 }
 
+#[allow(dead_code)]
 impl LeafSecret {
     /// Randomly sample a fresh `LeafSecret`
     pub(crate) fn random(length: usize) -> Self {

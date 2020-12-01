@@ -21,6 +21,7 @@ impl From<u8> for NodeType {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum NodeContents {
     LeafContents(KeyPackage),
@@ -41,6 +42,7 @@ pub struct Node {
     pub(crate) node_contents: Option<NodeContents>,
 }
 
+#[allow(dead_code)]
 impl Node {
     pub(crate) fn new_leaf(contents_option: Option<NodeContents>) -> Self {
         Node {
@@ -113,6 +115,7 @@ impl Node {
     }
 }
 
+#[allow(dead_code)]
 impl ParentNode {
     pub fn new(public_key: HPKEPublicKey, unmerged_leaves: &[u32], parent_hash: &[u8]) -> Self {
         Self {

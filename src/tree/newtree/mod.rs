@@ -16,6 +16,7 @@ mod provisional_tree;
 mod ratchet_tree;
 mod tree_secrets;
 
+#[allow(unused_variables, dead_code)]
 pub(crate) struct RatchetTreeBundle {
     /// The index of the node that represents owner of this `RatchetTreeBundle`.
     node_index: NodeIndex,
@@ -31,6 +32,7 @@ pub(crate) struct RatchetTreeBundle {
     path_keys: PathKeys,
 }
 
+#[allow(unused_variables, dead_code)]
 impl RatchetTreeBundle {
     /// Create a new `RatchetTreeBundle` from a `KeyPackageBundle`. This
     /// function should only be used when creating a new group.
