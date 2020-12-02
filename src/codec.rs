@@ -147,6 +147,33 @@ impl Codec for u64 {
     }
 }
 
+impl Codec for String {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        let string_bytes = self.as_bytes();
+        (string_bytes.len() as u16).encode(buffer)?;
+        buffer.extend_from_slice(&string_bytes);
+        Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let string_length = u16::decode(cursor)?;
+        match std::str::from_utf8(cursor.consume(string_length.into())?) {
+            Ok(s) => Ok(s.to_string()),
+            Err(_) => Err(CodecError::DecodingError),
+        }
+    }
+}
+
+impl<T> Codec for Vec<T> where T: Codec {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        encode_vec(VecSize::VecU32, buffer, self)
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        decode_vec(VecSize::VecU32, cursor)
+    }
+}
+
 impl<T: Codec> Codec for Option<T> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
