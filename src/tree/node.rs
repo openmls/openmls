@@ -145,9 +145,6 @@ impl ParentNode {
     pub fn public_key(&self) -> &HPKEPublicKey {
         &self.public_key
     }
-    pub fn parent_hash(&self) -> &[u8] {
-        &self.parent_hash
-    }
     pub fn set_parent_hash(&mut self, hash: Vec<u8>) {
         self.parent_hash = hash;
     }

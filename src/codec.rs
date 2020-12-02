@@ -150,7 +150,11 @@ impl Codec for u64 {
 impl Codec for String {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         let string_bytes = self.as_bytes();
-        (string_bytes.len() as u16).encode(buffer)?;
+        let string_bytes_len = match u16::try_from(string_bytes.len()) {
+            Ok(v) => v,
+            Err(_) => return Err(CodecError::EncodingError),
+        };
+        string_bytes_len.encode(buffer)?;
         buffer.extend_from_slice(&string_bytes);
         Ok(())
     }
@@ -169,6 +173,9 @@ where
     T: Codec,
 {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        if self.len() >= (u32::MAX as usize) {
+            return Err(CodecError::EncodingError);
+        }
         encode_vec(VecSize::VecU32, buffer, self)
     }
 
