@@ -211,23 +211,6 @@ impl KeyPackage {
     pub(crate) fn cipher_suite(&self) -> &Ciphersuite {
         self.cipher_suite
     }
-
-    /// Replace the init key in the `KeyPackage` with a random one and return a
-    /// `KeyPackageBundle` with the corresponding secret values
-    pub fn rekey(&self) -> KeyPackageBundle {
-        let ciphersuite = self.cipher_suite();
-        // Generate a new leaf secret and derive the key pair
-        let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
-        let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(ciphersuite, &leaf_secret);
-        let (private_key, public_key) = ciphersuite
-            .derive_hpke_keypair(&leaf_node_secret)
-            .into_keys();
-
-        // Repackage everything as a KeyPackageBundle
-        let mut new_key_package = self.clone();
-        new_key_package.set_hpke_init_key(public_key);
-        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)
-    }
 }
 
 #[derive(Debug)]
@@ -252,6 +235,23 @@ impl KeyPackageBundle {
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
         Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
+    }
+
+    /// Replace the init key in the `KeyPackage` with a random one and return a
+    /// `KeyPackageBundle` with the corresponding secret values
+    pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
+        // Generate a new leaf secret and derive the key pair
+        let ciphersuite = key_package.cipher_suite();
+        let leaf_secret = Secret::random(ciphersuite.hash_length());
+        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let (private_key, public_key) = ciphersuite
+            .derive_hpke_keypair(&leaf_node_secret)
+            .into_keys();
+
+        // Repackage everything as a KeyPackageBundle
+        let mut new_key_package = key_package.clone();
+        new_key_package.set_hpke_init_key(public_key);
+        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,

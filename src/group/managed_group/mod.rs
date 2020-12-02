@@ -523,7 +523,7 @@ impl<'a> ManagedGroup<'a> {
             Some(kpb) => kpb,
             None => {
                 let existing_key_package = tree.own_key_package();
-                existing_key_package.rekey()
+                KeyPackageBundle::from_rekeyed_key_package(existing_key_package)
             }
         };
         drop(tree);
@@ -579,7 +579,7 @@ impl<'a> ManagedGroup<'a> {
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
-            None => existing_key_package.rekey(),
+            None => KeyPackageBundle::from_rekeyed_key_package(existing_key_package),
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(

@@ -391,7 +391,8 @@ impl RatchetTree {
         let own_index = self.own_node_index();
 
         // Replace the init key in the current KeyPackage
-        let mut key_package_bundle = self.own_key_package().rekey();
+        let mut key_package_bundle =
+            KeyPackageBundle::from_rekeyed_key_package(self.own_key_package());
 
         // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
