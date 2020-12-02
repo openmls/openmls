@@ -164,7 +164,10 @@ impl Codec for String {
     }
 }
 
-impl<T> Codec for Vec<T> where T: Codec {
+impl<T> Codec for Vec<T>
+where
+    T: Codec,
+{
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU32, buffer, self)
     }
