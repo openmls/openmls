@@ -786,6 +786,21 @@
 <span id="783">783</span>
 <span id="784">784</span>
 <span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -807,8 +822,8 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MLSPlaintext</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
+    <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
+    <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sender</span>: <span class="ident">Sender</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">authenticated_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
@@ -863,10 +878,18 @@
             <span class="ident">signature</span>,
         })
     }
+
     <span class="doccomment">/// Returns a reference to the `content` field</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextContentType</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>
     }
+
+    <span class="doccomment">/// Get the sender leaf index of this message.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LeafIndex</span> {
+        <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">to_leaf_index</span>()
+    }
+
+    <span class="doccomment">/// Sign this `MLSPlaintext`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
@@ -888,6 +911,21 @@
             <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Application</span>(<span class="ident">message</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">message</span>),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">MLSPlaintextError</span>::<span class="ident">NotAnApplicationMessage</span>),
         }
+    }
+
+    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">content_type</span>.<span class="ident">is_handshake_message</span>()
+    }
+
+    <span class="doccomment">/// Get the group ID.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_id</span>
+    }
+
+    <span class="doccomment">/// Get the group ID.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupEpoch</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch</span>
     }
 }
 
@@ -934,25 +972,6 @@
 }
 
 <span class="kw">impl</span> <span class="ident">MLSCiphertext</span> {
-    <span class="comment">// pub fn from_bytes(bytes: &amp;[u8]) -&gt; Result&lt;Self, CodecError&gt; {</span>
-    <span class="comment">//     let mut cursor = Cursor::new(bytes);</span>
-    <span class="comment">//     let group_id = GroupId::decode(&amp;mut cursor)?;</span>
-    <span class="comment">//     let epoch = GroupEpoch::decode(&amp;mut cursor)?;</span>
-    <span class="comment">//     let content_type = ContentType::decode(&amp;mut cursor)?;</span>
-    <span class="comment">//     let authenticated_data = decode_vec(VecSize::VecU32, &amp;mut cursor)?;</span>
-    <span class="comment">//     let sender_data_nonce = decode_vec(VecSize::VecU8, &amp;mut cursor)?;</span>
-    <span class="comment">//     let encrypted_sender_data = decode_vec(VecSize::VecU8, &amp;mut cursor)?;</span>
-    <span class="comment">//     let ciphertext = decode_vec(VecSize::VecU32, &amp;mut cursor)?;</span>
-    <span class="comment">//     Ok(MLSCiphertext {</span>
-    <span class="comment">//         group_id,</span>
-    <span class="comment">//         epoch,</span>
-    <span class="comment">//         content_type,</span>
-    <span class="comment">//         authenticated_data,</span>
-    <span class="comment">//         sender_data_nonce,</span>
-    <span class="comment">//         encrypted_sender_data,</span>
-    <span class="comment">//         ciphertext,</span>
-    <span class="comment">//     })</span>
-    <span class="comment">// }</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()
     }
@@ -1108,6 +1127,11 @@
         <span class="prelude-val">Ok</span>(<span class="ident">mls_plaintext</span>)
     }
 
+    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">content_type</span>.<span class="ident">is_handshake_message</span>()
+    }
+
     <span class="kw">fn</span> <span class="ident">encode_padded_ciphertext_content_detached</span>(
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
@@ -1195,6 +1219,12 @@
     }
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">ContentType</span>::<span class="ident">from</span>(<span class="ident">u8</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>))
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">ContentType</span> {
+    <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ContentType</span>::<span class="ident">Proposal</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ContentType</span>::<span class="ident">Commit</span>
     }
 }
 

@@ -227,6 +227,9 @@
 <span id="224">224</span>
 <span id="225">225</span>
 <span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">error</span>};
 
@@ -305,11 +308,14 @@
             <span class="prelude-val">None</span>
         };
         <span class="comment">// Set nodes either from the extension or from the `nodes_option`.</span>
-        <span class="kw">let</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ratchet_tree_extension</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">tree</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">tree</span>.<span class="ident">into_vector</span>(),
+        <span class="comment">// If we got a ratchet tree extension in the welcome, we enable it for</span>
+        <span class="comment">// this group. Note that this is not strictly necessary. But there&#39;s</span>
+        <span class="comment">// currently no other mechanism to enable the extension.</span>
+        <span class="kw">let</span> (<span class="ident">nodes</span>, <span class="ident">enable_ratchet_tree_extension</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">ratchet_tree_extension</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">tree</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">tree</span>.<span class="ident">into_vector</span>(), <span class="bool-val">true</span>),
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">nodes</span>) <span class="op">=</span> <span class="ident">nodes_option</span> {
-                    <span class="ident">nodes</span>
+                    (<span class="ident">nodes</span>, <span class="bool-val">false</span>)
                 } <span class="kw">else</span> {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">MissingRatchetTree</span>);
                 }
@@ -403,7 +409,7 @@
                 <span class="ident">secret_tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">secret_tree</span>),
                 <span class="ident">tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">tree</span>),
                 <span class="ident">interim_transcript_hash</span>,
-                <span class="ident">add_ratchet_tree_extension</span>: <span class="bool-val">false</span>,
+                <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">enable_ratchet_tree_extension</span>,
             })
         }
     }
