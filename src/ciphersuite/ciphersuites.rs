@@ -1,5 +1,5 @@
 use super::*;
-use crate::{codec::CodecError};
+use crate::codec::CodecError;
 
 pub(crate) use std::convert::TryFrom;
 
