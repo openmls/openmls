@@ -37,7 +37,9 @@ impl From<LeafIndex> for NodeIndex {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Hash, Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, Ord, PartialOrd, Hash, Eq, PartialEq, Copy, Clone, Serialize, Deserialize,
+)]
 pub struct LeafIndex(u32);
 
 impl LeafIndex {

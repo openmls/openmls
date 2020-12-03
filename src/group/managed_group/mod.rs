@@ -382,7 +382,7 @@ impl<'a> ManagedGroup<'a> {
                         app_message_received(
                             &self,
                             &aad_option.unwrap(),
-                            &indexed_members[&plaintext.sender.to_leaf_index()],
+                            &indexed_members[&plaintext.sender()],
                             app_message,
                         );
                     }
@@ -648,7 +648,7 @@ impl<'a> ManagedGroup<'a> {
         framed_proposal: &MLSPlaintext,
         indexed_members: HashMap<LeafIndex, Credential>,
     ) -> bool {
-        let sender = &indexed_members[&framed_proposal.sender.to_leaf_index()];
+        let sender = &indexed_members[&framed_proposal.sender()];
         match framed_proposal.content {
             MLSPlaintextContentType::Proposal(ref proposal) => match proposal {
                 // Validate add proposals
@@ -687,7 +687,7 @@ impl<'a> ManagedGroup<'a> {
     /// Send out the corresponding events for the pending proposal list.
     fn send_events(&self, indexed_members: HashMap<LeafIndex, Credential>) {
         for framed_proposal in &self.pending_proposals {
-            let sender = &indexed_members[&framed_proposal.sender.to_leaf_index()];
+            let sender = &indexed_members[&framed_proposal.sender()];
             match framed_proposal.content {
                 MLSPlaintextContentType::Proposal(ref proposal) => match proposal {
                     // Add proposals

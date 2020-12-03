@@ -28,8 +28,8 @@ pub struct Node {
     pub node_type: NodeType,
     // The node only holds public values.
     // The private HPKE keys are stored in the `PrivateTree`.
-    pub key_package: Option<KeyPackage>,
-    pub node: Option<ParentNode>,
+    pub(crate) key_package: Option<KeyPackage>,
+    pub(crate) node: Option<ParentNode>,
 }
 
 impl Node {
@@ -119,7 +119,7 @@ impl Node {
     }
 
     /// Get a reference to the key package in this node.
-    pub(crate) fn key_package(&self) -> Option<&KeyPackage> {
+    pub fn key_package(&self) -> Option<&KeyPackage> {
         self.key_package.as_ref()
     }
 
@@ -146,9 +146,6 @@ impl ParentNode {
     }
     pub fn public_key(&self) -> &HPKEPublicKey {
         &self.public_key
-    }
-    pub fn parent_hash(&self) -> &[u8] {
-        &self.parent_hash
     }
     pub fn set_parent_hash(&mut self, hash: Vec<u8>) {
         self.parent_hash = hash;

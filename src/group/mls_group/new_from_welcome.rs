@@ -75,11 +75,14 @@ impl MlsGroup {
             None
         };
         // Set nodes either from the extension or from the `nodes_option`.
-        let nodes = match ratchet_tree_extension {
-            Some(tree) => tree.into_vector(),
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there's
+        // currently no other mechanism to enable the extension.
+        let (nodes, enable_ratchet_tree_extension) = match ratchet_tree_extension {
+            Some(tree) => (tree.into_vector(), true),
             None => {
                 if let Some(nodes) = nodes_option {
-                    nodes
+                    (nodes, false)
                 } else {
                     return Err(WelcomeError::MissingRatchetTree);
                 }
@@ -173,7 +176,7 @@ impl MlsGroup {
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
-                add_ratchet_tree_extension: false,
+                add_ratchet_tree_extension: enable_ratchet_tree_extension,
             })
         }
     }
