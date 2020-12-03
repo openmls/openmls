@@ -191,7 +191,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: &[MLSPlaintext],
+        proposals: &[&MLSPlaintext],
         force_self_update: bool,
     ) -> CreateCommitResult {
         self.create_commit_internal(aad, credential_bundle, proposals, force_self_update)

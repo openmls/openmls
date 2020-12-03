@@ -246,9 +246,9 @@ fn test_commit_encoding() {
         let remove =
             group_state.create_remove_proposal(&[], alice_credential_bundle, LeafIndex::from(2u32));
 
-        let proposals = vec![add, remove, update];
+        let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], alice_credential_bundle, &proposals, true)
+            .create_commit(&[], alice_credential_bundle, proposals, true)
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
         let commit_decoded = match MLSPlaintext::decode(&mut Cursor::new(&commit_encoded)) {
@@ -285,9 +285,9 @@ fn test_welcome_message_encoding() {
         let add =
             group_state.create_add_proposal(&[], credential_bundle, charlie_key_package.clone());
 
-        let proposals = vec![add];
+        let proposals = &[&add];
         let (_commit, welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], credential_bundle, &proposals, true)
+            .create_commit(&[], credential_bundle, proposals, true)
             .unwrap();
 
         // Welcome messages

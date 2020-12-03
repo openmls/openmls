@@ -261,14 +261,15 @@ impl KeyPackageBundle {
     /// Replace the init key in the `KeyPackage` with a random one and return a
     /// `KeyPackageBundle` with the corresponding secret values
     pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
+        // Generate a new leaf secret and derive the key pair
         let ciphersuite = key_package.ciphersuite();
-        let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
+        let leaf_secret = Secret::random(ciphersuite.hash_length());
         let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let (private_key, public_key) = ciphersuite
             .derive_hpke_keypair(&leaf_node_secret)
             .into_keys();
 
-        // Generate new keypair and replace it in current KeyPackage
+        // Repackage everything as a KeyPackageBundle
         let mut new_key_package = key_package.clone();
         new_key_package.set_hpke_init_key(public_key);
         KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)

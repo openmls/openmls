@@ -70,7 +70,7 @@ fn create_commit_optional_path() {
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
-                &epoch_proposals,
+                &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
                 true, /* force self-update */
             ) {
             Ok(c) => c,
@@ -97,7 +97,7 @@ fn create_commit_optional_path() {
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
-                &epoch_proposals,
+                &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
                 false, /* don't force selfupdate */
             ) {
             Ok(c) => c,
@@ -143,7 +143,7 @@ fn create_commit_optional_path() {
         let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
-            &proposals,
+            &(proposals.iter().collect::<Vec<&MLSPlaintext>>()),
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -209,7 +209,7 @@ fn basic_group_setup() {
         let _commit = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
-            &[bob_add_proposal],
+            &[&bob_add_proposal],
             true,
         ) {
             Ok(c) => c,
@@ -285,12 +285,14 @@ fn group_operations() {
             bob_key_package.clone(),
         );
         let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
-            .create_commit(group_aad, &alice_credential_bundle, &epoch_proposals, false)
-        {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
+            .create_commit(
+                group_aad,
+                &alice_credential_bundle,
+                &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
+                false,
+            )
+            .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
             MLSPlaintextContentType::Commit((commit, _)) => commit,
             _ => panic!("Wrong content type"),
@@ -348,7 +350,7 @@ fn group_operations() {
         let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             &[],
             &bob_credential_bundle,
-            &[update_proposal_bob.clone()],
+            &[&update_proposal_bob],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -397,7 +399,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
-            &[update_proposal_alice.clone()],
+            &[&update_proposal_alice],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -444,7 +446,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
-            &[update_proposal_bob.clone()],
+            &[&update_proposal_bob],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -495,7 +497,7 @@ fn group_operations() {
             .create_commit(
                 &[],
                 &bob_credential_bundle,
-                &[add_charlie_proposal_bob.clone()],
+                &[&add_charlie_proposal_bob],
                 false, /* force self update */
             ) {
             Ok(c) => c,
@@ -583,7 +585,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,
-            &[update_proposal_charlie.clone()],
+            &[&update_proposal_charlie],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -634,7 +636,7 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,
-            &[remove_bob_proposal_charlie.clone()],
+            &[&remove_bob_proposal_charlie],
             false, /* force self update */
         ) {
             Ok(c) => c,
