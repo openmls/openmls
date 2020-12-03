@@ -18,8 +18,8 @@ mod test_framing;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct MLSPlaintext {
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
+    group_id: GroupId,
+    epoch: GroupEpoch,
     pub(crate) sender: Sender,
     pub(crate) authenticated_data: Vec<u8>,
     pub(crate) content_type: ContentType,
@@ -112,6 +112,16 @@ impl MLSPlaintext {
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
         self.content_type.is_handshake_message()
+    }
+
+    /// Get the group ID.
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_id
+    }
+
+    /// Get the group ID.
+    pub fn epoch(&self) -> &GroupEpoch {
+        &self.epoch
     }
 }
 
