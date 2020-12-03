@@ -23,7 +23,6 @@ pub(crate) use errors::{
 pub use managed_group::*;
 pub use mls_group::*;
 
-
 #[derive(Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct GroupId {
     pub value: Vec<u8>,
@@ -76,7 +75,7 @@ impl Codec for GroupEpoch {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GroupContext {
     pub group_id: GroupId,
     pub epoch: GroupEpoch,

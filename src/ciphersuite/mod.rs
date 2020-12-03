@@ -94,7 +94,7 @@ impl KdfLabel {
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Secret {
     value: Vec<u8>,
 }
@@ -211,7 +211,7 @@ pub struct Signature {
     value: Vec<u8>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SignaturePrivateKey {
     ciphersuite: &'static Ciphersuite,
     value: Vec<u8>,

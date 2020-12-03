@@ -47,6 +47,7 @@ use ser::*;
 ///
 /// Changes to the group state are dispatched as events through callback
 /// functions (see [`ManagedGroupCallbacks`]).
+#[derive(Debug, PartialEq)]
 pub struct ManagedGroup<'a> {
     // CredentialBundle used to sign messages
     credential_bundle: &'a CredentialBundle,

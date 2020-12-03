@@ -108,6 +108,18 @@ impl<'a> ManagedGroupCallbacks {
     }
 }
 
+impl std::fmt::Debug for ManagedGroupCallbacks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ManagedGroupCallbacks")
+    }
+}
+
+impl PartialEq for ManagedGroupCallbacks {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
 /// This enum lists the 4 different variants of a removal, depending on who the
 /// remover and who the leaver is.
 pub enum Removal<'a> {

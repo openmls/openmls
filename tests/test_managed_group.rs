@@ -577,8 +577,6 @@ fn test_managed_group_persistence() {
     )
     .unwrap();
 
-    let exporter_test_vector = alice_group.export_secret("persistence", 32);
-
     let path = Path::new("target/test_managed_group_serialization.json");
     let out_file = &mut File::create(&path).expect("Could not create file");
     alice_group
@@ -594,6 +592,5 @@ fn test_managed_group_persistence() {
     )
     .expect("Could not deserialize managed group");
 
-    let exporter = alice_group_deserialized.export_secret("persistence", 32);
-    assert_eq!(exporter, exporter_test_vector);
+    assert_eq!(alice_group, alice_group_deserialized);
 }

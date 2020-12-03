@@ -9,7 +9,7 @@ use crate::utils::zero;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct CommitSecret {
     secret: Secret,
 }
@@ -38,7 +38,7 @@ impl CommitSecret {
 
 pub(crate) type PathSecrets = Vec<Secret>;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
     node_index: NodeIndex,

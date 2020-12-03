@@ -6,13 +6,13 @@ use serde::{Deserialize, Serialize};
 /// Application are always encrypted regardless. `Plaintext`: Handshake messages
 /// are returned as MLSPlaintext messages `Ciphertext`: Handshake messages are
 /// returned as MLSCiphertext messages
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum HandshakeMessageFormat {
     Plaintext,
     Ciphertext,
 }
 /// Specifies the configuration parameters for a managed group
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ManagedGroupConfig {
     /// Defines whether handshake messages should be encrypted
     pub(crate) handshake_message_format: HandshakeMessageFormat,
@@ -41,7 +41,7 @@ impl ManagedGroupConfig {
 }
 
 /// Specifies in which intervals the own leaf node should be updated
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UpdatePolicy {
     /// Maximum time before an update in seconds
     pub(crate) maximum_time: u32,

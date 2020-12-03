@@ -30,6 +30,7 @@ use super::errors::ExporterError;
 pub type CreateCommitResult =
     Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
 
+#[derive(Debug, PartialEq)]
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
@@ -280,11 +281,8 @@ impl MlsGroup {
     }
 
     /// Loads the state from persisted state
-    pub fn load<R: Read>(
-        reader: R,
-        callbacks: ManagedGroupCallbacks,
-    ) -> Result<MlsGroup, Box<dyn std::error::Error>> {
-        serde_json::from_reader(reader)?
+    pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
+        serde_json::from_reader(reader).map_err(|e| e.into())
     }
 
     /// Persists the state
