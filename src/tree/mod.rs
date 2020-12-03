@@ -168,7 +168,7 @@ impl RatchetTree {
             .collect()
     }
 
-    pub(crate) fn leaf_count(&self) -> LeafIndex {
+    pub fn leaf_count(&self) -> LeafIndex {
         self.tree_size().into()
     }
 

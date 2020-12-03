@@ -36,6 +36,7 @@ fn codec() {
         let enc = orig.encode_detached().unwrap();
         let copy = MLSPlaintext::from_bytes(&enc).unwrap();
         assert_eq!(orig, copy);
+        assert!(!orig.is_handshake_message());
     }
 }
 
@@ -84,5 +85,6 @@ fn context_presence() {
         orig.signature = signature_input.sign(&credential_bundle);
         assert!(!orig.verify(Some(serialized_context), credential_bundle.credential()));
         assert!(orig.verify(None, credential_bundle.credential()));
+        assert!(!orig.is_handshake_message());
     }
 }

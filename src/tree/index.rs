@@ -35,7 +35,7 @@ impl From<LeafIndex> for NodeIndex {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Copy, Clone)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Copy, Clone, Default)]
 pub struct LeafIndex(u32);
 
 impl LeafIndex {
