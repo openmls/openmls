@@ -16,16 +16,14 @@ use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 use crate::{count, implement_persistence};
 
-//pub use api::*;
-
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-
 use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
+use std::io::{Error, Read, Write};
 
 use super::errors::ExporterError;
 
@@ -279,6 +277,20 @@ impl MlsGroup {
             &self.context(),
             key_length,
         ))
+    }
+
+    /// Loads the state from persisted state
+    pub fn load<R: Read>(
+        reader: R,
+        callbacks: ManagedGroupCallbacks,
+    ) -> Result<MlsGroup, Box<dyn std::error::Error>> {
+        serde_json::from_reader(reader)?
+    }
+
+    /// Persists the state
+    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+        let serialized_mls_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_mls_group.into_bytes())
     }
 }
 

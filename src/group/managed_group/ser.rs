@@ -5,7 +5,7 @@ use serde::{
     Deserialize, Serialize,
 };
 #[derive(Serialize, Deserialize)]
-pub struct SerializedGroup {
+pub struct SerializedManagedGroup {
     managed_group_config: ManagedGroupConfig,
     group: MlsGroup,
     pending_proposals: Vec<MLSPlaintext>,
@@ -14,7 +14,7 @@ pub struct SerializedGroup {
     active: bool,
 }
 
-impl<'a> SerializedGroup {
+impl<'a> SerializedManagedGroup {
     pub(crate) fn into_managed_group(
         self,
         credential_bundle: &'a CredentialBundle,
@@ -39,7 +39,7 @@ impl<'a> Serialize for ManagedGroup<'a> {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("SerializedGroup", 6)?;
+        let mut state = serializer.serialize_struct("SerializedManagedGroup", 6)?;
         state.serialize_field("managed_group_config", &self.managed_group_config)?;
         state.serialize_field("group", &self.group)?;
         state.serialize_field("pending_proposals", &self.pending_proposals)?;

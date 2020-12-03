@@ -599,14 +599,14 @@ impl<'a> ManagedGroup<'a> {
         credential_bundle: &'a CredentialBundle,
         callbacks: ManagedGroupCallbacks,
     ) -> Result<ManagedGroup<'a>, Error> {
-        let serialized_group: SerializedGroup = serde_json::from_reader(reader)?;
-        Ok(serialized_group.into_managed_group(credential_bundle, callbacks))
+        let serialized_managed_group: SerializedManagedGroup = serde_json::from_reader(reader)?;
+        Ok(serialized_managed_group.into_managed_group(credential_bundle, callbacks))
     }
 
     /// Persists the state
     pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
-        let serialized_group = serde_json::to_string_pretty(self)?;
-        writer.write_all(&serialized_group.into_bytes())
+        let serialized_managed_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_managed_group.into_bytes())
     }
 
     // === Extensions ===
