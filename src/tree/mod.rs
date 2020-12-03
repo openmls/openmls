@@ -176,40 +176,30 @@ impl RatchetTree {
     }
 
     fn resolve(&self, index: NodeIndex) -> Result<Vec<NodeIndex>, TreeError> {
-        let size = self.leaf_count();
-
-        let node = self.public_tree.node(&index)?;
-
-        if node.node_type == NodeType::Leaf {
-            if node.is_blank() {
-                return Ok(vec![]);
+        let predicate = |i, node: &Node| {
+            if node.node_type == NodeType::Leaf {
+                if node.is_blank() {
+                    return vec![];
+                } else {
+                    return vec![i];
+                }
+            } else if !node.is_blank() {
+                let mut unmerged_leaves: Vec<NodeIndex> = vec![i];
+                let node_contents = node.node.as_ref();
+                unmerged_leaves.extend(
+                    node_contents
+                        .unwrap()
+                        .unmerged_leaves()
+                        .iter()
+                        .map(|n| NodeIndex::from(*n)),
+                );
+                return unmerged_leaves;
             } else {
-                return Ok(vec![index]);
+                return vec![];
             }
-        }
+        };
 
-        if !node.is_blank() {
-            let mut unmerged_leaves = vec![index];
-            let node_contents = node.node.as_ref();
-            unmerged_leaves.extend(
-                node_contents
-                    .unwrap()
-                    .unmerged_leaves()
-                    .iter()
-                    .map(|n| NodeIndex::from(*n)),
-            );
-            return Ok(unmerged_leaves);
-        }
-
-        let mut left = self.resolve(
-            treemath::left(index).expect("resolve: TreeMath error when computing left child."),
-        )?;
-        let right = self.resolve(
-            treemath::right(index, size)
-                .expect("resolve: TreeMath error when computing right child."),
-        )?;
-        left.extend(right);
-        Ok(left)
+        self.public_tree.resolve(&index, &predicate)
     }
 
     /// Get the index of the own node.
