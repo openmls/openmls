@@ -215,7 +215,7 @@ impl ProposalQueue {
     /// own node were included
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
-        proposals: &[MLSPlaintext],
+        proposals: &[&MLSPlaintext],
         own_index: LeafIndex,
         tree_size: LeafIndex,
     ) -> (Self, bool) {
