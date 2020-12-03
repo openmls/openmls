@@ -165,7 +165,7 @@ pub(crate) fn extensions_vec_from_cursor(
 /// # Extension
 ///
 /// This trait defines functions to interact with an extension.
-pub trait Extension: Debug + ExtensionHelper {
+pub trait Extension: Debug + ExtensionHelper + Send {
     /// Build a new extension from a byte slice.
     ///
     /// Note that all implementations of this trait are not public such that
