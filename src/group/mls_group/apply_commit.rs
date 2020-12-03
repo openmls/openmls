@@ -137,7 +137,7 @@ impl MlsGroup {
         // Verify KeyPackage extensions
         if let Some(path) = &commit.path {
             if !is_own_commit {
-                let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
+                let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender))?;
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)

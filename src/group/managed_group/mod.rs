@@ -286,7 +286,9 @@ impl<'a> ManagedGroup<'a> {
         let tree = self.group.tree();
         let leaf_count = self.group.tree().leaf_count();
         for index in 0..leaf_count.as_usize() {
-            let leaf = &tree.public_tree[LeafIndex::from(index)];
+            // We can unwrap here, because the index is scoped by the leaf
+            // count.
+            let leaf = &tree.public_tree.leaf(&LeafIndex::from(index)).unwrap();
             if let Some(leaf_node) = leaf.key_package() {
                 members.push(leaf_node.credential().clone());
             }
@@ -745,7 +747,9 @@ impl<'a> ManagedGroup<'a> {
         let leaf_count = self.group.tree().leaf_count();
         for index in 0..leaf_count.as_usize() {
             let leaf_index = LeafIndex::from(index);
-            let leaf = &tree.public_tree[leaf_index];
+            // We can unwrap here, because `leaf_index` is scoped by
+            // `leaf_count`.
+            let leaf = &tree.public_tree.leaf(&leaf_index).unwrap();
             if let Some(leaf_node) = leaf.key_package() {
                 indexed_members.insert(leaf_index, leaf_node.credential().clone());
             }

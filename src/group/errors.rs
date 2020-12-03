@@ -46,6 +46,7 @@ pub enum ApplyCommitError {
     MissingOwnKeyPackage = 209,
     MissingProposal = 210,
     OwnKeyNotFound = 211,
+    SenderOutsideOfTree = 212,
 }
 
 #[derive(PartialEq, Debug)]
@@ -90,6 +91,12 @@ impl From<ConfigError> for ApplyCommitError {
 impl From<ExtensionError> for ApplyCommitError {
     fn from(_e: ExtensionError) -> ApplyCommitError {
         ApplyCommitError::NoParentHashExtension
+    }
+}
+
+impl From<TreeError> for ApplyCommitError {
+    fn from(_e: TreeError) -> ApplyCommitError {
+        ApplyCommitError::SenderOutsideOfTree
     }
 }
 

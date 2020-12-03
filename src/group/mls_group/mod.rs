@@ -228,7 +228,8 @@ impl MlsGroup {
         let tree = self.tree.borrow();
         let mut roster = Vec::new();
         for i in 0..tree.leaf_count().as_usize() {
-            let node = &tree.public_tree[LeafIndex::from(i)];
+            // We can unwrap here, because `i` is scoped by `leaf_count()`.
+            let node = &tree.public_tree.leaf(&LeafIndex::from(i)).unwrap();
             let credential = if let Some(kp) = &node.key_package {
                 kp.credential()
             } else {

@@ -45,7 +45,7 @@ macro_rules! implement_enum_display {
 pub fn _print_tree(tree: &RatchetTree, message: &str) {
     let factor = 3;
     println!("{}", message);
-    for (i, node) in tree.public_tree.iter().enumerate() {
+    for (i, node) in tree.public_tree.nodes.iter().enumerate() {
         let level = treemath::level(NodeIndex::from(i));
         print!("{:04}", i);
         if !node.is_blank() {

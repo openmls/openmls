@@ -94,7 +94,7 @@ impl MlsGroup {
         }
 
         // Verify GroupInfo signature
-        let signer_node = tree.public_tree[group_info.signer_index()].clone();
+        let signer_node = tree.public_tree.leaf(&group_info.signer_index())?.clone();
         let signer_key_package = signer_node.key_package.unwrap();
         let payload = group_info.unsigned_payload().unwrap();
         if !signer_key_package
