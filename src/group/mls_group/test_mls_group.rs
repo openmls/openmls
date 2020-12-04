@@ -24,7 +24,7 @@ fn test_mls_group_persistence() {
     )
     .unwrap();
 
-    let path = Path::new("target/test_managed_group_serialization.json");
+    let path = Path::new("target/test_mls_group_serialization.json");
     let out_file = &mut File::create(&path).expect("Could not create file");
     alice_group
         .save(out_file)
