@@ -12,7 +12,6 @@ impl Serialize for Ciphersuite {
     where
         S: Serializer,
     {
-        //serializer.serialize_enum(self.name)
         let mut state = serializer.serialize_struct("Ciphersuite", 1)?;
         state.serialize_field("name", &self.name)?;
         state.end()
@@ -103,6 +102,6 @@ impl<'de> Deserialize<'de> for Ciphersuite {
         }
 
         const FIELDS: &[&str] = &["name"];
-        deserializer.deserialize_struct("Duration", FIELDS, CiphersuiteVisitor)
+        deserializer.deserialize_struct("Ciphersuite", FIELDS, CiphersuiteVisitor)
     }
 }

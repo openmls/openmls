@@ -87,7 +87,6 @@ impl Codec for ExtensionType {
 ///     opaque extension_data<0..2^16-1>;
 /// } Extension;
 /// ```
-///
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ExtensionStruct {
     extension_type: ExtensionType,
@@ -286,25 +285,3 @@ impl Ord for dyn Extension {
         self.extension_type().cmp(&other.extension_type())
     }
 }
-// // For persistence we want to implement serialize and deserialize for extensions.
-// // We can't just derive it because of the Sized restriction. Let's do it manually.
-// // This actually serializes the ExtensionStruct containing the extensions.
-// impl Serialize for dyn Extension {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         let extension_struct = self.to_extension_struct();
-//         extension_struct.serialize(serializer)
-//     }
-// }
-
-// impl<'de> Deserialize<'de> for dyn Extension {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//         Self: Sized,
-//     {
-//         deserializer.deserialize_i32(I32Visitor)
-//     }
-// }
