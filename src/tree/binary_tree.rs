@@ -47,6 +47,11 @@ impl<T> BinaryTree<T> {
         NodeIndex::from(self.nodes.len())
     }
 
+    /// Get the number of leaves in the tree.
+    pub(crate) fn leaf_count(&self) -> LeafIndex {
+        LeafIndex::from(self.size())
+    }
+
     /// Get a reference to a node of the tree by index.
     pub(crate) fn node(&self, node_index: &NodeIndex) -> Result<&T, TreeError> {
         self.check_if_within_bounds(node_index)?;
@@ -64,15 +69,10 @@ impl<T> BinaryTree<T> {
     }
 
     /// Return the nodes in the CoPath of a given node.
-    pub(crate) fn copath(&self, node_index: &NodeIndex) -> Result<Vec<&T>, TreeError> {
+    pub(crate) fn copath(&self, node_index: &NodeIndex) -> Result<Vec<NodeIndex>, TreeError> {
         let leaf_count = LeafIndex::from(self.size());
-        let copath = treemath::copath(*node_index, leaf_count)
-            .expect("Treemath error when retrieving copath nodes.");
-        let mut copath_nodes = Vec::new();
-        for i in copath {
-            copath_nodes.push(self.node(&i)?);
-        }
-        Ok(copath_nodes)
+        let copath = treemath::copath(*node_index, leaf_count)?;
+        Ok(copath)
     }
 
     /// Given a node index, check if the given predicate evaluates to a
@@ -115,6 +115,7 @@ impl<T> BinaryTree<T> {
     where
         F: Fn(NodeIndex, &T) -> Vec<NodeIndex>,
     {
+        self.check_if_within_bounds(node_index)?;
         let leaf_count = LeafIndex::from(self.size());
         let copath = treemath::copath(*node_index, leaf_count)
             .expect("Treemath error when retrieving copath nodes.");
@@ -126,5 +127,78 @@ impl<T> BinaryTree<T> {
         Ok(resolution)
     }
 
-    // Probably a few more functions to manipulate the `BinaryTree`.
+    /// Apply the given function `f` to nodes in the direct path of the node
+    /// with index `node_index`.
+    pub(crate) fn direct_path_map<F>(
+        &mut self,
+        node_index: &NodeIndex,
+        f: &F,
+    ) -> Result<(), TreeError>
+    where
+        F: Fn(&mut T) -> (),
+    {
+        self.check_if_within_bounds(node_index)?;
+        // We can unwrap here, because we know the index is within bounds.
+        let direct_path = treemath::direct_path_root(*node_index, self.leaf_count()).unwrap();
+        for i in direct_path {
+            f(self.node_mut(&i)?);
+        }
+        Ok(())
+    }
+
+    /// Given two leaves, apply the function `f` to the direct path of the
+    /// closest common ancestor.
+    pub(crate) fn shared_direct_path_map<F>(
+        &mut self,
+        leaf1: &LeafIndex,
+        leaf2: &LeafIndex,
+        f: &F,
+    ) -> Result<(), TreeError>
+    where
+        F: Fn(&mut T) -> (),
+    {
+        self.check_if_within_bounds(&NodeIndex::from(leaf1))?;
+        self.check_if_within_bounds(&NodeIndex::from(leaf2))?;
+        let common_ancestor_index =
+            treemath::common_ancestor_index(NodeIndex::from(leaf1), NodeIndex::from(leaf2));
+        self.direct_path_map(&common_ancestor_index, f)
+    }
+
+    /// Get given two nodes, get the node in the copath of the first node, such
+    /// that the second node is in the subtree of which that node is the root.
+    pub(crate) fn copath_node(
+        &self,
+        copath_origin: &NodeIndex,
+        copath_target: &NodeIndex,
+    ) -> Result<NodeIndex, TreeError> {
+        let copath = treemath::copath(*copath_origin, self.leaf_count())?;
+
+        let target_direct_path =
+            treemath::direct_path_root(*copath_target, self.leaf_count()).unwrap();
+        let copath_node_index = match target_direct_path.iter().find(|x| copath.contains(x)) {
+            Some(index) => index.clone(),
+            None => copath_target.clone(),
+        };
+        Ok(copath_node_index)
+    }
+
+    /// Get the direct path between a given node index and the root.
+    pub(crate) fn direct_path(&self, node_index: &NodeIndex) -> Result<Vec<NodeIndex>, TreeError> {
+        let direct_path = treemath::direct_path_root(*node_index, self.leaf_count())?;
+        Ok(direct_path)
+    }
+
+    /// Get the parent of a node with the given index.
+    pub(crate) fn parent(&self, node_index: &NodeIndex) -> Result<NodeIndex, TreeError> {
+        Ok(treemath::parent(*node_index, self.leaf_count())?)
+    }
+
+    /// Get the common ancestor of two nodes.
+    pub(crate) fn common_ancestor(
+        &self,
+        node_index1: &NodeIndex,
+        node_index2: &NodeIndex,
+    ) -> NodeIndex {
+        treemath::common_ancestor_index(*node_index1, *node_index2)
+    }
 }

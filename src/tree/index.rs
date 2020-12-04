@@ -33,6 +33,12 @@ impl From<LeafIndex> for NodeIndex {
     }
 }
 
+impl From<&LeafIndex> for NodeIndex {
+    fn from(node_index: &LeafIndex) -> NodeIndex {
+        NodeIndex(node_index.as_u32() * 2)
+    }
+}
+
 impl<T> Index<NodeIndex> for Vec<T> {
     type Output = T;
 
