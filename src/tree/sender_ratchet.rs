@@ -8,7 +8,8 @@ const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
 
 pub type RatchetSecrets = (AeadKey, AeadNonce);
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct SenderRatchet {
     index: LeafIndex,
     generation: u32,

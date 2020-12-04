@@ -94,7 +94,8 @@ impl KdfLabel {
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Secret {
     value: Vec<u8>,
 }
@@ -182,13 +183,15 @@ impl ExporterSecret {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct AeadKey {
     aead_mode: AeadMode,
     value: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct ReuseGuard {
     value: [u8; REUSE_GUARD_BYTES],
 }
@@ -211,7 +214,8 @@ pub struct Signature {
     value: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct SignaturePrivateKey {
     ciphersuite: &'static Ciphersuite,
     value: Vec<u8>,

@@ -59,7 +59,8 @@ pub(crate) mod psk;
 /// The `InitSecret` is used to connect the next epoch to the current one. It's
 /// necessary to be able clone this to create a provisional group state, which
 /// includes the `InitSecret`.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct InitSecret {
     secret: Secret,
 }
@@ -327,7 +328,8 @@ impl EncryptionSecret {
 }
 
 /// A secret that we can derive secrets from, that are used outside of OpenMLS.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct ExporterSecret {
     secret: Secret,
 }
@@ -346,7 +348,8 @@ impl ExporterSecret {
 }
 
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct SenderDataSecret {
     secret: Secret,
 }
@@ -369,7 +372,8 @@ impl SenderDataSecret {
 /// The `EpochSecrets` contain keys (or secrets), which are accessible outside
 /// of the `KeySchedule` and which don't get consumed immediately upon first
 /// use.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct EpochSecrets {
     sender_data_secret: SenderDataSecret,
     pub(crate) exporter_secret: ExporterSecret,

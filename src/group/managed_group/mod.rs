@@ -2,6 +2,8 @@ pub mod callbacks;
 pub mod config;
 pub mod errors;
 mod ser;
+#[cfg(test)]
+mod test_managed_group;
 
 use crate::creds::{Credential, CredentialBundle};
 use crate::framing::*;
@@ -47,7 +49,8 @@ use ser::*;
 ///
 /// Changes to the group state are dispatched as events through callback
 /// functions (see [`ManagedGroupCallbacks`]).
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct ManagedGroup<'a> {
     // CredentialBundle used to sign messages
     credential_bundle: &'a CredentialBundle,

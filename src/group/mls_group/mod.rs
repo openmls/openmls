@@ -3,6 +3,8 @@ use log::{debug, info};
 mod apply_commit;
 mod create_commit;
 mod new_from_welcome;
+#[cfg(test)]
+mod test_mls_group;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
@@ -30,7 +32,8 @@ use super::errors::ExporterError;
 pub type CreateCommitResult =
     Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,

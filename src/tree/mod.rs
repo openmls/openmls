@@ -41,7 +41,8 @@ mod test_treemath;
 #[cfg(test)]
 mod test_util;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 /// The ratchet tree.
 pub struct RatchetTree {
     /// The ciphersuite used in this tree.

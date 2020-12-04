@@ -73,12 +73,14 @@ impl Codec for TreeContext {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct SecretTreeNode {
     pub secret: Secret,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct SecretTree {
     nodes: Vec<Option<SecretTreeNode>>,
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,
