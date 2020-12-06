@@ -127,3 +127,29 @@ fn proposal_queue_functions() {
         }
     }
 }
+
+/// This test encodes and decodes the `ProposalOrRef` struct and makes sure the
+/// decoded values are the same as the original
+#[test]
+fn proposals_codec() {
+    use crate::codec::{Codec, Cursor};
+
+    // Proposal
+
+    let remove_proposal = RemoveProposal { removed: 123 };
+    let proposal = Proposal::Remove(remove_proposal);
+    let proposal_or_ref = ProposalOrRef::Proposal(proposal);
+    let encoded = proposal_or_ref.encode_detached().unwrap();
+    let decoded = ProposalOrRef::decode(&mut Cursor::new(&encoded)).unwrap();
+
+    assert_eq!(proposal_or_ref, decoded);
+
+    // Reference
+
+    let reference = vec![1, 2, 3];
+    let proposal_or_ref = ProposalOrRef::Reference(reference);
+    let encoded = proposal_or_ref.encode_detached().unwrap();
+    let decoded = ProposalOrRef::decode(&mut Cursor::new(&encoded)).unwrap();
+
+    assert_eq!(proposal_or_ref, decoded);
+}

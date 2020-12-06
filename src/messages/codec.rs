@@ -1,6 +1,7 @@
 //! Codec implementations for message structs.
 
 use super::*;
+use crate::key_packages::KeyPackage;
 
 impl Codec for GroupInfo {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -93,5 +94,120 @@ impl Codec for GroupSecrets {
         let joiner_secret = JoinerSecret::decode(cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
         Ok(GroupSecrets::new(joiner_secret, path_secret))
+    }
+}
+
+// === Proposals ===
+
+impl Codec for ProposalType {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        (*self as u8).encode(buffer)?;
+        Ok(())
+    }
+}
+
+impl Codec for ProposalOrRefType {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        (*self as u8).encode(buffer)?;
+        Ok(())
+    }
+}
+
+impl Codec for ProposalOrRef {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.por_type().encode(buffer)?;
+        match self {
+            ProposalOrRef::Proposal(proposal) => {
+                proposal.encode(buffer)?;
+            }
+            ProposalOrRef::Reference(reference) => {
+                encode_vec(VecSize::VecU8, buffer, &reference)?;
+            }
+        }
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let por_type = ProposalOrRefType::from(u8::decode(cursor)?);
+        match por_type {
+            ProposalOrRefType::Proposal => Ok(ProposalOrRef::Proposal(Proposal::decode(cursor)?)),
+            ProposalOrRefType::Reference => Ok(ProposalOrRef::Reference(decode_vec(
+                VecSize::VecU8,
+                cursor,
+            )?)),
+            _ => Err(CodecError::DecodingError),
+        }
+    }
+}
+
+impl Codec for Proposal {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        match self {
+            Proposal::Add(add) => {
+                ProposalType::Add.encode(buffer)?;
+                add.encode(buffer)?;
+            }
+            Proposal::Update(update) => {
+                ProposalType::Update.encode(buffer)?;
+                update.encode(buffer)?;
+            }
+            Proposal::Remove(remove) => {
+                ProposalType::Remove.encode(buffer)?;
+                remove.encode(buffer)?;
+            }
+        }
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let proposal_type = ProposalType::from(u8::decode(cursor)?);
+        match proposal_type {
+            ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
+            ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
+            ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
+            _ => Err(CodecError::DecodingError),
+        }
+    }
+}
+
+impl Codec for ProposalID {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        encode_vec(VecSize::VecU8, buffer, &self.value)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let value = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(ProposalID { value })
+    }
+}
+
+impl Codec for AddProposal {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.key_package.encode(buffer)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let key_package = KeyPackage::decode(cursor)?;
+        Ok(AddProposal { key_package })
+    }
+}
+
+impl Codec for UpdateProposal {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.key_package.encode(buffer)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let key_package = KeyPackage::decode(cursor)?;
+        Ok(UpdateProposal { key_package })
+    }
+}
+
+impl Codec for RemoveProposal {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.removed.encode(buffer)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let removed = u32::decode(cursor)?;
+        Ok(RemoveProposal { removed })
     }
 }

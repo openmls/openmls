@@ -29,10 +29,54 @@ impl From<u8> for ProposalType {
     }
 }
 
-impl Codec for ProposalType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
+/// 11.2 Commit
+///
+/// enum {
+///   reserved(0),
+///   proposal(1)
+///   reference(2),
+///   (255)
+/// } ProposalOrRefType;
+///
+/// struct {
+///   ProposalOrRefType type;
+///   select (ProposalOrRef.type) {
+///     case proposal:  Proposal proposal;
+///     case reference: opaque hash<0..255>;
+///   }
+/// } ProposalOrRef;
+
+#[derive(PartialEq, Clone, Copy, Debug)]
+#[repr(u8)]
+pub enum ProposalOrRefType {
+    Reserved = 0,
+    Proposal = 1,
+    Reference = 2,
+    Default = 255,
+}
+
+impl From<u8> for ProposalOrRefType {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => ProposalOrRefType::Reserved,
+            1 => ProposalOrRefType::Proposal,
+            2 => ProposalOrRefType::Reference,
+            _ => ProposalOrRefType::Default,
+        }
+    }
+}
+#[derive(Debug, PartialEq)]
+pub enum ProposalOrRef {
+    Proposal(Proposal),
+    Reference(Vec<u8>),
+}
+
+impl ProposalOrRef {
+    pub(crate) fn por_type(&self) -> ProposalOrRefType {
+        match self {
+            ProposalOrRef::Proposal(ref _p) => ProposalOrRefType::Proposal,
+            ProposalOrRef::Reference(ref _r) => ProposalOrRefType::Reference,
+        }
     }
 }
 
@@ -75,38 +119,9 @@ impl Proposal {
     }
 }
 
-impl Codec for Proposal {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match self {
-            Proposal::Add(add) => {
-                ProposalType::Add.encode(buffer)?;
-                add.encode(buffer)?;
-            }
-            Proposal::Update(update) => {
-                ProposalType::Update.encode(buffer)?;
-                update.encode(buffer)?;
-            }
-            Proposal::Remove(remove) => {
-                ProposalType::Remove.encode(buffer)?;
-                remove.encode(buffer)?;
-            }
-        }
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let proposal_type = ProposalType::from(u8::decode(cursor)?);
-        match proposal_type {
-            ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
-            ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
-            ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
-            _ => Err(CodecError::DecodingError),
-        }
-    }
-}
-
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
 pub struct ProposalID {
-    value: Vec<u8>,
+    pub(crate) value: Vec<u8>,
 }
 
 impl ProposalID {
@@ -114,17 +129,6 @@ impl ProposalID {
         let encoded = proposal.encode_detached().unwrap();
         let value = ciphersuite.hash(&encoded);
         Self { value }
-    }
-}
-
-impl Codec for ProposalID {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.value)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ProposalID { value })
     }
 }
 
@@ -333,45 +337,12 @@ pub struct AddProposal {
     pub key_package: KeyPackage,
 }
 
-impl Codec for AddProposal {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.key_package.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_package = KeyPackage::decode(cursor)?;
-        Ok(AddProposal { key_package })
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdateProposal {
     pub key_package: KeyPackage,
 }
 
-impl Codec for UpdateProposal {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.key_package.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_package = KeyPackage::decode(cursor)?;
-        Ok(UpdateProposal { key_package })
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RemoveProposal {
     pub removed: u32,
-}
-
-impl Codec for RemoveProposal {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.removed.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let removed = u32::decode(cursor)?;
-        Ok(RemoveProposal { removed })
-    }
 }
