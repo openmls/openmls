@@ -233,7 +233,6 @@ fn managed_group_operations() {
         alice_group
             .process_messages(queued_messages.clone())
             .expect("The group is no longer active");
-        println!("Alice processed messages");
         bob_group
             .process_messages(queued_messages.clone())
             .expect("The group is no longer active");
