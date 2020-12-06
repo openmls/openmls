@@ -517,7 +517,7 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction);
         }
-        
+
         // If a KeyPackageBundle was provided, create an UpdateProposal
         let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
             let update_proposal = self.group.create_update_proposal(
