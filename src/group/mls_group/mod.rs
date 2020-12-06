@@ -16,6 +16,7 @@ use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 
 use std::cell::{Ref, RefCell};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use super::errors::ExporterError;
@@ -225,21 +226,19 @@ impl MlsGroup {
     }
 
     pub fn decrypt(&mut self, mls_ciphertext: &MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
-        let tree = self.tree.borrow();
-        let mut roster = Vec::new();
+        let tree = self.tree();
+        let mut indexed_members = HashMap::new();
         for i in 0..tree.leaf_count().as_usize() {
-            let node = &tree.nodes[LeafIndex::from(i)];
-            let credential = if let Some(kp) = &node.key_package {
-                kp.credential()
-            } else {
-                panic!("Missing key package");
-            };
-            roster.push(credential);
+            let leaf_index = LeafIndex::from(i);
+            let node = &tree.nodes[leaf_index];
+            if let Some(kp) = node.key_package.as_ref() {
+                indexed_members.insert(leaf_index, kp.credential());
+            }
         }
 
         Ok(mls_ciphertext.to_plaintext(
             self.ciphersuite(),
-            &roster,
+            indexed_members,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
             &self.group_context,
@@ -260,14 +259,10 @@ impl MlsGroup {
             key_length,
         ))
     }
-}
 
-impl MlsGroup {
+    /// Returns the ratchet tree
     pub fn tree(&self) -> Ref<RatchetTree> {
         self.tree.borrow()
-    }
-    fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_node_index().into()
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -275,12 +270,21 @@ impl MlsGroup {
         self.ciphersuite
     }
 
+    /// Get the group context
     pub fn context(&self) -> &GroupContext {
         &self.group_context
     }
 
+    /// Get the group ID
     pub fn group_id(&self) -> &GroupId {
         &self.group_context.group_id
+    }
+}
+
+// Private and crate functions
+impl MlsGroup {
+    fn sender_index(&self) -> LeafIndex {
+        self.tree.borrow().own_node_index().into()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {

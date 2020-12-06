@@ -517,23 +517,19 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction);
         }
-        // Use provided KeyPackageBundle or create a new one
-        let tree = self.group.tree();
-        let key_package_bundle = match key_package_bundle_option {
-            Some(kpb) => kpb,
-            None => {
-                let existing_key_package = tree.own_key_package();
-                KeyPackageBundle::from_rekeyed_key_package(existing_key_package)
-            }
+        
+        // If a KeyPackageBundle was provided, create an UpdateProposal
+        let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
+            let update_proposal = self.group.create_update_proposal(
+                &self.aad,
+                &self.credential_bundle,
+                key_package_bundle.key_package().clone(),
+            );
+            self.own_kpbs.push(key_package_bundle);
+            vec![update_proposal]
+        } else {
+            vec![]
         };
-        drop(tree);
-
-        // Create UpdateProposal
-        let mut plaintext_messages = vec![self.group.create_update_proposal(
-            &self.aad,
-            &self.credential_bundle,
-            key_package_bundle.key_package().clone(),
-        )];
 
         // Include pending proposals into Commit
         let messages_to_commit: Vec<&MLSPlaintext> = self
@@ -547,7 +543,7 @@ impl<'a> ManagedGroup<'a> {
             &self.aad,
             &self.credential_bundle,
             &messages_to_commit,
-            false,
+            true,
         )?;
 
         // Add the Commit message to the other pending messages
@@ -579,7 +575,12 @@ impl<'a> ManagedGroup<'a> {
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
-            None => KeyPackageBundle::from_rekeyed_key_package(existing_key_package),
+            None => {
+                let mut key_package_bundle =
+                    KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
+                key_package_bundle.sign(self.credential_bundle);
+                key_package_bundle
+            }
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(
