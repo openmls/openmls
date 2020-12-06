@@ -158,6 +158,10 @@ impl<'a> ManagedGroup<'a> {
             &messages_to_commit,
             false,
         )?;
+        let welcome = match welcome_option {
+            Some(welcome) => welcome,
+            None => return Err(ManagedGroupError::Unknown),
+        };
 
         // Add the Commit message to the other pending messages
         plaintext_messages.push(commit);
@@ -171,10 +175,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
-        let welcome = match welcome_option {
-            Some(welcome) => welcome,
-            None => return Err(ManagedGroupError::Unknown),
-        };
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok((mls_messages, welcome))
     }
 
@@ -226,6 +229,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(mls_messages)
     }
 
@@ -250,6 +256,9 @@ impl<'a> ManagedGroup<'a> {
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(mls_messages)
     }
 
@@ -273,6 +282,9 @@ impl<'a> ManagedGroup<'a> {
             .collect();
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
 
         Ok(mls_messages)
     }
@@ -398,6 +410,10 @@ impl<'a> ManagedGroup<'a> {
                 }
             }
         }
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(())
     }
 
@@ -419,6 +435,10 @@ impl<'a> ManagedGroup<'a> {
         let ciphertext =
             self.group
                 .create_application_message(&self.aad, message, &self.credential_bundle);
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(MLSMessage::Ciphertext(ciphertext))
     }
 
@@ -452,6 +472,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok((mls_messages, welcome_option))
     }
 
@@ -479,7 +502,10 @@ impl<'a> ManagedGroup<'a> {
 
     /// Sets the configuration
     pub fn set_configuration(&mut self, managed_group_config: &ManagedGroupConfig) {
-        self.managed_group_config = managed_group_config.clone()
+        self.managed_group_config = managed_group_config.clone();
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
     }
 
     /// Gets the AAD used in the framing
@@ -489,7 +515,10 @@ impl<'a> ManagedGroup<'a> {
 
     /// Sets the AAD used in the framing
     pub fn set_aad(&mut self, aad: &[u8]) {
-        self.aad = aad.to_vec()
+        self.aad = aad.to_vec();
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
     }
 
     // === Advanced functions ===
@@ -566,6 +595,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(mls_messages)
     }
 
@@ -599,6 +631,9 @@ impl<'a> ManagedGroup<'a> {
         self.own_kpbs.push(key_package_bundle);
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
 
         Ok(mls_messages)
     }
@@ -759,6 +794,13 @@ impl<'a> ManagedGroup<'a> {
             self.managed_group_config.callbacks.invalid_message_received
         {
             invalid_message_received(&self, error);
+        }
+    }
+
+    /// Auto-save function
+    fn auto_save(&self) {
+        if let Some(auto_save) = self.managed_group_config.callbacks.auto_save {
+            auto_save(&self);
         }
     }
 

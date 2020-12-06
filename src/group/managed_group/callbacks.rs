@@ -2,10 +2,16 @@ use crate::creds::*;
 use crate::group::*;
 
 /// Collection of callback functions that are passed to a `ManagedGroup` as part
-/// of the configurations Callback functions are optional. If no validator
-/// function is specified for a certain proposal type, any semantically valid
-/// proposal will be accepted. Validator functions return a `bool`, depending
-/// on whether the proposal is accepted by the application policy.
+/// of the configurations. All callback functions are optional.
+///
+/// ## Validators
+///
+/// Validator callback functions are called when Proposals are processed through
+/// [process_messages()](`ManagedGroup::process_messages()`). If no
+/// validator function is specified for a certain proposal type, any
+/// semantically valid proposal will be accepted. Validator functions must
+/// return a `bool`, that indicates whether the proposal is accepted by the
+/// application policy.
 ///  - `true` means the proposal should be accepted
 ///  - `false` means the proposal should be rejected
 ///
@@ -17,6 +23,19 @@ use crate::group::*;
 /// pub type ValidateRemove =
 ///     fn(managed_group: &ManagedGroup, sender: &Credential, removed_member: &Credential) -> bool;
 /// ```
+///
+/// ## Auto-save
+///
+/// The auto-save callback is called whenever the group state was modified and
+/// needs to be persisted. The callback function should then call
+/// [managed_group.save()](`ManagedGroup::save()`) to persist the group state.
+///
+/// ```
+/// # use openmls::prelude::{ManagedGroup, Credential};
+/// pub type AutoSave = fn(managed_group: &ManagedGroup);
+/// ```
+///
+/// ## Event listeners
 ///
 /// Event listeners get called when certain messages are parsed, or other events
 /// occur. The event listeners are:
@@ -41,6 +60,8 @@ pub struct ManagedGroupCallbacks {
     // Validator functions
     pub(crate) validate_add: Option<ValidateAdd>,
     pub(crate) validate_remove: Option<ValidateRemove>,
+    // Auto-save
+    pub(crate) auto_save: Option<AutoSave>,
     // Event listeners
     pub(crate) member_added: Option<MemberAdded>,
     pub(crate) member_removed: Option<MemberRemoved>,
@@ -55,6 +76,7 @@ impl<'a> ManagedGroupCallbacks {
         Self {
             validate_add: None,
             validate_remove: None,
+            auto_save: None,
             member_added: None,
             member_removed: None,
             member_updated: None,
@@ -71,6 +93,11 @@ impl<'a> ManagedGroupCallbacks {
     /// Validator function for RemoveProposals
     pub fn with_validate_remove(mut self, validate_remove: ValidateRemove) -> Self {
         self.validate_remove = Some(validate_remove);
+        self
+    }
+    /// Auto-save callback
+    pub fn with_auto_save(mut self, auto_save: AutoSave) -> Self {
+        self.auto_save = Some(auto_save);
         self
     }
     /// Event listener function for AddProposals
@@ -155,10 +182,16 @@ impl<'a> Removal<'a> {
     }
 }
 
+// Validators
 pub type ValidateAdd =
     fn(managed_group: &ManagedGroup, sender: &Credential, added_member: &Credential) -> bool;
 pub type ValidateRemove =
     fn(managed_group: &ManagedGroup, sender: &Credential, removed_member: &Credential) -> bool;
+
+// Auto-save
+pub type AutoSave = fn(managed_group: &ManagedGroup);
+
+// Event listeners
 pub type MemberAdded =
     fn(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, added_member: &Credential);
 pub type MemberRemoved = fn(managed_group: &ManagedGroup, aad: &[u8], removal: &Removal);
