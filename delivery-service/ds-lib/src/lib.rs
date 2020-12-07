@@ -75,7 +75,7 @@ impl MLSMessage {
     pub fn group_id(&self) -> Vec<u8> {
         match self {
             MLSMessage::MLSCiphertext(m) => m.group_id.as_slice(),
-            MLSMessage::MLSPlaintext(m) => m.group_id.as_slice(),
+            MLSMessage::MLSPlaintext(m) => m.group_id().as_slice(),
         }
     }
 
@@ -83,7 +83,7 @@ impl MLSMessage {
     pub fn epoch(&self) -> u64 {
         match self {
             MLSMessage::MLSCiphertext(m) => m.epoch.0,
-            MLSMessage::MLSPlaintext(m) => m.epoch.0,
+            MLSMessage::MLSPlaintext(m) => m.epoch().0,
         }
     }
 
