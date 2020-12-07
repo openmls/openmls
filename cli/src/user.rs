@@ -141,12 +141,12 @@ impl User {
                         }
                         MLSMessage::MLSPlaintext(msg) => msg,
                     };
-                    let group = match self.groups.get_mut(&msg.group_id.as_slice()) {
+                    let group = match self.groups.get_mut(&msg.group_id().as_slice()) {
                         Some(g) => g,
                         None => {
                             log::error!(
                                 "Error getting group {:?} for a message. Dropping message.",
-                                msg.group_id.as_slice()
+                                msg.group_id().as_slice()
                             );
                             continue;
                         }
@@ -264,7 +264,7 @@ impl User {
             credentials,
             key_package,
         );
-        let proposals = vec![add_proposal.clone()];
+        let proposals = vec![&add_proposal];
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
@@ -274,7 +274,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .apply_commit(commit.clone(), proposals, &[])
+            .apply_commit(commit.clone(), vec![add_proposal.clone()], &[])
             .expect("error applying commit");
 
         // Send Welcome to the client.
