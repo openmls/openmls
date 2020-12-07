@@ -19,6 +19,9 @@ use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
+#[cfg(test)]
+use std::cell::RefMut;
+
 use super::errors::ExporterError;
 
 pub type CreateCommitResult =
@@ -211,11 +214,8 @@ impl MlsGroup {
     pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let mut secret_tree = self.secret_tree.borrow_mut();
         let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
-        let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.secret_for_encryption(
-            self.ciphersuite(),
-            mls_plaintext.sender.sender,
-            secret_type,
-        );
+        let (generation, (ratchet_key, ratchet_nonce)) =
+            secret_tree.secret_for_encryption(self.ciphersuite(), self.sender_index(), secret_type);
         MLSCiphertext::new_from_plaintext(
             &mls_plaintext,
             &self,
@@ -225,7 +225,10 @@ impl MlsGroup {
         )
     }
 
-    pub fn decrypt(&mut self, mls_ciphertext: &MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
+    pub fn decrypt(
+        &mut self,
+        mls_ciphertext: &MLSCiphertext,
+    ) -> Result<MLSPlaintext, MLSCiphertextError> {
         let tree = self.tree();
         let mut indexed_members = HashMap::new();
         for i in 0..tree.leaf_count().as_usize() {
@@ -289,6 +292,11 @@ impl MlsGroup {
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
         &self.epoch_secrets
+    }
+
+    #[cfg(test)]
+    pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
+        self.secret_tree.borrow_mut()
     }
 }
 

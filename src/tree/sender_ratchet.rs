@@ -63,7 +63,12 @@ impl SenderRatchet {
     }
     /// Gets a secret from the SenderRatchet and ratchets forward
     pub fn secret_for_encryption(&mut self, ciphersuite: &Ciphersuite) -> (u32, RatchetSecrets) {
-        let current_path_secret = self.past_secrets.last().unwrap().clone();
+        let current_path_secret = match self.past_secrets.last() {
+            Some(secret) => secret.clone(),
+            None => {
+                panic!("Library error. PastSecrets should never be depleted in SenderRatchet.")
+            }
+        };
         let next_path_secret = self.ratchet_secret(ciphersuite, &current_path_secret);
         let generation = self.generation;
         // Check if we have too many secrets in `past_secrets`

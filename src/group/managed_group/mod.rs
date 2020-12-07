@@ -543,7 +543,7 @@ impl<'a> ManagedGroup<'a> {
             &self.aad,
             &self.credential_bundle,
             &messages_to_commit,
-            true,
+            true, /* force_self_update */
         )?;
 
         // Add the Commit message to the other pending messages
