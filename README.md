@@ -46,6 +46,10 @@ It further holds the following crates that are used for testing.
 A basic [delivery service](https://messaginglayersecurity.rocks/mls-architecture/draft-ietf-mls-architecture.html#name-delivery-service) can be found in [delivery-service/ds](./delivery-service/ds/).
 To interact with the delivery service the [ds-lib](./delivery-service/ds-lib/) provides the necessary types.
 
+### Commandline Client
+A basic command line client can be found in [cli](./cli).
+Note that this is a PoC for testing and must not be used for anything else.
+
 ---
 
 ## License
