@@ -12,8 +12,11 @@ use serde::{Deserialize, Serialize};
 
 mod codec;
 
+pub(crate) mod errors;
 pub(crate) mod proposals;
+
 pub use codec::*;
+pub use errors::*;
 use proposals::*;
 
 #[cfg(test)]
@@ -93,7 +96,7 @@ impl Welcome {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Commit {
-    pub(crate) proposals: Vec<ProposalID>,
+    pub(crate) proposals: Vec<ProposalOrRef>,
     pub(crate) path: Option<UpdatePath>,
 }
 

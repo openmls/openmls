@@ -637,7 +637,6 @@ impl RatchetTree {
     /// current epoch
     pub fn apply_proposals(
         &mut self,
-        proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
         // (path_required, self_removed, invitation_list)
@@ -649,10 +648,7 @@ impl RatchetTree {
         let mut self_removed = false;
 
         // Process updates first
-        for queued_proposal in proposal_queue
-            .filtered_queued_proposals(proposal_id_list, ProposalType::Update)
-            .iter()
-        {
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update).iter() {
             has_updates = true;
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
             let sender_index = queued_proposal.sender().to_node_index();
@@ -676,10 +672,7 @@ impl RatchetTree {
                 self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
         }
-        for queued_proposal in proposal_queue
-            .filtered_queued_proposals(proposal_id_list, ProposalType::Remove)
-            .iter()
-        {
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove).iter() {
             has_removes = true;
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
             let removed = NodeIndex::from(LeafIndex::from(remove_proposal.removed));
@@ -693,7 +686,7 @@ impl RatchetTree {
 
         // Process adds
         let add_proposals: Vec<AddProposal> = proposal_queue
-            .filtered_queued_proposals(proposal_id_list, ProposalType::Add)
+            .filtered_by_type(ProposalType::Add)
             .iter()
             .map(|queued_proposal| {
                 let proposal = &queued_proposal.proposal();

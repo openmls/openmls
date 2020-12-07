@@ -13,19 +13,21 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: &[&MLSPlaintext],
+        proposals_by_reference: &[&MLSPlaintext],
+        proposals_by_value: &[&Proposal],
         force_self_update: bool,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
-            proposals,
+            proposals_by_reference,
+            proposals_by_value,
             LeafIndex::from(self.tree().own_node_index()),
             self.tree().leaf_count(),
         );
 
-        let proposal_id_list = proposal_queue.proposal_id_list();
+        let proposal_id_list = proposal_queue.commit_list();
 
         let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely
@@ -33,7 +35,7 @@ impl MlsGroup {
 
         // Apply proposals to tree
         let (path_required_by_commit, self_removed, invited_members) =
-            match provisional_tree.apply_proposals(&proposal_id_list, proposal_queue, &[]) {
+            match provisional_tree.apply_proposals(proposal_queue, &[]) {
                 Ok(res) => res,
                 Err(_) => return Err(CreateCommitError::OwnKeyNotFound),
             };

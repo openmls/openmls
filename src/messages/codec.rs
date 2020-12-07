@@ -121,7 +121,7 @@ impl Codec for ProposalOrRef {
                 proposal.encode(buffer)?;
             }
             ProposalOrRef::Reference(reference) => {
-                encode_vec(VecSize::VecU8, buffer, &reference)?;
+                reference.encode(buffer)?;
             }
         }
         Ok(())
@@ -130,10 +130,9 @@ impl Codec for ProposalOrRef {
         let por_type = ProposalOrRefType::from(u8::decode(cursor)?);
         match por_type {
             ProposalOrRefType::Proposal => Ok(ProposalOrRef::Proposal(Proposal::decode(cursor)?)),
-            ProposalOrRefType::Reference => Ok(ProposalOrRef::Reference(decode_vec(
-                VecSize::VecU8,
-                cursor,
-            )?)),
+            ProposalOrRefType::Reference => {
+                Ok(ProposalOrRef::Reference(ProposalID::decode(cursor)?))
+            }
             _ => Err(CodecError::DecodingError),
         }
     }

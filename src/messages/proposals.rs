@@ -4,6 +4,8 @@ use crate::framing::{sender::*, *};
 use crate::key_packages::*;
 use crate::tree::index::*;
 
+use super::errors::*;
+
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -65,10 +67,10 @@ impl From<u8> for ProposalOrRefType {
         }
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum ProposalOrRef {
     Proposal(Proposal),
-    Reference(Vec<u8>),
+    Reference(ProposalID),
 }
 
 impl ProposalOrRef {
@@ -135,18 +137,22 @@ impl ProposalID {
 /// Alternative representation of a Proposal, where the sender is extracted from
 /// the encapsulating MLSPlaintext and the ProposalID is attached.
 #[derive(Clone)]
-pub struct QueuedProposal {
-    proposal: Proposal,
+pub struct QueuedProposal<'a> {
+    proposal: &'a Proposal,
     proposal_id: ProposalID,
     sender: Sender,
+    por_type: ProposalOrRefType,
 }
 
-impl QueuedProposal {
+impl<'a> QueuedProposal<'a> {
     /// Creates a new `QueuedProposal` from an `MLSPlaintext`
-    pub(crate) fn new(ciphersuite: &Ciphersuite, mls_plaintext: &MLSPlaintext) -> Self {
+    pub(crate) fn from_mls_plaintext(
+        ciphersuite: &Ciphersuite,
+        mls_plaintext: &'a MLSPlaintext,
+    ) -> Self {
         debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
         let proposal = match &mls_plaintext.content {
-            MLSPlaintextContentType::Proposal(p) => p.clone(),
+            MLSPlaintextContentType::Proposal(p) => p,
             _ => panic!("API misuse. Only proposals can end up in the proposal queue"),
         };
         let proposal_id = ProposalID::from_proposal(ciphersuite, &proposal);
@@ -154,6 +160,21 @@ impl QueuedProposal {
             proposal,
             proposal_id,
             sender: mls_plaintext.sender,
+            por_type: ProposalOrRefType::Reference,
+        }
+    }
+    /// Creates a new `QueuedProposal` from a `Proposal` and `Sender`
+    pub(crate) fn from_proposal_and_sender(
+        ciphersuite: &Ciphersuite,
+        proposal: &'a Proposal,
+        sender: Sender,
+    ) -> Self {
+        let proposal_id = ProposalID::from_proposal(ciphersuite, &proposal);
+        Self {
+            proposal,
+            proposal_id,
+            sender,
+            por_type: ProposalOrRefType::Proposal,
         }
     }
     /// Returns the `Proposal` as a reference
@@ -173,11 +194,11 @@ impl QueuedProposal {
 /// Proposal queue that helps filtering and sorting the Proposals from one
 /// epoch.
 #[derive(Default)]
-pub struct ProposalQueue {
-    queued_proposals: HashMap<ProposalID, QueuedProposal>,
+pub struct ProposalQueue<'a> {
+    queued_proposals: HashMap<ProposalID, QueuedProposal<'a>>,
 }
 
-impl ProposalQueue {
+impl<'a> ProposalQueue<'a> {
     // Returns a new empty `ProposalQueue`
     pub(crate) fn new() -> Self {
         ProposalQueue {
@@ -186,16 +207,41 @@ impl ProposalQueue {
     }
     /// Returns a new `ProposalQueue` from proposals that were committed and
     /// don't need filtering
-    pub(crate) fn new_from_committed_proposals(
+    pub(crate) fn from_proposals_by_reference(
         ciphersuite: &Ciphersuite,
-        proposals: Vec<MLSPlaintext>,
+        proposals: &'a [&MLSPlaintext],
     ) -> Self {
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::new(ciphersuite, &mls_plaintext);
+            let queued_proposal = QueuedProposal::from_mls_plaintext(ciphersuite, &mls_plaintext);
             proposal_queue.add(queued_proposal);
         }
         proposal_queue
+    }
+    /// Returns a new `ProposalQueue` from proposals that were committed and
+    /// don't need filtering
+    pub(crate) fn from_committed_proposals(
+        ciphersuite: &Ciphersuite,
+        committed_proposals: &'a [ProposalOrRef],
+        proposals_by_reference: &'a ProposalQueue<'a>,
+        sender: Sender,
+    ) -> Result<Self, ProposalQueueError> {
+        let mut proposal_queue = ProposalQueue::new();
+        for proposal_or_ref in committed_proposals.iter() {
+            let queued_proposal = match proposal_or_ref {
+                ProposalOrRef::Proposal(proposal) => {
+                    QueuedProposal::from_proposal_and_sender(ciphersuite, proposal, sender)
+                }
+                ProposalOrRef::Reference(proposal_id) => {
+                    match proposals_by_reference.get(proposal_id) {
+                        Some(queued_proposal) => queued_proposal.clone(),
+                        None => return Err(ProposalQueueError::ProposalNotFound),
+                    }
+                }
+            };
+            proposal_queue.add(queued_proposal);
+        }
+        Ok(proposal_queue)
     }
     /// Filters received proposals
     ///
@@ -220,14 +266,15 @@ impl ProposalQueue {
     /// own node were included
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
-        proposals: &[&MLSPlaintext],
+        proposals_by_reference: &'a [&MLSPlaintext],
+        proposals_by_value: &'a [&Proposal],
         own_index: LeafIndex,
         tree_size: LeafIndex,
     ) -> (Self, bool) {
         #[derive(Clone)]
-        struct Member {
-            updates: Vec<QueuedProposal>,
-            removes: Vec<QueuedProposal>,
+        struct Member<'a> {
+            updates: Vec<QueuedProposal<'a>>,
+            removes: Vec<QueuedProposal<'a>>,
         }
         let mut members: Vec<Member> = vec![
             Member {
@@ -241,9 +288,27 @@ impl ProposalQueue {
         let mut proposal_queue = ProposalQueue::new();
         let mut contains_own_updates = false;
 
+        let sender = Sender {
+            sender_type: SenderType::Member,
+            sender: own_index,
+        };
+
+        // Aggregate both proposal types to a common iterator
+        let mut queued_proposal_list = proposals_by_reference
+            .iter()
+            .map(|mls_plaintext| QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext))
+            .collect::<Vec<QueuedProposal>>();
+
+        queued_proposal_list.extend(
+            proposals_by_value
+                .iter()
+                .map(|p| QueuedProposal::from_proposal_and_sender(ciphersuite, p, sender))
+                .collect::<Vec<QueuedProposal>>()
+                .into_iter(),
+        );
+
         // Parse proposals and build adds and member list
-        for mls_plaintext in proposals.iter() {
-            let queued_proposal = QueuedProposal::new(ciphersuite, mls_plaintext);
+        for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal.proposal_type() {
                 ProposalType::Add => {
                     adds.insert(queued_proposal.proposal_id().clone());
@@ -289,6 +354,7 @@ impl ProposalQueue {
     }
     /// Returns `true` if all `ProposalID` values from the list are contained in
     /// the queue
+    #[cfg(test)]
     pub(crate) fn contains(&self, proposal_id_list: &[ProposalID]) -> bool {
         for proposal_id in proposal_id_list {
             if !self.queued_proposals.contains_key(proposal_id) {
@@ -297,8 +363,12 @@ impl ProposalQueue {
         }
         true
     }
+    /// Returns proposal for a given proposal ID
+    pub(crate) fn get(&self, proposal_id: &ProposalID) -> Option<&QueuedProposal> {
+        self.queued_proposals.get(proposal_id)
+    }
     /// Add a new `QueuedProposal` to the queue
-    pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
+    pub(crate) fn add(&mut self, queued_proposal: QueuedProposal<'a>) {
         self.queued_proposals
             .entry(queued_proposal.proposal_id.clone())
             .or_insert(queued_proposal);
@@ -306,29 +376,36 @@ impl ProposalQueue {
     /// Retains only the elements specified by the predicate
     pub(crate) fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&ProposalID, &mut QueuedProposal) -> bool,
+        F: FnMut(&ProposalID, &mut QueuedProposal<'a>) -> bool,
     {
         self.queued_proposals.retain(f);
     }
     /// Gets the list of all `ProposalID`
-    pub(crate) fn proposal_id_list(&self) -> Vec<ProposalID> {
-        self.queued_proposals.keys().into_iter().cloned().collect()
+    pub(crate) fn commit_list(&self) -> Vec<ProposalOrRef> {
+        self.queued_proposals
+            .iter()
+            .map(
+                |(proposal_id, queued_proposal)| match queued_proposal.por_type {
+                    ProposalOrRefType::Proposal => {
+                        ProposalOrRef::Proposal(queued_proposal.proposal.clone())
+                    }
+                    ProposalOrRefType::Reference => ProposalOrRef::Reference(proposal_id.clone()),
+                    _ => {
+                        panic!("Library error. Wrong Queued Proposals type.")
+                    }
+                },
+            )
+            .collect::<Vec<ProposalOrRef>>()
     }
     /// Return a list of fileterd `QueuedProposal`
-    pub(crate) fn filtered_queued_proposals(
-        &self,
-        proposal_id_list: &[ProposalID],
-        proposal_type: ProposalType,
-    ) -> Vec<&QueuedProposal> {
-        let mut filtered_proposal_id_list = Vec::new();
-        for proposal_id in proposal_id_list.iter() {
-            if let Some(queued_proposal) = self.queued_proposals.get(proposal_id) {
-                if queued_proposal.proposal.is_type(proposal_type) {
-                    filtered_proposal_id_list.push(queued_proposal);
-                }
+    pub(crate) fn filtered_by_type(&self, proposal_type: ProposalType) -> Vec<&QueuedProposal> {
+        let mut filtered_proposal_list = Vec::new();
+        for queued_proposal in self.queued_proposals.values() {
+            if queued_proposal.proposal.is_type(proposal_type) {
+                filtered_proposal_list.push(queued_proposal);
             }
         }
-        filtered_proposal_id_list
+        filtered_proposal_list
     }
 }
 
