@@ -185,7 +185,7 @@ fn basic_test() {
     // Create another client
     let mut client_3 = user::User::new("Client3".to_string());
 
-    // Update the clients to know about the other client.
+    // Update the clients to know about the other clients.
     client_1.update(None).unwrap();
     client_2.update(None).unwrap();
     client_3.update(None).unwrap();
