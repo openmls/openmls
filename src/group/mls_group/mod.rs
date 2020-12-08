@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::{debug, trace};
 
 mod apply_commit;
 mod create_commit;
@@ -8,7 +8,7 @@ mod test_mls_group;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::{Config, ConfigError};
+use crate::config::Config;
 use crate::creds::CredentialBundle;
 use crate::framing::*;
 use crate::group::*;
@@ -33,7 +33,7 @@ use std::cell::RefMut;
 use super::errors::ExporterError;
 
 pub type CreateCommitResult =
-    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
+    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), GroupError>;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -69,9 +69,9 @@ impl MlsGroup {
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
-    ) -> Result<Self, ConfigError> {
-        info!("Created group {:x?}", id);
-        debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
+    ) -> Result<Self, GroupError> {
+        debug!("Created group {:x?}", id);
+        trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
@@ -107,8 +107,8 @@ impl MlsGroup {
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
-    ) -> Result<Self, WelcomeError> {
-        Self::new_from_welcome_internal(welcome, nodes_option, kpb)
+    ) -> Result<Self, GroupError> {
+        Ok(Self::new_from_welcome_internal(welcome, nodes_option, kpb)?)
     }
 
     // === Create handshake messages ===
@@ -209,8 +209,8 @@ impl MlsGroup {
         mls_plaintext: MLSPlaintext,
         proposals: Vec<MLSPlaintext>,
         own_key_packages: &[KeyPackageBundle],
-    ) -> Result<(), ApplyCommitError> {
-        self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)
+    ) -> Result<(), GroupError> {
+        Ok(self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)?)
     }
 
     // Create application message
@@ -219,7 +219,7 @@ impl MlsGroup {
         aad: &[u8],
         msg: &[u8],
         credential_bundle: &CredentialBundle,
-    ) -> MLSCiphertext {
+    ) -> Result<MLSCiphertext, GroupError> {
         let content = MLSPlaintextContentType::Application(msg.to_vec());
         let mls_plaintext = MLSPlaintext::new(
             self.sender_index(),
@@ -232,18 +232,18 @@ impl MlsGroup {
     }
 
     // Encrypt/Decrypt MLS message
-    pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
+    pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> Result<MLSCiphertext, GroupError> {
         let mut secret_tree = self.secret_tree.borrow_mut();
-        let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
+        let secret_type = SecretType::try_from(&mls_plaintext)?;
         let (generation, (ratchet_key, ratchet_nonce)) =
             secret_tree.secret_for_encryption(self.ciphersuite(), self.sender_index(), secret_type);
-        MLSCiphertext::new_from_plaintext(
+        Ok(MLSCiphertext::new_from_plaintext(
             &mls_plaintext,
             &self,
             generation,
             ratchet_key,
             ratchet_nonce,
-        )
+        ))
     }
 
     pub fn decrypt(
@@ -270,11 +270,11 @@ impl MlsGroup {
     }
 
     // Exporter
-    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, ExporterError> {
+    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, GroupError> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if key_length > u16::MAX.into() {
-            return Err(ExporterError::KeyLengthTooLong);
+            return Err(ExporterError::KeyLengthTooLong.into());
         }
         Ok(self.epoch_secrets.exporter_secret.derive_exported_secret(
             self.ciphersuite(),

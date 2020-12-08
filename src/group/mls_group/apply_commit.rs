@@ -142,7 +142,11 @@ impl MlsGroup {
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)
                 {
-                    let parent_hash_extension = received_parent_hash.to_parent_hash_extension()?;
+                    let parent_hash_extension =
+                        match received_parent_hash.to_parent_hash_extension() {
+                            Ok(phe) => phe,
+                            Err(_) => return Err(ApplyCommitError::NoParentHashExtension),
+                        };
                     if parent_hash != parent_hash_extension.parent_hash() {
                         return Err(ApplyCommitError::ParentHashMismatch);
                     }
