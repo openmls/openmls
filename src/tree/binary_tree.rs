@@ -200,4 +200,9 @@ impl<T> BinaryTree<T> {
     pub(crate) fn nodes(&self) -> &Vec<T> {
         &self.nodes
     }
+
+    /// Return the index of the root node.
+    pub(crate) fn root(&self) -> NodeIndex {
+        treemath::root(self.leaf_count())
+    }
 }

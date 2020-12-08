@@ -758,7 +758,7 @@ impl RatchetTree {
                 NodeType::Default => panic!("Default node type not supported in tree hash."),
             }
         };
-        let root = treemath::root(self.leaf_count());
+        let root = self.public_tree.root();
 
         // We can unwrap here, as the root is always within the tree.
         self.public_tree.fold_tree(&root, &node_hash).unwrap()
@@ -766,7 +766,7 @@ impl RatchetTree {
     /// Computes the parent hash. Throws a `TreeError` if the given `index` is
     /// outside of the tree.
     pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Result<Vec<u8>, TreeError> {
-        let root = treemath::root(self.leaf_count());
+        let root = self.public_tree.root();
         // This should only happen when the group only contains one member
         if index == root {
             return Ok(vec![]);
