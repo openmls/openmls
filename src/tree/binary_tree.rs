@@ -74,8 +74,7 @@ impl<T> BinaryTree<T> {
 
     /// Return the nodes in the CoPath of a given node.
     pub(crate) fn copath(&self, node_index: &NodeIndex) -> Result<Vec<NodeIndex>, TreeError> {
-        let copath = treemath::copath(*node_index, self.leaf_count())?;
-        Ok(copath)
+        Ok(treemath::copath(*node_index, self.leaf_count())?)
     }
 
     /// Given a node index, check if the given predicate evaluates to a
@@ -94,9 +93,9 @@ impl<T> BinaryTree<T> {
         let node = self.node(node_index)?;
         let predicate_result = predicate(*node_index, node);
         if !predicate_result.is_empty() {
-            return Ok(predicate_result);
+            Ok(predicate_result)
         } else if node_index.is_leaf() {
-            return Ok(vec![]);
+            Ok(vec![])
         } else {
             let mut left_resolution =
                 self.resolve(&treemath::left(*node_index).unwrap(), predicate)?;
@@ -105,27 +104,29 @@ impl<T> BinaryTree<T> {
                 predicate,
             )?;
             left_resolution.extend(right_resolution);
-            return Ok(left_resolution);
+            Ok(left_resolution)
         }
     }
 
     /// Apply the given function `f` to each node in the direct path of the node
     /// with index `node_index`, the result of the function applied to the
-    /// parent is used as input to the functinon applied to the child.
+    /// parent is used as input to the functinon applied to the child. When
+    /// applying `f` to the root node, the default value of `f`s return type is
+    /// provided as input.
     pub(crate) fn direct_path_map<F, U: Default>(
         &mut self,
         node_index: &NodeIndex,
         f: &F,
     ) -> Result<U, TreeError>
     where
-        F: Fn(&mut T, U) -> Result<U, TreeError>,
+        F: Fn(&mut T, U) -> U,
     {
         if node_index == &self.root() {
-            return f(self.node_mut(node_index).unwrap(), U::default());
+            Ok(f(self.node_mut(node_index)?, U::default()))
         } else {
             let parent = self.parent(node_index)?;
             let parent_result = self.direct_path_map(&parent, f)?;
-            return f(self.node_mut(node_index).unwrap(), parent_result);
+            Ok(f(self.node_mut(node_index)?, parent_result))
         }
     }
 

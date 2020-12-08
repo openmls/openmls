@@ -56,12 +56,12 @@ pub struct RatchetTree {
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
     pub(crate) fn new(ciphersuite: &'static Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
-        let node = vec![Node {
+        let nodes = vec![Node {
             node_type: NodeType::Leaf,
             key_package: Some(kpb.key_package().clone()),
             node: None,
         }];
-        let public_tree = BinaryTree::from(node);
+        let public_tree = BinaryTree::from(nodes);
         let private_tree = PrivateTree::from_key_package_bundle(NodeIndex::from(0u32), &kpb);
 
         RatchetTree {
@@ -180,9 +180,9 @@ impl RatchetTree {
         let predicate = |i, node: &Node| {
             if node.node_type == NodeType::Leaf {
                 if node.is_blank() {
-                    return vec![];
+                    vec![]
                 } else {
-                    return vec![i];
+                    vec![i]
                 }
             } else if !node.is_blank() {
                 let mut unmerged_leaves: Vec<NodeIndex> = vec![i];
@@ -194,9 +194,9 @@ impl RatchetTree {
                         .iter()
                         .map(|n| NodeIndex::from(*n)),
                 );
-                return unmerged_leaves;
+                unmerged_leaves
             } else {
-                return vec![];
+                vec![]
             }
         };
 
@@ -226,7 +226,7 @@ impl RatchetTree {
     }
 
     fn blank_member(&mut self, index: NodeIndex) -> Result<(), TreeError> {
-        let f = |node: &mut Node, _| Ok(node.blank());
+        let f = |node: &mut Node, _| -> () { node.blank() };
         // First, blank the member's leaf.
         self.public_tree.node_mut(&index)?.blank();
         // Then, blank the member's direct path.
@@ -348,7 +348,6 @@ impl RatchetTree {
         }
 
         // Merge new nodes into the tree
-        let sender_direct_path = self.public_tree.direct_path(&sender_node_index)?;
         self.merge_direct_path_keys(update_path, sender_direct_path)?;
         self.merge_public_keys(&new_path_public_keys, &common_path)?;
         self.public_tree.replace(
@@ -431,6 +430,8 @@ impl RatchetTree {
         let ciphersuite = key_package.cipher_suite();
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
+        // We can unwrap here, because the `own_index` should always be within
+        // the tree.
         let direct_path_root = self.public_tree.direct_path(&own_index).unwrap();
         // Update private tree and merge corresponding public keys.
         let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
@@ -735,7 +736,6 @@ impl RatchetTree {
     }
     /// Computes the tree hash
     pub fn compute_tree_hash(&self) -> Vec<u8> {
-        let ciphersuite = self.ciphersuite;
         let node_hash = |node: &Node,
                          node_index: &NodeIndex,
                          left_hash: &Vec<u8>,
@@ -744,7 +744,7 @@ impl RatchetTree {
             match node.node_type {
                 NodeType::Leaf => {
                     let leaf_node_hash = LeafNodeHashInput::new(node_index, &node.key_package);
-                    leaf_node_hash.hash(ciphersuite)
+                    leaf_node_hash.hash(self.ciphersuite)
                 }
                 NodeType::Parent => {
                     let parent_node_hash = ParentNodeHashInput::new(
@@ -753,15 +753,16 @@ impl RatchetTree {
                         &left_hash,
                         &right_hash,
                     );
-                    parent_node_hash.hash(ciphersuite)
+                    parent_node_hash.hash(self.ciphersuite)
                 }
                 NodeType::Default => panic!("Default node type not supported in tree hash."),
             }
         };
-        let root = self.public_tree.root();
 
         // We can unwrap here, as the root is always within the tree.
-        self.public_tree.fold_tree(&root, &node_hash).unwrap()
+        self.public_tree
+            .fold_tree(&self.public_tree.root(), &node_hash)
+            .unwrap()
     }
     /// Computes the parent hash. Throws a `TreeError` if the given `index` is
     /// outside of the tree.
@@ -776,10 +777,10 @@ impl RatchetTree {
         // to borrow `&self`.
         let ciphersuite = self.ciphersuite.clone();
 
-        let f = |node: &mut Node, hash: Vec<u8>| -> Result<Vec<u8>, TreeError> {
+        let f = |node: &mut Node, hash: Vec<u8>| -> Vec<u8> {
             // If there is no input hash, we're processing the root node.
             if hash.is_empty() {
-                return Ok(node.hash(&ciphersuite).unwrap());
+                node.hash(&ciphersuite).unwrap()
             } else {
                 // Temporarily take the parent node if it's there.
                 match node.node.take() {
@@ -789,10 +790,10 @@ impl RatchetTree {
                         // ... and put it back.
                         node.node.replace(parent_node);
                         // Return the node hash.
-                        return Ok(node.hash(&ciphersuite).unwrap());
+                        node.hash(&ciphersuite).unwrap()
                     }
                     // If it's a blank node, return the input hash.
-                    None => return Ok(hash),
+                    None => hash,
                 }
             }
         };

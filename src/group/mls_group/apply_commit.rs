@@ -76,10 +76,9 @@ impl MlsGroup {
                 };
                 provisional_tree.replace_private_tree(own_kpb, &serialized_context)
             } else {
-                match provisional_tree.update_path(sender, &path, &serialized_context) {
-                    Ok(cs) => cs,
-                    Err(e) => panic!("Error while retrieving update_path: {:?}", e),
-                }
+                provisional_tree
+                    .update_path(sender, &path, &serialized_context)
+                    .unwrap()
             }
         } else {
             if path_required_by_commit {
