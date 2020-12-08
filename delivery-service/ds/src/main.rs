@@ -56,6 +56,24 @@ pub struct DsData {
     groups: HashMap<Vec<u8>, u64>,
 }
 
+macro_rules! unwrap_item {
+    ( $e:expr ) => {
+        match $e {
+            Ok(x) => x,
+            Err(_) => return actix_web::HttpResponse::PartialContent().finish(),
+        }
+    }
+}
+
+macro_rules! unwrap_data {
+    ( $e:expr ) => {
+        match $e {
+            Ok(x) => x,
+            Err(_) => return actix_web::HttpResponse::InternalServerError().finish(),
+        }
+    }
+}
+
 // === API ===
 
 /// Registering a new client takes a serialised `ClientInfo` object and returns
@@ -65,7 +83,7 @@ pub struct DsData {
 async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&item.unwrap());
+        bytes.extend_from_slice(&unwrap_item!(item));
     }
     let info = match ClientInfo::decode(&mut Cursor::new(&bytes)) {
         Ok(i) => i,
@@ -76,7 +94,7 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
     };
     log::debug!("Registering client: {:?}", info);
 
-    let mut data = data.lock().unwrap();
+    let mut data = unwrap_data!(data.lock());
     let client_name = info.client_name.clone();
     let old = data.clients.insert(info.id.clone(), info);
     if old.is_some() {
@@ -90,7 +108,7 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
 #[get("/clients/list")]
 async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
     log::debug!("Listing clients");
-    let data = data.lock().unwrap();
+    let data = unwrap_data!(data.lock());
 
     // XXX: we could encode while iterating to be less wasteful.
     let clients: Vec<ClientInfo> = data.deref().clients.values().map(|c| c.clone()).collect();
@@ -105,7 +123,7 @@ async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl
 #[get("/reset")]
 async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
     log::debug!("Resetting server");
-    let mut data = data.lock().unwrap();
+    let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();
     data.clients.clear();
     data.groups.clear();
@@ -120,7 +138,7 @@ async fn get_key_packages(
     web::Path(id): web::Path<String>,
     data: web::Data<Mutex<DsData>>,
 ) -> impl Responder {
-    let data = data.lock().unwrap();
+    let data = unwrap_data!(data.lock());
 
     let id = match base64::decode_config(id, base64::URL_SAFE) {
         Ok(v) => v,
@@ -128,9 +146,12 @@ async fn get_key_packages(
     };
     log::debug!("Getting key packages for {:?}", id);
 
-    let client = data.clients.get(&id).unwrap();
+    let client = match data.clients.get(&id) {
+        Some(c) => c,
+        None => return actix_web::HttpResponse::NoContent().finish(),
+    };
     actix_web::HttpResponse::Ok().body(Body::from_slice(
-        &client.key_packages.encode_detached().unwrap(),
+        &unwrap_data!(client.key_packages.encode_detached()),
     ))
 }
 
@@ -141,12 +162,12 @@ async fn get_key_packages(
 async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&item.unwrap());
+        bytes.extend_from_slice(&unwrap_item!(item));
     }
-    let welcome_msg = Welcome::decode(&mut Cursor::new(&bytes)).unwrap();
+    let welcome_msg = unwrap_data!(Welcome::decode(&mut Cursor::new(&bytes)));
     log::debug!("Storing welcome message: {:?}", welcome_msg);
 
-    let mut data = data.lock().unwrap();
+    let mut data = unwrap_data!(data.lock());
     for secret in welcome_msg.secrets().iter() {
         let key_package_hash = &secret.key_package_hash;
         for (_client_name, client) in data.clients.iter_mut() {
@@ -170,12 +191,12 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
 async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&item.unwrap());
+        bytes.extend_from_slice(&unwrap_item!(item));
     }
-    let group_msg = GroupMessage::decode(&mut Cursor::new(&bytes)).unwrap();
+    let group_msg = unwrap_data!(GroupMessage::decode(&mut Cursor::new(&bytes)));
     log::debug!("Storing group message: {:?}", group_msg);
 
-    let mut data = data.lock().unwrap();
+    let mut data = unwrap_data!(data.lock());
 
     // Reject any handshake message that has an earlier epoch than the one know
     // about.
@@ -222,7 +243,7 @@ async fn msg_recv(
     web::Path(id): web::Path<String>,
     data: web::Data<Mutex<DsData>>,
 ) -> impl Responder {
-    let mut data = data.lock().unwrap();
+    let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();
 
     let id = match base64::decode_config(id, base64::URL_SAFE) {

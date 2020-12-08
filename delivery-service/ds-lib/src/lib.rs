@@ -42,7 +42,7 @@ impl ClientInfo {
     /// The identity of a client is defined as the identity of the first key
     /// package right now.
     pub fn id(&self) -> &[u8] {
-        self.key_packages.0[0].1.credential().identity()
+        self.id.as_slice()
     }
 }
 
