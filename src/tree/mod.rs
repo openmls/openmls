@@ -459,6 +459,7 @@ impl RatchetTree {
 
         // Update own leaf node with the new values
         self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
+        self.compute_parent_hash(self.own_node_index());
         if with_update_path {
             let update_path_nodes = self
                 .encrypt_to_copath(new_public_keys, group_context)

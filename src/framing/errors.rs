@@ -10,7 +10,7 @@ pub enum MLSPlaintextError {
     /// This is not an application message.
     NotAnApplicationMessage = 0,
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(u16)]
 pub enum MLSCiphertextError {
     /// Invalid content type in message.

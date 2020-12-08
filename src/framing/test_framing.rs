@@ -88,3 +88,191 @@ fn context_presence() {
         assert!(!orig.is_handshake_message());
     }
 }
+
+#[test]
+fn unknown_sender() {
+    use crate::config::*;
+    use crate::creds::*;
+    use crate::key_packages::*;
+    use crate::utils::*;
+
+    for ciphersuite in Config::supported_ciphersuites() {
+        let group_aad = b"Alice's test group";
+
+        // Define credential bundles
+        let alice_credential_bundle =
+            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
+                .unwrap();
+        let bob_credential_bundle =
+            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let charlie_credential_bundle =
+            CredentialBundle::new("Charlie".into(), CredentialType::Basic, ciphersuite.name())
+                .unwrap();
+
+        // Generate KeyPackages
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+                .unwrap();
+        let bob_key_package = bob_key_package_bundle.key_package();
+
+        let charlie_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &charlie_credential_bundle,
+            Vec::new(),
+        )
+        .unwrap();
+        let charlie_key_package = charlie_key_package_bundle.key_package();
+
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+                .unwrap();
+
+        // Alice creates a group
+        let group_id = [1, 2, 3, 4];
+        let mut group_alice = MlsGroup::new(
+            &group_id,
+            ciphersuite.name(),
+            alice_key_package_bundle,
+            GroupConfig::default(),
+        )
+        .unwrap();
+
+        // Alice adds Bob
+        let bob_add_proposal = group_alice.create_add_proposal(
+            group_aad,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+        );
+
+        let (commit, _welcome_option, _kpb_option) = group_alice
+            .create_commit(
+                group_aad,
+                &alice_credential_bundle,
+                &[&bob_add_proposal],
+                false,
+            )
+            .expect("Error creating Commit");
+
+        group_alice
+            .apply_commit(commit, vec![bob_add_proposal], &[])
+            .expect("Could not apply Commit");
+
+        // Alice adds Charlie
+
+        let charlie_add_proposal = group_alice.create_add_proposal(
+            group_aad,
+            &alice_credential_bundle,
+            charlie_key_package.clone(),
+        );
+
+        let (commit, welcome_option, _kpb_option) = group_alice
+            .create_commit(
+                group_aad,
+                &alice_credential_bundle,
+                &[&charlie_add_proposal],
+                false,
+            )
+            .expect("Error creating Commit");
+
+        group_alice
+            .apply_commit(commit, vec![charlie_add_proposal], &[])
+            .expect("Could not apply Commit");
+
+        let mut group_charlie = MlsGroup::new_from_welcome(
+            welcome_option.unwrap(),
+            Some(group_alice.tree().public_key_tree_copy()),
+            charlie_key_package_bundle,
+        )
+        .expect("Charlie: Error creating group from Welcome");
+
+        // Alice removes Bob
+        let bob_remove_proposal = group_alice.create_remove_proposal(
+            group_aad,
+            &alice_credential_bundle,
+            LeafIndex::from(1usize),
+        );
+        let (commit, _welcome_option, kpb_option) = group_alice
+            .create_commit(
+                group_aad,
+                &alice_credential_bundle,
+                &[&bob_remove_proposal],
+                false,
+            )
+            .expect("Error creating Commit");
+
+        _print_tree(&group_alice.tree(), "Alice tree");
+        _print_tree(&group_charlie.tree(), "Charlie tree");
+
+        group_charlie
+            .apply_commit(commit.clone(), vec![bob_remove_proposal.clone()], &[])
+            .expect("Charlie: Could not apply Commit");
+        group_alice
+            .apply_commit(
+                commit.clone(),
+                vec![bob_remove_proposal.clone()],
+                &[kpb_option.unwrap()],
+            )
+            .expect("Alice: Could not apply Commit");
+
+        // Alice sends a message with a sender that points to a blank leaf
+        // Expected result: MLSCiphertextError::UnknownSender
+
+        let content = MLSPlaintextContentType::Application(vec![1, 2, 3]);
+        let bogus_sender = LeafIndex::from(1usize);
+        let bogus_sender_message = MLSPlaintext::new(
+            bogus_sender,
+            &[],
+            content.clone(),
+            &alice_credential_bundle,
+            &group_alice.context(),
+        );
+
+        let (generation, (ratchet_key, ratchet_nonce)) = group_alice
+            .secret_tree_mut()
+            .secret_for_encryption(ciphersuite, bogus_sender, SecretType::ApplicationSecret);
+        let enc_message = MLSCiphertext::new_from_plaintext(
+            &bogus_sender_message,
+            &group_alice,
+            generation,
+            ratchet_key,
+            ratchet_nonce,
+        );
+
+        let received_message = group_charlie.decrypt(&enc_message);
+        assert_eq!(
+            received_message.unwrap_err(),
+            MLSCiphertextError::UnknownSender
+        );
+
+        // Alice sends a message with a sender that is outside of the group
+        // Expected result: MLSCiphertextError::GenerationOutOfBound
+        let bogus_sender = LeafIndex::from(100usize);
+        let bogus_sender_message = MLSPlaintext::new(
+            bogus_sender,
+            &[],
+            content,
+            &alice_credential_bundle,
+            &group_alice.context(),
+        );
+
+        let (generation, (ratchet_key, ratchet_nonce)) =
+            group_alice.secret_tree_mut().secret_for_encryption(
+                ciphersuite,
+                LeafIndex::from(0usize),
+                SecretType::ApplicationSecret,
+            );
+        let enc_message = MLSCiphertext::new_from_plaintext(
+            &bogus_sender_message,
+            &group_alice,
+            generation,
+            ratchet_key,
+            ratchet_nonce,
+        );
+
+        let received_message = group_charlie.decrypt(&enc_message);
+        assert_eq!(
+            received_message.unwrap_err(),
+            MLSCiphertextError::GenerationOutOfBound
+        );
+    }
+}
