@@ -113,26 +113,6 @@ pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex
 }
 
 // Ordered from leaf to root
-// Includes leaf and root
-pub(crate) fn dirpath_long(
-    index: NodeIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    let r = root(size);
-    if index == r {
-        return Ok(vec![r]);
-    }
-
-    let mut x = index;
-    let mut d = vec![index];
-    while x != r {
-        x = parent(x, size)?;
-        d.push(x);
-    }
-    Ok(d)
-}
-
-// Ordered from leaf to root
 // Includes root but not leaf
 pub(crate) fn direct_path_root(
     index: NodeIndex,

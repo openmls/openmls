@@ -1,5 +1,3 @@
-use super::treemath::TreeMathError;
-
 /// The following test uses an old test vector that assumes an outdated version
 /// of the treemath defined in the spec. In a few select cases, we should now
 /// expect errors based on the new treemath.
@@ -87,12 +85,6 @@ fn test_dir_path() {
             assert_eq!(
                 dir_path_test,
                 direct_path_root(index, LeafIndex::from(size)).unwrap()
-            );
-            let mut dirpath_long_test = vec![index];
-            dirpath_long_test.extend(dir_path_test);
-            assert_eq!(
-                dirpath_long_test,
-                dirpath_long(index, LeafIndex::from(size)).unwrap()
             );
         }
     }

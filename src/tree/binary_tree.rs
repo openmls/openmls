@@ -107,26 +107,6 @@ impl<T> BinaryTree<T> {
         }
     }
 
-    pub(crate) fn copath_resolution<F>(
-        &self,
-        node_index: &NodeIndex,
-        predicate: &F,
-    ) -> Result<Vec<NodeIndex>, TreeError>
-    where
-        F: Fn(NodeIndex, &T) -> Vec<NodeIndex>,
-    {
-        self.check_if_within_bounds(node_index)?;
-        let leaf_count = LeafIndex::from(self.size());
-        let copath = treemath::copath(*node_index, leaf_count)
-            .expect("Treemath error when retrieving copath nodes.");
-        let mut resolution = Vec::new();
-        for copath_index in copath {
-            let copath_index_resolution = self.resolve(&copath_index, predicate)?;
-            resolution.extend(copath_index_resolution);
-        }
-        Ok(resolution)
-    }
-
     /// Apply the given function `f` to each node in the direct path of the node
     /// with index `node_index`, the result of the function applied to the
     /// parent is used as input to the functinon applied to the child.
@@ -152,24 +132,6 @@ impl<T> BinaryTree<T> {
         //    f(self.node_mut(&i)?);
         //}
         //Ok(())
-    }
-
-    /// Given two leaves, apply the function `f` to the direct path of the
-    /// closest common ancestor.
-    pub(crate) fn shared_direct_path_map<F, U: Default>(
-        &mut self,
-        leaf1: &LeafIndex,
-        leaf2: &LeafIndex,
-        f: &F,
-    ) -> Result<U, TreeError>
-    where
-        F: Fn(&mut T, U) -> Result<U, TreeError>,
-    {
-        self.check_if_within_bounds(&NodeIndex::from(leaf1))?;
-        self.check_if_within_bounds(&NodeIndex::from(leaf2))?;
-        let common_ancestor_index =
-            treemath::common_ancestor_index(NodeIndex::from(leaf1), NodeIndex::from(leaf2));
-        self.direct_path_map(&common_ancestor_index, f)
     }
 
     /// Get given two nodes, get the node in the copath of the first node, such
