@@ -62,7 +62,7 @@ macro_rules! unwrap_item {
             Ok(x) => x,
             Err(_) => return actix_web::HttpResponse::PartialContent().finish(),
         }
-    }
+    };
 }
 
 macro_rules! unwrap_data {
@@ -71,7 +71,7 @@ macro_rules! unwrap_data {
             Ok(x) => x,
             Err(_) => return actix_web::HttpResponse::InternalServerError().finish(),
         }
-    }
+    };
 }
 
 // === API ===
@@ -150,9 +150,9 @@ async fn get_key_packages(
         Some(c) => c,
         None => return actix_web::HttpResponse::NoContent().finish(),
     };
-    actix_web::HttpResponse::Ok().body(Body::from_slice(
-        &unwrap_data!(client.key_packages.encode_detached()),
-    ))
+    actix_web::HttpResponse::Ok().body(Body::from_slice(&unwrap_data!(client
+        .key_packages
+        .encode_detached())))
 }
 
 /// Send a welcome message to a client.

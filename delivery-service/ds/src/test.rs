@@ -192,8 +192,8 @@ async fn test_group() {
         group.create_add_proposal(group_aad, &credentials[0], client2_key_package);
     let epoch_proposals_ref = vec![&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
-    .create_commit(group_aad, &credentials[0], &epoch_proposals_ref, false)
-    .expect("Error creating commit");
+        .create_commit(group_aad, &credentials[0], &epoch_proposals_ref, false)
+        .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
     let epoch_proposals = vec![client2_add_proposal];
     group
