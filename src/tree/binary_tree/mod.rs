@@ -5,6 +5,8 @@ use self::errors::BinaryTreeError;
 use super::treemath;
 
 pub(crate) mod errors;
+#[cfg(test)]
+pub(crate) mod test_binary_tree;
 
 /// A binary tree in the array (vector) representation used in the MLS spec.
 /// Note, that this is not a full implementation of a binary tree, but rather

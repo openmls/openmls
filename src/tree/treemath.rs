@@ -123,7 +123,7 @@ pub(crate) fn direct_path_root(index: NodeIndex, size: LeafIndex) -> Vec<NodeInd
     }
 
     let mut d = vec![];
-    let mut x = index.to_owned();
+    let mut x = index;
     while x != r {
         // We can unwrap here, because we know that `index` is not the root node.
         x = parent(x, size).unwrap();
@@ -148,9 +148,9 @@ pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
 pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     let (lx, ly) = (level(x) + 1, level(y) + 1);
     if (lx <= ly) && (x.as_usize() >> ly == y.as_usize() >> ly) {
-        return y.to_owned();
+        return y;
     } else if (ly <= lx) && (x.as_usize() >> lx == y.as_usize() >> lx) {
-        return x.to_owned();
+        return x;
     }
 
     let (mut xn, mut yn) = (x.as_usize(), y.as_usize());
