@@ -143,16 +143,20 @@ impl Codec for LeafIndex {
 
 #[test]
 fn test_indices() {
-    let vector = vec![1, 2, 3];
+    let mut vector = vec![1, 2, 3];
     let index = NodeIndex::from(0u32);
     assert_eq!(vector[index], 1);
     assert_eq!(vector[&index], 1);
 
-    let mut element = vector[index];
-    element = element + 1;
-    assert_eq!(element, 2);
+    vector[index] = 2;
+    assert_eq!(vector[index], 2);
 
-    let mut element = vector[&index];
-    element = element + 1;
-    assert_eq!(element, 2);
+    vector[&index] = 2;
+    assert_eq!(vector[&index], 2);
+
+    let leaf_index = LeafIndex::from(1u32);
+    assert_eq!(vector[leaf_index], 3);
+
+    vector[leaf_index] = 4;
+    assert_eq!(vector[leaf_index], 4);
 }
