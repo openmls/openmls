@@ -1,6 +1,4 @@
-use crate::group::*;
-
-use serde::{Deserialize, Serialize};
+use super::*;
 
 /// Defines whether handshake messages (Proposals & Commits) are encrypted.
 /// Application are always encrypted regardless. `Plaintext`: Handshake messages
@@ -35,8 +33,11 @@ impl ManagedGroupConfig {
             callbacks,
         }
     }
-    pub(crate) fn set_callbacks(&mut self, callbacks: ManagedGroupCallbacks) {
-        self.callbacks = callbacks;
+    pub fn callbacks(&self) -> &ManagedGroupCallbacks {
+        &self.callbacks
+    }
+    pub(crate) fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
+        self.callbacks = *callbacks;
     }
 }
 

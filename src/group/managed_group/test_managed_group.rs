@@ -42,7 +42,7 @@ fn test_managed_group_persistence() {
     let alice_group_deserialized = ManagedGroup::load(
         in_file,
         &alice_credential_bundle,
-        ManagedGroupCallbacks::default(),
+        &ManagedGroupCallbacks::default(),
     )
     .expect("Could not deserialize managed group");
 

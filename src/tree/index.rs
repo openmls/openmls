@@ -1,9 +1,8 @@
-use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
 
 use crate::codec::*;
 
-use super::node::Node;
+use super::*;
 
 #[derive(
     Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash, Default, Serialize, Deserialize,

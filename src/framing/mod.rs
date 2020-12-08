@@ -6,7 +6,7 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, secret_tree::*};
 
-use serde::{Deserialize, Serialize};
+pub(crate) use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 

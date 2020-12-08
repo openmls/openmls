@@ -1,7 +1,7 @@
 use crate::ciphersuite::*;
 use crate::tree::{index::LeafIndex, secret_tree::*};
 
-use serde::{Deserialize, Serialize};
+use super::*;
 
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;

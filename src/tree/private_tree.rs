@@ -1,13 +1,10 @@
 //! A data structure holding information about the leaf node in the tree that
 //! belongs to the current client.
 
-use super::{index::NodeIndex, path_keys::PathKeys};
+use super::{index::NodeIndex, path_keys::PathKeys, *};
 use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
-use crate::key_packages::*;
 use crate::prelude::Secret;
 use crate::utils::zero;
-
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]

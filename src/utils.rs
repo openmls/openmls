@@ -33,15 +33,14 @@ fn _bytes_to_hex(bytes: &[u8]) -> String {
 }
 
 // Pretty ugly helper to count the number of arguments.
-#[macro_export]
 macro_rules! count {
-        () => (0usize);
-        ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
-    }
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
+}
 
 /// The struct must contain a field `ciphersuite: &'static Ciphersuite`, which is
 /// not added to the macro invocation.
-#[macro_export]
+
 macro_rules! implement_persistence {
     ($name:ident, $( $fields:ident ),*) => {
         impl<'de> Deserialize<'de> for $name {

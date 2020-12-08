@@ -1,10 +1,5 @@
 use crate::ciphersuite::*;
 
-use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Deserializer, Serialize,
-};
 use std::fmt;
 
 impl Serialize for Ciphersuite {

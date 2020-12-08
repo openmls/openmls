@@ -9,7 +9,6 @@ use std::convert::TryFrom;
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ConfigError};
-use crate::{count, implement_persistence};
 
 #[derive(Debug)]
 pub enum CredentialError {

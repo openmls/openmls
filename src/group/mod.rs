@@ -14,7 +14,7 @@ use crate::codec::*;
 use crate::tree::*;
 use crate::utils::*;
 
-use serde::{Deserialize, Serialize};
+pub(crate) use serde::{Deserialize, Serialize};
 
 pub use codec::*;
 pub(crate) use errors::{

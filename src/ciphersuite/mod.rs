@@ -7,7 +7,7 @@ use log::error;
 
 use evercrypt::prelude::*;
 use hpke::prelude::*;
-use serde::{
+pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
@@ -30,7 +30,6 @@ use crate::schedule::ExporterSecret;
 use crate::schedule::SenderDataSecret;
 use crate::schedule::WelcomeSecret;
 use crate::utils::random_u32;
-use crate::{count, implement_persistence};
 
 #[cfg(test)]
 mod test_ciphersuite;

@@ -1,9 +1,8 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::extensions::*;
-use crate::key_packages::*;
 
-use serde::{Deserialize, Serialize};
+use super::*;
 
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]

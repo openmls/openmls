@@ -25,9 +25,10 @@
 use crate::codec::*;
 use crate::tree::node::*;
 
-use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, RatchetTreeError};
-
-use serde::{Deserialize, Serialize};
+use super::{
+    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, RatchetTreeError,
+    Serialize,
+};
 
 #[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RatchetTreeExtension {

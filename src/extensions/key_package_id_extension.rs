@@ -12,10 +12,11 @@
 //! opaque key_id<0..2^16-1>;
 //! ```
 
-use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, KeyPackageIdError};
+use super::{
+    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, KeyPackageIdError,
+    Serialize,
+};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
-
-use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct KeyIDExtension {

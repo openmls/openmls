@@ -86,12 +86,12 @@ impl<'a> ManagedGroup<'a> {
     ) -> Result<Self, ManagedGroupError> {
         let group = MlsGroup::new(
             &group_id.as_slice(),
-            key_package_bundle.key_package().ciphersuite().name(),
+            key_package_bundle.key_package().ciphersuite_name(),
             key_package_bundle,
             GroupConfig::default(),
         )?;
 
-        Ok(ManagedGroup {
+        let managed_group = ManagedGroup {
             credential_bundle,
             managed_group_config: managed_group_config.clone(),
             group,
@@ -99,7 +99,12 @@ impl<'a> ManagedGroup<'a> {
             own_kpbs: vec![],
             aad: vec![],
             active: true,
-        })
+        };
+
+        // Since the state of the group was changed, call the auto-save function
+        managed_group.auto_save();
+
+        Ok(managed_group)
     }
 
     /// Creates a new group from a `Welcome` message
@@ -111,7 +116,8 @@ impl<'a> ManagedGroup<'a> {
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
         let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle)?;
-        Ok(ManagedGroup {
+
+        let managed_group = ManagedGroup {
             credential_bundle,
             managed_group_config: managed_group_config.clone(),
             group,
@@ -119,7 +125,12 @@ impl<'a> ManagedGroup<'a> {
             own_kpbs: vec![],
             aad: vec![],
             active: true,
-        })
+        };
+
+        // Since the state of the group was changed, call the auto-save function
+        managed_group.auto_save();
+
+        Ok(managed_group)
     }
 
     // === Membership management ===
@@ -578,7 +589,7 @@ impl<'a> ManagedGroup<'a> {
             &self.aad,
             &self.credential_bundle,
             &messages_to_commit,
-            true,
+            true, /* force_self_update */
         )?;
 
         // Add the Commit message to the other pending messages
@@ -649,7 +660,7 @@ impl<'a> ManagedGroup<'a> {
     pub fn load<R: Read>(
         reader: R,
         credential_bundle: &'a CredentialBundle,
-        callbacks: ManagedGroupCallbacks,
+        callbacks: &ManagedGroupCallbacks,
     ) -> Result<ManagedGroup<'a>, Error> {
         let serialized_managed_group: SerializedManagedGroup = serde_json::from_reader(reader)?;
         Ok(serialized_managed_group.into_managed_group(credential_bundle, callbacks))
