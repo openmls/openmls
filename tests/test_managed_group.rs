@@ -202,11 +202,8 @@ fn managed_group_operations() {
                 .with_app_message_received(app_message_received)
                 .with_invalid_message_received(invalid_message_received)
                 .with_error_occured(error_occured);
-            let managed_group_config = ManagedGroupConfig::new(
-                HandshakeMessageFormat::Ciphertext,
-                update_policy,
-                callbacks,
-            );
+            let managed_group_config =
+                ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
