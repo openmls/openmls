@@ -352,7 +352,7 @@ impl RatchetTree {
         self.merge_direct_path_keys(update_path, sender_direct_path)?;
         self.merge_public_keys(&new_path_public_keys, &common_path)?;
         self.public_tree.replace(
-            NodeIndex::from(sender),
+            &NodeIndex::from(sender),
             Node::new_leaf(Some(update_path.leaf_key_package.clone())),
         )?;
         self.compute_parent_hash(NodeIndex::from(sender))?;
@@ -447,7 +447,7 @@ impl RatchetTree {
         // Update own leaf node with the new values. We can unwrap here, because
         // `own_index` is always within the tree.
         self.public_tree
-            .replace(own_index, Node::new_leaf(Some(key_package.clone())))
+            .replace(&own_index, Node::new_leaf(Some(key_package.clone())))
             .unwrap();
         if with_update_path {
             let update_path_nodes = self
@@ -589,7 +589,7 @@ impl RatchetTree {
             // `free_leaves`, which in turn only contains indices that are
             // within the tree.
             self.public_tree
-                .replace(leaf_node_index, Node::new_leaf(Some((*new_kp).clone())))
+                .replace(&leaf_node_index, Node::new_leaf(Some((*new_kp).clone())))
                 .unwrap();
             let dirpath = self.public_tree.direct_path(&leaf_node_index).unwrap();
             for d in dirpath.iter() {
@@ -657,7 +657,7 @@ impl RatchetTree {
             // Blank the direct path of that leaf node
             self.blank_member(sender_index)?;
             // Replace the leaf node
-            self.public_tree.replace(sender_index, leaf_node)?;
+            self.public_tree.replace(&sender_index, leaf_node)?;
             // Check if it is a self-update
             if sender_index == self.own_node_index() {
                 let own_kpb = match updates_key_package_bundles
