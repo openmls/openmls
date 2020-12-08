@@ -127,35 +127,43 @@ impl<T> BinaryTree<T> {
         Ok(resolution)
     }
 
-    /// Apply the given function `f` to nodes in the direct path of the node
-    /// with index `node_index`.
-    pub(crate) fn direct_path_map<F>(
+    /// Apply the given function `f` to each node in the direct path of the node
+    /// with index `node_index`, the result of the function applied to the
+    /// parent is used as input to the functinon applied to the child.
+    pub(crate) fn direct_path_map<F, U: Default>(
         &mut self,
         node_index: &NodeIndex,
         f: &F,
-    ) -> Result<(), TreeError>
+    ) -> Result<U, TreeError>
     where
-        F: Fn(&mut T) -> (),
+        F: Fn(&mut T, U) -> Result<U, TreeError>,
     {
         self.check_if_within_bounds(node_index)?;
-        // We can unwrap here, because we know the index is within bounds.
-        let direct_path = treemath::direct_path_root(*node_index, self.leaf_count()).unwrap();
-        for i in direct_path {
-            f(self.node_mut(&i)?);
+        if node_index == &treemath::root(self.leaf_count()) {
+            return f(self.node_mut(node_index).unwrap(), U::default());
+        } else {
+            let parent = self.parent(node_index)?;
+            let parent_result = self.direct_path_map(&parent, f)?;
+            return f(self.node_mut(node_index).unwrap(), parent_result);
         }
-        Ok(())
+        // We can unwrap here, because we know the index is within bounds.
+        //let direct_path = treemath::direct_path_root(*node_index,
+        // self.leaf_count()).unwrap(); for i in direct_path {
+        //    f(self.node_mut(&i)?);
+        //}
+        //Ok(())
     }
 
     /// Given two leaves, apply the function `f` to the direct path of the
     /// closest common ancestor.
-    pub(crate) fn shared_direct_path_map<F>(
+    pub(crate) fn shared_direct_path_map<F, U: Default>(
         &mut self,
         leaf1: &LeafIndex,
         leaf2: &LeafIndex,
         f: &F,
-    ) -> Result<(), TreeError>
+    ) -> Result<U, TreeError>
     where
-        F: Fn(&mut T) -> (),
+        F: Fn(&mut T, U) -> Result<U, TreeError>,
     {
         self.check_if_within_bounds(&NodeIndex::from(leaf1))?;
         self.check_if_within_bounds(&NodeIndex::from(leaf2))?;
@@ -200,5 +208,29 @@ impl<T> BinaryTree<T> {
         node_index2: &NodeIndex,
     ) -> NodeIndex {
         treemath::common_ancestor_index(*node_index1, *node_index2)
+    }
+
+    /// Compute a function f based on the node itself, as well as the result of
+    /// the same function computed on the left and right child. Leafs return the
+    /// result of the function with their node, as well as the default values
+    /// for `U`.
+    pub(crate) fn fold_tree<F, U: Default>(
+        &self,
+        node_index: &NodeIndex,
+        f: &F,
+    ) -> Result<U, TreeError>
+    where
+        F: Fn(&T, &NodeIndex, &U, &U) -> U,
+    {
+        let node = self.node(node_index)?;
+        if node_index.is_leaf() {
+            Ok(f(node, node_index, &U::default(), &U::default()))
+        } else {
+            let left_node = treemath::left(*node_index)?;
+            let left_result = self.fold_tree(&left_node, f)?;
+            let right_node = treemath::right(*node_index, self.leaf_count())?;
+            let right_result = self.fold_tree(&right_node, f)?;
+            Ok(f(node, node_index, &left_result, &right_result))
+        }
     }
 }

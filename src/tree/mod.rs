@@ -226,7 +226,7 @@ impl RatchetTree {
     }
 
     fn blank_member(&mut self, index: NodeIndex) -> Result<(), TreeError> {
-        let f = |node: &mut Node| node.blank();
+        let f = |node: &mut Node, _| Ok(node.blank());
         // First, blank the member's leaf.
         self.public_tree.node_mut(&index)?.blank();
         // Then, blank the member's direct path.
@@ -735,40 +735,33 @@ impl RatchetTree {
     }
     /// Computes the tree hash
     pub fn compute_tree_hash(&self) -> Vec<u8> {
-        fn node_hash(
-            ciphersuite: &Ciphersuite,
-            tree: &RatchetTree,
-            index: NodeIndex,
-        ) -> Result<Vec<u8>, TreeError> {
-            let node = &tree.public_tree.node(&index)?;
+        let ciphersuite = self.ciphersuite;
+        let node_hash = |node: &Node,
+                         node_index: &NodeIndex,
+                         left_hash: &Vec<u8>,
+                         right_hash: &Vec<u8>|
+         -> Vec<u8> {
             match node.node_type {
                 NodeType::Leaf => {
-                    let leaf_node_hash = LeafNodeHashInput::new(&index, &node.key_package);
-                    Ok(leaf_node_hash.hash(ciphersuite))
+                    let leaf_node_hash = LeafNodeHashInput::new(node_index, &node.key_package);
+                    leaf_node_hash.hash(ciphersuite)
                 }
                 NodeType::Parent => {
-                    let left = treemath::left(index)
-                        .expect("node_hash: Error when computing left child of node.");
-                    let left_hash = node_hash(ciphersuite, tree, left)?;
-                    let right = treemath::right(index, tree.leaf_count())
-                        .expect("node_hash: Error when computing left child of node.");
-                    let right_hash = node_hash(ciphersuite, tree, right)?;
                     let parent_node_hash = ParentNodeHashInput::new(
-                        index.as_u32(),
+                        node_index.as_u32(),
                         &node.node,
                         &left_hash,
                         &right_hash,
                     );
-                    Ok(parent_node_hash.hash(ciphersuite))
+                    parent_node_hash.hash(ciphersuite)
                 }
                 NodeType::Default => panic!("Default node type not supported in tree hash."),
             }
-        }
+        };
         let root = treemath::root(self.leaf_count());
-        // We can unwrap here, because the root is always within the tree and
-        // following that, `node_hash` is only called on parent nodes, not on
-        // leaves.
-        node_hash(&self.ciphersuite, &self, root).unwrap()
+
+        // We can unwrap here, as the root is always within the tree.
+        self.public_tree.fold_tree(&root, &node_hash).unwrap()
     }
     /// Computes the parent hash. Throws a `TreeError` if the given `index` is
     /// outside of the tree.
@@ -778,29 +771,32 @@ impl RatchetTree {
         if index == root {
             return Ok(vec![]);
         }
-        // Calculate the parent's index
-        let parent = treemath::parent(index, self.leaf_count())
-            .expect("compute_parent_hash: Error when computing node parent.");
-        // If we already reached the tree's root, return the hash of that node
-        let parent_hash = if parent == root {
-            // We can unwrap here, because the root is always within the tree.
-            let root_node = &self.public_tree.node(&parent).unwrap();
-            root_node.hash(&self.ciphersuite).unwrap()
-        // Otherwise return the hash of the next parent
-        } else {
-            self.compute_parent_hash(parent)?
+
+        // Clone the ciphersuite, so we can use it in the closure without having
+        // to borrow `&self`.
+        let ciphersuite = self.ciphersuite.clone();
+
+        let f = |node: &mut Node, hash: Vec<u8>| -> Result<Vec<u8>, TreeError> {
+            // If there is no input hash, we're processing the root node.
+            if hash.is_empty() {
+                return Ok(node.hash(&ciphersuite).unwrap());
+            } else {
+                // Temporarily take the parent node if it's there.
+                match node.node.take() {
+                    Some(mut parent_node) => {
+                        // Set the parent hash...
+                        parent_node.set_parent_hash(hash);
+                        // ... and put it back.
+                        node.node.replace(parent_node);
+                        // Return the node hash.
+                        return Ok(node.hash(&ciphersuite).unwrap());
+                    }
+                    // If it's a blank node, return the input hash.
+                    None => return Ok(hash),
+                }
+            }
         };
-        // If the current node is a parent, replace the parent hash in that node
-        let current_node = &self.public_tree.node(&index)?;
-        if let Some(mut parent_node) = current_node.node.clone() {
-            parent_node.set_parent_hash(parent_hash);
-            self.public_tree.node_mut(&index)?.node = Some(parent_node);
-            let updated_parent_node = &self.public_tree.node(&index)?;
-            Ok(updated_parent_node.hash(&self.ciphersuite).unwrap())
-        // Otherwise we reached the leaf level, just return the hash
-        } else {
-            Ok(parent_hash)
-        }
+        self.public_tree.direct_path_map(&index, &f)
     }
     /// Verifies the integrity of a public tree
     pub fn verify_integrity(ciphersuite: &Ciphersuite, nodes: &[Option<Node>]) -> bool {
@@ -911,7 +907,7 @@ pub enum TreeError {
 }
 
 impl From<TreeMathError> for TreeError {
-    fn from(e: TreeMathError) -> Self {
+    fn from(_: TreeMathError) -> Self {
         TreeError::InvalidArguments
     }
 }
