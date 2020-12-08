@@ -160,8 +160,8 @@ impl<T> BinaryTree<T> {
 
         let target_direct_path = self.direct_path(copath_target).unwrap();
         let copath_node_index = match target_direct_path.iter().find(|x| copath.contains(x)) {
-            Some(index) => index.clone(),
-            None => copath_target.clone(),
+            Some(index) => index.to_owned(),
+            None => copath_target.to_owned(),
         };
         copath_node_index
     }

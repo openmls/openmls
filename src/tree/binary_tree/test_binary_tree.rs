@@ -42,6 +42,10 @@ fn test_basic_operations() {
     // Check that it worked.
     assert_eq!(new_tree.nodes().first().unwrap(), &0u8);
     assert_eq!(old_first, old_removed_first.unwrap());
+
+    // Finally, let's try to replace something with an out-of-bounds index.
+    let error = new_tree.replace(&NodeIndex::from(new_tree_size), 0u8);
+    assert!(error.is_err());
 }
 
 #[test]
