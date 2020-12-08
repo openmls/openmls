@@ -150,7 +150,7 @@ impl RatchetTree {
     /// nodes.
     pub fn public_key_tree(&self) -> Vec<Option<&Node>> {
         let mut tree = vec![];
-        for node in self.public_tree.nodes.iter() {
+        for node in self.public_tree.nodes().iter() {
             if node.is_blank() {
                 tree.push(None)
             } else {
@@ -236,7 +236,7 @@ impl RatchetTree {
 
     fn free_leaves(&self) -> Vec<NodeIndex> {
         let mut free_leaves = vec![];
-        for (index, node) in self.public_tree.nodes.iter().enumerate() {
+        for (index, node) in self.public_tree.nodes().iter().enumerate() {
             let node_index = NodeIndex::from(index);
             if NodeIndex::from(index).is_leaf() && node.is_blank() {
                 free_leaves.push(node_index);

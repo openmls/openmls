@@ -7,7 +7,7 @@ use super::{treemath, TreeError};
 /// only enables the operations needed by MLS.
 #[derive(Debug, Clone)]
 pub struct BinaryTree<T> {
-    pub(crate) nodes: Vec<T>,
+    nodes: Vec<T>,
 }
 
 impl<T> From<Vec<T>> for BinaryTree<T> {
@@ -194,5 +194,10 @@ impl<T> BinaryTree<T> {
             let right_result = self.fold_tree(&right_node, f)?;
             Ok(f(node, node_index, &left_result, &right_result))
         }
+    }
+
+    /// Return a reference to the nodes of the tree.
+    pub(crate) fn nodes(&self) -> &Vec<T> {
+        &self.nodes
     }
 }
