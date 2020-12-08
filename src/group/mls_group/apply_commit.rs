@@ -16,7 +16,7 @@ impl MlsGroup {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
-        if mls_plaintext.epoch != self.group_context.epoch {
+        if mls_plaintext.epoch() != &self.group_context.epoch {
             return Err(ApplyCommitError::EpochMismatch);
         }
 
