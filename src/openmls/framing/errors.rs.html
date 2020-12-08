@@ -46,6 +46,10 @@
 <span id="43">43</span>
 <span id="44">44</span>
 <span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
@@ -59,7 +63,7 @@
     <span class="doccomment">/// This is not an application message.</span>
     <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="number">0</span>,
 }
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MLSCiphertextError</span> {
     <span class="doccomment">/// Invalid content type in message.</span>
@@ -67,6 +71,9 @@
 
     <span class="doccomment">/// Ratcheting secret generation is not found.</span>
     <span class="ident">GenerationOutOfBound</span> <span class="op">=</span> <span class="number">2</span>,
+
+    <span class="doccomment">/// Sender is not part of the group</span>
+    <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="number">3</span>,
 }
 
 <span class="macro">implement_enum_display</span><span class="macro">!</span>(<span class="ident">MLSPlaintextError</span>);
@@ -89,6 +96,7 @@
             <span class="self">Self</span>::<span class="ident">GenerationOutOfBound</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="string">&quot;Couldn&#39;t find a ratcheting secret for the given sender and generation.&quot;</span>
             }
+            <span class="self">Self</span>::<span class="ident">UnknownSender</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;The sender of the MLSCiphertext is not part of the group.&quot;</span>,
         }
     }
 }

@@ -310,6 +310,18 @@
 <span id="307">307</span>
 <span id="308">308</span>
 <span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">info</span>};
 
@@ -329,7 +341,11 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="ident">node</span>::<span class="kw-2">*</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::{<span class="ident">Ref</span>, <span class="ident">RefCell</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefMut</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">errors</span>::<span class="ident">ExporterError</span>;
 
@@ -523,11 +539,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">encrypt</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">mls_plaintext</span>: <span class="ident">MLSPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MLSCiphertext</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">secret_tree</span>.<span class="ident">borrow_mut</span>();
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="ident">ratchet_nonce</span>)) <span class="op">=</span> <span class="ident">secret_tree</span>.<span class="ident">secret_for_encryption</span>(
-            <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-            <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>,
-            <span class="ident">secret_type</span>,
-        );
+        <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="ident">ratchet_nonce</span>)) <span class="op">=</span>
+            <span class="ident">secret_tree</span>.<span class="ident">secret_for_encryption</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>(), <span class="self">self</span>.<span class="ident">sender_index</span>(), <span class="ident">secret_type</span>);
         <span class="ident">MLSCiphertext</span>::<span class="ident">new_from_plaintext</span>(
             <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -537,22 +550,23 @@
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">mls_ciphertext</span>: <span class="kw-2">&amp;</span><span class="ident">MLSCiphertext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">borrow</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roster</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">decrypt</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">mls_ciphertext</span>: <span class="kw-2">&amp;</span><span class="ident">MLSCiphertext</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span>, <span class="ident">MLSCiphertextError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">indexed_members</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">new</span>();
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">tree</span>.<span class="ident">leaf_count</span>().<span class="ident">as_usize</span>() {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">tree</span>.<span class="ident">nodes</span>[<span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">i</span>)];
-            <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">kp</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">key_package</span> {
-                <span class="ident">kp</span>.<span class="ident">credential</span>()
-            } <span class="kw">else</span> {
-                <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Missing key package&quot;</span>);
-            };
-            <span class="ident">roster</span>.<span class="ident">push</span>(<span class="ident">credential</span>);
+            <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">i</span>);
+            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">tree</span>.<span class="ident">nodes</span>[<span class="ident">leaf_index</span>];
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">kp</span>) <span class="op">=</span> <span class="ident">node</span>.<span class="ident">key_package</span>.<span class="ident">as_ref</span>() {
+                <span class="ident">indexed_members</span>.<span class="ident">insert</span>(<span class="ident">leaf_index</span>, <span class="ident">kp</span>.<span class="ident">credential</span>());
+            }
         }
 
         <span class="prelude-val">Ok</span>(<span class="ident">mls_ciphertext</span>.<span class="ident">to_plaintext</span>(
             <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">roster</span>,
+            <span class="ident">indexed_members</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch_secrets</span>,
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">secret_tree</span>.<span class="ident">borrow_mut</span>(),
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>,
@@ -573,14 +587,10 @@
             <span class="ident">key_length</span>,
         ))
     }
-}
 
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
+    <span class="doccomment">/// Returns the ratchet tree</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tree</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Ref</span><span class="op">&lt;</span><span class="ident">RatchetTree</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">borrow</span>()
-    }
-    <span class="kw">fn</span> <span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LeafIndex</span> {
-        <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">borrow</span>().<span class="ident">own_node_index</span>().<span class="ident">into</span>()
     }
 
     <span class="doccomment">/// Get the ciphersuite implementation used in this group.</span>
@@ -588,16 +598,30 @@
         <span class="self">self</span>.<span class="ident">ciphersuite</span>
     }
 
+    <span class="doccomment">/// Get the group context</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">context</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupContext</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>
     }
 
+    <span class="doccomment">/// Get the group ID</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>
+    }
+}
+
+<span class="comment">// Private and crate functions</span>
+<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
+    <span class="kw">fn</span> <span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LeafIndex</span> {
+        <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">borrow</span>().<span class="ident">own_node_index</span>().<span class="ident">into</span>()
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">epoch_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">EpochSecrets</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch_secrets</span>
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret_tree_mut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">RefMut</span><span class="op">&lt;</span><span class="ident">SecretTree</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">secret_tree</span>.<span class="ident">borrow_mut</span>()
     }
 }
 

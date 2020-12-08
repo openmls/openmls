@@ -902,6 +902,7 @@
 <span id="899">899</span>
 <span id="900">900</span>
 <span id="901">901</span>
+<span id="902">902</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -1356,6 +1357,7 @@
 
         <span class="comment">// Update own leaf node with the new values</span>
         <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">own_index</span>.<span class="ident">as_usize</span>()] <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">new_leaf</span>(<span class="prelude-val">Some</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>()));
+        <span class="self">self</span>.<span class="ident">compute_parent_hash</span>(<span class="self">self</span>.<span class="ident">own_node_index</span>());
         <span class="kw">if</span> <span class="ident">with_update_path</span> {
             <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">encrypt_to_copath</span>(<span class="ident">new_public_keys</span>, <span class="ident">group_context</span>)

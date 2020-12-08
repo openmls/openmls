@@ -439,6 +439,11 @@
 <span id="436">436</span>
 <span id="437">437</span>
 <span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">error</span>;
 
@@ -876,6 +881,11 @@
         <span class="ident">leaf_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
         <span class="ident">leaf_secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;node&quot;</span>)
+    }
+
+    <span class="doccomment">/// Sign the KeyPackageBundle</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>) {
+        <span class="self">self</span>.<span class="ident">key_package_mut</span>().<span class="ident">sign</span>(<span class="ident">credential_bundle</span>);
     }
 }
 </pre></div>

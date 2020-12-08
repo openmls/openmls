@@ -787,6 +787,7 @@
 <span id="784">784</span>
 <span id="785">785</span>
 <span id="786">786</span>
+<span id="787">787</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -1307,23 +1308,19 @@
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>);
         }
-        <span class="comment">// Use provided KeyPackageBundle or create a new one</span>
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>();
-        <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">key_package_bundle_option</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kpb</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">own_key_package</span>();
-                <span class="ident">KeyPackageBundle</span>::<span class="ident">from_rekeyed_key_package</span>(<span class="ident">existing_key_package</span>)
-            }
-        };
-        <span class="ident">drop</span>(<span class="ident">tree</span>);
 
-        <span class="comment">// Create UpdateProposal</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plaintext_messages</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_update_proposal</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">credential_bundle</span>,
-            <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(),
-        )];
+        <span class="comment">// If a KeyPackageBundle was provided, create an UpdateProposal</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plaintext_messages</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_package_bundle</span>) <span class="op">=</span> <span class="ident">key_package_bundle_option</span> {
+            <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_update_proposal</span>(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">credential_bundle</span>,
+                <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(),
+            );
+            <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">key_package_bundle</span>);
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">update_proposal</span>]
+        } <span class="kw">else</span> {
+            <span class="macro">vec</span><span class="macro">!</span>[]
+        };
 
         <span class="comment">// Include pending proposals into Commit</span>
         <span class="kw">let</span> <span class="ident">messages_to_commit</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
@@ -1337,7 +1334,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">credential_bundle</span>,
             <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
-            <span class="bool-val">false</span>,
+            <span class="bool-val">true</span>, <span class="comment">/* force_self_update */</span>
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Add the Commit message to the other pending messages</span>
@@ -1369,7 +1366,12 @@
         <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">own_key_package</span>();
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">key_package_bundle_option</span> {
             <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kpb</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">KeyPackageBundle</span>::<span class="ident">from_rekeyed_key_package</span>(<span class="ident">existing_key_package</span>),
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
+                    <span class="ident">KeyPackageBundle</span>::<span class="ident">from_rekeyed_key_package</span>(<span class="ident">existing_key_package</span>);
+                <span class="ident">key_package_bundle</span>.<span class="ident">sign</span>(<span class="self">self</span>.<span class="ident">credential_bundle</span>);
+                <span class="ident">key_package_bundle</span>
+            }
         };
 
         <span class="kw">let</span> <span class="ident">plaintext_messages</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_update_proposal</span>(
