@@ -79,12 +79,12 @@ fn test_dir_path() {
     for size in 0..SIZE {
         for i in 0..size / 2 {
             let index = NodeIndex::from(i);
-            let mut dir_path_test = dirpath(index, LeafIndex::from(size)).unwrap();
+            let mut dir_path_test = dirpath(index, LeafIndex::from(size));
             let root = root(LeafIndex::from(size));
             dir_path_test.extend_from_slice(&[root]);
             assert_eq!(
                 dir_path_test,
-                direct_path_root(index, LeafIndex::from(size)).unwrap()
+                direct_path_root(index, LeafIndex::from(size))
             );
         }
     }

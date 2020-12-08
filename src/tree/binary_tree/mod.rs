@@ -1,6 +1,10 @@
 use crate::{prelude::LeafIndex, tree::index::NodeIndex};
 
-use super::{treemath, TreeError};
+use self::errors::BinaryTreeError;
+
+use super::treemath;
+
+pub(crate) mod errors;
 
 /// A binary tree in the array (vector) representation used in the MLS spec.
 /// Note, that this is not a full implementation of a binary tree, but rather
@@ -30,11 +34,15 @@ impl<T> BinaryTree<T> {
 
     /// Replace the node at index `index`, consuming the new node and returning
     /// the old one.
-    pub(crate) fn replace(&mut self, node_index: &NodeIndex, node: T) -> Result<T, TreeError> {
+    pub(crate) fn replace(
+        &mut self,
+        node_index: &NodeIndex,
+        node: T,
+    ) -> Result<T, BinaryTreeError> {
         // Check if the index is within bounds to prevent `swap_remove` from
         // panicking.
         if node_index >= &self.size() {
-            return Err(TreeError::InvalidArguments);
+            return Err(BinaryTreeError::IndexOutOfBounds);
         };
         // First push the node to the end of the nodes array.
         self.nodes.push(node);
@@ -54,27 +62,27 @@ impl<T> BinaryTree<T> {
     }
 
     /// Get a reference to a node of the tree by index.
-    pub(crate) fn node(&self, node_index: &NodeIndex) -> Result<&T, TreeError> {
+    pub(crate) fn node(&self, node_index: &NodeIndex) -> Result<&T, BinaryTreeError> {
         self.nodes
             .get(node_index.as_usize())
-            .ok_or(TreeError::InvalidArguments)
+            .ok_or(BinaryTreeError::IndexOutOfBounds)
     }
 
     /// Get a mutable reference to a node of the tree by index.
-    pub(crate) fn node_mut(&mut self, node_index: &NodeIndex) -> Result<&mut T, TreeError> {
+    pub(crate) fn node_mut(&mut self, node_index: &NodeIndex) -> Result<&mut T, BinaryTreeError> {
         self.nodes
             .get_mut(node_index.as_usize())
-            .ok_or(TreeError::InvalidArguments)
+            .ok_or(BinaryTreeError::IndexOutOfBounds)
     }
 
     /// Get a reference to a leaf of the tree by index.
-    pub(crate) fn leaf(&self, leaf_index: &LeafIndex) -> Result<&T, TreeError> {
+    pub(crate) fn leaf(&self, leaf_index: &LeafIndex) -> Result<&T, BinaryTreeError> {
         self.node(&NodeIndex::from(leaf_index))
     }
 
     /// Return the nodes in the CoPath of a given node.
-    pub(crate) fn copath(&self, node_index: &NodeIndex) -> Result<Vec<NodeIndex>, TreeError> {
-        Ok(treemath::copath(*node_index, self.leaf_count())?)
+    pub(crate) fn copath(&self, node_index: &NodeIndex) -> Result<Vec<NodeIndex>, BinaryTreeError> {
+        Ok(treemath::copath(*node_index, self.leaf_count()))
     }
 
     /// Given a node index, check if the given predicate evaluates to a
@@ -86,7 +94,7 @@ impl<T> BinaryTree<T> {
         &self,
         node_index: &NodeIndex,
         predicate: &F,
-    ) -> Result<Vec<NodeIndex>, TreeError>
+    ) -> Result<Vec<NodeIndex>, BinaryTreeError>
     where
         F: Fn(NodeIndex, &T) -> Vec<NodeIndex>,
     {
@@ -117,7 +125,7 @@ impl<T> BinaryTree<T> {
         &mut self,
         node_index: &NodeIndex,
         f: &F,
-    ) -> Result<U, TreeError>
+    ) -> Result<U, BinaryTreeError>
     where
         F: Fn(&mut T, U) -> U,
     {
@@ -131,8 +139,11 @@ impl<T> BinaryTree<T> {
     }
 
     /// Get the direct path between a given node index and the root.
-    pub(crate) fn direct_path(&self, node_index: &NodeIndex) -> Result<Vec<NodeIndex>, TreeError> {
-        Ok(treemath::direct_path_root(*node_index, self.leaf_count())?)
+    pub(crate) fn direct_path(
+        &self,
+        node_index: &NodeIndex,
+    ) -> Result<Vec<NodeIndex>, BinaryTreeError> {
+        Ok(treemath::direct_path_root(*node_index, self.leaf_count()))
     }
 
     /// Given two nodes `origin` and `target`, return the index of the node in
@@ -142,19 +153,19 @@ impl<T> BinaryTree<T> {
         &self,
         copath_origin: &NodeIndex,
         copath_target: &NodeIndex,
-    ) -> Result<NodeIndex, TreeError> {
-        let copath = treemath::copath(*copath_origin, self.leaf_count())?;
+    ) -> NodeIndex {
+        let copath = treemath::copath(*copath_origin, self.leaf_count());
 
         let target_direct_path = self.direct_path(copath_target).unwrap();
         let copath_node_index = match target_direct_path.iter().find(|x| copath.contains(x)) {
             Some(index) => index.clone(),
             None => copath_target.clone(),
         };
-        Ok(copath_node_index)
+        copath_node_index
     }
 
     /// Get the parent of a node with the given index.
-    pub(crate) fn parent(&self, node_index: &NodeIndex) -> Result<NodeIndex, TreeError> {
+    pub(crate) fn parent(&self, node_index: &NodeIndex) -> Result<NodeIndex, BinaryTreeError> {
         Ok(treemath::parent(*node_index, self.leaf_count())?)
     }
 
@@ -175,7 +186,7 @@ impl<T> BinaryTree<T> {
         &self,
         node_index: &NodeIndex,
         f: &F,
-    ) -> Result<U, TreeError>
+    ) -> Result<U, BinaryTreeError>
     where
         F: Fn(&T, &NodeIndex, &U, &U) -> U,
     {

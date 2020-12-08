@@ -3,10 +3,10 @@
 //! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::config::ConfigError;
 use crate::extensions::ExtensionError;
 use crate::framing::errors::MLSCiphertextError;
 use crate::tree::TreeError;
+use crate::{config::ConfigError, tree::binary_tree::errors::BinaryTreeError};
 
 #[derive(PartialEq, Debug)]
 #[repr(u16)]
@@ -76,6 +76,12 @@ impl From<TreeError> for WelcomeError {
             TreeError::InvalidUpdatePath => WelcomeError::InvalidRatchetTree,
             TreeError::UnknownError => WelcomeError::UnknownError,
         }
+    }
+}
+
+impl From<BinaryTreeError> for WelcomeError {
+    fn from(_: BinaryTreeError) -> Self {
+        WelcomeError::InvalidRatchetTree
     }
 }
 

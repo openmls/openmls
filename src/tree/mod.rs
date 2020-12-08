@@ -6,7 +6,7 @@ use crate::key_packages::*;
 use crate::messages::proposals::*;
 
 // Tree modules
-mod binary_tree;
+pub(crate) mod binary_tree;
 pub(crate) mod codec;
 pub(crate) mod hash_input;
 pub mod index;
@@ -23,7 +23,10 @@ use node::*;
 use private_tree::{PathSecrets, PrivateTree};
 use treemath::TreeMathError;
 
-use self::{binary_tree::BinaryTree, private_tree::CommitSecret};
+use self::{
+    binary_tree::{errors::BinaryTreeError, BinaryTree},
+    private_tree::CommitSecret,
+};
 
 // Internal tree tests
 #[cfg(test)]
@@ -200,7 +203,7 @@ impl RatchetTree {
             }
         };
 
-        self.public_tree.resolve(&index, &predicate)
+        Ok(self.public_tree.resolve(&index, &predicate)?)
     }
 
     /// Get the index of the own node.
@@ -269,7 +272,7 @@ impl RatchetTree {
 
         let common_ancestor_copath_index = self
             .public_tree
-            .copath_node(&sender_node_index, &own_node_index)?;
+            .copath_node(&sender_node_index, &own_node_index);
 
         // Resolve the node of that co-path index
         let resolution = self.resolve(common_ancestor_copath_index)?;
@@ -797,7 +800,7 @@ impl RatchetTree {
                 }
             }
         };
-        self.public_tree.direct_path_map(&index, &f)
+        Ok(self.public_tree.direct_path_map(&index, &f)?)
     }
     /// Verifies the integrity of a public tree
     pub fn verify_integrity(ciphersuite: &Ciphersuite, nodes: &[Option<Node>]) -> bool {
@@ -909,6 +912,12 @@ pub enum TreeError {
 
 impl From<TreeMathError> for TreeError {
     fn from(_: TreeMathError) -> Self {
+        TreeError::InvalidArguments
+    }
+}
+
+impl From<BinaryTreeError> for TreeError {
+    fn from(_: BinaryTreeError) -> Self {
         TreeError::InvalidArguments
     }
 }

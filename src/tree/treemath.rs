@@ -97,57 +97,60 @@ pub(crate) fn sibling(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, Tr
 
 // Ordered from leaf to root
 // Includes neither leaf nor root
-pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
+pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let r = root(size);
     if index == r {
-        return Ok(vec![]);
+        return vec![];
     }
 
     let mut d = vec![];
-    let mut x = parent(index, size)?;
+    // We can unwrap here, because we know that `index` is not the root node.
+    let mut x = parent(index, size).unwrap();
     while x != r {
         d.push(x);
-        x = parent(x, size)?;
+        // We can unwrap here, because we know that `index` is not the root node.
+        x = parent(x, size).unwrap();
     }
-    Ok(d)
+    d
 }
 
 // Ordered from leaf to root
 // Includes root but not leaf
-pub(crate) fn direct_path_root(
-    index: NodeIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
+pub(crate) fn direct_path_root(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let r = root(size);
     if index == r {
-        return Ok(vec![r]);
+        return vec![r];
     }
 
     let mut d = vec![];
-    let mut x = index;
+    let mut x = index.to_owned();
     while x != r {
-        x = parent(x, size)?;
+        // We can unwrap here, because we know that `index` is not the root node.
+        x = parent(x, size).unwrap();
         d.push(x);
     }
-    Ok(d)
+    d
 }
 
 // Ordered from leaf to root
-pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
+pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     if index == root(size) {
-        return Ok(vec![]);
+        return vec![];
     }
     let mut d = vec![index];
-    d.append(&mut dirpath(index, size)?);
-    d.iter().map(|&index| sibling(index, size)).collect()
+    d.append(&mut dirpath(index, size));
+    // Since dirpath doesn't include the root, we can unwrap here.
+    d.iter()
+        .map(|&index| sibling(index, size).unwrap())
+        .collect()
 }
 
 pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     let (lx, ly) = (level(x) + 1, level(y) + 1);
     if (lx <= ly) && (x.as_usize() >> ly == y.as_usize() >> ly) {
-        return y;
+        return y.to_owned();
     } else if (ly <= lx) && (x.as_usize() >> lx == y.as_usize() >> lx) {
-        return x;
+        return x.to_owned();
     }
 
     let (mut xn, mut yn) = (x.as_usize(), y.as_usize());

@@ -121,8 +121,7 @@ impl MlsGroup {
                 tree.own_node_index(),
                 NodeIndex::from(group_info.signer_index()),
             );
-            let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count())
-                .expect("new_from_welcome_internal: TreeMath error when computing direct path.");
+            let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count());
 
             // Update the private tree.
             let private_tree = tree.private_tree_mut();

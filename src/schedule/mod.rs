@@ -128,8 +128,7 @@ impl JoinerSecret {
         let dirpath = treemath::direct_path_root(
             provisional_tree.own_node_index(),
             provisional_tree.leaf_count(),
-        )
-        .expect("create_commit_internal: TreeMath error when computing direct path.");
+        );
 
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
