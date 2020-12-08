@@ -453,6 +453,9 @@ impl RatchetTree {
         self.public_tree
             .replace(&own_index, Node::new_leaf(Some(key_package.clone())))
             .unwrap();
+        // Again, we can unwrap here, because we know that `own_index` is within
+        // the tree.
+        self.compute_parent_hash(self.own_node_index()).unwrap();
         if with_update_path {
             let update_path_nodes = self
                 .encrypt_to_copath(new_public_keys, group_context)

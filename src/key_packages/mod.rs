@@ -435,4 +435,9 @@ impl KeyPackageBundle {
     ) -> Secret {
         leaf_secret.derive_secret(ciphersuite, "node")
     }
+
+    /// Sign the KeyPackageBundle
+    pub(crate) fn sign(&mut self, credential_bundle: &CredentialBundle) {
+        self.key_package_mut().sign(credential_bundle);
+    }
 }

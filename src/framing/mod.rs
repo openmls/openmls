@@ -6,6 +6,7 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, secret_tree::*};
 
+use std::collections::HashMap;
 use std::convert::TryFrom;
 
 pub mod errors;
@@ -244,7 +245,7 @@ impl MLSCiphertext {
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
-        roster: &[&Credential],
+        indexed_members: HashMap<LeafIndex, &Credential>,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
         context: &GroupContext,
@@ -317,7 +318,13 @@ impl MLSCiphertext {
             content: mls_ciphertext_content.content,
             signature: mls_ciphertext_content.signature,
         };
-        let credential = roster.get(sender_data.sender.as_usize()).unwrap();
+        let credential = match indexed_members.get(&sender_data.sender) {
+            Some(c) => c,
+            None => {
+                return Err(MLSCiphertextError::UnknownSender);
+            }
+        };
+
         let serialized_context = context.encode_detached().unwrap();
         assert!(mls_plaintext.verify(Some(serialized_context), credential));
         Ok(mls_plaintext)
@@ -520,27 +527,6 @@ impl Codec for MLSPlaintextTBS {
         self.payload.encode(buffer)?;
         Ok(())
     }
-    /*
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let context = GroupContext::decode(cursor)?;
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let sender = LeafIndex::from(u32::decode(cursor)?);
-        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        let content_type = ContentType::decode(cursor)?;
-        let payload = MLSPlaintextContentType::decode(cursor)?;
-
-        Ok(MLSPlaintextTBS {
-            context,
-            group_id,
-            epoch,
-            sender,
-            authenticated_data,
-            content_type,
-            payload,
-        })
-    }
-    */
 }
 
 #[derive(Clone)]

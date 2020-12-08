@@ -16,7 +16,11 @@ use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 
 use std::cell::{Ref, RefCell};
+use std::collections::HashMap;
 use std::convert::TryFrom;
+
+#[cfg(test)]
+use std::cell::RefMut;
 
 use super::errors::ExporterError;
 
@@ -210,11 +214,8 @@ impl MlsGroup {
     pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let mut secret_tree = self.secret_tree.borrow_mut();
         let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
-        let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.secret_for_encryption(
-            self.ciphersuite(),
-            mls_plaintext.sender.sender,
-            secret_type,
-        );
+        let (generation, (ratchet_key, ratchet_nonce)) =
+            secret_tree.secret_for_encryption(self.ciphersuite(), self.sender_index(), secret_type);
         MLSCiphertext::new_from_plaintext(
             &mls_plaintext,
             &self,
@@ -224,23 +225,24 @@ impl MlsGroup {
         )
     }
 
-    pub fn decrypt(&mut self, mls_ciphertext: &MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
-        let tree = self.tree.borrow();
-        let mut roster = Vec::new();
+    pub fn decrypt(
+        &mut self,
+        mls_ciphertext: &MLSCiphertext,
+    ) -> Result<MLSPlaintext, MLSCiphertextError> {
+        let tree = self.tree();
+        let mut indexed_members = HashMap::new();
         for i in 0..tree.leaf_count().as_usize() {
+            let leaf_index = LeafIndex::from(i);
             // We can unwrap here, because `i` is scoped by `leaf_count()`.
-            let node = &tree.public_tree.leaf(&LeafIndex::from(i)).unwrap();
-            let credential = if let Some(kp) = &node.key_package {
-                kp.credential()
-            } else {
-                panic!("Missing key package");
-            };
-            roster.push(credential);
+            let node = &tree.public_tree.leaf(&leaf_index).unwrap();
+            if let Some(kp) = node.key_package.as_ref() {
+                indexed_members.insert(leaf_index, kp.credential());
+            }
         }
 
         Ok(mls_ciphertext.to_plaintext(
             self.ciphersuite(),
-            &roster,
+            indexed_members,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
             &self.group_context,
@@ -261,14 +263,10 @@ impl MlsGroup {
             key_length,
         ))
     }
-}
 
-impl MlsGroup {
+    /// Returns the ratchet tree
     pub fn tree(&self) -> Ref<RatchetTree> {
         self.tree.borrow()
-    }
-    fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_node_index().into()
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -276,16 +274,30 @@ impl MlsGroup {
         self.ciphersuite
     }
 
+    /// Get the group context
     pub fn context(&self) -> &GroupContext {
         &self.group_context
     }
 
+    /// Get the group ID
     pub fn group_id(&self) -> &GroupId {
         &self.group_context.group_id
+    }
+}
+
+// Private and crate functions
+impl MlsGroup {
+    fn sender_index(&self) -> LeafIndex {
+        self.tree.borrow().own_node_index().into()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
         &self.epoch_secrets
+    }
+
+    #[cfg(test)]
+    pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
+        self.secret_tree.borrow_mut()
     }
 }
 
