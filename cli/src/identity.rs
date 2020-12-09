@@ -19,7 +19,7 @@ impl Identity {
         }
     }
     pub fn update(&mut self) -> KeyPackageBundle {
-        let ciphersuite = self.kpb.key_package().ciphersuite();
+        let ciphersuite = self.kpb.key_package().ciphersuite_name();
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &self.credential, vec![]).unwrap();
 

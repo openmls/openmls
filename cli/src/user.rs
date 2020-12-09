@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use ds_lib::{ClientKeyPackages, GroupMessage, MLSMessage, Message};
+use ds_lib::{ClientKeyPackages, GroupMessage, Message};
 use openmls::prelude::*;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
@@ -90,7 +90,7 @@ impl User {
 
         // Send mls_ciphertext to the group
         let msg = GroupMessage::new(
-            MLSMessage::MLSCiphertext(mls_ciphertext),
+            MLSMessage::Ciphertext(mls_ciphertext),
             &self.recipients(group),
         );
         log::debug!(" >>> send: {:?}", msg);
@@ -117,7 +117,7 @@ impl User {
                 }
                 Message::MLSMessage(message) => {
                     let msg = match message {
-                        MLSMessage::MLSCiphertext(ctxt) => {
+                        MLSMessage::Ciphertext(ctxt) => {
                             let mut group = match self.groups.get(&ctxt.group_id.as_slice()) {
                                 Some(g) => g.mls_group.borrow_mut(),
                                 None => {
@@ -139,7 +139,7 @@ impl User {
                                 }
                             }
                         }
-                        MLSMessage::MLSPlaintext(msg) => msg,
+                        MLSMessage::Plaintext(msg) => msg,
                     };
                     let group = match self.groups.get_mut(&msg.group_id().as_slice()) {
                         Some(g) => g,
@@ -287,12 +287,12 @@ impl User {
         log::trace!("Sending proposal");
         let group = self.groups.get(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        let msg = GroupMessage::new(MLSMessage::MLSPlaintext(add_proposal), &group_recipients);
+        let msg = GroupMessage::new(MLSMessage::Plaintext(add_proposal), &group_recipients);
         self.backend.send_msg(&msg)?;
 
         // Send commit to the group.
         log::trace!("Sending commit");
-        let msg = GroupMessage::new(MLSMessage::MLSPlaintext(commit), &group_recipients);
+        let msg = GroupMessage::new(MLSMessage::Plaintext(commit), &group_recipients);
         self.backend.send_msg(&msg)?;
 
         // Update the group state
