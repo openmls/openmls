@@ -410,6 +410,12 @@
 <span id="407">407</span>
 <span id="408">408</span>
 <span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
@@ -465,12 +471,15 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">treemath</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">RatchetTree</span>;
 
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">psk</span>;
 
 <span class="doccomment">/// The `InitSecret` is used to connect the next epoch to the current one. It&#39;s</span>
 <span class="doccomment">/// necessary to be able clone this to create a provisional group state, which</span>
 <span class="doccomment">/// includes the `InitSecret`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">InitSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
@@ -738,7 +747,8 @@
 }
 
 <span class="doccomment">/// A secret that we can derive secrets from, that are used outside of OpenMLS.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExporterSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
@@ -757,7 +767,8 @@
 }
 
 <span class="doccomment">/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">SenderDataSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
@@ -780,7 +791,8 @@
 <span class="doccomment">/// The `EpochSecrets` contain keys (or secrets), which are accessible outside</span>
 <span class="doccomment">/// of the `KeySchedule` and which don&#39;t get consumed immediately upon first</span>
 <span class="doccomment">/// use.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EpochSecrets</span> {
     <span class="ident">sender_data_secret</span>: <span class="ident">SenderDataSecret</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,

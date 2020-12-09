@@ -104,6 +104,10 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Life time extension</span>
 <span class="doccomment">//!</span>
@@ -125,7 +129,10 @@
 <span class="doccomment">//! uint64 not_before;</span>
 <span class="doccomment">//! uint64 not_after;</span>
 <span class="doccomment">//! ```</span>
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtensionError</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{
+    <span class="ident">Deserialize</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtensionError</span>,
+    <span class="ident">Serialize</span>,
+};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::{<span class="ident">Codec</span>, <span class="ident">Cursor</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
 
@@ -133,7 +140,7 @@
 
 <span class="doccomment">/// The lifetime extension holds a not before and a not after time measured in</span>
 <span class="doccomment">/// seconds since the Unix epoch (1970-01-01T00:00:00Z).</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LifetimeExtension</span> {
     <span class="ident">not_before</span>: <span class="ident">u64</span>,
     <span class="ident">not_after</span>: <span class="ident">u64</span>,
@@ -173,6 +180,7 @@
     }
 }
 
+<span class="attribute">#[<span class="ident">typetag</span>::<span class="ident">serde</span>]</span>
 <span class="kw">impl</span> <span class="ident">Extension</span> <span class="kw">for</span> <span class="ident">LifetimeExtension</span> {
     <span class="kw">fn</span> <span class="ident">extension_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ExtensionType</span> {
         <span class="ident">ExtensionType</span>::<span class="ident">Lifetime</span>

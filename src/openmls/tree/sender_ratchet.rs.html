@@ -132,16 +132,22 @@
 <span id="129">129</span>
 <span id="130">130</span>
 <span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">index</span>::<span class="ident">LeafIndex</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>};
+
+<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">const</span> <span class="ident">OUT_OF_ORDER_TOLERANCE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
 <span class="kw">const</span> <span class="ident">MAXIMUM_FORWARD_DISTANCE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">RatchetSecrets</span> <span class="op">=</span> (<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>);
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SenderRatchet</span> {
     <span class="ident">index</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">generation</span>: <span class="ident">u32</span>,

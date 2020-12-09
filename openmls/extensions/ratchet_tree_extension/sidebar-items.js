@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["RatchetTreeExtension",""]]});
+initSidebarItems({"static":[["__init16993038184397398079",""]],"struct":[["RatchetTreeExtension",""]]});

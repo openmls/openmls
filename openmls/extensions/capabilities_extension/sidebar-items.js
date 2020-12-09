@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["CapabilitiesExtension",""]]});
+initSidebarItems({"static":[["__init16518203259712514104",""]],"struct":[["CapabilitiesExtension",""]]});

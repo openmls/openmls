@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["KeyIDExtension",""]]});
+initSidebarItems({"static":[["__init10090422225418277350",""]],"struct":[["KeyIDExtension",""]]});

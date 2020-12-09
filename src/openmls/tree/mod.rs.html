@@ -903,10 +903,18 @@
 <span id="900">900</span>
 <span id="901">901</span>
 <span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">creds</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">proposals</span>::<span class="kw-2">*</span>;
@@ -928,6 +936,11 @@
 <span class="kw">use</span> <span class="ident">private_tree</span>::{<span class="ident">PathSecrets</span>, <span class="ident">PrivateTree</span>};
 
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">private_tree</span>::<span class="ident">CommitSecret</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{
+    <span class="ident">de</span>::{<span class="self">self</span>, <span class="ident">MapAccess</span>, <span class="ident">SeqAccess</span>, <span class="ident">Visitor</span>},
+    <span class="ident">ser</span>::{<span class="ident">SerializeStruct</span>, <span class="ident">Serializer</span>},
+    <span class="ident">Deserialize</span>, <span class="ident">Deserializer</span>, <span class="ident">Serialize</span>,
+};
 
 <span class="comment">// Internal tree tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -942,6 +955,7 @@
 <span class="kw">mod</span> <span class="ident">test_util</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="doccomment">/// The ratchet tree.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RatchetTree</span> {
     <span class="doccomment">/// The ciphersuite used in this tree.</span>
@@ -956,6 +970,8 @@
     <span class="doccomment">/// See `PrivateTree` for details.</span>
     <span class="ident">private_tree</span>: <span class="ident">PrivateTree</span>,
 }
+
+<span class="macro">implement_persistence</span><span class="macro">!</span>(<span class="ident">RatchetTree</span>, <span class="ident">nodes</span>, <span class="ident">private_tree</span>);
 
 <span class="kw">impl</span> <span class="ident">RatchetTree</span> {
     <span class="doccomment">/// Create a new empty `RatchetTree`.</span>
@@ -1338,7 +1354,7 @@
         <span class="ident">with_update_path</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdatePath</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">cipher_suite</span>();
+        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">ciphersuite</span>();
         <span class="comment">// Compute the direct path and keypairs along it</span>
         <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>();
         <span class="kw">let</span> <span class="ident">direct_path_root</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(<span class="ident">own_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
@@ -1757,7 +1773,7 @@
 <span class="doccomment">///     HPKECiphertext encrypted_path_secret&lt;0..2^32-1&gt;;</span>
 <span class="doccomment">/// } UpdatePathNode;</span>
 <span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UpdatePathNode</span> {
     <span class="kw">pub</span> <span class="ident">public_key</span>: <span class="ident">HPKEPublicKey</span>,
     <span class="kw">pub</span> <span class="ident">encrypted_path_secret</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkeCiphertext</span><span class="op">&gt;</span>,
@@ -1771,7 +1787,7 @@
 <span class="doccomment">///     UpdatePathNode nodes&lt;0..2^32-1&gt;;</span>
 <span class="doccomment">/// } UpdatePath;</span>
 <span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UpdatePath</span> {
     <span class="kw">pub</span> <span class="ident">leaf_key_package</span>: <span class="ident">KeyPackage</span>,
     <span class="kw">pub</span> <span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span>,

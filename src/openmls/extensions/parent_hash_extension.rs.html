@@ -70,6 +70,10 @@
 <span id="67">67</span>
 <span id="68">68</span>
 <span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Parent hash extension</span>
 <span class="doccomment">//!</span>
@@ -91,10 +95,13 @@
 <span class="doccomment">//! parent_hash matches the hash of the leaf&#39;s parent node when represented as a</span>
 <span class="doccomment">//! ParentNode struct.</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>, <span class="ident">ParentHashError</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{
+    <span class="ident">Deserialize</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>, <span class="ident">ParentHashError</span>,
+    <span class="ident">Serialize</span>,
+};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::{<span class="ident">decode_vec</span>, <span class="ident">encode_vec</span>, <span class="ident">Cursor</span>, <span class="ident">VecSize</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ParentHashExtension</span> {
     <span class="ident">parent_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
@@ -112,6 +119,7 @@
     }
 }
 
+<span class="attribute">#[<span class="ident">typetag</span>::<span class="ident">serde</span>]</span>
 <span class="kw">impl</span> <span class="ident">Extension</span> <span class="kw">for</span> <span class="ident">ParentHashExtension</span> {
     <span class="kw">fn</span> <span class="ident">extension_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ExtensionType</span> {
         <span class="ident">ExtensionType</span>::<span class="ident">ParentHash</span>
