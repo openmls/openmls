@@ -181,9 +181,9 @@ impl<T> BinaryTree<T> {
     }
 
     /// Compute a function f based on the node itself, as well as the result of
-    /// the same function computed on the left and right child. Leafs return the
-    /// result of the function with their node, as well as the default values
-    /// for `U`.
+    /// the same function computed on the left and right child. Leaves return
+    /// the result of the function with their node, as well as the default
+    /// values for `U`.
     pub(crate) fn fold_tree<F, U: Default>(
         &self,
         node_index: &NodeIndex,
@@ -204,7 +204,7 @@ impl<T> BinaryTree<T> {
         }
     }
 
-    /// Return a reference to the nodes of the tree.
+    /// Return a reference to the nodes of the tree as a Vector.
     pub(crate) fn nodes(&self) -> &Vec<T> {
         &self.nodes
     }

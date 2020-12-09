@@ -229,7 +229,7 @@ impl RatchetTree {
     }
 
     fn blank_member(&mut self, index: NodeIndex) -> Result<(), TreeError> {
-        let f = |node: &mut Node, _| -> () { node.blank() };
+        let f = |node: &mut Node, _| node.blank();
         // First, blank the member's leaf.
         self.public_tree.node_mut(&index)?.blank();
         // Then, blank the member's direct path.
@@ -264,7 +264,7 @@ impl RatchetTree {
     ) -> Result<&CommitSecret, TreeError> {
         let sender_node_index = NodeIndex::from(sender);
         let own_node_index = self.own_node_index();
-        let common_ancestor = self
+        let common_ancestor_index = self
             .public_tree
             .common_ancestor(&sender_node_index, &own_node_index);
 
@@ -280,7 +280,7 @@ impl RatchetTree {
         // Find the position of the common ancestor in the sender's direct path
         let common_ancestor_sender_dirpath_index = sender_direct_path
             .iter()
-            .position(|&x| x == common_ancestor)
+            .position(|&x| x == common_ancestor_index)
             .unwrap();
 
         // Decrypt the ciphertext of that node
@@ -321,7 +321,7 @@ impl RatchetTree {
         };
 
         // Compute the direct path between the common ancestor and the root
-        let common_path = self.public_tree.direct_path(&common_ancestor)?;
+        let common_path = self.public_tree.direct_path(&common_ancestor_index)?;
 
         // Decrypt the secret and derive path secrets
         let secret = Secret::from(self.ciphersuite.hpke_open(
@@ -605,11 +605,14 @@ impl RatchetTree {
                 if !self.public_tree.node(d).unwrap().is_blank() {
                     let node = &self.public_tree.node(d).unwrap();
                     let index = d.as_u32();
-                    // TODO handle error
+                    // We can unwrap here, because we know that `parent_node` is
+                    // not blank.
                     let mut parent_node = node.node.clone().unwrap();
                     if !parent_node.unmerged_leaves().contains(&index) {
                         parent_node.unmerged_leaves_mut().push(index);
                     }
+                    // We can unwrap here, because every node `d` in the direct
+                    // path must be in the tree.
                     self.public_tree.node_mut(d).unwrap().node = Some(parent_node);
                 }
             }
