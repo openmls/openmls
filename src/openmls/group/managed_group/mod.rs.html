@@ -852,6 +852,35 @@
 <span id="849">849</span>
 <span id="850">850</span>
 <span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -1689,7 +1718,10 @@
 <span class="doccomment">/// Unified message type</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MLSMessage</span> {
+    <span class="doccomment">/// An OpenMLS `MLSPlaintext`.</span>
     <span class="ident">Plaintext</span>(<span class="ident">MLSPlaintext</span>),
+
+    <span class="doccomment">/// An OpenMLS `MLSCiphertext`.</span>
     <span class="ident">Ciphertext</span>(<span class="ident">MLSCiphertext</span>),
 }
 
@@ -1702,6 +1734,32 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MLSCiphertext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MLSMessage</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">mls_ciphertext</span>: <span class="ident">MLSCiphertext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">mls_ciphertext</span>)
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">MLSMessage</span> {
+    <span class="doccomment">/// Get the group ID as plain byte vector.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
+            <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>().<span class="ident">as_slice</span>(),
+        }
+    }
+
+    <span class="doccomment">/// Get the epoch as plain u64.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">epoch</span>.<span class="number">0</span>,
+            <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">epoch</span>().<span class="number">0</span>,
+        }
+    }
+
+    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">is_handshake_message</span>(),
+            <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">is_handshake_message</span>(),
+        }
     }
 }
 </pre></div>
