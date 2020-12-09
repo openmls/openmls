@@ -906,7 +906,10 @@ impl<'a> ManagedGroup<'a> {
 /// Unified message type
 #[derive(PartialEq, Debug, Clone)]
 pub enum MLSMessage {
+    /// An OpenMLS `MLSPlaintext`.
     Plaintext(MLSPlaintext),
+
+    /// An OpenMLS `MLSCiphertext`.
     Ciphertext(MLSCiphertext),
 }
 
@@ -919,5 +922,31 @@ impl From<MLSPlaintext> for MLSMessage {
 impl From<MLSCiphertext> for MLSMessage {
     fn from(mls_ciphertext: MLSCiphertext) -> Self {
         MLSMessage::Ciphertext(mls_ciphertext)
+    }
+}
+
+impl MLSMessage {
+    /// Get the group ID as plain byte vector.
+    pub fn group_id(&self) -> Vec<u8> {
+        match self {
+            MLSMessage::Ciphertext(m) => m.group_id.as_slice(),
+            MLSMessage::Plaintext(m) => m.group_id().as_slice(),
+        }
+    }
+
+    /// Get the epoch as plain u64.
+    pub fn epoch(&self) -> u64 {
+        match self {
+            MLSMessage::Ciphertext(m) => m.epoch.0,
+            MLSMessage::Plaintext(m) => m.epoch().0,
+        }
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        match self {
+            MLSMessage::Ciphertext(m) => m.is_handshake_message(),
+            MLSMessage::Plaintext(m) => m.is_handshake_message(),
+        }
     }
 }

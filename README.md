@@ -24,17 +24,29 @@ A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg
 
 OpenMLS relies on [EverCrypt](https://github.com/project-everest/hacl-star/tree/master/providers/evercrypt), a high-performance, cross-platform, formally verified modern cryptographic provider through [EverCrypt Rust bindings](https://crates.io/crates/evercrypt).
 
-## Build
+## Development
+
+### Build
 
 - run `cargo build`
 
-## Test
+### Test
 
 - run `cargo test`
 
-## Benchmark
+### Benchmark
 
 - run `cargo bench`
+
+## Workspace
+This repository is a cargo workspace with the OpenMLS library as the main component.
+It further holds the following crates that are used for testing.
+
+### Delivery Service
+A basic [delivery service](https://messaginglayersecurity.rocks/mls-architecture/draft-ietf-mls-architecture.html#name-delivery-service) can be found in [delivery-service/ds](./delivery-service/ds/).
+To interact with the delivery service the [ds-lib](./delivery-service/ds-lib/) provides the necessary types.
+
+---
 
 ## License
 
