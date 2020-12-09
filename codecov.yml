@@ -1,0 +1,2 @@
+ignore:
+  - "delivery-service/**/*"  # ignore PoC DS server and lib
