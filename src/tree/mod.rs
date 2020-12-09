@@ -4,7 +4,6 @@ use crate::config::{Config, ConfigError};
 use crate::creds::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
-use crate::{count, implement_persistence};
 
 // Tree modules
 pub(crate) mod codec;
@@ -23,7 +22,7 @@ use node::*;
 use private_tree::{PathSecrets, PrivateTree};
 
 use self::private_tree::CommitSecret;
-use serde::{
+pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,

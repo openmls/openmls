@@ -1,7 +1,7 @@
 use std::{any::Any, convert::TryFrom, fmt::Debug};
 
 use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
-use serde::{Deserialize, Serialize};
+pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
 pub mod errors;

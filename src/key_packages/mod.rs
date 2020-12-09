@@ -10,7 +10,6 @@ use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, LifetimeExtension,
     ParentHashExtension,
 };
-use crate::{count, implement_persistence};
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},

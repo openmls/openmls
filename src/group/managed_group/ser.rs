@@ -18,7 +18,7 @@ impl<'a> SerializedManagedGroup {
     pub(crate) fn into_managed_group(
         self,
         credential_bundle: &'a CredentialBundle,
-        callbacks: ManagedGroupCallbacks,
+        callbacks: &ManagedGroupCallbacks,
     ) -> ManagedGroup<'a> {
         let mut managed_group = ManagedGroup {
             credential_bundle,

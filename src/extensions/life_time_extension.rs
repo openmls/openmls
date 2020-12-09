@@ -18,11 +18,13 @@
 //! uint64 not_before;
 //! uint64 not_after;
 //! ```
-use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError};
+use super::{
+    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError,
+    Serialize,
+};
 use crate::codec::{Codec, Cursor};
 use crate::config::Config;
 
-use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The lifetime extension holds a not before and a not after time measured in

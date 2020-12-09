@@ -24,9 +24,8 @@
 //! ```
 
 use crate::codec::*;
-use crate::tree::index::*;
 
-use serde::{Deserialize, Serialize};
+use super::*;
 
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]

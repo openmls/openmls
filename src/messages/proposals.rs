@@ -4,10 +4,10 @@ use crate::framing::{sender::*, *};
 use crate::key_packages::*;
 use crate::tree::index::*;
 
-use super::errors::*;
-
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+
+use super::errors::*;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]

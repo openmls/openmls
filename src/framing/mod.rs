@@ -6,6 +6,7 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, secret_tree::*};
 
+pub(crate) use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -13,7 +14,6 @@ pub mod errors;
 pub mod sender;
 pub(crate) use errors::*;
 use sender::*;
-pub(crate) use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod test_framing;

@@ -4,7 +4,7 @@ use crate::framing::*;
 use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 
-use serde::{Deserialize, Serialize};
+use super::*;
 use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]

@@ -1,4 +1,4 @@
-use crate::group::*;
+use super::*;
 
 use serde::{Deserialize, Serialize};
 
@@ -35,8 +35,11 @@ impl ManagedGroupConfig {
             callbacks,
         }
     }
-    pub(crate) fn set_callbacks(&mut self, callbacks: ManagedGroupCallbacks) {
-        self.callbacks = callbacks;
+    pub fn callbacks(&self) -> &ManagedGroupCallbacks {
+        &self.callbacks
+    }
+    pub(crate) fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
+        self.callbacks = *callbacks;
     }
 }
 

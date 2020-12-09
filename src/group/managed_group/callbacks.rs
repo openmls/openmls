@@ -55,7 +55,7 @@ use crate::group::*;
 /// pub type InvalidMessageReceived = fn(managed_group: &ManagedGroup, error: InvalidMessageError);
 /// pub type ErrorOccured = fn(managed_group: &ManagedGroup, error: ManagedGroupError);
 /// ```
-#[derive(Default, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ManagedGroupCallbacks {
     // Validator functions
     pub(crate) validate_add: Option<ValidateAdd>,

@@ -18,10 +18,11 @@
 //! parent_hash matches the hash of the leaf's parent node when represented as a
 //! ParentNode struct.
 
-use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, ParentHashError};
+use super::{
+    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, ParentHashError,
+    Serialize,
+};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
-
-use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ParentHashExtension {
