@@ -1,6 +1,6 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::ConfigError;
+use crate::config::{Config, ConfigError};
 use crate::creds::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
@@ -22,6 +22,11 @@ use node::*;
 use private_tree::{PathSecrets, PrivateTree};
 
 use self::private_tree::CommitSecret;
+pub(crate) use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 // Internal tree tests
 #[cfg(test)]
@@ -36,6 +41,7 @@ mod test_treemath;
 mod test_util;
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 /// The ratchet tree.
 pub struct RatchetTree {
     /// The ciphersuite used in this tree.
@@ -50,6 +56,8 @@ pub struct RatchetTree {
     /// See `PrivateTree` for details.
     private_tree: PrivateTree,
 }
+
+implement_persistence!(RatchetTree, nodes, private_tree);
 
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
@@ -432,7 +440,7 @@ impl RatchetTree {
         with_update_path: bool,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.key_package().clone();
-        let ciphersuite = key_package.cipher_suite();
+        let ciphersuite = key_package.ciphersuite();
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
@@ -851,7 +859,7 @@ pub type InvitationList = Vec<(NodeIndex, AddProposal)>;
 ///     HPKECiphertext encrypted_path_secret<0..2^32-1>;
 /// } UpdatePathNode;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdatePathNode {
     pub public_key: HPKEPublicKey,
     pub encrypted_path_secret: Vec<HpkeCiphertext>,
@@ -865,7 +873,7 @@ pub struct UpdatePathNode {
 ///     UpdatePathNode nodes<0..2^32-1>;
 /// } UpdatePath;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdatePath {
     pub leaf_key_package: KeyPackage,
     pub nodes: Vec<UpdatePathNode>,

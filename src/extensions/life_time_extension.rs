@@ -18,7 +18,10 @@
 //! uint64 not_before;
 //! uint64 not_after;
 //! ```
-use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError};
+use super::{
+    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError,
+    Serialize,
+};
 use crate::codec::{Codec, Cursor};
 use crate::config::Config;
 
@@ -26,7 +29,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The lifetime extension holds a not before and a not after time measured in
 /// seconds since the Unix epoch (1970-01-01T00:00:00Z).
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct LifetimeExtension {
     not_before: u64,
     not_after: u64,
@@ -66,6 +69,7 @@ impl Default for LifetimeExtension {
     }
 }
 
+#[typetag::serde]
 impl Extension for LifetimeExtension {
     fn extension_type(&self) -> ExtensionType {
         ExtensionType::Lifetime

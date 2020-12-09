@@ -12,10 +12,13 @@
 //! opaque key_id<0..2^16-1>;
 //! ```
 
-use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, KeyPackageIdError};
+use super::{
+    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, KeyPackageIdError,
+    Serialize,
+};
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 
-#[derive(PartialEq, Clone, Debug, Default)]
+#[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct KeyIDExtension {
     key_id: Vec<u8>,
 }
@@ -34,6 +37,7 @@ impl KeyIDExtension {
     }
 }
 
+#[typetag::serde]
 impl Extension for KeyIDExtension {
     fn extension_type(&self) -> ExtensionType {
         ExtensionType::KeyID
