@@ -10,7 +10,7 @@ pub enum MLSPlaintextError {
     /// This is not an application message.
     NotAnApplicationMessage = 0,
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(u16)]
 pub enum MLSCiphertextError {
     /// Invalid content type in message.
@@ -18,6 +18,9 @@ pub enum MLSCiphertextError {
 
     /// Ratcheting secret generation is not found.
     GenerationOutOfBound = 2,
+
+    /// Sender is not part of the group
+    UnknownSender = 3,
 }
 
 implement_enum_display!(MLSPlaintextError);
@@ -40,6 +43,7 @@ impl Error for MLSCiphertextError {
             Self::GenerationOutOfBound => {
                 "Couldn't find a ratcheting secret for the given sender and generation."
             }
+            Self::UnknownSender => "The sender of the MLSCiphertext is not part of the group.",
         }
     }
 }
