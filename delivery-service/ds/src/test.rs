@@ -151,7 +151,7 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = b"MyFirstGroup";
     let group_aad = b"MyFirstGroup AAD";
-    let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite();
+    let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
     let mut group = MlsGroup::new(
         group_id,
         group_ciphersuite,
@@ -182,7 +182,7 @@ async fn test_group() {
     };
     let client2_key_package = client2_key_packages
         .iter()
-        .position(|(_hash, kp)| kp.ciphersuite() == group_ciphersuite)
+        .position(|(_hash, kp)| kp.ciphersuite_name() == group_ciphersuite)
         .expect("No key package with the group ciphersuite available");
     let (_client2_key_package_hash, client2_key_package) =
         client2_key_packages.remove(client2_key_package);
