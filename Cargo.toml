@@ -9,6 +9,14 @@ documentation = "https://openmls.github.io/openmls/"
 repository = "https://github.com/openmls/openmls/"
 readme = "README.md"
 
+[workspace]
+members = [
+    ".",
+    "delivery-service/ds-lib",
+    "delivery-service/ds",
+]
+default-members = [ "." ]
+
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }
 rand = "^0.7"
