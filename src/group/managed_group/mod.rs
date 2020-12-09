@@ -1,6 +1,9 @@
 pub mod callbacks;
 pub mod config;
 pub mod errors;
+mod ser;
+#[cfg(test)]
+mod test_managed_group;
 
 use crate::creds::{Credential, CredentialBundle};
 use crate::framing::*;
@@ -11,11 +14,12 @@ use crate::tree::index::LeafIndex;
 use crate::tree::node::Node;
 
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::{Error, Read, Write};
 
 pub use callbacks::*;
 pub use config::*;
 pub use errors::{InvalidMessageError, ManagedGroupError};
+use ser::*;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
@@ -45,6 +49,8 @@ pub use errors::{InvalidMessageError, ManagedGroupError};
 ///
 /// Changes to the group state are dispatched as events through callback
 /// functions (see [`ManagedGroupCallbacks`]).
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct ManagedGroup<'a> {
     // CredentialBundle used to sign messages
     credential_bundle: &'a CredentialBundle,
@@ -80,12 +86,12 @@ impl<'a> ManagedGroup<'a> {
     ) -> Result<Self, ManagedGroupError> {
         let group = MlsGroup::new(
             &group_id.as_slice(),
-            key_package_bundle.key_package().cipher_suite().name(),
+            key_package_bundle.key_package().ciphersuite_name(),
             key_package_bundle,
             GroupConfig::default(),
         )?;
 
-        Ok(ManagedGroup {
+        let managed_group = ManagedGroup {
             credential_bundle,
             managed_group_config: managed_group_config.clone(),
             group,
@@ -93,7 +99,12 @@ impl<'a> ManagedGroup<'a> {
             own_kpbs: vec![],
             aad: vec![],
             active: true,
-        })
+        };
+
+        // Since the state of the group was changed, call the auto-save function
+        managed_group.auto_save();
+
+        Ok(managed_group)
     }
 
     /// Creates a new group from a `Welcome` message
@@ -105,7 +116,8 @@ impl<'a> ManagedGroup<'a> {
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, WelcomeError> {
         let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle)?;
-        Ok(ManagedGroup {
+
+        let managed_group = ManagedGroup {
             credential_bundle,
             managed_group_config: managed_group_config.clone(),
             group,
@@ -113,7 +125,12 @@ impl<'a> ManagedGroup<'a> {
             own_kpbs: vec![],
             aad: vec![],
             active: true,
-        })
+        };
+
+        // Since the state of the group was changed, call the auto-save function
+        managed_group.auto_save();
+
+        Ok(managed_group)
     }
 
     // === Membership management ===
@@ -152,6 +169,10 @@ impl<'a> ManagedGroup<'a> {
             &messages_to_commit,
             false,
         )?;
+        let welcome = match welcome_option {
+            Some(welcome) => welcome,
+            None => return Err(ManagedGroupError::Unknown),
+        };
 
         // Add the Commit message to the other pending messages
         plaintext_messages.push(commit);
@@ -165,10 +186,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
-        let welcome = match welcome_option {
-            Some(welcome) => welcome,
-            None => return Err(ManagedGroupError::Unknown),
-        };
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok((mls_messages, welcome))
     }
 
@@ -220,6 +240,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(mls_messages)
     }
 
@@ -244,6 +267,9 @@ impl<'a> ManagedGroup<'a> {
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(mls_messages)
     }
 
@@ -267,6 +293,9 @@ impl<'a> ManagedGroup<'a> {
             .collect();
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
 
         Ok(mls_messages)
     }
@@ -392,6 +421,10 @@ impl<'a> ManagedGroup<'a> {
                 }
             }
         }
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(())
     }
 
@@ -413,6 +446,10 @@ impl<'a> ManagedGroup<'a> {
         let ciphertext =
             self.group
                 .create_application_message(&self.aad, message, &self.credential_bundle);
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(MLSMessage::Ciphertext(ciphertext))
     }
 
@@ -446,6 +483,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok((mls_messages, welcome_option))
     }
 
@@ -473,7 +513,10 @@ impl<'a> ManagedGroup<'a> {
 
     /// Sets the configuration
     pub fn set_configuration(&mut self, managed_group_config: &ManagedGroupConfig) {
-        self.managed_group_config = managed_group_config.clone()
+        self.managed_group_config = managed_group_config.clone();
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
     }
 
     /// Gets the AAD used in the framing
@@ -483,7 +526,10 @@ impl<'a> ManagedGroup<'a> {
 
     /// Sets the AAD used in the framing
     pub fn set_aad(&mut self, aad: &[u8]) {
-        self.aad = aad.to_vec()
+        self.aad = aad.to_vec();
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
     }
 
     // === Advanced functions ===
@@ -517,23 +563,19 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction);
         }
-        // Use provided KeyPackageBundle or create a new one
-        let tree = self.group.tree();
-        let key_package_bundle = match key_package_bundle_option {
-            Some(kpb) => kpb,
-            None => {
-                let existing_key_package = tree.own_key_package();
-                KeyPackageBundle::from_rekeyed_key_package(existing_key_package)
-            }
-        };
-        drop(tree);
 
-        // Create UpdateProposal
-        let mut plaintext_messages = vec![self.group.create_update_proposal(
-            &self.aad,
-            &self.credential_bundle,
-            key_package_bundle.key_package().clone(),
-        )];
+        // If a KeyPackageBundle was provided, create an UpdateProposal
+        let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
+            let update_proposal = self.group.create_update_proposal(
+                &self.aad,
+                &self.credential_bundle,
+                key_package_bundle.key_package().clone(),
+            );
+            self.own_kpbs.push(key_package_bundle);
+            vec![update_proposal]
+        } else {
+            vec![]
+        };
 
         // Include pending proposals into Commit
         let messages_to_commit: Vec<&MLSPlaintext> = self
@@ -547,7 +589,7 @@ impl<'a> ManagedGroup<'a> {
             &self.aad,
             &self.credential_bundle,
             &messages_to_commit,
-            false,
+            true, /* force_self_update */
         )?;
 
         // Add the Commit message to the other pending messages
@@ -564,6 +606,9 @@ impl<'a> ManagedGroup<'a> {
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(mls_messages)
     }
 
@@ -579,7 +624,12 @@ impl<'a> ManagedGroup<'a> {
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
-            None => KeyPackageBundle::from_rekeyed_key_package(existing_key_package),
+            None => {
+                let mut key_package_bundle =
+                    KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
+                key_package_bundle.sign(self.credential_bundle);
+                key_package_bundle
+            }
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(
@@ -593,6 +643,9 @@ impl<'a> ManagedGroup<'a> {
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
 
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
         Ok(mls_messages)
     }
 
@@ -604,15 +657,20 @@ impl<'a> ManagedGroup<'a> {
     // === Load & save ===
 
     /// Loads the state from persisted state
-    pub fn load(
-        _reader: Box<dyn Read>,
-        _managed_group_config: &ManagedGroupConfig,
-    ) -> ManagedGroup {
-        unimplemented!()
+    pub fn load<R: Read>(
+        reader: R,
+        credential_bundle: &'a CredentialBundle,
+        callbacks: &ManagedGroupCallbacks,
+    ) -> Result<ManagedGroup<'a>, Error> {
+        let serialized_managed_group: SerializedManagedGroup = serde_json::from_reader(reader)?;
+        Ok(serialized_managed_group.into_managed_group(credential_bundle, callbacks))
     }
 
     /// Persists the state
-    pub fn save(&self, _writer: Box<dyn Write>) {}
+    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+        let serialized_managed_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_managed_group.into_bytes())
+    }
 
     // === Extensions ===
 
@@ -750,6 +808,13 @@ impl<'a> ManagedGroup<'a> {
         }
     }
 
+    /// Auto-save function
+    fn auto_save(&self) {
+        if let Some(auto_save) = self.managed_group_config.callbacks.auto_save {
+            auto_save(&self);
+        }
+    }
+
     /// Return a list (LeafIndex, Credential)
     fn indexed_members(&self) -> HashMap<LeafIndex, Credential> {
         let mut indexed_members = HashMap::new();
@@ -769,7 +834,10 @@ impl<'a> ManagedGroup<'a> {
 /// Unified message type
 #[derive(PartialEq, Debug, Clone)]
 pub enum MLSMessage {
+    /// An OpenMLS `MLSPlaintext`.
     Plaintext(MLSPlaintext),
+
+    /// An OpenMLS `MLSCiphertext`.
     Ciphertext(MLSCiphertext),
 }
 
@@ -782,5 +850,31 @@ impl From<MLSPlaintext> for MLSMessage {
 impl From<MLSCiphertext> for MLSMessage {
     fn from(mls_ciphertext: MLSCiphertext) -> Self {
         MLSMessage::Ciphertext(mls_ciphertext)
+    }
+}
+
+impl MLSMessage {
+    /// Get the group ID as plain byte vector.
+    pub fn group_id(&self) -> Vec<u8> {
+        match self {
+            MLSMessage::Ciphertext(m) => m.group_id.as_slice(),
+            MLSMessage::Plaintext(m) => m.group_id().as_slice(),
+        }
+    }
+
+    /// Get the epoch as plain u64.
+    pub fn epoch(&self) -> u64 {
+        match self {
+            MLSMessage::Ciphertext(m) => m.epoch.0,
+            MLSMessage::Plaintext(m) => m.epoch().0,
+        }
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        match self {
+            MLSMessage::Ciphertext(m) => m.is_handshake_message(),
+            MLSMessage::Plaintext(m) => m.is_handshake_message(),
+        }
     }
 }

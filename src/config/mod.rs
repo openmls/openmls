@@ -56,7 +56,7 @@ lazy_static! {
 }
 
 /// Constants that are used throughout the library.
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct Constants {
     /// The default lifetime of a key package in seconds.
     default_key_package_lifetime: u64, // in Seconds
@@ -78,7 +78,7 @@ struct PersistentConfig {
 /// # OpenMLS Configuration
 ///
 /// This is the global configuration for OpenMLS.
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     protocol_versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<Ciphersuite>,

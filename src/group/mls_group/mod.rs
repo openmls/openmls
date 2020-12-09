@@ -3,6 +3,8 @@ use log::{debug, info};
 mod apply_commit;
 mod create_commit;
 mod new_from_welcome;
+#[cfg(test)]
+mod test_mls_group;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
@@ -15,14 +17,26 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 use std::cell::{Ref, RefCell};
+use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::io::{Error, Read, Write};
+
+#[cfg(test)]
+use std::cell::RefMut;
 
 use super::errors::ExporterError;
 
 pub type CreateCommitResult =
     Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
 
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
@@ -36,6 +50,17 @@ pub struct MlsGroup {
     // Defaults to `false`.
     add_ratchet_tree_extension: bool,
 }
+
+implement_persistence!(
+    MlsGroup,
+    group_context,
+    init_secret,
+    epoch_secrets,
+    secret_tree,
+    tree,
+    interim_transcript_hash,
+    add_ratchet_tree_extension
+);
 
 /// Public `MlsGroup` functions.
 impl MlsGroup {
@@ -210,11 +235,8 @@ impl MlsGroup {
     pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
         let mut secret_tree = self.secret_tree.borrow_mut();
         let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
-        let (generation, (ratchet_key, ratchet_nonce)) = secret_tree.secret_for_encryption(
-            self.ciphersuite(),
-            mls_plaintext.sender.sender,
-            secret_type,
-        );
+        let (generation, (ratchet_key, ratchet_nonce)) =
+            secret_tree.secret_for_encryption(self.ciphersuite(), self.sender_index(), secret_type);
         MLSCiphertext::new_from_plaintext(
             &mls_plaintext,
             &self,
@@ -224,22 +246,23 @@ impl MlsGroup {
         )
     }
 
-    pub fn decrypt(&mut self, mls_ciphertext: &MLSCiphertext) -> Result<MLSPlaintext, GroupError> {
-        let tree = self.tree.borrow();
-        let mut roster = Vec::new();
+    pub fn decrypt(
+        &mut self,
+        mls_ciphertext: &MLSCiphertext,
+    ) -> Result<MLSPlaintext, MLSCiphertextError> {
+        let tree = self.tree();
+        let mut indexed_members = HashMap::new();
         for i in 0..tree.leaf_count().as_usize() {
-            let node = &tree.nodes[LeafIndex::from(i)];
-            let credential = if let Some(kp) = &node.key_package {
-                kp.credential()
-            } else {
-                panic!("Missing key package");
-            };
-            roster.push(credential);
+            let leaf_index = LeafIndex::from(i);
+            let node = &tree.nodes[leaf_index];
+            if let Some(kp) = node.key_package.as_ref() {
+                indexed_members.insert(leaf_index, kp.credential());
+            }
         }
 
         Ok(mls_ciphertext.to_plaintext(
             self.ciphersuite(),
-            &roster,
+            indexed_members,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
             &self.group_context,
@@ -260,14 +283,21 @@ impl MlsGroup {
             key_length,
         ))
     }
-}
 
-impl MlsGroup {
+    /// Loads the state from persisted state
+    pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
+        serde_json::from_reader(reader).map_err(|e| e.into())
+    }
+
+    /// Persists the state
+    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+        let serialized_mls_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_mls_group.into_bytes())
+    }
+
+    /// Returns the ratchet tree
     pub fn tree(&self) -> Ref<RatchetTree> {
         self.tree.borrow()
-    }
-    fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_node_index().into()
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -275,16 +305,30 @@ impl MlsGroup {
         self.ciphersuite
     }
 
+    /// Get the group context
     pub fn context(&self) -> &GroupContext {
         &self.group_context
     }
 
+    /// Get the group ID
     pub fn group_id(&self) -> &GroupId {
         &self.group_context.group_id
+    }
+}
+
+// Private and crate functions
+impl MlsGroup {
+    fn sender_index(&self) -> LeafIndex {
+        self.tree.borrow().own_node_index().into()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
         &self.epoch_secrets
+    }
+
+    #[cfg(test)]
+    pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
+        self.secret_tree.borrow_mut()
     }
 }
 

@@ -15,13 +15,14 @@
 //! ```
 
 use super::{
-    CapabilitiesExtensionError, Extension, ExtensionError, ExtensionStruct, ExtensionType,
+    CapabilitiesExtensionError, Deserialize, Extension, ExtensionError, ExtensionStruct,
+    ExtensionType, Serialize,
 };
 use crate::ciphersuite::CiphersuiteName;
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 use crate::config::{Config, ProtocolVersion};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilitiesExtension {
     versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<CiphersuiteName>,
@@ -76,6 +77,7 @@ impl CapabilitiesExtension {
     }
 }
 
+#[typetag::serde]
 impl Extension for CapabilitiesExtension {
     fn extension_type(&self) -> ExtensionType {
         ExtensionType::Capabilities

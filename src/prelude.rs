@@ -4,7 +4,7 @@
 pub use crate::group::GroupConfig;
 pub use crate::group::MlsGroup;
 pub use crate::group::{
-    HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,
+    HandshakeMessageFormat, InvalidMessageError, MLSMessage, ManagedGroup, ManagedGroupCallbacks,
     ManagedGroupConfig, ManagedGroupError, Removal, UpdatePolicy,
 };
 // Errors
@@ -18,7 +18,7 @@ pub use crate::codec::*;
 pub use crate::config::*;
 pub use crate::creds::*;
 pub use crate::extensions::*;
-pub use crate::framing::{sender::Sender, *};
+pub use crate::framing::{errors::*, sender::Sender, *};
 pub use crate::group::GroupId;
 pub use crate::key_packages::*;
 pub use crate::messages::{

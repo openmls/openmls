@@ -151,7 +151,7 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = b"MyFirstGroup";
     let group_aad = b"MyFirstGroup AAD";
-    let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite();
+    let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
     let mut group = MlsGroup::new(
         group_id,
         group_ciphersuite,
@@ -182,7 +182,7 @@ async fn test_group() {
     };
     let client2_key_package = client2_key_packages
         .iter()
-        .position(|(_hash, kp)| kp.ciphersuite() == group_ciphersuite)
+        .position(|(_hash, kp)| kp.ciphersuite_name() == group_ciphersuite)
         .expect("No key package with the group ciphersuite available");
     let (_client2_key_package_hash, client2_key_package) =
         client2_key_packages.remove(client2_key_package);
@@ -254,7 +254,7 @@ async fn test_group() {
         group_on_client2.create_application_message(&[], &client2_message[..], &credentials[1]);
 
     // Send mls_ciphertext to the group
-    let msg = GroupMessage::new(MLSMessage::MLSCiphertext(mls_ciphertext), &client_ids);
+    let msg = GroupMessage::new(MLSMessage::Ciphertext(mls_ciphertext), &client_ids);
     let req = test::TestRequest::post()
         .uri("/send/message")
         .set_payload(Bytes::copy_from_slice(&msg.encode_detached().unwrap()))
@@ -283,7 +283,7 @@ async fn test_group() {
         .expect("Didn't get an MLS application message from the server.");
     let mls_ciphertext = match messages.remove(mls_ciphertext) {
         Message::MLSMessage(m) => match m {
-            MLSMessage::MLSCiphertext(m) => m,
+            MLSMessage::Ciphertext(m) => m,
             _ => panic!("This is not an MLSCiphertext but an MLSPlaintext (or something else)."),
         },
         _ => panic!("This is not an MLS message."),

@@ -42,7 +42,7 @@ impl ClientInfo {
     /// The identity of a client is defined as the identity of the first key
     /// package right now.
     pub fn id(&self) -> &[u8] {
-        self.key_packages.0[0].1.credential().identity()
+        self.id.as_slice()
     }
 }
 
@@ -56,44 +56,6 @@ pub enum Message {
 
     /// An OpenMLS `Welcome` message.
     Welcome(Welcome),
-}
-
-/// A generalisation of the `MLSCiphertext` and `MLSPlaintext` messages from
-/// OpenMLS.
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, PartialEq)]
-pub enum MLSMessage {
-    /// An OpenMLS `MLSCiphertext`.
-    MLSCiphertext(MLSCiphertext),
-
-    /// An OpenMLS `MLSPlaintext`.
-    MLSPlaintext(MLSPlaintext),
-}
-
-impl MLSMessage {
-    /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> Vec<u8> {
-        match self {
-            MLSMessage::MLSCiphertext(m) => m.group_id.as_slice(),
-            MLSMessage::MLSPlaintext(m) => m.group_id().as_slice(),
-        }
-    }
-
-    /// Get the epoch as plain u64.
-    pub fn epoch(&self) -> u64 {
-        match self {
-            MLSMessage::MLSCiphertext(m) => m.epoch.0,
-            MLSMessage::MLSPlaintext(m) => m.epoch().0,
-        }
-    }
-
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
-        match self {
-            MLSMessage::MLSCiphertext(m) => m.is_handshake_message(),
-            MLSMessage::MLSPlaintext(m) => m.is_handshake_message(),
-        }
-    }
 }
 
 /// Enum defining encodings for the different message types/
@@ -187,11 +149,11 @@ impl Codec for Message {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
             Message::MLSMessage(m) => match m {
-                MLSMessage::MLSCiphertext(m) => {
+                MLSMessage::Ciphertext(m) => {
                     MessageType::MLSCiphertext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
-                MLSMessage::MLSPlaintext(m) => {
+                MLSMessage::Plaintext(m) => {
                     MessageType::MLSPlaintext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
@@ -208,10 +170,10 @@ impl Codec for Message {
         let msg_type = MessageType::decode(cursor)?;
         let msg = match msg_type {
             MessageType::MLSCiphertext => {
-                Message::MLSMessage(MLSMessage::MLSCiphertext(MLSCiphertext::decode(cursor)?))
+                Message::MLSMessage(MLSMessage::Ciphertext(MLSCiphertext::decode(cursor)?))
             }
             MessageType::MLSPlaintext => {
-                Message::MLSMessage(MLSMessage::MLSPlaintext(MLSPlaintext::decode(cursor)?))
+                Message::MLSMessage(MLSMessage::Plaintext(MLSPlaintext::decode(cursor)?))
             }
             MessageType::Welcome => Message::Welcome(Welcome::decode(cursor)?),
         };
@@ -222,11 +184,11 @@ impl Codec for Message {
 impl Codec for GroupMessage {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match &self.msg {
-            MLSMessage::MLSCiphertext(m) => {
+            MLSMessage::Ciphertext(m) => {
                 MessageType::MLSCiphertext.encode(buffer)?;
                 m.encode(buffer)?;
             }
-            MLSMessage::MLSPlaintext(m) => {
+            MLSMessage::Plaintext(m) => {
                 MessageType::MLSPlaintext.encode(buffer)?;
                 m.encode(buffer)?;
             }
@@ -237,8 +199,8 @@ impl Codec for GroupMessage {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let msg_type = MessageType::decode(cursor)?;
         let msg = match msg_type {
-            MessageType::MLSCiphertext => MLSMessage::MLSCiphertext(MLSCiphertext::decode(cursor)?),
-            MessageType::MLSPlaintext => MLSMessage::MLSPlaintext(MLSPlaintext::decode(cursor)?),
+            MessageType::MLSCiphertext => MLSMessage::Ciphertext(MLSCiphertext::decode(cursor)?),
+            MessageType::MLSPlaintext => MLSMessage::Plaintext(MLSPlaintext::decode(cursor)?),
             _ => return Err(CodecError::DecodingError),
         };
 
