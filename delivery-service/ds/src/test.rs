@@ -254,7 +254,7 @@ async fn test_group() {
         group_on_client2.create_application_message(&[], &client2_message[..], &credentials[1]);
 
     // Send mls_ciphertext to the group
-    let msg = GroupMessage::new(MLSMessage::MLSCiphertext(mls_ciphertext), &client_ids);
+    let msg = GroupMessage::new(MLSMessage::Ciphertext(mls_ciphertext), &client_ids);
     let req = test::TestRequest::post()
         .uri("/send/message")
         .set_payload(Bytes::copy_from_slice(&msg.encode_detached().unwrap()))
@@ -283,7 +283,7 @@ async fn test_group() {
         .expect("Didn't get an MLS application message from the server.");
     let mls_ciphertext = match messages.remove(mls_ciphertext) {
         Message::MLSMessage(m) => match m {
-            MLSMessage::MLSCiphertext(m) => m,
+            MLSMessage::Ciphertext(m) => m,
             _ => panic!("This is not an MLSCiphertext but an MLSPlaintext (or something else)."),
         },
         _ => panic!("This is not an MLS message."),

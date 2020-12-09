@@ -198,7 +198,7 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
 
     let mut data = unwrap_data!(data.lock());
 
-    // Reject any handshake message that has an earlier epoch than the one know
+    // Reject any handshake message that has an earlier epoch than the one we know
     // about.
     // XXX: There's no test for this block in here right now because it's pretty
     //      painful to test in the current setting. This should get tested through
