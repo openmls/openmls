@@ -4,6 +4,7 @@ use crate::framing::{sender::*, *};
 use crate::key_packages::*;
 use crate::tree::index::*;
 
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -36,7 +37,7 @@ impl Codec for ProposalType {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Proposal {
     Add(AddProposal),
     Update(UpdateProposal),
@@ -103,7 +104,7 @@ impl Codec for Proposal {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
 pub struct ProposalID {
     value: Vec<u8>,
 }
@@ -327,7 +328,7 @@ impl ProposalQueue {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct AddProposal {
     pub key_package: KeyPackage,
 }
@@ -343,7 +344,7 @@ impl Codec for AddProposal {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdateProposal {
     pub key_package: KeyPackage,
 }
@@ -359,7 +360,7 @@ impl Codec for UpdateProposal {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RemoveProposal {
     pub removed: u32,
 }

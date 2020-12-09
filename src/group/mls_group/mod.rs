@@ -3,6 +3,8 @@ use log::{debug, info};
 mod apply_commit;
 mod create_commit;
 mod new_from_welcome;
+#[cfg(test)]
+mod test_mls_group;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
@@ -15,9 +17,15 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::io::{Error, Read, Write};
 
 #[cfg(test)]
 use std::cell::RefMut;
@@ -27,6 +35,8 @@ use super::errors::ExporterError;
 pub type CreateCommitResult =
     Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
 
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
@@ -40,6 +50,17 @@ pub struct MlsGroup {
     // Defaults to `false`.
     add_ratchet_tree_extension: bool,
 }
+
+implement_persistence!(
+    MlsGroup,
+    group_context,
+    init_secret,
+    epoch_secrets,
+    secret_tree,
+    tree,
+    interim_transcript_hash,
+    add_ratchet_tree_extension
+);
 
 /// Public `MlsGroup` functions.
 impl MlsGroup {
@@ -261,6 +282,17 @@ impl MlsGroup {
             &self.context(),
             key_length,
         ))
+    }
+
+    /// Loads the state from persisted state
+    pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
+        serde_json::from_reader(reader).map_err(|e| e.into())
+    }
+
+    /// Persists the state
+    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+        let serialized_mls_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_mls_group.into_bytes())
     }
 
     /// Returns the ratchet tree

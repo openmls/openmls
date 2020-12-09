@@ -3,6 +3,8 @@ use crate::codec::*;
 use crate::framing::*;
 use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
+
+use super::*;
 use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
@@ -71,11 +73,14 @@ impl Codec for TreeContext {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct SecretTreeNode {
     pub secret: Secret,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct SecretTree {
     nodes: Vec<Option<SecretTreeNode>>,
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,

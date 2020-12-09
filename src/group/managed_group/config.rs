@@ -1,22 +1,23 @@
-use crate::group::*;
+use super::*;
 
 /// Defines whether handshake messages (Proposals & Commits) are encrypted.
 /// Application are always encrypted regardless. `Plaintext`: Handshake messages
 /// are returned as MLSPlaintext messages `Ciphertext`: Handshake messages are
 /// returned as MLSCiphertext messages
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum HandshakeMessageFormat {
     Plaintext,
     Ciphertext,
 }
 /// Specifies the configuration parameters for a managed group
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ManagedGroupConfig {
     /// Defines whether handshake messages should be encrypted
     pub(crate) handshake_message_format: HandshakeMessageFormat,
     /// Defines the update policy
     pub(crate) update_policy: UpdatePolicy,
     /// Callbacks
+    #[serde(skip)]
     pub(crate) callbacks: ManagedGroupCallbacks,
 }
 
@@ -32,10 +33,16 @@ impl ManagedGroupConfig {
             callbacks,
         }
     }
+    pub fn callbacks(&self) -> &ManagedGroupCallbacks {
+        &self.callbacks
+    }
+    pub(crate) fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
+        self.callbacks = *callbacks;
+    }
 }
 
 /// Specifies in which intervals the own leaf node should be updated
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UpdatePolicy {
     /// Maximum time before an update in seconds
     pub(crate) maximum_time: u32,

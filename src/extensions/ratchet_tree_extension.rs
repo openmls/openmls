@@ -25,9 +25,12 @@
 use crate::codec::*;
 use crate::tree::node::*;
 
-use super::{Extension, ExtensionError, ExtensionStruct, ExtensionType, RatchetTreeError};
+use super::{
+    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, RatchetTreeError,
+    Serialize,
+};
 
-#[derive(PartialEq, Clone, Debug, Default)]
+#[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RatchetTreeExtension {
     tree: Vec<Option<Node>>,
 }
@@ -43,6 +46,7 @@ impl RatchetTreeExtension {
     }
 }
 
+#[typetag::serde]
 impl Extension for RatchetTreeExtension {
     fn extension_type(&self) -> ExtensionType {
         ExtensionType::RatchetTree

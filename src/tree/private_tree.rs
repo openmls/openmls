@@ -1,13 +1,13 @@
 //! A data structure holding information about the leaf node in the tree that
 //! belongs to the current client.
 
-use super::{index::NodeIndex, path_keys::PathKeys};
+use super::{index::NodeIndex, path_keys::PathKeys, *};
 use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
-use crate::key_packages::*;
 use crate::prelude::Secret;
 use crate::utils::zero;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct CommitSecret {
     secret: Secret,
 }
@@ -35,7 +35,9 @@ impl CommitSecret {
 }
 
 pub(crate) type PathSecrets = Vec<Secret>;
-#[derive(Debug)]
+
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
     node_index: NodeIndex,
@@ -80,7 +82,7 @@ impl PrivateTree {
         key_package_bundle: &KeyPackageBundle,
     ) -> Self {
         let leaf_secret = key_package_bundle.leaf_secret();
-        let ciphersuite = key_package_bundle.key_package.cipher_suite();
+        let ciphersuite = key_package_bundle.key_package.ciphersuite();
         let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(ciphersuite, &leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
         let (private_key, _) = keypair.into_keys();
