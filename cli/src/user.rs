@@ -171,8 +171,11 @@ impl User {
                         }
                         MLSPlaintextContentType::Commit((_commit, _confirmation_tag)) => {
                             match group.mls_group.borrow_mut().apply_commit(
-                                msg,
-                                group.pending_proposals.clone(),
+                                &msg,
+                                &(group
+                                    .pending_proposals
+                                    .iter()
+                                    .collect::<Vec<&MLSPlaintext>>()),
                                 &[], // TODO: store key packages.
                             ) {
                                 Ok(_) => (),
@@ -192,8 +195,8 @@ impl User {
 
         let mut clients = self.backend.list_clients()?;
         clients.drain(..).for_each(|c| {
-            if &c.id != self.identity.borrow().credential.credential().identity() {
-                if self
+            if &c.id != self.identity.borrow().credential.credential().identity()
+                && self
                     .contacts
                     .insert(
                         c.id.clone(),
@@ -204,9 +207,8 @@ impl User {
                         },
                     )
                     .is_some()
-                {
-                    log::trace!("Updated client {}", "");
-                }
+            {
+                log::trace!("Updated client {}", "");
             }
         });
         log::trace!("done with clients ...");
@@ -233,7 +235,7 @@ impl User {
             group_aad,
             pending_proposals: Vec::new(),
         };
-        if let Some(_) = self.groups.insert(group_id.to_vec(), group) {
+        if self.groups.insert(group_id.to_vec(), group).is_some() {
             panic!("Group '{}' existed already", name);
         }
     }
@@ -270,13 +272,13 @@ impl User {
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
-            .create_commit(&group.group_aad, credentials, &proposals, false)
+            .create_commit(&group.group_aad, credentials, &proposals, &[], false)
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
         group
             .mls_group
             .borrow_mut()
-            .apply_commit(commit.clone(), vec![add_proposal.clone()], &[])
+            .apply_commit(&commit, &[&add_proposal], &[])
             .expect("error applying commit");
 
         // Send Welcome to the client.
