@@ -1,0 +1,16 @@
+[package]
+name = "cli"
+version = "0.1.0"
+authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+url = "2.2"
+reqwest = { version = "0.10", features = ["blocking", "json"] }
+base64 = "0.13"
+log = "0.4"
+pretty_env_logger = "0.4"
+termion = "1.5"
+
+openmls = { path = "../" }
+ds-lib = { path = "../delivery-service/ds-lib" }
