@@ -38,6 +38,12 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # OpenMLS</span>
 <span class="doccomment">//!</span>
@@ -54,25 +60,31 @@
 <span class="doccomment">//! Each module has an `errors.rs` defining module specific errors that are used</span>
 <span class="doccomment">//! within the crate. This exposes some of the</span>
 <span class="doccomment">//! module errors that are publicly relevant.</span>
-<span class="doccomment">//! All errors implement `Debug`, `Display`, `PartialEq`, and `description` of</span>
-<span class="doccomment">//! the `Error` trait.</span>
+<span class="doccomment">//! All errors implement the [`Error`](`std::error::Error`) trait and</span>
+<span class="doccomment">//! [`PartialEq`](`std::cmp::PartialEq`).</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The C FFI API exposes the errors represented  as u16.</span>
+<span class="doccomment">//! The high-level errors API in [`error`](`error`) are a different error</span>
+<span class="doccomment">//! representation as `u16` for C FFI APIs.</span>
+<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">docsrs</span>, <span class="ident">feature</span>(<span class="ident">doc_cfg</span>))]</span>
+<span class="attribute">#![<span class="ident">forbid</span>(<span class="ident">unsafe_code</span>)]</span>
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">mod</span> <span class="ident">utils</span>;
 
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
+
 <span class="kw">mod</span> <span class="ident">ciphersuite</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="kw">mod</span> <span class="ident">config</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creds</span>;
 <span class="kw">mod</span> <span class="ident">extensions</span>;
-<span class="kw">mod</span> <span class="ident">framing</span>;
-<span class="kw">mod</span> <span class="ident">group</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">framing</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">group</span>;
 <span class="kw">mod</span> <span class="ident">key_packages</span>;
 <span class="kw">mod</span> <span class="ident">messages</span>;
 <span class="kw">mod</span> <span class="ident">schedule</span>;
-<span class="kw">mod</span> <span class="ident">tree</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tree</span>;
 
 <span class="doccomment">/// Single place, re-exporting the most used public functions.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span>;

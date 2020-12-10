@@ -902,6 +902,7 @@
 <span id="899">899</span>
 <span id="900">900</span>
 <span id="901">901</span>
+<span id="902">902</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -925,6 +926,7 @@
 <span class="kw">use</span> <span class="ident">index</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">node</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">private_tree</span>::{<span class="ident">PathSecrets</span>, <span class="ident">PrivateTree</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">secret_tree</span>::<span class="ident">SecretTypeError</span>;
 
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">private_tree</span>::<span class="ident">CommitSecret</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{
@@ -1785,13 +1787,13 @@
     }
 }
 
-<span class="doccomment">/// These are errors the RatchetTree can return.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeError</span> {
-    <span class="ident">InvalidArguments</span>,
-    <span class="ident">DuplicateIndex</span>,
-    <span class="ident">InvalidUpdatePath</span>,
-    <span class="ident">UnknownError</span>,
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeError</span> {
+        <span class="ident">InvalidArguments</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
+        <span class="ident">DuplicateIndex</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
+        <span class="ident">InvalidUpdatePath</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
+        <span class="ident">UnknownError</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
+    }
 }
 
 <span class="comment">// TODO: Should get fixed in #83</span>

@@ -383,17 +383,19 @@
 <span id="380">380</span>
 <span id="381">381</span>
 <span id="382">382</span>
+<span id="383">383</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="ident">byteorder</span>::{<span class="ident">BigEndian</span>, <span class="ident">ReadBytesExt</span>, <span class="ident">WriteBytesExt</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CodecError</span> {
-    <span class="ident">EncodingError</span>,
-    <span class="ident">DecodingError</span>,
-    <span class="ident">Other</span>,
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CodecError</span> {
+        <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;Error encoding.&quot;</span>,
+        <span class="ident">DecodingError</span> <span class="op">=</span> <span class="string">&quot;Error decoding.&quot;</span>,
+        <span class="ident">Other</span> <span class="op">=</span> <span class="string">&quot;Some other error occurred.&quot;</span>,
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ConfigError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CodecError</span> {

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ConfigError",""]]});
+initSidebarItems({"enum":[["CapabilitiesExtensionError",""],["ExtensionError",""],["KeyPackageIdError",""],["LifetimeExtensionError",""],["ParentHashError",""],["RatchetTreeError",""]]});

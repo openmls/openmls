@@ -106,6 +106,11 @@
 <span id="103">103</span>
 <span id="104">104</span>
 <span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
@@ -113,102 +118,107 @@
 <span class="doccomment">//! `CreateCommitError`.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="ident">ExtensionError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::<span class="ident">MLSCiphertextError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">TreeError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">secret_tree</span>::<span class="ident">SecretTypeError</span>, <span class="ident">TreeError</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupError</span> {
-    <span class="ident">DecryptionError</span> <span class="op">=</span> <span class="number">0</span>,
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupError</span> {
+        <span class="ident">MLSCiphertextError</span>(<span class="ident">MLSCiphertextError</span>) <span class="op">=</span>
+            <span class="string">&quot;See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details&quot;</span>,
+        <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span>
+            <span class="string">&quot;See [`WelcomeError`](`WelcomeError`) for details&quot;</span>,
+        <span class="ident">ApplyCommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
+            <span class="string">&quot;See [`ApplyCommitError`](`ApplyCommitError`) for details&quot;</span>,
+        <span class="ident">CreateCommitError</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
+            <span class="string">&quot;See [`CreateCommitError`](`CreateCommitError`) for details&quot;</span>,
+        <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
+            <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details&quot;</span>,
+        <span class="ident">ExporterError</span>(<span class="ident">ExporterError</span>) <span class="op">=</span>
+            <span class="string">&quot;See [`ExporterError`](`ExporterError`) for details&quot;</span>,
+        <span class="ident">SecretTypeError</span>(<span class="ident">SecretTypeError</span>) <span class="op">=</span>
+            <span class="string">&quot;See [`SecretTypeError`](`crate::tree::secret_tree::SecretTypeError`) for details&quot;</span>,
+    }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WelcomeError</span> {
-    <span class="ident">CiphersuiteMismatch</span> <span class="op">=</span> <span class="number">100</span>,
-    <span class="ident">JoinerSecretNotFound</span> <span class="op">=</span> <span class="number">101</span>,
-    <span class="ident">MissingRatchetTree</span> <span class="op">=</span> <span class="number">102</span>,
-    <span class="ident">TreeHashMismatch</span> <span class="op">=</span> <span class="number">103</span>,
-    <span class="ident">JoinerNotInTree</span> <span class="op">=</span> <span class="number">104</span>,
-    <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span> <span class="number">105</span>,
-    <span class="ident">InvalidRatchetTree</span> <span class="op">=</span> <span class="number">106</span>,
-    <span class="ident">InvalidGroupInfoSignature</span> <span class="op">=</span> <span class="number">107</span>,
-    <span class="ident">GroupInfoDecryptionFailure</span> <span class="op">=</span> <span class="number">108</span>,
-    <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span> <span class="number">109</span>,
-    <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span> <span class="number">110</span>,
-    <span class="ident">UnknownError</span> <span class="op">=</span> <span class="number">111</span>,
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WelcomeError</span> {
+        <span class="ident">CiphersuiteMismatch</span> <span class="op">=</span>
+            <span class="string">&quot;Ciphersuites in the Welcome message and the corresponding key package bundle don&#39;t match.&quot;</span>,
+        <span class="ident">JoinerSecretNotFound</span> <span class="op">=</span>
+            <span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>,
+        <span class="ident">MissingRatchetTree</span> <span class="op">=</span>
+            <span class="string">&quot;No ratchet tree available to build initial tree after receiving a Welcome message&quot;</span>,
+        <span class="ident">TreeHashMismatch</span> <span class="op">=</span>
+            <span class="string">&quot;The tree hash computed does not match the one in the GroupInfo.&quot;</span>,
+        <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span>
+             <span class="string">&quot;The computed confirmation tag does not match the expected one.&quot;</span>,
+        <span class="ident">InvalidRatchetTree</span> <span class="op">=</span>
+            <span class="string">&quot;Invalid ratchet tree in Welcome message.&quot;</span>,
+        <span class="ident">InvalidGroupInfoSignature</span> <span class="op">=</span>
+            <span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>,
+        <span class="ident">GroupInfoDecryptionFailure</span> <span class="op">=</span>
+            <span class="string">&quot;Unable to decrypt the GroupInfo&quot;</span>,
+        <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span>
+            <span class="string">&quot;Found more than one ratchet tree extension in the Welcome message.&quot;</span>,
+        <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span>
+            <span class="string">&quot;The Welcome message uses an unsupported MLS version&quot;</span>,
+        <span class="ident">UnknownError</span> <span class="op">=</span>
+            <span class="string">&quot;An unknown error occurred.&quot;</span>,
+    }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyCommitError</span> {
-    <span class="ident">EpochMismatch</span> <span class="op">=</span> <span class="number">200</span>,
-    <span class="ident">WrongPlaintextContentType</span> <span class="op">=</span> <span class="number">201</span>,
-    <span class="ident">SelfRemoved</span> <span class="op">=</span> <span class="number">202</span>,
-    <span class="ident">PathKeyPackageVerificationFailure</span> <span class="op">=</span> <span class="number">203</span>,
-    <span class="ident">NoParentHashExtension</span> <span class="op">=</span> <span class="number">204</span>,
-    <span class="ident">ParentHashMismatch</span> <span class="op">=</span> <span class="number">205</span>,
-    <span class="ident">PlaintextSignatureFailure</span> <span class="op">=</span> <span class="number">206</span>,
-    <span class="ident">RequiredPathNotFound</span> <span class="op">=</span> <span class="number">207</span>,
-    <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span> <span class="number">208</span>,
-    <span class="ident">MissingOwnKeyPackage</span> <span class="op">=</span> <span class="number">209</span>,
-    <span class="ident">MissingProposal</span> <span class="op">=</span> <span class="number">210</span>,
-    <span class="ident">OwnKeyNotFound</span> <span class="op">=</span> <span class="number">211</span>,
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyCommitError</span> {
+        <span class="ident">EpochMismatch</span> <span class="op">=</span>
+            <span class="string">&quot;Couldn&#39;t apply Commit. The epoch of the group context and MLSPlaintext didn&#39;t match.&quot;</span>,
+        <span class="ident">WrongPlaintextContentType</span> <span class="op">=</span>
+            <span class="string">&quot;apply_commit_internal was called with an MLSPlaintext that is not a Commit.&quot;</span>,
+        <span class="ident">SelfRemoved</span> <span class="op">=</span>
+            <span class="string">&quot;Tried to apply a commit to a group we are not a part of.&quot;</span>,
+        <span class="ident">PathKeyPackageVerificationFailure</span> <span class="op">=</span>
+            <span class="string">&quot;Unable to verify the key package signature.&quot;</span>,
+        <span class="ident">NoParentHashExtension</span> <span class="op">=</span>
+            <span class="string">&quot;Parent hash extension is missing.&quot;</span>,
+        <span class="ident">ParentHashMismatch</span> <span class="op">=</span>
+            <span class="string">&quot;Parent hash values don&#39;t match.&quot;</span>,
+        <span class="ident">PlaintextSignatureFailure</span> <span class="op">=</span>
+            <span class="string">&quot;MLSPlaintext signature is invalid.&quot;</span>,
+        <span class="ident">RequiredPathNotFound</span> <span class="op">=</span>
+            <span class="string">&quot;Unable to determine commit path.&quot;</span>,
+        <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span>
+            <span class="string">&quot;Confirmation tag is invalid.&quot;</span>,
+        <span class="ident">MissingOwnKeyPackage</span> <span class="op">=</span>
+            <span class="string">&quot;No key package provided to apply own commit.&quot;</span>,
+        <span class="ident">MissingProposal</span> <span class="op">=</span>
+            <span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>,
+        <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
+            <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
+    }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreateCommitError</span> {
-    <span class="ident">CannotRemoveSelf</span> <span class="op">=</span> <span class="number">300</span>,
-    <span class="ident">OwnKeyNotFound</span> <span class="op">=</span> <span class="number">301</span>,
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreateCommitError</span> {
+        <span class="ident">CannotRemoveSelf</span> <span class="op">=</span>
+            <span class="string">&quot;The Commit tried to remove self from the group. This is not possible.&quot;</span>,
+        <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
+            <span class="string">&quot;Couldn&#39;t create the commit because there&#39;s no key to apply the proposals.&quot;</span>,
+    }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExporterError</span> {
-    <span class="ident">KeyLengthTooLong</span> <span class="op">=</span> <span class="number">400</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MLSCiphertextError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">GroupError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">_e</span>: <span class="ident">MLSCiphertextError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">GroupError</span>::<span class="ident">DecryptionError</span>
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExporterError</span> {
+        <span class="ident">KeyLengthTooLong</span> <span class="op">=</span>
+            <span class="string">&quot;The requested key length is not supported (too large).&quot;</span>,
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">TreeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WelcomeError</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">TreeError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span> {
         <span class="kw">match</span> <span class="ident">e</span> {
-            <span class="ident">TreeError</span>::<span class="ident">DuplicateIndex</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>,
-            <span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>,
-            <span class="ident">TreeError</span>::<span class="ident">InvalidUpdatePath</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>,
+            <span class="ident">TreeError</span>::<span class="ident">DuplicateIndex</span>
+            <span class="op">|</span> <span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span>
+            <span class="op">|</span> <span class="ident">TreeError</span>::<span class="ident">InvalidUpdatePath</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>,
             <span class="ident">TreeError</span>::<span class="ident">UnknownError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">UnknownError</span>,
-        }
-    }
-}
-
-<span class="comment">// TODO: Should get fixed in #83</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ConfigError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ApplyCommitError</span> {
-    <span class="comment">// TODO: tbd in #83</span>
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">_e</span>: <span class="ident">ConfigError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ApplyCommitError</span> {
-        <span class="ident">ApplyCommitError</span>::<span class="ident">NoParentHashExtension</span>
-    }
-}
-
-<span class="comment">// TODO: Should get fixed in #83</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ExtensionError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ApplyCommitError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">_e</span>: <span class="ident">ExtensionError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ApplyCommitError</span> {
-        <span class="ident">ApplyCommitError</span>::<span class="ident">NoParentHashExtension</span>
-    }
-}
-
-<span class="comment">// TODO: Should get fixed in #83</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ConfigError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WelcomeError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">ConfigError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span> {
-        <span class="kw">match</span> <span class="ident">e</span> {
-            <span class="ident">ConfigError</span>::<span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">UnsupportedMlsVersion</span>,
-            <span class="ident">ConfigError</span>::<span class="ident">UnsupportedCiphersuite</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">CiphersuiteMismatch</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">UnknownError</span>,
         }
     }
 }
