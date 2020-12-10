@@ -28,7 +28,7 @@ serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 hpke = { version = "0.0.2", package = "hpke-rs", features = ["hazmat", "serialization"] }
-evercrypt = { version = "0.0.3", features = ["serialization"] }
+evercrypt = { version = "0.0.4", features = ["serialization"] }
 
 [features]
 default = ["rust-crypto"]
