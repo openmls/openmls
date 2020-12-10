@@ -305,8 +305,8 @@
     ( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">x</span>:<span class="ident">tt</span> $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">xs</span>:<span class="ident">tt</span>)<span class="op">*</span> ) <span class="op">=</span><span class="op">&gt;</span> (<span class="number">1usize</span> <span class="op">+</span> <span class="macro">count</span><span class="macro">!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">xs</span>)<span class="kw-2">*</span>));
 }
 
-<span class="doccomment">/// The struct must contain a field `ciphersuite: &amp;&#39;static Ciphersuite`, which is</span>
-<span class="doccomment">/// not added to the macro invocation.</span>
+<span class="doccomment">/// The struct must contain a field `ciphersuite: &amp;&#39;static Ciphersuite`, which</span>
+<span class="doccomment">/// is not added to the macro invocation.</span>
 
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">implement_persistence</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span>:<span class="ident">ident</span> ),<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {

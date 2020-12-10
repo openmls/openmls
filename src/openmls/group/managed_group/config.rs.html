@@ -64,8 +64,12 @@
 <span id="61">61</span>
 <span id="62">62</span>
 <span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// Defines whether handshake messages (Proposals &amp; Commits) are encrypted.</span>
 <span class="doccomment">/// Application are always encrypted regardless. `Plaintext`: Handshake messages</span>

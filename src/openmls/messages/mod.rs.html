@@ -325,6 +325,9 @@
 <span id="322">322</span>
 <span id="323">323</span>
 <span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -340,8 +343,11 @@
 
 <span class="kw">mod</span> <span class="ident">codec</span>;
 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">proposals</span>;
+
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -421,7 +427,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Commit</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalID</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalOrRef</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdatePath</span><span class="op">&gt;</span>,
 }
 

@@ -29,6 +29,10 @@
 <span id="26">26</span>
 <span id="27">27</span>
 <span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
@@ -58,5 +62,9 @@
     <span class="ident">Welcome</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utils</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// Things we need for fuzzing (but not otherwise)</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">fuzzing</span>)]</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">proposals</span>::<span class="ident">Proposal</span>;
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "openmls";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
