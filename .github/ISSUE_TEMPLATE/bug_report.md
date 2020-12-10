@@ -18,6 +18,9 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
+**Actual behavior**
+A brief explanation of what happens instead.
+
 **Screenshots or debug log**
 If applicable, add screenshots or debug logs to help explain your problem.
 
