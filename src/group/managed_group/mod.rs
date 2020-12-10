@@ -186,9 +186,6 @@ impl<'a> ManagedGroup<'a> {
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
-
         Ok((mls_messages, welcome))
     }
 
