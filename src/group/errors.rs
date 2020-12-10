@@ -16,7 +16,7 @@ implement_error! {
         ApplyCommitError(ApplyCommitError) =
             "See [`ApplyCommitError`](`ApplyCommitError`) for details",
         CreateCommitError(CreateCommitError) =
-            "See [`WelcomeError`](`CreateCommitError`) for details",
+            "See [`CreateCommitError`](`CreateCommitError`) for details",
         ConfigError(ConfigError) =
             "See [`ConfigError`](`crate::config::ConfigError`) for details",
         ExporterError(ExporterError) =
