@@ -19,8 +19,8 @@ const HELP: &'static str = "
 >>>     - create group {group name}             create a new group
 >>>     - group {group name}                    group operations
 >>>         - send {message}                    send message to group
->>          - invite {client name}              invite a user to the group
->>          - update                            update the client state
+>>>         - invite {client name}              invite a user to the group
+>>>         - update                            update the client state
 
 ";
 
@@ -47,7 +47,7 @@ fn main() {
     let mut stdin = stdin.lock();
 
     stdout
-        .write_all(b" >>> Welcome to the MLS CLI :)\nType help to get a list of commands\n\n")
+        .write_all(b" >>> Welcome to the OpenMLS CLI :)\nType help to get a list of commands\n\n")
         .unwrap();
     let mut client = None;
 
@@ -166,7 +166,7 @@ fn main() {
         }
 
         stdout
-            .write_all(b" >>> unknown commant :(\n >>> try help\n\n")
+            .write_all(b" >>> unknown command :(\n >>> try help\n\n")
             .unwrap();
     }
 }

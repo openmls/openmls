@@ -12,10 +12,12 @@ pub struct Contact {
     username: String,
     id: Vec<u8>,
     // We store multiple here but always only use the first one right now.
+    #[allow(dead_code)]
     public_keys: ClientKeyPackages,
 }
 
 pub struct Group {
+    #[allow(dead_code)]
     group_id: Vec<u8>,
     group_name: String,
     group_aad: Vec<u8>,

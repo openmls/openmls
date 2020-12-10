@@ -74,10 +74,7 @@ impl Backend {
     pub fn recv_msgs(&self, user: &User) -> Result<Vec<Message>, String> {
         let mut url = self.ds_url.clone();
         let path = "/recv/".to_string()
-            + &base64::encode_config(
-                user.identity.borrow().credential.credential().identity(),
-                base64::URL_SAFE,
-            );
+            + &base64::encode_config(user.identity.borrow().credential(), base64::URL_SAFE);
         url.set_path(&path);
 
         let response = get(&url)?;
