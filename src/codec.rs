@@ -3,11 +3,12 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
 
-#[derive(Debug, PartialEq)]
-pub enum CodecError {
-    EncodingError,
-    DecodingError,
-    Other,
+implement_error! {
+    pub enum CodecError {
+        EncodingError = "Error encoding.",
+        DecodingError = "Error decoding.",
+        Other = "Some other error occurred.",
+    }
 }
 
 impl From<ConfigError> for CodecError {

@@ -84,11 +84,14 @@ impl User {
             None => return Err("Unknown group".to_string()),
         };
 
-        let mls_ciphertext = group.mls_group.borrow_mut().create_application_message(
+        let mls_ciphertext = match group.mls_group.borrow_mut().create_application_message(
             &group.group_aad,
             msg.as_bytes(),
             &self.identity.borrow().credential,
-        );
+        ) {
+            Ok(m) => m,
+            Err(e) => return Err(format!("{}", e)),
+        };
 
         // Send mls_ciphertext to the group
         let msg = GroupMessage::new(

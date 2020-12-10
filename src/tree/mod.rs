@@ -20,6 +20,7 @@ use hash_input::*;
 use index::*;
 use node::*;
 use private_tree::{PathSecrets, PrivateTree};
+pub use secret_tree::SecretTypeError;
 
 use self::private_tree::CommitSecret;
 pub(crate) use serde::{
@@ -880,13 +881,13 @@ impl UpdatePath {
     }
 }
 
-/// These are errors the RatchetTree can return.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TreeError {
-    InvalidArguments,
-    DuplicateIndex,
-    InvalidUpdatePath,
-    UnknownError,
+implement_error! {
+    pub enum TreeError {
+        InvalidArguments = "",
+        DuplicateIndex = "",
+        InvalidUpdatePath = "",
+        UnknownError = "",
+    }
 }
 
 // TODO: Should get fixed in #83

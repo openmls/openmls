@@ -37,10 +37,10 @@ impl MlsGroup {
         let (path_required_by_commit, self_removed, invited_members) =
             match provisional_tree.apply_proposals(proposal_queue, &[]) {
                 Ok(res) => res,
-                Err(_) => return Err(CreateCommitError::OwnKeyNotFound),
+                Err(_) => return Err(CreateCommitError::OwnKeyNotFound.into()),
             };
         if self_removed {
-            return Err(CreateCommitError::CannotRemoveSelf);
+            return Err(CreateCommitError::CannotRemoveSelf.into());
         }
         // Determine if Commit needs path field
         let path_required = path_required_by_commit || contains_own_updates || force_self_update;

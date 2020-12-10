@@ -50,6 +50,7 @@ fn padding() {
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
                 .create_application_message(&aad, &message, &credential_bundle)
+                .unwrap()
                 .ciphertext;
             let ciphertext = encrypted_message.as_slice();
             let length = ciphertext.len();
