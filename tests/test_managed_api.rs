@@ -1,13 +1,26 @@
-use openmls::prelude::*;
+use openmls::prelude::{node::Node, *};
 use rand::{rngs::OsRng, RngCore};
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryInto};
+
+/// Errors that can occur when processing messages with the client.
+pub enum ClientError {
+    NoMatchingKeyPackage,
+    NoMatchingCredential,
+    FailedToJoinGroup,
+}
+
+impl From<WelcomeError> for ClientError {
+    fn from(_: WelcomeError) -> Self {
+        ClientError::FailedToJoinGroup
+    }
+}
 
 struct Client<'a> {
     /// Name of the client.
     pub(crate) identity: Vec<u8>,
     /// Ciphersuites supported by the client.
     pub(crate) ciphersuites: Vec<CiphersuiteName>,
-    pub(crate) credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
+    credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
     // Map from key package hash to the corresponding bundle.
     pub(crate) key_package_bundles: HashMap<Vec<u8>, KeyPackageBundle>,
     pub(crate) key_packages: HashMap<CiphersuiteName, KeyPackage>,
@@ -52,10 +65,46 @@ impl<'a> Client<'a> {
         )
         .unwrap();
     }
-}
 
-// For now, everyone generates 20 KeyPackages.
-const KEY_PACKAGE_COUNT: usize = 20;
+    pub fn join_group(
+        &mut self,
+        managed_group_config: ManagedGroupConfig,
+        welcome: Welcome,
+        ratchet_tree: Option<Vec<Option<Node>>>,
+    ) -> Result<(), ClientError> {
+        let ciphersuite = welcome.ciphersuite();
+        let credential_bundle: &'a CredentialBundle = self
+            .credential_bundles
+            .get(&ciphersuite.name())
+            .ok_or(ClientError::NoMatchingCredential)?;
+        let key_package_bundle = match welcome
+            .secrets()
+            .iter()
+            .find(|egs| self.key_package_bundles.contains_key(&egs.key_package_hash))
+        {
+            // We can unwrap here, because we just checked that this kpb exists.
+            // Also, we should be fine just removing the KeyPackageBundle here,
+            // because it shouldn't be used again anyway.
+            Some(egs) => Ok(self
+                .key_package_bundles
+                .remove(&egs.key_package_hash)
+                .unwrap()),
+            None => Err(ClientError::NoMatchingKeyPackage),
+        }?;
+        let new_group: ManagedGroup<'a> = ManagedGroup::new_from_welcome(
+            credential_bundle,
+            &managed_group_config,
+            welcome,
+            ratchet_tree,
+            key_package_bundle,
+        )?;
+        self.group_states
+            .insert(new_group.group_id().to_owned(), new_group);
+        Ok(())
+    }
+
+    // TODO: Write a function that allows a member to simply process a message.
+}
 
 struct ManagedTestSetup<'a> {
     // The clients identity is its position in the vector in be_bytes.
@@ -113,14 +162,20 @@ impl<'a> ManagedTestSetup<'a> {
         let group_id = GroupId {
             value: self.groups.len().to_be_bytes().to_vec(),
         };
-        let group_id = group_creator.create_group(group_id, managed_group_config, ciphersuite);
+        group_creator.create_group(group_id, managed_group_config, ciphersuite);
         let members = vec![group_creator_id];
-        let potential_members =
         for i in 0..group_size {
             // Get a random group member.
             let adder_id = (OsRng.next_u32() as usize) % members.len();
             let adder = self.clients[group_creator_id];
-
+            let adder_group_state = adder.group_states.get(&group_id).unwrap();
+            // Pick a client that's not already a member.
+            let new_member = self.clients.iter().find(|client| {
+                !members
+                    .contains(&(u32::from_be_bytes(client.identity.try_into().unwrap()) as usize))
+            });
+            let key_package = new_member.unwrap().get_fresh_key_package(ciphersuite);
+            adder_group_state.add_members(&[key_package]);
         }
         group_id
     }

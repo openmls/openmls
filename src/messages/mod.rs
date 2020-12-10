@@ -73,7 +73,7 @@ impl Welcome {
     }
 
     /// Get a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+    pub fn ciphersuite(&self) -> &'static Ciphersuite {
         self.cipher_suite
     }
 
