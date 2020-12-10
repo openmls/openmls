@@ -3,6 +3,8 @@
 use super::*;
 use crate::key_packages::KeyPackage;
 
+use std::convert::TryFrom;
+
 impl Codec for GroupInfo {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.append(&mut self.unsigned_payload()?);
@@ -115,7 +117,7 @@ impl Codec for ProposalOrRefType {
 
 impl Codec for ProposalOrRef {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.por_type().encode(buffer)?;
+        self.proposal_or_ref_type().encode(buffer)?;
         match self {
             ProposalOrRef::Proposal(proposal) => {
                 proposal.encode(buffer)?;
@@ -127,13 +129,11 @@ impl Codec for ProposalOrRef {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let por_type = ProposalOrRefType::from(u8::decode(cursor)?);
-        match por_type {
+        match ProposalOrRefType::try_from(u8::decode(cursor)?)? {
             ProposalOrRefType::Proposal => Ok(ProposalOrRef::Proposal(Proposal::decode(cursor)?)),
             ProposalOrRefType::Reference => {
-                Ok(ProposalOrRef::Reference(ProposalID::decode(cursor)?))
+                Ok(ProposalOrRef::Reference(ProposalReference::decode(cursor)?))
             }
-            _ => Err(CodecError::DecodingError),
         }
     }
 }
@@ -167,14 +167,14 @@ impl Codec for Proposal {
     }
 }
 
-impl Codec for ProposalID {
+impl Codec for ProposalReference {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.value)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ProposalID { value })
+        Ok(ProposalReference { value })
     }
 }
 

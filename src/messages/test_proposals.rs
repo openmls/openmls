@@ -66,11 +66,14 @@ fn proposal_queue_functions() {
         };
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-        let proposal_id_add_alice1 = ProposalID::from_proposal(ciphersuite, &proposal_add_alice1);
+        let proposal_id_add_alice1 =
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
         let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
-        let proposal_id_add_alice2 = ProposalID::from_proposal(ciphersuite, &proposal_add_alice2);
+        let proposal_id_add_alice2 =
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice2);
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
-        let proposal_id_add_bob1 = ProposalID::from_proposal(ciphersuite, &proposal_add_bob1);
+        let proposal_id_add_bob1 =
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_bob1);
 
         // Test proposal types
         assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -119,8 +122,7 @@ fn proposal_queue_functions() {
         assert!(!proposal_queue.contains(invalid_proposal_id_list));
 
         // Get filtered proposals
-        let filtered_proposals = proposal_queue.filtered_by_type(ProposalType::Add);
-        for filtered_proposal in filtered_proposals {
+        for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {
             assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
         }
     }
@@ -148,7 +150,7 @@ fn proposals_codec() {
 
     // Reference
 
-    let reference = ProposalID::from_proposal(ciphersuite, &proposal);
+    let reference = ProposalReference::from_proposal(ciphersuite, &proposal);
     let proposal_or_ref = ProposalOrRef::Reference(reference);
     let encoded = proposal_or_ref.encode_detached().unwrap();
     let decoded = ProposalOrRef::decode(&mut Cursor::new(&encoded)).unwrap();

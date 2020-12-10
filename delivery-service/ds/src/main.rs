@@ -78,7 +78,8 @@ macro_rules! unwrap_data {
 
 /// Registering a new client takes a serialised `ClientInfo` object and returns
 /// a simple "Welcome {client name}" on success.
-/// An HTTP conflict (409) is returned if a client with this name exists already.
+/// An HTTP conflict (409) is returned if a client with this name exists
+/// already.
 #[post("/clients/register")]
 async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
@@ -131,8 +132,8 @@ async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Respon
 }
 
 /// Get the list of key packages for a given client `{id}`.
-/// This returns a serialised vector of `ClientKeyPackages` (see the `ds-lib` for
-/// details).
+/// This returns a serialised vector of `ClientKeyPackages` (see the `ds-lib`
+/// for details).
 #[get("/clients/key_packages/{id}")]
 async fn get_key_packages(
     web::Path(id): web::Path<String>,
@@ -182,8 +183,8 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
 }
 
 /// Send an MLS message to a set of clients (group).
-/// This takes a serialised `GroupMessage` and stores the message for each client
-/// in the recipient list.
+/// This takes a serialised `GroupMessage` and stores the message for each
+/// client in the recipient list.
 /// If a handshake message is sent with an epoch smaller or equal to another
 /// handshake message this DS has seen, a 409 is returned and the message is not
 /// processed.
@@ -235,8 +236,8 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
 }
 
 /// Receive all messages stored for the client `{id}`.
-/// This returns a serialised vector of `Message`s (see the `ds-lib` for details)
-/// the DS has stored for the given client.
+/// This returns a serialised vector of `Message`s (see the `ds-lib` for
+/// details) the DS has stored for the given client.
 /// The messages are deleted on the DS when sent out.
 #[get("/recv/{id}")]
 async fn msg_recv(

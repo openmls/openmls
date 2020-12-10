@@ -795,7 +795,8 @@ impl<'a> ManagedGroup<'a> {
         true
     }
 
-    /// Send out the corresponding events for the proposals covered by the Commit
+    /// Send out the corresponding events for the proposals covered by the
+    /// Commit
     fn send_events(
         &self,
         ciphersuite: &Ciphersuite,

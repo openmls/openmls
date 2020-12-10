@@ -38,8 +38,8 @@ macro_rules! count {
     ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
 }
 
-/// The struct must contain a field `ciphersuite: &'static Ciphersuite`, which is
-/// not added to the macro invocation.
+/// The struct must contain a field `ciphersuite: &'static Ciphersuite`, which
+/// is not added to the macro invocation.
 
 macro_rules! implement_persistence {
     ($name:ident, $( $fields:ident ),*) => {

@@ -6,6 +6,7 @@ use crate::tree::index::*;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::convert::TryFrom;
 
 use super::errors::*;
 
@@ -47,34 +48,36 @@ impl From<u8> for ProposalType {
 ///     case reference: opaque hash<0..255>;
 ///   }
 /// } ProposalOrRef;
-
+///
+/// Type of Proposal, either by value or by reference
+/// We only implement the values (1, 2), other values are not valid
+/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum ProposalOrRefType {
-    Reserved = 0,
     Proposal = 1,
     Reference = 2,
-    Default = 255,
 }
 
-impl From<u8> for ProposalOrRefType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for ProposalOrRefType {
+    type Error = ProposalOrRefTypeError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => ProposalOrRefType::Reserved,
-            1 => ProposalOrRefType::Proposal,
-            2 => ProposalOrRefType::Reference,
-            _ => ProposalOrRefType::Default,
+            1 => Ok(ProposalOrRefType::Proposal),
+            2 => Ok(ProposalOrRefType::Reference),
+            _ => Err(ProposalOrRefTypeError::UnknownValue),
         }
     }
 }
+/// Type of Proposal, either by value or by reference
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum ProposalOrRef {
     Proposal(Proposal),
-    Reference(ProposalID),
+    Reference(ProposalReference),
 }
 
 impl ProposalOrRef {
-    pub(crate) fn por_type(&self) -> ProposalOrRefType {
+    pub(crate) fn proposal_or_ref_type(&self) -> ProposalOrRefType {
         match self {
             ProposalOrRef::Proposal(ref _p) => ProposalOrRefType::Proposal,
             ProposalOrRef::Reference(ref _r) => ProposalOrRefType::Reference,
@@ -82,6 +85,8 @@ impl ProposalOrRef {
     }
 }
 
+/// Proposal
+/// TODO #141: We should cover other types of proposals
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Proposal {
@@ -121,12 +126,14 @@ impl Proposal {
     }
 }
 
+/// Reference to a Proposal. This can be used in Commit messages to reference
+/// proposals that have already been sent
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
-pub struct ProposalID {
+pub struct ProposalReference {
     pub(crate) value: Vec<u8>,
 }
 
-impl ProposalID {
+impl ProposalReference {
     pub(crate) fn from_proposal(ciphersuite: &Ciphersuite, proposal: &Proposal) -> Self {
         let encoded = proposal.encode_detached().unwrap();
         let value = ciphersuite.hash(&encoded);
@@ -135,13 +142,13 @@ impl ProposalID {
 }
 
 /// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating MLSPlaintext and the ProposalID is attached.
+/// the encapsulating MLSPlaintext and the ProposalReference is attached.
 #[derive(Clone)]
-pub struct QueuedProposal<'a> {
+pub(crate) struct QueuedProposal<'a> {
     proposal: &'a Proposal,
-    proposal_id: ProposalID,
+    proposal_id: ProposalReference,
     sender: Sender,
-    por_type: ProposalOrRefType,
+    proposal_or_ref_type: ProposalOrRefType,
 }
 
 impl<'a> QueuedProposal<'a> {
@@ -149,19 +156,19 @@ impl<'a> QueuedProposal<'a> {
     pub(crate) fn from_mls_plaintext(
         ciphersuite: &Ciphersuite,
         mls_plaintext: &'a MLSPlaintext,
-    ) -> Self {
+    ) -> Result<Self, QueuedProposalError> {
         debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
         let proposal = match &mls_plaintext.content {
             MLSPlaintextContentType::Proposal(p) => p,
-            _ => panic!("API misuse. Only proposals can end up in the proposal queue"),
+            _ => return Err(QueuedProposalError::WrongContentType),
         };
-        let proposal_id = ProposalID::from_proposal(ciphersuite, &proposal);
-        Self {
+        let proposal_id = ProposalReference::from_proposal(ciphersuite, &proposal);
+        Ok(Self {
             proposal,
             proposal_id,
             sender: mls_plaintext.sender,
-            por_type: ProposalOrRefType::Reference,
-        }
+            proposal_or_ref_type: ProposalOrRefType::Reference,
+        })
     }
     /// Creates a new `QueuedProposal` from a `Proposal` and `Sender`
     pub(crate) fn from_proposal_and_sender(
@@ -169,20 +176,20 @@ impl<'a> QueuedProposal<'a> {
         proposal: &'a Proposal,
         sender: Sender,
     ) -> Self {
-        let proposal_id = ProposalID::from_proposal(ciphersuite, &proposal);
+        let proposal_id = ProposalReference::from_proposal(ciphersuite, &proposal);
         Self {
             proposal,
             proposal_id,
             sender,
-            por_type: ProposalOrRefType::Proposal,
+            proposal_or_ref_type: ProposalOrRefType::Proposal,
         }
     }
     /// Returns the `Proposal` as a reference
     pub(crate) fn proposal(&self) -> &Proposal {
         &self.proposal
     }
-    /// Returns the `ProposalID` as a reference
-    pub(crate) fn proposal_id(&self) -> &ProposalID {
+    /// Returns the `ProposalReference` as a reference
+    pub(crate) fn proposal_id(&self) -> &ProposalReference {
         &self.proposal_id
     }
     /// Returns the `Sender` as a reference
@@ -195,7 +202,7 @@ impl<'a> QueuedProposal<'a> {
 /// epoch.
 #[derive(Default)]
 pub struct ProposalQueue<'a> {
-    queued_proposals: HashMap<ProposalID, QueuedProposal<'a>>,
+    queued_proposals: HashMap<ProposalReference, QueuedProposal<'a>>,
 }
 
 impl<'a> ProposalQueue<'a> {
@@ -213,7 +220,10 @@ impl<'a> ProposalQueue<'a> {
     ) -> Self {
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
-            let queued_proposal = QueuedProposal::from_mls_plaintext(ciphersuite, &mls_plaintext);
+            // It is safe to unwrap here, because we checked that only proposals can end up
+            // here
+            let queued_proposal =
+                QueuedProposal::from_mls_plaintext(ciphersuite, &mls_plaintext).unwrap();
             proposal_queue.add(queued_proposal);
         }
         proposal_queue
@@ -283,8 +293,8 @@ impl<'a> ProposalQueue<'a> {
             };
             tree_size.as_usize()
         ];
-        let mut adds: HashSet<ProposalID> = HashSet::new();
-        let mut valid_proposals: HashSet<ProposalID> = HashSet::new();
+        let mut adds: HashSet<ProposalReference> = HashSet::new();
+        let mut valid_proposals: HashSet<ProposalReference> = HashSet::new();
         let mut proposal_queue = ProposalQueue::new();
         let mut contains_own_updates = false;
 
@@ -294,9 +304,13 @@ impl<'a> ProposalQueue<'a> {
         };
 
         // Aggregate both proposal types to a common iterator
+        // It is safe to unwrap here, because we checked eralier that only proposals can
+        // end up here
         let mut queued_proposal_list = proposals_by_reference
             .iter()
-            .map(|mls_plaintext| QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext))
+            .map(|mls_plaintext| {
+                QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext).unwrap()
+            })
             .collect::<Vec<QueuedProposal>>();
 
         queued_proposal_list.extend(
@@ -352,10 +366,10 @@ impl<'a> ProposalQueue<'a> {
         proposal_queue.retain(|k, _| valid_proposals.get(k).is_some() || adds.get(k).is_some());
         (proposal_queue, contains_own_updates)
     }
-    /// Returns `true` if all `ProposalID` values from the list are contained in
-    /// the queue
+    /// Returns `true` if all `ProposalReference` values from the list are
+    /// contained in the queue
     #[cfg(test)]
-    pub(crate) fn contains(&self, proposal_id_list: &[ProposalID]) -> bool {
+    pub(crate) fn contains(&self, proposal_id_list: &[ProposalReference]) -> bool {
         for proposal_id in proposal_id_list {
             if !self.queued_proposals.contains_key(proposal_id) {
                 return false;
@@ -364,7 +378,7 @@ impl<'a> ProposalQueue<'a> {
         true
     }
     /// Returns proposal for a given proposal ID
-    pub(crate) fn get(&self, proposal_id: &ProposalID) -> Option<&QueuedProposal> {
+    pub(crate) fn get(&self, proposal_id: &ProposalReference) -> Option<&QueuedProposal> {
         self.queued_proposals.get(proposal_id)
     }
     /// Add a new `QueuedProposal` to the queue
@@ -376,36 +390,32 @@ impl<'a> ProposalQueue<'a> {
     /// Retains only the elements specified by the predicate
     pub(crate) fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&ProposalID, &mut QueuedProposal<'a>) -> bool,
+        F: FnMut(&ProposalReference, &mut QueuedProposal<'a>) -> bool,
     {
         self.queued_proposals.retain(f);
     }
-    /// Gets the list of all `ProposalID`
+    /// Gets the list of all `ProposalReference`
     pub(crate) fn commit_list(&self) -> Vec<ProposalOrRef> {
         self.queued_proposals
             .iter()
             .map(
-                |(proposal_id, queued_proposal)| match queued_proposal.por_type {
+                |(proposal_id, queued_proposal)| match queued_proposal.proposal_or_ref_type {
                     ProposalOrRefType::Proposal => {
                         ProposalOrRef::Proposal(queued_proposal.proposal.clone())
                     }
                     ProposalOrRefType::Reference => ProposalOrRef::Reference(proposal_id.clone()),
-                    _ => {
-                        panic!("Library error. Wrong Queued Proposals type.")
-                    }
                 },
             )
             .collect::<Vec<ProposalOrRef>>()
     }
-    /// Return a list of fileterd `QueuedProposal`
-    pub(crate) fn filtered_by_type(&self, proposal_type: ProposalType) -> Vec<&QueuedProposal> {
-        let mut filtered_proposal_list = Vec::new();
-        for queued_proposal in self.queued_proposals.values() {
-            if queued_proposal.proposal.is_type(proposal_type) {
-                filtered_proposal_list.push(queued_proposal);
-            }
-        }
-        filtered_proposal_list
+    /// Return a list of filtered `QueuedProposal`
+    pub(crate) fn filtered_by_type(
+        &self,
+        proposal_type: ProposalType,
+    ) -> impl Iterator<Item = &QueuedProposal> {
+        self.queued_proposals
+            .values()
+            .filter(move |p| p.proposal.is_type(proposal_type))
     }
 }
 

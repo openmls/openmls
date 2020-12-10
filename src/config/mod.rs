@@ -99,11 +99,6 @@ impl From<PersistentConfig> for Config {
 }
 
 impl Config {
-    /// Get a reference to the global Config object.
-    pub(crate) fn _get() -> &'static Self {
-        &CONFIG
-    }
-
     /// Get a list of the supported extension types.
     pub fn supported_extensions() -> &'static [ExtensionType] {
         &CONFIG.extensions
