@@ -14,7 +14,7 @@ implement_error! {
         WelcomeError(WelcomeError) =
             "See [`WelcomeError`](`WelcomeError`) for details",
         ApplyCommitError(ApplyCommitError) =
-            "See [`WelcomeError`](`ApplyCommitError`) for details",
+            "See [`ApplyCommitError`](`ApplyCommitError`) for details",
         CreateCommitError(CreateCommitError) =
             "See [`WelcomeError`](`CreateCommitError`) for details",
         ConfigError(ConfigError) =
@@ -31,7 +31,7 @@ implement_error! {
         CiphersuiteMismatch =
             "Ciphersuites in the Welcome message and the corresponding key package bundle don't match.",
         JoinerSecretNotFound =
-            "No joiner secret found the Welcome message.",
+            "No joiner secret found in the Welcome message.",
         MissingRatchetTree =
             "No ratchet tree available to build initial tree after receiving a Welcome message",
         TreeHashMismatch =
@@ -56,7 +56,7 @@ implement_error! {
 implement_error! {
     pub enum ApplyCommitError {
         EpochMismatch =
-            "Couldn't apply commit. The epoch of the group context and MLSPlaintext didn't match.",
+            "Couldn't apply Commit. The epoch of the group context and MLSPlaintext didn't match.",
         WrongPlaintextContentType =
             "apply_commit_internal was called with an MLSPlaintext that is not a Commit.",
         SelfRemoved =
@@ -66,7 +66,7 @@ implement_error! {
         NoParentHashExtension =
             "Parent hash extension is missing.",
         ParentHashMismatch =
-            "Parent has values don't match.",
+            "Parent hash values don't match.",
         PlaintextSignatureFailure =
             "MLSPlaintext signature is invalid.",
         RequiredPathNotFound =
@@ -74,7 +74,7 @@ implement_error! {
         ConfirmationTagMismatch =
             "Confirmation tag is invalid.",
         MissingOwnKeyPackage =
-            "No key package to apply own commit.",
+            "No key package provided to apply own commit.",
         MissingProposal =
             "The proposal queue is missing a proposal for the commit.",
         OwnKeyNotFound =
