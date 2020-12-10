@@ -46,9 +46,9 @@ impl ClientInfo {
     }
 }
 
-/// The DS returns a list of messages on `/recv/{name}`, which is a `Vec<Message>`.
-/// A `Message` is either an `MLSMessage` or a `Welcome` message (see OpenMLS)
-/// for details.
+/// The DS returns a list of messages on `/recv/{name}`, which is a
+/// `Vec<Message>`. A `Message` is either an `MLSMessage` or a `Welcome` message
+/// (see OpenMLS) for details.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
     /// An `MLSMessage` is either an OpenMLS `MLSCiphertext` or `MLSPlaintext`.
@@ -73,7 +73,8 @@ pub enum MessageType {
 }
 
 /// An MLS group message.
-/// This is an `MLSMessage` plus the list of recipients as a vector of client names.
+/// This is an `MLSMessage` plus the list of recipients as a vector of client
+/// names.
 #[derive(Debug)]
 pub struct GroupMessage {
     pub msg: MLSMessage,
@@ -81,8 +82,8 @@ pub struct GroupMessage {
 }
 
 impl GroupMessage {
-    /// Create a new `GroupMessage` taking an `MLSMessage` and slice of recipient
-    /// names.
+    /// Create a new `GroupMessage` taking an `MLSMessage` and slice of
+    /// recipient names.
     pub fn new(msg: MLSMessage, recipients: &[Vec<u8>]) -> Self {
         Self {
             msg,

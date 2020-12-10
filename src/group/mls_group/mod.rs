@@ -197,17 +197,24 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: &[&MLSPlaintext],
+        proposals_by_reference: &[&MLSPlaintext],
+        proposals_by_value: &[&Proposal],
         force_self_update: bool,
     ) -> CreateCommitResult {
-        self.create_commit_internal(aad, credential_bundle, proposals, force_self_update)
+        self.create_commit_internal(
+            aad,
+            credential_bundle,
+            proposals_by_reference,
+            proposals_by_value,
+            force_self_update,
+        )
     }
 
     // Apply a Commit message
     pub fn apply_commit(
         &mut self,
-        mls_plaintext: MLSPlaintext,
-        proposals: Vec<MLSPlaintext>,
+        mls_plaintext: &MLSPlaintext,
+        proposals: &[&MLSPlaintext],
         own_key_packages: &[KeyPackageBundle],
     ) -> Result<(), ApplyCommitError> {
         self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)

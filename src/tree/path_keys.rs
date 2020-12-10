@@ -6,7 +6,8 @@ use crate::ciphersuite::HPKEPrivateKey;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// A set of keys for a path stored as `HashMap` with entries `(NodeIndex, HPKEPrivateKey)`.
+/// A set of keys for a path stored as `HashMap` with entries `(NodeIndex,
+/// HPKEPrivateKey)`.
 #[derive(Default, PartialEq, Debug, Serialize, Deserialize)]
 pub(crate) struct PathKeys {
     keys: HashMap<NodeIndex, HPKEPrivateKey>,

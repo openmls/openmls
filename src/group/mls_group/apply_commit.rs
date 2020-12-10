@@ -9,8 +9,8 @@ use crate::tree::private_tree::CommitSecret;
 impl MlsGroup {
     pub(crate) fn apply_commit_internal(
         &mut self,
-        mls_plaintext: MLSPlaintext,
-        proposals: Vec<MLSPlaintext>,
+        mls_plaintext: &MLSPlaintext,
+        proposals_by_reference: &[&MLSPlaintext],
         own_key_packages: &[KeyPackageBundle],
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.ciphersuite();
@@ -28,22 +28,29 @@ impl MlsGroup {
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 
-        // Convert proposals in a more practical queue
-        let proposal_queue = ProposalQueue::new_from_committed_proposals(ciphersuite, proposals);
+        // Convert proposals by reference into a queue
+        let proposals_by_ref_queue =
+            ProposalQueue::from_proposals_by_reference(ciphersuite, proposals_by_reference);
 
-        // Check that we have all proposals from the Commit
-        if !proposal_queue.contains(&commit.proposals) {
-            return Err(ApplyCommitError::MissingProposal);
-        }
+        // Build a queue with all proposals from the Commit and check that we have all
+        // of the proposals by reference locally
+        let proposal_queue = match ProposalQueue::from_committed_proposals(
+            ciphersuite,
+            &commit.proposals,
+            &proposals_by_ref_queue,
+            mls_plaintext.sender,
+        ) {
+            Ok(proposal_queue) => proposal_queue,
+            Err(_) => return Err(ApplyCommitError::MissingProposal),
+        };
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
-        let (path_required_by_commit, group_removed, _invited_members) = match provisional_tree
-            .apply_proposals(&commit.proposals, proposal_queue, own_key_packages)
-        {
-            Ok(res) => res,
-            Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
-        };
+        let (path_required_by_commit, group_removed, _invited_members) =
+            match provisional_tree.apply_proposals(proposal_queue, own_key_packages) {
+                Ok(res) => res,
+                Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
+            };
 
         // Check if we were removed from the group
         if group_removed {
@@ -120,7 +127,7 @@ impl MlsGroup {
 
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
-            &MLSPlaintextCommitAuthData::from(&mls_plaintext),
+            &MLSPlaintextCommitAuthData::from(mls_plaintext),
             &confirmed_transcript_hash,
         );
 
