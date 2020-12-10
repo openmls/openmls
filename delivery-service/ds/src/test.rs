@@ -250,8 +250,9 @@ async fn test_group() {
 
     // === Client2 sends a message to the group ===
     let client2_message = b"Thanks for adding me Client1.";
-    let mls_ciphertext =
-        group_on_client2.create_application_message(&[], &client2_message[..], &credentials[1]);
+    let mls_ciphertext = group_on_client2
+        .create_application_message(&[], &client2_message[..], &credentials[1])
+        .unwrap();
 
     // Send mls_ciphertext to the group
     let msg = GroupMessage::new(MLSMessage::Ciphertext(mls_ciphertext), &client_ids);

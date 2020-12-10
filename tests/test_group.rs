@@ -324,8 +324,9 @@ fn group_operations() {
 
         // === Alice sends a message to Bob ===
         let message_alice = [1, 2, 3];
-        let mls_ciphertext_alice =
-            group_alice.create_application_message(&[], &message_alice, &alice_credential_bundle);
+        let mls_ciphertext_alice = group_alice
+            .create_application_message(&[], &message_alice, &alice_credential_bundle)
+            .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
@@ -536,11 +537,9 @@ fn group_operations() {
 
         // === Charlie sends a message to the group ===
         let message_charlie = [1, 2, 3];
-        let mls_ciphertext_charlie = group_charlie.create_application_message(
-            &[],
-            &message_charlie,
-            &charlie_credential_bundle,
-        );
+        let mls_ciphertext_charlie = group_charlie
+            .create_application_message(&[], &message_charlie, &charlie_credential_bundle)
+            .unwrap();
         let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
@@ -636,7 +635,7 @@ fn group_operations() {
             group_bob
                 .apply_commit(&mls_plaintext_commit, &[&remove_bob_proposal_charlie], &[],)
                 .unwrap_err()
-                == ApplyCommitError::SelfRemoved
+                == GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved)
         );
         group_charlie
             .apply_commit(
