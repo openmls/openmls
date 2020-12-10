@@ -408,7 +408,8 @@ impl<'a> ProposalQueue<'a> {
             )
             .collect::<Vec<ProposalOrRef>>()
     }
-    /// Return a list of filtered `QueuedProposal`
+    /// Returns an iterator over a list of `QueuedProposal` filtered by proposal
+    /// type
     pub(crate) fn filtered_by_type(
         &self,
         proposal_type: ProposalType,
