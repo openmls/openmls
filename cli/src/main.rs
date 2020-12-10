@@ -11,7 +11,7 @@ mod identity;
 mod networking;
 mod user;
 
-const HELP: &'static str = "
+const HELP: &str = "
 >>> Available commands:
 >>>     - update                                update the client state
 >>>     - reset                                 reset the server
@@ -58,8 +58,7 @@ fn main() {
         // Register a client.
         // There's no persistence. So once the client app stops you have to
         // register a new client.
-        if op.starts_with("register ") {
-            let client_name = &op[9..];
+        if let Some(client_name) = op.strip_prefix("register ") {
             client = Some(user::User::new(client_name.to_string()));
             stdout
                 .write_all(format!("registered new client {}\n\n", client_name).as_bytes())
@@ -68,8 +67,7 @@ fn main() {
         }
 
         // Create a new group.
-        if op.starts_with("create group ") {
-            let group_name = &op[13..];
+        if let Some(group_name) = op.strip_prefix("create group ") {
             if let Some(client) = &mut client {
                 client.create_group(group_name.to_string());
                 stdout
@@ -84,8 +82,7 @@ fn main() {
         }
 
         // Group operations.
-        if op.starts_with("group ") {
-            let group_name = &op[6..];
+        if let Some(group_name) = op.strip_prefix("group ") {
             if let Some(client) = &mut client {
                 loop {
                     stdout.write_all(b" > ").unwrap();
@@ -93,8 +90,7 @@ fn main() {
                     let op2 = stdin.read_line().unwrap().unwrap();
 
                     // Send a message to the group.
-                    if op2.starts_with("send ") {
-                        let msg = &op2[5..];
+                    if let Some(msg) = op2.strip_prefix("send ") {
                         client.send_msg(&msg, group_name.to_string()).unwrap();
                         stdout
                             .write_all(format!("sent message to {}\n\n", group_name).as_bytes())
@@ -103,8 +99,7 @@ fn main() {
                     }
 
                     // Invite a client to the group.
-                    if op2.starts_with("invite ") {
-                        let new_client = &op2[7..];
+                    if let Some(new_client) = op2.strip_prefix("invite ") {
                         client
                             .invite(new_client.to_string(), group_name.to_string())
                             .unwrap();

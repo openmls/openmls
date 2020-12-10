@@ -249,7 +249,7 @@ fn test_commit_encoding() {
 
         let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], alice_credential_bundle, proposals, true)
+            .create_commit(&[], alice_credential_bundle, proposals, &[], true)
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
         let commit_decoded = match MLSPlaintext::decode(&mut Cursor::new(&commit_encoded)) {
@@ -288,7 +288,7 @@ fn test_welcome_message_encoding() {
 
         let proposals = &[&add];
         let (_commit, welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], credential_bundle, proposals, true)
+            .create_commit(&[], credential_bundle, proposals, &[], true)
             .unwrap();
 
         // Welcome messages

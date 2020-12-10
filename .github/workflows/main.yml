@@ -16,13 +16,13 @@ jobs:
           # - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
-    - name: Build PoC
-      run: cargo build --verbose --workspace
-    - name: Build Release
-      run: cargo build --release --all-features --verbose
+      - uses: actions/checkout@v2
+      - name: Build
+        run: cargo build --verbose
+      - name: Build PoC
+        run: cargo build --verbose --workspace
+      - name: Build Release
+        run: cargo build --release --all-features --verbose
   tests:
     strategy:
       fail-fast: false
@@ -33,32 +33,32 @@ jobs:
           # - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Stable with rustfmt and clippy
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        components: rustfmt, clippy
-    - name: Tests
-      run: cargo test --verbose
-    - name: Cargo fmt
-      run: cargo fmt -- --check
-    - name: Test DS
-      run: cargo test --verbose -p mls-ds
-    - name: Test DS lib
-      run: cargo test --verbose -p ds-lib
-    - name: Clippy warnings
-      uses: actions-rs/clippy-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: --all-features
-    - name: Benchmarks
-      run: cargo bench --verbose
-    - name: Security audit
-      uses: actions-rs/audit-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
+      - name: Stable with rustfmt and clippy
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Tests
+        run: cargo test --verbose
+      - name: Cargo fmt
+        run: cargo fmt -- --check
+      - name: Test DS
+        run: cargo test --verbose -p mls-ds
+      - name: Test DS lib
+        run: cargo test --verbose -p ds-lib
+      - name: Clippy warnings
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+      - name: Benchmarks
+        run: cargo bench --verbose
+      - name: Security audit
+        uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
   fuzz:
     strategy:
       fail-fast: false
@@ -68,19 +68,21 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        default: true
-    - uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-fuzz
-        version: latest
-    - name: Fuzz Welcome
-      run: cargo fuzz run welcome_decode -- -runs=100000
-    - name: Fuzz MLSCiphertext
-      run: cargo fuzz run mls_ciphertext_decode -- -runs=100000
-    - name: Fuzz MLSPlaintext
-      run: cargo fuzz run mls_plaintext_decode -- -runs=100000
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          default: true
+      - uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-fuzz
+          version: latest
+      - name: Fuzz Welcome
+        run: cargo fuzz run welcome_decode -- -runs=100000
+      - name: Fuzz MLSCiphertext
+        run: cargo fuzz run mls_ciphertext_decode -- -runs=100000
+      - name: Fuzz MLSPlaintext
+        run: cargo fuzz run mls_plaintext_decode -- -runs=100000
+      - name: Fuzz Proposal
+        run: cargo fuzz run proposal_decode -- -runs=100000

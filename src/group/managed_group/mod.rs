@@ -143,30 +143,30 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        // Create framed add proposals from key packages
-        let mut plaintext_messages: Vec<MLSPlaintext> = key_packages
+
+        // Create add proposals by value from key packages
+        let proposals = key_packages
             .iter()
             .map(|key_package| {
-                self.group.create_add_proposal(
-                    &self.aad,
-                    &self.credential_bundle,
-                    key_package.clone(),
-                )
+                Proposal::Add(AddProposal {
+                    key_package: key_package.clone(),
+                })
             })
-            .collect();
+            .collect::<Vec<Proposal>>();
+        let proposals_by_value = &proposals.iter().collect::<Vec<&Proposal>>();
 
-        // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MLSPlaintext> = self
+        // Include pending proposals
+        let proposals_by_reference = &self
             .pending_proposals
             .iter()
-            .chain(plaintext_messages.iter())
-            .collect();
+            .collect::<Vec<&MLSPlaintext>>();
 
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             &self.credential_bundle,
-            &messages_to_commit,
+            proposals_by_reference,
+            proposals_by_value,
             false,
         )?;
         let welcome = match welcome_option {
@@ -178,9 +178,6 @@ impl<'a> ManagedGroup<'a> {
             }
         };
 
-        // Add the Commit message to the other pending messages
-        plaintext_messages.push(commit);
-
         // If it was a full Commit, we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {
             self.own_kpbs.push(kpb);
@@ -188,7 +185,7 @@ impl<'a> ManagedGroup<'a> {
 
         // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
+        let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -204,34 +201,32 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let mut plaintext_messages: Vec<MLSPlaintext> = members
+
+        // Create add proposals by value
+        let proposals = members
             .iter()
             .map(|member| {
-                self.group.create_remove_proposal(
-                    &self.aad,
-                    &self.credential_bundle,
-                    LeafIndex::from(*member),
-                )
+                Proposal::Remove(RemoveProposal {
+                    removed: *member as u32,
+                })
             })
-            .collect();
+            .collect::<Vec<Proposal>>();
+        let proposals_by_value = &proposals.iter().collect::<Vec<&Proposal>>();
 
-        // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MLSPlaintext> = self
+        // Include pending proposals
+        let proposals_by_reference = &self
             .pending_proposals
             .iter()
-            .chain(plaintext_messages.iter())
-            .collect();
+            .collect::<Vec<&MLSPlaintext>>();
 
         // Create Commit over all proposals
-        let (commit, _, kpb_option) = self.group.create_commit(
+        let (commit, _welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             &self.credential_bundle,
-            &messages_to_commit,
+            proposals_by_reference,
+            proposals_by_value,
             false,
         )?;
-
-        // Add the Commit message to the other pending messages
-        plaintext_messages.push(commit);
 
         // It has to be a full Commit and we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {
@@ -244,7 +239,7 @@ impl<'a> ManagedGroup<'a> {
 
         // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
+        let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -373,7 +368,11 @@ impl<'a> ManagedGroup<'a> {
                     // Incoming proposals are validated against the application validation
                     // policy and then appended to the internal `pending_proposal` list.
                     // TODO #133: Semantic validation of proposals
-                    if self.validate_proposal(&plaintext, indexed_members) {
+                    if self.validate_proposal(
+                        plaintext.content.to_proposal(),
+                        &plaintext.sender.sender,
+                        &indexed_members,
+                    ) {
                         self.pending_proposals.push(plaintext);
                     } else {
                         self.invalid_message_event(
@@ -381,43 +380,63 @@ impl<'a> ManagedGroup<'a> {
                         );
                     }
                 }
-                MLSPlaintextContentType::Commit(_) => {
+                MLSPlaintextContentType::Commit((ref commit, ref _confirmation_tag)) => {
+                    // Validate inline proposals
+                    if !self.validate_inline_proposals(
+                        &commit.proposals,
+                        &plaintext.sender.sender,
+                        &indexed_members,
+                    ) {
+                        // If not all of them are valid, call error function callback
+                        self.invalid_message_event(
+                            InvalidMessageError::CommitWithInvalidProposals(
+                                "Not all of them are valid".into(),
+                            ),
+                        );
+                        // And move on to the next message
+                        continue;
+                    }
                     // If all proposals were valid, we continue with applying the Commit
                     // message
-                    match self.group.apply_commit(
-                        plaintext,
-                        self.pending_proposals.clone(),
-                        &self.own_kpbs,
-                    ) {
+                    let proposals = &self
+                        .pending_proposals
+                        .iter()
+                        .collect::<Vec<&MLSPlaintext>>();
+                    match self
+                        .group
+                        .apply_commit(&plaintext, proposals, &self.own_kpbs)
+                    {
                         Ok(()) => {
                             // Since the Commit was applied without errors, we can call all
                             // corresponding callback functions for the whole proposal list
-                            self.send_events(indexed_members);
+                            self.send_events(
+                                self.ciphersuite(),
+                                &commit.proposals,
+                                &plaintext.sender.sender,
+                                &indexed_members,
+                            );
                             // We don't need the pending proposals and key package bundles any
                             // longer
                             self.pending_proposals.clear();
                             self.own_kpbs.clear();
                         }
                         Err(apply_commit_error) => match apply_commit_error {
+                            GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
+                                // Send out events
+                                self.send_events(
+                                    self.ciphersuite(),
+                                    &commit.proposals,
+                                    &plaintext.sender.sender,
+                                    &indexed_members,
+                                );
+                                // The group is no longer active
+                                self.active = false;
+                            }
                             GroupError::ApplyCommitError(e) => {
-                                match e {
-                                    ApplyCommitError::SelfRemoved => {
-                                        // Send out events
-                                        self.send_events(indexed_members);
-                                        // The group is no longer active
-                                        self.active = false;
-                                    }
-                                    _ => {
-                                        self.invalid_message_event(
-                                            InvalidMessageError::CommitError(e),
-                                        );
-                                    }
-                                }
+                                self.invalid_message_event(InvalidMessageError::CommitError(e));
                             }
                             _ => {
-                                self.invalid_message_event(InvalidMessageError::GroupError(
-                                    apply_commit_error,
-                                ));
+                                panic!("apply_commit_error did not return an ApplyCommitError.");
                             }
                         },
                     }
@@ -486,6 +505,7 @@ impl<'a> ManagedGroup<'a> {
             &self.aad,
             &self.credential_bundle,
             &messages_to_commit,
+            &[],
             true,
         )?;
 
@@ -552,6 +572,11 @@ impl<'a> ManagedGroup<'a> {
 
     // === Advanced functions ===
 
+    /// Returns the group's ciphersuite
+    pub fn ciphersuite(&self) -> &Ciphersuite {
+        self.group.ciphersuite()
+    }
+
     /// Returns whether the own client is still a member of the group or if it
     /// was already evicted
     pub fn is_active(&self) -> bool {
@@ -607,6 +632,7 @@ impl<'a> ManagedGroup<'a> {
             &self.aad,
             &self.credential_bundle,
             &messages_to_commit,
+            &[],
             true, /* force_self_update */
         )?;
 
@@ -729,93 +755,130 @@ impl<'a> ManagedGroup<'a> {
     /// proposals are valid.
     fn validate_proposal(
         &self,
-        framed_proposal: &MLSPlaintext,
-        indexed_members: HashMap<LeafIndex, Credential>,
+        proposal: &Proposal,
+        sender: &LeafIndex,
+        indexed_members: &HashMap<LeafIndex, Credential>,
     ) -> bool {
-        let sender = &indexed_members[&framed_proposal.sender()];
-        match framed_proposal.content {
-            MLSPlaintextContentType::Proposal(ref proposal) => match proposal {
-                // Validate add proposals
-                Proposal::Add(add_proposal) => {
-                    if let Some(validate_add) = self.managed_group_config.callbacks.validate_add {
-                        if !validate_add(&self, sender, add_proposal.key_package.credential()) {
-                            return false;
-                        }
+        let sender = &indexed_members[sender];
+        match proposal {
+            // Validate add proposals
+            Proposal::Add(add_proposal) => {
+                if let Some(validate_add) = self.managed_group_config.callbacks.validate_add {
+                    if !validate_add(&self, sender, add_proposal.key_package.credential()) {
+                        return false;
                     }
                 }
-                // Validate remove proposals
-                Proposal::Remove(remove_proposal) => {
-                    if let Some(validate_remove) =
-                        self.managed_group_config.callbacks.validate_remove
-                    {
-                        if !validate_remove(
-                            &self,
-                            sender,
-                            &indexed_members[&LeafIndex::from(remove_proposal.removed)],
-                        ) {
-                            return false;
-                        }
+            }
+            // Validate remove proposals
+            Proposal::Remove(remove_proposal) => {
+                if let Some(validate_remove) = self.managed_group_config.callbacks.validate_remove {
+                    if !validate_remove(
+                        &self,
+                        sender,
+                        &indexed_members[&LeafIndex::from(remove_proposal.removed)],
+                    ) {
+                        return false;
                     }
                 }
-                // Update proposals don't have validators
-                Proposal::Update(_) => {}
-            },
-            // Other content types should not be in here
-            _ => {
-                panic!("Library error: pending_proposals should only contain proposals")
+            }
+            // Update proposals don't have validators
+            Proposal::Update(_) => {}
+        }
+        true
+    }
+
+    /// Validates the inline proposals from a Commit message
+    fn validate_inline_proposals(
+        &self,
+        proposals: &[ProposalOrRef],
+        sender: &LeafIndex,
+        indexed_members: &HashMap<LeafIndex, Credential>,
+    ) -> bool {
+        for proposal_or_ref in proposals {
+            match proposal_or_ref {
+                ProposalOrRef::Proposal(proposal) => {
+                    if !self.validate_proposal(proposal, sender, indexed_members) {
+                        return false;
+                    }
+                }
+                ProposalOrRef::Reference(_) => {}
             }
         }
         true
     }
 
-    /// Send out the corresponding events for the pending proposal list.
-    fn send_events(&self, indexed_members: HashMap<LeafIndex, Credential>) {
-        for framed_proposal in &self.pending_proposals {
-            let sender = &indexed_members[&framed_proposal.sender()];
-            match framed_proposal.content {
-                MLSPlaintextContentType::Proposal(ref proposal) => match proposal {
-                    // Add proposals
-                    Proposal::Add(add_proposal) => {
-                        if let Some(member_added) = self.managed_group_config.callbacks.member_added
-                        {
-                            member_added(
-                                &self,
-                                &self.aad,
-                                sender,
-                                add_proposal.key_package.credential(),
-                            )
-                        }
-                    }
-                    // Update proposals
-                    Proposal::Update(update_proposal) => {
-                        if let Some(member_updated) =
-                            self.managed_group_config.callbacks.member_updated
-                        {
-                            member_updated(
-                                &self,
-                                &self.aad,
-                                update_proposal.key_package.credential(),
-                            )
-                        }
-                    }
-                    // Remove proposals
-                    Proposal::Remove(remove_proposal) => {
-                        let removal = Removal::new(
-                            self.credential_bundle.credential(),
+    /// Send out the corresponding events for the proposals covered by the
+    /// Commit
+    fn send_events(
+        &self,
+        ciphersuite: &Ciphersuite,
+        proposals: &[ProposalOrRef],
+        sender: &LeafIndex,
+        indexed_members: &HashMap<LeafIndex, Credential>,
+    ) {
+        // We want to send the events in the order specified by the committer.
+        // We convert the pending proposals to a list of references
+        let pending_proposals_list = self
+            .pending_proposals
+            .iter()
+            .collect::<Vec<&MLSPlaintext>>();
+        // Build a proposal queue for easier searching
+        let pending_proposals_queue =
+            ProposalQueue::from_proposals_by_reference(ciphersuite, &pending_proposals_list);
+        for proposal_or_ref in proposals {
+            match proposal_or_ref {
+                ProposalOrRef::Proposal(proposal) => {
+                    self.send_proposal_event(proposal, sender, indexed_members);
+                }
+                ProposalOrRef::Reference(proposal_id) => {
+                    if let Some(queued_proposal) = pending_proposals_queue.get(proposal_id) {
+                        self.send_proposal_event(
+                            queued_proposal.proposal(),
                             sender,
-                            &indexed_members[&LeafIndex::from(remove_proposal.removed)],
+                            indexed_members,
                         );
-
-                        if let Some(member_removed) =
-                            self.managed_group_config.callbacks.member_removed
-                        {
-                            member_removed(&self, &self.aad, &removal)
-                        }
                     }
-                },
-                // Other content types should not be in here
-                _ => {
-                    panic!("Library error: pending_proposals should only contain proposals")
+                }
+            }
+        }
+    }
+
+    /// Send out the corresponding events for the pending proposal list.
+    fn send_proposal_event(
+        &self,
+        proposal: &Proposal,
+        sender: &LeafIndex,
+        indexed_members: &HashMap<LeafIndex, Credential>,
+    ) {
+        let sender_credential = &indexed_members[sender];
+        match proposal {
+            // Add proposals
+            Proposal::Add(add_proposal) => {
+                if let Some(member_added) = self.managed_group_config.callbacks.member_added {
+                    member_added(
+                        &self,
+                        &self.aad,
+                        sender_credential,
+                        add_proposal.key_package.credential(),
+                    )
+                }
+            }
+            // Update proposals
+            Proposal::Update(update_proposal) => {
+                if let Some(member_updated) = self.managed_group_config.callbacks.member_updated {
+                    member_updated(&self, &self.aad, update_proposal.key_package.credential())
+                }
+            }
+            // Remove proposals
+            Proposal::Remove(remove_proposal) => {
+                let removal = Removal::new(
+                    self.credential_bundle.credential(),
+                    sender_credential,
+                    &indexed_members[&LeafIndex::from(remove_proposal.removed)],
+                );
+
+                if let Some(member_removed) = self.managed_group_config.callbacks.member_removed {
+                    member_removed(&self, &self.aad, &removal)
                 }
             }
         }

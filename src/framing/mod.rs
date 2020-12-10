@@ -440,6 +440,15 @@ pub enum MLSPlaintextContentType {
     Commit((Commit, ConfirmationTag)),
 }
 
+impl MLSPlaintextContentType {
+    pub(crate) fn to_proposal(&self) -> &Proposal {
+        match self {
+            MLSPlaintextContentType::Proposal(proposal) => proposal,
+            _ => panic!("Library error. Expected Proposal in MLSPlaintextContentType"),
+        }
+    }
+}
+
 impl Codec for MLSPlaintextContentType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {

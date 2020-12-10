@@ -1,5 +1,7 @@
 use super::*;
 
+use serde::{Deserialize, Serialize};
+
 /// Defines whether handshake messages (Proposals & Commits) are encrypted.
 /// Application are always encrypted regardless. `Plaintext`: Handshake messages
 /// are returned as MLSPlaintext messages `Ciphertext`: Handshake messages are

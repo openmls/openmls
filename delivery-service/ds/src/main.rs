@@ -112,7 +112,7 @@ async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl
     let data = unwrap_data!(data.lock());
 
     // XXX: we could encode while iterating to be less wasteful.
-    let clients: Vec<ClientInfo> = data.deref().clients.values().map(|c| c.clone()).collect();
+    let clients: Vec<ClientInfo> = data.deref().clients.values().cloned().collect();
     let mut out_bytes = Vec::new();
     if clients.encode(&mut out_bytes).is_err() {
         return actix_web::HttpResponse::InternalServerError().finish();
