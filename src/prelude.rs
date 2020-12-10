@@ -26,3 +26,7 @@ pub use crate::messages::{
     Welcome,
 };
 pub use crate::utils::*;
+
+// Things we need for fuzzing (but not otherwise)
+#[cfg(fuzzing)]
+pub use crate::messages::proposals::Proposal;

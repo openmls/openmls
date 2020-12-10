@@ -185,6 +185,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     group_aad,
                     &initial_credential_bundle,
                     &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
+                    &[],
                     true, /* Set this to true to populate the tree a little bit. */
                 )
                 .unwrap();
@@ -192,8 +193,11 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let key_package_bundle = key_package_bundle_option.unwrap();
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
-            match mls_group.apply_commit(commit_mls_plaintext, proposal_list, &[key_package_bundle])
-            {
+            match mls_group.apply_commit(
+                &commit_mls_plaintext,
+                &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
+                &[key_package_bundle],
+            ) {
                 Ok(_) => (),
                 Err(err) => panic!("Error applying Commit: {:?}", err),
             }

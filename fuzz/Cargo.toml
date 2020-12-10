@@ -41,3 +41,9 @@ name = "mls_ciphertext_decode"
 path = "fuzz_targets/mls_ciphertext_decode.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "proposal_decode"
+path = "fuzz_targets/proposal_decode.rs"
+test = false
+doc = false

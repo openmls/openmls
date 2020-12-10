@@ -149,12 +149,13 @@ fn unknown_sender() {
                 group_aad,
                 &alice_credential_bundle,
                 &[&bob_add_proposal],
+                &[],
                 false,
             )
             .expect("Error creating Commit");
 
         group_alice
-            .apply_commit(commit, vec![bob_add_proposal], &[])
+            .apply_commit(&commit, &[&bob_add_proposal], &[])
             .expect("Could not apply Commit");
 
         // Alice adds Charlie
@@ -170,12 +171,13 @@ fn unknown_sender() {
                 group_aad,
                 &alice_credential_bundle,
                 &[&charlie_add_proposal],
+                &[],
                 false,
             )
             .expect("Error creating Commit");
 
         group_alice
-            .apply_commit(commit, vec![charlie_add_proposal], &[])
+            .apply_commit(&commit, &[&charlie_add_proposal], &[])
             .expect("Could not apply Commit");
 
         let mut group_charlie = MlsGroup::new_from_welcome(
@@ -196,6 +198,7 @@ fn unknown_sender() {
                 group_aad,
                 &alice_credential_bundle,
                 &[&bob_remove_proposal],
+                &[],
                 false,
             )
             .expect("Error creating Commit");
@@ -204,14 +207,10 @@ fn unknown_sender() {
         _print_tree(&group_charlie.tree(), "Charlie tree");
 
         group_charlie
-            .apply_commit(commit.clone(), vec![bob_remove_proposal.clone()], &[])
+            .apply_commit(&commit, &[&bob_remove_proposal], &[])
             .expect("Charlie: Could not apply Commit");
         group_alice
-            .apply_commit(
-                commit.clone(),
-                vec![bob_remove_proposal.clone()],
-                &[kpb_option.unwrap()],
-            )
+            .apply_commit(&commit, &[&bob_remove_proposal], &[kpb_option.unwrap()])
             .expect("Alice: Could not apply Commit");
 
         // Alice sends a message with a sender that points to a blank leaf
