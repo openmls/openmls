@@ -34,7 +34,7 @@ struct Client<'a> {
     // Map from key package hash to the corresponding bundle.
     pub(crate) key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
     //pub(crate) key_packages: HashMap<CiphersuiteName, KeyPackage>,
-    pub(crate) group_states: RefCell<HashMap<GroupId, ManagedGroup<'a>>>,
+    pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup<'a>>>,
 }
 
 impl<'a> Client<'a> {
@@ -63,12 +63,13 @@ impl<'a> Client<'a> {
         ciphersuite: &Ciphersuite,
     ) {
         let credential_bundle = self.credential_bundles.get(&ciphersuite.name()).unwrap();
-        let key_package = self.get_fresh_key_package(ciphersuite);
-        let key_package_bundle = self
-            .key_package_bundles
-            .borrow_mut()
-            .remove(&key_package.hash())
-            .unwrap();
+        let mandatory_extensions = Vec::new();
+        let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &credential_bundle,
+            mandatory_extensions,
+        )
+        .unwrap();
         let group_state = ManagedGroup::new(
             credential_bundle,
             &managed_group_config,
@@ -76,7 +77,7 @@ impl<'a> Client<'a> {
             key_package_bundle,
         )
         .unwrap();
-        self.group_states.borrow_mut().insert(group_id, group_state);
+        self.groups.borrow_mut().insert(group_id, group_state);
     }
 
     pub fn join_group(
@@ -112,7 +113,7 @@ impl<'a> Client<'a> {
             ratchet_tree,
             key_package_bundle,
         )?;
-        self.group_states
+        self.groups
             .borrow_mut()
             .insert(new_group.group_id().to_owned(), new_group);
         Ok(())
@@ -123,7 +124,7 @@ impl<'a> Client<'a> {
         group_id: &GroupId,
         messages: Vec<MLSMessage>,
     ) -> Result<(), ClientError> {
-        let mut group_states = self.group_states.borrow_mut();
+        let mut group_states = self.groups.borrow_mut();
         let group_state = match group_states.get_mut(group_id) {
             Some(group_state) => group_state,
             None => return Err(ClientError::NoMatchingGroup),
@@ -161,7 +162,7 @@ impl<'a> ManagedTestSetup<'a> {
                 _ciphersuites,
                 credential_bundles,
                 key_package_bundles,
-                group_states: RefCell::new(HashMap::new()),
+                groups: RefCell::new(HashMap::new()),
             };
             clients.push(client)
         }
@@ -196,7 +197,7 @@ impl<'a> ManagedTestSetup<'a> {
             let adder_id = (OsRng.next_u32() as usize) % members.len();
             println!("adder_id: {:?}", adder_id);
             let adder = members[adder_id];
-            let mut adder_group_states = adder.group_states.borrow_mut();
+            let mut adder_group_states = adder.groups.borrow_mut();
             let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
 
             // How many members to add at once?
@@ -210,14 +211,14 @@ impl<'a> ManagedTestSetup<'a> {
                     .clients
                     .iter()
                     .find(|client| {
-                        let identity = client.identity.clone();
+                        //let identity = client.identity;
                         (!members
                             .iter()
-                            .find(|member| member.identity == identity)
+                            .find(|member| member.identity == client.identity)
                             .is_some())
-                            & (!new_members
+                            && (!new_members
                                 .iter()
-                                .find(|member| member.identity == identity)
+                                .find(|member| member.identity == client.identity)
                                 .is_some())
                     })
                     .unwrap();
@@ -241,9 +242,18 @@ impl<'a> ManagedTestSetup<'a> {
                         .unwrap();
                 })
                 .collect::<Vec<_>>();
-            let group_states = members[0].group_states.borrow_mut();
+            let group_states = members[0].groups.borrow_mut();
             let group_state = group_states.get(&group_id).unwrap();
             let ratchet_tree = group_state.export_ratchet_tree();
+            drop(group_state);
+            drop(group_states);
+            for m in &members {
+                let group_states = m.groups.borrow_mut();
+                let group_state = group_states.get(&group_id).unwrap();
+                assert_eq!(group_state.export_ratchet_tree(), ratchet_tree);
+                drop(group_state);
+                drop(group_states);
+            }
             //let mut adder_group_states = adder.group_states.borrow_mut();
             //let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
             //let ratchet_tree = adder_group_state.export_ratchet_tree();
@@ -269,7 +279,7 @@ impl<'a> ManagedTestSetup<'a> {
 
 #[test]
 fn test_randomized_setup() {
-    let setup = ManagedTestSetup::new(2000);
+    let setup = ManagedTestSetup::new(200);
     for ciphersuite in Config::supported_ciphersuites() {
         let handshake_message_format = HandshakeMessageFormat::Ciphertext;
         let update_policy = UpdatePolicy::default();
