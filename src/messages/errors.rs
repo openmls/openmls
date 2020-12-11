@@ -2,18 +2,10 @@ use crate::codec::*;
 
 use std::error::Error;
 
-#[derive(Debug)]
-pub enum ProposalQueueError {
-    ProposalNotFound,
-}
-
-implement_enum_display!(ProposalQueueError);
-
-impl Error for ProposalQueueError {
-    fn description(&self) -> &str {
-        match self {
-            Self::ProposalNotFound => "Not all proposals in the Commit were found locally.",
-        }
+implement_error! {
+    pub enum ProposalQueueError {
+        ProposalNotFound =
+            "Not all proposals in the Commit were found locally.",
     }
 }
 

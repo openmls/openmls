@@ -150,18 +150,15 @@ impl<'a> ManagedTestSetup<'a> {
     pub fn new(number_of_clients: usize) -> Self {
         let mut clients = Vec::new();
         for i in 0..number_of_clients {
-            let identity = i.to_be_bytes().to_vec();
+            let identity = i.to_string().into_bytes();
             // For now, everyone supports all ciphersuites.
             let _ciphersuites = Config::supported_ciphersuite_names();
             let mut credential_bundles = HashMap::new();
             for ciphersuite in &_ciphersuites {
-                let credential_bundle = CredentialBundle::new(
-                    identity.clone(),
-                    CredentialType::Basic,
-                    ciphersuite.clone(),
-                )
-                .unwrap();
-                credential_bundles.insert(ciphersuite.clone(), credential_bundle);
+                let credential_bundle =
+                    CredentialBundle::new(identity.clone(), CredentialType::Basic, *ciphersuite)
+                        .unwrap();
+                credential_bundles.insert(*ciphersuite, credential_bundle);
             }
             let key_package_bundles = RefCell::new(HashMap::new());
             let client = Client {
@@ -192,23 +189,20 @@ impl<'a> ManagedTestSetup<'a> {
         let group_creator_id = (OsRng.next_u32() as usize) % self.clients.len();
         let group_creator = &self.clients[group_creator_id];
         let group_id = GroupId {
-            value: self.groups.len().to_be_bytes().to_vec(),
+            value: self.groups.len().to_string().into_bytes(),
         };
         group_creator.create_group(group_id.clone(), managed_group_config.clone(), ciphersuite);
-        //let creator_group_states = group_creator.group_states.borrow();
-        //let creator_group_state = creator_group_states.get(&group_id).unwrap();
         let mut members = Vec::new();
         members.push(group_creator);
         while members.len() < group_size {
             // Get a random group member.
             let adder_id = (OsRng.next_u32() as usize) % members.len();
-            //println!("adder_id: {:?}", adder_id);
             let adder = members[adder_id];
             let mut adder_group_states = adder.groups.borrow_mut();
             let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
 
             // How many members to add at once?
-            let members_to_add = (OsRng.next_u32() as usize) % (group_size - members.len());
+            let members_to_add = (OsRng.next_u32() as usize) % (group_size - members.len()) + 1;
 
             // Pick a number of clients that are not already members.
             let mut new_members: Vec<&Client<'a>> = Vec::new();
@@ -218,7 +212,6 @@ impl<'a> ManagedTestSetup<'a> {
                     .clients
                     .iter()
                     .find(|client| {
-                        //let identity = client.identity;
                         (members
                             .iter()
                             .find(|member| member.identity == client.identity)
@@ -235,51 +228,36 @@ impl<'a> ManagedTestSetup<'a> {
                 new_member_key_packages.push(key_package);
             }
             println!("KPs: {:?}", new_member_key_packages.len());
+            assert_eq!(members_to_add, new_member_key_packages.len());
             // Have the adder add them to the group.
             let (mls_messages, welcome) = adder_group_state
                 .add_members(new_member_key_packages.as_slice())
                 .unwrap();
-            //println!("Number of MLSMessages received: {}", mls_messages.len());
-            //drop(adder_group_state);
             drop(adder_group_states);
-            let _ = members
-                .iter()
-                .map(|member| {
-                    member
-                        .receive_messages_for_group(&group_id, mls_messages.clone())
-                        .unwrap();
-                })
-                .collect::<Vec<_>>();
+            for member in members.iter() {
+                member
+                    .receive_messages_for_group(&group_id, mls_messages.clone())
+                    .unwrap();
+            }
             let group_states = members[0].groups.borrow_mut();
             let group_state = group_states.get(&group_id).unwrap();
             let ratchet_tree = group_state.export_ratchet_tree();
-            //drop(group_state);
             drop(group_states);
             for m in &members {
                 let group_states = m.groups.borrow_mut();
                 let group_state = group_states.get(&group_id).unwrap();
                 assert_eq!(group_state.export_ratchet_tree(), ratchet_tree);
-                //drop(group_state);
                 drop(group_states);
             }
-            //let mut adder_group_states = adder.group_states.borrow_mut();
-            //let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
-            //let ratchet_tree = adder_group_state.export_ratchet_tree();
-            //drop(adder_group_state);
-            //drop(adder_group_states);
-            let _ = new_members
-                .iter()
-                .map(|nm| {
-                    //println!("Ratchet Tree: {:?}", ratchet_tree);
-                    nm.join_group(
+            for new_member in new_members.iter() {
+                new_member
+                    .join_group(
                         managed_group_config.clone(),
                         welcome.clone(),
                         Some(ratchet_tree.clone()),
                     )
                     .unwrap();
-                    //println!("A member just joined.")
-                })
-                .collect::<Vec<_>>();
+            }
             members.extend(new_members);
         }
         group_id
@@ -336,7 +314,7 @@ fn test_randomized_setup() {
         );
     }
 
-    let setup = ManagedTestSetup::new(200);
+    let setup = ManagedTestSetup::new(20);
     for ciphersuite in Config::supported_ciphersuites() {
         let handshake_message_format = HandshakeMessageFormat::Plaintext;
         let update_policy = UpdatePolicy::default();
@@ -346,6 +324,6 @@ fn test_randomized_setup() {
             .with_error_occured(error_occured);
         let managed_group_config =
             ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
-        setup.create_random_group(100, ciphersuite, managed_group_config);
+        setup.create_random_group(10, ciphersuite, managed_group_config);
     }
 }
