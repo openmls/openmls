@@ -397,7 +397,7 @@ impl<'a> ManagedGroup<'a> {
 
     // === Application messages ===
 
-    /// Creates an application message.  
+    /// Creates an application message.
     /// Returns `ManagedGroupError::UseAfterEviction` if the member is no longer
     /// part of the group. Returns `ManagedGroupError::
     /// PendingProposalsExist` if pending proposals exist. In that case
@@ -783,5 +783,15 @@ impl From<MLSPlaintext> for MLSMessage {
 impl From<MLSCiphertext> for MLSMessage {
     fn from(mls_ciphertext: MLSCiphertext) -> Self {
         MLSMessage::Ciphertext(mls_ciphertext)
+    }
+}
+
+impl MLSMessage {
+    /// Get the `GroupId` from an MLSMessage.
+    pub fn group_id(&self) -> &GroupId {
+        match self {
+            MLSMessage::Plaintext(pt) => pt.group_id(),
+            MLSMessage::Ciphertext(ct) => &ct.group_id,
+        }
     }
 }

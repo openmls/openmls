@@ -20,6 +20,7 @@ pub use crate::creds::*;
 pub use crate::extensions::*;
 pub use crate::framing::{errors::*, sender::Sender, *};
 pub use crate::group::GroupId;
+pub use crate::group::MLSMessage;
 pub use crate::key_packages::*;
 pub use crate::messages::{
     proposals::{AddProposal, RemoveProposal, UpdateProposal},
