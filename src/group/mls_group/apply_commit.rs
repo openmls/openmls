@@ -28,16 +28,12 @@ impl MlsGroup {
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 
-        // Convert proposals by reference into a queue
-        let proposals_by_ref_queue =
-            ProposalQueue::from_proposals_by_reference(ciphersuite, proposals_by_reference);
-
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
         let proposal_queue = match ProposalQueue::from_committed_proposals(
             ciphersuite,
             &commit.proposals,
-            &proposals_by_ref_queue,
+            &proposals_by_reference,
             mls_plaintext.sender,
         ) {
             Ok(proposal_queue) => proposal_queue,

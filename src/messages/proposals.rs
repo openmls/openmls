@@ -235,17 +235,27 @@ impl<'a> ProposalQueue<'a> {
     pub(crate) fn from_committed_proposals(
         ciphersuite: &Ciphersuite,
         committed_proposals: &'a [ProposalOrRef],
-        proposals_by_reference: &'a ProposalQueue<'a>,
+        proposals_by_reference: &'a [&'a MLSPlaintext],
         sender: Sender,
     ) -> Result<Self, ProposalQueueError> {
+        let mut proposals_by_reference_queue: HashMap<ProposalReference, QueuedProposal> =
+            HashMap::new();
+        for mls_plaintext in proposals_by_reference {
+            let queued_proposal =
+                QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext).unwrap();
+            proposals_by_reference_queue
+                .insert(queued_proposal.proposal_id().clone(), queued_proposal);
+        }
+
         let mut proposal_queue = ProposalQueue::new();
+
         for proposal_or_ref in committed_proposals.iter() {
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
                     QueuedProposal::from_proposal_and_sender(ciphersuite, proposal, sender)
                 }
                 ProposalOrRef::Reference(proposal_id) => {
-                    match proposals_by_reference.get(proposal_id) {
+                    match proposals_by_reference_queue.get(proposal_id) {
                         Some(queued_proposal) => queued_proposal.clone(),
                         None => return Err(ProposalQueueError::ProposalNotFound),
                     }
