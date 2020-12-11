@@ -66,13 +66,13 @@ fn proposal_queue_functions() {
         };
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-        let proposal_id_add_alice1 =
+        let proposal_reference_add_alice1 =
             ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
         let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
-        let proposal_id_add_alice2 =
+        let proposal_reference_add_alice2 =
             ProposalReference::from_proposal(ciphersuite, &proposal_add_alice2);
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
-        let proposal_id_add_bob1 =
+        let proposal_reference_add_bob1 =
             ProposalReference::from_proposal(ciphersuite, &proposal_add_bob1);
 
         // Test proposal types
@@ -108,18 +108,18 @@ fn proposal_queue_functions() {
         let proposal_queue = ProposalQueue::from_proposals_by_reference(&ciphersuite, proposals);
 
         // Test if proposals are all covered
-        let valid_proposal_id_list = &[
-            proposal_id_add_alice1.clone(),
-            proposal_id_add_alice2.clone(),
+        let valid_proposal_reference_list = &[
+            proposal_reference_add_alice1.clone(),
+            proposal_reference_add_alice2.clone(),
         ];
-        assert!(proposal_queue.contains(valid_proposal_id_list));
+        assert!(proposal_queue.contains(valid_proposal_reference_list));
 
-        let invalid_proposal_id_list = &[
-            proposal_id_add_alice1,
-            proposal_id_add_alice2,
-            proposal_id_add_bob1,
+        let invalid_proposal_reference_list = &[
+            proposal_reference_add_alice1,
+            proposal_reference_add_alice2,
+            proposal_reference_add_bob1,
         ];
-        assert!(!proposal_queue.contains(invalid_proposal_id_list));
+        assert!(!proposal_queue.contains(invalid_proposal_reference_list));
 
         // Get filtered proposals
         for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {

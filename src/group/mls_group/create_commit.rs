@@ -25,9 +25,9 @@ impl MlsGroup {
             proposals_by_value,
             LeafIndex::from(self.tree().own_node_index()),
             self.tree().leaf_count(),
-        );
+        )?;
 
-        let proposal_id_list = proposal_queue.commit_list();
+        let proposal_reference_list = proposal_queue.commit_list();
 
         let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely
@@ -65,7 +65,7 @@ impl MlsGroup {
         };
         // Create commit message
         let commit = Commit {
-            proposals: proposal_id_list,
+            proposals: proposal_reference_list,
             path,
         };
         // Create provisional group state

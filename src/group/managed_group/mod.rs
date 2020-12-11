@@ -18,7 +18,10 @@ use std::io::{Error, Read, Write};
 
 pub use callbacks::*;
 pub use config::*;
-pub use errors::{InvalidMessageError, ManagedGroupError, PendingProposalsError, UseAfterEviction};
+pub use errors::{
+    EmptyInputError, InvalidMessageError, ManagedGroupError, PendingProposalsError,
+    UseAfterEviction,
+};
 use ser::*;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
@@ -150,6 +153,10 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        if key_packages.is_empty() {
+            return Err(ManagedGroupError::EmptyInput(EmptyInputError::AddMembers));
+        }
+
         // Create add proposals by value from key packages
         let proposals = key_packages
             .iter()
@@ -213,6 +220,12 @@ impl<'a> ManagedGroup<'a> {
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        if members.is_empty() {
+            return Err(ManagedGroupError::EmptyInput(
+                EmptyInputError::RemoveMembers,
+            ));
         }
 
         // Create add proposals by value
@@ -851,8 +864,8 @@ impl<'a> ManagedGroup<'a> {
                 ProposalOrRef::Proposal(proposal) => {
                     self.send_proposal_event(proposal, sender, indexed_members);
                 }
-                ProposalOrRef::Reference(proposal_id) => {
-                    if let Some(queued_proposal) = pending_proposals_queue.get(proposal_id) {
+                ProposalOrRef::Reference(proposal_reference) => {
+                    if let Some(queued_proposal) = pending_proposals_queue.get(proposal_reference) {
                         self.send_proposal_event(
                             queued_proposal.proposal(),
                             sender,

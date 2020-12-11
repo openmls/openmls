@@ -26,6 +26,8 @@ implement_error! {
             "See [`PendingProposalsError`](`PendingProposalsError`) for details",
         Exporter(ExporterError) =
             "See [`ExporterError`](`crate::group::ExporterError`) for details",
+        EmptyInput(EmptyInputError) =
+            "Empty input. Additional detail is provided.",
     }
 }
 
@@ -38,6 +40,13 @@ implement_error! {
 implement_error! {
     pub enum PendingProposalsError {
         Exists = "Can't create message because a pending proposal exists.",
+    }
+}
+
+implement_error! {
+    pub enum EmptyInputError {
+        AddMembers = "An empty list of KeyPackages was provided.",
+        RemoveMembers = "An empty list of indexes was provided.",
     }
 }
 
