@@ -122,7 +122,10 @@ fn proposal_queue_functions() {
         assert!(!proposal_queue.contains(invalid_proposal_id_list));
 
         // Get filtered proposals
-        for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {
+        for filtered_proposal_reference in proposal_queue.filtered_by_type(ProposalType::Add) {
+            // We can unwrap here, because the iterator will only return
+            // proposal references for which a matching proposal exists.
+            let filtered_proposal = proposal_queue.get(filtered_proposal_reference).unwrap();
             assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
         }
     }

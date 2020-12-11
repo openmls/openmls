@@ -648,7 +648,10 @@ impl RatchetTree {
         let mut self_removed = false;
 
         // Process updates first
-        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
+        for queued_proposal_reference in proposal_queue.filtered_by_type(ProposalType::Update) {
+            // We can unwrap here, because the iterator will only return
+            // proposal references for which a matching proposal exists.
+            let queued_proposal = proposal_queue.get(queued_proposal_reference).unwrap();
             has_updates = true;
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
             let sender_index = queued_proposal.sender().to_node_index();
@@ -672,7 +675,10 @@ impl RatchetTree {
                 self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
         }
-        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
+        for queued_proposal_reference in proposal_queue.filtered_by_type(ProposalType::Remove) {
+            // We can unwrap here, because the iterator will only return
+            // proposal references for which a matching proposal exists.
+            let queued_proposal = proposal_queue.get(queued_proposal_reference).unwrap();
             has_removes = true;
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
             let removed = NodeIndex::from(LeafIndex::from(remove_proposal.removed));
@@ -687,7 +693,10 @@ impl RatchetTree {
         // Process adds
         let add_proposals: Vec<AddProposal> = proposal_queue
             .filtered_by_type(ProposalType::Add)
-            .map(|queued_proposal| {
+            .map(|queued_proposal_reference| {
+                // We can unwrap here, because the iterator will only return
+                // proposal references for which a matching proposal exists.
+                let queued_proposal = proposal_queue.get(queued_proposal_reference).unwrap();
                 let proposal = &queued_proposal.proposal();
                 proposal.as_add().unwrap()
             })

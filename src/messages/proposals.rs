@@ -202,6 +202,7 @@ impl<'a> QueuedProposal<'a> {
 /// epoch.
 #[derive(Default)]
 pub struct ProposalQueue<'a> {
+    proposal_references: Vec<ProposalReference>,
     queued_proposals: HashMap<ProposalReference, QueuedProposal<'a>>,
 }
 
@@ -209,6 +210,7 @@ impl<'a> ProposalQueue<'a> {
     // Returns a new empty `ProposalQueue`
     pub(crate) fn new() -> Self {
         ProposalQueue {
+            proposal_references: Vec::new(),
             queued_proposals: HashMap::new(),
         }
     }
@@ -221,7 +223,7 @@ impl<'a> ProposalQueue<'a> {
         let mut proposal_queue = ProposalQueue::new();
         for mls_plaintext in proposals {
             // It is safe to unwrap here, because we checked that only proposals can end up
-            // here
+            // here.
             let queued_proposal =
                 QueuedProposal::from_mls_plaintext(ciphersuite, &mls_plaintext).unwrap();
             proposal_queue.add(queued_proposal);
@@ -366,6 +368,7 @@ impl<'a> ProposalQueue<'a> {
         proposal_queue.retain(|k, _| valid_proposals.get(k).is_some() || adds.get(k).is_some());
         (proposal_queue, contains_own_updates)
     }
+
     /// Returns `true` if all `ProposalReference` values from the list are
     /// contained in the queue
     #[cfg(test)]
@@ -377,16 +380,22 @@ impl<'a> ProposalQueue<'a> {
         }
         true
     }
+
     /// Returns proposal for a given proposal ID
-    pub(crate) fn get(&self, proposal_id: &ProposalReference) -> Option<&QueuedProposal> {
-        self.queued_proposals.get(proposal_id)
+    pub(crate) fn get(&self, proposal_reference: &ProposalReference) -> Option<&QueuedProposal> {
+        self.queued_proposals.get(proposal_reference)
     }
+
     /// Add a new `QueuedProposal` to the queue
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal<'a>) {
-        self.queued_proposals
-            .entry(queued_proposal.proposal_id.clone())
-            .or_insert(queued_proposal);
+        let proposal_reference = queued_proposal.proposal_id();
+        if !self.queued_proposals.contains_key(proposal_reference) {
+            self.proposal_references.push(proposal_reference.clone());
+            self.queued_proposals
+                .insert(proposal_reference.clone(), queued_proposal);
+        }
     }
+
     /// Retains only the elements specified by the predicate
     pub(crate) fn retain<F>(&mut self, f: F)
     where
@@ -413,10 +422,14 @@ impl<'a> ProposalQueue<'a> {
     pub(crate) fn filtered_by_type(
         &self,
         proposal_type: ProposalType,
-    ) -> impl Iterator<Item = &QueuedProposal> {
-        self.queued_proposals
-            .values()
-            .filter(move |p| p.proposal.is_type(proposal_type))
+    ) -> impl Iterator<Item = &ProposalReference> {
+        self.proposal_references
+            .iter()
+            .filter(move |&pr| match self.queued_proposals.get(pr) {
+                Some(p) => p.proposal.is_type(proposal_type),
+                None => false,
+            })
+            .into_iter()
     }
 }
 
