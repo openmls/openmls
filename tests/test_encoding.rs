@@ -63,8 +63,9 @@ fn test_application_message_encoding() {
             // Test encoding/decoding of Application messages.
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
-            let encrypted_message =
-                group_state.create_application_message(&aad, &message, &credential_bundle);
+            let encrypted_message = group_state
+                .create_application_message(&aad, &message, &credential_bundle)
+                .unwrap();
             let encrypted_message_bytes = encrypted_message.encode_detached().unwrap();
             let encrypted_message_decoded =
                 match MLSCiphertext::decode(&mut Cursor::new(&encrypted_message_bytes)) {
@@ -248,7 +249,7 @@ fn test_commit_encoding() {
 
         let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], alice_credential_bundle, proposals, true)
+            .create_commit(&[], alice_credential_bundle, proposals, &[], true)
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
         let commit_decoded = match MLSPlaintext::decode(&mut Cursor::new(&commit_encoded)) {
@@ -287,7 +288,7 @@ fn test_welcome_message_encoding() {
 
         let proposals = &[&add];
         let (_commit, welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], credential_bundle, proposals, true)
+            .create_commit(&[], credential_bundle, proposals, &[], true)
             .unwrap();
 
         // Welcome messages

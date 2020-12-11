@@ -4,7 +4,7 @@
 pub use crate::group::GroupConfig;
 pub use crate::group::MlsGroup;
 pub use crate::group::{
-    HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,
+    HandshakeMessageFormat, InvalidMessageError, MLSMessage, ManagedGroup, ManagedGroupCallbacks,
     ManagedGroupConfig, ManagedGroupError, Removal, UpdatePolicy,
 };
 // Errors
@@ -28,3 +28,7 @@ pub use crate::messages::{
 };
 pub use crate::tree::node;
 pub use crate::utils::*;
+
+// Things we need for fuzzing (but not otherwise)
+#[cfg(fuzzing)]
+pub use crate::messages::proposals::Proposal;

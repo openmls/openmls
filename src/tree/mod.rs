@@ -1,6 +1,6 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::ConfigError;
+use crate::config::{Config, ConfigError};
 use crate::creds::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
@@ -20,8 +20,14 @@ use hash_input::*;
 use index::*;
 use node::*;
 use private_tree::{PathSecrets, PrivateTree};
+pub use secret_tree::SecretTypeError;
 
 use self::private_tree::CommitSecret;
+pub(crate) use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 // Internal tree tests
 #[cfg(test)]
@@ -36,6 +42,7 @@ mod test_treemath;
 mod test_util;
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 /// The ratchet tree.
 pub struct RatchetTree {
     /// The ciphersuite used in this tree.
@@ -50,6 +57,8 @@ pub struct RatchetTree {
     /// See `PrivateTree` for details.
     private_tree: PrivateTree,
 }
+
+implement_persistence!(RatchetTree, nodes, private_tree);
 
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
@@ -432,7 +441,7 @@ impl RatchetTree {
         with_update_path: bool,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.key_package().clone();
-        let ciphersuite = key_package.cipher_suite();
+        let ciphersuite = key_package.ciphersuite();
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
         let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
@@ -622,14 +631,12 @@ impl RatchetTree {
     }
 
     /// Applies a list of proposals from a Commit to the tree.
-    /// `proposal_id_list` corresponds to the `proposals` field of a Commit
     /// `proposal_queue` is the queue of proposals received or sent in the
     /// current epoch `updates_key_package_bundles` is the list of own
     /// KeyPackageBundles corresponding to updates or commits sent in the
     /// current epoch
     pub fn apply_proposals(
         &mut self,
-        proposal_id_list: &[ProposalID],
         proposal_queue: ProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
         // (path_required, self_removed, invitation_list)
@@ -641,10 +648,7 @@ impl RatchetTree {
         let mut self_removed = false;
 
         // Process updates first
-        for queued_proposal in proposal_queue
-            .filtered_queued_proposals(proposal_id_list, ProposalType::Update)
-            .iter()
-        {
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
             has_updates = true;
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
             let sender_index = queued_proposal.sender().to_node_index();
@@ -668,10 +672,7 @@ impl RatchetTree {
                 self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
         }
-        for queued_proposal in proposal_queue
-            .filtered_queued_proposals(proposal_id_list, ProposalType::Remove)
-            .iter()
-        {
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
             has_removes = true;
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
             let removed = NodeIndex::from(LeafIndex::from(remove_proposal.removed));
@@ -685,8 +686,7 @@ impl RatchetTree {
 
         // Process adds
         let add_proposals: Vec<AddProposal> = proposal_queue
-            .filtered_queued_proposals(proposal_id_list, ProposalType::Add)
-            .iter()
+            .filtered_by_type(ProposalType::Add)
             .map(|queued_proposal| {
                 let proposal = &queued_proposal.proposal();
                 proposal.as_add().unwrap()
@@ -851,7 +851,7 @@ pub type InvitationList = Vec<(NodeIndex, AddProposal)>;
 ///     HPKECiphertext encrypted_path_secret<0..2^32-1>;
 /// } UpdatePathNode;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdatePathNode {
     pub public_key: HPKEPublicKey,
     pub encrypted_path_secret: Vec<HpkeCiphertext>,
@@ -865,7 +865,7 @@ pub struct UpdatePathNode {
 ///     UpdatePathNode nodes<0..2^32-1>;
 /// } UpdatePath;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdatePath {
     pub leaf_key_package: KeyPackage,
     pub nodes: Vec<UpdatePathNode>,
@@ -881,13 +881,13 @@ impl UpdatePath {
     }
 }
 
-/// These are errors the RatchetTree can return.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TreeError {
-    InvalidArguments,
-    DuplicateIndex,
-    InvalidUpdatePath,
-    UnknownError,
+implement_error! {
+    pub enum TreeError {
+        InvalidArguments = "",
+        DuplicateIndex = "",
+        InvalidUpdatePath = "",
+        UnknownError = "",
+    }
 }
 
 // TODO: Should get fixed in #83

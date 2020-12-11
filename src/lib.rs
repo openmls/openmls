@@ -13,25 +13,31 @@
 //! Each module has an `errors.rs` defining module specific errors that are used
 //! within the crate. This exposes some of the
 //! module errors that are publicly relevant.
-//! All errors implement `Debug`, `Display`, `PartialEq`, and `description` of
-//! the `Error` trait.
+//! All errors implement the [`Error`](`std::error::Error`) trait and
+//! [`PartialEq`](`std::cmp::PartialEq`).
 //!
-//! The C FFI API exposes the errors represented  as u16.
+//! The high-level errors API in [`error`](`error`) are a different error
+//! representation as `u16` for C FFI APIs.
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![forbid(unsafe_code)]
 
 #[macro_use]
 mod utils;
 
+#[macro_use]
+pub mod error;
+
 mod ciphersuite;
 mod codec;
-mod config;
+pub mod config;
 mod creds;
 mod extensions;
-mod framing;
-mod group;
+pub mod framing;
+pub mod group;
 mod key_packages;
 mod messages;
 mod schedule;
-mod tree;
+pub mod tree;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;

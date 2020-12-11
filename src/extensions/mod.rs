@@ -1,7 +1,7 @@
 use std::{any::Any, convert::TryFrom, fmt::Debug};
 
 use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
-use serde::{Deserialize, Serialize};
+pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
 pub mod errors;
@@ -87,7 +87,7 @@ impl Codec for ExtensionType {
 ///     opaque extension_data<0..2^16-1>;
 /// } Extension;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ExtensionStruct {
     extension_type: ExtensionType,
     extension_data: Vec<u8>,
@@ -165,6 +165,7 @@ pub(crate) fn extensions_vec_from_cursor(
 /// # Extension
 ///
 /// This trait defines functions to interact with an extension.
+#[typetag::serde(tag = "type")]
 pub trait Extension: Debug + ExtensionHelper + Send {
     /// Build a new extension from a byte slice.
     ///

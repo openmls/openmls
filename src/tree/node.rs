@@ -1,9 +1,10 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::extensions::*;
-use crate::key_packages::*;
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+use super::*;
+
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum NodeType {
     Leaf = 0,
@@ -21,7 +22,7 @@ impl From<u8> for NodeType {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Node {
     pub node_type: NodeType,
     // The node only holds public values.
@@ -127,7 +128,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
     public_key: HPKEPublicKey,
     unmerged_leaves: Vec<u32>,

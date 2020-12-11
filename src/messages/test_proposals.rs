@@ -66,11 +66,14 @@ fn proposal_queue_functions() {
         };
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-        let proposal_id_add_alice1 = ProposalID::from_proposal(ciphersuite, &proposal_add_alice1);
+        let proposal_id_add_alice1 =
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
         let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
-        let proposal_id_add_alice2 = ProposalID::from_proposal(ciphersuite, &proposal_add_alice2);
+        let proposal_id_add_alice2 =
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice2);
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
-        let proposal_id_add_bob1 = ProposalID::from_proposal(ciphersuite, &proposal_add_bob1);
+        let proposal_id_add_bob1 =
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_bob1);
 
         // Test proposal types
         assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -100,10 +103,9 @@ fn proposal_queue_functions() {
             &group_context,
         );
 
-        let proposal_queue = ProposalQueue::new_from_committed_proposals(
-            &ciphersuite,
-            vec![mls_plaintext_add_alice1, mls_plaintext_add_alice2],
-        );
+        let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_alice2];
+
+        let proposal_queue = ProposalQueue::from_proposals_by_reference(&ciphersuite, proposals);
 
         // Test if proposals are all covered
         let valid_proposal_id_list = &[
@@ -120,10 +122,38 @@ fn proposal_queue_functions() {
         assert!(!proposal_queue.contains(invalid_proposal_id_list));
 
         // Get filtered proposals
-        let filtered_proposals =
-            proposal_queue.filtered_queued_proposals(valid_proposal_id_list, ProposalType::Add);
-        for filtered_proposal in filtered_proposals {
+        for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {
             assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
         }
     }
+}
+
+/// This test encodes and decodes the `ProposalOrRef` struct and makes sure the
+/// decoded values are the same as the original
+#[test]
+fn proposals_codec() {
+    use crate::ciphersuite::*;
+    use crate::codec::{Codec, Cursor};
+
+    let ciphersuite =
+        &Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap();
+
+    // Proposal
+
+    let remove_proposal = RemoveProposal { removed: 123 };
+    let proposal = Proposal::Remove(remove_proposal);
+    let proposal_or_ref = ProposalOrRef::Proposal(proposal.clone());
+    let encoded = proposal_or_ref.encode_detached().unwrap();
+    let decoded = ProposalOrRef::decode(&mut Cursor::new(&encoded)).unwrap();
+
+    assert_eq!(proposal_or_ref, decoded);
+
+    // Reference
+
+    let reference = ProposalReference::from_proposal(ciphersuite, &proposal);
+    let proposal_or_ref = ProposalOrRef::Reference(reference);
+    let encoded = proposal_or_ref.encode_detached().unwrap();
+    let decoded = ProposalOrRef::decode(&mut Cursor::new(&encoded)).unwrap();
+
+    assert_eq!(proposal_or_ref, decoded);
 }

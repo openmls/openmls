@@ -1,12 +1,14 @@
-use log::{debug, info};
+use log::{debug, trace};
 
 mod apply_commit;
 mod create_commit;
 mod new_from_welcome;
+#[cfg(test)]
+mod test_mls_group;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::{Config, ConfigError};
+use crate::config::Config;
 use crate::creds::CredentialBundle;
 use crate::framing::*;
 use crate::group::*;
@@ -15,9 +17,15 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::io::{Error, Read, Write};
 
 #[cfg(test)]
 use std::cell::RefMut;
@@ -25,8 +33,10 @@ use std::cell::RefMut;
 use super::errors::ExporterError;
 
 pub type CreateCommitResult =
-    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CreateCommitError>;
+    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), GroupError>;
 
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
@@ -41,6 +51,17 @@ pub struct MlsGroup {
     add_ratchet_tree_extension: bool,
 }
 
+implement_persistence!(
+    MlsGroup,
+    group_context,
+    init_secret,
+    epoch_secrets,
+    secret_tree,
+    tree,
+    interim_transcript_hash,
+    add_ratchet_tree_extension
+);
+
 /// Public `MlsGroup` functions.
 impl MlsGroup {
     pub fn new(
@@ -48,9 +69,9 @@ impl MlsGroup {
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
-    ) -> Result<Self, ConfigError> {
-        info!("Created group {:x?}", id);
-        debug!(" >>> with {:?}, {:?}", ciphersuite_name, config);
+    ) -> Result<Self, GroupError> {
+        debug!("Created group {:x?}", id);
+        trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
@@ -86,8 +107,8 @@ impl MlsGroup {
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
-    ) -> Result<Self, WelcomeError> {
-        Self::new_from_welcome_internal(welcome, nodes_option, kpb)
+    ) -> Result<Self, GroupError> {
+        Ok(Self::new_from_welcome_internal(welcome, nodes_option, kpb)?)
     }
 
     // === Create handshake messages ===
@@ -176,20 +197,27 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals: &[&MLSPlaintext],
+        proposals_by_reference: &[&MLSPlaintext],
+        proposals_by_value: &[&Proposal],
         force_self_update: bool,
     ) -> CreateCommitResult {
-        self.create_commit_internal(aad, credential_bundle, proposals, force_self_update)
+        self.create_commit_internal(
+            aad,
+            credential_bundle,
+            proposals_by_reference,
+            proposals_by_value,
+            force_self_update,
+        )
     }
 
     // Apply a Commit message
     pub fn apply_commit(
         &mut self,
-        mls_plaintext: MLSPlaintext,
-        proposals: Vec<MLSPlaintext>,
+        mls_plaintext: &MLSPlaintext,
+        proposals: &[&MLSPlaintext],
         own_key_packages: &[KeyPackageBundle],
-    ) -> Result<(), ApplyCommitError> {
-        self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)
+    ) -> Result<(), GroupError> {
+        Ok(self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)?)
     }
 
     // Create application message
@@ -198,7 +226,7 @@ impl MlsGroup {
         aad: &[u8],
         msg: &[u8],
         credential_bundle: &CredentialBundle,
-    ) -> MLSCiphertext {
+    ) -> Result<MLSCiphertext, GroupError> {
         let content = MLSPlaintextContentType::Application(msg.to_vec());
         let mls_plaintext = MLSPlaintext::new(
             self.sender_index(),
@@ -211,18 +239,18 @@ impl MlsGroup {
     }
 
     // Encrypt/Decrypt MLS message
-    pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> MLSCiphertext {
+    pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> Result<MLSCiphertext, GroupError> {
         let mut secret_tree = self.secret_tree.borrow_mut();
-        let secret_type = SecretType::try_from(&mls_plaintext).unwrap();
+        let secret_type = SecretType::try_from(&mls_plaintext)?;
         let (generation, (ratchet_key, ratchet_nonce)) =
             secret_tree.secret_for_encryption(self.ciphersuite(), self.sender_index(), secret_type);
-        MLSCiphertext::new_from_plaintext(
+        Ok(MLSCiphertext::new_from_plaintext(
             &mls_plaintext,
             &self,
             generation,
             ratchet_key,
             ratchet_nonce,
-        )
+        ))
     }
 
     pub fn decrypt(
@@ -249,11 +277,11 @@ impl MlsGroup {
     }
 
     // Exporter
-    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, ExporterError> {
+    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, GroupError> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if key_length > u16::MAX.into() {
-            return Err(ExporterError::KeyLengthTooLong);
+            return Err(ExporterError::KeyLengthTooLong.into());
         }
         Ok(self.epoch_secrets.exporter_secret.derive_exported_secret(
             self.ciphersuite(),
@@ -261,6 +289,17 @@ impl MlsGroup {
             &self.context(),
             key_length,
         ))
+    }
+
+    /// Loads the state from persisted state
+    pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
+        serde_json::from_reader(reader).map_err(|e| e.into())
+    }
+
+    /// Persists the state
+    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+        let serialized_mls_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_mls_group.into_bytes())
     }
 
     /// Returns the ratchet tree

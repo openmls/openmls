@@ -2,74 +2,54 @@
 //!
 //! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
-//!
-//! #[derive(PartialEq, Debug)]
 
 use crate::codec::CodecError;
 use crate::config::ConfigError;
+use crate::error::{ErrorPayload, ErrorString};
 use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, GroupError};
 
-use std::error::Error;
-
-#[derive(PartialEq, Debug)]
-pub enum ManagedGroupError {
-    Unknown,
-    Codec(CodecError),
-    Config(ConfigError),
-    Group(GroupError),
-    CreateCommit(CreateCommitError),
-    UseAfterEviction,
-    PendingProposalsExist,
-    Exporter(ExporterError),
-}
-
-impl From<ConfigError> for ManagedGroupError {
-    fn from(err: ConfigError) -> ManagedGroupError {
-        ManagedGroupError::Config(err)
+implement_error! {
+    pub enum ManagedGroupError {
+        LibraryError(ErrorString) =
+            "An internal library error occurred. Additional detail is provided.",
+        Codec(CodecError) =
+            "See [`CodecError`](`crate::codec::CodecError`) for details",
+        Config(ConfigError) =
+            "See [`ConfigError`](`crate::config::ConfigError`) for details",
+        Group(GroupError) =
+            "See [`GroupError`](`crate::group::GroupError`) for details",
+        CreateCommit(CreateCommitError) =
+            "See [`CreateCommitError`](`crate::group::CreateCommitError`) for details",
+        UseAfterEviction(UseAfterEviction) =
+            "See [`UseAfterEviction`](`UseAfterEviction`) for details",
+        PendingProposalsExist(PendingProposalsError) =
+            "See [`PendingProposalsError`](`PendingProposalsError`) for details",
+        Exporter(ExporterError) =
+            "See [`ExporterError`](`crate::group::ExporterError`) for details",
     }
 }
 
-impl From<CodecError> for ManagedGroupError {
-    fn from(err: CodecError) -> ManagedGroupError {
-        ManagedGroupError::Codec(err)
+implement_error! {
+    pub enum UseAfterEviction {
+        Error = "Tried to use a group after being evicted from it.",
     }
 }
 
-impl From<GroupError> for ManagedGroupError {
-    fn from(err: GroupError) -> ManagedGroupError {
-        ManagedGroupError::Group(err)
+implement_error! {
+    pub enum PendingProposalsError {
+        Exists = "Can't create message because a pending proposal exists.",
     }
 }
 
-impl From<CreateCommitError> for ManagedGroupError {
-    fn from(err: CreateCommitError) -> ManagedGroupError {
-        ManagedGroupError::CreateCommit(err)
-    }
-}
-
-impl From<ExporterError> for ManagedGroupError {
-    fn from(err: ExporterError) -> ManagedGroupError {
-        ManagedGroupError::Exporter(err)
-    }
-}
-
-#[derive(Debug)]
-pub enum InvalidMessageError {
-    InvalidCiphertext(Vec<u8>),
-    CommitWithInvalidProposals,
-    CommitError(ApplyCommitError),
-}
-
-implement_enum_display!(InvalidMessageError);
-
-impl Error for InvalidMessageError {
-    fn description(&self) -> &str {
-        match self {
-            Self::InvalidCiphertext(_) => "Invalid ciphertext received",
-            Self::CommitWithInvalidProposals => {
-                "A Commit message referencing one or more invalid proposals was received"
-            }
-            Self::CommitError(_) => "An error occured when applying a Commit message",
-        }
+implement_error! {
+    pub enum InvalidMessageError {
+        InvalidCiphertext(ErrorPayload) =
+            "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
+        CommitWithInvalidProposals(ErrorString) =
+            "A commit contained an invalid proposal. Additional detail is provided.",
+        CommitError(ApplyCommitError) =
+            "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
+        GroupError(GroupError) =
+            "See [`GroupError`](`crate::group::GroupError`) for details",
     }
 }

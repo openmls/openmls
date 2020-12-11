@@ -1,5 +1,7 @@
 use openmls::prelude::*;
 
+use std::fs::File;
+use std::path::Path;
 use std::str;
 
 /// Validator function for AddProposals
@@ -23,6 +25,21 @@ fn validate_remove(
 ) -> bool {
     true
 }
+
+/// Auto-save
+/// `(managed_group: &ManagedGroup)`
+fn auto_save(managed_group: &ManagedGroup) {
+    let name = String::from_utf8(managed_group.credential().identity().to_vec())
+        .expect("Could not create name from identity")
+        .to_lowercase();
+    let filename = format!("target/test_managed_group_{}.json", &name);
+    let path = Path::new(&filename);
+    let out_file = &mut File::create(&path).expect("Could not create file");
+    managed_group
+        .save(out_file)
+        .expect("Could not write group state to file");
+}
+
 /// Event listener function for AddProposals
 /// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential,
 /// added_member: &Credential)`
@@ -111,11 +128,14 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
                 aad
             );
         }
-        InvalidMessageError::CommitWithInvalidProposals => {
+        InvalidMessageError::CommitWithInvalidProposals(_) => {
             println!("A Commit message with one ore more invalid proposals was received");
         }
         InvalidMessageError::CommitError(e) => {
-            println!("An error occured when applying a Commit message: {:?}", e);
+            println!("An error occurred when applying a Commit message: {:?}", e);
+        }
+        InvalidMessageError::GroupError(e) => {
+            println!("An group error occurred: {:?}", e);
         }
     }
 }
@@ -142,6 +162,7 @@ fn error_occured(managed_group: &ManagedGroup, error: ManagedGroupError) {
 ///  - Charlie removes Bob
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
+///  - Test auto-save
 #[test]
 fn managed_group_operations() {
     for ciphersuite in Config::supported_ciphersuites() {
@@ -177,6 +198,7 @@ fn managed_group_operations() {
             let callbacks = ManagedGroupCallbacks::new()
                 .with_validate_add(validate_add)
                 .with_validate_remove(validate_remove)
+                .with_auto_save(auto_save)
                 .with_member_added(member_added)
                 .with_member_removed(member_removed)
                 .with_member_updated(member_updated)
@@ -448,7 +470,7 @@ fn managed_group_operations() {
 
             // Create AddProposal and process it
             let queued_messages = alice_group
-                .propose_add_members(&[bob_key_package])
+                .propose_add_members(&[bob_key_package.clone()])
                 .expect("Could not create proposal to add Bob");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -525,9 +547,9 @@ fn managed_group_operations() {
             // Should fail because you cannot remove yourself from a group
             assert_eq!(
                 bob_group.process_pending_proposals(),
-                Err(ManagedGroupError::CreateCommit(
+                Err(ManagedGroupError::Group(GroupError::CreateCommitError(
                     CreateCommitError::CannotRemoveSelf
-                ))
+                )))
             );
 
             let (queued_messages, _welcome_option) = alice_group
@@ -553,6 +575,53 @@ fn managed_group_operations() {
             // Check that Alice is the only member of the group
             let members = alice_group.members();
             assert_eq!(members[0].identity(), b"Alice");
+
+            // === Auto-save ===
+
+            // Create a new KeyPackageBundle for Bob
+            let bob_key_package_bundle =
+                KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, vec![])
+                    .unwrap();
+            let bob_key_package = bob_key_package_bundle.key_package().clone();
+
+            // Add Bob to the group
+            let (queued_messages, welcome) = alice_group
+                .add_members(&[bob_key_package])
+                .expect("Could not add Bob");
+
+            alice_group
+                .process_messages(queued_messages)
+                .expect("Could not process messages");
+
+            let bob_group = ManagedGroup::new_from_welcome(
+                &bob_credential_bundle,
+                &managed_group_config,
+                welcome,
+                Some(alice_group.export_ratchet_tree()),
+                bob_key_package_bundle,
+            )
+            .expect("Could not create group from Welcome");
+
+            assert_eq!(
+                alice_group.export_secret("before load", 32),
+                bob_group.export_secret("before load", 32)
+            );
+
+            // Re-load Bob's state from file
+            let path = Path::new("target/test_managed_group_bob.json");
+            let file = File::open(&path).expect("Could not open file");
+            let bob_group = ManagedGroup::load(
+                file,
+                &bob_credential_bundle,
+                managed_group_config.callbacks(),
+            )
+            .expect("Could not load group from file");
+
+            // Make sure the state is still the same
+            assert_eq!(
+                alice_group.export_secret("after load", 32),
+                bob_group.export_secret("after load", 32)
+            );
         }
     }
 }

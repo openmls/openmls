@@ -1,0 +1,51 @@
+use crate::group::managed_group::*;
+
+use serde::{
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Serialize,
+};
+#[derive(Serialize, Deserialize)]
+pub struct SerializedManagedGroup {
+    managed_group_config: ManagedGroupConfig,
+    group: MlsGroup,
+    pending_proposals: Vec<MLSPlaintext>,
+    own_kpbs: Vec<KeyPackageBundle>,
+    aad: Vec<u8>,
+    active: bool,
+}
+
+impl<'a> SerializedManagedGroup {
+    pub(crate) fn into_managed_group(
+        self,
+        credential_bundle: &'a CredentialBundle,
+        callbacks: &ManagedGroupCallbacks,
+    ) -> ManagedGroup<'a> {
+        let mut managed_group = ManagedGroup {
+            credential_bundle,
+            managed_group_config: self.managed_group_config,
+            group: self.group,
+            pending_proposals: self.pending_proposals,
+            own_kpbs: self.own_kpbs,
+            aad: self.aad,
+            active: self.active,
+        };
+        managed_group.managed_group_config.set_callbacks(callbacks);
+        managed_group
+    }
+}
+
+impl<'a> Serialize for ManagedGroup<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("SerializedManagedGroup", 6)?;
+        state.serialize_field("managed_group_config", &self.managed_group_config)?;
+        state.serialize_field("group", &self.group)?;
+        state.serialize_field("pending_proposals", &self.pending_proposals)?;
+        state.serialize_field("own_kpbs", &self.own_kpbs)?;
+        state.serialize_field("aad", &self.aad)?;
+        state.serialize_field("active", &self.active)?;
+        state.end()
+    }
+}

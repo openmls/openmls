@@ -71,6 +71,7 @@ fn create_commit_optional_path() {
                 group_aad,
                 &alice_credential_bundle,
                 &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
+                &[],
                 true, /* force self-update */
             ) {
             Ok(c) => c,
@@ -92,12 +93,13 @@ fn create_commit_optional_path() {
             &alice_credential_bundle,
             bob_key_package.clone(),
         );
-        let epoch_proposals = vec![bob_add_proposal];
+        let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
-                &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
+                epoch_proposals,
+                &[],
                 false, /* don't force selfupdate */
             ) {
             Ok(c) => c,
@@ -110,7 +112,7 @@ fn create_commit_optional_path() {
         assert!(!commit.has_path() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
-        match group_alice.apply_commit(mls_plaintext_commit, epoch_proposals, &[]) {
+        match group_alice.apply_commit(&mls_plaintext_commit, epoch_proposals, &[]) {
             Ok(_) => {}
             Err(e) => panic!("Error applying commit: {:?}", e),
         };
@@ -137,13 +139,14 @@ fn create_commit_optional_path() {
             &alice_credential_bundle,
             alice_update_key_package.clone(),
         );
-        let proposals = vec![alice_update_proposal];
+        let proposals = &[&alice_update_proposal];
 
         // Only UpdateProposal
         let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
-            &(proposals.iter().collect::<Vec<&MLSPlaintext>>()),
+            proposals,
+            &[],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -159,11 +162,7 @@ fn create_commit_optional_path() {
 
         // Apply UpdateProposal
         group_alice
-            .apply_commit(
-                commit_mls_plaintext.clone(),
-                proposals,
-                &[kpb_option.unwrap()],
-            )
+            .apply_commit(&commit_mls_plaintext, proposals, &[kpb_option.unwrap()])
             .expect("Error applying commit");
     }
 }
@@ -210,6 +209,7 @@ fn basic_group_setup() {
             group_aad,
             &alice_credential_bundle,
             &[&bob_add_proposal],
+            &[],
             true,
         ) {
             Ok(c) => c,
@@ -284,12 +284,13 @@ fn group_operations() {
             &alice_credential_bundle,
             bob_key_package.clone(),
         );
-        let epoch_proposals = vec![bob_add_proposal];
+        let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
-                &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
+                epoch_proposals,
+                &[],
                 false,
             )
             .expect("Error creating commit");
@@ -302,7 +303,7 @@ fn group_operations() {
         assert!(welcome_bundle_alice_bob_option.is_some());
 
         group_alice
-            .apply_commit(mls_plaintext_commit, epoch_proposals, &[])
+            .apply_commit(&mls_plaintext_commit, epoch_proposals, &[])
             .expect("error applying commit");
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
@@ -323,8 +324,9 @@ fn group_operations() {
 
         // === Alice sends a message to Bob ===
         let message_alice = [1, 2, 3];
-        let mls_ciphertext_alice =
-            group_alice.create_application_message(&[], &message_alice, &alice_credential_bundle);
+        let mls_ciphertext_alice = group_alice
+            .create_application_message(&[], &message_alice, &alice_credential_bundle)
+            .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
@@ -351,6 +353,7 @@ fn group_operations() {
             &[],
             &bob_credential_bundle,
             &[&update_proposal_bob],
+            &[],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -363,16 +366,12 @@ fn group_operations() {
         assert!(welcome_option.is_none());
 
         group_alice
-            .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_bob.clone()],
-                &[],
-            )
+            .apply_commit(&mls_plaintext_commit, &[&update_proposal_bob], &[])
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
-                mls_plaintext_commit,
-                vec![update_proposal_bob],
+                &mls_plaintext_commit,
+                &[&update_proposal_bob],
                 &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Bob)");
@@ -400,6 +399,7 @@ fn group_operations() {
             &[],
             &alice_credential_bundle,
             &[&update_proposal_alice],
+            &[],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -411,17 +411,13 @@ fn group_operations() {
 
         group_alice
             .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_alice.clone()],
+                &mls_plaintext_commit,
+                &[&update_proposal_alice],
                 &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Alice)");
         group_bob
-            .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_alice],
-                &[],
-            )
+            .apply_commit(&mls_plaintext_commit, &[&update_proposal_alice], &[])
             .expect("Error applying commit (Bob)");
 
         // Make sure that both groups have the same public tree
@@ -447,6 +443,7 @@ fn group_operations() {
             &[],
             &alice_credential_bundle,
             &[&update_proposal_bob],
+            &[],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -458,15 +455,15 @@ fn group_operations() {
 
         group_alice
             .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_bob.clone()],
+                &mls_plaintext_commit,
+                &[&update_proposal_bob],
                 &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_bob],
+                &mls_plaintext_commit,
+                &[&update_proposal_bob],
                 &[bob_update_key_package_bundle],
             )
             .expect("Error applying commit (Bob)");
@@ -498,6 +495,7 @@ fn group_operations() {
                 &[],
                 &bob_credential_bundle,
                 &[&add_charlie_proposal_bob],
+                &[],
                 false, /* force self update */
             ) {
             Ok(c) => c,
@@ -511,18 +509,10 @@ fn group_operations() {
         assert!(welcome_for_charlie_option.is_some());
 
         group_alice
-            .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![add_charlie_proposal_bob.clone()],
-                &[],
-            )
+            .apply_commit(&mls_plaintext_commit, &[&add_charlie_proposal_bob], &[])
             .expect("Error applying commit (Alice)");
         group_bob
-            .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![add_charlie_proposal_bob],
-                &[],
-            )
+            .apply_commit(&mls_plaintext_commit, &[&add_charlie_proposal_bob], &[])
             .expect("Error applying commit (Bob)");
 
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
@@ -547,11 +537,9 @@ fn group_operations() {
 
         // === Charlie sends a message to the group ===
         let message_charlie = [1, 2, 3];
-        let mls_ciphertext_charlie = group_charlie.create_application_message(
-            &[],
-            &message_charlie,
-            &charlie_credential_bundle,
-        );
+        let mls_ciphertext_charlie = group_charlie
+            .create_application_message(&[], &message_charlie, &charlie_credential_bundle)
+            .unwrap();
         let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,
             Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
@@ -586,6 +574,7 @@ fn group_operations() {
             &[],
             &charlie_credential_bundle,
             &[&update_proposal_charlie],
+            &[],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -596,23 +585,15 @@ fn group_operations() {
         assert!(kpb_option.is_some());
 
         group_alice
-            .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_charlie.clone()],
-                &[],
-            )
+            .apply_commit(&mls_plaintext_commit, &[&update_proposal_charlie], &[])
             .expect("Error applying commit (Alice)");
         group_bob
-            .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_charlie.clone()],
-                &[],
-            )
+            .apply_commit(&mls_plaintext_commit, &[&update_proposal_charlie], &[])
             .expect("Error applying commit (Bob)");
         group_charlie
             .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![update_proposal_charlie],
+                &mls_plaintext_commit,
+                &[&update_proposal_charlie],
                 &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Charlie)");
@@ -637,6 +618,7 @@ fn group_operations() {
             &[],
             &charlie_credential_bundle,
             &[&remove_bob_proposal_charlie],
+            &[],
             false, /* force self update */
         ) {
             Ok(c) => c,
@@ -647,26 +629,18 @@ fn group_operations() {
         assert!(kpb_option.is_some());
 
         group_alice
-            .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![remove_bob_proposal_charlie.clone()],
-                &[],
-            )
+            .apply_commit(&mls_plaintext_commit, &[&remove_bob_proposal_charlie], &[])
             .expect("Error applying commit (Alice)");
         assert!(
             group_bob
-                .apply_commit(
-                    mls_plaintext_commit.clone(),
-                    vec![remove_bob_proposal_charlie.clone()],
-                    &[],
-                )
+                .apply_commit(&mls_plaintext_commit, &[&remove_bob_proposal_charlie], &[],)
                 .unwrap_err()
-                == ApplyCommitError::SelfRemoved
+                == GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved)
         );
         group_charlie
             .apply_commit(
-                mls_plaintext_commit.clone(),
-                vec![remove_bob_proposal_charlie],
+                &mls_plaintext_commit,
+                &[&remove_bob_proposal_charlie],
                 &[kpb_option.unwrap()],
             )
             .expect("Error applying commit (Charlie)");

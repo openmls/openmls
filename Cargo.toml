@@ -9,6 +9,15 @@ documentation = "https://openmls.github.io/openmls/"
 repository = "https://github.com/openmls/openmls/"
 readme = "README.md"
 
+[workspace]
+members = [
+    ".",
+    "delivery-service/ds-lib",
+    "delivery-service/ds",
+    "cli",
+]
+default-members = [ "." ]
+
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }
 rand = "^0.7"
@@ -17,6 +26,7 @@ lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
+typetag = "0.1"
 hpke = { version = "0.0.2", package = "hpke-rs", features = ["hazmat", "serialization"] }
 evercrypt = { version = "0.0.3", features = ["serialization"] }
 

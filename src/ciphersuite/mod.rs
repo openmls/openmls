@@ -7,7 +7,11 @@ use log::error;
 
 use evercrypt::prelude::*;
 use hpke::prelude::*;
-use serde::{Deserialize, Serialize};
+pub(crate) use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
@@ -18,6 +22,7 @@ mod errors;
 pub(crate) mod signable;
 use ciphersuites::*;
 pub(crate) use errors::*;
+mod ser;
 
 use crate::config::{Config, ConfigError};
 use crate::group::GroupContext;
@@ -54,7 +59,7 @@ implement_enum_display!(CiphersuiteName);
 ///     opaque ciphertext<0..2^16-1>;
 /// } HPKECiphertext;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct HpkeCiphertext {
     kem_output: Vec<u8>,
     ciphertext: Vec<u8>,
@@ -88,7 +93,8 @@ impl KdfLabel {
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Secret {
     value: Vec<u8>,
 }
@@ -176,13 +182,15 @@ impl ExporterSecret {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct AeadKey {
     aead_mode: AeadMode,
     value: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct ReuseGuard {
     value: [u8; REUSE_GUARD_BYTES],
 }
@@ -200,12 +208,13 @@ pub struct AeadNonce {
     value: [u8; NONCE_BYTES],
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Signature {
     value: Vec<u8>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct SignaturePrivateKey {
     ciphersuite: &'static Ciphersuite,
     value: Vec<u8>,
@@ -217,6 +226,8 @@ pub struct SignaturePublicKey {
     value: Vec<u8>,
 }
 
+implement_persistence!(SignaturePublicKey, value);
+
 #[derive(Clone)]
 pub struct SignatureKeypair {
     ciphersuite: &'static Ciphersuite,
@@ -224,7 +235,7 @@ pub struct SignatureKeypair {
     public_key: SignaturePublicKey,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
     signature: SignatureMode,
