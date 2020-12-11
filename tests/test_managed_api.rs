@@ -195,7 +195,7 @@ impl<'a> ManagedTestSetup<'a> {
         while members.len() < group_size {
             // Get a random group member.
             let adder_id = (OsRng.next_u32() as usize) % members.len();
-            println!("adder_id: {:?}", adder_id);
+            //println!("adder_id: {:?}", adder_id);
             let adder = members[adder_id];
             let mut adder_group_states = adder.groups.borrow_mut();
             let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
@@ -212,14 +212,14 @@ impl<'a> ManagedTestSetup<'a> {
                     .iter()
                     .find(|client| {
                         //let identity = client.identity;
-                        (!members
+                        (members
                             .iter()
                             .find(|member| member.identity == client.identity)
-                            .is_some())
-                            && (!new_members
+                            .is_none())
+                            && (new_members
                                 .iter()
                                 .find(|member| member.identity == client.identity)
-                                .is_some())
+                                .is_none())
                     })
                     .unwrap();
                 // Get a fresh key package from each of them.
@@ -232,7 +232,8 @@ impl<'a> ManagedTestSetup<'a> {
             let (mls_messages, welcome) = adder_group_state
                 .add_members(new_member_key_packages.as_slice())
                 .unwrap();
-            drop(adder_group_state);
+            //println!("Number of MLSMessages received: {}", mls_messages.len());
+            //drop(adder_group_state);
             drop(adder_group_states);
             let _ = members
                 .iter()
@@ -245,13 +246,13 @@ impl<'a> ManagedTestSetup<'a> {
             let group_states = members[0].groups.borrow_mut();
             let group_state = group_states.get(&group_id).unwrap();
             let ratchet_tree = group_state.export_ratchet_tree();
-            drop(group_state);
+            //drop(group_state);
             drop(group_states);
             for m in &members {
                 let group_states = m.groups.borrow_mut();
                 let group_state = group_states.get(&group_id).unwrap();
                 assert_eq!(group_state.export_ratchet_tree(), ratchet_tree);
-                drop(group_state);
+                //drop(group_state);
                 drop(group_states);
             }
             //let mut adder_group_states = adder.group_states.borrow_mut();
@@ -262,16 +263,17 @@ impl<'a> ManagedTestSetup<'a> {
             let _ = new_members
                 .iter()
                 .map(|nm| {
-                    println!("Ratchet Tree: {:?}", ratchet_tree);
+                    //println!("Ratchet Tree: {:?}", ratchet_tree);
                     nm.join_group(
                         managed_group_config.clone(),
                         welcome.clone(),
                         Some(ratchet_tree.clone()),
                     )
                     .unwrap();
-                    println!("A member just joined.")
+                    //println!("A member just joined.")
                 })
                 .collect::<Vec<_>>();
+            members.extend(new_members);
         }
         group_id
     }
@@ -279,11 +281,56 @@ impl<'a> ManagedTestSetup<'a> {
 
 #[test]
 fn test_randomized_setup() {
+    use std::str;
+    // Callbacks
+    fn member_added(
+        managed_group: &ManagedGroup,
+        _aad: &[u8],
+        sender: &Credential,
+        added_member: &Credential,
+    ) {
+        println!(
+            "AddProposal received in group '{}' by '{}': '{}' added '{}'",
+            str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
+            str::from_utf8(&managed_group.credential().identity()).unwrap(),
+            str::from_utf8(sender.identity()).unwrap(),
+            str::from_utf8(added_member.identity()).unwrap(),
+        );
+    }
+    fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageError) {
+        match error {
+            InvalidMessageError::InvalidCiphertext(aad) => {
+                println!(
+                    "Invalid ciphertext message received in group '{}' by '{}' with AAD {:?}",
+                    str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
+                    str::from_utf8(&managed_group.credential().identity()).unwrap(),
+                    aad
+                );
+            }
+            InvalidMessageError::CommitWithInvalidProposals => {
+                println!("A Commit message with one ore more invalid proposals was received");
+            }
+            InvalidMessageError::CommitError(e) => {
+                println!("An error occured when applying a Commit message: {:?}", e);
+            }
+        }
+    }
+    fn error_occured(managed_group: &ManagedGroup, error: ManagedGroupError) {
+        println!(
+            "Error occured in group {}: {:?}",
+            str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
+            error
+        );
+    }
+
     let setup = ManagedTestSetup::new(200);
     for ciphersuite in Config::supported_ciphersuites() {
-        let handshake_message_format = HandshakeMessageFormat::Ciphertext;
+        let handshake_message_format = HandshakeMessageFormat::Plaintext;
         let update_policy = UpdatePolicy::default();
-        let callbacks = ManagedGroupCallbacks::default();
+        let callbacks = ManagedGroupCallbacks::new()
+            .with_member_added(member_added)
+            .with_invalid_message_received(invalid_message_received)
+            .with_error_occured(error_occured);
         let managed_group_config =
             ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
         setup.create_random_group(100, ciphersuite, managed_group_config);
