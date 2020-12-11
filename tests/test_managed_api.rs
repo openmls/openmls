@@ -9,8 +9,9 @@ pub enum ClientError {
     NoMatchingCredential,
     NoMatchingGroup,
     FailedToJoinGroup(WelcomeError),
-    InvalidMessage,
-    GroupError(ManagedGroupError),
+    InvalidMessage(GroupError),
+    ManagedGroupError(ManagedGroupError),
+    GroupError(GroupError),
 }
 
 impl From<WelcomeError> for ClientError {
@@ -21,6 +22,12 @@ impl From<WelcomeError> for ClientError {
 
 impl From<ManagedGroupError> for ClientError {
     fn from(e: ManagedGroupError) -> Self {
+        ClientError::ManagedGroupError(e)
+    }
+}
+
+impl From<GroupError> for ClientError {
+    fn from(e: GroupError) -> Self {
         ClientError::GroupError(e)
     }
 }
@@ -307,11 +314,17 @@ fn test_randomized_setup() {
                     aad
                 );
             }
-            InvalidMessageError::CommitWithInvalidProposals => {
-                println!("A Commit message with one ore more invalid proposals was received");
-            }
             InvalidMessageError::CommitError(e) => {
                 println!("An error occured when applying a Commit message: {:?}", e);
+            }
+            InvalidMessageError::CommitWithInvalidProposals(e) => {
+                println!(
+                    "A Commit message with one ore more invalid proposals was received: {:?}",
+                    e
+                );
+            }
+            InvalidMessageError::GroupError(e) => {
+                println!("An error in the managed group occurred: {:?}", e);
             }
         }
     }
