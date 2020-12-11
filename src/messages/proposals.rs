@@ -375,7 +375,8 @@ impl<'a> ProposalQueue<'a> {
             }
         }
         // Only retain valid proposals
-        proposal_queue.retain(|k, _| valid_proposals.get(k).is_some() || adds.get(k).is_some());
+        proposal_queue
+            .drain_filter(|k| (valid_proposals.get(k).is_none() && adds.get(k).is_none()));
         (proposal_queue, contains_own_updates)
     }
 
@@ -406,12 +407,20 @@ impl<'a> ProposalQueue<'a> {
         }
     }
 
-    /// Retains only the elements specified by the predicate
-    pub(crate) fn retain<F>(&mut self, f: F)
+    /// Filters out the elements specified by the predicate
+    pub(crate) fn drain_filter<F>(&mut self, mut f: F)
     where
-        F: FnMut(&ProposalReference, &mut QueuedProposal<'a>) -> bool,
+        F: FnMut(&mut ProposalReference) -> bool,
     {
-        self.queued_proposals.retain(f);
+        let mut i = 0;
+        while i != self.proposal_references.len() {
+            if f(&mut self.proposal_references[i]) {
+                let pr = self.proposal_references.remove(i);
+                self.queued_proposals.remove(&pr);
+            } else {
+                i += 1;
+            }
+        }
     }
     /// Gets the list of all `ProposalReference`
     pub(crate) fn commit_list(&self) -> Vec<ProposalOrRef> {
