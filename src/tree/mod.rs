@@ -186,7 +186,7 @@ impl RatchetTree {
         self.tree_size().into()
     }
 
-    fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<NodeIndex>) -> Vec<NodeIndex> {
+    fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&NodeIndex>) -> Vec<NodeIndex> {
         let size = self.leaf_count();
 
         if self.nodes[index.as_usize()].node_type == NodeType::Leaf {
@@ -278,7 +278,7 @@ impl RatchetTree {
         sender: LeafIndex,
         update_path: &UpdatePath,
         group_context: &[u8],
-        new_leaves_indexes: HashSet<NodeIndex>,
+        new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<&CommitSecret, TreeError> {
         let own_index = self.own_node_index();
 
@@ -403,7 +403,7 @@ impl RatchetTree {
         &mut self,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-        new_leaves_indexes: HashSet<NodeIndex>,
+        new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> (&CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.own_node_index();
@@ -447,7 +447,7 @@ impl RatchetTree {
         &mut self,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
-        new_leaves_indexes_option: Option<HashSet<NodeIndex>>,
+        new_leaves_indexes_option: Option<HashSet<&NodeIndex>>,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.key_package().clone();
         let ciphersuite = key_package.ciphersuite();
@@ -486,7 +486,7 @@ impl RatchetTree {
         &self,
         public_keys: Vec<HPKEPublicKey>,
         group_context: &[u8],
-        new_leaves_indexes: HashSet<NodeIndex>,
+        new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
         let copath = treemath::copath(self.private_tree.node_index(), self.leaf_count())
             .expect("encrypt_to_copath: Error when computing copath.");
@@ -649,11 +649,9 @@ impl RatchetTree {
         &mut self,
         proposal_queue: ProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
-        // (path_required, self_removed, invitation_list, new_leaves_indexes)
-    ) -> Result<(bool, bool, InvitationList, HashSet<NodeIndex>), TreeError> {
+    ) -> Result<ApplyProposalsValues, TreeError> {
         let mut has_updates = false;
         let mut has_removes = false;
-        let mut invitation_list = Vec::new();
 
         let mut self_removed = false;
 
@@ -695,6 +693,7 @@ impl RatchetTree {
         }
 
         // Process adds
+        let mut invitation_list = Vec::new();
         let add_proposals: Vec<AddProposal> = proposal_queue
             .filtered_by_type(ProposalType::Add)
             .map(|queued_proposal| {
@@ -716,20 +715,11 @@ impl RatchetTree {
         // Determine if Commit needs a path field
         let path_required = has_updates || has_removes || !has_adds;
 
-        // Collect the new leaves indexes so we can filter them out in the resolution later
-        let new_leaves_indexes: HashSet<NodeIndex> = HashSet::from_iter(
-            invitation_list
-                .iter()
-                .map(|(index, _)| *index)
-                .collect::<Vec<NodeIndex>>(),
-        );
-
-        Ok((
+        Ok(ApplyProposalsValues {
             path_required,
             self_removed,
             invitation_list,
-            new_leaves_indexes,
-        ))
+        })
     }
     /// Trims the tree from the right when there are empty leaf nodes
     fn trim_tree(&mut self) {
@@ -864,7 +854,24 @@ impl RatchetTree {
     }
 }
 
-pub type InvitationList = Vec<(NodeIndex, AddProposal)>;
+pub struct ApplyProposalsValues {
+    pub path_required: bool,
+    pub self_removed: bool,
+    pub invitation_list: Vec<(NodeIndex, AddProposal)>,
+}
+
+impl ApplyProposalsValues {
+    pub fn exclusion_list(&self) -> HashSet<&NodeIndex> {
+        // Collect the new leaves indexes so we can filter them out in the resolution later
+        let new_leaves_indexes: HashSet<&NodeIndex> = HashSet::from_iter(
+            self.invitation_list
+                .iter()
+                .map(|(index, _)| index)
+                .collect::<Vec<&NodeIndex>>(),
+        );
+        new_leaves_indexes
+    }
+}
 
 /// 7.7. Update Paths
 ///
