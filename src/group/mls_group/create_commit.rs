@@ -34,7 +34,7 @@ impl MlsGroup {
         let mut provisional_tree = RatchetTree::new_from_public_tree(&self.tree());
 
         // Apply proposals to tree
-        let (path_required_by_commit, self_removed, invited_members) =
+        let (path_required_by_commit, self_removed, invited_members, new_leaves_indexes) =
             match provisional_tree.apply_proposals(proposal_queue, &[]) {
                 Ok(res) => res,
                 Err(_) => return Err(CreateCommitError::OwnKeyNotFound.into()),
@@ -48,7 +48,11 @@ impl MlsGroup {
         let (commit_secret, path, path_secrets_option, kpb_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
-                .refresh_private_tree(credential_bundle, &self.group_context.serialize());
+                .refresh_private_tree(
+                    credential_bundle,
+                    &self.group_context.serialize(),
+                    new_leaves_indexes,
+                );
             (
                 Some(commit_secret),
                 Some(path),
