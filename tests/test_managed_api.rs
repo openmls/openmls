@@ -12,6 +12,7 @@ pub enum ClientError {
     InvalidMessage(GroupError),
     ManagedGroupError(ManagedGroupError),
     GroupError(GroupError),
+    Unknown,
 }
 
 impl From<WelcomeError> for ClientError {
@@ -140,10 +141,18 @@ impl<'a> Client<'a> {
     }
 }
 
+#[derive(Clone)]
+struct Group<'a> {
+    group_id: GroupId,
+    members: Vec<&'a Client<'a>>,
+    ciphersuite: Ciphersuite,
+    group_config: ManagedGroupConfig,
+}
+
 struct ManagedTestSetup<'a> {
     // The clients identity is its position in the vector in be_bytes.
     clients: Vec<Client<'a>>,
-    groups: Vec<GroupId>,
+    groups: RefCell<HashMap<GroupId, Group<'a>>>,
 }
 
 impl<'a> ManagedTestSetup<'a> {
@@ -170,18 +179,19 @@ impl<'a> ManagedTestSetup<'a> {
             };
             clients.push(client)
         }
-        let groups = Vec::new();
+        let groups = RefCell::new(HashMap::new());
         ManagedTestSetup { clients, groups }
     }
 
     /// Create a random group of size `group_size` and return the `GroupId`
     pub fn create_random_group(
         &'a self,
-        group_size: usize,
+        target_group_size: usize,
         ciphersuite: &Ciphersuite,
         managed_group_config: ManagedGroupConfig,
     ) -> GroupId {
-        if group_size > self.clients.len() {
+        let mut groups = self.groups.borrow_mut();
+        if target_group_size > self.clients.len() {
             panic!("Not enough members to create a group this large.");
         }
 
@@ -189,78 +199,234 @@ impl<'a> ManagedTestSetup<'a> {
         let group_creator_id = (OsRng.next_u32() as usize) % self.clients.len();
         let group_creator = &self.clients[group_creator_id];
         let group_id = GroupId {
-            value: self.groups.len().to_string().into_bytes(),
+            value: groups.len().to_string().into_bytes(),
         };
         group_creator.create_group(group_id.clone(), managed_group_config.clone(), ciphersuite);
-        let mut members = Vec::new();
-        members.push(group_creator);
-        while members.len() < group_size {
+        let member_references = vec![group_creator];
+        let group = Group {
+            group_id: group_id.clone(),
+            members: member_references,
+            ciphersuite: ciphersuite.clone(),
+            group_config: managed_group_config,
+        };
+        groups.insert(group_id.clone(), group);
+        let group = groups.get_mut(&group_id).unwrap();
+        let mut current_group_size = group.members.len();
+        drop(group);
+        drop(groups);
+        while current_group_size < target_group_size {
+            let mut groups = self.groups.borrow_mut();
+            let group = groups.get_mut(&group_id).unwrap();
+            println!(
+                "Members left to add: {:?}",
+                target_group_size - group.members.len()
+            );
             // Get a random group member.
-            let adder_id = (OsRng.next_u32() as usize) % members.len();
-            let adder = members[adder_id];
-            let mut adder_group_states = adder.groups.borrow_mut();
-            let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
+            let adder_id = (OsRng.next_u32() as usize) % group.members.len();
+            let adder = group.members[adder_id];
+            let number_of_members =
+                (OsRng.next_u32() as usize) % (target_group_size - current_group_size) + 1;
+            drop(group);
+            drop(groups);
+            self.increase_group_size(adder, group_id.clone(), number_of_members);
+            current_group_size += number_of_members;
+        }
 
-            // How many members to add at once?
-            let members_to_add = (OsRng.next_u32() as usize) % (group_size - members.len()) + 1;
+        group_id
+    }
 
-            // Pick a number of clients that are not already members.
-            let mut new_members: Vec<&Client<'a>> = Vec::new();
-            let mut new_member_key_packages = Vec::new();
-            for _ in 0..members_to_add {
-                let new_member = self
-                    .clients
-                    .iter()
-                    .find(|client| {
-                        (members
+    /// Have the given member of the given group add `number_of_members` to the group.
+    fn increase_group_size(
+        &'a self,
+        adder: &'a Client,
+        group_id: GroupId,
+        number_of_members: usize,
+    ) {
+        let mut groups = self.groups.borrow_mut();
+        let group = groups.get_mut(&group_id).unwrap();
+        let mut adder_group_states = adder.groups.borrow_mut();
+        let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
+
+        // Pick a number of clients that are not already members.
+        let mut new_members: Vec<&Client<'a>> = Vec::new();
+        let mut new_member_key_packages = Vec::new();
+        for _ in 0..number_of_members {
+            let new_member = self
+                .clients
+                .iter()
+                .find(|client| {
+                    (group
+                        .members
+                        .iter()
+                        .find(|member| member.identity == client.identity)
+                        .is_none())
+                        && (new_members
                             .iter()
                             .find(|member| member.identity == client.identity)
                             .is_none())
-                            && (new_members
+                })
+                .unwrap();
+            // Get a fresh key package from each of them.
+            let key_package = new_member.get_fresh_key_package(&group.ciphersuite);
+            new_members.push(new_member);
+            new_member_key_packages.push(key_package);
+        }
+        assert_eq!(number_of_members, new_member_key_packages.len());
+        // Have the adder add them to the group.
+        let (mls_messages, welcome) = adder_group_state
+            .add_members(new_member_key_packages.as_slice())
+            .unwrap();
+        drop(adder_group_states);
+        for member in group.members.iter() {
+            member
+                .receive_messages_for_group(&group_id, mls_messages.clone())
+                .unwrap();
+        }
+        let group_states = group.members[0].groups.borrow_mut();
+        let group_state = group_states.get(&group_id).unwrap();
+        let ratchet_tree = group_state.export_ratchet_tree();
+        drop(group_states);
+        for m in &group.members {
+            let group_states = m.groups.borrow_mut();
+            let group_state = group_states.get(&group_id).unwrap();
+            assert_eq!(group_state.export_ratchet_tree(), ratchet_tree);
+            drop(group_states);
+        }
+        for new_member in &new_members {
+            new_member
+                .join_group(
+                    group.group_config.clone(),
+                    welcome.clone(),
+                    Some(ratchet_tree.clone()),
+                )
+                .unwrap();
+        }
+        println!("Current group size: {:?}", group.members.len());
+        group.members.extend(new_members);
+        println!("New group size: {:?}", group.members.len());
+    }
+
+    pub fn perform_random_operation(&'a self, group_id: GroupId) -> Result<(), ClientError> {
+        let mut setup_groups = self.groups.borrow_mut();
+        let setup_group = match setup_groups.get_mut(&group_id) {
+            Some(group) => group,
+            None => return Err(ClientError::NoMatchingGroup),
+        };
+
+        // Who's going to do it?
+        let member_id = (OsRng.next_u32() as usize) % setup_group.members.len();
+        let member = setup_group.members[member_id];
+
+        let mut groups = member.groups.borrow_mut();
+        let group = groups.get_mut(&group_id).unwrap();
+
+        // Should we propose or commit?
+        // 0: Propose,
+        // 1: Commit,
+        // TODO: 2: Both.
+        let action_type = (OsRng.next_u32() as usize) % 3;
+
+        // Let's propose something.
+        // 0: Update,
+        // 1: Remove,
+        // 2: Add,
+        // TODO: 3: All of the above,
+        let proposal_type = (OsRng.next_u32() as usize) % 3;
+        let messages = match proposal_type {
+            0 => {
+                let messages = if action_type == 0 {
+                    group.propose_self_update(None).unwrap()
+                } else {
+                    group.self_update(None).unwrap()
+                };
+                drop(group);
+                drop(groups);
+                messages
+            }
+            1 => {
+                // How many members?
+                let number_of_removals = (OsRng.next_u32() as usize) % 5;
+                let mut target_members = Vec::new();
+                for _ in 0..number_of_removals {
+                    let index = ((OsRng.next_u32() as usize) % group.members().len()) + 1;
+                    target_members.push(index);
+                }
+                let messages = if action_type == 0 {
+                    group.propose_remove_members(&target_members).unwrap()
+                } else {
+                    group.remove_members(&target_members).unwrap()
+                };
+                drop(group);
+                drop(groups);
+                messages
+            }
+            2 => {
+                let number_of_adds = ((OsRng.next_u32() as usize) % 5) + 1;
+                let mut new_members: Vec<&Client<'a>> = Vec::new();
+                let mut new_member_key_packages = Vec::new();
+                for _ in 0..number_of_adds {
+                    let new_member = self
+                        .clients
+                        .iter()
+                        .find(|client| {
+                            (setup_group
+                                .members
                                 .iter()
                                 .find(|member| member.identity == client.identity)
                                 .is_none())
-                    })
-                    .unwrap();
-                // Get a fresh key package from each of them.
-                let key_package = new_member.get_fresh_key_package(ciphersuite);
-                new_members.push(new_member);
-                new_member_key_packages.push(key_package);
+                                && (new_members
+                                    .iter()
+                                    .find(|member| member.identity == client.identity)
+                                    .is_none())
+                        })
+                        .unwrap();
+                    // Get a fresh key package from each of them.
+                    let key_package = new_member.get_fresh_key_package(&setup_group.ciphersuite);
+                    new_members.push(new_member);
+                    new_member_key_packages.push(key_package);
+                }
+                // Have the adder add them to the group.
+                if action_type == 0 {
+                    group.propose_add_members(&new_member_key_packages).unwrap()
+                } else {
+                    let (messages, welcome) = group.add_members(&new_member_key_packages).unwrap();
+                    drop(group);
+                    drop(groups);
+                    for group_member in setup_group.members.iter() {
+                        group_member
+                            .receive_messages_for_group(&group_id, messages.clone())
+                            .unwrap();
+                    }
+                    let mut groups = member.groups.borrow_mut();
+                    let group = groups.get_mut(&group_id).unwrap();
+                    let ratchet_tree = group.export_ratchet_tree();
+                    for new_member in &new_members {
+                        new_member
+                            .join_group(
+                                setup_group.group_config.clone(),
+                                welcome.clone(),
+                                Some(ratchet_tree.clone()),
+                            )
+                            .unwrap();
+                    }
+                    setup_group.members.extend(new_members);
+                    drop(group);
+                    drop(groups);
+                    Vec::new()
+                }
             }
-            println!("KPs: {:?}", new_member_key_packages.len());
-            assert_eq!(members_to_add, new_member_key_packages.len());
-            // Have the adder add them to the group.
-            let (mls_messages, welcome) = adder_group_state
-                .add_members(new_member_key_packages.as_slice())
-                .unwrap();
-            drop(adder_group_states);
-            for member in members.iter() {
+            _ => return Err(ClientError::Unknown),
+        };
+        if !messages.is_empty() {
+            for member in setup_group.members.iter() {
                 member
-                    .receive_messages_for_group(&group_id, mls_messages.clone())
+                    .receive_messages_for_group(&group_id, messages.clone())
                     .unwrap();
             }
-            let group_states = members[0].groups.borrow_mut();
-            let group_state = group_states.get(&group_id).unwrap();
-            let ratchet_tree = group_state.export_ratchet_tree();
-            drop(group_states);
-            for m in &members {
-                let group_states = m.groups.borrow_mut();
-                let group_state = group_states.get(&group_id).unwrap();
-                assert_eq!(group_state.export_ratchet_tree(), ratchet_tree);
-                drop(group_states);
-            }
-            for new_member in new_members.iter() {
-                new_member
-                    .join_group(
-                        managed_group_config.clone(),
-                        welcome.clone(),
-                        Some(ratchet_tree.clone()),
-                    )
-                    .unwrap();
-            }
-            members.extend(new_members);
-        }
-        group_id
+        };
+        Ok(())
+
+        //group
     }
 }
 
@@ -324,6 +490,9 @@ fn test_randomized_setup() {
             .with_error_occured(error_occured);
         let managed_group_config =
             ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
-        setup.create_random_group(10, ciphersuite, managed_group_config);
+        let group_id = setup.create_random_group(10, ciphersuite, managed_group_config);
+        for _ in 0..10 {
+            setup.perform_random_operation(group_id.clone()).unwrap();
+        }
     }
 }
