@@ -63,11 +63,7 @@ fn test_exclusion_list() {
             .iter()
             .map(|index| NodeIndex::from(*index))
             .collect::<Vec<NodeIndex>>();
-        let exclusion_list = HashSet::from_iter(
-            exclusion_list_node_indexes
-                .iter()
-                .collect::<Vec<&NodeIndex>>(),
-        );
+        let exclusion_list = HashSet::from_iter(exclusion_list_node_indexes.iter());
         let filtered_resultion = tree
             .resolve(root, &exclusion_list)
             .iter()

@@ -863,12 +863,8 @@ pub struct ApplyProposalsValues {
 impl ApplyProposalsValues {
     pub fn exclusion_list(&self) -> HashSet<&NodeIndex> {
         // Collect the new leaves indexes so we can filter them out in the resolution later
-        let new_leaves_indexes: HashSet<&NodeIndex> = HashSet::from_iter(
-            self.invitation_list
-                .iter()
-                .map(|(index, _)| index)
-                .collect::<Vec<&NodeIndex>>(),
-        );
+        let new_leaves_indexes: HashSet<&NodeIndex> =
+            HashSet::from_iter(self.invitation_list.iter().map(|(index, _)| index));
         new_leaves_indexes
     }
 }
