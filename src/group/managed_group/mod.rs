@@ -617,7 +617,7 @@ impl<'a> ManagedGroup<'a> {
     /// be provided. If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a `Vec` of
-    /// [`MLSMessage`](crate::prelude::MLSMessage) and a n optional
+    /// [`MLSMessage`](crate::prelude::MLSMessage) and an optional
     /// [`Welcome`](crate::prelude::Welcome) message if there were add proposals
     /// in the queue of pending proposals.
     pub fn self_update(
