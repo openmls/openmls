@@ -1,3 +1,4 @@
 ignore:
   - "delivery-service/**/*"  # ignore PoC DS server and lib
   - "cli/**/*"  # ignore PoC cli
+  - "tests/test_managed_api.rs" # ignore managed API testing framework stub
