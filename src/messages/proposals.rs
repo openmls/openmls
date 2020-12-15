@@ -387,10 +387,9 @@ impl<'a> ProposalQueue<'a> {
         // Only retain `adds` and `valid_proposals`
         let mut proposal_queue = ProposalQueue::new();
         for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
-            proposal_queue.add(match proposal_pool.get(proposal_reference) {
-                Some(queued_proposal) => queued_proposal.clone(),
-                None => return Err(ProposalQueueError::ProposalNotFound),
-            });
+            // We can unwrap here, because the proposal_queue is a superset of
+            // both the `adds` proposals and the `valid_proposals`.
+            proposal_queue.add(proposal_pool.get(proposal_reference).unwrap().clone());
         }
         Ok((proposal_queue, contains_own_updates))
     }
