@@ -29,11 +29,16 @@ pub(crate) use serde::{
     Deserialize, Deserializer, Serialize,
 };
 
+use std::collections::HashSet;
+use std::iter::FromIterator;
+
 // Internal tree tests
 #[cfg(test)]
 mod test_path_keys;
 #[cfg(test)]
 mod test_private_tree;
+#[cfg(test)]
+mod test_resolution;
 #[cfg(test)]
 mod test_secret_tree;
 #[cfg(test)]
@@ -181,11 +186,11 @@ impl RatchetTree {
         self.tree_size().into()
     }
 
-    fn resolve(&self, index: NodeIndex) -> Vec<NodeIndex> {
+    fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&NodeIndex>) -> Vec<NodeIndex> {
         let size = self.leaf_count();
 
         if self.nodes[index.as_usize()].node_type == NodeType::Leaf {
-            if self.nodes[index.as_usize()].is_blank() {
+            if self.nodes[index.as_usize()].is_blank() || exclusion_list.contains(&index) {
                 return vec![];
             } else {
                 return vec![index];
@@ -206,10 +211,12 @@ impl RatchetTree {
 
         let mut left = self.resolve(
             treemath::left(index).expect("resolve: TreeMath error when computing left child."),
+            exclusion_list,
         );
         let right = self.resolve(
             treemath::right(index, size)
                 .expect("resolve: TreeMath error when computing right child."),
+            exclusion_list,
         );
         left.extend(right);
         left
@@ -271,6 +278,7 @@ impl RatchetTree {
         sender: LeafIndex,
         update_path: &UpdatePath,
         group_context: &[u8],
+        new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<&CommitSecret, TreeError> {
         let own_index = self.own_node_index();
 
@@ -297,7 +305,7 @@ impl RatchetTree {
             };
 
         // Resolve the node of that co-path index
-        let resolution = self.resolve(common_ancestor_copath_index);
+        let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
         let position_in_resolution = resolution.iter().position(|&x| x == own_index).unwrap_or(0);
 
         // Decrypt the ciphertext of that node
@@ -385,7 +393,7 @@ impl RatchetTree {
         let _path_option = self.replace_private_tree_(
             key_package_bundle,
             group_context,
-            false, /* without update path */
+            None, /* without update path */
         );
         self.private_tree.commit_secret()
     }
@@ -395,6 +403,7 @@ impl RatchetTree {
         &mut self,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
+        new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> (&CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.own_node_index();
@@ -409,7 +418,7 @@ impl RatchetTree {
             .replace_private_tree_(
                 &key_package_bundle,
                 group_context,
-                true, /* with update path */
+                Some(new_leaves_indexes), /* with update path */
             )
             .unwrap();
 
@@ -438,7 +447,7 @@ impl RatchetTree {
         &mut self,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
-        with_update_path: bool,
+        new_leaves_indexes_option: Option<HashSet<&NodeIndex>>,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.key_package().clone();
         let ciphersuite = key_package.ciphersuite();
@@ -461,9 +470,9 @@ impl RatchetTree {
         // Update own leaf node with the new values
         self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
         self.compute_parent_hash(self.own_node_index());
-        if with_update_path {
+        if let Some(new_leaves_indexes) = new_leaves_indexes_option {
             let update_path_nodes = self
-                .encrypt_to_copath(new_public_keys, group_context)
+                .encrypt_to_copath(new_public_keys, group_context, new_leaves_indexes)
                 .unwrap();
             let update_path = UpdatePath::new(key_package, update_path_nodes);
             Some(update_path)
@@ -477,6 +486,7 @@ impl RatchetTree {
         &self,
         public_keys: Vec<HPKEPublicKey>,
         group_context: &[u8],
+        new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
         let copath = treemath::copath(self.private_tree.node_index(), self.leaf_count())
             .expect("encrypt_to_copath: Error when computing copath.");
@@ -499,10 +509,10 @@ impl RatchetTree {
         let mut ciphertexts = vec![];
         for (path_secret, copath_node) in path_secrets.iter().zip(copath.iter()) {
             let node_ciphertexts: Vec<HpkeCiphertext> = self
-                .resolve(*copath_node)
+                .resolve(*copath_node, &new_leaves_indexes)
                 .iter()
-                .map(|&x| {
-                    let pk = self.nodes[x.as_usize()].public_hpke_key().unwrap();
+                .map(|&index| {
+                    let pk = self.nodes[index.as_usize()].public_hpke_key().unwrap();
                     self.ciphersuite
                         .hpke_seal_secret(&pk, group_context, &[], &path_secret)
                 })
@@ -639,11 +649,9 @@ impl RatchetTree {
         &mut self,
         proposal_queue: ProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
-        // (path_required, self_removed, invitation_list)
-    ) -> Result<(bool, bool, InvitationList), TreeError> {
+    ) -> Result<ApplyProposalsValues, TreeError> {
         let mut has_updates = false;
         let mut has_removes = false;
-        let mut invitation_list = Vec::new();
 
         let mut self_removed = false;
 
@@ -685,6 +693,7 @@ impl RatchetTree {
         }
 
         // Process adds
+        let mut invitation_list = Vec::new();
         let add_proposals: Vec<AddProposal> = proposal_queue
             .filtered_by_type(ProposalType::Add)
             .map(|queued_proposal| {
@@ -706,7 +715,11 @@ impl RatchetTree {
         // Determine if Commit needs a path field
         let path_required = has_updates || has_removes || !has_adds;
 
-        Ok((path_required, self_removed, invitation_list))
+        Ok(ApplyProposalsValues {
+            path_required,
+            self_removed,
+            invitation_list,
+        })
     }
     /// Trims the tree from the right when there are empty leaf nodes
     fn trim_tree(&mut self) {
@@ -841,7 +854,25 @@ impl RatchetTree {
     }
 }
 
-pub type InvitationList = Vec<(NodeIndex, AddProposal)>;
+/// This struct contain the return vallues of the `apply_proposals()` function
+pub struct ApplyProposalsValues {
+    pub path_required: bool,
+    pub self_removed: bool,
+    pub invitation_list: Vec<(NodeIndex, AddProposal)>,
+}
+
+impl ApplyProposalsValues {
+    /// This function creates a `HashSet` of node indexes of the new nodes that
+    /// were added to the tree. The `HashSet` will be querried by the
+    /// `resolve()` function to filter out those nodes from the resolution.
+    pub fn exclusion_list(&self) -> HashSet<&NodeIndex> {
+        // Collect the new leaves' indexes so we can filter them out in the resolution
+        // later
+        let new_leaves_indexes: HashSet<&NodeIndex> =
+            HashSet::from_iter(self.invitation_list.iter().map(|(index, _)| index));
+        new_leaves_indexes
+    }
+}
 
 /// 7.7. Update Paths
 ///
