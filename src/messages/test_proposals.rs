@@ -125,6 +125,22 @@ fn proposal_queue_functions() {
         for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {
             assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
         }
+
+        // Get filtered proposals ()
+        assert_eq!(
+            proposal_queue
+                .filtered_by_type(ProposalType::Update)
+                .count(),
+            0
+        );
+
+        // Get proposals in a commit_list.
+        for proposal in proposal_queue.commit_list() {
+            assert_eq!(
+                proposal.proposal_or_ref_type(),
+                ProposalOrRefType::Reference
+            )
+        }
     }
 }
 
