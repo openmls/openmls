@@ -128,11 +128,14 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
                 aad
             );
         }
-        InvalidMessageError::CommitWithInvalidProposals => {
+        InvalidMessageError::CommitWithInvalidProposals(_) => {
             println!("A Commit message with one ore more invalid proposals was received");
         }
         InvalidMessageError::CommitError(e) => {
-            println!("An error occured when applying a Commit message: {:?}", e);
+            println!("An error occurred when applying a Commit message: {:?}", e);
+        }
+        InvalidMessageError::GroupError(e) => {
+            println!("An group error occurred: {:?}", e);
         }
     }
 }
@@ -544,9 +547,9 @@ fn managed_group_operations() {
             // Should fail because you cannot remove yourself from a group
             assert_eq!(
                 bob_group.process_pending_proposals(),
-                Err(ManagedGroupError::CreateCommit(
+                Err(ManagedGroupError::Group(GroupError::CreateCommitError(
                     CreateCommitError::CannotRemoveSelf
-                ))
+                )))
             );
 
             let (queued_messages, _welcome_option) = alice_group

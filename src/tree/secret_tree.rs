@@ -20,9 +20,10 @@ pub enum SecretType {
     ApplicationSecret,
 }
 
-#[derive(Debug)]
-pub enum SecretTypeError {
-    InvalidContentType,
+implement_error! {
+    pub enum SecretTypeError {
+        InvalidContentType = "The content type is not known.",
+    }
 }
 
 impl TryFrom<&ContentType> for SecretType {

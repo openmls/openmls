@@ -18,7 +18,7 @@ use std::io::{Error, Read, Write};
 
 pub use callbacks::*;
 pub use config::*;
-pub use errors::{InvalidMessageError, ManagedGroupError};
+pub use errors::{InvalidMessageError, ManagedGroupError, PendingProposalsError, UseAfterEviction};
 use ser::*;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
@@ -114,7 +114,7 @@ impl<'a> ManagedGroup<'a> {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<Self, WelcomeError> {
+    ) -> Result<Self, GroupError> {
         let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle)?;
 
         let managed_group = ManagedGroup {
@@ -141,7 +141,7 @@ impl<'a> ManagedGroup<'a> {
         key_packages: &[KeyPackage],
     ) -> Result<(Vec<MLSMessage>, Welcome), ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         // Create add proposals by value from key packages
@@ -171,7 +171,11 @@ impl<'a> ManagedGroup<'a> {
         )?;
         let welcome = match welcome_option {
             Some(welcome) => welcome,
-            None => return Err(ManagedGroupError::Unknown),
+            None => {
+                return Err(ManagedGroupError::LibraryError(
+                    "No secrets to generate commit message.".into(),
+                ))
+            }
         };
 
         // If it was a full Commit, we have to save the KeyPackageBundle for later
@@ -181,7 +185,7 @@ impl<'a> ManagedGroup<'a> {
 
         // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(vec![commit]);
+        let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -195,7 +199,7 @@ impl<'a> ManagedGroup<'a> {
         members: &[usize],
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         // Create add proposals by value
@@ -228,15 +232,14 @@ impl<'a> ManagedGroup<'a> {
         if let Some(kpb) = kpb_option {
             self.own_kpbs.push(kpb);
         } else {
-            return Err(ManagedGroupError::Unknown);
+            return Err(ManagedGroupError::LibraryError(
+                "We didn't get a key package for a full commit.".into(),
+            ));
         }
 
         // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(vec![commit]);
-
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -250,7 +253,7 @@ impl<'a> ManagedGroup<'a> {
         key_packages: &[KeyPackage],
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let plaintext_messages: Vec<MLSPlaintext> = key_packages
             .iter()
@@ -263,7 +266,7 @@ impl<'a> ManagedGroup<'a> {
             })
             .collect();
 
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -277,7 +280,7 @@ impl<'a> ManagedGroup<'a> {
         members: &[usize],
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let plaintext_messages: Vec<MLSPlaintext> = members
             .iter()
@@ -290,7 +293,7 @@ impl<'a> ManagedGroup<'a> {
             })
             .collect();
 
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -301,7 +304,7 @@ impl<'a> ManagedGroup<'a> {
     /// Leave the group
     pub fn leave_group(&mut self) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
@@ -309,8 +312,7 @@ impl<'a> ManagedGroup<'a> {
             LeafIndex::from(self.group.tree().own_node_index()),
         );
 
-        let mls_messages = self.plaintext_to_mls_messages(vec![remove_proposal]);
-        Ok(mls_messages)
+        self.plaintext_to_mls_messages(vec![remove_proposal])
     }
 
     /// Gets the current list of members
@@ -333,7 +335,7 @@ impl<'a> ManagedGroup<'a> {
     /// MLSCiphertext) and triggers the corresponding callback functions
     pub fn process_messages(&mut self, messages: Vec<MLSMessage>) -> Result<(), ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         // Iterate over all incoming messages
         for message in messages {
@@ -347,7 +349,7 @@ impl<'a> ManagedGroup<'a> {
                         Err(_) => {
                             // If there is a callback for that event we should call it
                             self.invalid_message_event(InvalidMessageError::InvalidCiphertext(
-                                aad.to_vec(),
+                                aad.into(),
                             ));
                             // Since we cannot decrypt the MLSCiphertext to a MLSPlaintext we move
                             // to the next message
@@ -373,7 +375,9 @@ impl<'a> ManagedGroup<'a> {
                     ) {
                         self.pending_proposals.push(plaintext);
                     } else {
-                        self.invalid_message_event(InvalidMessageError::CommitWithInvalidProposals);
+                        self.invalid_message_event(
+                            InvalidMessageError::CommitWithInvalidProposals("".into()),
+                        );
                     }
                 }
                 MLSPlaintextContentType::Commit((ref commit, ref _confirmation_tag)) => {
@@ -384,7 +388,11 @@ impl<'a> ManagedGroup<'a> {
                         &indexed_members,
                     ) {
                         // If not all of them are valid, call error function callback
-                        self.invalid_message_event(InvalidMessageError::CommitWithInvalidProposals);
+                        self.invalid_message_event(
+                            InvalidMessageError::CommitWithInvalidProposals(
+                                "Not all of them are valid".into(),
+                            ),
+                        );
                         // And move on to the next message
                         continue;
                     }
@@ -413,7 +421,7 @@ impl<'a> ManagedGroup<'a> {
                             self.own_kpbs.clear();
                         }
                         Err(apply_commit_error) => match apply_commit_error {
-                            ApplyCommitError::SelfRemoved => {
+                            GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
                                 // Send out events
                                 self.send_events(
                                     self.ciphersuite(),
@@ -424,10 +432,11 @@ impl<'a> ManagedGroup<'a> {
                                 // The group is no longer active
                                 self.active = false;
                             }
+                            GroupError::ApplyCommitError(e) => {
+                                self.invalid_message_event(InvalidMessageError::CommitError(e));
+                            }
                             _ => {
-                                self.invalid_message_event(InvalidMessageError::CommitError(
-                                    apply_commit_error,
-                                ));
+                                panic!("apply_commit_error did not return an ApplyCommitError.");
                             }
                         },
                     }
@@ -457,21 +466,23 @@ impl<'a> ManagedGroup<'a> {
     // === Application messages ===
 
     /// Creates an application message.  
-    /// Returns `ManagedGroupError::UseAfterEviction` if the member is no longer
-    /// part of the group. Returns `ManagedGroupError::
-    /// PendingProposalsExist` if pending proposals exist. In that case
-    /// `.process_pending_proposals()` must be called first and incoming
-    /// messages from the DS must be processed afterwards.
+    /// Returns `ManagedGroupError::UseAfterEviction(UseAfterEviction::Error)`
+    /// if the member is no longer part of the group.
+    /// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals
+    /// exist. In that case `.process_pending_proposals()` must be called first
+    /// and incoming messages from the DS must be processed afterwards.
     pub fn create_message(&mut self, message: &[u8]) -> Result<MLSMessage, ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         if !self.pending_proposals.is_empty() {
-            return Err(ManagedGroupError::PendingProposalsExist);
+            return Err(ManagedGroupError::PendingProposalsExist(
+                PendingProposalsError::Exists,
+            ));
         }
         let ciphertext =
             self.group
-                .create_application_message(&self.aad, message, &self.credential_bundle);
+                .create_application_message(&self.aad, message, &self.credential_bundle)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -484,7 +495,7 @@ impl<'a> ManagedGroup<'a> {
         &mut self,
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         // Include pending proposals into Commit
         let messages_to_commit: Vec<&MLSPlaintext> = self.pending_proposals.iter().collect();
@@ -508,7 +519,7 @@ impl<'a> ManagedGroup<'a> {
 
         // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -527,7 +538,7 @@ impl<'a> ManagedGroup<'a> {
         if self.active {
             Ok(self.group.export_secret(label, key_length)?)
         } else {
-            Err(ManagedGroupError::UseAfterEviction)
+            Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error))
         }
     }
 
@@ -593,7 +604,7 @@ impl<'a> ManagedGroup<'a> {
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         // If a KeyPackageBundle was provided, create an UpdateProposal
@@ -631,13 +642,17 @@ impl<'a> ManagedGroup<'a> {
         // Take the new KeyPackageBundle and save it for later
         let kpb = match kpb_option {
             Some(kpb) => kpb,
-            None => return Err(ManagedGroupError::Unknown),
+            None => {
+                return Err(ManagedGroupError::LibraryError(
+                    "We didn't get a key package for a full commit on self update.".into(),
+                ))
+            }
         };
         self.own_kpbs.push(kpb);
 
         // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -651,7 +666,7 @@ impl<'a> ManagedGroup<'a> {
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction);
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let tree = self.group.tree();
         let existing_key_package = tree.own_key_package();
@@ -674,7 +689,7 @@ impl<'a> ManagedGroup<'a> {
 
         self.own_kpbs.push(key_package_bundle);
 
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages);
+        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -720,20 +735,20 @@ impl<'a> ManagedGroup<'a> {
     /// MLSCiphertext first.
     fn plaintext_to_mls_messages(
         &mut self,
-        plaintext_messages: Vec<MLSPlaintext>,
-    ) -> Vec<MLSMessage> {
-        plaintext_messages
-            .into_iter()
-            .map(
-                |plaintext| match self.configuration().handshake_message_format {
-                    HandshakeMessageFormat::Plaintext => MLSMessage::Plaintext(plaintext),
-                    HandshakeMessageFormat::Ciphertext => {
-                        let ciphertext = self.group.encrypt(plaintext);
-                        MLSMessage::Ciphertext(ciphertext)
-                    }
-                },
-            )
-            .collect()
+        mut plaintext_messages: Vec<MLSPlaintext>,
+    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+        let mut out = Vec::with_capacity(plaintext_messages.len());
+        for plaintext in plaintext_messages.drain(..) {
+            let msg = match self.configuration().handshake_message_format {
+                HandshakeMessageFormat::Plaintext => MLSMessage::Plaintext(plaintext),
+                HandshakeMessageFormat::Ciphertext => {
+                    let ciphertext = self.group.encrypt(plaintext)?;
+                    MLSMessage::Ciphertext(ciphertext)
+                }
+            };
+            out.push(msg);
+        }
+        Ok(out)
     }
 
     /// Validate all pending proposals. The function returns `true` only if all
