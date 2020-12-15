@@ -25,7 +25,7 @@ impl MlsGroup {
             proposals_by_value,
             LeafIndex::from(self.tree().own_node_index()),
             self.tree().leaf_count(),
-        )?;
+        );
 
         let proposal_reference_list = proposal_queue.commit_list();
 

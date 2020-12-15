@@ -299,7 +299,7 @@ impl<'a> ProposalQueue<'a> {
         proposals_by_value: &'a [&Proposal],
         own_index: LeafIndex,
         tree_size: LeafIndex,
-    ) -> Result<(Self, bool), ProposalQueueError> {
+    ) -> (Self, bool) {
         #[derive(Clone)]
         struct Member<'a> {
             updates: Vec<QueuedProposal<'a>>,
@@ -391,7 +391,7 @@ impl<'a> ProposalQueue<'a> {
             // both the `adds` proposals and the `valid_proposals`.
             proposal_queue.add(proposal_pool.get(proposal_reference).unwrap().clone());
         }
-        Ok((proposal_queue, contains_own_updates))
+        (proposal_queue, contains_own_updates)
     }
     /// Returns `true` if all `ProposalReference` values from the list are
     /// contained in the queue
