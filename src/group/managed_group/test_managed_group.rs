@@ -78,6 +78,12 @@ fn test_managed_group_errors() {
     )
     .unwrap();
 
-    assert!(alice_group.add_members(&[]).is_err());
-    assert!(alice_group.remove_members(&[]).is_err());
+    assert!(
+        alice_group.add_members(&[]).unwrap_err()
+            == ManagedGroupError::EmptyInput(super::EmptyInputError::AddMembers)
+    );
+    assert!(
+        alice_group.remove_members(&[]).unwrap_err()
+            == ManagedGroupError::EmptyInput(super::EmptyInputError::RemoveMembers)
+    );
 }
