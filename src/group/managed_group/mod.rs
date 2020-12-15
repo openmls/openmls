@@ -887,6 +887,7 @@ impl<'a> ManagedGroup<'a> {
                 let removal = Removal::new(
                     self.credential_bundle.credential(),
                     sender_credential,
+                    // TODO: This can be called such that the following line panics.
                     &indexed_members[&LeafIndex::from(remove_proposal.removed)],
                 );
 
