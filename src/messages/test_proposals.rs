@@ -158,8 +158,13 @@ fn proposal_queue_functions() {
             ProposalQueue::from_committed_proposals(ciphersuite, proposal_refs, proposals, sender)
                 .expect("Error while creating ProposalQueue from committed proposals.");
 
+        assert!(proposal_queue2.contains(&[proposal_reference_add_alice1.clone()]));
+
+        let proposal_queue3 =
+            ProposalQueue::from_committed_proposals(ciphersuite, proposal_refs, &[], sender);
+
         // The commited proposal queue should be empty, as we didn't insert any
-        assert!(proposal_queue2.contains(&[proposal_reference_add_alice1]));
+        assert!(proposal_queue3.is_err());
     }
 }
 
