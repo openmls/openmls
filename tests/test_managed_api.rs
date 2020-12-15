@@ -33,6 +33,7 @@ impl From<GroupError> for ClientError {
     }
 }
 
+#[derive(Debug)]
 struct Client<'a> {
     /// Name of the client.
     pub(crate) identity: Vec<u8>,
@@ -276,6 +277,7 @@ impl<'a> ManagedTestSetup<'a> {
         let (mls_messages, welcome) = adder_group_state
             .add_members(new_member_key_packages.as_slice())
             .unwrap();
+        drop(adder_group_state);
         drop(adder_group_states);
         for member in group.members.iter() {
             member
@@ -324,14 +326,18 @@ impl<'a> ManagedTestSetup<'a> {
         // 0: Propose,
         // 1: Commit,
         // TODO: 2: Both.
+        // TODO: For now hardcode it to 0
         let action_type = (OsRng.next_u32() as usize) % 3;
+        //let action_type = 1;
 
         // Let's propose something.
         // 0: Update,
         // 1: Remove,
         // 2: Add,
         // TODO: 3: All of the above,
+        // TODO: For now hardcode it to 0
         let proposal_type = (OsRng.next_u32() as usize) % 3;
+        //let proposal_type = 2;
         let messages = match proposal_type {
             0 => {
                 let messages = if action_type == 0 {
@@ -344,21 +350,57 @@ impl<'a> ManagedTestSetup<'a> {
                 messages
             }
             1 => {
-                // How many members?
-                let number_of_removals = (OsRng.next_u32() as usize) % 5;
-                let mut target_members = Vec::new();
-                for _ in 0..number_of_removals {
-                    let index = ((OsRng.next_u32() as usize) % group.members().len()) + 1;
-                    target_members.push(index);
-                }
-                let messages = if action_type == 0 {
-                    group.propose_remove_members(&target_members).unwrap()
+                if group.members().len() == 1 {
+                    Vec::new()
                 } else {
-                    group.remove_members(&target_members).unwrap()
-                };
-                drop(group);
-                drop(groups);
-                messages
+                    // How many members?
+                    let number_of_removals =
+                        (((OsRng.next_u32() as usize) % group.members().len()) % 5) + 1;
+                    let mut target_members = Vec::new();
+
+                    let own_index = group
+                        .members()
+                        .iter()
+                        .position(|cred| cred.identity() == &member.identity)
+                        .unwrap();
+
+                    // Get the client references, as opposed to just the member indices.
+                    for _ in 0..number_of_removals {
+                        let mut index = (OsRng.next_u32() as usize) % group.members().len();
+                        while index == own_index || target_members.contains(&index) {
+                            index = (OsRng.next_u32() as usize) % group.members().len();
+                        }
+                        target_members.push(index);
+                    }
+                    let mut target_clients = Vec::new();
+                    for member_index in &target_members {
+                        let member_cred: &Credential = &group.members()[member_index.to_owned()];
+                        let member_identity = member_cred.identity();
+                        println!("Member identity: {:?}", member_identity);
+                        let client: &'a Client = setup_group
+                            .members
+                            .iter()
+                            .find(|client| &client.identity == member_identity)
+                            .unwrap();
+                        target_clients.push(client);
+                    }
+                    let messages = if action_type == 0 {
+                        group.propose_remove_members(&target_members).unwrap()
+                    } else {
+                        group.remove_members(&target_members).unwrap()
+                    };
+                    drop(group);
+                    drop(groups);
+                    for client in target_clients {
+                        let pos = setup_group
+                            .members
+                            .iter()
+                            .position(|&mem| mem.identity == client.identity)
+                            .unwrap();
+                        setup_group.members.remove(pos);
+                    }
+                    messages
+                }
             }
             2 => {
                 let number_of_adds = ((OsRng.next_u32() as usize) % 5) + 1;
@@ -387,11 +429,20 @@ impl<'a> ManagedTestSetup<'a> {
                 }
                 // Have the adder add them to the group.
                 if action_type == 0 {
-                    group.propose_add_members(&new_member_key_packages).unwrap()
+                    let messages = group.propose_add_members(&new_member_key_packages).unwrap();
+                    drop(group);
+                    drop(groups);
+                    messages
                 } else {
                     let (messages, welcome) = group.add_members(&new_member_key_packages).unwrap();
                     drop(group);
                     drop(groups);
+                    //println!("Setup group members: {:?}", setup_group.members);
+                    debug_assert!(setup_group
+                        .members
+                        .iter()
+                        .find(|mem| mem.identity == member.identity)
+                        .is_some());
                     for group_member in setup_group.members.iter() {
                         group_member
                             .receive_messages_for_group(&group_id, messages.clone())
@@ -491,7 +542,9 @@ fn test_randomized_setup() {
         let managed_group_config =
             ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
         let group_id = setup.create_random_group(10, ciphersuite, managed_group_config);
-        for _ in 0..10 {
+        println!("Done creating group. Performing ten random operations.");
+        for i in 0..10 {
+            println!("Operation {:?}", i);
             setup.perform_random_operation(group_id.clone()).unwrap();
         }
     }
