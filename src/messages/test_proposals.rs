@@ -1,3 +1,5 @@
+use sender::{Sender, SenderType};
+
 use crate::config::*;
 use crate::creds::*;
 use crate::extensions::*;
@@ -115,7 +117,7 @@ fn proposal_queue_functions() {
         assert!(proposal_queue.contains(valid_proposal_reference_list));
 
         let invalid_proposal_reference_list = &[
-            proposal_reference_add_alice1,
+            proposal_reference_add_alice1.clone(),
             proposal_reference_add_alice2,
             proposal_reference_add_bob1,
         ];
@@ -141,6 +143,21 @@ fn proposal_queue_functions() {
                 ProposalOrRefType::Reference
             )
         }
+
+        let sender = Sender {
+            sender_type: SenderType::Member,
+            sender: LeafIndex::from(1u32),
+        };
+
+        let proposal_refs = &[ProposalOrRef::Reference(
+            proposal_reference_add_alice1.clone(),
+        )];
+        let proposal_queue2 =
+            ProposalQueue::from_committed_proposals(ciphersuite, proposal_refs, proposals, sender)
+                .unwrap();
+
+        // The commited proposal queue should be empty, as we didn't insert any
+        assert!(proposal_queue2.contains(&[proposal_reference_add_alice1]));
     }
 }
 
