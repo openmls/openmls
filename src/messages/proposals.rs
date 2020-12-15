@@ -322,9 +322,9 @@ impl<'a> ProposalQueue<'a> {
             sender: own_index,
         };
 
-        // Aggregate both proposal types to a common iterator
-        // It is safe to unwrap here, because we checked eralier that only proposals can
-        // end up here
+        // Aggregate both proposal types to a common iterator It is safe to
+        // unwrap here, because we checked earlier that only proposals can end
+        // up here
         let mut queued_proposal_list = proposals_by_reference
             .iter()
             .map(|mls_plaintext| {
