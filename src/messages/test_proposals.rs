@@ -126,6 +126,8 @@ fn proposal_queue_functions() {
         // Get filtered proposals
         for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {
             assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
+            assert!(!filtered_proposal.proposal().is_type(ProposalType::Remove));
+            assert!(!filtered_proposal.proposal().is_type(ProposalType::Update));
         }
 
         // Get filtered proposals ()
@@ -154,7 +156,7 @@ fn proposal_queue_functions() {
         )];
         let proposal_queue2 =
             ProposalQueue::from_committed_proposals(ciphersuite, proposal_refs, proposals, sender)
-                .unwrap();
+                .expect("Error while creating ProposalQueue from committed proposals.");
 
         // The commited proposal queue should be empty, as we didn't insert any
         assert!(proposal_queue2.contains(&[proposal_reference_add_alice1]));
