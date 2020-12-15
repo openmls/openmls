@@ -258,7 +258,7 @@ fn managed_group_operations() {
                 .expect("The group is no longer active");
 
             // === Bob updates and commits ===
-            let queued_messages = match bob_group.self_update(None) {
+            let (queued_messages, welcome_option) = match bob_group.self_update(None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
@@ -268,6 +268,9 @@ fn managed_group_operations() {
             bob_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check we didn't receive a Welcome message
+            assert!(welcome_option.is_none());
 
             // Check that both groups have the same state
             assert_eq!(
@@ -376,7 +379,7 @@ fn managed_group_operations() {
                 .expect("The group is no longer active");
 
             // === Charlie updates and commits ===
-            let queued_messages = match charlie_group.self_update(None) {
+            let (queued_messages, welcome_option) = match charlie_group.self_update(None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
@@ -389,6 +392,9 @@ fn managed_group_operations() {
             charlie_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check we didn't receive a Welcome message
+            assert!(welcome_option.is_none());
 
             // Check that all groups have the same state
             assert_eq!(
@@ -411,7 +417,7 @@ fn managed_group_operations() {
             );
 
             // === Charlie removes Bob ===
-            let queued_messages = match charlie_group.remove_members(&[1]) {
+            let (queued_messages, welcome_option) = match charlie_group.remove_members(&[1]) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Could not remove member from group: {:?}", e),
             };
@@ -428,6 +434,9 @@ fn managed_group_operations() {
             charlie_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check we didn't receive a Welcome message
+            assert!(welcome_option.is_none());
 
             // Check that Bob's group is no longer active
             assert!(!bob_group.is_active());

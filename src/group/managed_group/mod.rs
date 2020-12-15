@@ -136,6 +136,12 @@ impl<'a> ManagedGroup<'a> {
     // === Membership management ===
 
     /// Adds members to the group
+    ///
+    /// New members are added by providing a `KeyPackage` for each member.
+    ///
+    /// If successful, it returns a `Vec` of
+    /// [`MLSMessage`](crate::prelude::MLSMessage) and a
+    /// [`Welcome`](crate::prelude::Welcome) message.
     pub fn add_members(
         &mut self,
         key_packages: &[KeyPackage],
@@ -194,10 +200,17 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Removes members from the group
+    ///
+    /// Members are removed by providing the index of their leaf in the tree.
+    ///
+    /// If successful, it returns a `Vec` of
+    /// [`MLSMessage`](crate::prelude::MLSMessage) and an optional
+    /// [`Welcome`](crate::prelude::Welcome) message if there were add proposals
+    /// in the queue of pending proposals.
     pub fn remove_members(
         &mut self,
         members: &[usize],
-    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -220,7 +233,7 @@ impl<'a> ManagedGroup<'a> {
             .collect::<Vec<&MLSPlaintext>>();
 
         // Create Commit over all proposals
-        let (commit, _welcome_option, kpb_option) = self.group.create_commit(
+        let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             &self.credential_bundle,
             proposals_by_reference,
@@ -244,7 +257,7 @@ impl<'a> ManagedGroup<'a> {
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(mls_messages)
+        Ok((mls_messages, welcome_option))
     }
 
     /// Creates proposals to add members to the group
@@ -599,10 +612,18 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Updates the own leaf node
+    ///
+    /// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally
+    /// be provided. If not, a new one will be created on the fly.
+    ///
+    /// If successful, it returns a `Vec` of
+    /// [`MLSMessage`](crate::prelude::MLSMessage) and an optional
+    /// [`Welcome`](crate::prelude::Welcome) message if there were add proposals
+    /// in the queue of pending proposals.
     pub fn self_update(
         &mut self,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -628,7 +649,7 @@ impl<'a> ManagedGroup<'a> {
             .collect();
 
         // Create Commit over all proposals
-        let (commit, _welcome_option, kpb_option) = self.group.create_commit(
+        let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             &self.credential_bundle,
             &messages_to_commit,
@@ -657,7 +678,7 @@ impl<'a> ManagedGroup<'a> {
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(mls_messages)
+        Ok((mls_messages, welcome_option))
     }
 
     /// Creates a proposal to update the own leaf node
