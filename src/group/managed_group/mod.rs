@@ -204,7 +204,7 @@ impl<'a> ManagedGroup<'a> {
     /// Members are removed by providing the index of their leaf in the tree.
     ///
     /// If successful, it returns a `Vec` of
-    /// [`MLSMessage`](crate::prelude::MLSMessage) and a n optional
+    /// [`MLSMessage`](crate::prelude::MLSMessage) and an optional
     /// [`Welcome`](crate::prelude::Welcome) message if there were add proposals
     /// in the queue of pending proposals.
     pub fn remove_members(
