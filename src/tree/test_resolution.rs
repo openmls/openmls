@@ -1,6 +1,7 @@
 use super::*;
 
-/// This test makes sure the filtering of the exclusion list during resolution works as intended.
+/// This test makes sure the filtering of the exclusion list during resolution
+/// works as intended.
 #[test]
 
 fn test_exclusion_list() {
@@ -12,7 +13,8 @@ fn test_exclusion_list() {
             &[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
         // Arbitrary exclusion list
         const EXCLUSION_LIST: &[usize] = &[10, 12, 14, 16, 18, 20, 22];
-        // Expected filtered resolution (the nodes from the exclusion list should be stripped from the full resolution)
+        // Expected filtered resolution (the nodes from the exclusion list should be
+        // stripped from the full resolution)
         const FILTERED_RESOLUTION: &[usize] = &[0, 2, 4, 6, 8, 24, 26, 28, 30];
 
         // Build a list of nodes, for which we need credentials and key package bundles

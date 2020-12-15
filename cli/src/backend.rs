@@ -24,7 +24,8 @@ impl Backend {
         Ok(String::from_utf8(response).unwrap())
     }
 
-    /// Get a list of all clients with name, ID, and key packages from the server.
+    /// Get a list of all clients with name, ID, and key packages from the
+    /// server.
     pub fn list_clients(&self) -> Result<Vec<ClientInfo>, String> {
         let mut url = self.ds_url.clone();
         url.set_path(&"/clients/list");

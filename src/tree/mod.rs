@@ -854,6 +854,7 @@ impl RatchetTree {
     }
 }
 
+/// This struct contain the return vallues of the `apply_proposals()` function
 pub struct ApplyProposalsValues {
     pub path_required: bool,
     pub self_removed: bool,
@@ -861,8 +862,12 @@ pub struct ApplyProposalsValues {
 }
 
 impl ApplyProposalsValues {
+    /// This function creates a `HashSet` of node indexes of the new nodes that
+    /// were added to the tree. The `HashSet` will be querried by the
+    /// `resolve()` function to filter out those nodes from the resolution.
     pub fn exclusion_list(&self) -> HashSet<&NodeIndex> {
-        // Collect the new leaves' indexes so we can filter them out in the resolution later
+        // Collect the new leaves' indexes so we can filter them out in the resolution
+        // later
         let new_leaves_indexes: HashSet<&NodeIndex> =
             HashSet::from_iter(self.invitation_list.iter().map(|(index, _)| index));
         new_leaves_indexes
