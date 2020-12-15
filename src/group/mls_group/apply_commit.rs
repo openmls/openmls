@@ -83,7 +83,7 @@ impl MlsGroup {
                 };
                 provisional_tree.replace_private_tree(own_kpb, &serialized_context)
             } else {
-                // Collect the new leaves indexes so we can filter them out in the resolution later
+                // Collect the new leaves' indexes so we can filter them out in the resolution later.
                 provisional_tree
                     .update_path(
                         sender,
