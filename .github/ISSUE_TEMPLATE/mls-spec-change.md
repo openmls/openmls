@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-<!-- The issue tracker is ONLY used for reporting bugs, feature requests, and spec changes. For support or discussions please use https://github.com/openmls/openmls/discussions (or some chat service) -->
+<!-- The issue tracker is ONLY used for reporting bugs, feature requests, and spec changes. For support or discussions please use https://github.com/openmls/openmls/discussions or https://openmls.zulipchat.com/. -->
 
 **Description of the changes**
 <!-- Explain what the changes are about. -->
