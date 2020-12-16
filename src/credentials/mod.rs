@@ -1,3 +1,6 @@
+mod errors;
+pub use errors::*;
+
 use evercrypt::prelude::SignatureError;
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -8,23 +11,7 @@ use std::convert::TryFrom;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::{Config, ConfigError};
-
-#[derive(Debug)]
-pub enum CredentialError {
-    UnknwonConfigError,
-    UnsupportedCredentialType,
-}
-
-impl From<ConfigError> for CredentialError {
-    fn from(e: ConfigError) -> CredentialError {
-        // TODO: #83
-        match e {
-            ConfigError::UnsupportedCiphersuite => CredentialError::UnsupportedCredentialType,
-            _ => CredentialError::UnknwonConfigError,
-        }
-    }
-}
+use crate::config::Config;
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -221,12 +208,7 @@ impl CredentialBundle {
         ciphersuite_name: CiphersuiteName,
     ) -> Result<Self, CredentialError> {
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let (private_key, public_key) = match ciphersuite.new_signature_keypair() {
-            Ok(kp) => kp.into_tuple(),
-            Err(_) => {
-                return Err(CredentialError::UnknwonConfigError);
-            }
-        };
+        let (private_key, public_key) = ciphersuite.new_signature_keypair()?.into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity,

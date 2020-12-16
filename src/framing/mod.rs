@@ -1,6 +1,6 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::creds::*;
+use crate::credentials::*;
 use crate::group::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;

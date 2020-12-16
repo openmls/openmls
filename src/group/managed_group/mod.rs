@@ -5,7 +5,7 @@ mod ser;
 #[cfg(test)]
 mod test_managed_group;
 
-use crate::creds::{Credential, CredentialBundle};
+use crate::credentials::{Credential, CredentialBundle};
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::{KeyPackage, KeyPackageBundle};
