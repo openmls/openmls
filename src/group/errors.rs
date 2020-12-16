@@ -3,6 +3,7 @@
 //! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
+use crate::ciphersuite::HpkeError;
 use crate::config::ConfigError;
 use crate::framing::errors::MLSCiphertextError;
 use crate::tree::{secret_tree::SecretTypeError, TreeError};
@@ -47,7 +48,9 @@ implement_error! {
         DuplicateRatchetTreeExtension =
             "Found more than one ratchet tree extension in the Welcome message.",
         UnsupportedMlsVersion =
-            "The Welcome message uses an unsupported MLS version",
+            "The Welcome message uses an unsupported MLS version.",
+        InvalidGroupInfo =
+            "Could not decrypt GroupInfo contained in the Welcome message.",
         UnknownError =
             "An unknown error occurred.",
     }
@@ -105,6 +108,14 @@ impl From<TreeError> for WelcomeError {
             | TreeError::InvalidArguments
             | TreeError::InvalidUpdatePath => WelcomeError::InvalidRatchetTree,
             TreeError::UnknownError => WelcomeError::UnknownError,
+        }
+    }
+}
+
+impl From<HpkeError> for WelcomeError {
+    fn from(e: HpkeError) -> Self {
+        match e {
+            HpkeError::DecryptionError => WelcomeError::InvalidGroupInfo,
         }
     }
 }

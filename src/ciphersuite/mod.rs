@@ -396,7 +396,7 @@ impl Ciphersuite {
         sk_r: &HPKEPrivateKey,
         info: &[u8],
         aad: &[u8],
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, HpkeError> {
         self.hpke
             .open(
                 &input.kem_output,
@@ -408,7 +408,7 @@ impl Ciphersuite {
                 None,
                 None,
             )
-            .unwrap()
+            .map_err(|_| HpkeError::DecryptionError)
     }
 
     /// Derive a new HPKE keypair from a given Secret.

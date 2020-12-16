@@ -9,6 +9,11 @@ pub(crate) enum HKDFError {
     InvalidLength,
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum HpkeError {
+    DecryptionError,
+}
+
 #[derive(Debug)]
 pub(crate) enum CryptoError {
     CryptoLibraryError,
