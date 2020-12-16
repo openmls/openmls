@@ -1,9 +1,10 @@
-# OpenMLS
+# OpenMLS [![OpenMLS Chat][chat-image]][chat-link]
 
 ![build status](https://travis-ci.com/openmls/openmls.svg?branch=main)
 [![Build & Test](https://github.com/openmls/openmls/workflows/Build%20&%20Test/badge.svg)](https://github.com/openmls/openmls/actions?query=workflow%3A%22Build+%26+Test%22)
 [![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)](https://openmls.github.io/openmls/openmls/index.html)
 [![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
+[![OpenMLS List][list-image]][list-link]
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
 
@@ -64,3 +65,8 @@ OpenMLS welcomes contributions! Before contributing, please read the [contributi
 ## Code of conduct
 
 OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
+
+[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg
+[chat-link]: https://openmls.zulipchat.com
+[list-image]: https://img.shields.io/badge/mailing-list-blue.svg
+[list-link]: https://groups.google.com/u/0/g/openmls-dev
