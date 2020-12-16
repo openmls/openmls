@@ -36,7 +36,7 @@ implement_error! {
             MissingRatchetTree =
                 "No ratchet tree available to build initial tree after receiving a Welcome message",
             TreeHashMismatch =
-                "The tree hash computed does not match the one in the GroupInfo.",
+                "The computed tree hash does not match the one in the GroupInfo.",
             ConfirmationTagMismatch =
                 "The computed confirmation tag does not match the expected one.",
             InvalidGroupInfoSignature =
@@ -44,7 +44,7 @@ implement_error! {
             GroupInfoDecryptionFailure =
                 "Unable to decrypt the GroupInfo",
             DuplicateRatchetTreeExtension =
-                "Found more than one ratchet tree extension in the Welcome message.",
+                "Found a duplicate ratchet tree extension in the Welcome message.",
             UnsupportedMlsVersion =
                 "The Welcome message uses an unsupported MLS version",
             UnknownError =
