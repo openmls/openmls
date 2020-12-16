@@ -30,7 +30,7 @@ pub mod error;
 mod ciphersuite;
 mod codec;
 pub mod config;
-mod creds;
+mod credentials;
 mod extensions;
 pub mod framing;
 pub mod group;

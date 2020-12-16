@@ -5,7 +5,7 @@ use evercrypt::rand_util::*;
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
-use crate::creds::*;
+use crate::credentials::*;
 use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, LifetimeExtension,
     ParentHashExtension,

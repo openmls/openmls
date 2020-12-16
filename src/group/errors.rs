@@ -28,28 +28,32 @@ implement_error! {
 
 implement_error! {
     pub enum WelcomeError {
-        CiphersuiteMismatch =
-            "Ciphersuites in the Welcome message and the corresponding key package bundle don't match.",
-        JoinerSecretNotFound =
-            "No joiner secret found in the Welcome message.",
-        MissingRatchetTree =
-            "No ratchet tree available to build initial tree after receiving a Welcome message",
-        TreeHashMismatch =
-            "The tree hash computed does not match the one in the GroupInfo.",
-        ConfirmationTagMismatch =
-             "The computed confirmation tag does not match the expected one.",
-        InvalidRatchetTree =
-            "Invalid ratchet tree in Welcome message.",
-        InvalidGroupInfoSignature =
-            "The signature on the GroupInfo is not valid.",
-        GroupInfoDecryptionFailure =
-            "Unable to decrypt the GroupInfo",
-        DuplicateRatchetTreeExtension =
-            "Found more than one ratchet tree extension in the Welcome message.",
-        UnsupportedMlsVersion =
-            "The Welcome message uses an unsupported MLS version",
-        UnknownError =
-            "An unknown error occurred.",
+        Simple {
+            CiphersuiteMismatch =
+                "Ciphersuites in the Welcome message and the corresponding key package bundle don't match.",
+            JoinerSecretNotFound =
+                "No joiner secret found in the Welcome message.",
+            MissingRatchetTree =
+                "No ratchet tree available to build initial tree after receiving a Welcome message",
+            TreeHashMismatch =
+                "The tree hash computed does not match the one in the GroupInfo.",
+            ConfirmationTagMismatch =
+                "The computed confirmation tag does not match the expected one.",
+            InvalidGroupInfoSignature =
+                "The signature on the GroupInfo is not valid.",
+            GroupInfoDecryptionFailure =
+                "Unable to decrypt the GroupInfo",
+            DuplicateRatchetTreeExtension =
+                "Found more than one ratchet tree extension in the Welcome message.",
+            UnsupportedMlsVersion =
+                "The Welcome message uses an unsupported MLS version",
+            UnknownError =
+                "An unknown error occurred.",
+        }
+        Complex {
+            InvalidRatchetTree(TreeError) =
+                "Invalid ratchet tree in Welcome message.",
+        }
     }
 }
 
@@ -95,16 +99,5 @@ implement_error! {
     pub enum ExporterError {
         KeyLengthTooLong =
             "The requested key length is not supported (too large).",
-    }
-}
-
-impl From<TreeError> for WelcomeError {
-    fn from(e: TreeError) -> WelcomeError {
-        match e {
-            TreeError::DuplicateIndex
-            | TreeError::InvalidArguments
-            | TreeError::InvalidUpdatePath => WelcomeError::InvalidRatchetTree,
-            TreeError::UnknownError => WelcomeError::UnknownError,
-        }
     }
 }
