@@ -1,6 +1,6 @@
 [package]
 name = "openmls"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Raphael Robert"]
 edition = "2018"
 description = "This is a WIP Rust implementation of the Messaging Layer Security (MLS) protocol based on draft 9+."
