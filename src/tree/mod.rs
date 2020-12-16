@@ -1,12 +1,13 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::{Config, ConfigError};
-use crate::creds::*;
+use crate::config::Config;
+use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
 
 // Tree modules
 pub(crate) mod codec;
+pub(crate) mod errors;
 pub(crate) mod hash_input;
 pub mod index;
 pub mod node;
@@ -16,6 +17,7 @@ pub(crate) mod secret_tree;
 pub(crate) mod sender_ratchet;
 pub(crate) mod treemath;
 
+pub(crate) use errors::*;
 use hash_input::*;
 use index::*;
 use node::*;
@@ -908,34 +910,6 @@ impl UpdatePath {
         Self {
             leaf_key_package,
             nodes,
-        }
-    }
-}
-
-implement_error! {
-    pub enum TreeError {
-        InvalidArguments = "",
-        DuplicateIndex = "",
-        InvalidUpdatePath = "",
-        UnknownError = "",
-    }
-}
-
-// TODO: Should get fixed in #83
-impl From<ConfigError> for TreeError {
-    fn from(e: ConfigError) -> TreeError {
-        match e {
-            ConfigError::UnsupportedMlsVersion => TreeError::InvalidArguments,
-            ConfigError::UnsupportedCiphersuite => TreeError::InvalidArguments,
-            _ => TreeError::UnknownError,
-        }
-    }
-}
-
-impl From<HpkeError> for TreeError {
-    fn from(e: HpkeError) -> Self {
-        match e {
-            HpkeError::DecryptionError => TreeError::InvalidUpdatePath,
         }
     }
 }

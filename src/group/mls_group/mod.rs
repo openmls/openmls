@@ -9,7 +9,7 @@ mod test_mls_group;
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::Config;
-use crate::creds::CredentialBundle;
+use crate::credentials::CredentialBundle;
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;

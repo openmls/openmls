@@ -40,15 +40,17 @@ OpenMLS relies on [EverCrypt](https://github.com/project-everest/hacl-star/tree/
 - run `cargo bench`
 
 ## Workspace
+
 This repository is a cargo workspace with the OpenMLS library as the main component.
 It further holds the following crates that are used for testing.
 
 ### Delivery Service
+
 A basic [delivery service](https://messaginglayersecurity.rocks/mls-architecture/draft-ietf-mls-architecture.html#name-delivery-service) can be found in [delivery-service/ds](./delivery-service/ds/).
 To interact with the delivery service the [ds-lib](./delivery-service/ds-lib/) provides the necessary types.
 
-
 ### Command line Client
+
 A basic command line client can be found in [cli](./cli).
 Note that this is a PoC for testing and must not be used for anything else.
 
@@ -61,6 +63,7 @@ OpenMLS is licensed under the MIT license. The license can be found [here](https
 ## Contributing
 
 OpenMLS welcomes contributions! Before contributing, please read the [contributing guidelines](CONTRIBUTING.md) carefully.
+You can start by looking at the [open issues](https://github.com/openmls/openmls/issues) or join the discussion on [GitHub discussions](https://github.com/openmls/openmls/discussions) or [Zulip](https://openmls.zulipchat.com/).
 
 ## Code of conduct
 

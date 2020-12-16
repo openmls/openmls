@@ -658,16 +658,6 @@ impl SignaturePrivateKey {
     }
 }
 
-impl From<ConfigError> for SignatureError {
-    fn from(e: ConfigError) -> SignatureError {
-        // TODO: #83
-        match e {
-            ConfigError::UnsupportedCiphersuite => SignatureError::UnkownAlgorithm,
-            _ => SignatureError::UnkownAlgorithm,
-        }
-    }
-}
-
 /// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
 /// it has changed, xoring it again and testing that it's back in its original
 /// state.

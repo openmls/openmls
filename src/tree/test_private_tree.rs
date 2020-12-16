@@ -3,7 +3,7 @@
 #[cfg(test)]
 use super::{index::NodeIndex, private_tree::*, test_util::*};
 #[cfg(test)]
-use crate::{ciphersuite::*, creds::*, key_packages::*, utils::*};
+use crate::{ciphersuite::*, credentials::*, key_packages::*, utils::*};
 
 #[cfg(test)]
 // Common setup for tests.

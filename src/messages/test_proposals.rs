@@ -1,5 +1,5 @@
 use crate::config::*;
-use crate::creds::*;
+use crate::credentials::*;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::*;

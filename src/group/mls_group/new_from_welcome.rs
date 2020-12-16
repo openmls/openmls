@@ -111,7 +111,7 @@ impl MlsGroup {
         // TODO: #35 Why does this get the nodes? Shouldn't `new_from_nodes` consume the
         // nodes?
         if !RatchetTree::verify_integrity(&ciphersuite, &nodes) {
-            return Err(WelcomeError::InvalidRatchetTree);
+            return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
         }
 
         // Compute path secrets
@@ -138,7 +138,7 @@ impl MlsGroup {
                 .validate_public_keys(&new_public_keys, &common_path)
                 .is_err()
             {
-                return Err(WelcomeError::InvalidRatchetTree);
+                return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
             }
         }
 
