@@ -1,3 +1,4 @@
+use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 
 implement_error! {
@@ -10,6 +11,8 @@ implement_error! {
         Complex {
             ConfigError(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details.",
+            PathSecretDecryptionError(CryptoError) =
+                "Error while decrypting `PathSecret`.",
         }
     }
 }

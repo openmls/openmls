@@ -118,7 +118,10 @@ fn test_failed_groupinfo_decryption() {
                 MlsGroup::new_from_welcome_internal(broken_welcome, None, key_package_bundle)
                     .expect_err("Creation of MLS group from a broken Welcome was successful.");
 
-            assert_eq!(error, WelcomeError::GroupSecretsDecryptionFailure)
+            assert_eq!(
+                error,
+                WelcomeError::GroupSecretsDecryptionFailure(CryptoError::HpkeDecryptionError)
+            )
         }
     }
 }

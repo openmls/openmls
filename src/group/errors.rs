@@ -3,7 +3,7 @@
 //! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::ciphersuite::HpkeError;
+use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::framing::errors::MLSCiphertextError;
 use crate::tree::{secret_tree::SecretTypeError, TreeError};
@@ -54,6 +54,8 @@ implement_error! {
         Complex {
             InvalidRatchetTree(TreeError) =
                 "Invalid ratchet tree in Welcome message.",
+            GroupSecretsDecryptionFailure(CryptoError) =
+                "Unable to decrypt the EncryptedGroupSecrets.",
         }
     }
 }

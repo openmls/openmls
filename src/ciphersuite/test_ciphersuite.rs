@@ -1,8 +1,9 @@
 //! Unit tests for the ciphersuites.
 
+use crate::ciphersuite::CryptoError;
 use crate::config::Config;
 
-use super::{HpkeCiphertext, HpkeError, Secret};
+use super::{HpkeCiphertext, Secret};
 
 // Spot test to make sure hpke seal/open work.
 #[test]
@@ -37,8 +38,8 @@ fn test_hpke_seal_open() {
         let decryption_error2 = ciphersuite
             .hpke_open(&broken_ciphertext2, kp.private_key(), &[], &[])
             .expect_err("Erroneously correct ciphertext decryption of broken ciphertext.");
-        assert_eq!(decryption_error1, HpkeError::DecryptionError);
-        assert_eq!(decryption_error2, HpkeError::DecryptionError);
+        assert_eq!(decryption_error1, CryptoError::HpkeDecryptionError);
+        assert_eq!(decryption_error2, CryptoError::HpkeDecryptionError);
     }
 }
 
