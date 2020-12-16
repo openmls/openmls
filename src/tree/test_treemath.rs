@@ -102,7 +102,7 @@ fn test_dir_path() {
 fn test_tree_hash() {
     use crate::ciphersuite::*;
     use crate::config::*;
-    use crate::creds::*;
+    use crate::credentials::*;
     use crate::tree::*;
 
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {

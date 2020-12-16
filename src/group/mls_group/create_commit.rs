@@ -1,7 +1,7 @@
 use crate::ciphersuite::signable::Signable;
 use crate::codec::*;
 use crate::config::Config;
-use crate::creds::CredentialBundle;
+use crate::credentials::CredentialBundle;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;

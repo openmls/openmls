@@ -5,10 +5,10 @@
 //! supported.
 
 implement_error! {
-pub enum ConfigError {
-    InvalidConfig = "Invalid configuration.",
-    UnsupportedMlsVersion = "MLS version is not supported by this configuration.",
-    UnsupportedCiphersuite = "Ciphersuite is not supported by this configuration.",
-    UnsupportedSignatureScheme = "Signature scheme is not supported by this configuration.",
-}
+    pub enum ConfigError {
+        InvalidConfig = "Invalid configuration.",
+        UnsupportedMlsVersion = "MLS version is not supported by this configuration.",
+        UnsupportedCiphersuite = "Ciphersuite is not supported by this configuration.",
+        UnsupportedSignatureScheme = "Signature scheme is not supported by this configuration.",
+    }
 }

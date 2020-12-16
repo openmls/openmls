@@ -28,43 +28,51 @@ macro_rules! implement_error {
             )*
         }
     ) => {
-        as_item!{
-            #[derive(Debug, PartialEq, Clone)]
-            $visibility enum $src_name {
-                $(
-                    #[doc = $description]
-                    $var_name,
-                )*
-            }
-        }
-
-        impl std::fmt::Display for $src_name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_fmt(format_args!("{:?}: {}", self, self._description()))
-            }
-        }
-
-        impl std::error::Error for $src_name {}
-
-        impl $src_name {
-            pub(crate) fn _description(&self) -> String {
-                as_expr! {
-                    match self {
+        implement_error! {
+                $visibility enum $src_name {
+                    Simple {
                         $(
-                            $src_name::$var_name => $description.to_string(),
+                            $var_name = $description,
                         )*
                     }
+                    Complex {}
                 }
-            }
         }
     };
-
     // This is for complex error types where every variant holds a payload.
     (
         $visibility:vis enum $src_name:ident {
             $(
-                $var_name:ident($var_payload:tt) = $description:literal,
+                $var_name:ident$var_payload:tt = $description:literal,
             )*
+        }
+    ) => {
+        implement_error! {
+                $visibility enum $src_name {
+                    Simple {}
+                    Complex {
+                        $(
+                            $var_name$var_payload = $description,
+                        )*
+                    }
+                }
+        }
+    };
+
+    // This implements the actual logic and is used by both simple and complex
+    // errors. When an error type needs both, they have to be marked accordingly.
+    (
+        $visibility:vis enum $src_name:ident {
+            Simple {
+                $(
+                    $var_name_simple:ident = $description_simple:literal,
+                )*
+            }
+            Complex {
+                $(
+                    $var_name:ident($var_payload:tt) = $description:literal,
+                )*
+            }
         }
     ) => {
         as_item!{
@@ -73,6 +81,10 @@ macro_rules! implement_error {
                 $(
                     #[doc = $description]
                     $var_name($var_payload),
+                )*
+                $(
+                    #[doc = $description_simple]
+                    $var_name_simple,
                 )*
             }
         }
@@ -100,6 +112,9 @@ macro_rules! implement_error {
                         $(
                             $src_name::$var_name(e) => Some(e),
                         )*
+                        $(
+                            $src_name::$var_name_simple => None,
+                        )*
                     }
                 }
             }
@@ -111,6 +126,9 @@ macro_rules! implement_error {
                     match self {
                         $(
                             $src_name::$var_name(e) => format!("{}: {}", $description, e._description()),
+                        )*
+                        $(
+                            $src_name::$var_name_simple => format!("{}", $description_simple),
                         )*
                     }
                 }

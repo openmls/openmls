@@ -49,7 +49,7 @@ implement_enum_display!(KeyPackageError);
 impl From<ExtensionError> for KeyPackageError {
     fn from(e: ExtensionError) -> Self {
         match e {
-            ExtensionError::InvalidExtensionType => KeyPackageError::ExtensionNotPresent,
+            ExtensionError::InvalidExtensionType(_) => KeyPackageError::ExtensionNotPresent,
             _ => KeyPackageError::UnknownExtensionError,
         }
     }

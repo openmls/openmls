@@ -1,4 +1,4 @@
-use crate::creds::*;
+use crate::credentials::*;
 use crate::group::*;
 
 /// Collection of callback functions that are passed to a `ManagedGroup` as part

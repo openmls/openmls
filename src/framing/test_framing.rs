@@ -92,7 +92,7 @@ fn context_presence() {
 #[test]
 fn unknown_sender() {
     use crate::config::*;
-    use crate::creds::*;
+    use crate::credentials::*;
     use crate::key_packages::*;
     use crate::utils::*;
 
