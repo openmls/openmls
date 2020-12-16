@@ -32,6 +32,8 @@ impl From<GroupError> for ClientError {
     }
 }
 
+/// This struct models a client that can be used for testing functions of the
+/// Managed Group API.
 struct Client<'a> {
     /// Name of the client.
     pub(crate) identity: Vec<u8>,
@@ -45,6 +47,7 @@ struct Client<'a> {
 }
 
 impl<'a> Client<'a> {
+    /// Get a fresh key package for this client.
     pub fn get_fresh_key_package(&self, ciphersuite: &Ciphersuite) -> KeyPackage {
         // We unwrap here for now, because all ciphersuites are supported by all
         // clients.
@@ -63,6 +66,7 @@ impl<'a> Client<'a> {
         key_package
     }
 
+    /// Have the client create a fresh group with the given `GroupId`.
     pub fn create_group(
         &'a self,
         group_id: GroupId,
@@ -87,6 +91,7 @@ impl<'a> Client<'a> {
         self.groups.borrow_mut().insert(group_id, group_state);
     }
 
+    /// Have the client join a group given a `Welcome` message.
     pub fn join_group(
         &'a self,
         managed_group_config: ManagedGroupConfig,
@@ -126,6 +131,7 @@ impl<'a> Client<'a> {
         Ok(())
     }
 
+    /// Have the client receive messages for the group with group ID `group_id`.
     pub fn receive_messages_for_group(
         &self,
         group_id: &GroupId,
@@ -140,6 +146,8 @@ impl<'a> Client<'a> {
     }
 }
 
+/// This struct contains the global state of a test setup. The `groups` field
+/// currently only serves as a counter to generate `GroupId`s for new groups.
 struct ManagedTestSetup<'a> {
     // The clients identity is its position in the vector in be_bytes.
     clients: Vec<Client<'a>>,
@@ -147,6 +155,7 @@ struct ManagedTestSetup<'a> {
 }
 
 impl<'a> ManagedTestSetup<'a> {
+    /// Create a new `ManagedTestSetup` with a given number of clients.
     pub fn new(number_of_clients: usize) -> Self {
         let mut clients = Vec::new();
         for i in 0..number_of_clients {
@@ -174,7 +183,10 @@ impl<'a> ManagedTestSetup<'a> {
         ManagedTestSetup { clients, groups }
     }
 
-    /// Create a random group of size `group_size` and return the `GroupId`
+    /// Create a random group of size `group_size` and return the `GroupId`. The
+    /// group is created by an initial creator client and is then subsequently
+    /// extended by random group members, who add a random number of clients
+    /// until the desired group size is reached.
     pub fn create_random_group(
         &'a self,
         group_size: usize,
@@ -264,6 +276,12 @@ impl<'a> ManagedTestSetup<'a> {
     }
 }
 
+/// A small test that creates a `ManagedTestSetup` with a number of users and a
+/// group with a subset of those users. As the group is created by adding
+/// multiple members at a time (with high probability), this serves as a basic
+/// test for the ordering of the ProposalQueue. If the ProposalQueue was not
+/// ordered deterministically, the state of the individual members would diverge
+/// and adding a new member would fail, as the `confirmation_tag` would differ.
 #[test]
 fn test_randomized_setup() {
     use std::str;
@@ -314,7 +332,8 @@ fn test_randomized_setup() {
         );
     }
 
-    let setup = ManagedTestSetup::new(20);
+    // Create a sufficiently large `ManagedTestSetup`.
+    let setup = ManagedTestSetup::new(30);
     for ciphersuite in Config::supported_ciphersuites() {
         let handshake_message_format = HandshakeMessageFormat::Plaintext;
         let update_policy = UpdatePolicy::default();
@@ -324,6 +343,7 @@ fn test_randomized_setup() {
             .with_error_occured(error_occured);
         let managed_group_config =
             ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
-        setup.create_random_group(10, ciphersuite, managed_group_config);
+        // Create a sufficiently large group.
+        setup.create_random_group(20, ciphersuite, managed_group_config);
     }
 }

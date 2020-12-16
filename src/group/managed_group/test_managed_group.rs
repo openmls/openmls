@@ -78,12 +78,19 @@ fn test_managed_group_errors() {
     )
     .unwrap();
 
-    assert!(
-        alice_group.add_members(&[]).unwrap_err()
-            == ManagedGroupError::EmptyInput(super::EmptyInputError::AddMembers)
+    let add_members_error = alice_group
+        .add_members(&[])
+        .expect_err("Adding an empty list of members did not return an error!");
+    let remove_members_error = alice_group
+        .remove_members(&[])
+        .expect_err("Removing an empty list of members did not return an error!");
+
+    assert_eq!(
+        add_members_error,
+        ManagedGroupError::EmptyInput(super::EmptyInputError::AddMembers)
     );
-    assert!(
-        alice_group.remove_members(&[]).unwrap_err()
-            == ManagedGroupError::EmptyInput(super::EmptyInputError::RemoveMembers)
+    assert_eq!(
+        remove_members_error,
+        ManagedGroupError::EmptyInput(super::EmptyInputError::RemoveMembers)
     );
 }
