@@ -18,10 +18,7 @@ use std::io::{Error, Read, Write};
 
 pub use callbacks::*;
 pub use config::*;
-pub use errors::{
-    EmptyInputError, InvalidMessageError, ManagedGroupError, PendingProposalsError,
-    UseAfterEviction,
-};
+pub use errors::{InvalidMessageError, ManagedGroupError, PendingProposalsError, UseAfterEviction};
 use ser::*;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
@@ -153,10 +150,6 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
-        if key_packages.is_empty() {
-            return Err(ManagedGroupError::EmptyInput(EmptyInputError::AddMembers));
-        }
-
         // Create add proposals by value from key packages
         let proposals = key_packages
             .iter()
@@ -220,12 +213,6 @@ impl<'a> ManagedGroup<'a> {
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
-
-        if members.is_empty() {
-            return Err(ManagedGroupError::EmptyInput(
-                EmptyInputError::RemoveMembers,
-            ));
         }
 
         // Create add proposals by value
@@ -491,7 +478,7 @@ impl<'a> ManagedGroup<'a> {
 
     // === Application messages ===
 
-    /// Creates an application message.  
+    /// Creates an application message.
     /// Returns `ManagedGroupError::UseAfterEviction(UseAfterEviction::Error)`
     /// if the member is no longer part of the group.
     /// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals
