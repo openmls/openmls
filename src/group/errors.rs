@@ -34,7 +34,7 @@ implement_error! {
         JoinerSecretNotFound =
             "No joiner secret found in the Welcome message.",
         MissingRatchetTree =
-            "No ratchet tree available to build initial tree after receiving a Welcome message",
+            "No ratchet tree available to build initial tree after receiving a Welcome message.",
         TreeHashMismatch =
             "The tree hash computed does not match the one in the GroupInfo.",
         ConfirmationTagMismatch =
@@ -44,7 +44,9 @@ implement_error! {
         InvalidGroupInfoSignature =
             "The signature on the GroupInfo is not valid.",
         GroupInfoDecryptionFailure =
-            "Unable to decrypt the GroupInfo",
+            "Unable to decrypt the GroupInfo.",
+        GroupSecretsDecryptionFailure =
+            "Unable to decrypt the GroupSecrets.",
         DuplicateRatchetTreeExtension =
             "Found more than one ratchet tree extension in the Welcome message.",
         UnsupportedMlsVersion =
@@ -115,7 +117,7 @@ impl From<TreeError> for WelcomeError {
 impl From<HpkeError> for WelcomeError {
     fn from(e: HpkeError) -> Self {
         match e {
-            HpkeError::DecryptionError => WelcomeError::InvalidGroupInfo,
+            HpkeError::DecryptionError => WelcomeError::GroupSecretsDecryptionFailure,
         }
     }
 }
