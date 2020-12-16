@@ -344,7 +344,7 @@
         <span class="comment">// TODO: #35 Why does this get the nodes? Shouldn&#39;t `new_from_nodes` consume the</span>
         <span class="comment">// nodes?</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">RatchetTree</span>::<span class="ident">verify_integrity</span>(<span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">nodes</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>(<span class="ident">TreeError</span>::<span class="ident">InvalidTree</span>));
         }
 
         <span class="comment">// Compute path secrets</span>
@@ -371,7 +371,7 @@
                 .<span class="ident">validate_public_keys</span>(<span class="kw-2">&amp;</span><span class="ident">new_public_keys</span>, <span class="kw-2">&amp;</span><span class="ident">common_path</span>)
                 .<span class="ident">is_err</span>()
             {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>(<span class="ident">TreeError</span>::<span class="ident">InvalidTree</span>));
             }
         }
 

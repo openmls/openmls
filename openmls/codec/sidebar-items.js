@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["CodecError",""],["VecSize",""]],"fn":[["decode_vec",""],["encode_vec",""]],"struct":[["Cursor",""]],"trait":[["Codec",""]]});
+initSidebarItems({"enum":[["VecSize",""]],"fn":[["decode_vec",""],["encode_vec",""]],"mod":[["errors",""]],"struct":[["Cursor",""]],"trait":[["Codec",""]]});

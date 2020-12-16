@@ -916,34 +916,17 @@
 <span id="913">913</span>
 <span id="914">914</span>
 <span id="915">915</span>
-<span id="916">916</span>
-<span id="917">917</span>
-<span id="918">918</span>
-<span id="919">919</span>
-<span id="920">920</span>
-<span id="921">921</span>
-<span id="922">922</span>
-<span id="923">923</span>
-<span id="924">924</span>
-<span id="925">925</span>
-<span id="926">926</span>
-<span id="927">927</span>
-<span id="928">928</span>
-<span id="929">929</span>
-<span id="930">930</span>
-<span id="931">931</span>
-<span id="932">932</span>
-<span id="933">933</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">creds</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">proposals</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Tree modules</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">codec</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">hash_input</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">index</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">node</span>;
@@ -953,6 +936,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">sender_ratchet</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">treemath</span>;
 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">hash_input</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">index</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">node</span>::<span class="kw-2">*</span>;
@@ -1845,26 +1829,6 @@
         <span class="self">Self</span> {
             <span class="ident">leaf_key_package</span>,
             <span class="ident">nodes</span>,
-        }
-    }
-}
-
-<span class="macro">implement_error</span><span class="macro">!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeError</span> {
-        <span class="ident">InvalidArguments</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
-        <span class="ident">DuplicateIndex</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
-        <span class="ident">InvalidUpdatePath</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
-        <span class="ident">UnknownError</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>,
-    }
-}
-
-<span class="comment">// TODO: Should get fixed in #83</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ConfigError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TreeError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">ConfigError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TreeError</span> {
-        <span class="kw">match</span> <span class="ident">e</span> {
-            <span class="ident">ConfigError</span>::<span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span>,
-            <span class="ident">ConfigError</span>::<span class="ident">UnsupportedCiphersuite</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">TreeError</span>::<span class="ident">UnknownError</span>,
         }
     }
 }

@@ -104,13 +104,6 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
@@ -142,28 +135,32 @@
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WelcomeError</span> {
-        <span class="ident">CiphersuiteMismatch</span> <span class="op">=</span>
-            <span class="string">&quot;Ciphersuites in the Welcome message and the corresponding key package bundle don&#39;t match.&quot;</span>,
-        <span class="ident">JoinerSecretNotFound</span> <span class="op">=</span>
-            <span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>,
-        <span class="ident">MissingRatchetTree</span> <span class="op">=</span>
-            <span class="string">&quot;No ratchet tree available to build initial tree after receiving a Welcome message&quot;</span>,
-        <span class="ident">TreeHashMismatch</span> <span class="op">=</span>
-            <span class="string">&quot;The tree hash computed does not match the one in the GroupInfo.&quot;</span>,
-        <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span>
-             <span class="string">&quot;The computed confirmation tag does not match the expected one.&quot;</span>,
-        <span class="ident">InvalidRatchetTree</span> <span class="op">=</span>
-            <span class="string">&quot;Invalid ratchet tree in Welcome message.&quot;</span>,
-        <span class="ident">InvalidGroupInfoSignature</span> <span class="op">=</span>
-            <span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>,
-        <span class="ident">GroupInfoDecryptionFailure</span> <span class="op">=</span>
-            <span class="string">&quot;Unable to decrypt the GroupInfo&quot;</span>,
-        <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span>
-            <span class="string">&quot;Found more than one ratchet tree extension in the Welcome message.&quot;</span>,
-        <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span>
-            <span class="string">&quot;The Welcome message uses an unsupported MLS version&quot;</span>,
-        <span class="ident">UnknownError</span> <span class="op">=</span>
-            <span class="string">&quot;An unknown error occurred.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">CiphersuiteMismatch</span> <span class="op">=</span>
+                <span class="string">&quot;Ciphersuites in the Welcome message and the corresponding key package bundle don&#39;t match.&quot;</span>,
+            <span class="ident">JoinerSecretNotFound</span> <span class="op">=</span>
+                <span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>,
+            <span class="ident">MissingRatchetTree</span> <span class="op">=</span>
+                <span class="string">&quot;No ratchet tree available to build initial tree after receiving a Welcome message&quot;</span>,
+            <span class="ident">TreeHashMismatch</span> <span class="op">=</span>
+                <span class="string">&quot;The computed tree hash does not match the one in the GroupInfo.&quot;</span>,
+            <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span>
+                <span class="string">&quot;The computed confirmation tag does not match the expected one.&quot;</span>,
+            <span class="ident">InvalidGroupInfoSignature</span> <span class="op">=</span>
+                <span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>,
+            <span class="ident">GroupInfoDecryptionFailure</span> <span class="op">=</span>
+                <span class="string">&quot;Unable to decrypt the GroupInfo&quot;</span>,
+            <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span>
+                <span class="string">&quot;Found a duplicate ratchet tree extension in the Welcome message.&quot;</span>,
+            <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span>
+                <span class="string">&quot;The Welcome message uses an unsupported MLS version&quot;</span>,
+            <span class="ident">UnknownError</span> <span class="op">=</span>
+                <span class="string">&quot;An unknown error occurred.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">InvalidRatchetTree</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
+                <span class="string">&quot;Invalid ratchet tree in Welcome message.&quot;</span>,
+        }
     }
 }
 
@@ -209,17 +206,6 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExporterError</span> {
         <span class="ident">KeyLengthTooLong</span> <span class="op">=</span>
             <span class="string">&quot;The requested key length is not supported (too large).&quot;</span>,
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">TreeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WelcomeError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">TreeError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span> {
-        <span class="kw">match</span> <span class="ident">e</span> {
-            <span class="ident">TreeError</span>::<span class="ident">DuplicateIndex</span>
-            <span class="op">|</span> <span class="ident">TreeError</span>::<span class="ident">InvalidArguments</span>
-            <span class="op">|</span> <span class="ident">TreeError</span>::<span class="ident">InvalidUpdatePath</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">InvalidRatchetTree</span>,
-            <span class="ident">TreeError</span>::<span class="ident">UnknownError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">WelcomeError</span>::<span class="ident">UnknownError</span>,
-        }
     }
 }
 </pre></div>
