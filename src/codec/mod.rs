@@ -1,6 +1,6 @@
 mod errors;
 
-pub(crate) use errors::*;
+pub use errors::*;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
