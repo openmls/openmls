@@ -250,16 +250,13 @@ impl<'a> ProposalQueue<'a> {
         let mut proposals_by_reference_queue: HashMap<ProposalReference, QueuedProposal> =
             HashMap::new();
         for mls_plaintext in proposals_by_reference {
-            let queued_proposal =
-                QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext).unwrap();
-            proposals_by_reference_queue.insert(
-                queued_proposal.proposal_reference().clone(),
-                queued_proposal,
-            );
+            let queued_proposal = QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext)?;
+            proposals_by_reference_queue
+                .insert(queued_proposal.proposal_reference(), queued_proposal);
         }
 
         // Build the actual queue
-        let mut proposal_queue = ProposalQueue::new();
+        let mut proposal_queue = ProposalQueue::default();
 
         // Iterate over the committed proposals and insert the proposals in the queue
         for proposal_or_ref in committed_proposals.iter() {
