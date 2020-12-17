@@ -1,17 +1,15 @@
 use crate::codec::*;
 
-use std::error::Error;
-
 implement_error! {
     pub enum ProposalQueueError {
-        ProposalNotFound =
-            "Not all proposals in the Commit were found locally.",
+        ProposalNotFound = "Not all proposals in the Commit were found locally.",
     }
 }
 
-#[derive(Debug)]
-pub enum ProposalOrRefTypeError {
-    UnknownValue,
+implement_error! {
+    pub enum ProposalOrRefTypeError {
+        UnknownValue = "Invalid value for ProposalOrRefType was found.",
+    }
 }
 
 impl From<ProposalOrRefTypeError> for CodecError {
@@ -20,27 +18,8 @@ impl From<ProposalOrRefTypeError> for CodecError {
     }
 }
 
-implement_enum_display!(ProposalOrRefTypeError);
-
-impl Error for ProposalOrRefTypeError {
-    fn description(&self) -> &str {
-        match self {
-            Self::UnknownValue => "Invalid value for ProposalOrRefType was found.",
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum QueuedProposalError {
-    WrongContentType,
-}
-
-implement_enum_display!(QueuedProposalError);
-
-impl Error for QueuedProposalError {
-    fn description(&self) -> &str {
-        match self {
-            Self::WrongContentType => "API misuse. Only proposals can end up in the proposal queue",
-        }
+implement_error! {
+    pub enum QueuedProposalError {
+        WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
     }
 }

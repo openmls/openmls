@@ -1,7 +1,7 @@
 use crate::ciphersuite::signable::Signable;
 use crate::codec::*;
 use crate::config::Config;
-use crate::creds::CredentialBundle;
+use crate::credentials::CredentialBundle;
 use crate::extensions::*;
 use crate::framing::*;
 use crate::group::mls_group::*;
@@ -34,21 +34,25 @@ impl MlsGroup {
         let mut provisional_tree = RatchetTree::new_from_public_tree(&self.tree());
 
         // Apply proposals to tree
-        let (path_required_by_commit, self_removed, invited_members) =
-            match provisional_tree.apply_proposals(proposal_queue, &[]) {
-                Ok(res) => res,
-                Err(_) => return Err(CreateCommitError::OwnKeyNotFound.into()),
-            };
-        if self_removed {
+        let apply_proposals_values = match provisional_tree.apply_proposals(proposal_queue, &[]) {
+            Ok(res) => res,
+            Err(_) => return Err(CreateCommitError::OwnKeyNotFound.into()),
+        };
+        if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
         // Determine if Commit needs path field
-        let path_required = path_required_by_commit || contains_own_updates || force_self_update;
+        let path_required =
+            apply_proposals_values.path_required || contains_own_updates || force_self_update;
 
         let (commit_secret, path, path_secrets_option, kpb_option) = if path_required {
             // If path is needed, compute path values
             let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
-                .refresh_private_tree(credential_bundle, &self.group_context.serialize());
+                .refresh_private_tree(
+                    credential_bundle,
+                    &self.group_context.serialize(),
+                    apply_proposals_values.exclusion_list(),
+                );
             (
                 Some(commit_secret),
                 Some(path),
@@ -81,8 +85,11 @@ impl MlsGroup {
         );
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
-        let plaintext_secrets =
-            joiner_secret.group_secrets(invited_members, &provisional_tree, path_secrets_option);
+        let plaintext_secrets = joiner_secret.group_secrets(
+            apply_proposals_values.invitation_list,
+            &provisional_tree,
+            path_secrets_option,
+        );
         let member_secret =
             MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
         // Derive the welcome key material before consuming the `MemberSecret`

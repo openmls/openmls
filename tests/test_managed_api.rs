@@ -197,10 +197,13 @@ struct ManagedTestSetup<'a> {
     // The clients identity is its position in the vector in be_bytes.
     clients: Vec<Client<'a>>,
     groups: RefCell<HashMap<GroupId, Group<'a>>>,
+    // We need this to efficiently find recipients of Welcome messages.
+    waiting_for_welcome: HashMap<Vec<u8>, &'a Client<'a>>,
+    default_mgc: ManagedGroupConfig,
 }
 
 impl<'a> ManagedTestSetup<'a> {
-    pub fn new(number_of_clients: usize) -> Self {
+    pub fn new(number_of_clients: usize, default_mgc: ManagedGroupConfig) -> Self {
         let mut clients = Vec::new();
         for i in 0..number_of_clients {
             let identity = i.to_string().into_bytes();
@@ -224,11 +227,39 @@ impl<'a> ManagedTestSetup<'a> {
             clients.push(client)
         }
         let groups = RefCell::new(HashMap::new());
-        ManagedTestSetup { clients, groups }
+        let waiting_for_welcome = HashMap::new();
+        ManagedTestSetup {
+            clients,
+            groups,
+            waiting_for_welcome,
+            default_mgc,
+        }
+    }
+
+    pub fn get_fresh_key_package(
+        &mut self,
+        client: &'a Client<'a>,
+        ciphersuite: &Ciphersuite,
+    ) -> KeyPackage {
+        let key_package = client.get_fresh_key_package(ciphersuite);
+        self.waiting_for_welcome.insert(key_package.hash(), client);
+        key_package
+    }
+
+    pub fn deliver_welcome(&mut self, welcome: Welcome, group_id: GroupId) {
+        for egs in welcome.secrets() {
+            let client = self
+                .waiting_for_welcome
+                .remove(&egs.key_package_hash)
+                .unwrap();
+            let mut groups = self.groups.borrow_mut();
+            let group = groups.get_mut(&group_id).unwrap();
+            group.join_group(client, welcome.clone()).unwrap();
+        }
     }
 
     pub fn random_new_members_for_group(
-        &'a self,
+        &'a mut self,
         group_id: &GroupId,
         number_of_members: usize,
     ) -> Result<(Vec<&'a Client<'a>>, Vec<KeyPackage>), SetupError> {
@@ -255,7 +286,7 @@ impl<'a> ManagedTestSetup<'a> {
                             .is_none())
                 })
                 .unwrap();
-            key_packages.push(new_member.get_fresh_key_package(&group.ciphersuite));
+            key_packages.push(self.get_fresh_key_package(new_member, &group.ciphersuite));
             new_members.push(new_member);
         }
         Ok((new_members, key_packages))
@@ -266,7 +297,6 @@ impl<'a> ManagedTestSetup<'a> {
         &'a self,
         target_group_size: usize,
         ciphersuite: &Ciphersuite,
-        managed_group_config: ManagedGroupConfig,
     ) -> GroupId {
         let mut groups = self.groups.borrow_mut();
         if target_group_size > self.clients.len() {
@@ -279,14 +309,15 @@ impl<'a> ManagedTestSetup<'a> {
         let group_id = GroupId {
             value: groups.len().to_string().into_bytes(),
         };
+
         let public_tree =
-            group_creator.create_group(group_id.clone(), managed_group_config.clone(), ciphersuite);
+            group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite);
         let member_references = vec![group_creator];
         let group = Group {
             group_id: group_id.clone(),
             members: member_references,
             ciphersuite: ciphersuite.clone(),
-            group_config: managed_group_config,
+            group_config: self.default_mgc.clone(),
             public_tree,
         };
         groups.insert(group_id.clone(), group);
@@ -371,10 +402,10 @@ impl<'a> ManagedTestSetup<'a> {
         // TODO: For now hardcode it to 0
         let proposal_type = (OsRng.next_u32() as usize) % 3;
         //let proposal_type = 2;
-        let messages = match proposal_type {
+        let (messages, welcome_option) = match proposal_type {
             0 => {
                 let messages = if action_type == 0 {
-                    group.propose_self_update(None).unwrap()
+                    (group.propose_self_update(None).unwrap(), None)
                 } else {
                     group.self_update(None).unwrap()
                 };
@@ -384,7 +415,7 @@ impl<'a> ManagedTestSetup<'a> {
             }
             1 => {
                 if group.members().len() == 1 {
-                    Vec::new()
+                    (Vec::new(), None)
                 } else {
                     // How many members?
                     // TODO: Hard-code this to 1 for now.
@@ -418,8 +449,8 @@ impl<'a> ManagedTestSetup<'a> {
                             .unwrap();
                         target_clients.push(client);
                     }
-                    let messages = if action_type == 0 {
-                        group.propose_remove_members(&target_members).unwrap()
+                    let (messages, welcome_option) = if action_type == 0 {
+                        (group.propose_remove_members(&target_members).unwrap(), None)
                     } else {
                         group.remove_members(&target_members).unwrap()
                     };
@@ -433,7 +464,7 @@ impl<'a> ManagedTestSetup<'a> {
                             .unwrap();
                         setup_group.members.remove(pos);
                     }
-                    messages
+                    (messages, welcome_option)
                 }
             }
             2 => {
@@ -466,7 +497,7 @@ impl<'a> ManagedTestSetup<'a> {
                     let messages = group.propose_add_members(&new_member_key_packages).unwrap();
                     drop(group);
                     drop(groups);
-                    messages
+                    (messages, None)
                 } else {
                     let (messages, welcome) = group.add_members(&new_member_key_packages).unwrap();
                     drop(group);
@@ -477,15 +508,7 @@ impl<'a> ManagedTestSetup<'a> {
                         .iter()
                         .find(|mem| mem.identity == member.identity)
                         .is_some());
-                    setup_group
-                        .distribute_to_members(messages.clone())
-                        .expect("Error while distributing messages after random add operation.");
-                    for new_member in &new_members {
-                        setup_group
-                            .join_group(new_member, welcome.clone())
-                            .expect("Error while joining after random add operation.")
-                    }
-                    Vec::new()
+                    (messages, Some(welcome))
                 }
             }
             _ => return Err(ClientError::Unknown),
@@ -495,6 +518,7 @@ impl<'a> ManagedTestSetup<'a> {
                 .distribute_to_members(messages)
                 .expect("Error while distributing messages after random group operation.");
         };
+
         Ok(())
 
         //group
@@ -551,17 +575,18 @@ fn test_randomized_setup() {
         );
     }
 
-    let setup = ManagedTestSetup::new(20);
+    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let update_policy = UpdatePolicy::default();
+    let callbacks = ManagedGroupCallbacks::new()
+        .with_member_added(member_added)
+        .with_invalid_message_received(invalid_message_received)
+        .with_error_occured(error_occured);
+    let managed_group_config =
+        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
+    let setup = ManagedTestSetup::new(20, managed_group_config);
+
     for ciphersuite in Config::supported_ciphersuites() {
-        let handshake_message_format = HandshakeMessageFormat::Plaintext;
-        let update_policy = UpdatePolicy::default();
-        let callbacks = ManagedGroupCallbacks::new()
-            .with_member_added(member_added)
-            .with_invalid_message_received(invalid_message_received)
-            .with_error_occured(error_occured);
-        let managed_group_config =
-            ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
-        let group_id = setup.create_random_group(10, ciphersuite, managed_group_config);
+        let group_id = setup.create_random_group(10, ciphersuite);
         println!("Done creating group. Performing ten random operations.");
         for i in 0..10 {
             println!("Operation {:?}", i);

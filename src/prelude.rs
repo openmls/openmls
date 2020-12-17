@@ -16,7 +16,7 @@ pub use crate::tree::index::LeafIndex;
 pub use crate::ciphersuite::*;
 pub use crate::codec::*;
 pub use crate::config::*;
-pub use crate::creds::*;
+pub use crate::credentials::*;
 pub use crate::extensions::*;
 pub use crate::framing::{errors::*, sender::Sender, *};
 pub use crate::group::GroupId;

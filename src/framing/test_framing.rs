@@ -34,7 +34,7 @@ fn codec() {
         orig.signature = signature_input.sign(&credential_bundle);
 
         let enc = orig.encode_detached().unwrap();
-        let copy = MLSPlaintext::from_bytes(&enc).unwrap();
+        let copy = MLSPlaintext::decode(&mut Cursor::new(&enc)).unwrap();
         assert_eq!(orig, copy);
         assert!(!orig.is_handshake_message());
     }
@@ -92,7 +92,7 @@ fn context_presence() {
 #[test]
 fn unknown_sender() {
     use crate::config::*;
-    use crate::creds::*;
+    use crate::credentials::*;
     use crate::key_packages::*;
     use crate::utils::*;
 

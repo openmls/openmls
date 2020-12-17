@@ -10,142 +10,67 @@
 //! * `ParentHashError`
 //! * `RatchetTreeError`
 
+use crate::error::ErrorString;
 use crate::{codec::CodecError, config::ConfigError};
-use std::error::Error;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[repr(u16)]
-pub enum ExtensionError {
-    /// Invalid extension type error.
-    InvalidExtensionType,
-
-    /// Error when decoding an extension.
-    DecodingError,
-
-    /// Capabilities extension error.
-    /// See `CapabilitiesExtensionError` for details.
-    Capabilities(CapabilitiesExtensionError),
-
-    /// Lifetime extension error.
-    /// See `LifetimeExtensionError` for details.
-    Lifetime(LifetimeExtensionError),
-
-    /// Key package ID extension error.
-    /// See `KeyPackageIdError` for details.
-    KeyPackageId(KeyPackageIdError),
-
-    /// Parent hash extension error.
-    /// See `ParentHashError` for details.
-    ParentHash(ParentHashError),
-
-    /// Ratchet tree extension error.
-    /// See `RatchetTreeError` for details.
-    RatchetTree(RatchetTreeError),
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[repr(u16)]
-pub enum LifetimeExtensionError {
-    /// Invalid lifetime extensions.
-    Invalid = 0,
-
-    /// Lifetime extension is expired.
-    Expired = 1,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[repr(u16)]
-pub enum CapabilitiesExtensionError {
-    /// Invalid capabilities extensions.
-    Invalid = 0,
-
-    /// Capabilities extension is missing a version field.
-    EmptyVersionsField = 1,
-
-    /// Capabilities contains only unsupported ciphersuites.
-    UnsupportedCiphersuite = 2,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[repr(u16)]
-pub enum KeyPackageIdError {
-    /// Invalid key package ID extensions.
-    Invalid = 0,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[repr(u16)]
-pub enum ParentHashError {
-    /// Invalid parent hash extensions.
-    Invalid = 0,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[repr(u16)]
-pub enum RatchetTreeError {
-    /// Invalid ratchet tree extensions.
-    Invalid = 0,
-}
-
-implement_enum_display!(ExtensionError);
-implement_enum_display!(LifetimeExtensionError);
-implement_enum_display!(CapabilitiesExtensionError);
-implement_enum_display!(KeyPackageIdError);
-implement_enum_display!(ParentHashError);
-implement_enum_display!(RatchetTreeError);
-
-impl Error for ExtensionError {
-    fn description(&self) -> &str {
-        match self {
-            Self::DecodingError => "Error decoding an extension.",
-            Self::InvalidExtensionType => {
-                "The requested extension type is not supported by OpenMLS."
-            }
-            Self::Capabilities(e) => match e {
-                CapabilitiesExtensionError::Invalid => "Error decoding a capabilities extensions.",
-                CapabilitiesExtensionError::EmptyVersionsField => {
-                    "The versions field in the extension is empty."
-                }
-                CapabilitiesExtensionError::UnsupportedCiphersuite => {
-                    "No supported ciphersuite in the extension."
-                }
-            },
-            Self::KeyPackageId(e) => match e {
-                KeyPackageIdError::Invalid => "Error decoding a key package id extension.",
-            },
-            Self::ParentHash(e) => match e {
-                ParentHashError::Invalid => "Error decoding a parent hash extension.",
-            },
-            Self::RatchetTree(e) => match e {
-                RatchetTreeError::Invalid => "Error decoding a ratchet tree extension.",
-            },
-            Self::Lifetime(e) => match e {
-                LifetimeExtensionError::Invalid => "Invalid lifetime extension.",
-                LifetimeExtensionError::Expired => "Lifetime extension is expired.",
-            },
-        }
+implement_error! {
+    pub enum ExtensionError {
+        InvalidExtensionType(ErrorString) =
+            "Invalid extension type error.",
+        Capabilities(CapabilitiesExtensionError) =
+            "Capabilities extension error. See `CapabilitiesExtensionError` for details.",
+        Lifetime(LifetimeExtensionError) =
+            "Lifetime extension error. See `LifetimeExtensionError` for details.",
+        KeyPackageId(KeyPackageIdError) =
+            "Key package ID extension error. See `KeyPackageIdError` for details.",
+        ParentHash(ParentHashError) =
+            "Parent hash extension error. See `ParentHashError` for details.",
+        RatchetTree(RatchetTreeError) =
+            "Ratchet tree extension error. See `RatchetTreeError` for details.",
+        CodecError(CodecError) =
+            "Error decoding or encoding an extension.",
+        ConfigError(ConfigError) =
+            "Configuration error. See `ConfigError` for details.",
+        InvalidExtension(InvalidExtensionError) =
+            "The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.",
     }
 }
 
-impl From<ConfigError> for ExtensionError {
-    fn from(_e: ConfigError) -> Self {
-        ExtensionError::InvalidExtensionType
+implement_error! {
+    pub enum LifetimeExtensionError {
+        Invalid = "Invalid lifetime extensions.",
+        Expired = "Lifetime extension is expired.",
     }
 }
 
-impl From<CodecError> for ExtensionError {
-    fn from(e: CodecError) -> Self {
-        match e {
-            CodecError::DecodingError => ExtensionError::DecodingError,
-            CodecError::EncodingError | CodecError::Other => {
-                panic!("Extension errors can't result from encoding errors.")
-            }
-        }
+implement_error! {
+    pub enum CapabilitiesExtensionError {
+        Invalid = "Invalid capabilities extensions.",
+        EmptyVersionsField = "Capabilities extension is missing a version field.",
+        UnsupportedCiphersuite = "Capabilities contains only unsupported ciphersuites.",
     }
 }
 
-impl From<ExtensionError> for CodecError {
-    fn from(_e: ExtensionError) -> Self {
-        CodecError::DecodingError
+implement_error! {
+    pub enum KeyPackageIdError {
+        Invalid = "Invalid key package ID extensions.",
+    }
+}
+
+implement_error! {
+    pub enum ParentHashError {
+        Invalid = "Invalid parent hash extensions.",
+    }
+}
+
+implement_error! {
+    pub enum RatchetTreeError {
+        Invalid = "Invalid ratchet tree extensions.",
+    }
+}
+
+implement_error! {
+    pub enum InvalidExtensionError {
+        Duplicate = "The provided extension list contains duplicate extensions.",
     }
 }

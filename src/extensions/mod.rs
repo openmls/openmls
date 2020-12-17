@@ -43,10 +43,11 @@ impl Default for ExtensionType {
 }
 
 impl TryFrom<u16> for ExtensionType {
-    type Error = ExtensionError;
+    type Error = CodecError;
 
     /// Get the `ExtensionType` from a u16.
     /// Returns an error if the extension type is not known.
+    /// Note that this returns a [`CodecError`](`crate::codec::CodecError`).
     fn try_from(a: u16) -> Result<Self, Self::Error> {
         match a {
             0 => Ok(ExtensionType::Reserved),
@@ -55,7 +56,7 @@ impl TryFrom<u16> for ExtensionType {
             3 => Ok(ExtensionType::KeyID),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
-            _ => Err(ExtensionError::InvalidExtensionType),
+            _ => Err(CodecError::DecodingError),
         }
     }
 }
@@ -134,11 +135,16 @@ fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension
         ExtensionType::Lifetime => Ok(Box::new(LifetimeExtension::new_from_bytes(bytes)?)),
         ExtensionType::ParentHash => Ok(Box::new(ParentHashExtension::new_from_bytes(bytes)?)),
         ExtensionType::RatchetTree => Ok(Box::new(RatchetTreeExtension::new_from_bytes(bytes)?)),
-        _ => Err(ExtensionError::InvalidExtensionType),
+        _ => Err(ExtensionError::InvalidExtensionType(
+            format!("Invalid extension type {:?}.", ext_type).into(),
+        )),
     }
 }
 
 /// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
+///
+/// Note that this function returns a `CodecError` instead of an `ExtensionError`
+/// because it's only used in decoding functions.
 pub(crate) fn extensions_vec_from_cursor(
     cursor: &mut Cursor,
 ) -> Result<Vec<Box<dyn Extension>>, CodecError> {
@@ -155,7 +161,10 @@ pub(crate) fn extensions_vec_from_cursor(
         {
             return Err(CodecError::DecodingError);
         }
-        let ext = from_bytes(extension.extension_type, &extension.extension_data)?;
+        let ext = match from_bytes(extension.extension_type, &extension.extension_data) {
+            Ok(r) => r,
+            Err(_) => return Err(CodecError::DecodingError),
+        };
         result.push(ext);
     }
 
@@ -192,7 +201,9 @@ pub trait Extension: Debug + ExtensionHelper + Send {
     fn to_parent_hash_extension(&self) -> Result<&ParentHashExtension, ExtensionError> {
         match self.as_any().downcast_ref::<ParentHashExtension>() {
             Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType),
+            None => Err(ExtensionError::InvalidExtensionType(
+                "This is not a ParentHashExtension".into(),
+            )),
         }
     }
 
@@ -202,7 +213,9 @@ pub trait Extension: Debug + ExtensionHelper + Send {
     fn to_capabilities_extension(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
         match self.as_any().downcast_ref::<CapabilitiesExtension>() {
             Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType),
+            None => Err(ExtensionError::InvalidExtensionType(
+                "This is not a CapabilitiesExtension".into(),
+            )),
         }
     }
 
@@ -212,7 +225,9 @@ pub trait Extension: Debug + ExtensionHelper + Send {
     fn to_lifetime_extension(&self) -> Result<&LifetimeExtension, ExtensionError> {
         match self.as_any().downcast_ref::<LifetimeExtension>() {
             Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType),
+            None => Err(ExtensionError::InvalidExtensionType(
+                "This is not a LifetimeExtension".into(),
+            )),
         }
     }
 
@@ -222,7 +237,9 @@ pub trait Extension: Debug + ExtensionHelper + Send {
     fn to_key_id_extension(&self) -> Result<&KeyIDExtension, ExtensionError> {
         match self.as_any().downcast_ref::<KeyIDExtension>() {
             Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType),
+            None => Err(ExtensionError::InvalidExtensionType(
+                "This is not a KeyIDExtension".into(),
+            )),
         }
     }
 
@@ -232,7 +249,9 @@ pub trait Extension: Debug + ExtensionHelper + Send {
     fn as_ratchet_tree_extension(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
         match self.as_any().downcast_ref::<RatchetTreeExtension>() {
             Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType),
+            None => Err(ExtensionError::InvalidExtensionType(
+                "This is not a RatchetTreeExtension".into(),
+            )),
         }
     }
 }
