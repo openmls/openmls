@@ -166,9 +166,6 @@ fn proposal_queue_order() {
         let add_proposal_alice1 = AddProposal {
             key_package: alice_key_package_bundle.key_package().clone(),
         };
-        let add_proposal_alice2 = AddProposal {
-            key_package: alice_key_package_bundle.key_package().clone(),
-        };
         let add_proposal_bob1 = AddProposal {
             key_package: bob_key_package.clone(),
         };
@@ -176,7 +173,6 @@ fn proposal_queue_order() {
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
         let proposal_reference_add_alice1 =
             ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
-        let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
         // Frame proposals in MLSPlaintext
@@ -184,13 +180,6 @@ fn proposal_queue_order() {
             LeafIndex::from(0u32),
             &[],
             MLSPlaintextContentType::Proposal(proposal_add_alice1.clone()),
-            &alice_credential_bundle,
-            &group_context,
-        );
-        let mls_plaintext_add_alice2 = MLSPlaintext::new(
-            LeafIndex::from(1u32),
-            &[],
-            MLSPlaintextContentType::Proposal(proposal_add_alice2),
             &alice_credential_bundle,
             &group_context,
         );
@@ -203,11 +192,7 @@ fn proposal_queue_order() {
         );
 
         // This should set the order of the proposals.
-        let proposals = &[
-            &mls_plaintext_add_alice1,
-            &mls_plaintext_add_alice2,
-            &mls_plaintext_add_bob1,
-        ];
+        let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_bob1];
 
         let proposal_queue = ProposalQueue::from_proposals_by_reference(&ciphersuite, proposals);
 
