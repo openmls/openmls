@@ -62,30 +62,36 @@ implement_error! {
 
 implement_error! {
     pub enum ApplyCommitError {
-        EpochMismatch =
-            "Couldn't apply Commit. The epoch of the group context and MLSPlaintext didn't match.",
-        WrongPlaintextContentType =
-            "apply_commit_internal was called with an MLSPlaintext that is not a Commit.",
-        SelfRemoved =
-            "Tried to apply a commit to a group we are not a part of.",
-        PathKeyPackageVerificationFailure =
-            "Unable to verify the key package signature.",
-        NoParentHashExtension =
-            "Parent hash extension is missing.",
-        ParentHashMismatch =
-            "Parent hash values don't match.",
-        PlaintextSignatureFailure =
-            "MLSPlaintext signature is invalid.",
-        RequiredPathNotFound =
-            "Unable to determine commit path.",
-        ConfirmationTagMismatch =
-            "Confirmation tag is invalid.",
-        MissingOwnKeyPackage =
-            "No key package provided to apply own commit.",
-        MissingProposal =
-            "The proposal queue is missing a proposal for the commit.",
-        OwnKeyNotFound =
-            "Missing own key to apply proposal.",
+        Simple {
+            EpochMismatch =
+                "Couldn't apply Commit. The epoch of the group context and MLSPlaintext didn't match.",
+            WrongPlaintextContentType =
+                "apply_commit_internal was called with an MLSPlaintext that is not a Commit.",
+            SelfRemoved =
+                "Tried to apply a commit to a group we are not a part of.",
+            PathKeyPackageVerificationFailure =
+                "Unable to verify the key package signature.",
+            NoParentHashExtension =
+                "Parent hash extension is missing.",
+            ParentHashMismatch =
+                "Parent hash values don't match.",
+            PlaintextSignatureFailure =
+                "MLSPlaintext signature is invalid.",
+            RequiredPathNotFound =
+                "Unable to determine commit path.",
+            ConfirmationTagMismatch =
+                "Confirmation tag is invalid.",
+            MissingOwnKeyPackage =
+                "No key package provided to apply own commit.",
+            MissingProposal =
+                "The proposal queue is missing a proposal for the commit.",
+            OwnKeyNotFound =
+                  "Missing own key to apply proposal.",
+        }
+        Complex {
+            DecryptionFailure(TreeError) =
+                "A matching EncryptedPathSecret failed to decrypt.",
+        }
     }
 }
 

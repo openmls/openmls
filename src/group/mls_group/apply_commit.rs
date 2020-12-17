@@ -85,14 +85,12 @@ impl MlsGroup {
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
                 // later.
-                provisional_tree
-                    .update_path(
-                        sender,
-                        &path,
-                        &serialized_context,
-                        apply_proposals_values.exclusion_list(),
-                    )
-                    .unwrap()
+                provisional_tree.update_path(
+                    sender,
+                    &path,
+                    &serialized_context,
+                    apply_proposals_values.exclusion_list(),
+                )?
             }
         } else {
             if apply_proposals_values.path_required {

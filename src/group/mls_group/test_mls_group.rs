@@ -1,7 +1,9 @@
+use crate::tree::TreeError;
 use crate::{
     group::GroupEpoch,
-    messages::{EncryptedGroupSecrets, GroupInfo},
+    messages::{Commit, EncryptedGroupSecrets, GroupInfo},
     prelude::*,
+    tree::{UpdatePath, UpdatePathNode},
 };
 
 #[test]
@@ -123,5 +125,188 @@ fn test_failed_groupinfo_decryption() {
                 WelcomeError::GroupSecretsDecryptionFailure(CryptoError::HpkeDecryptionError)
             )
         }
+    }
+}
+
+#[test]
+/// Test what happens if the KEM ciphertext for the receiver in the UpdatePath is broken.
+fn test_update_path() {
+    for ciphersuite in Config::supported_ciphersuites() {
+        // Basic group setup.
+        let group_aad = b"Alice's test group";
+
+        // Define credential bundles
+        let alice_credential_bundle =
+            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
+                .unwrap();
+        let bob_credential_bundle =
+            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+
+        // Mandatory extensions
+        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+            None,
+            Some(&[ciphersuite.name()]),
+            None,
+        ));
+        let lifetime_extension = Box::new(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Box<dyn Extension>> =
+            vec![capabilities_extension, lifetime_extension];
+
+        // Generate KeyPackages
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            mandatory_extensions.clone(),
+        )
+        .unwrap();
+
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            mandatory_extensions.clone(),
+        )
+        .unwrap();
+        let bob_key_package = bob_key_package_bundle.key_package();
+
+        // === Alice creates a group ===
+        let group_id = [1, 2, 3, 4];
+        let mut group_alice = MlsGroup::new(
+            &group_id,
+            ciphersuite.name(),
+            alice_key_package_bundle,
+            GroupConfig::default(),
+        )
+        .unwrap();
+
+        // === Alice adds Bob ===
+        let bob_add_proposal = group_alice.create_add_proposal(
+            group_aad,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+        );
+        let epoch_proposals = &[&bob_add_proposal];
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
+            .create_commit(
+                group_aad,
+                &alice_credential_bundle,
+                epoch_proposals,
+                &[],
+                false,
+            )
+            .expect("Error creating commit");
+        let commit = match mls_plaintext_commit.content() {
+            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            _ => panic!("Wrong content type"),
+        };
+        assert!(!commit.has_path() && kpb_option.is_none());
+        // Check that the function returned a Welcome message
+        assert!(welcome_bundle_alice_bob_option.is_some());
+
+        group_alice
+            .apply_commit(&mls_plaintext_commit, epoch_proposals, &[])
+            .expect("error applying commit");
+        let ratchet_tree = group_alice.tree().public_key_tree_copy();
+
+        let group_bob = match MlsGroup::new_from_welcome(
+            welcome_bundle_alice_bob_option.unwrap(),
+            Some(ratchet_tree),
+            bob_key_package_bundle,
+        ) {
+            Ok(group) => group,
+            Err(e) => panic!("Error creating group from Welcome: {:?}", e),
+        };
+
+        // Make sure that both groups have the same public tree
+        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+            _print_tree(&group_alice.tree(), "Alice added Bob");
+            panic!("Different public trees");
+        }
+
+        // === Bob updates and commits ===
+        let bob_update_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            mandatory_extensions.clone(),
+        )
+        .unwrap();
+
+        let update_proposal_bob = group_bob.create_update_proposal(
+            &[],
+            &bob_credential_bundle,
+            bob_update_key_package_bundle.key_package().clone(),
+        );
+        let (mls_plaintext_commit, _welcome_option, _kpb_option) = match group_bob.create_commit(
+            &[],
+            &bob_credential_bundle,
+            &[&update_proposal_bob],
+            &[],
+            false, /* force self update */
+        ) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
+
+        // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
+        // apart the commit, manipulating the ciphertexts and the piecing it
+        // back together.
+        let (commit, confirmation_tag) = match &mls_plaintext_commit.content {
+            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
+                (commit, confirmation_tag)
+            }
+            _ => panic!("Bob created a commit, which does not contain an actual commit."),
+        };
+
+        let commit = commit.clone();
+
+        let path = commit.path.unwrap();
+
+        // For simplicity, let's just break all the ciphertexts.
+        let mut new_nodes = Vec::new();
+        for node in path.nodes {
+            let mut new_eps = Vec::new();
+            for c in node.encrypted_path_secret {
+                let mut c_encoded = c.encode_detached().unwrap();
+                let c_last_bits = c_encoded.pop().unwrap();
+                c_encoded.push(c_last_bits.reverse_bits());
+                let c_broken = HpkeCiphertext::decode(&mut Cursor::new(&c_encoded)).unwrap();
+                new_eps.push(c_broken);
+            }
+            let node = UpdatePathNode {
+                public_key: node.public_key.clone(),
+                encrypted_path_secret: new_eps,
+            };
+            new_nodes.push(node);
+        }
+
+        let broken_path = UpdatePath {
+            leaf_key_package: path.leaf_key_package.clone(),
+            nodes: new_nodes,
+        };
+
+        // Now let's create a new commit from out broken update path.
+        let broken_commit = Commit {
+            proposals: commit.proposals.clone(),
+            path: Some(broken_path),
+        };
+
+        let broken_commit_content =
+            MLSPlaintextContentType::Commit((broken_commit, confirmation_tag.clone()));
+
+        let broken_plaintext = MLSPlaintext::new(
+            mls_plaintext_commit.sender.to_leaf_index(),
+            &mls_plaintext_commit.authenticated_data,
+            broken_commit_content,
+            &bob_credential_bundle,
+            group_bob.context(),
+        );
+
+        assert_eq!(
+            group_alice
+                .apply_commit(&broken_plaintext, &[&update_proposal_bob], &[])
+                .expect_err("Successfull processing of a broken commit."),
+            GroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
+                TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
+            ))
+        );
     }
 }
