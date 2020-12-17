@@ -189,8 +189,8 @@ impl<'a> QueuedProposal<'a> {
         &self.proposal
     }
     /// Returns the `ProposalReference` as a reference
-    pub(crate) fn proposal_reference(&self) -> &ProposalReference {
-        &self.proposal_reference
+    pub(crate) fn proposal_reference(&self) -> ProposalReference {
+        self.proposal_reference.clone()
     }
     /// Returns the `Sender` as a reference
     pub(crate) fn sender(&self) -> &Sender {
@@ -344,9 +344,8 @@ impl<'a> ProposalQueue<'a> {
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal.proposal_type() {
                 ProposalType::Add => {
-                    let proposal_reference = queued_proposal.proposal_reference().clone();
-                    adds.insert(proposal_reference.clone());
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    adds.insert(queued_proposal.proposal_reference());
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 ProposalType::Update => {
                     let sender_index = queued_proposal.sender.sender.as_usize();
@@ -355,7 +354,7 @@ impl<'a> ProposalQueue<'a> {
                     } else {
                         contains_own_updates = true;
                     }
-                    let proposal_reference = queued_proposal.proposal_reference().clone();
+                    let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 ProposalType::Remove => {
@@ -364,7 +363,7 @@ impl<'a> ProposalQueue<'a> {
                     if removed_index < tree_size.as_usize() {
                         members[removed_index].updates.push(queued_proposal.clone());
                     }
-                    let proposal_reference = queued_proposal.proposal_reference().clone();
+                    let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 _ => {}
@@ -377,15 +376,15 @@ impl<'a> ProposalQueue<'a> {
                 // Delete all Updates when a Remove is found
                 member.updates = Vec::new();
                 // Only keep the last Remove
-                valid_proposals.insert(member.removes.last().unwrap().proposal_reference().clone());
+                valid_proposals.insert(member.removes.last().unwrap().proposal_reference());
             }
             if !member.updates.is_empty() {
                 // Only keep the last Update
-                valid_proposals.insert(member.updates.last().unwrap().proposal_reference().clone());
+                valid_proposals.insert(member.updates.last().unwrap().proposal_reference());
             }
         }
         // Only retain `adds` and `valid_proposals`
-        let mut proposal_queue = ProposalQueue::new();
+        let mut proposal_queue = ProposalQueue::default();
         for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
             proposal_queue.add(match proposal_pool.get(proposal_reference) {
                 Some(queued_proposal) => queued_proposal.clone(),
@@ -413,12 +412,12 @@ impl<'a> ProposalQueue<'a> {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal<'a>) {
         let proposal_reference = queued_proposal.proposal_reference();
         // Only add the proposal if it's not already there
-        if !self.queued_proposals.contains_key(proposal_reference) {
+        if !self.queued_proposals.contains_key(&proposal_reference) {
             // Add the proposal reference to ensure the correct order
             self.proposal_references.push(proposal_reference.clone());
             // Add the proposal to the queue
             self.queued_proposals
-                .insert(proposal_reference.clone(), queued_proposal);
+                .insert(proposal_reference, queued_proposal);
         }
     }
     /// Returns the list of all proposals that are covered by a Commit
