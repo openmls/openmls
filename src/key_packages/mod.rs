@@ -7,8 +7,8 @@ use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionStruct, ExtensionType, LifetimeExtension,
-    ParentHashExtension,
+    CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
+    LifetimeExtension, ParentHashExtension,
 };
 
 use serde::{
@@ -108,7 +108,9 @@ impl KeyPackage {
         if let Some(key_id_ext) = self.extension_with_type(ExtensionType::KeyID) {
             return Ok(key_id_ext.to_key_id_extension()?.as_slice());
         }
-        Err(KeyPackageError::ExtensionNotPresent)
+        Err(KeyPackageError::ExtensionError(
+            ExtensionError::InvalidExtensionType("Tried to get a key ID extension".into()),
+        ))
     }
 
     /// Add (or replace) an extension to the KeyPackage.
