@@ -199,11 +199,17 @@ impl<'a> QueuedProposal<'a> {
 }
 
 /// Proposal queue that helps filtering and sorting the Proposals from one
-/// epoch.
+/// epoch. The Proposals are stored in a `HashMap` which maps Proposal
+/// references to Proposals, such that, given a reference, a proposal can be
+/// accessed efficiently. To enable iteration over the queue in order, the
+/// `ProposalQueue` also contains a vector of `ProposalReference`s.
 #[derive(Default)]
 pub struct ProposalQueue<'a> {
-    // We keep the references in a separate `Vec` to enforce the correct order
+    /// `proposal_references` holds references to the proposals in the queue and
+    /// determines the order of the queue.
     proposal_references: Vec<ProposalReference>,
+    /// `queued_proposals` contains the actual proposals in the queue. They are
+    /// stored in a `HashMap` to allow for efficient access to the proposals.
     queued_proposals: HashMap<ProposalReference, QueuedProposal<'a>>,
 }
 
