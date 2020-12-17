@@ -32,14 +32,18 @@ fn test_hpke_seal_open() {
             kem_output: ciphertext.kem_output.clone(),
             ciphertext: broken_ciphertext,
         };
-        let decryption_error1 = ciphersuite
-            .hpke_open(&broken_ciphertext1, kp.private_key(), &[], &[])
-            .expect_err("Erroneously correct ciphertext decryption of broken ciphertext.");
-        let decryption_error2 = ciphersuite
-            .hpke_open(&broken_ciphertext2, kp.private_key(), &[], &[])
-            .expect_err("Erroneously correct ciphertext decryption of broken ciphertext.");
-        assert_eq!(decryption_error1, CryptoError::HpkeDecryptionError);
-        assert_eq!(decryption_error2, CryptoError::HpkeDecryptionError);
+        assert_eq!(
+            ciphersuite
+                .hpke_open(&broken_ciphertext1, kp.private_key(), &[], &[])
+                .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
+            CryptoError::HpkeDecryptionError
+        );
+        assert_eq!(
+            ciphersuite
+                .hpke_open(&broken_ciphertext2, kp.private_key(), &[], &[])
+                .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
+            CryptoError::HpkeDecryptionError
+        );
     }
 }
 
