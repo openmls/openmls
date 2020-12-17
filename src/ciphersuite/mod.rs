@@ -69,8 +69,9 @@ impl HpkeCiphertext {
     #[cfg(test)]
     /// This function flips the last byte of the ciphertext.
     pub fn flip_last_byte(&mut self) {
-        let last_bits = self.ciphertext.pop().unwrap();
-        self.ciphertext.push(last_bits.reverse_bits());
+        let mut last_bits = self.ciphertext.pop().unwrap();
+        last_bits ^= 1u8;
+        self.ciphertext.push(last_bits);
     }
 }
 
