@@ -75,7 +75,7 @@ fn test_failed_groupinfo_decryption() {
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
-            let encrypted_group_secrets = ciphersuite.hpke_seal(
+            let mut encrypted_group_secrets = ciphersuite.hpke_seal(
                 receiver_key_pair.public_key(),
                 hpke_info,
                 hpke_aad,
@@ -90,17 +90,12 @@ fn test_failed_groupinfo_decryption() {
                 KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![])
                     .unwrap();
 
-            let mut egs_encoded = encrypted_group_secrets.encode_detached().unwrap();
-
-            // Break the encrypted group secrets.
-            let last_bit = egs_encoded.pop().unwrap();
-            egs_encoded.push(last_bit.reverse_bits());
-
-            let broken_egs = HpkeCiphertext::decode(&mut Cursor::new(&egs_encoded)).unwrap();
+            // Mess with the ciphertext by flipping the last byte.
+            encrypted_group_secrets.flip_last_byte();
 
             let broken_secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: key_package_bundle.key_package.hash(),
-                encrypted_group_secrets: broken_egs,
+                encrypted_group_secrets,
             }];
 
             // Encrypt the group info.
@@ -142,30 +137,14 @@ fn test_update_path() {
         let bob_credential_bundle =
             CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
 
-        // Mandatory extensions
-        let capabilities_extension = Box::new(CapabilitiesExtension::new(
-            None,
-            Some(&[ciphersuite.name()]),
-            None,
-        ));
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Box<dyn Extension>> =
-            vec![capabilities_extension, lifetime_extension];
-
         // Generate KeyPackages
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            mandatory_extensions.clone(),
-        )
-        .unwrap();
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+                .unwrap();
 
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            mandatory_extensions.clone(),
-        )
-        .unwrap();
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+                .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
 
         // === Alice creates a group ===
@@ -185,7 +164,7 @@ fn test_update_path() {
             bob_key_package.clone(),
         );
         let epoch_proposals = &[&bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = group_alice
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
@@ -194,13 +173,6 @@ fn test_update_path() {
                 false,
             )
             .expect("Error creating commit");
-        let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
-            _ => panic!("Wrong content type"),
-        };
-        assert!(!commit.has_path() && kpb_option.is_none());
-        // Check that the function returned a Welcome message
-        assert!(welcome_bundle_alice_bob_option.is_some());
 
         group_alice
             .apply_commit(&mls_plaintext_commit, epoch_proposals, &[])
@@ -214,19 +186,10 @@ fn test_update_path() {
         )
         .unwrap();
 
-        // Make sure that both groups have the same public tree
-        if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-            _print_tree(&group_alice.tree(), "Alice added Bob");
-            panic!("Different public trees");
-        }
-
         // === Bob updates and commits ===
-        let bob_update_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            mandatory_extensions.clone(),
-        )
-        .unwrap();
+        let bob_update_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+                .unwrap();
 
         let update_proposal_bob = group_bob.create_update_proposal(
             &[],
@@ -262,11 +225,9 @@ fn test_update_path() {
         for node in path.nodes {
             let mut new_eps = Vec::new();
             for c in node.encrypted_path_secret {
-                let mut c_encoded = c.encode_detached().unwrap();
-                let c_last_bits = c_encoded.pop().unwrap();
-                c_encoded.push(c_last_bits.reverse_bits());
-                let c_broken = HpkeCiphertext::decode(&mut Cursor::new(&c_encoded)).unwrap();
-                new_eps.push(c_broken);
+                let mut c_copy = c.clone();
+                c_copy.flip_last_byte();
+                new_eps.push(c_copy);
             }
             let node = UpdatePathNode {
                 public_key: node.public_key.clone(),

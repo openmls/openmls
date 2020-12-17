@@ -65,6 +65,15 @@ pub struct HpkeCiphertext {
     ciphertext: Vec<u8>,
 }
 
+impl HpkeCiphertext {
+    #[cfg(test)]
+    /// This function flips the last byte of the ciphertext.
+    pub fn flip_last_byte(&mut self) {
+        let last_bits = self.ciphertext.pop().unwrap();
+        self.ciphertext.push(last_bits.reverse_bits());
+    }
+}
+
 /// `KdfLabel` is later serialized and used in the `label` field of
 /// `kdf_expand_label`.
 struct KdfLabel {
