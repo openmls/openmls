@@ -214,20 +214,13 @@ pub struct ProposalQueue<'a> {
 }
 
 impl<'a> ProposalQueue<'a> {
-    // Returns a new empty `ProposalQueue`
-    pub(crate) fn new() -> Self {
-        ProposalQueue {
-            proposal_references: Vec::new(),
-            queued_proposals: HashMap::new(),
-        }
-    }
     /// Returns a new `ProposalQueue` from proposals that were committed and
     /// don't need filtering
     pub(crate) fn from_proposals_by_reference(
         ciphersuite: &Ciphersuite,
         proposals: &'a [&MLSPlaintext],
     ) -> Self {
-        let mut proposal_queue = ProposalQueue::new();
+        let mut proposal_queue = ProposalQueue::default();
         for mls_plaintext in proposals {
             // It is safe to unwrap here, because we checked that only proposals can end up
             // here.
