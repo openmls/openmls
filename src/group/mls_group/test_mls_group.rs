@@ -207,14 +207,12 @@ fn test_update_path() {
             .expect("error applying commit");
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
-        let group_bob = match MlsGroup::new_from_welcome(
+        let group_bob = MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
-        ) {
-            Ok(group) => group,
-            Err(e) => panic!("Error creating group from Welcome: {:?}", e),
-        };
+        )
+        .unwrap();
 
         // Make sure that both groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -235,16 +233,15 @@ fn test_update_path() {
             &bob_credential_bundle,
             bob_update_key_package_bundle.key_package().clone(),
         );
-        let (mls_plaintext_commit, _welcome_option, _kpb_option) = match group_bob.create_commit(
-            &[],
-            &bob_credential_bundle,
-            &[&update_proposal_bob],
-            &[],
-            false, /* force self update */
-        ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+        let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
+            .create_commit(
+                &[],
+                &bob_credential_bundle,
+                &[&update_proposal_bob],
+                &[],
+                false, /* force self update */
+            )
+            .unwrap();
 
         // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
         // apart the commit, manipulating the ciphertexts and the piecing it
