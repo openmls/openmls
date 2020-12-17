@@ -460,6 +460,8 @@
 <span id="457">457</span>
 <span id="458">458</span>
 <span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">error</span>;
 
@@ -470,8 +472,8 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::{
-    <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtension</span>,
-    <span class="ident">ParentHashExtension</span>,
+    <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionStruct</span>, <span class="ident">ExtensionType</span>,
+    <span class="ident">LifetimeExtension</span>, <span class="ident">ParentHashExtension</span>,
 };
 
 <span class="kw">use</span> <span class="ident">serde</span>::{
@@ -571,7 +573,9 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType</span>::<span class="ident">KeyID</span>) {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">key_id_ext</span>.<span class="ident">to_key_id_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>());
         }
-        <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">ExtensionNotPresent</span>)
+        <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">ExtensionError</span>(
+            <span class="ident">ExtensionError</span>::<span class="ident">InvalidExtensionType</span>(<span class="string">&quot;Tried to get a key ID extension&quot;</span>.<span class="ident">into</span>()),
+        ))
     }
 
     <span class="doccomment">/// Add (or replace) an extension to the KeyPackage.</span>
