@@ -65,8 +65,8 @@ pub struct HpkeCiphertext {
     ciphertext: Vec<u8>,
 }
 
+#[cfg(test)]
 impl HpkeCiphertext {
-    #[cfg(test)]
     /// This function flips the last byte of the ciphertext.
     pub fn flip_last_byte(&mut self) {
         let mut last_bits = self.ciphertext.pop().unwrap();
