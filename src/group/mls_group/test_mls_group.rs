@@ -164,7 +164,7 @@ fn test_update_path() {
             bob_key_package.clone(),
         );
         let epoch_proposals = &[&bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = group_alice
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
@@ -173,6 +173,14 @@ fn test_update_path() {
                 false,
             )
             .expect("Error creating commit");
+
+        let commit = match mls_plaintext_commit.content() {
+            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            _ => panic!("Wrong content type"),
+        };
+        assert!(!commit.has_path() && kpb_option.is_none());
+        // Check that the function returned a Welcome message
+        assert!(welcome_bundle_alice_bob_option.is_some());
 
         group_alice
             .apply_commit(&mls_plaintext_commit, epoch_proposals, &[])
