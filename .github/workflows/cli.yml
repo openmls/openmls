@@ -1,0 +1,27 @@
+name: Cli Build
+
+on:
+  push:
+    branches:
+      - main
+      - franziskus/windows-support
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build cli
+        run: cargo build --verbose -p cli
