@@ -69,12 +69,14 @@ macro_rules! test_welcome_msg {
             assert_eq!(msg_decoded.cipher_suite, $ciphersuite);
             for secret in msg_decoded.secrets {
                 assert_eq!(secret.key_package_hash, secret.key_package_hash);
-                let ptxt = $ciphersuite.hpke_open(
-                    &secret.encrypted_group_secrets,
-                    receiver_key_pair.private_key(),
-                    hpke_info,
-                    hpke_aad,
-                );
+                let ptxt = $ciphersuite
+                    .hpke_open(
+                        &secret.encrypted_group_secrets,
+                        receiver_key_pair.private_key(),
+                        hpke_info,
+                        hpke_aad,
+                    )
+                    .expect("Error decrypting valid ciphertext in Welcome message test.");
                 assert_eq!(&hpke_input[..], &ptxt[..]);
             }
             assert_eq!(msg_decoded.encrypted_group_info, encrypted_group_info);

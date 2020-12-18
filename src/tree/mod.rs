@@ -355,7 +355,7 @@ impl RatchetTree {
             &private_key,
             group_context,
             &[],
-        ));
+        )?);
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree
