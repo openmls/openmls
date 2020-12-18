@@ -9,6 +9,8 @@ impl Codec for MLSPlaintext {
         self.content_type.encode(buffer)?;
         self.content.encode(buffer)?;
         self.signature.encode(buffer)?;
+        self.confirmation_tag.encode(buffer)?;
+        self.membership_tag.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
@@ -19,6 +21,8 @@ impl Codec for MLSPlaintext {
         let content_type = ContentType::decode(cursor)?;
         let content = MLSPlaintextContentType::decode(cursor)?;
         let signature = Signature::decode(cursor)?;
+        let confirmation_tag = Option::<ConfirmationTag>::decode(cursor)?;
+        let membership_tag = Option::<MembershipTag>::decode(cursor)?;
 
         Ok(MLSPlaintext {
             group_id,
@@ -28,6 +32,8 @@ impl Codec for MLSPlaintext {
             content_type,
             content,
             signature,
+            confirmation_tag,
+            membership_tag,
         })
     }
 }
@@ -108,6 +114,47 @@ impl Codec for MLSPlaintextContentType {
             }
             _ => Err(CodecError::DecodingError),
         }
+    }
+}
+
+impl Codec for Mac {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        encode_vec(VecSize::VecU8, buffer, &self.mac_value)?;
+        Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let mac_value = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(Self { mac_value })
+    }
+}
+
+/*
+pub(crate) struct MLSPlaintextTBM {
+    tbs: MLSPlaintextTBS,
+    signature: Signature,
+    confirmation_tag: Option<ConfirmationTag>,
+}
+*/
+
+impl Codec for MLSPlaintextTBM {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.tbs.encode(buffer)?;
+        self.signature.encode(buffer)?;
+        self.confirmation_tag.encode(buffer)?;
+        Ok(())
+    }
+}
+
+impl Codec for MembershipTag {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.0.encode(buffer)?;
+        Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let mac = Mac::decode(cursor)?;
+        Ok(Self(mac))
     }
 }
 

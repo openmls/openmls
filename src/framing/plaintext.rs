@@ -1,5 +1,30 @@
 use super::*;
 
+/// 9. Message framing
+///
+/// struct {
+/// opaque group_id<0..255>;
+/// uint64 epoch;
+/// Sender sender;
+/// opaque authenticated_data<0..2^32-1>;
+///
+/// ContentType content_type;
+/// select (MLSPlaintext.content_type) {
+///     case application:
+///       opaque application_data<0..2^32-1>;
+///
+///     case proposal:
+///       Proposal proposal;
+///
+///     case commit:
+///       Commit commit;
+/// }
+///
+/// opaque signature<0..2^16-1>;
+/// optional<MAC> confirmation_tag;
+/// optional<MAC> membership_tag;
+/// } MLSPlaintext;
+///
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct MLSPlaintext {
     pub(crate) group_id: GroupId,
@@ -9,6 +34,8 @@ pub struct MLSPlaintext {
     pub(crate) content_type: ContentType,
     pub(crate) content: MLSPlaintextContentType,
     pub(crate) signature: Signature,
+    pub(crate) confirmation_tag: Option<ConfirmationTag>,
+    pub(crate) membership_tag: Option<MembershipTag>,
 }
 
 impl MLSPlaintext {
@@ -142,6 +169,76 @@ impl MLSPlaintextContentType {
     }
 }
 
+/// 9.2 Message framing
+///
+/// struct {
+/// opaque mac_value<0..255>;
+/// } MAC;
+///
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub(crate) struct Mac {
+    pub(crate) mac_value: Vec<u8>,
+}
+
+/// 9.1 Content Authentication
+///
+/// struct {
+///   MLSPlaintextTBS tbs;
+///   opaque signature<0..2^16-1>;
+///   optional<MAC> confirmation_tag;
+/// } MLSPlaintextTBM;
+pub(crate) struct MLSPlaintextTBM {
+    pub(crate) tbs: MLSPlaintextTBS,
+    pub(crate) signature: Signature,
+    pub(crate) confirmation_tag: Option<ConfirmationTag>,
+}
+
+impl From<Vec<u8>> for Mac {
+    fn from(mac_value: Vec<u8>) -> Self {
+        Self { mac_value }
+    }
+}
+
+impl From<Mac> for Vec<u8> {
+    fn from(mac: Mac) -> Self {
+        mac.mac_value
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct MembershipTag(pub(crate) Mac);
+
+impl MembershipTag {
+    /// Create a new membership tag.
+    ///
+    /// 9.1 Content Authentication
+    ///
+    /// ```text
+    /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
+    /// ```
+    pub fn new(
+        ciphersuite: &Ciphersuite,
+        membership_key: &Secret,
+        mls_plaintext_tbm: MLSPlaintextTBM,
+    ) -> Self {
+        MembershipTag(
+            ciphersuite
+                .mac(
+                    membership_key,
+                    &Secret::from(mls_plaintext_tbm.encode_detached().unwrap()),
+                )
+                .into(),
+        )
+    }
+
+    /*
+    /// Get a copy of the raw byte vector.
+    pub(crate) fn to_vec(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+    */
+}
+
 pub(crate) struct MLSPlaintextTBS {
     pub(crate) serialized_context_option: Option<Vec<u8>>,
     pub(crate) group_id: GroupId,
@@ -233,7 +330,7 @@ impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
             _ => panic!("MLSPlaintext needs to contain a Commit"),
         };
         MLSPlaintextCommitAuthData {
-            confirmation_tag: confirmation_tag.0.clone(),
+            confirmation_tag: confirmation_tag.0.mac_value.clone(),
         }
     }
 }
@@ -241,7 +338,7 @@ impl From<&MLSPlaintext> for MLSPlaintextCommitAuthData {
 impl From<&ConfirmationTag> for MLSPlaintextCommitAuthData {
     fn from(confirmation_tag: &ConfirmationTag) -> Self {
         MLSPlaintextCommitAuthData {
-            confirmation_tag: confirmation_tag.to_vec(),
+            confirmation_tag: confirmation_tag.0.mac_value.clone(),
         }
     }
 }

@@ -326,6 +326,11 @@ impl Ciphersuite {
         get_digest_size(self.hash)
     }
 
+    /// HMAC.
+    pub(crate) fn mac(&self, salt: &Secret, ikm: &Secret) -> Vec<u8> {
+        hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice())
+    }
+
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
         let salt = salt_option.unwrap_or_default();

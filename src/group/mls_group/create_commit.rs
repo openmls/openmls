@@ -141,7 +141,7 @@ impl MlsGroup {
                 tree_hash,
                 confirmed_transcript_hash,
                 extensions,
-                confirmation_tag.to_vec(),
+                confirmation_tag,
                 sender_index,
             );
             group_info.set_signature(group_info.sign(credential_bundle));

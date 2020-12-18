@@ -28,12 +28,12 @@ impl Codec for Commit {
 
 impl Codec for ConfirmationTag {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.0)?;
+        self.0.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let inner = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ConfirmationTag(inner))
+        let mac = Mac::decode(cursor)?;
+        Ok(ConfirmationTag(mac))
     }
 }
 
