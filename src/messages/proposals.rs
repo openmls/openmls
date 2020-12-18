@@ -5,7 +5,7 @@ use crate::key_packages::*;
 use crate::tree::index::*;
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::convert::TryFrom;
 
 use super::errors::*;
@@ -408,12 +408,11 @@ impl<'a> ProposalQueue<'a> {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal<'a>) {
         let proposal_reference = queued_proposal.proposal_reference();
         // Only add the proposal if it's not already there
-        if !self.queued_proposals.contains_key(&proposal_reference) {
+        if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference.clone()) {
             // Add the proposal reference to ensure the correct order
-            self.proposal_references.push(proposal_reference.clone());
+            self.proposal_references.push(proposal_reference);
             // Add the proposal to the queue
-            self.queued_proposals
-                .insert(proposal_reference, queued_proposal);
+            entry.insert(queued_proposal);
         }
     }
     /// Returns the list of all proposals that are covered by a Commit
