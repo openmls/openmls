@@ -25,10 +25,8 @@ impl Codec for KeyPackage {
             signature,
         };
 
-        // TODO: #93 check extensions
-        // for _ in 0..kp.extensions.len() {}
-
         if kp.verify().is_err() {
+            log::error!("Error verifying a key package after decoding\n{:?}", kp);
             return Err(CodecError::DecodingError);
         }
         Ok(kp)

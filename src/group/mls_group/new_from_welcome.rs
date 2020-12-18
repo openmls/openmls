@@ -206,7 +206,7 @@ impl MlsGroup {
             &private_key,
             &[],
             &[],
-        );
+        )?;
         let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
         // TODO: Currently the PSK is None. This should be fixed with issue #141
         let member_secret = MemberSecret::from_joiner_secret_and_psk(

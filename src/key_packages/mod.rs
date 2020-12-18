@@ -69,10 +69,12 @@ impl KeyPackage {
                 match extension.to_lifetime_extension() {
                     Ok(e) => {
                         if !e.is_valid() {
+                            log::error!("Invalid lifetime extension in key package.");
                             return Err(KeyPackageError::InvalidLifetimeExtension);
                         }
                     }
                     Err(e) => {
+                        log::error!("to_lifetime_extension failed while verifying a key package.");
                         error!("Library error: {:?}", e);
                         return Err(KeyPackageError::LibraryError);
                     }
@@ -82,6 +84,7 @@ impl KeyPackage {
 
         // Make sure we found all mandatory extensions.
         if !mandatory_extensions_found.is_empty() {
+            log::error!("This key package is missing mandatory extensions.");
             return Err(KeyPackageError::MandatoryExtensionsMissing);
         }
 
@@ -92,6 +95,7 @@ impl KeyPackage {
         {
             Ok(())
         } else {
+            log::error!("Key package signature is empty.");
             Err(KeyPackageError::InvalidSignature)
         }
     }
