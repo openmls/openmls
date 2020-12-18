@@ -16,7 +16,11 @@
 <span id="13">13</span>
 <span id="14">14</span>
 <span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
@@ -29,6 +33,8 @@
         <span class="ident">Complex</span> {
             <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
+            <span class="ident">PathSecretDecryptionError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;Error while decrypting `PathSecret`.&quot;</span>,
         }
     }
 }

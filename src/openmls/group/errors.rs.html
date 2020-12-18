@@ -104,12 +104,22 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
 
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::<span class="ident">MLSCiphertextError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">secret_tree</span>::<span class="ident">SecretTypeError</span>, <span class="ident">TreeError</span>};
@@ -141,7 +151,7 @@
             <span class="ident">JoinerSecretNotFound</span> <span class="op">=</span>
                 <span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>,
             <span class="ident">MissingRatchetTree</span> <span class="op">=</span>
-                <span class="string">&quot;No ratchet tree available to build initial tree after receiving a Welcome message&quot;</span>,
+                <span class="string">&quot;No ratchet tree available to build initial tree after receiving a Welcome message.&quot;</span>,
             <span class="ident">TreeHashMismatch</span> <span class="op">=</span>
                 <span class="string">&quot;The computed tree hash does not match the one in the GroupInfo.&quot;</span>,
             <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span>
@@ -149,47 +159,55 @@
             <span class="ident">InvalidGroupInfoSignature</span> <span class="op">=</span>
                 <span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>,
             <span class="ident">GroupInfoDecryptionFailure</span> <span class="op">=</span>
-                <span class="string">&quot;Unable to decrypt the GroupInfo&quot;</span>,
+                <span class="string">&quot;Unable to decrypt the GroupInfo.&quot;</span>,
             <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span>
                 <span class="string">&quot;Found a duplicate ratchet tree extension in the Welcome message.&quot;</span>,
             <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span>
-                <span class="string">&quot;The Welcome message uses an unsupported MLS version&quot;</span>,
+                <span class="string">&quot;The Welcome message uses an unsupported MLS version.&quot;</span>,
             <span class="ident">UnknownError</span> <span class="op">=</span>
                 <span class="string">&quot;An unknown error occurred.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">InvalidRatchetTree</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
                 <span class="string">&quot;Invalid ratchet tree in Welcome message.&quot;</span>,
+            <span class="ident">GroupSecretsDecryptionFailure</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;Unable to decrypt the EncryptedGroupSecrets.&quot;</span>,
         }
     }
 }
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyCommitError</span> {
-        <span class="ident">EpochMismatch</span> <span class="op">=</span>
-            <span class="string">&quot;Couldn&#39;t apply Commit. The epoch of the group context and MLSPlaintext didn&#39;t match.&quot;</span>,
-        <span class="ident">WrongPlaintextContentType</span> <span class="op">=</span>
-            <span class="string">&quot;apply_commit_internal was called with an MLSPlaintext that is not a Commit.&quot;</span>,
-        <span class="ident">SelfRemoved</span> <span class="op">=</span>
-            <span class="string">&quot;Tried to apply a commit to a group we are not a part of.&quot;</span>,
-        <span class="ident">PathKeyPackageVerificationFailure</span> <span class="op">=</span>
-            <span class="string">&quot;Unable to verify the key package signature.&quot;</span>,
-        <span class="ident">NoParentHashExtension</span> <span class="op">=</span>
-            <span class="string">&quot;Parent hash extension is missing.&quot;</span>,
-        <span class="ident">ParentHashMismatch</span> <span class="op">=</span>
-            <span class="string">&quot;Parent hash values don&#39;t match.&quot;</span>,
-        <span class="ident">PlaintextSignatureFailure</span> <span class="op">=</span>
-            <span class="string">&quot;MLSPlaintext signature is invalid.&quot;</span>,
-        <span class="ident">RequiredPathNotFound</span> <span class="op">=</span>
-            <span class="string">&quot;Unable to determine commit path.&quot;</span>,
-        <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span>
-            <span class="string">&quot;Confirmation tag is invalid.&quot;</span>,
-        <span class="ident">MissingOwnKeyPackage</span> <span class="op">=</span>
-            <span class="string">&quot;No key package provided to apply own commit.&quot;</span>,
-        <span class="ident">MissingProposal</span> <span class="op">=</span>
-            <span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>,
-        <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
-            <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">EpochMismatch</span> <span class="op">=</span>
+                <span class="string">&quot;Couldn&#39;t apply Commit. The epoch of the group context and MLSPlaintext didn&#39;t match.&quot;</span>,
+            <span class="ident">WrongPlaintextContentType</span> <span class="op">=</span>
+                <span class="string">&quot;apply_commit_internal was called with an MLSPlaintext that is not a Commit.&quot;</span>,
+            <span class="ident">SelfRemoved</span> <span class="op">=</span>
+                <span class="string">&quot;Tried to apply a commit to a group we are not a part of.&quot;</span>,
+            <span class="ident">PathKeyPackageVerificationFailure</span> <span class="op">=</span>
+                <span class="string">&quot;Unable to verify the key package signature.&quot;</span>,
+            <span class="ident">NoParentHashExtension</span> <span class="op">=</span>
+                <span class="string">&quot;Parent hash extension is missing.&quot;</span>,
+            <span class="ident">ParentHashMismatch</span> <span class="op">=</span>
+                <span class="string">&quot;Parent hash values don&#39;t match.&quot;</span>,
+            <span class="ident">PlaintextSignatureFailure</span> <span class="op">=</span>
+                <span class="string">&quot;MLSPlaintext signature is invalid.&quot;</span>,
+            <span class="ident">RequiredPathNotFound</span> <span class="op">=</span>
+                <span class="string">&quot;Unable to determine commit path.&quot;</span>,
+            <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span>
+                <span class="string">&quot;Confirmation tag is invalid.&quot;</span>,
+            <span class="ident">MissingOwnKeyPackage</span> <span class="op">=</span>
+                <span class="string">&quot;No key package provided to apply own commit.&quot;</span>,
+            <span class="ident">MissingProposal</span> <span class="op">=</span>
+                <span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>,
+            <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
+                  <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">DecryptionFailure</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
+                <span class="string">&quot;A matching EncryptedPathSecret failed to decrypt.&quot;</span>,
+        }
     }
 }
 

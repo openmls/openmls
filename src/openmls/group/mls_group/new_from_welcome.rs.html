@@ -439,7 +439,7 @@
             <span class="kw-2">&amp;</span><span class="ident">private_key</span>,
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span>[],
-        );
+        )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">group_secrets_bytes</span>)).<span class="ident">unwrap</span>();
         <span class="comment">// TODO: Currently the PSK is None. This should be fixed with issue #141</span>
         <span class="kw">let</span> <span class="ident">member_secret</span> <span class="op">=</span> <span class="ident">MemberSecret</span>::<span class="ident">from_joiner_secret_and_psk</span>(
