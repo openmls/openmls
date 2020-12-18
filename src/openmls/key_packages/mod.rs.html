@@ -462,6 +462,10 @@
 <span id="459">459</span>
 <span id="460">460</span>
 <span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">error</span>;
 
@@ -534,10 +538,12 @@
                 <span class="kw">match</span> <span class="ident">extension</span>.<span class="ident">to_lifetime_extension</span>() {
                     <span class="prelude-val">Ok</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">if</span> <span class="op">!</span><span class="ident">e</span>.<span class="ident">is_valid</span>() {
+                            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Invalid lifetime extension in key package.&quot;</span>);
                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">InvalidLifetimeExtension</span>);
                         }
                     }
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;to_lifetime_extension failed while verifying a key package.&quot;</span>);
                         <span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Library error: {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">LibraryError</span>);
                     }
@@ -547,6 +553,7 @@
 
         <span class="comment">// Make sure we found all mandatory extensions.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">mandatory_extensions_found</span>.<span class="ident">is_empty</span>() {
+            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;This key package is missing mandatory extensions.&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">MandatoryExtensionsMissing</span>);
         }
 
@@ -557,6 +564,7 @@
         {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
+            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Key package signature is empty.&quot;</span>);
             <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">InvalidSignature</span>)
         }
     }
