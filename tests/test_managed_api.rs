@@ -1,6 +1,9 @@
 use openmls::prelude::{node::Node, *};
 use rand::{rngs::OsRng, RngCore};
-use std::{cell::RefCell, collections::HashMap};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+};
 
 /// Errors that can occur when processing messages with the client.
 #[derive(Debug)]
@@ -40,6 +43,7 @@ struct Client<'a> {
     /// Ciphersuites supported by the client.
     pub(crate) _ciphersuites: Vec<CiphersuiteName>,
     credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
+    credential_bundle_refs: Vec<&'a CredentialBundle>,
     // Map from key package hash to the corresponding bundle.
     pub(crate) key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
     //pub(crate) key_packages: HashMap<CiphersuiteName, KeyPackage>,
@@ -92,14 +96,14 @@ impl<'a> Client<'a> {
     }
 
     pub fn join_group(
-        &'a self,
+        self,
         managed_group_config: ManagedGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
         let ciphersuite = welcome.ciphersuite();
-        let credential_bundle: &'a CredentialBundle = self
-            .credential_bundles
+        let credential_bundles = &self.credential_bundles;
+        let credential_bundle = credential_bundles
             .get(&ciphersuite.name())
             .ok_or(ClientError::NoMatchingCredential)?;
         let key_package_bundle = match welcome.secrets().iter().find(|egs| {
@@ -145,47 +149,12 @@ impl<'a> Client<'a> {
 }
 
 #[derive(Clone)]
-struct Group<'a> {
+struct Group {
     group_id: GroupId,
-    members: Vec<&'a Client<'a>>,
+    members: HashSet<Vec<u8>>,
     ciphersuite: Ciphersuite,
     group_config: ManagedGroupConfig,
     public_tree: Vec<Option<Node>>,
-}
-
-impl<'a> Group<'a> {
-    pub fn distribute_to_members(&mut self, messages: Vec<MLSMessage>) -> Result<(), ClientError> {
-        // Distribute message to all members.
-        for member in &self.members {
-            member.receive_messages_for_group(&self.group_id, messages.clone())?;
-        }
-        // Get the current tree from one of the up-to-date members.
-        let groups = self.members[0].groups.borrow();
-        let public_tree = groups.get(&self.group_id).unwrap().export_ratchet_tree();
-        self.public_tree = public_tree;
-        drop(groups);
-        for m in &self.members {
-            let group_states = m.groups.borrow_mut();
-            let group_state = group_states.get(&self.group_id).unwrap();
-            assert_eq!(group_state.export_ratchet_tree(), self.public_tree);
-            drop(group_states);
-        }
-        Ok(())
-    }
-
-    pub fn join_group(
-        &mut self,
-        client: &'a Client<'a>,
-        welcome: Welcome,
-    ) -> Result<(), ClientError> {
-        client.join_group(
-            self.group_config.clone(),
-            welcome,
-            Some(self.public_tree.clone()),
-        )?;
-        self.members.push(client);
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -195,38 +164,48 @@ pub enum SetupError {
 
 struct ManagedTestSetup<'a> {
     // The clients identity is its position in the vector in be_bytes.
-    clients: Vec<Client<'a>>,
-    groups: RefCell<HashMap<GroupId, Group<'a>>>,
-    // We need this to efficiently find recipients of Welcome messages.
-    waiting_for_welcome: HashMap<Vec<u8>, &'a Client<'a>>,
+    clients: HashMap<Vec<u8>, Client<'a>>,
+    groups: HashMap<GroupId, Group>,
+    // This maps key package hashes to client ids.
+    waiting_for_welcome: HashMap<Vec<u8>, Vec<u8>>,
     default_mgc: ManagedGroupConfig,
 }
 
 impl<'a> ManagedTestSetup<'a> {
     pub fn new(number_of_clients: usize, default_mgc: ManagedGroupConfig) -> Self {
-        let mut clients = Vec::new();
+        let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_string().into_bytes();
             // For now, everyone supports all ciphersuites.
             let _ciphersuites = Config::supported_ciphersuite_names();
             let mut credential_bundles = HashMap::new();
+            let mut credential_bundle_refs = Vec::new();
             for ciphersuite in &_ciphersuites {
                 let credential_bundle =
                     CredentialBundle::new(identity.clone(), CredentialType::Basic, *ciphersuite)
                         .unwrap();
-                credential_bundles.insert(*ciphersuite, credential_bundle);
+                credential_bundles = add_to_map(
+                    credential_bundle,
+                    *ciphersuite,
+                    credential_bundles,
+                    &mut credential_bundle_refs,
+                );
+                //credential_bundles.insert(*ciphersuite, credential_bundle);
+                //let credential_bundle_ref = credential_bundles.get(ciphersuite).unwrap();
+                //credential_bundle_refs.push(credential_bundle_ref);
             }
             let key_package_bundles = RefCell::new(HashMap::new());
             let client = Client {
-                identity,
+                identity: identity.clone(),
                 _ciphersuites,
                 credential_bundles,
                 key_package_bundles,
                 groups: RefCell::new(HashMap::new()),
+                credential_bundle_refs,
             };
-            clients.push(client)
+            clients.insert(identity, client);
         }
-        let groups = RefCell::new(HashMap::new());
+        let groups = HashMap::new();
         let waiting_for_welcome = HashMap::new();
         ManagedTestSetup {
             clients,
@@ -238,81 +217,133 @@ impl<'a> ManagedTestSetup<'a> {
 
     pub fn get_fresh_key_package(
         &mut self,
-        client: &'a Client<'a>,
+        client_id: &Vec<u8>,
         ciphersuite: &Ciphersuite,
     ) -> KeyPackage {
+        let client = self.clients.get(client_id).unwrap();
         let key_package = client.get_fresh_key_package(ciphersuite);
-        self.waiting_for_welcome.insert(key_package.hash(), client);
+        self.waiting_for_welcome
+            .insert(key_package.hash(), client_id.clone());
         key_package
     }
 
     pub fn deliver_welcome(&mut self, welcome: Welcome, group_id: GroupId) {
         for egs in welcome.secrets() {
-            let client = self
+            let client_id = self
                 .waiting_for_welcome
                 .remove(&egs.key_package_hash)
                 .unwrap();
-            let mut groups = self.groups.borrow_mut();
-            let group = groups.get_mut(&group_id).unwrap();
-            group.join_group(client, welcome.clone()).unwrap();
+            let client = self.clients.get(&client_id).unwrap();
+            let group = self.groups.get_mut(&group_id).unwrap();
+            client
+                .join_group(
+                    group.group_config.clone(),
+                    welcome.clone(),
+                    Some(group.public_tree.clone()),
+                )
+                .unwrap();
         }
     }
 
+    pub fn distribute_to_members(
+        &mut self,
+        group_id: &GroupId,
+        messages: Vec<MLSMessage>,
+    ) -> Result<(), ClientError> {
+        let mut group = self.groups.get_mut(group_id).unwrap();
+        // Distribute message to all members.
+        for member_id in &group.members {
+            let member = self.clients.get(member_id).unwrap();
+            member.receive_messages_for_group(&group.group_id, messages.clone())?;
+        }
+        // Get the current tree from one of the up-to-date members.
+        let random_member_id = group.members.iter().find(|_| true).unwrap();
+        let random_member = self.clients.get(random_member_id).unwrap();
+        let random_member_groups = random_member.groups.borrow();
+        let random_member_group = random_member_groups.get(group_id).unwrap();
+        group.public_tree = random_member_group.export_ratchet_tree();
+        drop(random_member_group);
+        drop(random_member_groups);
+        for m_id in &group.members {
+            let m = self.clients.get(m_id).unwrap();
+            let group_states = m.groups.borrow_mut();
+            let group_state = group_states.get(&group.group_id).unwrap();
+            assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
+            drop(group_states);
+        }
+        let mut current_members = HashSet::new();
+        for index in 0..group.public_tree.len() {
+            // Is it a leaf?
+            if index % 2 == 0 && group.public_tree[index].is_some() {
+                match group.public_tree[index] {
+                    Some(ref leaf) => {
+                        let identity = leaf.key_package().unwrap().credential().identity();
+                        current_members.insert(identity.clone());
+                    }
+                    None => {}
+                };
+            }
+        }
+        group.members = current_members;
+        Ok(())
+    }
+
     pub fn random_new_members_for_group(
-        &'a mut self,
+        &self,
         group_id: &GroupId,
         number_of_members: usize,
-    ) -> Result<(Vec<&'a Client<'a>>, Vec<KeyPackage>), SetupError> {
-        let groups = self.groups.borrow();
-        let group = match groups.get(group_id) {
+    ) -> Result<Vec<Vec<u8>>, SetupError> {
+        let group = match self.groups.get(group_id) {
             Some(group) => group,
             None => return Err(SetupError::UnknownGroupId),
         };
-        let mut new_members: Vec<&'a Client<'a>> = Vec::new();
-        let mut key_packages = Vec::new();
+        let mut new_member_ids = Vec::new();
         for _ in 0..number_of_members {
-            let new_member = self
+            let new_member_id = self
                 .clients
-                .iter()
-                .find(|client| {
+                .keys()
+                .find(|&client_id| {
                     (group
                         .members
                         .iter()
-                        .find(|member| member.identity == client.identity)
+                        .find(|&member_id| client_id == member_id)
                         .is_none())
-                        && (new_members
+                        && (new_member_ids
                             .iter()
-                            .find(|member| member.identity == client.identity)
+                            .find(|&member_id| member_id == client_id)
                             .is_none())
                 })
                 .unwrap();
-            key_packages.push(self.get_fresh_key_package(new_member, &group.ciphersuite));
-            new_members.push(new_member);
+            new_member_ids.push(new_member_id.clone());
         }
-        Ok((new_members, key_packages))
+        drop(group);
+        Ok(new_member_ids)
     }
 
     /// Create a random group of size `group_size` and return the `GroupId`
     pub fn create_random_group(
-        &'a self,
+        &'a mut self,
         target_group_size: usize,
         ciphersuite: &Ciphersuite,
     ) -> GroupId {
-        let mut groups = self.groups.borrow_mut();
         if target_group_size > self.clients.len() {
             panic!("Not enough members to create a group this large.");
         }
 
         // Pick a random group creator.
-        let group_creator_id = (OsRng.next_u32() as usize) % self.clients.len();
-        let group_creator = &self.clients[group_creator_id];
+        let group_creator_id = ((OsRng.next_u32() as usize) % self.clients.len())
+            .to_be_bytes()
+            .to_vec();
+        let clients = &self.clients;
+        let group_creator = clients.get(&group_creator_id).unwrap();
         let group_id = GroupId {
-            value: groups.len().to_string().into_bytes(),
+            value: self.groups.len().to_string().into_bytes(),
         };
 
         let public_tree =
             group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite);
-        let member_references = vec![group_creator];
+        let mut member_references = HashSet::new();
+        member_references.insert(group_creator_id);
         let group = Group {
             group_id: group_id.clone(),
             members: member_references,
@@ -320,68 +351,59 @@ impl<'a> ManagedTestSetup<'a> {
             group_config: self.default_mgc.clone(),
             public_tree,
         };
-        groups.insert(group_id.clone(), group);
-        let group = groups.get_mut(&group_id).unwrap();
-        let mut current_group_size = group.members.len();
-        drop(group);
-        drop(groups);
+        self.groups.insert(group_id.clone(), group);
+        let mut current_group_size = 1;
         while current_group_size < target_group_size {
-            let mut groups = self.groups.borrow_mut();
-            let group = groups.get_mut(&group_id).unwrap();
             // Get a random group member.
-            let adder_id = (OsRng.next_u32() as usize) % group.members.len();
-            let adder = group.members[adder_id];
+            //let adder = group.members.get(&adder_id).unwrap();
             let number_of_members =
                 (OsRng.next_u32() as usize) % (target_group_size - current_group_size) + 1;
-            drop(group);
-            drop(groups);
-            self.increase_group_size(adder, group_id.clone(), number_of_members);
+            self.increase_group_size(group_id.clone(), number_of_members);
             current_group_size += number_of_members;
         }
         group_id
     }
 
     /// Have the given member of the given group add `number_of_members` to the group.
-    fn increase_group_size(
-        &'a self,
-        adder: &'a Client,
-        group_id: GroupId,
-        number_of_members: usize,
-    ) {
-        let (new_members, new_member_key_packages) = self
+    fn increase_group_size(&mut self, group_id: GroupId, number_of_members: usize) {
+        let group = self.groups.get(&group_id).unwrap();
+        let ciphersuite = group.ciphersuite.clone();
+        drop(group);
+        let new_members = self
             .random_new_members_for_group(&group_id, number_of_members)
             .expect("Error when getting new members for group size increase.");
 
-        let mut groups = self.groups.borrow_mut();
-        let group = groups.get_mut(&group_id).unwrap();
+        let mut key_packages = Vec::new();
+        for member_id in &new_members {
+            let fresh_key_package = self.get_fresh_key_package(member_id, &ciphersuite);
+            key_packages.push(fresh_key_package);
+        }
+        let group = self.groups.get_mut(&group_id).unwrap();
+        // Pick a random adder.
+        let adder_id = group.members.iter().find(|_| true).unwrap();
+        let adder = self.clients.get(adder_id).unwrap();
         let mut adder_group_states = adder.groups.borrow_mut();
         let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
 
         let (mls_messages, welcome) = adder_group_state
-            .add_members(new_member_key_packages.as_slice())
+            .add_members(key_packages.as_slice())
             .unwrap();
         drop(adder_group_state);
         drop(adder_group_states);
-        group
-            .distribute_to_members(mls_messages)
+        self.distribute_to_members(&group_id, mls_messages)
             .expect("Error distributing messages to group members while creating a new group.");
-        for new_member in &new_members {
-            group
-                .join_group(new_member, welcome.clone())
-                .expect("Error while processing Welcome messages by new group members.");
-        }
+        self.deliver_welcome(welcome, group_id);
     }
 
-    pub fn perform_random_operation(&'a self, group_id: GroupId) -> Result<(), ClientError> {
-        let mut setup_groups = self.groups.borrow_mut();
-        let setup_group = match setup_groups.get_mut(&group_id) {
+    pub fn perform_random_operation(&'a mut self, group_id: GroupId) -> Result<(), ClientError> {
+        let group = match self.groups.get_mut(&group_id) {
             Some(group) => group,
             None => return Err(ClientError::NoMatchingGroup),
         };
 
         // Who's going to do it?
-        let member_id = (OsRng.next_u32() as usize) % setup_group.members.len();
-        let member = setup_group.members[member_id];
+        let member_id = group.members.iter().find(|_| true).unwrap();
+        let member = self.clients.get(member_id).unwrap();
 
         let mut groups = member.groups.borrow_mut();
         let group = groups.get_mut(&group_id).unwrap();
@@ -437,18 +459,6 @@ impl<'a> ManagedTestSetup<'a> {
                         }
                         target_members.push(index);
                     }
-                    let mut target_clients = Vec::new();
-                    for member_index in &target_members {
-                        let member_cred: &Credential = &group.members()[member_index.to_owned()];
-                        let member_identity = member_cred.identity();
-                        println!("Member identity: {:?}", member_identity);
-                        let client: &'a Client = setup_group
-                            .members
-                            .iter()
-                            .find(|client| &client.identity == member_identity)
-                            .unwrap();
-                        target_clients.push(client);
-                    }
                     let (messages, welcome_option) = if action_type == 0 {
                         (group.propose_remove_members(&target_members).unwrap(), None)
                     } else {
@@ -456,72 +466,41 @@ impl<'a> ManagedTestSetup<'a> {
                     };
                     drop(group);
                     drop(groups);
-                    for client in target_clients {
-                        let pos = setup_group
-                            .members
-                            .iter()
-                            .position(|&mem| mem.identity == client.identity)
-                            .unwrap();
-                        setup_group.members.remove(pos);
-                    }
                     (messages, welcome_option)
                 }
             }
             2 => {
                 let number_of_adds = ((OsRng.next_u32() as usize) % 5) + 1;
-                let mut new_members: Vec<&Client<'a>> = Vec::new();
-                let mut new_member_key_packages = Vec::new();
-                for _ in 0..number_of_adds {
-                    let new_member = self
-                        .clients
-                        .iter()
-                        .find(|client| {
-                            (setup_group
-                                .members
-                                .iter()
-                                .find(|member| member.identity == client.identity)
-                                .is_none())
-                                && (new_members
-                                    .iter()
-                                    .find(|member| member.identity == client.identity)
-                                    .is_none())
-                        })
-                        .unwrap();
-                    // Get a fresh key package from each of them.
-                    let key_package = new_member.get_fresh_key_package(&setup_group.ciphersuite);
-                    new_members.push(new_member);
-                    new_member_key_packages.push(key_package);
+                let new_members = self
+                    .random_new_members_for_group(&group_id, number_of_adds)
+                    .unwrap();
+                let mut key_packages = Vec::new();
+                for member in &new_members {
+                    let fresh_key_package = self.get_fresh_key_package(member, group.ciphersuite());
+                    key_packages.push(fresh_key_package);
                 }
                 // Have the adder add them to the group.
                 if action_type == 0 {
-                    let messages = group.propose_add_members(&new_member_key_packages).unwrap();
+                    let messages = group.propose_add_members(&key_packages).unwrap();
                     drop(group);
                     drop(groups);
                     (messages, None)
                 } else {
-                    let (messages, welcome) = group.add_members(&new_member_key_packages).unwrap();
+                    let (messages, welcome) = group.add_members(&key_packages).unwrap();
                     drop(group);
                     drop(groups);
                     //println!("Setup group members: {:?}", setup_group.members);
-                    debug_assert!(setup_group
-                        .members
-                        .iter()
-                        .find(|mem| mem.identity == member.identity)
-                        .is_some());
                     (messages, Some(welcome))
                 }
             }
             _ => return Err(ClientError::Unknown),
         };
-        if !messages.is_empty() {
-            setup_group
-                .distribute_to_members(messages)
-                .expect("Error while distributing messages after random group operation.");
-        };
+        self.distribute_to_members(&group_id, messages);
+        if let Some(welcome) = welcome_option {
+            self.deliver_welcome(welcome, group_id);
+        }
 
         Ok(())
-
-        //group
     }
 }
 
