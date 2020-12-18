@@ -65,6 +65,16 @@ pub struct HpkeCiphertext {
     ciphertext: Vec<u8>,
 }
 
+#[cfg(test)]
+impl HpkeCiphertext {
+    /// This function flips the last byte of the ciphertext.
+    pub fn flip_last_byte(&mut self) {
+        let mut last_bits = self.ciphertext.pop().unwrap();
+        last_bits ^= 0xff;
+        self.ciphertext.push(last_bits);
+    }
+}
+
 /// `KdfLabel` is later serialized and used in the `label` field of
 /// `kdf_expand_label`.
 struct KdfLabel {
@@ -396,7 +406,7 @@ impl Ciphersuite {
         sk_r: &HPKEPrivateKey,
         info: &[u8],
         aad: &[u8],
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, CryptoError> {
         self.hpke
             .open(
                 &input.kem_output,
@@ -408,7 +418,7 @@ impl Ciphersuite {
                 None,
                 None,
             )
-            .unwrap()
+            .map_err(|_| CryptoError::HpkeDecryptionError)
     }
 
     /// Derive a new HPKE keypair from a given Secret.
