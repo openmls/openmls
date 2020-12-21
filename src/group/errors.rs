@@ -6,6 +6,7 @@
 use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::framing::errors::MLSCiphertextError;
+use crate::messages::errors::ProposalQueueError;
 use crate::tree::{secret_tree::SecretTypeError, TreeError};
 
 implement_error! {
@@ -24,6 +25,8 @@ implement_error! {
             "See [`ExporterError`](`ExporterError`) for details",
         SecretTypeError(SecretTypeError) =
             "See [`SecretTypeError`](`crate::tree::secret_tree::SecretTypeError`) for details",
+            ProposalQueueError(ProposalQueueError) =
+        "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details",
     }
 }
 

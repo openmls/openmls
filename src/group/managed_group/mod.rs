@@ -478,7 +478,7 @@ impl<'a> ManagedGroup<'a> {
 
     // === Application messages ===
 
-    /// Creates an application message.  
+    /// Creates an application message.
     /// Returns `ManagedGroupError::UseAfterEviction(UseAfterEviction::Error)`
     /// if the member is no longer part of the group.
     /// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals
@@ -851,8 +851,8 @@ impl<'a> ManagedGroup<'a> {
                 ProposalOrRef::Proposal(proposal) => {
                     self.send_proposal_event(proposal, sender, indexed_members);
                 }
-                ProposalOrRef::Reference(proposal_id) => {
-                    if let Some(queued_proposal) = pending_proposals_queue.get(proposal_id) {
+                ProposalOrRef::Reference(proposal_reference) => {
+                    if let Some(queued_proposal) = pending_proposals_queue.get(proposal_reference) {
                         self.send_proposal_event(
                             queued_proposal.proposal(),
                             sender,
