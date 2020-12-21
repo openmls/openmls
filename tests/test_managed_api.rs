@@ -43,7 +43,6 @@ struct Client<'a> {
     /// Ciphersuites supported by the client.
     pub(crate) _ciphersuites: Vec<CiphersuiteName>,
     credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
-    credential_bundle_refs: Vec<&'a CredentialBundle>,
     // Map from key package hash to the corresponding bundle.
     pub(crate) key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
     //pub(crate) key_packages: HashMap<CiphersuiteName, KeyPackage>,
@@ -96,7 +95,7 @@ impl<'a> Client<'a> {
     }
 
     pub fn join_group(
-        self,
+        &'a self,
         managed_group_config: ManagedGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
@@ -179,20 +178,11 @@ impl<'a> ManagedTestSetup<'a> {
             // For now, everyone supports all ciphersuites.
             let _ciphersuites = Config::supported_ciphersuite_names();
             let mut credential_bundles = HashMap::new();
-            let mut credential_bundle_refs = Vec::new();
             for ciphersuite in &_ciphersuites {
                 let credential_bundle =
                     CredentialBundle::new(identity.clone(), CredentialType::Basic, *ciphersuite)
                         .unwrap();
-                credential_bundles = add_to_map(
-                    credential_bundle,
-                    *ciphersuite,
-                    credential_bundles,
-                    &mut credential_bundle_refs,
-                );
-                //credential_bundles.insert(*ciphersuite, credential_bundle);
-                //let credential_bundle_ref = credential_bundles.get(ciphersuite).unwrap();
-                //credential_bundle_refs.push(credential_bundle_ref);
+                credential_bundles.insert(*ciphersuite, credential_bundle);
             }
             let key_package_bundles = RefCell::new(HashMap::new());
             let client = Client {
@@ -201,7 +191,6 @@ impl<'a> ManagedTestSetup<'a> {
                 credential_bundles,
                 key_package_bundles,
                 groups: RefCell::new(HashMap::new()),
-                credential_bundle_refs,
             };
             clients.insert(identity, client);
         }
@@ -227,7 +216,7 @@ impl<'a> ManagedTestSetup<'a> {
         key_package
     }
 
-    pub fn deliver_welcome(&mut self, welcome: Welcome, group_id: GroupId) {
+    pub fn deliver_welcome(&'a mut self, welcome: Welcome, group_id: GroupId) {
         for egs in welcome.secrets() {
             let client_id = self
                 .waiting_for_welcome
@@ -365,7 +354,7 @@ impl<'a> ManagedTestSetup<'a> {
     }
 
     /// Have the given member of the given group add `number_of_members` to the group.
-    fn increase_group_size(&mut self, group_id: GroupId, number_of_members: usize) {
+    fn increase_group_size(&'a mut self, group_id: GroupId, number_of_members: usize) {
         let group = self.groups.get(&group_id).unwrap();
         let ciphersuite = group.ciphersuite.clone();
         drop(group);
