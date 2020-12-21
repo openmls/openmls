@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+use super::errors::EmptyInputError;
+
 #[test]
 fn test_managed_group_persistence() {
     use std::fs::File;
@@ -47,4 +49,47 @@ fn test_managed_group_persistence() {
     .expect("Could not deserialize managed group");
 
     assert_eq!(alice_group, alice_group_deserialized);
+}
+
+#[test]
+fn test_empty_input_errors() {
+    let ciphersuite = &Config::supported_ciphersuites()[0];
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    // Define credential bundles
+    let alice_credential_bundle =
+        CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+
+    // Generate KeyPackages
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![]).unwrap();
+
+    // Define the managed group configuration
+
+    let update_policy = UpdatePolicy::default();
+    let callbacks = ManagedGroupCallbacks::default();
+    let managed_group_config =
+        ManagedGroupConfig::new(HandshakeMessageFormat::Plaintext, update_policy, callbacks);
+
+    // === Alice creates a group ===
+    let mut alice_group = ManagedGroup::new(
+        &alice_credential_bundle,
+        &managed_group_config,
+        group_id,
+        alice_key_package_bundle,
+    )
+    .unwrap();
+
+    assert_eq!(
+        alice_group
+            .add_members(&[])
+            .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
+        ManagedGroupError::EmptyInput(EmptyInputError::AddMembers)
+    );
+    assert_eq!(
+        alice_group.remove_members(&[]).expect_err(
+            "No EmptyInputError when trying to pass an empty slice to `remove_members`."
+        ),
+        ManagedGroupError::EmptyInput(EmptyInputError::RemoveMembers)
+    );
 }
