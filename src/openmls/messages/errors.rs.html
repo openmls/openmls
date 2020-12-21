@@ -26,12 +26,22 @@
 <span id="23">23</span>
 <span id="24">24</span>
 <span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalQueueError</span> {
-        <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">NotAProposal</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
+        }
     }
 }
 

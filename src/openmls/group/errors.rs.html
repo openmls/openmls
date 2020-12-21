@@ -113,6 +113,9 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
@@ -122,6 +125,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::<span class="ident">MLSCiphertextError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">errors</span>::<span class="ident">ProposalQueueError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">secret_tree</span>::<span class="ident">SecretTypeError</span>, <span class="ident">TreeError</span>};
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
@@ -140,6 +144,8 @@
             <span class="string">&quot;See [`ExporterError`](`ExporterError`) for details&quot;</span>,
         <span class="ident">SecretTypeError</span>(<span class="ident">SecretTypeError</span>) <span class="op">=</span>
             <span class="string">&quot;See [`SecretTypeError`](`crate::tree::secret_tree::SecretTypeError`) for details&quot;</span>,
+            <span class="ident">ProposalQueueError</span>(<span class="ident">ProposalQueueError</span>) <span class="op">=</span>
+        <span class="string">&quot;See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details&quot;</span>,
     }
 }
 

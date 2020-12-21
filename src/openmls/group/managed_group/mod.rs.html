@@ -1468,7 +1468,7 @@
 
     <span class="comment">// === Application messages ===</span>
 
-    <span class="doccomment">/// Creates an application message.  </span>
+    <span class="doccomment">/// Creates an application message.</span>
     <span class="doccomment">/// Returns `ManagedGroupError::UseAfterEviction(UseAfterEviction::Error)`</span>
     <span class="doccomment">/// if the member is no longer part of the group.</span>
     <span class="doccomment">/// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals</span>
@@ -1841,8 +1841,8 @@
                 <span class="ident">ProposalOrRef</span>::<span class="ident">Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="self">self</span>.<span class="ident">send_proposal_event</span>(<span class="ident">proposal</span>, <span class="ident">sender</span>, <span class="ident">indexed_members</span>);
                 }
-                <span class="ident">ProposalOrRef</span>::<span class="ident">Reference</span>(<span class="ident">proposal_id</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">queued_proposal</span>) <span class="op">=</span> <span class="ident">pending_proposals_queue</span>.<span class="ident">get</span>(<span class="ident">proposal_id</span>) {
+                <span class="ident">ProposalOrRef</span>::<span class="ident">Reference</span>(<span class="ident">proposal_reference</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">queued_proposal</span>) <span class="op">=</span> <span class="ident">pending_proposals_queue</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>) {
                         <span class="self">self</span>.<span class="ident">send_proposal_event</span>(
                             <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>(),
                             <span class="ident">sender</span>,

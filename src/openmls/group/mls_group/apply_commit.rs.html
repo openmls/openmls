@@ -179,10 +179,6 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
@@ -214,16 +210,12 @@
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">WrongPlaintextContentType</span>),
         };
 
-        <span class="comment">// Convert proposals by reference into a queue</span>
-        <span class="kw">let</span> <span class="ident">proposals_by_ref_queue</span> <span class="op">=</span>
-            <span class="ident">ProposalQueue</span>::<span class="ident">from_proposals_by_reference</span>(<span class="ident">ciphersuite</span>, <span class="ident">proposals_by_reference</span>);
-
         <span class="comment">// Build a queue with all proposals from the Commit and check that we have all</span>
         <span class="comment">// of the proposals by reference locally</span>
         <span class="kw">let</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ProposalQueue</span>::<span class="ident">from_committed_proposals</span>(
             <span class="ident">ciphersuite</span>,
             <span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">proposals</span>,
-            <span class="kw-2">&amp;</span><span class="ident">proposals_by_ref_queue</span>,
+            <span class="ident">proposals_by_reference</span>,
             <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>,
         ) {
             <span class="prelude-val">Ok</span>(<span class="ident">proposal_queue</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal_queue</span>,
