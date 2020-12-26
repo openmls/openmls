@@ -82,6 +82,8 @@ implement_error! {
                 "MLSPlaintext signature is invalid.",
             RequiredPathNotFound =
                 "Unable to determine commit path.",
+            ConfirmationTagMissing =
+                "Confirmation Tag is missing.",
             ConfirmationTagMismatch =
                 "Confirmation tag is invalid.",
             MissingOwnKeyPackage =

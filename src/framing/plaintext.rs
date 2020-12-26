@@ -46,7 +46,7 @@ pub struct MLSPlaintext {
 impl MLSPlaintext {
     /// This constructor builds a new `MLSPlaintext` from the parameters
     /// provided. It is ony used internally.
-    fn new_from_member(
+    pub(crate) fn new_from_member(
         ciphersuite: &Ciphersuite,
         sender_index: LeafIndex,
         authenticated_data: &[u8],

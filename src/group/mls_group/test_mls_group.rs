@@ -1,7 +1,7 @@
 use crate::tree::TreeError;
 use crate::{
     group::GroupEpoch,
-    messages::{Commit, EncryptedGroupSecrets, GroupInfo},
+    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfo},
     prelude::*,
     tree::{UpdatePath, UpdatePathNode},
 };
@@ -53,7 +53,7 @@ fn test_failed_groupinfo_decryption() {
             let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
-            let confirmation_tag = vec![6, 6, 6];
+            let confirmation_tag = ConfirmationTag::from(vec![6, 6, 6]);
             let signer_index = LeafIndex::from(8u32);
             let group_info = GroupInfo::new(
                 group_id,
@@ -175,7 +175,7 @@ fn test_update_path() {
             .expect("Error creating commit");
 
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -217,10 +217,8 @@ fn test_update_path() {
         // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
         // apart the commit, manipulating the ciphertexts and the piecing it
         // back together.
-        let (commit, confirmation_tag) = match &mls_plaintext_commit.content {
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
-                (commit, confirmation_tag)
-            }
+        let commit = match &mls_plaintext_commit.content {
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Bob created a commit, which does not contain an actual commit."),
         };
 
@@ -255,15 +253,16 @@ fn test_update_path() {
             path: Some(broken_path),
         };
 
-        let broken_commit_content =
-            MLSPlaintextContentType::Commit((broken_commit, confirmation_tag.clone()));
+        let broken_commit_content = MLSPlaintextContentType::Commit(broken_commit);
 
-        let broken_plaintext = MLSPlaintext::new(
+        let broken_plaintext = MLSPlaintext::new_from_member(
+            ciphersuite,
             mls_plaintext_commit.sender.to_leaf_index(),
             &mls_plaintext_commit.authenticated_data,
             broken_commit_content,
             &bob_credential_bundle,
             group_bob.context(),
+            &Secret::random(ciphersuite.hash_length()),
         );
 
         assert_eq!(
