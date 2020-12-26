@@ -380,6 +380,8 @@ impl<'a> ManagedGroup<'a> {
                             serialized_context,
                             &self.group.epoch_secrets().membership_key,
                         ) {
+                            // If there is a callback for that event we should call it
+                            self.invalid_message_event(InvalidMessageError::MembershipTagMismatch);
                             // Since the membership tag verification failed, we skip the message
                             // and go to the next one
                             continue;

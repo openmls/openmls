@@ -43,13 +43,19 @@ implement_error! {
 
 implement_error! {
     pub enum InvalidMessageError {
-        InvalidCiphertext(ErrorPayload) =
-            "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
-        CommitWithInvalidProposals(ErrorString) =
-            "A commit contained an invalid proposal. Additional detail is provided.",
-        CommitError(ApplyCommitError) =
-            "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
-        GroupError(GroupError) =
-            "See [`GroupError`](`crate::group::GroupError`) for details",
+        Simple {
+            MembershipTagMismatch =
+                "A Proposal with an invalid membership tag was received.",
+        }
+        Complex {
+            InvalidCiphertext(ErrorPayload) =
+                "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
+            CommitWithInvalidProposals(ErrorString) =
+                "A commit contained an invalid proposal. Additional detail is provided.",
+            CommitError(ApplyCommitError) =
+                "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
+            GroupError(GroupError) =
+                "See [`GroupError`](`crate::group::GroupError`) for details",
+        }
     }
 }

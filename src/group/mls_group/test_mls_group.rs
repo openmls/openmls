@@ -255,7 +255,7 @@ fn test_update_path() {
 
         let broken_commit_content = MLSPlaintextContentType::Commit(broken_commit);
 
-        let broken_plaintext = MLSPlaintext::new_from_member(
+        let mut broken_plaintext = MLSPlaintext::new_from_member(
             ciphersuite,
             mls_plaintext_commit.sender.to_leaf_index(),
             &mls_plaintext_commit.authenticated_data,
@@ -265,10 +265,12 @@ fn test_update_path() {
             &Secret::random(ciphersuite.hash_length()),
         );
 
+        broken_plaintext.confirmation_tag = Some(ConfirmationTag::from(vec![1, 2, 3]));
+
         assert_eq!(
             group_alice
                 .apply_commit(&broken_plaintext, &[&update_proposal_bob], &[])
-                .expect_err("Successfull processing of a broken commit."),
+                .expect_err("Successful processing of a broken commit."),
             GroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))

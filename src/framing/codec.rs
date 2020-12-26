@@ -181,7 +181,7 @@ impl Codec for MLSSenderData {
     }
 }
 
-impl Codec for MLSCiphertextSenderDataAAD {
+impl Codec for MLSSenderDataAAD {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;

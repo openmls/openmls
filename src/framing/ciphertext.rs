@@ -51,34 +51,40 @@ impl MLSCiphertext {
                 &ratchet_nonce,
             )
             .map_err(|_| MLSCiphertextError::EncryptionError)?;
+        // Extract ciphertext sample for key/nonce derivation
+        let sample_length = ciphersuite.hash_length();
+        let ciphertext_sample = if ciphertext.len() <= sample_length {
+            &ciphertext
+        } else {
+            &ciphertext[0..sample_length]
+        };
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = AeadKey::from_sender_data_secret(
             ciphersuite,
-            &ciphertext,
+            ciphertext_sample,
             epoch_secrets.sender_data_secret(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_sender_data_secret(
             ciphersuite,
-            &ciphertext,
+            ciphertext_sample,
             epoch_secrets.sender_data_secret(),
         );
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
-        let mls_ciphertext_sender_data_aad = MLSCiphertextSenderDataAAD::new(
+        let mls_sender_data_aad = MLSSenderDataAAD::new(
             context.group_id.clone(),
             context.epoch,
             mls_plaintext.content_type,
         );
         // Serialize the sender data AAD
-        let mls_ciphertext_sender_data_aad_bytes =
-            mls_ciphertext_sender_data_aad.encode_detached()?;
+        let mls_sender_data_aad_bytes = mls_sender_data_aad.encode_detached()?;
         let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation, reuse_guard);
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
                 &sender_data.encode_detached()?,
-                &mls_ciphertext_sender_data_aad_bytes,
+                &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
             .map_err(|_| MLSCiphertextError::EncryptionError)?;
@@ -98,28 +104,34 @@ impl MLSCiphertext {
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
+        // Extract ciphertext sample for key/nonce derivation
+        let sample_length = ciphersuite.hash_length();
+        let ciphertext_sample = if self.ciphertext.len() <= sample_length {
+            &self.ciphertext
+        } else {
+            &self.ciphertext[0..sample_length]
+        };
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = AeadKey::from_sender_data_secret(
             ciphersuite,
-            &self.ciphertext,
+            ciphertext_sample,
             epoch_secrets.sender_data_secret(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_sender_data_secret(
             ciphersuite,
-            &self.ciphertext,
+            ciphertext_sample,
             epoch_secrets.sender_data_secret(),
         );
         // Serialize sender data AAD
-        let mls_ciphertext_sender_data_aad =
-            MLSCiphertextSenderDataAAD::new(self.group_id.clone(), self.epoch, self.content_type);
-        let mls_ciphertext_sender_data_aad_bytes =
-            mls_ciphertext_sender_data_aad.encode_detached()?;
+        let mls_sender_data_aad =
+            MLSSenderDataAAD::new(self.group_id.clone(), self.epoch, self.content_type);
+        let mls_sender_data_aad_bytes = mls_sender_data_aad.encode_detached()?;
         // Decrypt sender data
         let sender_data_bytes = &sender_data_key
             .aead_open(
                 &self.encrypted_sender_data,
-                &mls_ciphertext_sender_data_aad_bytes,
+                &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
             .map_err(|_| MLSCiphertextError::DecryptionError)?;
@@ -243,13 +255,13 @@ impl MLSSenderData {
 }
 
 #[derive(Clone)]
-pub(crate) struct MLSCiphertextSenderDataAAD {
+pub(crate) struct MLSSenderDataAAD {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,
 }
 
-impl MLSCiphertextSenderDataAAD {
+impl MLSSenderDataAAD {
     fn new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -> Self {
         Self {
             group_id,

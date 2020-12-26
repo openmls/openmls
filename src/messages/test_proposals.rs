@@ -184,18 +184,22 @@ fn proposal_queue_order() {
 
         // Frame proposals in MLSPlaintext
         let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(0u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_alice1.clone()),
+            proposal_add_alice1.clone(),
             &alice_credential_bundle,
             &group_context,
+            &Secret::random(ciphersuite.hash_length()),
         );
         let mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(1u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_bob1.clone()),
+            proposal_add_bob1.clone(),
             &alice_credential_bundle,
             &group_context,
+            &Secret::random(ciphersuite.hash_length()),
         );
 
         // This should set the order of the proposals.

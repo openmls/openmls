@@ -128,14 +128,8 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
                 aad
             );
         }
-        InvalidMessageError::CommitWithInvalidProposals(_) => {
-            println!("A Commit message with one ore more invalid proposals was received");
-        }
-        InvalidMessageError::CommitError(e) => {
-            println!("An error occurred when applying a Commit message: {:?}", e);
-        }
-        InvalidMessageError::GroupError(e) => {
-            println!("An group error occurred: {:?}", e);
+        _ => {
+            println!("{:?}", error);
         }
     }
 }
