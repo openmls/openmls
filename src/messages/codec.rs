@@ -1,7 +1,7 @@
 //! Codec implementations for message structs.
 
 use super::*;
-use crate::key_packages::KeyPackage;
+use crate::{key_packages::KeyPackage, schedule::psk::PreSharedKeyID};
 
 use std::convert::TryFrom;
 
@@ -22,7 +22,7 @@ impl Codec for Commit {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let proposals = decode_vec(VecSize::VecU32, cursor)?;
         let path = Option::<UpdatePath>::decode(cursor)?;
-        Ok(Commit { proposals, path })
+        Ok(Self { proposals, path })
     }
 }
 
@@ -33,7 +33,7 @@ impl Codec for ConfirmationTag {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let mac = Mac::decode(cursor)?;
-        Ok(ConfirmationTag(mac))
+        Ok(Self(mac))
     }
 }
 
@@ -44,7 +44,7 @@ impl Codec for PathSecret {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let path_secret = Secret::decode(cursor)?;
-        Ok(PathSecret { path_secret })
+        Ok(Self { path_secret })
     }
 }
 
@@ -57,7 +57,7 @@ impl Codec for EncryptedGroupSecrets {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let key_package_hash = decode_vec(VecSize::VecU8, cursor)?;
         let encrypted_group_secrets = HpkeCiphertext::decode(cursor)?;
-        Ok(EncryptedGroupSecrets {
+        Ok(Self {
             key_package_hash,
             encrypted_group_secrets,
         })
@@ -77,7 +77,7 @@ impl Codec for Welcome {
         let cipher_suite = CiphersuiteName::decode(cursor)?;
         let secrets = decode_vec(VecSize::VecU32, cursor)?;
         let encrypted_group_info = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(Welcome {
+        Ok(Self {
             version,
             cipher_suite: Config::ciphersuite(cipher_suite)?,
             secrets,
@@ -95,7 +95,7 @@ impl Codec for GroupSecrets {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let joiner_secret = JoinerSecret::decode(cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
-        Ok(GroupSecrets::new(joiner_secret, path_secret))
+        Ok(Self::new(joiner_secret, path_secret))
     }
 }
 
@@ -153,6 +153,14 @@ impl Codec for Proposal {
                 ProposalType::Remove.encode(buffer)?;
                 remove.encode(buffer)?;
             }
+            Proposal::PreSharedKey(presharedkey) => {
+                ProposalType::Presharedkey.encode(buffer)?;
+                presharedkey.encode(buffer)?;
+            }
+            Proposal::ReInit(reinit) => {
+                ProposalType::Reinit.encode(buffer)?;
+                reinit.encode(buffer)?;
+            }
         }
         Ok(())
     }
@@ -165,6 +173,10 @@ impl Codec for Proposal {
             ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
             ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
             ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
+            ProposalType::Presharedkey => Ok(Proposal::PreSharedKey(PreSharedKeyProposal::decode(
+                cursor,
+            )?)),
+            ProposalType::Reinit => Ok(Proposal::ReInit(ReInitProposal::decode(cursor)?)),
         }
     }
 }
@@ -176,7 +188,7 @@ impl Codec for ProposalReference {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ProposalReference { value })
+        Ok(Self { value })
     }
 }
 
@@ -187,7 +199,7 @@ impl Codec for AddProposal {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let key_package = KeyPackage::decode(cursor)?;
-        Ok(AddProposal { key_package })
+        Ok(Self { key_package })
     }
 }
 
@@ -198,7 +210,7 @@ impl Codec for UpdateProposal {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let key_package = KeyPackage::decode(cursor)?;
-        Ok(UpdateProposal { key_package })
+        Ok(Self { key_package })
     }
 }
 
@@ -209,6 +221,45 @@ impl Codec for RemoveProposal {
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let removed = u32::decode(cursor)?;
-        Ok(RemoveProposal { removed })
+        Ok(Self { removed })
+    }
+}
+
+impl Codec for PreSharedKeyProposal {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.psk.encode(buffer)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let psk = PreSharedKeyID::decode(cursor)?;
+        Ok(Self { psk })
+    }
+}
+
+impl Codec for ReInitProposal {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.group_id.encode(buffer)?;
+        self.version.encode(buffer)?;
+        self.ciphersuite.encode(buffer)?;
+        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
+        let encoded_extensions: Vec<ExtensionStruct> = self
+            .extensions
+            .iter()
+            .map(|e| e.to_extension_struct())
+            .collect();
+        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let group_id = GroupId::decode(cursor)?;
+        let version = ProtocolVersion::decode(cursor)?;
+        let ciphersuite = CiphersuiteName::decode(cursor)?;
+        let extensions = extensions_vec_from_cursor(cursor)?;
+        Ok(Self {
+            group_id,
+            version,
+            ciphersuite,
+            extensions,
+        })
     }
 }

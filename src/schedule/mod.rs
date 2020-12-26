@@ -54,6 +54,7 @@ use crate::tree::RatchetTree;
 
 use serde::{Deserialize, Serialize};
 
+pub mod codec;
 pub(crate) mod psk;
 
 /// The `InitSecret` is used to connect the next epoch to the current one. It's

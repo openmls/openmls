@@ -1,7 +1,11 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::config::ProtocolVersion;
+use crate::extensions::Extension;
 use crate::framing::{sender::*, *};
+use crate::group::GroupId;
 use crate::key_packages::*;
+use crate::schedule::psk::*;
 use crate::tree::index::*;
 
 use serde::{Deserialize, Serialize};
@@ -16,6 +20,8 @@ pub enum ProposalType {
     Add = 1,
     Update = 2,
     Remove = 3,
+    Presharedkey = 4,
+    Reinit = 5,
 }
 
 impl TryFrom<u8> for ProposalType {
@@ -25,6 +31,8 @@ impl TryFrom<u8> for ProposalType {
             1 => Ok(ProposalType::Add),
             2 => Ok(ProposalType::Update),
             3 => Ok(ProposalType::Remove),
+            4 => Ok(ProposalType::Presharedkey),
+            5 => Ok(ProposalType::Reinit),
             _ => Err("Unknown proposal type."),
         }
     }
@@ -84,13 +92,14 @@ impl ProposalOrRef {
 }
 
 /// Proposal
-/// TODO #141: We should cover other types of proposals
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Proposal {
     Add(AddProposal),
     Update(UpdateProposal),
     Remove(RemoveProposal),
+    PreSharedKey(PreSharedKeyProposal),
+    ReInit(ReInitProposal),
 }
 
 impl Proposal {
@@ -99,6 +108,8 @@ impl Proposal {
             Proposal::Add(ref _a) => ProposalType::Add,
             Proposal::Update(ref _u) => ProposalType::Update,
             Proposal::Remove(ref _r) => ProposalType::Remove,
+            Proposal::PreSharedKey(ref _p) => ProposalType::Presharedkey,
+            Proposal::ReInit(ref _r) => ProposalType::Reinit,
         }
     }
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
@@ -360,6 +371,12 @@ impl<'a> ProposalQueue<'a> {
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
+                ProposalType::Presharedkey => {
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
+                ProposalType::Reinit => {
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
             }
         }
         // Check for presence of Removes and delete Updates
@@ -462,4 +479,17 @@ pub struct UpdateProposal {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RemoveProposal {
     pub removed: u32,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct PreSharedKeyProposal {
+    pub psk: PreSharedKeyID,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct ReInitProposal {
+    pub group_id: GroupId,
+    pub version: ProtocolVersion,
+    pub ciphersuite: CiphersuiteName,
+    pub extensions: Vec<Box<dyn Extension>>,
 }

@@ -124,7 +124,8 @@ fn test_failed_groupinfo_decryption() {
 }
 
 #[test]
-/// Test what happens if the KEM ciphertext for the receiver in the UpdatePath is broken.
+/// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
+/// is broken.
 fn test_update_path() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Basic group setup.

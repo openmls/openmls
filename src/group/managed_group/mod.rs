@@ -826,6 +826,8 @@ impl<'a> ManagedGroup<'a> {
             }
             // Update proposals don't have validators
             Proposal::Update(_) => {}
+            Proposal::PreSharedKey(_) => {}
+            Proposal::ReInit(_) => {}
         }
         true
     }
@@ -922,6 +924,20 @@ impl<'a> ManagedGroup<'a> {
 
                 if let Some(member_removed) = self.managed_group_config.callbacks.member_removed {
                     member_removed(&self, &self.aad, &removal)
+                }
+            }
+            // PSK proposals
+            Proposal::PreSharedKey(psk_proposal) => {
+                let psk_id = &psk_proposal.psk;
+
+                if let Some(psk_received) = self.managed_group_config.callbacks.psk_received {
+                    psk_received(&self, &self.aad, psk_id)
+                }
+            }
+            // ReInit proposals
+            Proposal::ReInit(reinit_proposal) => {
+                if let Some(reinit_received) = self.managed_group_config.callbacks.reinit_received {
+                    reinit_received(&self, &self.aad, &reinit_proposal)
                 }
             }
         }
