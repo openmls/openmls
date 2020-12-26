@@ -19,8 +19,12 @@ fn test_managed_group_persistence() {
 
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config =
-        ManagedGroupConfig::new(HandshakeMessageFormat::Plaintext, update_policy, callbacks);
+    let managed_group_config = ManagedGroupConfig::new(
+        HandshakeMessageFormat::Plaintext,
+        update_policy,
+        0,
+        callbacks,
+    );
 
     // === Alice creates a group ===
     let alice_group = ManagedGroup::new(

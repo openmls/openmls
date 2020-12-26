@@ -165,7 +165,7 @@ impl MlsGroup {
         );
 
         // Verify confirmation tag
-        if confirmation_tag.0 != group_info.confirmation_tag() {
+        if confirmation_tag != group_info.confirmation_tag() {
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {

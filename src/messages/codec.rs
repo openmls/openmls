@@ -28,12 +28,12 @@ impl Codec for Commit {
 
 impl Codec for ConfirmationTag {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.0)?;
+        self.0.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let inner = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ConfirmationTag(inner))
+        let mac = Mac::decode(cursor)?;
+        Ok(ConfirmationTag(mac))
     }
 }
 
@@ -157,12 +157,14 @@ impl Codec for Proposal {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let proposal_type = ProposalType::from(u8::decode(cursor)?);
+        let proposal_type = match ProposalType::try_from(u8::decode(cursor)?) {
+            Ok(proposal_type) => proposal_type,
+            Err(_) => return Err(CodecError::DecodingError),
+        };
         match proposal_type {
             ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
             ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
             ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
-            _ => Err(CodecError::DecodingError),
         }
     }
 }

@@ -3,7 +3,7 @@ use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::CredentialBundle;
 use crate::extensions::*;
-use crate::framing::*;
+use crate::framing::{sender::*, *};
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::messages::*;
@@ -71,11 +71,6 @@ impl MlsGroup {
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
         provisional_epoch.increment();
-        let confirmed_transcript_hash = update_confirmed_transcript_hash(
-            self.ciphersuite(),
-            &MLSPlaintextCommitContent::new(&self.group_context, sender_index, commit.clone()),
-            &self.interim_transcript_hash,
-        );
         // We clone the init secret here, as the `joiner_secret` is only for the
         // provisional group state.
         let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
@@ -95,6 +90,41 @@ impl MlsGroup {
         // Derive the welcome key material before consuming the `MemberSecret`
         // immediately afterwards.
         let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
+
+        // Build MLSPlaintext
+        let content = MLSPlaintextContentType::Commit(commit);
+        let sender = Sender::member(sender_index);
+
+        let mut mls_plaintext = MLSPlaintext {
+            group_id: self.context().group_id.clone(),
+            epoch: self.context().epoch,
+            sender,
+            authenticated_data: aad.to_vec(),
+            content_type: ContentType::from(&content),
+            content,
+            signature: Signature::new_empty(),
+            confirmation_tag: None,
+            membership_tag: None,
+        };
+
+        // Add signature and membership tag to the MLSPlaintext
+        let serialized_context = self.context().encode_detached().unwrap();
+        mls_plaintext.sign_and_mac(
+            ciphersuite,
+            credential_bundle,
+            serialized_context,
+            &self.epoch_secrets().membership_key,
+        );
+
+        // Calculate the confirmed transcript hash
+        let confirmed_transcript_hash = update_confirmed_transcript_hash(
+            &ciphersuite,
+            // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a
+            // Commit
+            &MLSPlaintextCommitContent::try_from(&mls_plaintext).unwrap(),
+            &self.interim_transcript_hash,
+        );
+
         let tree_hash = provisional_tree.compute_tree_hash();
         let provisional_group_context = GroupContext {
             group_id: self.group_context.group_id.clone(),
@@ -102,6 +132,7 @@ impl MlsGroup {
             tree_hash: tree_hash.clone(),
             confirmed_transcript_hash: confirmed_transcript_hash.clone(),
         };
+
         // The init- and encryption secrets are not used here. They come into
         // play when the provisional group state is applied in `apply_commit`.
         let (provisional_epoch_secrets, _provisional_init_secret, _provisional_encryption_secret) =
@@ -110,21 +141,16 @@ impl MlsGroup {
                 member_secret,
                 &provisional_group_context,
             );
-        // Compute confirmation tag
+
+        // Calculate the confirmation tag
         let confirmation_tag = ConfirmationTag::new(
             &ciphersuite,
             &provisional_epoch_secrets.confirmation_key(),
             &confirmed_transcript_hash,
         );
-        // Create MLSPlaintext
-        let content = MLSPlaintextContentType::Commit((commit, confirmation_tag.clone()));
-        let mls_plaintext = MLSPlaintext::new(
-            sender_index,
-            aad,
-            content,
-            credential_bundle,
-            &self.context(),
-        );
+        // Set the confirmation tag
+        mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
+
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
             let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
@@ -134,6 +160,7 @@ impl MlsGroup {
             } else {
                 Vec::new()
             };
+
             // Create GroupInfo object
             let mut group_info = GroupInfo::new(
                 provisional_group_context.group_id.clone(),
@@ -141,7 +168,7 @@ impl MlsGroup {
                 tree_hash,
                 confirmed_transcript_hash,
                 extensions,
-                confirmation_tag.to_vec(),
+                confirmation_tag,
                 sender_index,
             );
             group_info.set_signature(group_info.sign(credential_bundle));

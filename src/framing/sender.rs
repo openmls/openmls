@@ -26,25 +26,24 @@
 use crate::codec::*;
 
 use super::*;
+use std::convert::TryFrom;
 
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum SenderType {
-    Invalid = 0,
     Member = 1,
     Preconfigured = 2,
     NewMember = 3,
-    Default = 255,
 }
 
-impl From<u8> for SenderType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for SenderType {
+    type Error = &'static str;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => SenderType::Invalid,
-            1 => SenderType::Member,
-            2 => SenderType::Preconfigured,
-            3 => SenderType::NewMember,
-            _ => SenderType::Default,
+            1 => Ok(SenderType::Member),
+            2 => Ok(SenderType::Preconfigured),
+            3 => Ok(SenderType::NewMember),
+            _ => Err("Unknown sender type."),
         }
     }
 }
@@ -55,7 +54,10 @@ impl Codec for SenderType {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(SenderType::from(u8::decode(cursor)?))
+        match SenderType::try_from(u8::decode(cursor)?) {
+            Ok(sender_type) => Ok(sender_type),
+            Err(_) => Err(CodecError::DecodingError),
+        }
     }
 }
 
@@ -64,7 +66,17 @@ pub struct Sender {
     pub(crate) sender_type: SenderType,
     pub(crate) sender: LeafIndex,
 }
+// Public functions
+impl Sender {
+    pub fn is_member(&self) -> bool {
+        self.sender_type == SenderType::Member
+    }
+    pub fn to_leaf_index(self) -> LeafIndex {
+        LeafIndex::from(self.to_node_index())
+    }
+}
 
+//Private and crate functions
 impl Sender {
     pub(crate) fn member(sender: LeafIndex) -> Self {
         Sender {
@@ -74,9 +86,6 @@ impl Sender {
     }
     pub(crate) fn to_node_index(self) -> NodeIndex {
         NodeIndex::from(self.sender)
-    }
-    pub fn to_leaf_index(self) -> LeafIndex {
-        LeafIndex::from(self.to_node_index())
     }
 }
 

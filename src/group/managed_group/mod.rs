@@ -354,7 +354,7 @@ impl<'a> ManagedGroup<'a> {
         for message in messages {
             // Check the type of message we received
             let (plaintext, aad_option) = match message {
-                // If it is a ciphertext we decrypt it and return the plaintext by value
+                // If it is a ciphertext we decrypt it and return the plaintext message
                 MLSMessage::Ciphertext(ciphertext) => {
                     let aad = ciphertext.authenticated_data.clone();
                     match self.group.decrypt(&ciphertext) {
@@ -370,8 +370,23 @@ impl<'a> ManagedGroup<'a> {
                         }
                     }
                 }
-                // If it is a plaintext message we just return the reference
-                MLSMessage::Plaintext(plaintext) => (plaintext, None),
+                // If it is a plaintext message we just return it
+                MLSMessage::Plaintext(plaintext) => {
+                    // Verify membership tag
+                    if plaintext.is_proposal() && plaintext.sender.is_member() {
+                        let serialized_context = self.group.context().encode_detached()?;
+                        if !plaintext.verify_membership_tag(
+                            self.ciphersuite(),
+                            serialized_context,
+                            &self.group.epoch_secrets().membership_key,
+                        ) {
+                            // Since the membership tag verification failed, we skip the message
+                            // and go to the next one
+                            continue;
+                        }
+                    }
+                    (plaintext, None)
+                }
             };
             // Save the current member list for validation end events
             let indexed_members = self.indexed_members();
@@ -393,7 +408,7 @@ impl<'a> ManagedGroup<'a> {
                         );
                     }
                 }
-                MLSPlaintextContentType::Commit((ref commit, ref _confirmation_tag)) => {
+                MLSPlaintextContentType::Commit(ref commit) => {
                     // Validate inline proposals
                     if !self.validate_inline_proposals(
                         &commit.proposals,
@@ -493,9 +508,12 @@ impl<'a> ManagedGroup<'a> {
                 PendingProposalsError::Exists,
             ));
         }
-        let ciphertext =
-            self.group
-                .create_application_message(&self.aad, message, &self.credential_bundle)?;
+        let ciphertext = self.group.create_application_message(
+            &self.aad,
+            message,
+            &self.credential_bundle,
+            self.configuration().padding_size(),
+        )?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -763,7 +781,9 @@ impl<'a> ManagedGroup<'a> {
             let msg = match self.configuration().handshake_message_format {
                 HandshakeMessageFormat::Plaintext => MLSMessage::Plaintext(plaintext),
                 HandshakeMessageFormat::Ciphertext => {
-                    let ciphertext = self.group.encrypt(plaintext)?;
+                    let ciphertext = self
+                        .group
+                        .encrypt(plaintext, self.configuration().padding_size())?;
                     MLSMessage::Ciphertext(ciphertext)
                 }
             };

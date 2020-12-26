@@ -13,21 +13,19 @@ use super::errors::*;
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum ProposalType {
-    Invalid = 0,
     Add = 1,
     Update = 2,
     Remove = 3,
-    Default = 255,
 }
 
-impl From<u8> for ProposalType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for ProposalType {
+    type Error = &'static str;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => ProposalType::Invalid,
-            1 => ProposalType::Add,
-            2 => ProposalType::Update,
-            3 => ProposalType::Remove,
-            _ => ProposalType::Default,
+            1 => Ok(ProposalType::Add),
+            2 => Ok(ProposalType::Update),
+            3 => Ok(ProposalType::Remove),
+            _ => Err("Unknown proposal type."),
         }
     }
 }
@@ -362,7 +360,6 @@ impl<'a> ProposalQueue<'a> {
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                _ => {}
             }
         }
         // Check for presence of Removes and delete Updates

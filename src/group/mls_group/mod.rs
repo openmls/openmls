@@ -27,7 +27,6 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
-#[cfg(test)]
 use std::cell::RefMut;
 
 use super::errors::ExporterError;
@@ -128,13 +127,14 @@ impl MlsGroup {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        MLSPlaintext::new_from_proposal_member(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            proposal,
             credential_bundle,
             &self.context(),
+            &self.epoch_secrets().membership_key,
         )
     }
 
@@ -150,13 +150,14 @@ impl MlsGroup {
     ) -> MLSPlaintext {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        MLSPlaintext::new_from_proposal_member(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            proposal,
             credential_bundle,
             &self.context(),
+            &self.epoch_secrets().membership_key,
         )
     }
 
@@ -174,13 +175,14 @@ impl MlsGroup {
             removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        MLSPlaintext::new_from_proposal_member(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            proposal,
             credential_bundle,
             &self.context(),
+            &self.epoch_secrets().membership_key,
         )
     }
 
@@ -226,37 +228,58 @@ impl MlsGroup {
         aad: &[u8],
         msg: &[u8],
         credential_bundle: &CredentialBundle,
+        padding_size: usize,
     ) -> Result<MLSCiphertext, GroupError> {
-        let content = MLSPlaintextContentType::Application(msg.to_vec());
-        let mls_plaintext = MLSPlaintext::new(
+        let mls_plaintext = MLSPlaintext::new_from_application(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            msg.to_vec(),
             credential_bundle,
             &self.context(),
+            &self.epoch_secrets().membership_key,
         );
-        self.encrypt(mls_plaintext)
+        self.encrypt(mls_plaintext, padding_size)
     }
 
-    // Encrypt/Decrypt MLS message
-    pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> Result<MLSCiphertext, GroupError> {
-        let mut secret_tree = self.secret_tree.borrow_mut();
-        let secret_type = SecretType::try_from(&mls_plaintext)?;
-        let (generation, (ratchet_key, ratchet_nonce)) =
-            secret_tree.secret_for_encryption(self.ciphersuite(), self.sender_index(), secret_type);
-        Ok(MLSCiphertext::new_from_plaintext(
+    // Encrypt an MLSPlaintext into an MLSCiphertext
+    pub fn encrypt(
+        &mut self,
+        mls_plaintext: MLSPlaintext,
+        padding_size: usize,
+    ) -> Result<MLSCiphertext, GroupError> {
+        MLSCiphertext::try_from_plaintext(
             &mls_plaintext,
-            &self,
-            generation,
-            ratchet_key,
-            ratchet_nonce,
-        ))
+            &self.ciphersuite,
+            self.context(),
+            self.sender_index(),
+            self.epoch_secrets(),
+            &mut self.secret_tree_mut(),
+            padding_size,
+        )
+        .map_err(GroupError::MLSCiphertextError)
     }
 
+    /// Decrypt an MLSCiphertext into an MLSPlaintext
     pub fn decrypt(
         &mut self,
         mls_ciphertext: &MLSCiphertext,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
+        let mls_plaintext = mls_ciphertext.to_plaintext(
+            self.ciphersuite(),
+            &self.epoch_secrets,
+            &mut self.secret_tree.borrow_mut(),
+        )?;
+
+        self.validate_plaintext_signature(&mls_plaintext)?;
+        Ok(mls_plaintext)
+    }
+
+    /// Validates the signature and membership tag of an MLSPlaintext
+    pub fn validate_plaintext_signature(
+        &self,
+        mls_plaintext: &MLSPlaintext,
+    ) -> Result<(), MLSPlaintextError> {
         let tree = self.tree();
         let mut indexed_members = HashMap::new();
         for i in 0..tree.leaf_count().as_usize() {
@@ -266,17 +289,22 @@ impl MlsGroup {
                 indexed_members.insert(leaf_index, kp.credential());
             }
         }
+        let serialized_context = self.context().encode_detached().unwrap();
+        let credential = match indexed_members.get(&mls_plaintext.sender.sender) {
+            Some(c) => c,
+            None => {
+                return Err(MLSPlaintextError::UnknownSender);
+            }
+        };
 
-        Ok(mls_ciphertext.to_plaintext(
-            self.ciphersuite(),
-            indexed_members,
-            &self.epoch_secrets,
-            &mut self.secret_tree.borrow_mut(),
-            &self.group_context,
-        )?)
+        if mls_plaintext.verify_signature(Some(serialized_context), credential) {
+            Ok(())
+        } else {
+            Err(MLSPlaintextError::InvalidSignature)
+        }
     }
 
-    // Exporter
+    /// Exporter
     pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, GroupError> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
@@ -325,7 +353,7 @@ impl MlsGroup {
 
 // Private and crate functions
 impl MlsGroup {
-    fn sender_index(&self) -> LeafIndex {
+    pub(crate) fn sender_index(&self) -> LeafIndex {
         self.tree.borrow().own_node_index().into()
     }
 
@@ -333,7 +361,6 @@ impl MlsGroup {
         &self.epoch_secrets
     }
 
-    #[cfg(test)]
     pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
         self.secret_tree.borrow_mut()
     }
@@ -346,7 +373,7 @@ fn update_confirmed_transcript_hash(
     mls_plaintext_commit_content: &MLSPlaintextCommitContent,
     interim_transcript_hash: &[u8],
 ) -> Vec<u8> {
-    let commit_content_bytes = mls_plaintext_commit_content.serialize();
+    let commit_content_bytes = mls_plaintext_commit_content.encode_detached().unwrap();
     ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat())
 }
 
@@ -355,6 +382,6 @@ fn update_interim_transcript_hash(
     mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Vec<u8> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.serialize();
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached().unwrap();
     ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
 }

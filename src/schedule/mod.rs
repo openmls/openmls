@@ -184,6 +184,7 @@ impl Codec for JoinerSecret {
 
 /// An intermediate secret in the key schedule. It can be used to derive the
 /// `EpochSecret` and the secrets required to decrypt the `Welcome` message.
+#[derive(Debug)]
 pub(crate) struct MemberSecret {
     secret: Secret,
 }
@@ -372,12 +373,28 @@ impl SenderDataSecret {
 /// The `EpochSecrets` contain keys (or secrets), which are accessible outside
 /// of the `KeySchedule` and which don't get consumed immediately upon first
 /// use.
+///
+/// | Secret                  | Label           |
+/// |:------------------------|:----------------|
+/// | `sender_data_secret`    | "sender data"   |
+/// | `encryption_secret`     | "encryption"    |
+/// | `exporter_secret`       | "exporter"      |
+/// | `authentication_secret` | "authentication"|
+/// | `external_secret`       | "external"      |
+/// | `confirmation_key`      | "confirm"       |
+/// | `membership_key`        | "membership"    |
+/// | `resumption_secret`     | "resumption"    |
+// TODO: Implement independent types for the various secrets
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct EpochSecrets {
+pub struct EpochSecrets {
     sender_data_secret: SenderDataSecret,
     pub(crate) exporter_secret: ExporterSecret,
+    authentication_secret: Secret,
+    external_secret: Secret,
     confirmation_key: Secret,
+    pub(crate) membership_key: Secret,
+    resumption_secret: Secret,
 }
 
 impl EpochSecrets {
@@ -403,12 +420,23 @@ impl EpochSecrets {
         let sender_data_secret = SenderDataSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let encryption_secret = EncryptionSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let exporter_secret = ExporterSecret::from_epoch_secret(ciphersuite, &epoch_secret);
+        let authentication_secret = epoch_secret
+            .secret
+            .derive_secret(ciphersuite, "authentication");
+        let external_secret = epoch_secret.secret.derive_secret(ciphersuite, "external");
         let confirmation_key = epoch_secret.secret.derive_secret(ciphersuite, "confirm");
+        let membership_key = epoch_secret.secret.derive_secret(ciphersuite, "membership");
+        let resumption_secret = epoch_secret.secret.derive_secret(ciphersuite, "resumption");
+
         let init_secret = InitSecret::from_epoch_secret(ciphersuite, &epoch_secret);
         let epoch_secrets = EpochSecrets {
             sender_data_secret,
             exporter_secret,
+            authentication_secret,
+            external_secret,
             confirmation_key,
+            membership_key,
+            resumption_secret,
         };
         (epoch_secrets, init_secret, encryption_secret)
     }

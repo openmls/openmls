@@ -229,7 +229,6 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                     };
                     (key_bytes, parent_hash_bytes)
                 }
-                _ => unreachable!(),
             };
             if !key_bytes.is_empty() {
                 print!("\tPK: {}", _bytes_to_hex(&key_bytes));

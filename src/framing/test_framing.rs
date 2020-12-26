@@ -1,11 +1,9 @@
+use crate::config::*;
 use crate::framing::*;
 
 /// This tests serializing/deserializing MLSPlaintext
 #[test]
 fn codec() {
-    use crate::ciphersuite::*;
-    use crate::config::*;
-
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle =
             CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.name())
@@ -22,6 +20,8 @@ fn codec() {
             content_type: ContentType::Application,
             content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
             signature: Signature::new_empty(),
+            confirmation_tag: None,
+            membership_tag: None,
         };
         let context = GroupContext {
             group_id: GroupId::random(),
@@ -40,12 +40,79 @@ fn codec() {
     }
 }
 
+#[test]
+fn membership_tag() {
+    for ciphersuite in Config::supported_ciphersuites() {
+        let credential_bundle =
+            CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.name())
+                .unwrap();
+        let sender = Sender {
+            sender_type: SenderType::Member,
+            sender: LeafIndex::from(2u32),
+        };
+        let mut mls_plaintext = MLSPlaintext {
+            group_id: GroupId::random(),
+            epoch: GroupEpoch(1u64),
+            sender,
+            authenticated_data: vec![1, 2, 3],
+            content_type: ContentType::Application,
+            content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
+            signature: Signature::new_empty(),
+            confirmation_tag: None,
+            membership_tag: None,
+        };
+        let context = GroupContext {
+            group_id: GroupId::random(),
+            epoch: GroupEpoch(1u64),
+            tree_hash: vec![],
+            confirmed_transcript_hash: vec![],
+        };
+        let serialized_context = context.encode_detached().unwrap();
+        let membership_key = Secret::random(ciphersuite.hash_length());
+        mls_plaintext.sign_and_mac(
+            ciphersuite,
+            &credential_bundle,
+            serialized_context.clone(),
+            &membership_key,
+        );
+
+        // Verify signature
+        assert!(mls_plaintext.verify_signature(
+            Some(serialized_context.clone()),
+            &credential_bundle.credential()
+        ));
+
+        // Verify membership tag
+        assert!(mls_plaintext.verify_membership_tag(
+            ciphersuite,
+            serialized_context.clone(),
+            &membership_key
+        ));
+
+        // Construct a membership tag from a random memberhip key
+        let mls_plaintext_tbs_payload = MLSPlaintextTBSPayload::new_from_mls_plaintext(
+            &mls_plaintext,
+            Some(serialized_context.clone()),
+        );
+        let mls_plaintext_tbm_payload =
+            MLSPlaintextTBMPayload::new(mls_plaintext_tbs_payload, &mls_plaintext);
+        mls_plaintext.membership_tag = Some(MembershipTag::new(
+            ciphersuite,
+            &Secret::random(ciphersuite.hash_length()),
+            mls_plaintext_tbm_payload,
+        ));
+        // Expect the membership tag verification to fail
+        assert!(!mls_plaintext.verify_membership_tag(
+            ciphersuite,
+            serialized_context,
+            &membership_key
+        ))
+    }
+}
+
 /// This tests the presence of the group context in MLSPlaintextTBS
 #[test]
 fn context_presence() {
-    use crate::ciphersuite::*;
-    use crate::config::*;
-
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
             "Random identity".into(),
@@ -65,6 +132,8 @@ fn context_presence() {
             content_type: ContentType::Application,
             content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
             signature: Signature::new_empty(),
+            confirmation_tag: None,
+            membership_tag: None,
         };
         let context = GroupContext {
             group_id: GroupId::random(),
@@ -75,16 +144,16 @@ fn context_presence() {
         let serialized_context = context.encode_detached().unwrap();
         let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.clone()));
         orig.signature = signature_input.sign(&credential_bundle);
-        assert!(orig.verify(
+        assert!(orig.verify_signature(
             Some(serialized_context.clone()),
             credential_bundle.credential()
         ));
-        assert!(!orig.verify(None, credential_bundle.credential()));
+        assert!(!orig.verify_signature(None, credential_bundle.credential()));
 
         let signature_input = MLSPlaintextTBS::new_from(&orig, None);
         orig.signature = signature_input.sign(&credential_bundle);
-        assert!(!orig.verify(Some(serialized_context), credential_bundle.credential()));
-        assert!(orig.verify(None, credential_bundle.credential()));
+        assert!(!orig.verify_signature(Some(serialized_context), credential_bundle.credential()));
+        assert!(orig.verify_signature(None, credential_bundle.credential()));
         assert!(!orig.is_handshake_message());
     }
 }
@@ -213,60 +282,68 @@ fn unknown_sender() {
             .apply_commit(&commit, &[&bob_remove_proposal], &[kpb_option.unwrap()])
             .expect("Alice: Could not apply Commit");
 
+        _print_tree(&group_alice.tree(), "Alice tree");
+        _print_tree(&group_charlie.tree(), "Charlie tree");
+
         // Alice sends a message with a sender that points to a blank leaf
         // Expected result: MLSCiphertextError::UnknownSender
 
-        let content = MLSPlaintextContentType::Application(vec![1, 2, 3]);
         let bogus_sender = LeafIndex::from(1usize);
-        let bogus_sender_message = MLSPlaintext::new(
+        let bogus_sender_message = MLSPlaintext::new_from_application(
+            ciphersuite,
             bogus_sender,
             &[],
-            content.clone(),
+            vec![1, 2, 3],
             &alice_credential_bundle,
             &group_alice.context(),
+            &Secret::default(),
         );
 
-        let (generation, (ratchet_key, ratchet_nonce)) = group_alice
-            .secret_tree_mut()
-            .secret_for_encryption(ciphersuite, bogus_sender, SecretType::ApplicationSecret);
-        let enc_message = MLSCiphertext::new_from_plaintext(
+        let enc_message = MLSCiphertext::try_from_plaintext(
             &bogus_sender_message,
-            &group_alice,
-            generation,
-            ratchet_key,
-            ratchet_nonce,
-        );
+            ciphersuite,
+            group_alice.context(),
+            LeafIndex::from(1usize),
+            group_alice.epoch_secrets(),
+            &mut group_alice.secret_tree_mut(),
+            0,
+        )
+        .expect("Encryption error");
 
         let received_message = group_charlie.decrypt(&enc_message);
         assert_eq!(
             received_message.unwrap_err(),
-            MLSCiphertextError::UnknownSender
+            MLSCiphertextError::PlaintextError(MLSPlaintextError::UnknownSender)
         );
 
         // Alice sends a message with a sender that is outside of the group
         // Expected result: MLSCiphertextError::GenerationOutOfBound
         let bogus_sender = LeafIndex::from(100usize);
-        let bogus_sender_message = MLSPlaintext::new(
+        let bogus_sender_message = MLSPlaintext::new_from_application(
+            ciphersuite,
             bogus_sender,
             &[],
-            content,
+            vec![1, 2, 3],
             &alice_credential_bundle,
             &group_alice.context(),
+            &Secret::default(),
         );
 
-        let (generation, (ratchet_key, ratchet_nonce)) =
-            group_alice.secret_tree_mut().secret_for_encryption(
-                ciphersuite,
-                LeafIndex::from(0usize),
-                SecretType::ApplicationSecret,
-            );
-        let enc_message = MLSCiphertext::new_from_plaintext(
-            &bogus_sender_message,
-            &group_alice,
-            generation,
-            ratchet_key,
-            ratchet_nonce,
+        let mut secret_tree = SecretTree::new(
+            EncryptionSecret::from_random(ciphersuite.hash_length()),
+            LeafIndex::from(100usize),
         );
+
+        let enc_message = MLSCiphertext::try_from_plaintext(
+            &bogus_sender_message,
+            ciphersuite,
+            group_alice.context(),
+            LeafIndex::from(99usize),
+            group_alice.epoch_secrets(),
+            &mut secret_tree,
+            0,
+        )
+        .expect("Encryption error");
 
         let received_message = group_charlie.decrypt(&enc_message);
         assert_eq!(

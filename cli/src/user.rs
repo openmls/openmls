@@ -7,6 +7,7 @@ use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
 const CIPHERSUITE: CiphersuiteName =
     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+const PADDING_SIZE: usize = 0;
 
 pub struct Contact {
     username: String,
@@ -88,6 +89,7 @@ impl User {
             &group.group_aad,
             msg.as_bytes(),
             &self.identity.borrow().credential,
+            PADDING_SIZE,
         ) {
             Ok(m) => m,
             Err(e) => return Err(format!("{}", e)),
@@ -172,7 +174,7 @@ impl User {
                             // corresponding commit.
                             group.pending_proposals.push(msg);
                         }
-                        MLSPlaintextContentType::Commit((_commit, _confirmation_tag)) => {
+                        MLSPlaintextContentType::Commit(_commit) => {
                             match group.mls_group.borrow_mut().apply_commit(
                                 &msg,
                                 &(group

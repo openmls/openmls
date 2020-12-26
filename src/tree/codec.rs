@@ -1,4 +1,5 @@
 use crate::tree::{node::*, secret_tree::*, *};
+use std::convert::TryFrom;
 
 impl Codec for NodeType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -6,7 +7,10 @@ impl Codec for NodeType {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(NodeType::from(u8::decode(cursor)?))
+        match NodeType::try_from(u8::decode(cursor)?) {
+            Ok(node_type) => Ok(node_type),
+            Err(_) => Err(CodecError::DecodingError),
+        }
     }
 }
 

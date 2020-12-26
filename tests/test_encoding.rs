@@ -64,7 +64,7 @@ fn test_application_message_encoding() {
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
-                .create_application_message(&aad, &message, &credential_bundle)
+                .create_application_message(&aad, &message, &credential_bundle, 0)
                 .unwrap();
             let encrypted_message_bytes = encrypted_message.encode_detached().unwrap();
             let encrypted_message_decoded =

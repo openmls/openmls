@@ -34,7 +34,6 @@ impl TryFrom<&ContentType> for SecretType {
             ContentType::Application => Ok(SecretType::ApplicationSecret),
             ContentType::Commit => Ok(SecretType::HandshakeSecret),
             ContentType::Proposal => Ok(SecretType::HandshakeSecret),
-            _ => Err(SecretTypeError::InvalidContentType),
         }
     }
 }

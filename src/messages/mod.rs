@@ -3,6 +3,7 @@ use crate::codec::*;
 use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
+use crate::framing::Mac;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
@@ -108,7 +109,7 @@ impl Commit {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct ConfirmationTag(pub(crate) Vec<u8>);
+pub struct ConfirmationTag(pub(crate) Mac);
 
 impl ConfirmationTag {
     /// Create a new confirmation tag.
@@ -126,17 +127,24 @@ impl ConfirmationTag {
     ) -> Self {
         ConfirmationTag(
             ciphersuite
-                .hkdf_extract(
-                    Some(confirmation_key),
+                .mac(
+                    confirmation_key,
                     &Secret::from(confirmed_transcript_hash.to_vec()),
                 )
-                .to_vec(),
+                .into(),
         )
     }
+}
 
-    /// Get a copy of the raw byte vector.
-    pub(crate) fn to_vec(&self) -> Vec<u8> {
-        self.0.to_vec()
+impl From<ConfirmationTag> for Vec<u8> {
+    fn from(confirmation_tag: ConfirmationTag) -> Self {
+        confirmation_tag.0.into()
+    }
+}
+
+impl From<Vec<u8>> for ConfirmationTag {
+    fn from(bytes: Vec<u8>) -> Self {
+        ConfirmationTag(bytes.into())
     }
 }
 
@@ -174,7 +182,7 @@ impl GroupInfo {
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
         extensions: Vec<Box<dyn Extension>>,
-        confirmation_tag: Vec<u8>,
+        confirmation_tag: ConfirmationTag,
         signer_index: LeafIndex,
     ) -> Self {
         Self {
@@ -183,7 +191,7 @@ impl GroupInfo {
             tree_hash,
             confirmed_transcript_hash,
             extensions,
-            confirmation_tag,
+            confirmation_tag: confirmation_tag.into(),
             signer_index,
             signature: Signature::new_empty(),
         }
@@ -225,8 +233,8 @@ impl GroupInfo {
     }
 
     /// Get the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> &[u8] {
-        &self.confirmation_tag
+    pub(crate) fn confirmation_tag(&self) -> ConfirmationTag {
+        ConfirmationTag::from(self.confirmation_tag.clone())
     }
 
     /// Get the extensions.
