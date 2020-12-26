@@ -3,21 +3,22 @@ use crate::codec::*;
 use crate::extensions::*;
 
 use super::*;
+use std::convert::TryFrom;
 
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum NodeType {
     Leaf = 0,
     Parent = 1,
-    Default = 255,
 }
 
-impl From<u8> for NodeType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for NodeType {
+    type Error = &'static str;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => NodeType::Leaf,
-            1 => NodeType::Parent,
-            _ => NodeType::Default,
+            0 => Ok(NodeType::Leaf),
+            1 => Ok(NodeType::Parent),
+            _ => Err("Unknown node type."),
         }
     }
 }
@@ -62,7 +63,6 @@ impl Node {
                     None
                 }
             }
-            NodeType::Default => None,
         }
     }
     pub fn blank(&mut self) {
@@ -113,7 +113,6 @@ impl Node {
                     None
                 }
             }
-            _ => None,
         }
     }
 

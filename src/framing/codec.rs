@@ -1,4 +1,5 @@
 use super::*;
+use std::convert::TryFrom;
 
 impl Codec for MLSPlaintext {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -73,7 +74,10 @@ impl Codec for ContentType {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(ContentType::from(u8::decode(cursor)?))
+        match ContentType::try_from(u8::decode(cursor)?) {
+            Ok(content_type) => Ok(content_type),
+            Err(_) => Err(CodecError::DecodingError),
+        }
     }
 }
 
@@ -88,16 +92,18 @@ impl Codec for MLSPlaintextContentType {
                 ContentType::Proposal.encode(buffer)?;
                 proposal.encode(buffer)?;
             }
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
+            MLSPlaintextContentType::Commit(commit) => {
                 ContentType::Commit.encode(buffer)?;
                 commit.encode(buffer)?;
-                confirmation_tag.encode(buffer)?;
             }
         }
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let content_type = ContentType::from(u8::decode(cursor)?);
+        let content_type = match ContentType::try_from(u8::decode(cursor)?) {
+            Ok(content_type) => content_type,
+            Err(_) => return Err(CodecError::DecodingError),
+        };
         match content_type {
             ContentType::Application => {
                 let application_data = decode_vec(VecSize::VecU32, cursor)?;
@@ -109,10 +115,8 @@ impl Codec for MLSPlaintextContentType {
             }
             ContentType::Commit => {
                 let commit = Commit::decode(cursor)?;
-                let confirmation_tag = ConfirmationTag::decode(cursor)?;
-                Ok(MLSPlaintextContentType::Commit((commit, confirmation_tag)))
+                Ok(MLSPlaintextContentType::Commit(commit))
             }
-            _ => Err(CodecError::DecodingError),
         }
     }
 }
@@ -129,23 +133,6 @@ impl Codec for Mac {
     }
 }
 
-/*
-pub(crate) struct MLSPlaintextTBM {
-    tbs: MLSPlaintextTBS,
-    signature: Signature,
-    confirmation_tag: Option<ConfirmationTag>,
-}
-*/
-
-impl Codec for MLSPlaintextTBM {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.tbs.encode(buffer)?;
-        self.signature.encode(buffer)?;
-        self.confirmation_tag.encode(buffer)?;
-        Ok(())
-    }
-}
-
 impl Codec for MembershipTag {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)?;
@@ -158,7 +145,7 @@ impl Codec for MembershipTag {
     }
 }
 
-impl Codec for MLSPlaintextTBS {
+impl<'a> Codec for MLSPlaintextTBS<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         if let Some(ref serialized_context) = self.serialized_context_option {
             buffer.extend_from_slice(serialized_context);
@@ -215,11 +202,17 @@ impl Codec for MLSCiphertextSenderDataAAD {
 }
 
 impl Codec for MLSCiphertextContent {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.content.encode(buffer)?;
-        self.signature.encode(buffer)?;
-        encode_vec(VecSize::VecU16, buffer, &self.padding)?;
-        Ok(())
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let content = MLSPlaintextContentType::decode(cursor)?;
+        let signature = Signature::decode(cursor)?;
+        let confirmation_tag = Option::<ConfirmationTag>::decode(cursor)?;
+        let padding = decode_vec(VecSize::VecU16, cursor)?;
+        Ok(MLSCiphertextContent {
+            content,
+            signature,
+            confirmation_tag,
+            padding,
+        })
     }
 }
 
@@ -246,38 +239,21 @@ impl Codec for MLSCiphertextContentAAD {
     }
 }
 
-impl Codec for MLSPlaintextCommitContent {
+impl<'a> Codec for MLSPlaintextCommitContent<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
         self.sender.encode(buffer)?;
         self.content_type.encode(buffer)?;
         self.commit.encode(buffer)?;
+        self.signature.encode(buffer)?;
         Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let sender = Sender::decode(cursor)?;
-        let content_type = ContentType::decode(cursor)?;
-        let commit = Commit::decode(cursor)?;
-        Ok(MLSPlaintextCommitContent {
-            group_id,
-            epoch,
-            sender,
-            content_type,
-            commit,
-        })
     }
 }
 
-impl Codec for MLSPlaintextCommitAuthData {
+impl<'a> Codec for MLSPlaintextCommitAuthData<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
+        self.confirmation_tag.encode(buffer)?;
         Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(MLSPlaintextCommitAuthData { confirmation_tag })
     }
 }

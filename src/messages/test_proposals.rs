@@ -1,3 +1,4 @@
+use crate::ciphersuite::*;
 use crate::config::*;
 use crate::credentials::*;
 use crate::extensions::*;
@@ -81,26 +82,32 @@ fn proposal_queue_functions() {
         assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
         // Frame proposals in MLSPlaintext
-        let mls_plaintext_add_alice1 = MLSPlaintext::new(
+        let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(0u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_alice1),
+            proposal_add_alice1,
             &alice_credential_bundle,
             &group_context,
+            &Secret::default(),
         );
-        let mls_plaintext_add_alice2 = MLSPlaintext::new(
+        let mls_plaintext_add_alice2 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(1u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_alice2),
+            proposal_add_alice2,
             &alice_credential_bundle,
             &group_context,
+            &Secret::default(),
         );
-        let _mls_plaintext_add_bob1 = MLSPlaintext::new(
+        let _mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(1u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_bob1),
+            proposal_add_bob1,
             &alice_credential_bundle,
             &group_context,
+            &Secret::default(),
         );
 
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_alice2];

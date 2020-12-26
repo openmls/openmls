@@ -157,12 +157,14 @@ impl Codec for Proposal {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let proposal_type = ProposalType::from(u8::decode(cursor)?);
+        let proposal_type = match ProposalType::try_from(u8::decode(cursor)?) {
+            Ok(proposal_type) => proposal_type,
+            Err(_) => return Err(CodecError::DecodingError),
+        };
         match proposal_type {
             ProposalType::Add => Ok(Proposal::Add(AddProposal::decode(cursor)?)),
             ProposalType::Update => Ok(Proposal::Update(UpdateProposal::decode(cursor)?)),
             ProposalType::Remove => Ok(Proposal::Remove(RemoveProposal::decode(cursor)?)),
-            _ => Err(CodecError::DecodingError),
         }
     }
 }

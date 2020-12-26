@@ -761,7 +761,6 @@ impl RatchetTree {
                     );
                     parent_node_hash.hash(ciphersuite)
                 }
-                NodeType::Default => panic!("Default node type not supported in tree hash."),
             }
         }
         let root = treemath::root(self.leaf_count());
@@ -847,8 +846,6 @@ impl RatchetTree {
                             }
                         }
                     }
-
-                    NodeType::Default => {}
                 }
             }
         }

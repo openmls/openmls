@@ -4,7 +4,7 @@
 //! `CreateCommitError`.
 
 use crate::config::ConfigError;
-use crate::framing::errors::MLSCiphertextError;
+use crate::framing::errors::*;
 use crate::tree::{secret_tree::SecretTypeError, TreeError};
 
 implement_error! {
@@ -77,6 +77,8 @@ implement_error! {
             "Unable to determine commit path.",
         ConfirmationTagMismatch =
             "Confirmation tag is invalid.",
+        ConfirmationTagMissing =
+            "Confirmation tag is missing.",
         MissingOwnKeyPackage =
             "No key package provided to apply own commit.",
         MissingProposal =

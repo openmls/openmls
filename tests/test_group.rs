@@ -78,7 +78,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path());
@@ -106,7 +106,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -152,10 +152,8 @@ fn create_commit_optional_path() {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-        let (commit, _confirmation_tag) = match commit_mls_plaintext.content() {
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
-                (commit, confirmation_tag)
-            }
+        let commit = match commit_mls_plaintext.content() {
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path() && kpb_option.is_some());
@@ -295,7 +293,7 @@ fn group_operations() {
             )
             .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -321,11 +319,15 @@ fn group_operations() {
             _print_tree(&group_alice.tree(), "Alice added Bob");
             panic!("Different public trees");
         }
+        // Make sure that both groups have the same group context
+        if group_alice.context() != group_bob.context() {
+            panic!("Different group contexts");
+        }
 
         // === Alice sends a message to Bob ===
         let message_alice = [1, 2, 3];
         let mls_ciphertext_alice = group_alice
-            .create_application_message(&[], &message_alice, &alice_credential_bundle)
+            .create_application_message(&[], &message_alice, &alice_credential_bundle, 0)
             .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
@@ -538,7 +540,7 @@ fn group_operations() {
         // === Charlie sends a message to the group ===
         let message_charlie = [1, 2, 3];
         let mls_ciphertext_charlie = group_charlie
-            .create_application_message(&[], &message_charlie, &charlie_credential_bundle)
+            .create_application_message(&[], &message_charlie, &charlie_credential_bundle, 0)
             .unwrap();
         let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,

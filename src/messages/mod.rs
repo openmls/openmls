@@ -234,7 +234,7 @@ impl GroupInfo {
 
     /// Get the confirmed tag.
     pub(crate) fn confirmation_tag(&self) -> ConfirmationTag {
-        ConfirmationTag::from(self.confirmation_tag)
+        ConfirmationTag::from(self.confirmation_tag.clone())
     }
 
     /// Get the extensions.

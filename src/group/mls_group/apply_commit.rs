@@ -20,12 +20,14 @@ impl MlsGroup {
             return Err(ApplyCommitError::EpochMismatch);
         }
 
-        // Extract Commit from MLSPlaintext
-        let (commit, received_confirmation_tag) = match &mls_plaintext.content {
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
-                (commit, confirmation_tag)
-            }
+        // Extract Commit & Confirmation Tag from MLSPlaintext
+        let commit = match &mls_plaintext.content {
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
+        };
+        let received_confirmation_tag = match &mls_plaintext.confirmation_tag {
+            Some(confirmation_tag) => confirmation_tag,
+            None => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 
         // Convert proposals by reference into a queue
@@ -71,7 +73,7 @@ impl MlsGroup {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
             let serialized_context = self.group_context.encode_detached().unwrap();
-            if !mls_plaintext.verify(Some(serialized_context.clone()), kp.credential()) {
+            if !mls_plaintext.verify_signature(Some(serialized_context.clone()), kp.credential()) {
                 return Err(ApplyCommitError::PlaintextSignatureFailure);
             }
             if is_own_commit {
@@ -107,7 +109,8 @@ impl MlsGroup {
 
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
-            &MLSPlaintextCommitContent::new(&self.group_context, sender, commit.clone()),
+            // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a Commit
+            &MLSPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
         );
 
@@ -132,9 +135,15 @@ impl MlsGroup {
                 &provisional_group_context,
             );
 
+        let mls_plaintext_commit_auth_data =
+            match MLSPlaintextCommitAuthData::try_from(mls_plaintext) {
+                Ok(mpcad) => mpcad,
+                Err(_) => return Err(ApplyCommitError::ConfirmationTagMissing),
+            };
+
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
-            &MLSPlaintextCommitAuthData::from(mls_plaintext),
+            &mls_plaintext_commit_auth_data,
             &confirmed_transcript_hash,
         );
 

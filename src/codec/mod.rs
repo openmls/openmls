@@ -64,6 +64,11 @@ pub trait Codec: Sized {
         self.encode(&mut buffer)?;
         Ok(buffer)
     }
+
+    fn decode_detached(bytes: &[u8]) -> Result<Self, CodecError> {
+        let cursor = &mut Cursor::new(bytes);
+        Self::decode(cursor)
+    }
 }
 
 impl Codec for u8 {
