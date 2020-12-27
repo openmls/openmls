@@ -61,16 +61,8 @@ pub(crate) fn derive_tree_secret(
 }
 
 pub struct TreeContext {
-    node: u32,
-    generation: u32,
-}
-
-impl Codec for TreeContext {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node.encode(buffer)?;
-        self.generation.encode(buffer)?;
-        Ok(())
-    }
+    pub(crate) node: u32,
+    pub(crate) generation: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

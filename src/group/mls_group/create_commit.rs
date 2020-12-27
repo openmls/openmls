@@ -50,7 +50,7 @@ impl MlsGroup {
             let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
                 .refresh_private_tree(
                     credential_bundle,
-                    &self.group_context.serialize(),
+                    &self.group_context.serialized(),
                     apply_proposals_values.exclusion_list(),
                 );
             (
@@ -126,12 +126,12 @@ impl MlsGroup {
         );
 
         let tree_hash = provisional_tree.compute_tree_hash();
-        let provisional_group_context = GroupContext {
-            group_id: self.group_context.group_id.clone(),
-            epoch: provisional_epoch,
-            tree_hash: tree_hash.clone(),
-            confirmed_transcript_hash: confirmed_transcript_hash.clone(),
-        };
+        let provisional_group_context = GroupContext::new(
+            self.group_context.group_id.clone(),
+            provisional_epoch,
+            provisional_tree.compute_tree_hash(),
+            confirmed_transcript_hash.clone(),
+        )?;
 
         // The init- and encryption secrets are not used here. They come into
         // play when the provisional group state is applied in `apply_commit`.

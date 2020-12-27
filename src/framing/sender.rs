@@ -23,8 +23,6 @@
 //! } Sender;
 //! ```
 
-use crate::codec::*;
-
 use super::*;
 use std::convert::TryFrom;
 
@@ -44,19 +42,6 @@ impl TryFrom<u8> for SenderType {
             2 => Ok(SenderType::Preconfigured),
             3 => Ok(SenderType::NewMember),
             _ => Err("Unknown sender type."),
-        }
-    }
-}
-
-impl Codec for SenderType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        match SenderType::try_from(u8::decode(cursor)?) {
-            Ok(sender_type) => Ok(sender_type),
-            Err(_) => Err(CodecError::DecodingError),
         }
     }
 }
@@ -86,21 +71,5 @@ impl Sender {
     }
     pub(crate) fn to_node_index(self) -> NodeIndex {
         NodeIndex::from(self.sender)
-    }
-}
-
-impl Codec for Sender {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.sender_type.encode(buffer)?;
-        self.sender.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let sender_type = SenderType::decode(cursor)?;
-        let sender = LeafIndex::from(u32::decode(cursor)?);
-        Ok(Sender {
-            sender_type,
-            sender,
-        })
     }
 }

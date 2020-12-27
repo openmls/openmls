@@ -78,7 +78,7 @@ impl MlsGroup {
             ciphersuite,
             group_id,
             tree.compute_tree_hash(),
-        );
+        )?;
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial member secret based on the commit secret.
         // Internally, this derives a random `InitSecret` and uses it in the

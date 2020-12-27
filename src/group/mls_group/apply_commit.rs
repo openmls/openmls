@@ -68,8 +68,8 @@ impl MlsGroup {
             if kp.verify().is_err() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
-            let serialized_context = self.group_context.encode_detached().unwrap();
-            if !mls_plaintext.verify_signature(Some(serialized_context.clone()), kp.credential()) {
+            let serialized_context = self.group_context.serialized();
+            if !mls_plaintext.verify_signature(Some(serialized_context.to_vec()), kp.credential()) {
                 return Err(ApplyCommitError::PlaintextSignatureFailure);
             }
             if is_own_commit {
@@ -116,12 +116,12 @@ impl MlsGroup {
         let member_secret =
             MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
 
-        let provisional_group_context = GroupContext {
-            group_id: self.group_context.group_id.clone(),
-            epoch: provisional_epoch,
-            tree_hash: provisional_tree.compute_tree_hash(),
-            confirmed_transcript_hash: confirmed_transcript_hash.clone(),
-        };
+        let provisional_group_context = GroupContext::new(
+            self.group_context.group_id.clone(),
+            provisional_epoch,
+            provisional_tree.compute_tree_hash(),
+            confirmed_transcript_hash.clone(),
+        )?;
         let (provisional_epoch_secrets, provisional_init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(
                 ciphersuite,

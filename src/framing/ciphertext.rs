@@ -28,8 +28,8 @@ impl MLSCiphertext {
     ) -> Result<MLSCiphertext, MLSCiphertextError> {
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
-            group_id: context.group_id.clone(),
-            epoch: context.epoch,
+            group_id: context.group_id().clone(),
+            epoch: context.epoch(),
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
         };
@@ -73,8 +73,8 @@ impl MLSCiphertext {
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MLSSenderDataAAD::new(
-            context.group_id.clone(),
-            context.epoch,
+            context.group_id().clone(),
+            context.epoch(),
             mls_plaintext.content_type,
         );
         // Serialize the sender data AAD
@@ -89,8 +89,8 @@ impl MLSCiphertext {
             )
             .map_err(|_| MLSCiphertextError::EncryptionError)?;
         Ok(MLSCiphertext {
-            group_id: context.group_id.clone(),
-            epoch: context.epoch,
+            group_id: context.group_id().clone(),
+            epoch: context.epoch(),
             content_type: mls_plaintext.content_type,
             authenticated_data: mls_plaintext.authenticated_data.to_vec(),
             encrypted_sender_data,

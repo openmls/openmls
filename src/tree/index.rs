@@ -1,7 +1,5 @@
 use std::ops::{Index, IndexMut};
 
-use crate::codec::*;
-
 use super::*;
 
 #[derive(
@@ -39,7 +37,7 @@ impl From<LeafIndex> for NodeIndex {
 #[derive(
     Debug, Default, Ord, PartialOrd, Hash, Eq, PartialEq, Copy, Clone, Serialize, Deserialize,
 )]
-pub struct LeafIndex(u32);
+pub struct LeafIndex(pub(crate) u32);
 
 impl LeafIndex {
     pub fn as_u32(self) -> u32 {
@@ -95,11 +93,5 @@ impl Index<LeafIndex> for Vec<Node> {
 impl IndexMut<LeafIndex> for Vec<Node> {
     fn index_mut(&mut self, leaf_index: LeafIndex) -> &mut Self::Output {
         &mut self[NodeIndex::from(leaf_index).as_usize()]
-    }
-}
-
-impl Codec for LeafIndex {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.0.encode(buffer)
     }
 }

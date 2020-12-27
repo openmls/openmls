@@ -1,4 +1,6 @@
+mod codec;
 mod errors;
+pub use codec::*;
 pub use errors::*;
 
 use evercrypt::prelude::SignatureError;
@@ -30,20 +32,6 @@ impl TryFrom<u16> for CredentialType {
             1 => Ok(CredentialType::Basic),
             2 => Ok(CredentialType::X509),
             _ => Err("Undefined CredentialType"),
-        }
-    }
-}
-
-impl Codec for CredentialType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u16).encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        if let Ok(credential_type) = CredentialType::try_from(u16::decode(cursor)?) {
-            Ok(credential_type)
-        } else {
-            Err(CodecError::DecodingError)
         }
     }
 }
@@ -110,32 +98,6 @@ impl From<MLSCredentialType> for Credential {
     }
 }
 
-impl Codec for Credential {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => {
-                CredentialType::Basic.encode(buffer)?;
-                basic_credential.encode(buffer)?;
-            }
-            // TODO: implement encoding for X509 certificates
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let credential_type = match CredentialType::try_from(u16::decode(cursor)?) {
-            Ok(c) => c,
-            Err(_) => return Err(CodecError::DecodingError),
-        };
-        match credential_type {
-            CredentialType::Basic => Ok(Credential::from(MLSCredentialType::Basic(
-                BasicCredential::decode(cursor)?,
-            ))),
-            _ => Err(CodecError::DecodingError),
-        }
-    }
-}
-
 // TODO: Drop ciphersuite
 #[derive(Debug, Clone)]
 pub struct BasicCredential {
@@ -149,25 +111,6 @@ implement_persistence!(BasicCredential, identity, public_key);
 impl BasicCredential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         self.public_key.verify(signature, payload)
-    }
-}
-
-impl Codec for BasicCredential {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU16, buffer, &self.identity)?;
-        self.ciphersuite.name().encode(buffer)?;
-        self.public_key.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let identity = decode_vec(VecSize::VecU16, cursor)?;
-        let ciphersuite = CiphersuiteName::decode(cursor)?;
-        let public_key_bytes = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(BasicCredential {
-            identity,
-            ciphersuite: Config::ciphersuite(ciphersuite)?,
-            public_key: SignaturePublicKey::new(public_key_bytes, ciphersuite)?,
-        })
     }
 }
 

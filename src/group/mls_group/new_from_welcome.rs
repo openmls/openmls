@@ -143,12 +143,12 @@ impl MlsGroup {
         }
 
         // Compute state
-        let group_context = GroupContext {
-            group_id: group_info.group_id().clone(),
-            epoch: group_info.epoch(),
-            tree_hash: tree.compute_tree_hash(),
-            confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
-        };
+        let group_context = GroupContext::new(
+            group_info.group_id().clone(),
+            group_info.epoch(),
+            tree.compute_tree_hash(),
+            group_info.confirmed_transcript_hash().to_vec(),
+        )?;
         let (epoch_secrets, init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(&ciphersuite, member_secret, &group_context);
         let secret_tree = encryption_secret.create_secret_tree(tree.leaf_count());
@@ -221,7 +221,7 @@ impl MlsGroup {
                 Err(_) => return Err(WelcomeError::GroupInfoDecryptionFailure),
             };
         Ok((
-            GroupInfo::from_bytes(&group_info_bytes).unwrap(),
+            GroupInfo::decode_detached(&group_info_bytes).unwrap(),
             member_secret,
             group_secrets.path_secret,
         ))

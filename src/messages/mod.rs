@@ -248,30 +248,6 @@ impl GroupInfo {
     }
 }
 
-impl GroupInfo {
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
-        let mut cursor = Cursor::new(bytes);
-        let group_id = GroupId::decode(&mut cursor)?;
-        let epoch = GroupEpoch::decode(&mut cursor)?;
-        let tree_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let confirmed_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let extensions = extensions_vec_from_cursor(&mut cursor)?;
-        let confirmation_tag = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let signer_index = LeafIndex::from(u32::decode(&mut cursor)?);
-        let signature = Signature::decode(&mut cursor)?;
-        Ok(GroupInfo {
-            group_id,
-            epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            extensions,
-            confirmation_tag,
-            signer_index,
-            signature,
-        })
-    }
-}
-
 impl Signable for GroupInfo {
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut vec![];

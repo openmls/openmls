@@ -23,14 +23,10 @@ fn codec() {
             confirmation_tag: None,
             membership_tag: None,
         };
-        let context = GroupContext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(1u64),
-            tree_hash: vec![],
-            confirmed_transcript_hash: vec![],
-        };
-        let serialized_context = context.encode_detached().unwrap();
-        let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context));
+        let group_context =
+            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
+        let serialized_context = group_context.serialized();
+        let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.to_vec()));
         orig.signature = signature_input.sign(&credential_bundle);
 
         let enc = orig.encode_detached().unwrap();
@@ -61,38 +57,34 @@ fn membership_tag() {
             confirmation_tag: None,
             membership_tag: None,
         };
-        let context = GroupContext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(1u64),
-            tree_hash: vec![],
-            confirmed_transcript_hash: vec![],
-        };
-        let serialized_context = context.encode_detached().unwrap();
+        let group_context =
+            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
+        let serialized_context = group_context.serialized();
         let membership_key = Secret::random(ciphersuite.hash_length());
         mls_plaintext.sign_and_mac(
             ciphersuite,
             &credential_bundle,
-            serialized_context.clone(),
+            serialized_context.to_vec(),
             &membership_key,
         );
 
         // Verify signature
         assert!(mls_plaintext.verify_signature(
-            Some(serialized_context.clone()),
+            Some(serialized_context.to_vec()),
             &credential_bundle.credential()
         ));
 
         // Verify membership tag
         assert!(mls_plaintext.verify_membership_tag(
             ciphersuite,
-            serialized_context.clone(),
+            serialized_context.to_vec(),
             &membership_key
         ));
 
         // Construct a membership tag from a random memberhip key
         let mls_plaintext_tbs_payload = MLSPlaintextTBSPayload::new_from_mls_plaintext(
             &mls_plaintext,
-            Some(serialized_context.clone()),
+            Some(serialized_context.to_vec()),
         );
         let mls_plaintext_tbm_payload =
             MLSPlaintextTBMPayload::new(mls_plaintext_tbs_payload, &mls_plaintext);
@@ -104,7 +96,7 @@ fn membership_tag() {
         // Expect the membership tag verification to fail
         assert!(!mls_plaintext.verify_membership_tag(
             ciphersuite,
-            serialized_context,
+            serialized_context.to_vec(),
             &membership_key
         ))
     }
@@ -135,24 +127,23 @@ fn context_presence() {
             confirmation_tag: None,
             membership_tag: None,
         };
-        let context = GroupContext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(1u64),
-            tree_hash: vec![],
-            confirmed_transcript_hash: vec![],
-        };
-        let serialized_context = context.encode_detached().unwrap();
-        let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.clone()));
+        let group_context =
+            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
+        let serialized_context = group_context.serialized();
+        let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.to_vec()));
         orig.signature = signature_input.sign(&credential_bundle);
         assert!(orig.verify_signature(
-            Some(serialized_context.clone()),
+            Some(serialized_context.to_vec()),
             credential_bundle.credential()
         ));
         assert!(!orig.verify_signature(None, credential_bundle.credential()));
 
         let signature_input = MLSPlaintextTBS::new_from(&orig, None);
         orig.signature = signature_input.sign(&credential_bundle);
-        assert!(!orig.verify_signature(Some(serialized_context), credential_bundle.credential()));
+        assert!(!orig.verify_signature(
+            Some(serialized_context.to_vec()),
+            credential_bundle.credential()
+        ));
         assert!(orig.verify_signature(None, credential_bundle.credential()));
         assert!(!orig.is_handshake_message());
     }

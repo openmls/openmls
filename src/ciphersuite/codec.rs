@@ -85,12 +85,11 @@ impl Codec for Secret {
     }
 }
 
-impl KdfLabel {
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buffer = Vec::new();
-        (self.length as u16).encode(&mut buffer).unwrap();
-        encode_vec(VecSize::VecU8, &mut buffer, self.label.as_bytes()).unwrap();
-        encode_vec(VecSize::VecU32, &mut buffer, &self.context).unwrap();
-        buffer
+impl Codec for KdfLabel {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        (self.length as u16).encode(buffer)?;
+        encode_vec(VecSize::VecU8, buffer, self.label.as_bytes())?;
+        encode_vec(VecSize::VecU32, buffer, &self.context)?;
+        Ok(())
     }
 }

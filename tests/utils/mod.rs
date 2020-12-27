@@ -150,7 +150,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         initial_group_member
             .group_states
             .borrow_mut()
-            .insert(mls_group.context().group_id.clone(), mls_group);
+            .insert(mls_group.context().group_id().clone(), mls_group);
         // If there is more than one member in the group, prepare proposals and
         // commit. Then distribute the Welcome message to the new
         // members.

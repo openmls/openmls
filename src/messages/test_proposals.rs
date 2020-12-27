@@ -50,12 +50,8 @@ fn proposal_queue_functions() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        let group_context = GroupContext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(0),
-            tree_hash: vec![],
-            confirmed_transcript_hash: vec![],
-        };
+        let group_context =
+            GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![]).unwrap();
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
@@ -162,12 +158,8 @@ fn proposal_queue_order() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        let group_context = GroupContext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(0),
-            tree_hash: vec![],
-            confirmed_transcript_hash: vec![],
-        };
+        let group_context =
+            GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![]).unwrap();
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {

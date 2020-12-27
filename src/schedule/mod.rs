@@ -172,17 +172,6 @@ impl JoinerSecret {
     }
 }
 
-impl Codec for JoinerSecret {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.secret.encode(buffer)
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let secret = Secret::decode(cursor)?;
-        Ok(JoinerSecret { secret })
-    }
-}
-
 /// An intermediate secret in the key schedule. It can be used to derive the
 /// `EpochSecret` and the secrets required to decrypt the `Welcome` message.
 #[derive(Debug)]
@@ -287,13 +276,11 @@ impl EpochSecret {
             secret: member_secret.secret.kdf_expand_label(
                 ciphersuite,
                 "epoch",
-                &group_context.serialize(),
+                &group_context.serialized(),
                 ciphersuite.hash_length(),
             ),
         }
     }
-
-    //
 }
 
 /// The `EncryptionSecret` is used to create a `SecretTree`.

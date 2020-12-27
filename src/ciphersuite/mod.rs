@@ -20,16 +20,18 @@ mod ciphersuites;
 mod codec;
 mod errors;
 pub(crate) mod signable;
-use ciphersuites::*;
-pub(crate) use errors::*;
+
 mod ser;
 
+use crate::codec::*;
 use crate::config::{Config, ConfigError};
 use crate::group::GroupContext;
 use crate::schedule::ExporterSecret;
 use crate::schedule::SenderDataSecret;
 use crate::schedule::WelcomeSecret;
 use crate::utils::random_u32;
+use ciphersuites::*;
+pub(crate) use errors::*;
 
 #[cfg(test)]
 mod test_ciphersuite;
@@ -96,7 +98,8 @@ impl KdfLabel {
             label: full_label,
             context: context.to_vec(),
         };
-        kdf_label.serialize()
+        // It is ok to use unwrap() here, because the context is already serialized
+        kdf_label.encode_detached().unwrap()
     }
 }
 
@@ -176,7 +179,7 @@ impl ExporterSecret {
         group_context: &GroupContext,
         key_length: usize,
     ) -> Vec<u8> {
-        let context = &group_context.serialize();
+        let context = &group_context.serialized();
         let context_hash = &ciphersuite.hash(context);
         self.secret()
             .derive_secret(ciphersuite, label)

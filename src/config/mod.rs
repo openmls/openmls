@@ -8,7 +8,9 @@ use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
 use crate::codec::{Codec, CodecError, Cursor};
 use crate::extensions::ExtensionType;
 
+pub mod codec;
 pub mod errors;
+pub use codec::*;
 pub(crate) use errors::ConfigError;
 
 /// This value is used as the default lifetime of `KeyPackage`s if no default
@@ -165,17 +167,6 @@ pub enum ProtocolVersion {
 impl Default for ProtocolVersion {
     fn default() -> Self {
         ProtocolVersion::Mls10
-    }
-}
-
-impl Codec for ProtocolVersion {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(Self::from(u8::decode(cursor)?)?)
     }
 }
 

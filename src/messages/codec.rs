@@ -5,14 +5,6 @@ use crate::{key_packages::KeyPackage, schedule::psk::PreSharedKeyID};
 
 use std::convert::TryFrom;
 
-impl Codec for GroupInfo {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        buffer.append(&mut self.unsigned_payload()?);
-        self.signature.encode(buffer)?;
-        Ok(())
-    }
-}
-
 impl Codec for Commit {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU32, buffer, &self.proposals)?;
@@ -34,6 +26,34 @@ impl Codec for ConfirmationTag {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let mac = Mac::decode(cursor)?;
         Ok(Self(mac))
+    }
+}
+
+impl Codec for GroupInfo {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        buffer.append(&mut self.unsigned_payload()?);
+        self.signature.encode(buffer)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let group_id = GroupId::decode(cursor)?;
+        let epoch = GroupEpoch::decode(cursor)?;
+        let tree_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let extensions = extensions_vec_from_cursor(cursor)?;
+        let confirmation_tag = decode_vec(VecSize::VecU8, cursor)?;
+        let signer_index = LeafIndex::from(u32::decode(cursor)?);
+        let signature = Signature::decode(cursor)?;
+        Ok(GroupInfo {
+            group_id,
+            epoch,
+            tree_hash,
+            confirmed_transcript_hash,
+            extensions,
+            confirmation_tag,
+            signer_index,
+            signature,
+        })
     }
 }
 

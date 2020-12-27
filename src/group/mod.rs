@@ -5,13 +5,13 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `ManagedGroup`.
 
+mod codec;
 pub mod errors;
 mod managed_group;
 mod mls_group;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::tree::*;
 use crate::utils::*;
 
 pub(crate) use serde::{Deserialize, Serialize};
@@ -44,17 +44,6 @@ impl GroupId {
     }
 }
 
-impl Codec for GroupId {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.value)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(GroupId { value })
-    }
-}
-
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct GroupEpoch(pub u64);
 
@@ -64,64 +53,59 @@ impl GroupEpoch {
     }
 }
 
-impl Codec for GroupEpoch {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.0.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let inner = u64::decode(cursor)?;
-        Ok(GroupEpoch(inner))
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GroupContext {
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub tree_hash: Vec<u8>,
-    pub confirmed_transcript_hash: Vec<u8>,
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    tree_hash: Vec<u8>,
+    confirmed_transcript_hash: Vec<u8>,
+    // The group context in serialized form for efficiency. This field is not encoded.
+    serialized: Vec<u8>,
 }
 
 impl GroupContext {
+    /// Create a new group context
+    pub fn new(
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        tree_hash: Vec<u8>,
+        confirmed_transcript_hash: Vec<u8>,
+    ) -> Result<Self, CodecError> {
+        let mut group_context = GroupContext {
+            group_id,
+            epoch,
+            tree_hash,
+            confirmed_transcript_hash,
+            serialized: vec![],
+        };
+        let serialized = group_context.encode_detached()?;
+        group_context.serialized = serialized.to_vec();
+        Ok(group_context)
+    }
     /// Create the `GroupContext` needed upon creation of a new group.
     pub fn create_initial_group_context(
         ciphersuite: &Ciphersuite,
         group_id: GroupId,
         tree_hash: Vec<u8>,
-    ) -> Self {
-        GroupContext {
+    ) -> Result<Self, CodecError> {
+        Self::new(
             group_id,
-            epoch: GroupEpoch(0),
+            GroupEpoch(0),
             tree_hash,
-            confirmed_transcript_hash: zero(ciphersuite.hash_length()),
-        }
+            zero(ciphersuite.hash_length()),
+        )
     }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        self.encode_detached().unwrap()
+    /// Return the serialized group context
+    pub fn serialized(&self) -> &[u8] {
+        &self.serialized
     }
-}
-
-impl Codec for GroupContext {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
-        Ok(())
+    /// Return the group ID
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_id
     }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let tree_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(GroupContext {
-            group_id,
-            epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-        })
+    /// Return the epoch
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
     }
 }
 
@@ -149,22 +133,5 @@ impl Default for GroupConfig {
             padding_block_size: 10,
             additional_as_epochs: 0,
         }
-    }
-}
-
-impl Codec for GroupConfig {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.padding_block_size.encode(buffer)?;
-        self.additional_as_epochs.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let padding_block_size = u32::decode(cursor)?;
-        let additional_as_epochs = u32::decode(cursor)?;
-        Ok(GroupConfig {
-            add_ratchet_tree_extension: false,
-            padding_block_size,
-            additional_as_epochs,
-        })
     }
 }

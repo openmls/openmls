@@ -58,8 +58,8 @@ impl MLSPlaintext {
         let sender = Sender::member(sender_index);
 
         let mut mls_plaintext = MLSPlaintext {
-            group_id: context.group_id.clone(),
-            epoch: context.epoch,
+            group_id: context.group_id().clone(),
+            epoch: context.epoch(),
             sender,
             authenticated_data: authenticated_data.to_vec(),
             content_type: ContentType::from(&content),
@@ -69,11 +69,11 @@ impl MLSPlaintext {
             membership_tag: None,
         };
 
-        let serialized_context = context.encode_detached().unwrap();
+        let serialized_context = context.serialized();
         mls_plaintext.sign_and_mac(
             ciphersuite,
             credential_bundle,
-            serialized_context,
+            serialized_context.to_vec(),
             membership_key,
         );
         mls_plaintext

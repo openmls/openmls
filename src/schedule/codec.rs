@@ -103,3 +103,14 @@ impl Codec for PreSharedKeys {
         Ok(Self { psks })
     }
 }
+
+impl Codec for JoinerSecret {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.secret.encode(buffer)
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let secret = Secret::decode(cursor)?;
+        Ok(JoinerSecret { secret })
+    }
+}

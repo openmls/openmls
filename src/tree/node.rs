@@ -129,9 +129,9 @@ impl Node {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
-    public_key: HPKEPublicKey,
-    unmerged_leaves: Vec<u32>,
-    parent_hash: Vec<u8>,
+    pub(crate) public_key: HPKEPublicKey,
+    pub(crate) unmerged_leaves: Vec<u32>,
+    pub(crate) parent_hash: Vec<u8>,
 }
 
 impl ParentNode {
@@ -153,24 +153,5 @@ impl ParentNode {
     }
     pub fn unmerged_leaves_mut(&mut self) -> &mut Vec<u32> {
         &mut self.unmerged_leaves
-    }
-}
-
-impl Codec for ParentNode {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.unmerged_leaves)?;
-        encode_vec(VecSize::VecU8, buffer, &self.parent_hash)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let public_key = HPKEPublicKey::decode(cursor)?;
-        let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;
-        let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(ParentNode {
-            public_key,
-            unmerged_leaves,
-            parent_hash,
-        })
     }
 }

@@ -4,6 +4,7 @@
 //! `CreateCommitError`.
 
 use crate::ciphersuite::CryptoError;
+use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::framing::errors::MLSCiphertextError;
 use crate::messages::errors::ProposalQueueError;
@@ -12,21 +13,23 @@ use crate::tree::{secret_tree::SecretTypeError, TreeError};
 implement_error! {
     pub enum GroupError {
         MLSCiphertextError(MLSCiphertextError) =
-            "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details",
+            "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.",
         WelcomeError(WelcomeError) =
-            "See [`WelcomeError`](`WelcomeError`) for details",
+            "See [`WelcomeError`](`WelcomeError`) for details.",
         ApplyCommitError(ApplyCommitError) =
-            "See [`ApplyCommitError`](`ApplyCommitError`) for details",
+            "See [`ApplyCommitError`](`ApplyCommitError`) for details.",
         CreateCommitError(CreateCommitError) =
-            "See [`CreateCommitError`](`CreateCommitError`) for details",
+            "See [`CreateCommitError`](`CreateCommitError`) for details.",
         ConfigError(ConfigError) =
-            "See [`ConfigError`](`crate::config::ConfigError`) for details",
+            "See [`ConfigError`](`crate::config::ConfigError`) for details.",
         ExporterError(ExporterError) =
-            "See [`ExporterError`](`ExporterError`) for details",
+            "See [`ExporterError`](`ExporterError`) for details.",
         SecretTypeError(SecretTypeError) =
-            "See [`SecretTypeError`](`crate::tree::secret_tree::SecretTypeError`) for details",
-            ProposalQueueError(ProposalQueueError) =
-        "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details",
+            "See [`SecretTypeError`](`crate::tree::secret_tree::SecretTypeError`) for details.",
+        ProposalQueueError(ProposalQueueError) =
+            "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
+        CodecError(CodecError) =
+            "Codec error occured.",
     }
 }
 
@@ -59,6 +62,8 @@ implement_error! {
                 "Invalid ratchet tree in Welcome message.",
             GroupSecretsDecryptionFailure(CryptoError) =
                 "Unable to decrypt the EncryptedGroupSecrets.",
+            CodecError(CodecError) =
+                "Codec error occured.",
         }
     }
 }
@@ -96,6 +101,8 @@ implement_error! {
         Complex {
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
+            CodecError(CodecError) =
+                "Codec error occured.",
         }
     }
 }
