@@ -169,12 +169,18 @@ fn managed_group_operations() {
             let group_id = GroupId::from_slice(b"Test Group");
 
             // Define credential bundles
-            let alice_credential_bundle =
-                CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
-            let bob_credential_bundle =
-                CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
+            let alice_credential_bundle = CredentialBundle::new(
+                "Alice".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
+            let bob_credential_bundle = CredentialBundle::new(
+                "Bob".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
 
             // Generate KeyPackages
             let alice_key_package_bundle =
@@ -314,9 +320,12 @@ fn managed_group_operations() {
             );
 
             // === Bob adds Charlie ===
-            let charlie_credential_bundle =
-                CredentialBundle::new("Charlie".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
+            let charlie_credential_bundle = CredentialBundle::new(
+                "Charlie".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
 
             let charlie_key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &charlie_credential_bundle, vec![])

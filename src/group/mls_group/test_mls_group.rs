@@ -13,8 +13,12 @@ fn test_mls_group_persistence() {
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
     // Define credential bundles
-    let alice_credential_bundle =
-        CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
@@ -82,9 +86,12 @@ fn test_failed_groupinfo_decryption() {
                 hpke_input,
             );
 
-            let alice_credential_bundle =
-                CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
+            let alice_credential_bundle = CredentialBundle::new(
+                "Alice".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
 
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![])
@@ -132,11 +139,18 @@ fn test_update_path() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Generate KeyPackages
         let alice_key_package_bundle =

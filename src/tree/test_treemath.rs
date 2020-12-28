@@ -106,8 +106,9 @@ fn test_tree_hash() {
     use crate::tree::*;
 
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
+        let signature_scheme = SignatureScheme::from(ciphersuite_name);
         let credential_bundle =
-            CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite_name).unwrap();
+            CredentialBundle::new(id.to_vec(), CredentialType::Basic, signature_scheme).unwrap();
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap()
     }
 

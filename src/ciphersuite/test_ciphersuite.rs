@@ -1,6 +1,6 @@
 //! Unit tests for the ciphersuites.
 
-use crate::ciphersuite::CryptoError;
+use crate::ciphersuite::*;
 use crate::config::Config;
 
 use super::{HpkeCiphertext, Secret};
@@ -50,9 +50,45 @@ fn test_hpke_seal_open() {
 #[test]
 fn test_sign_verify() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let keypair = ciphersuite.new_signature_keypair().unwrap();
+        let keypair = ciphersuite
+            .signature_scheme()
+            .new_signature_keypair()
+            .unwrap();
         let payload = &[1, 2, 3];
         let signature = keypair.sign(payload).unwrap();
         assert!(keypair.verify(&signature, payload));
+    }
+}
+
+#[test]
+fn supported_ciphersuites() {
+    const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
+        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+    ];
+
+    const UNSUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
+        CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448,
+        CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521,
+        CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+    ];
+
+    for ciphersuite_name in SUPPORTED_CIPHERSUITE_NAMES {
+        // Instantiate ciphersuite
+        let ciphersuite = Ciphersuite::new(*ciphersuite_name)
+            .expect("Could not instantiate a Ciphersuite object.");
+        // Create signature keypair
+        let _signature_keypair = SignatureKeypair::new(ciphersuite.signature_scheme())
+            .expect("Could not create signature keypair.");
+    }
+
+    for ciphersuite_name in UNSUPPORTED_CIPHERSUITE_NAMES {
+        // Instantiate ciphersuite
+        let _ciphersuite = Ciphersuite::new(*ciphersuite_name)
+            .expect_err("Could instantiate a Ciphersuite object with an unsupported ciphersuite.");
+        // Create signature keypair
+        let _signature_keypair = SignatureKeypair::new(SignatureScheme::from(*ciphersuite_name))
+            .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }

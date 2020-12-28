@@ -37,7 +37,7 @@ async fn test_list_clients() {
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,
-        ciphersuite,
+        SignatureScheme::from(ciphersuite),
     )
     .unwrap();
     let client_id = credential_bundle.credential().identity().to_vec();
@@ -123,7 +123,7 @@ async fn test_group() {
         let credential_bundle = CredentialBundle::new(
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
-            ciphersuite,
+            SignatureScheme::from(ciphersuite),
         )
         .unwrap();
         let client_key_package =

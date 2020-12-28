@@ -17,11 +17,18 @@ use crate::tree::index::*;
 fn proposal_queue_functions() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Define identities
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Mandatory extensions, will be fixed in #164
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
@@ -138,11 +145,18 @@ fn proposal_queue_functions() {
 fn proposal_queue_order() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Define identities
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Generate KeyPackages
         let alice_key_package_bundle =

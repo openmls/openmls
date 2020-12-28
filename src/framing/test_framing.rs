@@ -5,9 +5,12 @@ use crate::framing::*;
 #[test]
 fn codec() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let credential_bundle =
-            CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.name())
-                .unwrap();
+        let credential_bundle = CredentialBundle::new(
+            vec![7, 8, 9],
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),
@@ -39,9 +42,12 @@ fn codec() {
 #[test]
 fn membership_tag() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let credential_bundle =
-            CredentialBundle::new(vec![7, 8, 9], CredentialType::Basic, ciphersuite.name())
-                .unwrap();
+        let credential_bundle = CredentialBundle::new(
+            vec![7, 8, 9],
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),
@@ -109,7 +115,7 @@ fn context_presence() {
         let credential_bundle = CredentialBundle::new(
             "Random identity".into(),
             CredentialType::Basic,
-            ciphersuite.name(),
+            ciphersuite.signature_scheme(),
         )
         .unwrap();
         let sender = Sender {
@@ -160,14 +166,24 @@ fn unknown_sender() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
-        let charlie_credential_bundle =
-            CredentialBundle::new("Charlie".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let charlie_credential_bundle = CredentialBundle::new(
+            "Charlie".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Generate KeyPackages
         let bob_key_package_bundle =

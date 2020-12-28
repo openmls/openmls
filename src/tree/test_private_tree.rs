@@ -8,9 +8,12 @@ use crate::{ciphersuite::*, credentials::*, key_packages::*, utils::*};
 #[cfg(test)]
 // Common setup for tests.
 fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, NodeIndex, Vec<NodeIndex>) {
-    let credential_bundle =
-        CredentialBundle::new("username".into(), CredentialType::Basic, ciphersuite.name())
-            .unwrap();
+    let credential_bundle = CredentialBundle::new(
+        "username".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
     let own_index = NodeIndex::from(0u32);

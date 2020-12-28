@@ -53,21 +53,6 @@ pub(crate) fn aead_from_suite(ciphersuite_name: &CiphersuiteName) -> AeadMode {
     }
 }
 
-pub(crate) fn signature_from_suite(
-    ciphersuite_name: &CiphersuiteName,
-) -> Result<SignatureMode, ConfigError> {
-    match ciphersuite_name {
-        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
-            Ok(SignatureMode::Ed25519)
-        }
-        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(SignatureMode::P256),
-        CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            Ok(SignatureMode::Ed25519)
-        }
-        _ => Err(ConfigError::UnsupportedSignatureScheme),
-    }
-}
-
 pub(crate) fn kem_from_suite(
     ciphersuite_name: &CiphersuiteName,
 ) -> Result<HpkeKemMode, ConfigError> {

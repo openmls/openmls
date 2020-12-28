@@ -8,16 +8,16 @@ fn create_encoding_test_setup() -> TestSetup {
     // ciphersuites.
     let alice_config = TestClientConfig {
         name: "alice",
-        ciphersuites: Config::supported_ciphersuite_names(),
+        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
     };
 
     let bob_config = TestClientConfig {
         name: "bob",
-        ciphersuites: Config::supported_ciphersuite_names(),
+        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
     };
     let charlie_config = TestClientConfig {
         name: "charlie",
-        ciphersuites: Config::supported_ciphersuite_names(),
+        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
     };
 
     let mut test_group_configs = Vec::new();
@@ -25,7 +25,7 @@ fn create_encoding_test_setup() -> TestSetup {
     // Create a group config for each ciphersuite.
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
-            ciphersuite: ciphersuite_name,
+            ciphersuite: *ciphersuite_name,
             config: GroupConfig {
                 add_ratchet_tree_extension: true,
                 padding_block_size: 10,

@@ -8,7 +8,7 @@ fn test_client_info() {
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,
-        ciphersuite,
+        SignatureScheme::from(ciphersuite),
     )
     .unwrap();
     let client_key_package_bundle =

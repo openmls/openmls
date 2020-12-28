@@ -8,8 +8,12 @@ fn test_managed_group_persistence() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Define credential bundles
-    let alice_credential_bundle =
-        CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =

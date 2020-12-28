@@ -22,6 +22,14 @@ const DEFAULT_KEY_PACKAGE_LIFETIME: u64 = 60 * 60 * 24 * 28 * 3; // in Seconds
 /// value is in seconds and amounts to 1h.
 const DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN: u64 = 60 * 60; // in Seconds
 
+/// Supported ciphersuites
+/// TODO #13: This should come from the crypto provider
+const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
+    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+    CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+];
+
 lazy_static! {
      static ref CONFIG: Config = {
         if let Ok(path) = env::var("OPENMLS_CONFIG") {
@@ -43,13 +51,14 @@ lazy_static! {
                 default_key_package_lifetime: DEFAULT_KEY_PACKAGE_LIFETIME,
                 key_package_lifetime_margin: DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN,
             };
+            let ciphersuites = SUPPORTED_CIPHERSUITE_NAMES
+                .iter()
+                .map(|ciphersuite_name| Ciphersuite::new(*ciphersuite_name).unwrap())
+                .collect::<Vec<Ciphersuite>>();
             let config = PersistentConfig {
                 protocol_versions: vec![ProtocolVersion::Mls10],
-                ciphersuites: vec![
-                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap(),
-                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).unwrap(),
-                    Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap()],
-                    extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
+                ciphersuites,
+                extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
                 constants,
             };
             config.into()
@@ -112,12 +121,8 @@ impl Config {
     }
 
     /// Get a list of the supported cipher suites names.
-    pub fn supported_ciphersuite_names() -> Vec<CiphersuiteName> {
-        CONFIG
-            .ciphersuites
-            .iter()
-            .map(|suite| suite.name())
-            .collect()
+    pub fn supported_ciphersuite_names() -> &'static [CiphersuiteName] {
+        SUPPORTED_CIPHERSUITE_NAMES
     }
 
     /// Get a list of the supported protocol versions.

@@ -4,22 +4,16 @@ pub use codec::*;
 pub use errors::*;
 
 use evercrypt::prelude::SignatureError;
-use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Deserializer, Serialize,
-};
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
-use crate::config::Config;
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum CredentialType {
-    Reserved = 0,
     Basic = 1,
     X509 = 2,
 }
@@ -76,7 +70,7 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
-
+    /*
     /// Get the ciphersuite associated with the credential.
     pub fn ciphersuite(&self) -> &Ciphersuite {
         match &self.credential {
@@ -84,6 +78,7 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
+    */
 }
 
 impl From<MLSCredentialType> for Credential {
@@ -98,15 +93,12 @@ impl From<MLSCredentialType> for Credential {
     }
 }
 
-// TODO: Drop ciphersuite
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BasicCredential {
     pub identity: Vec<u8>,
-    pub ciphersuite: &'static Ciphersuite,
+    pub signature_scheme: SignatureScheme,
     pub public_key: SignaturePublicKey,
 }
-
-implement_persistence!(BasicCredential, identity, public_key);
 
 impl BasicCredential {
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
@@ -148,14 +140,14 @@ impl CredentialBundle {
     pub fn new(
         identity: Vec<u8>,
         credential_type: CredentialType,
-        ciphersuite_name: CiphersuiteName,
+        signature_scheme: SignatureScheme,
     ) -> Result<Self, CredentialError> {
-        let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let (private_key, public_key) = ciphersuite.new_signature_keypair()?.into_tuple();
+        //let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
+        let (private_key, public_key) = signature_scheme.new_signature_keypair()?.into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity,
-                ciphersuite: Config::ciphersuite(ciphersuite_name)?,
+                signature_scheme,
                 public_key,
             },
             _ => return Err(CredentialError::UnsupportedCredentialType),

@@ -10,7 +10,7 @@ fn padding() {
     // ciphersuites.
     let alice_config = TestClientConfig {
         name: "alice",
-        ciphersuites: Config::supported_ciphersuite_names(),
+        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
     };
 
     let mut test_group_configs = Vec::new();
@@ -18,7 +18,7 @@ fn padding() {
     // Create a group config for each ciphersuite.
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
-            ciphersuite: ciphersuite_name,
+            ciphersuite: *ciphersuite_name,
             config: GroupConfig::default(),
             members: vec![alice_config.clone()],
         };

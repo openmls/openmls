@@ -81,7 +81,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let credential_bundle = CredentialBundle::new(
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
-                ciphersuite,
+                SignatureScheme::from(ciphersuite),
             )
             .unwrap();
             // Create a number of key packages.

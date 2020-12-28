@@ -21,9 +21,12 @@ fn test_exclusion_list() {
         let mut nodes = vec![];
         let mut key_package_bundles = vec![];
         for i in 0..NODES {
-            let credential_bundle =
-                CredentialBundle::new(vec![i as u8], CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
+            let credential_bundle = CredentialBundle::new(
+                vec![i as u8],
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
 
