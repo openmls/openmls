@@ -397,6 +397,11 @@ impl EpochSecrets {
     pub(crate) fn confirmation_key(&self) -> &Secret {
         &self.confirmation_key
     }
+
+    /// Authentication secret
+    pub(crate) fn authentication_secret(&self) -> &[u8] {
+        self.authentication_secret.to_bytes()
+    }
     /// Derive `EpochSecrets`, as well as an `EncryptionSecret` and an
     /// `InitSecret` from a `MemberSecret` and a given `GroupContext`. This
     /// method is only used when initially creating a new `MlsGroup` state.

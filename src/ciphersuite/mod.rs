@@ -226,6 +226,11 @@ impl Secret {
     pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
         self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
     }
+
+    /// Returns the inner bytes of a secret
+    pub fn to_bytes(&self) -> &[u8] {
+        &self.value
+    }
 }
 
 impl Default for Secret {

@@ -575,6 +575,11 @@ impl<'a> ManagedGroup<'a> {
         }
     }
 
+    /// Returns the authentication secret
+    pub fn authentication_secret(&self) -> Vec<u8> {
+        self.group.authentication_secret().to_vec()
+    }
+
     // === Configuration ===
 
     /// Gets the configuration

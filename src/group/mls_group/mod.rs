@@ -316,6 +316,11 @@ impl MlsGroup {
         ))
     }
 
+    /// Returns the authentication secret
+    pub fn authentication_secret(&self) -> Vec<u8> {
+        self.epoch_secrets().authentication_secret().to_vec()
+    }
+
     /// Loads the state from persisted state
     pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
         serde_json::from_reader(reader).map_err(|e| e.into())

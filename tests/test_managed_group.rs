@@ -248,6 +248,12 @@ fn managed_group_operations() {
             // Make sure that both groups have the same members
             assert_eq!(alice_group.members(), bob_group.members());
 
+            // Make sure that both groups have the same authentication secret
+            assert_eq!(
+                alice_group.authentication_secret(),
+                bob_group.authentication_secret()
+            );
+
             // === Alice sends a message to Bob ===
             let message_alice = b"Hi, I'm Alice!";
             let queued_message = alice_group
