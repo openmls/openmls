@@ -58,7 +58,7 @@ impl MlsGroup {
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender.sender;
         let is_own_commit =
-            mls_plaintext.sender.to_node_index() == provisional_tree.own_node_index(); // XXX: correct?
+            mls_plaintext.sender.to_leaf_index() == provisional_tree.own_node_index();
 
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
         // Determine if Commit has a path
@@ -119,7 +119,7 @@ impl MlsGroup {
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
-            provisional_tree.compute_tree_hash(),
+            provisional_tree.tree_hash(),
             confirmed_transcript_hash.clone(),
         )?;
         let (provisional_epoch_secrets, provisional_init_secret, encryption_secret) =
@@ -154,7 +154,7 @@ impl MlsGroup {
         // Verify KeyPackage extensions
         if let Some(path) = &commit.path {
             if !is_own_commit {
-                let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
+                let parent_hash = provisional_tree.set_parent_hashes(sender);
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)

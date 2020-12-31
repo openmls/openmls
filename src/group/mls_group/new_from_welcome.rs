@@ -92,8 +92,14 @@ impl MlsGroup {
         let mut tree = RatchetTree::new_from_nodes(ciphersuite, key_package_bundle, &nodes)?;
 
         // Verify tree hash
-        if tree.compute_tree_hash() != group_info.tree_hash() {
+        let tree_hash = tree.tree_hash();
+        if tree_hash != group_info.tree_hash() {
             return Err(WelcomeError::TreeHashMismatch);
+        }
+
+        // Verify parent hashes
+        if !tree.verify_parent_hashes() {
+            return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
         }
 
         // Verify GroupInfo signature
@@ -107,18 +113,11 @@ impl MlsGroup {
             return Err(WelcomeError::InvalidGroupInfoSignature);
         }
 
-        // Verify ratchet tree
-        // TODO: #35 Why does this get the nodes? Shouldn't `new_from_nodes` consume the
-        // nodes?
-        if !RatchetTree::verify_integrity(&ciphersuite, &nodes) {
-            return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
-        }
-
         // Compute path secrets
         // TODO: #36 check if path_secret has to be optional
         if let Some(path_secret) = path_secret_option {
             let common_ancestor_index = treemath::common_ancestor_index(
-                tree.own_node_index(),
+                tree.own_node_index().into(),
                 NodeIndex::from(group_info.signer_index()),
             );
             let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count())
@@ -146,7 +145,7 @@ impl MlsGroup {
         let group_context = GroupContext::new(
             group_info.group_id().clone(),
             group_info.epoch(),
-            tree.compute_tree_hash(),
+            tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
         )?;
         let (epoch_secrets, init_secret, encryption_secret) =

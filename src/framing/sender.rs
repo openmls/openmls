@@ -57,7 +57,7 @@ impl Sender {
         self.sender_type == SenderType::Member
     }
     pub fn to_leaf_index(self) -> LeafIndex {
-        LeafIndex::from(self.to_node_index())
+        self.sender
     }
 }
 
@@ -68,8 +68,5 @@ impl Sender {
             sender_type: SenderType::Member,
             sender,
         }
-    }
-    pub(crate) fn to_node_index(self) -> NodeIndex {
-        NodeIndex::from(self.sender)
     }
 }

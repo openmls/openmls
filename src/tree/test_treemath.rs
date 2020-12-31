@@ -117,7 +117,7 @@ fn test_tree_hash() {
 
         // Initialise tree
         let mut tree = RatchetTree::new(ciphersuite, kbp);
-        let tree_hash = tree.compute_tree_hash();
+        let tree_hash = tree.tree_hash();
         println!("Tree hash: {:?}", tree_hash);
 
         // Add 5 nodes to the tree.
@@ -127,7 +127,7 @@ fn test_tree_hash() {
         }
         let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
         let _ = tree.add_nodes(&key_packages);
-        let tree_hash = tree.compute_tree_hash();
+        let tree_hash = tree.tree_hash();
         println!("Tree hash: {:?}", tree_hash);
     }
 }

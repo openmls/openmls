@@ -74,11 +74,8 @@ impl MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
-        let group_context = GroupContext::create_initial_group_context(
-            ciphersuite,
-            group_id,
-            tree.compute_tree_hash(),
-        )?;
+        let group_context =
+            GroupContext::create_initial_group_context(ciphersuite, group_id, tree.tree_hash())?;
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial member secret based on the commit secret.
         // Internally, this derives a random `InitSecret` and uses it in the

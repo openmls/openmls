@@ -130,7 +130,7 @@ impl JoinerSecret {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
         let dirpath = treemath::direct_path_root(
-            provisional_tree.own_node_index(),
+            provisional_tree.own_node_index().into(),
             provisional_tree.leaf_count(),
         )
         .expect("create_commit_internal: TreeMath error when computing direct path.");
@@ -143,8 +143,10 @@ impl JoinerSecret {
                 Some(ref mut path_secrets) => {
                     // Compute the index of the common ancestor lowest in the
                     // tree of our own leaf and the given index.
-                    let common_ancestor_index =
-                        treemath::common_ancestor_index(index, provisional_tree.own_node_index());
+                    let common_ancestor_index = treemath::common_ancestor_index(
+                        index,
+                        provisional_tree.own_node_index().into(),
+                    );
                     // Get the position of the node index that represents the
                     // common ancestor in the direct path. We can unwrap here,
                     // because the direct path must contain the shared ancestor.

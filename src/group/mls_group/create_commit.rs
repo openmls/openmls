@@ -125,11 +125,11 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         );
 
-        let tree_hash = provisional_tree.compute_tree_hash();
+        let tree_hash = provisional_tree.tree_hash();
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
-            provisional_tree.compute_tree_hash(),
+            tree_hash.clone(),
             confirmed_transcript_hash.clone(),
         )?;
 

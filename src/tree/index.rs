@@ -1,7 +1,9 @@
+use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
 
 use super::*;
 
+/// NodeIndex is an index to the nodes of a tree, both parent and leaf nodes.
 #[derive(
     Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash, Default, Serialize, Deserialize,
 )]
@@ -34,6 +36,7 @@ impl From<LeafIndex> for NodeIndex {
     }
 }
 
+/// LeafIndex is an index to the leaves of a tree.
 #[derive(
     Debug, Default, Ord, PartialOrd, Hash, Eq, PartialEq, Copy, Clone, Serialize, Deserialize,
 )]
@@ -72,11 +75,20 @@ impl From<usize> for LeafIndex {
     }
 }
 
-impl From<NodeIndex> for LeafIndex {
-    fn from(tree_index: NodeIndex) -> LeafIndex {
-        LeafIndex((tree_index.as_u32() + 1) / 2)
+impl TryFrom<NodeIndex> for LeafIndex {
+    type Error = &'static str;
+    fn try_from(node_index: NodeIndex) -> Result<Self, Self::Error> {
+        // A node with an odd index must be a parent node and therefore cannot be
+        // converted to a leaf node
+        if node_index.as_usize() % 2 != 0 {
+            Err("Cannot convert a parent node index to a leaf node index.")
+        } else {
+            Ok(LeafIndex((node_index.as_u32() + 1) / 2))
+        }
     }
 }
+
+// === Implement Index trait to index Vec<Node> with NodeIndex and LeafIndex ===
 
 impl Index<LeafIndex> for Vec<Node> {
     type Output = Node;
@@ -93,5 +105,33 @@ impl Index<LeafIndex> for Vec<Node> {
 impl IndexMut<LeafIndex> for Vec<Node> {
     fn index_mut(&mut self, leaf_index: LeafIndex) -> &mut Self::Output {
         &mut self[NodeIndex::from(leaf_index).as_usize()]
+    }
+}
+
+impl Index<NodeIndex> for Vec<Node> {
+    type Output = Node;
+
+    fn index(&self, node_index: NodeIndex) -> &Self::Output {
+        &self[node_index.as_usize()]
+    }
+}
+
+impl IndexMut<NodeIndex> for Vec<Node> {
+    fn index_mut(&mut self, node_index: NodeIndex) -> &mut Self::Output {
+        &mut self[node_index.as_usize()]
+    }
+}
+
+impl Index<&NodeIndex> for Vec<Node> {
+    type Output = Node;
+
+    fn index(&self, node_index: &NodeIndex) -> &Self::Output {
+        &self[node_index.as_usize()]
+    }
+}
+
+impl IndexMut<&NodeIndex> for Vec<Node> {
+    fn index_mut(&mut self, node_index: &NodeIndex) -> &mut Self::Output {
+        &mut self[node_index.as_usize()]
     }
 }

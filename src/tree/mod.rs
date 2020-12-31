@@ -18,7 +18,7 @@ pub(crate) mod sender_ratchet;
 pub(crate) mod treemath;
 
 pub(crate) use errors::*;
-use hash_input::*;
+pub use hash_input::*;
 use index::*;
 use node::*;
 use private_tree::{PathSecrets, PrivateTree};
@@ -32,9 +32,12 @@ pub(crate) use serde::{
 };
 
 use std::collections::HashSet;
+use std::convert::TryInto;
 use std::iter::FromIterator;
 
 // Internal tree tests
+#[cfg(test)]
+mod test_hashes;
 #[cfg(test)]
 mod test_path_keys;
 #[cfg(test)]
@@ -75,7 +78,7 @@ impl RatchetTree {
             key_package: Some(kpb.key_package().clone()),
             node: None,
         }];
-        let private_tree = PrivateTree::from_key_package_bundle(NodeIndex::from(0u32), &kpb);
+        let private_tree = PrivateTree::from_key_package_bundle(LeafIndex::from(0u32), &kpb);
 
         RatchetTree {
             ciphersuite,
@@ -90,7 +93,7 @@ impl RatchetTree {
         RatchetTree {
             ciphersuite: ratchet_tree.ciphersuite,
             nodes: ratchet_tree.nodes.clone(),
-            private_tree: PrivateTree::new(ratchet_tree.private_tree.node_index()),
+            private_tree: PrivateTree::new(ratchet_tree.private_tree.leaf_index()),
         }
     }
 
@@ -104,12 +107,16 @@ impl RatchetTree {
         fn find_kp_in_tree(
             key_package: &KeyPackage,
             nodes: &[Option<Node>],
-        ) -> Result<NodeIndex, TreeError> {
+        ) -> Result<LeafIndex, TreeError> {
             for (i, node_option) in nodes.iter().enumerate() {
-                if let Some(node) = node_option {
-                    if let Some(kp) = &node.key_package {
-                        if kp == key_package {
-                            return Ok(NodeIndex::from(i));
+                // Only search in leaf nodes
+                if i % 2 == 0 {
+                    if let Some(node) = node_option {
+                        if let Some(kp) = &node.key_package {
+                            if kp == key_package {
+                                // Unwrapping here is safe, because we know it is a leaf node
+                                return Ok(NodeIndex::from(i).try_into().unwrap());
+                            }
                         }
                     }
                 }
@@ -184,24 +191,30 @@ impl RatchetTree {
             .collect()
     }
 
+    /// Returns the number of leaves in a tree
     pub fn leaf_count(&self) -> LeafIndex {
-        self.tree_size().into()
+        let number_nodes = self.tree_size().as_usize();
+        LeafIndex::from((number_nodes + 1) / 2)
     }
 
+    /// Compute the resolution for a given node index. Nodes listed in the
+    /// `exclusion_list` are substracted from the final resolution.
     fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&NodeIndex>) -> Vec<NodeIndex> {
         let size = self.leaf_count();
 
-        if self.nodes[index.as_usize()].node_type == NodeType::Leaf {
-            if self.nodes[index.as_usize()].is_blank() || exclusion_list.contains(&index) {
+        // We end the recursion at leaf level
+        if self.nodes[index].node_type == NodeType::Leaf {
+            if self.nodes[index].is_blank() || exclusion_list.contains(&index) {
                 return vec![];
             } else {
                 return vec![index];
             }
         }
 
-        if !self.nodes[index.as_usize()].is_blank() {
+        // If a node is not blank, we only return the unmerged leaves of that node
+        if !self.nodes[index].is_blank() {
             let mut unmerged_leaves = vec![index];
-            let node = &self.nodes[index.as_usize()].node.as_ref();
+            let node = &self.nodes[index].node.as_ref();
             unmerged_leaves.extend(
                 node.unwrap()
                     .unmerged_leaves()
@@ -209,29 +222,25 @@ impl RatchetTree {
                     .map(|n| NodeIndex::from(*n)),
             );
             return unmerged_leaves;
+        } else {
+            // Otherwise we take the resolution of the children
+            // Unwrapping here is safe, since parent nodes always have children
+            let mut left = self.resolve(treemath::left(index).unwrap(), exclusion_list);
+            let right = self.resolve(treemath::right(index, size).unwrap(), exclusion_list);
+            // We concatenate the resolution and return it
+            left.extend(right);
+            left
         }
-
-        let mut left = self.resolve(
-            treemath::left(index).expect("resolve: TreeMath error when computing left child."),
-            exclusion_list,
-        );
-        let right = self.resolve(
-            treemath::right(index, size)
-                .expect("resolve: TreeMath error when computing right child."),
-            exclusion_list,
-        );
-        left.extend(right);
-        left
     }
 
     /// Get the index of the own node.
-    pub(crate) fn own_node_index(&self) -> NodeIndex {
-        self.private_tree.node_index()
+    pub(crate) fn own_node_index(&self) -> LeafIndex {
+        self.private_tree.leaf_index()
     }
 
     /// Get a reference to the own key package.
     pub fn own_key_package(&self) -> &KeyPackage {
-        let own_node = &self.nodes[self.own_node_index().as_usize()];
+        let own_node = &self.nodes[self.own_node_index()];
         own_node.key_package.as_ref().unwrap()
     }
 
@@ -239,22 +248,23 @@ impl RatchetTree {
     fn own_key_package_mut(&mut self) -> &mut KeyPackage {
         let own_node = self
             .nodes
-            .get_mut(self.private_tree.node_index().as_usize())
+            .get_mut(NodeIndex::from(self.private_tree.leaf_index()).as_usize())
             .unwrap();
         own_node.key_package_mut().unwrap()
     }
 
+    /// Blanks all the nodes in the direct path of a member
     fn blank_member(&mut self, index: NodeIndex) {
         let size = self.leaf_count();
-        self.nodes[index.as_usize()].blank();
-        self.nodes[treemath::root(size).as_usize()].blank();
-        for index in treemath::direct_path_root(index, size)
-            .expect("blank_member: TreeMath error when computing direct path.")
-        {
-            self.nodes[index.as_usize()].blank();
+        self.nodes[index].blank();
+        self.nodes[treemath::root(size)].blank();
+        // Unwrapping here is safe, because we start at the leaf level
+        for index in treemath::direct_path_root(index, size).unwrap() {
+            self.nodes[index].blank();
         }
     }
 
+    /// Returns the list of blank leaves within the tree
     fn free_leaves(&self) -> Vec<NodeIndex> {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
@@ -286,7 +296,7 @@ impl RatchetTree {
 
         // Find common ancestor of own leaf and sender leaf
         let common_ancestor_index =
-            treemath::common_ancestor_index(NodeIndex::from(sender), own_index);
+            treemath::common_ancestor_index(NodeIndex::from(sender), own_index.into());
 
         // Calculate sender direct path & co-path, common path
         let sender_direct_path =
@@ -308,7 +318,10 @@ impl RatchetTree {
 
         // Resolve the node of that co-path index
         let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
-        let position_in_resolution = resolution.iter().position(|&x| x == own_index).unwrap_or(0);
+        let position_in_resolution = resolution
+            .iter()
+            .position(|&x| x == own_index.into())
+            .unwrap_or(0);
 
         // Decrypt the ciphertext of that node
         let common_ancestor_node =
@@ -327,7 +340,7 @@ impl RatchetTree {
 
         // Get the HPKE private key.
         // It's either the own key or must be in the path of the private tree.
-        let private_key = if resolution[position_in_resolution] == own_index {
+        let private_key = if resolution[position_in_resolution] == own_index.into() {
             self.private_tree.hpke_private_key()
         } else {
             match self
@@ -380,7 +393,8 @@ impl RatchetTree {
         self.merge_direct_path_keys(update_path, sender_direct_path)?;
         self.merge_public_keys(&new_path_public_keys, &common_path)?;
         self.nodes[sender] = Node::new_leaf(Some(update_path.leaf_key_package.clone()));
-        self.compute_parent_hash(NodeIndex::from(sender));
+        // Calculate and set the parent hashes
+        self.set_parent_hashes(sender);
 
         // TODO: Do we really want to return the commit secret here?
         Ok(self.private_tree.commit_secret())
@@ -425,7 +439,7 @@ impl RatchetTree {
             .unwrap();
 
         // Compute the parent hash extension and update the KeyPackage and sign it
-        let parent_hash = self.compute_parent_hash(own_index);
+        let parent_hash = self.set_parent_hashes(own_index.into());
         let key_package = self.own_key_package_mut();
         key_package.update_parent_hash(&parent_hash);
         // Sign the KeyPackage
@@ -455,12 +469,12 @@ impl RatchetTree {
         let ciphersuite = key_package.ciphersuite();
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
-        let direct_path_root = treemath::direct_path_root(own_index, self.leaf_count())
+        let direct_path_root = treemath::direct_path_root(own_index.into(), self.leaf_count())
             .expect("replace_private_tree: Error when computing direct path.");
         // Update private tree and merge corresponding public keys.
         let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
             ciphersuite,
-            own_index,
+            own_index.into(),
             key_package_bundle,
             &direct_path_root,
         );
@@ -470,8 +484,8 @@ impl RatchetTree {
             .unwrap();
 
         // Update own leaf node with the new values
-        self.nodes[own_index.as_usize()] = Node::new_leaf(Some(key_package.clone()));
-        self.compute_parent_hash(self.own_node_index());
+        self.nodes[own_index] = Node::new_leaf(Some(key_package.clone()));
+        self.set_parent_hashes(self.own_node_index().into());
         if let Some(new_leaves_indexes) = new_leaves_indexes_option {
             let update_path_nodes = self
                 .encrypt_to_copath(new_public_keys, group_context, new_leaves_indexes)
@@ -490,7 +504,7 @@ impl RatchetTree {
         group_context: &[u8],
         new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
-        let copath = treemath::copath(self.private_tree.node_index(), self.leaf_count())
+        let copath = treemath::copath(self.private_tree.leaf_index().into(), self.leaf_count())
             .expect("encrypt_to_copath: Error when computing copath.");
         // Return if the length of the copath is zero
         if copath.is_empty() {
@@ -514,7 +528,7 @@ impl RatchetTree {
                 .resolve(*copath_node, &new_leaves_indexes)
                 .iter()
                 .map(|&index| {
-                    let pk = self.nodes[index.as_usize()].public_hpke_key().unwrap();
+                    let pk = self.nodes[index].public_hpke_key().unwrap();
                     self.ciphersuite
                         .hpke_seal_secret(&pk, group_context, &[], &path_secret)
                 })
@@ -547,7 +561,7 @@ impl RatchetTree {
         for (i, p) in path.iter().enumerate() {
             let public_key = direct_path.nodes[i].clone().public_key;
             let node = ParentNode::new(public_key.clone(), &[], &[]);
-            self.nodes[p.as_usize()].node = Some(node);
+            self.nodes[p].node = Some(node);
         }
 
         Ok(())
@@ -564,7 +578,7 @@ impl RatchetTree {
             return Err(TreeError::InvalidArguments);
         }
         for (public_key, node_index) in public_keys.iter().zip(path) {
-            if let Some(node) = &self.nodes[node_index.as_usize()].node {
+            if let Some(node) = &self.nodes[node_index].node {
                 if node.public_key() != public_key {
                     return Err(TreeError::InvalidArguments);
                 }
@@ -588,7 +602,7 @@ impl RatchetTree {
         for i in 0..path.len() {
             // TODO: drop clone
             let node = ParentNode::new(public_keys[i].clone(), &[], &[]);
-            self.nodes[path[i].as_usize()].node = Some(node);
+            self.nodes[path[i]].node = Some(node);
         }
         Ok(())
     }
@@ -608,19 +622,19 @@ impl RatchetTree {
         let free_leaves = self.free_leaves();
         let free_leaves_len = free_leaves.len();
         for (new_kp, leaf_index) in new_kps.iter().zip(free_leaves) {
-            self.nodes[leaf_index.as_usize()] = Node::new_leaf(Some((*new_kp).clone()));
+            self.nodes[leaf_index] = Node::new_leaf(Some((*new_kp).clone()));
             let dirpath = treemath::direct_path_root(leaf_index, self.leaf_count())
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
-                if !self.nodes[d.as_usize()].is_blank() {
-                    let node = &self.nodes[d.as_usize()];
+                if !self.nodes[d].is_blank() {
+                    let node = &self.nodes[d];
                     let index = d.as_u32();
                     // TODO handle error
                     let mut parent_node = node.node.clone().unwrap();
                     if !parent_node.unmerged_leaves().contains(&index) {
-                        parent_node.unmerged_leaves_mut().push(index);
+                        parent_node.add_unmerged_leaf(index);
                     }
-                    self.nodes[d.as_usize()].node = Some(parent_node);
+                    self.nodes[d].node = Some(parent_node);
                 }
             }
             added_members.push((leaf_index, new_kp.credential().clone()));
@@ -661,13 +675,13 @@ impl RatchetTree {
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
             has_updates = true;
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
-            let sender_index = queued_proposal.sender().to_node_index();
+            let sender_index = queued_proposal.sender().to_leaf_index();
             // Prepare leaf node
             let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
             // Blank the direct path of that leaf node
-            self.blank_member(sender_index);
+            self.blank_member(sender_index.into());
             // Replace the leaf node
-            self.nodes[sender_index.as_usize()] = leaf_node;
+            self.nodes[sender_index] = leaf_node;
             // Check if it is a self-update
             if sender_index == self.own_node_index() {
                 let own_kpb = match updates_key_package_bundles
@@ -687,7 +701,7 @@ impl RatchetTree {
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
             let removed = NodeIndex::from(LeafIndex::from(remove_proposal.removed));
             // Check if we got removed from the group
-            if removed == self.own_node_index() {
+            if removed == self.own_node_index().into() {
                 self_removed = true;
             }
             // Blank the direct path of the removed member
@@ -723,6 +737,7 @@ impl RatchetTree {
             invitation_list,
         })
     }
+
     /// Trims the tree from the right when there are empty leaf nodes
     fn trim_tree(&mut self) {
         let mut new_tree_size = 0;
@@ -737,118 +752,73 @@ impl RatchetTree {
             self.nodes.truncate(new_tree_size);
         }
     }
+
     /// Computes the tree hash
-    pub fn compute_tree_hash(&self) -> Vec<u8> {
-        fn node_hash(ciphersuite: &Ciphersuite, tree: &RatchetTree, index: NodeIndex) -> Vec<u8> {
-            let node = &tree.nodes[index.as_usize()];
-            match node.node_type {
-                NodeType::Leaf => {
-                    let leaf_node_hash = LeafNodeHashInput::new(&index, &node.key_package);
-                    leaf_node_hash.hash(ciphersuite)
-                }
-                NodeType::Parent => {
-                    let left = treemath::left(index)
-                        .expect("node_hash: Error when computing left child of node.");
-                    let left_hash = node_hash(ciphersuite, tree, left);
-                    let right = treemath::right(index, tree.leaf_count())
-                        .expect("node_hash: Error when computing left child of node.");
-                    let right_hash = node_hash(ciphersuite, tree, right);
-                    let parent_node_hash = ParentNodeHashInput::new(
-                        index.as_u32(),
-                        &node.node,
-                        &left_hash,
-                        &right_hash,
-                    );
-                    parent_node_hash.hash(ciphersuite)
-                }
-            }
-        }
-        let root = treemath::root(self.leaf_count());
-        node_hash(&self.ciphersuite, &self, root)
+    pub fn tree_hash(&self) -> Vec<u8> {
+        compute_tree_hash(&self)
     }
-    /// Computes the parent hash
-    pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Vec<u8> {
-        let root = treemath::root(self.leaf_count());
-        // This should only happen when the group only contains one member
-        if index == root {
-            return vec![];
-        }
-        // Calculate the parent's index
-        let parent = treemath::parent(index, self.leaf_count())
-            .expect("compute_parent_hash: Error when computing node parent.");
-        // If we already reached the tree's root, return the hash of that node
-        let parent_hash = if parent == root {
-            let root_node = &self.nodes[parent.as_usize()];
-            root_node.hash(&self.ciphersuite).unwrap()
-        // Otherwise return the hash of the next parent
-        } else {
-            self.compute_parent_hash(parent)
-        };
-        // If the current node is a parent, replace the parent hash in that node
-        let current_node = &self.nodes[index.as_usize()];
-        if let Some(mut parent_node) = current_node.node.clone() {
-            parent_node.set_parent_hash(parent_hash);
-            self.nodes[index.as_usize()].node = Some(parent_node);
-            let updated_parent_node = &self.nodes[index.as_usize()];
-            updated_parent_node.hash(&self.ciphersuite).unwrap()
-        // Otherwise we reached the leaf level, just return the hash
-        } else {
-            parent_hash
-        }
+
+    /// Computes and sets the parent hashes in the tree. Returns the parent hash
+    /// for the ParentHashExtension.
+    pub fn set_parent_hashes(&mut self, index: LeafIndex) -> Vec<u8> {
+        compute_parent_hashes(self, index)
     }
-    /// Verifies the integrity of a public tree
-    pub fn verify_integrity(ciphersuite: &Ciphersuite, nodes: &[Option<Node>]) -> bool {
-        let node_count = NodeIndex::from(nodes.len());
-        let size = node_count;
-        for i in 0..node_count.as_usize() {
-            let node_option = &nodes[i];
-            if let Some(node) = node_option {
-                match node.node_type {
-                    NodeType::Parent => {
-                        let left_index = treemath::left(NodeIndex::from(i))
-                            .expect("verify_integrity: Error when computing left child of node.");
-                        let right_index = treemath::right(NodeIndex::from(i), size.into())
-                            .expect("verify_integrity: Error when computing right child of node.");
-                        if right_index >= node_count {
+
+    /// Verify the parent hashes of the tree nodes. Returns `true` if all parent
+    /// hashes have successfully been verified and `false` otherwise.
+    pub fn verify_parent_hashes(&self) -> bool {
+        for (index, node) in self.nodes.iter().enumerate() {
+            // Only look at non-blank parent nodes
+            if index % 2 == 1 && node.is_full_parent() {
+                // Sanity check to see if it's a valid parent node
+                if node.node_type.is_leaf() || node.node.is_none() || node.key_package.is_some() {
+                    return false;
+                }
+                let left = treemath::left(index.into()).unwrap();
+                let right = treemath::right(index.into(), self.leaf_count()).unwrap();
+                // Unwrapping here is safe, because we know it is a full parent node
+                let parent_hash_field = &node.parent_hash().unwrap();
+                // Calculate the current
+                let current_hash =
+                    ParentHashInput::new(&self, index.into(), right.into(), parent_hash_field)
+                        .hash(&self.ciphersuite);
+                // Verify the left child first
+                if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {
+                    if left_parent_hash_field == current_hash {
+                        continue;
+                    }
+                } else {
+                    // Then verify the right child
+                    if let Some(right_parent_hash_field) = self.nodes[left].parent_hash() {
+                        if right_parent_hash_field == current_hash {
+                            continue;
+                        }
+                    } else {
+                        // Iterate over children until we find a node that is neither blank
+                        // nor a leaf node
+                        let mut child = right;
+                        while !self.nodes[child].is_full_parent() {
+                            let right_option = treemath::left(child.into());
+                            match right_option {
+                                // Keep iterating
+                                Ok(r) => child = r,
+                                // We didn't find any full parent node in this path
+                                Err(_) => return false,
+                            }
+                        }
+                        // Unwrapping here is safe, because we know it is a full parent node
+                        if self.nodes[child].parent_hash().unwrap() == current_hash {
+                            continue;
+                        } else {
                             return false;
                         }
-                        let left_option = &nodes[left_index.as_usize()];
-                        let right_option = &nodes[right_index.as_usize()];
-                        let own_hash = node.hash(ciphersuite).unwrap();
-                        if let Some(right) = right_option {
-                            if let Some(left) = left_option {
-                                let left_parent_hash = left.parent_hash().unwrap_or_else(Vec::new);
-                                let right_parent_hash =
-                                    right.parent_hash().unwrap_or_else(Vec::new);
-                                if (left_parent_hash != own_hash) && (right_parent_hash != own_hash)
-                                {
-                                    return false;
-                                }
-                                if left_parent_hash == right_parent_hash {
-                                    return false;
-                                }
-                            } else if right.parent_hash().unwrap() != own_hash {
-                                return false;
-                            }
-                        } else if let Some(left) = left_option {
-                            if left.parent_hash().unwrap() != own_hash {
-                                return false;
-                            }
-                        }
-                    }
-                    NodeType::Leaf => {
-                        if let Some(kp) = &node.key_package {
-                            if i % 2 != 0 {
-                                return false;
-                            }
-                            if kp.verify().is_err() {
-                                return false;
-                            }
-                        }
                     }
                 }
+                // None of the checks succeeded so we must abort
+                return false;
             }
         }
+        // Since nothing else has failed we can return true
         true
     }
 }

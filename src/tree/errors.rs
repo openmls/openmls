@@ -7,6 +7,7 @@ implement_error! {
             InvalidArguments = "Invalid arguments.",
             InvalidUpdatePath = "The computed update path is invalid.",
             InvalidTree = "The tree is not valid.",
+            NotAParentNode = "The node is not a parent node.",
         }
         Complex {
             ConfigError(ConfigError) =

@@ -223,7 +223,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                         &[]
                     };
                     let parent_hash_bytes = if let Some(ph) = node.parent_hash() {
-                        ph
+                        ph.to_vec()
                     } else {
                         vec![]
                     };

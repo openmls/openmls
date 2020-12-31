@@ -287,9 +287,13 @@ fn test_welcome_message_encoding() {
             group_state.create_add_proposal(&[], credential_bundle, charlie_key_package.clone());
 
         let proposals = &[&add];
-        let (_commit, welcome_option, _key_package_bundle_option) = group_state
+        let (commit, welcome_option, key_package_bundle_option) = group_state
             .create_commit(&[], credential_bundle, proposals, &[], true)
             .unwrap();
+        // Alice applies the commit
+        assert!(group_state
+            .apply_commit(&commit, proposals, &[key_package_bundle_option.unwrap()])
+            .is_ok());
 
         // Welcome messages
 
@@ -311,6 +315,11 @@ fn test_welcome_message_encoding() {
 
         // This makes Charlie decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.
-        assert!(MlsGroup::new_from_welcome(welcome, None, charlie_key_package_bundle).is_ok());
+        assert!(MlsGroup::new_from_welcome(
+            welcome,
+            Some(group_state.tree().public_key_tree_copy()),
+            charlie_key_package_bundle
+        )
+        .is_ok());
     }
 }

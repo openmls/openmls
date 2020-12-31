@@ -193,6 +193,13 @@ impl<T: Codec> Codec for Option<T> {
     }
 }
 
+impl<T: Codec> Codec for &T {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        (*self).encode(buffer)?;
+        Ok(())
+    }
+}
+
 impl<T1: Codec, T2: Codec> Codec for (T1, T2) {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)?;

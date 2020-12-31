@@ -97,7 +97,16 @@ impl Codec for SecretTreeNode {
 
 // Hash inputs
 
-impl<'a> Codec for ParentNodeHashInput<'a> {
+impl<'a> Codec for ParentHashInput<'a> {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.public_key.encode(buffer)?;
+        encode_vec(VecSize::VecU8, buffer, &self.parent_hash)?;
+        encode_vec(VecSize::VecU32, buffer, &self.original_child_resolution)?;
+        Ok(())
+    }
+}
+
+impl<'a> Codec for ParentNodeTreeHashInput<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.node_index.encode(buffer)?;
         self.parent_node.encode(buffer)?;

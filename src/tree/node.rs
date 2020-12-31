@@ -5,11 +5,24 @@ use crate::extensions::*;
 use super::*;
 use std::convert::TryFrom;
 
+/// Node type. Can be either `Leaf` or `Parent`.
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum NodeType {
     Leaf = 0,
     Parent = 1,
+}
+
+impl NodeType {
+    /// Returns `true` if the node type is `Leaf` and `false` otherwise.
+    pub fn is_leaf(&self) -> bool {
+        self == &NodeType::Leaf
+    }
+
+    /// Returns `true` if the node type is `Parent` and `false` otherwise.
+    pub fn is_parent(&self) -> bool {
+        self == &NodeType::Parent
+    }
 }
 
 impl TryFrom<u8> for NodeType {
@@ -23,6 +36,9 @@ impl TryFrom<u8> for NodeType {
     }
 }
 
+/// Ratchet tree node. A `Node` can either be a leaf node (in which case it
+/// contains an optional `KeyPackage`), or a parent node (in which case it
+/// contains an optional `ParentNode`).
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Node {
     pub node_type: NodeType,
@@ -33,6 +49,8 @@ pub struct Node {
 }
 
 impl Node {
+    /// Creates a new leaf node. It can either be blank or contain a
+    /// `KeyPackage`.
     pub fn new_leaf(kp_option: Option<KeyPackage>) -> Self {
         Node {
             node_type: NodeType::Leaf,
@@ -40,6 +58,8 @@ impl Node {
             node: None,
         }
     }
+
+    /// Creates a new blank parent node.
     pub fn new_blank_parent_node() -> Self {
         Node {
             node_type: NodeType::Parent,
@@ -47,6 +67,8 @@ impl Node {
             node: None,
         }
     }
+
+    /// Returns the public HPKE key of either node type.
     pub fn public_hpke_key(&self) -> Option<&HPKEPublicKey> {
         match self.node_type {
             NodeType::Leaf => {
@@ -65,13 +87,31 @@ impl Node {
             }
         }
     }
+
+    /// Blanks the node.
     pub fn blank(&mut self) {
         self.key_package = None;
         self.node = None;
     }
+
+    /// Returns `true` if the node is blank and `false` otherwise.
     pub fn is_blank(&self) -> bool {
         self.key_package.is_none() && self.node.is_none()
     }
+
+    /// Returns `true` if the node is a non-blank leaf node and `false`
+    /// otherwise.
+    pub fn is_full_leaf(&self) -> bool {
+        self.node_type.is_leaf() && self.node.is_none() && self.key_package.is_some()
+    }
+
+    /// Returns `true` if the node is a non-blank parent node and `false`
+    /// otherwise.
+    pub fn is_full_parent(&self) -> bool {
+        self.node_type.is_parent() && self.node.is_some() && self.key_package.is_none()
+    }
+
+    /// Hashes the values of the node. This is used to compute the tree hash.
     pub fn hash(&self, ciphersuite: &Ciphersuite) -> Option<Vec<u8>> {
         if let Some(parent_node) = &self.node {
             let payload = parent_node.encode_detached().unwrap();
@@ -82,15 +122,18 @@ impl Node {
         }
     }
 
-    // TODO: #98 should this really return a vec?
-    pub fn parent_hash(&self) -> Option<Vec<u8>> {
+    /// Returns the parent hash of a node. Returns `None` if the node is blank.
+    /// Otherwise returns the `parent_hash` field for parent nodes and
+    /// optionally the `parent_hash` field of the `ParentHashExtension` of the
+    /// leaf node if the extension is present.
+    pub fn parent_hash(&self) -> Option<&[u8]> {
         if self.is_blank() {
             return None;
         }
         match self.node_type {
             NodeType::Parent => {
                 if let Some(node) = &self.node {
-                    Some(node.parent_hash.clone())
+                    Some(&node.parent_hash)
                 } else {
                     None
                 }
@@ -105,7 +148,7 @@ impl Node {
                                 Ok(phe) => phe,
                                 Err(_) => return None,
                             };
-                            Some(phe.parent_hash().to_vec())
+                            Some(&phe.parent_hash())
                         }
                         None => None,
                     }
@@ -127,6 +170,7 @@ impl Node {
     }
 }
 
+/// Content of a parent node.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
     pub(crate) public_key: HPKEPublicKey,
@@ -135,6 +179,7 @@ pub struct ParentNode {
 }
 
 impl ParentNode {
+    /// Creates a new `ParentNode` from the provided values.
     pub fn new(public_key: HPKEPublicKey, unmerged_leaves: &[u32], parent_hash: &[u8]) -> Self {
         Self {
             public_key,
@@ -142,16 +187,20 @@ impl ParentNode {
             parent_hash: parent_hash.to_vec(),
         }
     }
+    /// Returns the node's HPKE public key
     pub fn public_key(&self) -> &HPKEPublicKey {
         &self.public_key
     }
+    /// Sets the node's parent hash
     pub fn set_parent_hash(&mut self, hash: Vec<u8>) {
         self.parent_hash = hash;
     }
+    /// Returns the node's unmerged leaves
     pub fn unmerged_leaves(&self) -> &[u32] {
         &self.unmerged_leaves
     }
-    pub fn unmerged_leaves_mut(&mut self) -> &mut Vec<u32> {
-        &mut self.unmerged_leaves
+    /// Adds a leaf to the node's unmerged leaves
+    pub fn add_unmerged_leaf(&mut self, leaf: u32) {
+        self.unmerged_leaves.push(leaf);
     }
 }

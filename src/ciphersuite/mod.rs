@@ -67,8 +67,8 @@ pub enum SignatureScheme {
 impl SignatureScheme {
     /// Create a new signature key pair and return it.
     pub(crate) fn new_signature_keypair(&self) -> Result<SignatureKeypair, CryptoError> {
-        // It's ok to use `unwrap()` here, since we checked the signature scheme is supported
-        // when the ciphersuite was instantiated.
+        // It's ok to use `unwrap()` here, since we checked the signature scheme is
+        // supported when the ciphersuite was instantiated.
         SignatureKeypair::new(*self)
     }
 }
@@ -761,8 +761,8 @@ impl SignaturePrivateKey {
     /// Sign the `payload` byte slice with this signature key.
     /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
-        // It's ok to use `unwrap()` here, since we checked the signature scheme is supported
-        // when the public key was created.
+        // It's ok to use `unwrap()` here, since we checked the signature scheme is
+        // supported when the public key was created.
         let signature_mode = SignatureMode::try_from(self.signature_scheme).unwrap();
         let (hash, nonce) = match signature_mode {
             SignatureMode::Ed25519 => (None, None),
