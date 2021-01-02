@@ -77,13 +77,18 @@ impl MlsGroup {
         let group_context =
             GroupContext::create_initial_group_context(ciphersuite, group_id, tree.tree_hash())?;
         let commit_secret = tree.private_tree().commit_secret();
-        // Derive an initial member secret based on the commit secret.
+        // Derive an initial joiner secret based on the commit secret.
+        // Derive an epoch secret from the joiner secret.
         // Internally, this derives a random `InitSecret` and uses it in the
         // derivation.
-        let member_secret =
-            MemberSecret::from_commit_secret_and_psk(ciphersuite, commit_secret, None);
+        let joiner_secret = JoinerSecret::from_commit_secret(ciphersuite, commit_secret);
+        // TODO #141: Implement PSK
+        let intermediate_secret =
+            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
+        let epoch_secret =
+            EpochSecret::from_intermediate_secret(ciphersuite, intermediate_secret, &group_context);
         let (epoch_secrets, init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(ciphersuite, member_secret, &group_context);
+            EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
         let secret_tree = encryption_secret.create_secret_tree(LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {

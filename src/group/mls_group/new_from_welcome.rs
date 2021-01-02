@@ -33,7 +33,7 @@ impl MlsGroup {
         }
 
         // Compute keys to decrypt GroupInfo
-        let (mut group_info, member_secret, path_secret_option) = Self::decrypt_group_info(
+        let (mut group_info, intermediate_secret, path_secret_option) = Self::decrypt_group_info(
             &ciphersuite,
             &egs,
             key_package_bundle.private_key(),
@@ -148,8 +148,11 @@ impl MlsGroup {
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
         )?;
+        // TODO #141: Implement PSK
+        let epoch_secret =
+            EpochSecret::from_intermediate_secret(ciphersuite, intermediate_secret, &group_context);
         let (epoch_secrets, init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(&ciphersuite, member_secret, &group_context);
+            EpochSecrets::derive_epoch_secrets(&ciphersuite, epoch_secret);
         let secret_tree = encryption_secret.create_secret_tree(tree.leaf_count());
 
         let confirmation_tag = ConfirmationTag::new(
@@ -199,29 +202,29 @@ impl MlsGroup {
         encrypted_group_secrets: &EncryptedGroupSecrets,
         private_key: &HPKEPrivateKey,
         encrypted_group_info: &[u8],
-    ) -> Result<(GroupInfo, MemberSecret, Option<PathSecret>), WelcomeError> {
+    ) -> Result<(GroupInfo, IntermediateSecret, Option<PathSecret>), WelcomeError> {
         let group_secrets_bytes = ciphersuite.hpke_open(
             &encrypted_group_secrets.encrypted_group_secrets,
             &private_key,
             &[],
             &[],
         )?;
-        let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
-        // TODO: Currently the PSK is None. This should be fixed with issue #141
-        let member_secret = MemberSecret::from_joiner_secret_and_psk(
-            ciphersuite,
-            group_secrets.joiner_secret,
-            None,
-        );
-        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
+        let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes)?;
+        let joiner_secret = group_secrets.joiner_secret;
+        // TODO #141: Implement PSK
+        let intermediate_secret =
+            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
+        let welcome_secret =
+            WelcomeSecret::from_intermediate_secret(ciphersuite, &intermediate_secret);
+        let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
         let group_info_bytes =
             match welcome_key.aead_open(encrypted_group_info, &[], &welcome_nonce) {
                 Ok(bytes) => bytes,
                 Err(_) => return Err(WelcomeError::GroupInfoDecryptionFailure),
             };
         Ok((
-            GroupInfo::decode_detached(&group_info_bytes).unwrap(),
-            member_secret,
+            GroupInfo::decode_detached(&group_info_bytes)?,
+            intermediate_secret,
             group_secrets.path_secret,
         ))
     }

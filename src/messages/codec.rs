@@ -107,15 +107,15 @@ impl Codec for Welcome {
 }
 
 impl Codec for GroupSecrets {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.joiner_secret.encode(buffer)?;
-        self.path_secret.encode(buffer)?;
-        Ok(())
-    }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let joiner_secret = JoinerSecret::decode(cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
-        Ok(Self::new(joiner_secret, path_secret))
+        let _psks = Option::<PreSharedKeys>::decode(cursor)?;
+        Ok(Self {
+            joiner_secret,
+            path_secret,
+            _psks,
+        })
     }
 }
 

@@ -73,10 +73,10 @@ impl MlsGroup {
         provisional_epoch.increment();
         // We clone the init secret here, as the `joiner_secret` is only for the
         // provisional group state.
-        let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
+        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
             ciphersuite,
             commit_secret,
-            self.init_secret.clone(),
+            &self.init_secret,
         );
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
@@ -84,12 +84,16 @@ impl MlsGroup {
             apply_proposals_values.invitation_list,
             &provisional_tree,
             path_secrets_option,
-        );
-        let member_secret =
-            MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
+        )?;
+        // TODO #141: Implement PSK
+        let intermediate_secret =
+            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
+        let welcome_secret =
+            WelcomeSecret::from_intermediate_secret(ciphersuite, &intermediate_secret);
+
         // Derive the welcome key material before consuming the `MemberSecret`
         // immediately afterwards.
-        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
+        let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
 
         // Build MLSPlaintext
         let content = MLSPlaintextContentType::Commit(commit);
@@ -133,14 +137,16 @@ impl MlsGroup {
             confirmed_transcript_hash.clone(),
         )?;
 
+        let epoch_secret = EpochSecret::from_intermediate_secret(
+            ciphersuite,
+            intermediate_secret,
+            &provisional_group_context,
+        );
+
         // The init- and encryption secrets are not used here. They come into
         // play when the provisional group state is applied in `apply_commit`.
         let (provisional_epoch_secrets, _provisional_init_secret, _provisional_encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(
-                &ciphersuite,
-                member_secret,
-                &provisional_group_context,
-            );
+            EpochSecrets::derive_epoch_secrets(&ciphersuite, epoch_secret);
 
         // Calculate the confirmation tag
         let confirmation_tag = ConfirmationTag::new(

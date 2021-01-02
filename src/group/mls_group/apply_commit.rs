@@ -108,13 +108,15 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         );
 
-        let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
+        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
             ciphersuite,
             Some(commit_secret),
-            self.init_secret.clone(),
+            &self.init_secret,
         );
-        let member_secret =
-            MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
+
+        // TODO #141: Implement PSK
+        let intermediate_secret =
+            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
 
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
@@ -122,12 +124,15 @@ impl MlsGroup {
             provisional_tree.tree_hash(),
             confirmed_transcript_hash.clone(),
         )?;
+
+        let epoch_secret = EpochSecret::from_intermediate_secret(
+            ciphersuite,
+            intermediate_secret,
+            &provisional_group_context,
+        );
+
         let (provisional_epoch_secrets, provisional_init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(
-                ciphersuite,
-                member_secret,
-                &provisional_group_context,
-            );
+            EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
 
         let mls_plaintext_commit_auth_data =
             match MLSPlaintextCommitAuthData::try_from(mls_plaintext) {
