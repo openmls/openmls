@@ -184,7 +184,8 @@ pub(crate) struct IntermediateSecret {
 }
 
 impl IntermediateSecret {
-    /// Derive ans `IntermediateSecret` from a `JoinerSecret` and an optional PSK.
+    /// Derive ans `IntermediateSecret` from a `JoinerSecret` and an optional
+    /// PSK.
     pub(crate) fn new_from_joiner_secret_and_psk(
         ciphersuite: &Ciphersuite,
         joiner_secret: JoinerSecret,

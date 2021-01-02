@@ -180,9 +180,12 @@ pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     NodeIndex::from((xn << k) + (1 << (k - 1)) - 1)
 }
 
+// The following is not currently used but could be useful in future parent hash
+// computations:
+
 /// Returns the list of nodes that are descendants of a given parent node,
 /// including the parent node itself
-pub(crate) fn descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
+pub(crate) fn _descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let l = level(x);
     if l == 0 {
         vec![x]
@@ -210,9 +213,9 @@ pub(crate) fn _descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> 
         let left_child = left(x).unwrap();
         let right_child = right(x, size).unwrap();
         [
-            descendants(left_child, size),
+            _descendants_alt(left_child, size),
             vec![x],
-            descendants(right_child, size),
+            _descendants_alt(right_child, size),
         ]
         .concat()
     }

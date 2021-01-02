@@ -133,16 +133,12 @@ pub(crate) fn original_child_resolution(
             }
         }
     };
-    // Convert te exclusion list to a HashSet for faster searching
+    // Convert the exclusion list to a HashSet for faster searching
     let exclusion_list: HashSet<&NodeIndex> =
         HashSet::from_iter(unmerged_leaves.iter().map(|index| index));
-    // Compute the full resolution
-    let full_resolution = treemath::descendants(index, tree.leaf_count());
-    // Filter out the nodes from the exclusion list
-    let resolution = full_resolution
-        .into_iter()
-        .filter(|index| !exclusion_list.contains(index))
-        .collect::<Vec<NodeIndex>>();
+
+    // Compute the resolution for the index with the exclusion list
+    let resolution = tree.resolve(index, &exclusion_list);
 
     // Build the list of HPKE public keys by iterating over the resolution and
     // filtering out blank leaf nodes
@@ -157,31 +153,31 @@ pub(crate) fn original_child_resolution(
 /// the parent hash extension
 pub(crate) fn compute_parent_hashes(tree: &mut RatchetTree, index: LeafIndex) -> Vec<u8> {
     // Recursive helper function used to calculate parent hashes
-    fn node_parent_hash(tree: &mut RatchetTree, index: NodeIndex, child: NodeIndex) -> Vec<u8> {
+    fn node_parent_hash(
+        tree: &mut RatchetTree,
+        index: NodeIndex,
+        former_index: NodeIndex,
+    ) -> Vec<u8> {
         let tree_size = tree.leaf_count();
         let root = treemath::root(tree_size);
-        // This should only happen when the group only contains one member
-        if index == root {
+        // When the group only has one member, there are no parent nodes
+        if tree.leaf_count().as_usize() <= 1 {
             return vec![];
         }
-        // Calculate the parent's index
-        // It is ok to use `unwrap()` here, since we already checked that the index is
-        // not the root
-        let parent = treemath::parent(index, tree_size).unwrap();
-        // Calculate the sibling's index
-        // It is ok to use `unwrap()` here, since we already checked that the index is
-        // not the root
-        let own_sibling = treemath::sibling(index, tree_size).unwrap();
-        // Calculate the sibling's index
-        // It is ok to use `unwrap()` here, since we already checked that the index is
-        // not the root
-        let child_sibling = treemath::sibling(child, tree_size).unwrap();
+
+        // Calculate the sibling of the former index
+        // It is ok to use `unwrap()` here, since we never reach the root
+        let former_index_sibling = treemath::sibling(former_index, tree_size).unwrap();
         // If we already reached the tree's root, return the hash of that node
-        let parent_hash = if parent == root {
-            ParentHashInput::new(tree, parent, own_sibling, &[]).hash(tree.ciphersuite)
+        let parent_hash = if index == root {
+            vec![]
         // Otherwise return the hash of the next parent
         } else {
-            node_parent_hash(tree, parent, child)
+            // Calculate the parent's index
+            // It is ok to use `unwrap()` here, since we already checked that the index is
+            // not the root
+            let parent = treemath::parent(index, tree_size).unwrap();
+            node_parent_hash(tree, parent, index)
         };
         // If the current node is a parent, replace the parent hash in that node
         let current_node = &tree.nodes[index];
@@ -195,7 +191,7 @@ pub(crate) fn compute_parent_hashes(tree: &mut RatchetTree, index: LeafIndex) ->
             ParentHashInput::new(
                 tree,
                 index,
-                child_sibling,
+                former_index_sibling,
                 &tree.nodes[index].node.as_ref().unwrap().parent_hash,
             )
             .hash(tree.ciphersuite)
@@ -204,8 +200,8 @@ pub(crate) fn compute_parent_hashes(tree: &mut RatchetTree, index: LeafIndex) ->
             parent_hash
         }
     }
-    // The same index is used for the child index here, since that parameter doesn't
-    // matter when starting with a leaf node
+    // The same index is used for the former index here, since that parameter is
+    // ignored when starting with a leaf node
     node_parent_hash(tree, index.into(), index.into())
 }
 

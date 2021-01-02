@@ -62,20 +62,12 @@ fn test_parent_hash() {
         // Compute the recursive parent_hash for the first member
         let original_parent_hash = tree.set_parent_hashes(LeafIndex::from(0usize));
 
-        // Swap two leaf nodes in the right part of the tree
-        tree.nodes.swap(40, 42);
+        // Swap two leaf nodes in the left & right part of the tree
+        tree.nodes.swap(15, 47);
 
         // Compute the parent hash again to verify it has changed
         let leaf_swap_parent_hash = tree.set_parent_hashes(LeafIndex::from(0usize));
 
         assert!(leaf_swap_parent_hash != original_parent_hash);
-
-        // Swap two parent nodes in the right part of the tree
-        tree.nodes.swap(41, 43);
-
-        // Compute the parent hash again to verify it has changed
-        let parent_swap_parent_hash = tree.set_parent_hashes(LeafIndex::from(0usize));
-
-        assert!(parent_swap_parent_hash != original_parent_hash);
     }
 }
