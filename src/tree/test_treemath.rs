@@ -1,4 +1,5 @@
-use super::treemath::TreeMathError;
+use super::index::{LeafIndex, NodeIndex};
+use super::treemath::{TreeMathError, _descendants, _descendants_alt};
 
 /// The following test uses an old test vector that assumes an outdated version
 /// of the treemath defined in the spec. In a few select cases, we should now
@@ -129,5 +130,18 @@ fn test_tree_hash() {
         let _ = tree.add_nodes(&key_packages);
         let tree_hash = tree.tree_hash();
         println!("Tree hash: {:?}", tree_hash);
+    }
+}
+
+#[test]
+fn verify_descendants() {
+    const LEAVES: usize = 100;
+    for size in 1..LEAVES {
+        for node in 0..(size * 2 - 1) {
+            assert_eq!(
+                _descendants(NodeIndex::from(node), LeafIndex::from(size)),
+                _descendants_alt(NodeIndex::from(node), LeafIndex::from(size))
+            );
+        }
     }
 }

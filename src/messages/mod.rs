@@ -26,6 +26,9 @@ mod test_proposals;
 #[cfg(test)]
 mod test_welcome;
 
+#[cfg(test)]
+mod test_codec;
+
 /// Welcome Messages
 ///
 /// > 11.2.2. Welcoming New Members

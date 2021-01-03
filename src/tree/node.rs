@@ -1,5 +1,4 @@
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::extensions::*;
 
 use super::*;
@@ -109,17 +108,6 @@ impl Node {
     /// otherwise.
     pub fn is_full_parent(&self) -> bool {
         self.node_type.is_parent() && self.node.is_some() && self.key_package.is_none()
-    }
-
-    /// Hashes the values of the node. This is used to compute the tree hash.
-    pub fn hash(&self, ciphersuite: &Ciphersuite) -> Option<Vec<u8>> {
-        if let Some(parent_node) = &self.node {
-            let payload = parent_node.encode_detached().unwrap();
-            let node_hash = ciphersuite.hash(&payload);
-            Some(node_hash)
-        } else {
-            None
-        }
     }
 
     /// Returns the parent hash of a node. Returns `None` if the node is blank.
