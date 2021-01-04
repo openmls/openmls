@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["InvalidMessageError",""],["ManagedGroupError",""],["PendingProposalsError",""],["UseAfterEviction",""]]});
+initSidebarItems({"enum":[["EmptyInputError",""],["InvalidMessageError",""],["ManagedGroupError",""],["PendingProposalsError",""],["UseAfterEviction",""]]});

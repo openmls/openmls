@@ -1,1 +1,1 @@
-initSidebarItems({"static":[["__init16518203259712514104",""]],"struct":[["CapabilitiesExtension",""]]});
+initSidebarItems({"fn":[["__init16518203259712514104",""]],"static":[["__init16518203259712514104___rust_ctor___ctor",""]],"struct":[["CapabilitiesExtension",""]]});
