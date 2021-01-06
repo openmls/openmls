@@ -309,22 +309,12 @@ impl<'a> ManagedTestSetup<'a> {
         Ok(new_member_ids)
     }
 
-    /// Create a random group of size `group_size` and return the `GroupId`
-    pub fn create_random_group(
-        &'a mut self,
-        target_group_size: usize,
-        ciphersuite: &Ciphersuite,
-    ) -> GroupId {
-        if target_group_size > self.clients.len() {
-            panic!("Not enough members to create a group this large.");
-        }
-
+    pub fn create_group(&'a mut self, ciphersuite: &Ciphersuite) {
         // Pick a random group creator.
         let group_creator_id = ((OsRng.next_u32() as usize) % self.clients.len())
             .to_be_bytes()
             .to_vec();
-        let clients = &self.clients;
-        let group_creator = clients.get(&group_creator_id).unwrap();
+        let group_creator: &Client<'a> = self.clients.get(&group_creator_id).unwrap();
         let group_id = GroupId {
             value: self.groups.len().to_string().into_bytes(),
         };
@@ -341,14 +331,58 @@ impl<'a> ManagedTestSetup<'a> {
             public_tree,
         };
         self.groups.insert(group_id.clone(), group);
-        let mut current_group_size = 1;
-        while current_group_size < target_group_size {
-            // Get a random group member.
-            //let adder = group.members.get(&adder_id).unwrap();
-            let number_of_members =
-                (OsRng.next_u32() as usize) % (target_group_size - current_group_size) + 1;
-            self.increase_group_size(group_id.clone(), number_of_members);
-            current_group_size += number_of_members;
+    }
+
+    pub fn random_group_member(&self, group_id: &GroupId) -> Vec<u8> {
+        // TODO: Error
+        let group = self.groups.get(group_id).unwrap();
+        group.members.iter().find(|_| true).unwrap().clone()
+    }
+
+    /// Create a random group of size `group_size` and return the `GroupId`
+    pub fn create_random_group(
+        &'a mut self,
+        target_group_size: usize,
+        ciphersuite: &Ciphersuite,
+    ) -> GroupId {
+        if target_group_size > self.clients.len() {
+            panic!("Not enough members to create a group this large.");
+        }
+
+        let group_id = GroupId {
+            value: self.groups.len().to_string().into_bytes(),
+        };
+
+        self.create_group(ciphersuite);
+
+        let new_members = self
+            .random_new_members_for_group(&group_id, target_group_size - 1)
+            .expect("Error when getting new members for group size increase.");
+
+        let mut key_packages = Vec::new();
+        for member_id in &new_members {
+            let client = self.clients.get(member_id).unwrap();
+            let fresh_key_package = client.get_fresh_key_package(ciphersuite);
+            self.waiting_for_welcome
+                .insert(fresh_key_package.hash(), member_id.clone());
+            key_packages.push(fresh_key_package);
+        }
+
+        while !new_members.is_empty() {
+            // Pick a random adder.
+            let adder_id = self.random_group_member(&group_id);
+            let adder = self.clients.get(&adder_id).unwrap();
+            let mut adder_group_states = adder.groups.borrow_mut();
+            let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
+
+            let (mls_messages, welcome) = adder_group_state
+                .add_members(key_packages.as_slice())
+                .unwrap();
+            drop(adder_group_state);
+            drop(adder_group_states);
+            self.distribute_to_members(&group_id, mls_messages)
+                .expect("Error distributing messages to group members while creating a new group.");
+            self.deliver_welcome(welcome, group_id.clone());
         }
         group_id
     }
@@ -368,20 +402,23 @@ impl<'a> ManagedTestSetup<'a> {
             key_packages.push(fresh_key_package);
         }
         let group = self.groups.get_mut(&group_id).unwrap();
-        // Pick a random adder.
-        let adder_id = group.members.iter().find(|_| true).unwrap();
-        let adder = self.clients.get(adder_id).unwrap();
-        let mut adder_group_states = adder.groups.borrow_mut();
-        let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
 
-        let (mls_messages, welcome) = adder_group_state
-            .add_members(key_packages.as_slice())
-            .unwrap();
-        drop(adder_group_state);
-        drop(adder_group_states);
-        self.distribute_to_members(&group_id, mls_messages)
-            .expect("Error distributing messages to group members while creating a new group.");
-        self.deliver_welcome(welcome, group_id);
+        while !new_members.is_empty() {
+            // Pick a random adder.
+            let adder_id = group.members.iter().find(|_| true).unwrap();
+            let adder = self.clients.get(adder_id).unwrap();
+            let mut adder_group_states = adder.groups.borrow_mut();
+            let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
+
+            let (mls_messages, welcome) = adder_group_state
+                .add_members(key_packages.as_slice())
+                .unwrap();
+            drop(adder_group_state);
+            drop(adder_group_states);
+            self.distribute_to_members(&group_id, mls_messages)
+                .expect("Error distributing messages to group members while creating a new group.");
+            self.deliver_welcome(welcome, group_id);
+        }
     }
 
     pub fn perform_random_operation(&'a mut self, group_id: GroupId) -> Result<(), ClientError> {
