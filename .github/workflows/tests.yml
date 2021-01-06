@@ -25,6 +25,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Tests
         run: cargo test --verbose
+      - name: KAT
+        run: cargo test  --verbose --features="test-vectors" kat
   checks:
     runs-on: ubuntu-latest
     steps:

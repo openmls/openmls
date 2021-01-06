@@ -39,7 +39,10 @@ fn verify_binary_test_vector_treemath() {
     // Test if the `root` function is computed correctly according to the test
     // vector.
     for (i, &r) in root.iter().enumerate() {
-        assert_eq!(NodeIndex::from(r), treemath::root(LeafIndex::from(i + 1)));
+        assert_eq!(
+            NodeIndex::from(r),
+            treemath::root(LeafIndex::from(i + 1)).unwrap()
+        );
     }
     // Test if the `left` function is computed correctly according to the test
     // vector.
@@ -82,7 +85,7 @@ fn test_dir_path() {
         for i in 0..size / 2 {
             let index = NodeIndex::from(i);
             let mut dir_path_test = dirpath(index, LeafIndex::from(size)).unwrap();
-            let root = root(LeafIndex::from(size));
+            let root = root(LeafIndex::from(size)).unwrap();
             dir_path_test.extend_from_slice(&[root]);
             assert_eq!(
                 dir_path_test,

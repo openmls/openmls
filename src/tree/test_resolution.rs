@@ -47,7 +47,7 @@ fn test_exclusion_list() {
 
         let tree = RatchetTree::new_from_nodes(&ciphersuite, key_package_bundle, &nodes).unwrap();
 
-        let root = treemath::root(NodeIndex::from(NODES).into());
+        let root = treemath::root(NodeIndex::from(NODES).into()).unwrap();
 
         // Test full resolution
         let exclusion_list = HashSet::new();

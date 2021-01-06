@@ -7,11 +7,17 @@ use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 use super::*;
 use std::convert::TryFrom;
 
-#[derive(Debug, PartialEq)]
-pub enum SecretTreeError {
-    TooDistantInThePast,
-    TooDistantInTheFuture,
-    IndexOutOfBounds,
+implement_error! {
+    pub enum SecretTreeError {
+        Simple {
+            TooDistantInThePast = "Generation is too old to be processed.",
+            TooDistantInTheFuture = "Generation is too far in the future to be processed.",
+            IndexOutOfBounds = "Index out of bounds",
+        }
+        Complex {
+            TreeMath(TreeMathError) = "An error in the tree arithmetic occurred.",
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -95,7 +101,7 @@ impl SecretTree {
     /// initialized when secrets are requested either through `secret()`
     /// or `next_secret()`.
     pub fn new(encryption_secret: EncryptionSecret, size: LeafIndex) -> Self {
-        let root = root(size);
+        let root = root(size).unwrap();
         let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(SecretTreeNode {
@@ -146,7 +152,7 @@ impl SecretTree {
             dirpath(index_in_tree, self.size)
                 .expect("initialize_sender_rathets: Error while computing direct path."),
         );
-        dir_path.push(root(self.size));
+        dir_path.push(root(self.size)?);
         let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
             empty_nodes.push(n);
@@ -203,6 +209,7 @@ impl SecretTree {
     ) -> Result<RatchetSecrets, SecretTreeError> {
         // Check tree bounds
         if index >= self.size {
+            println!("index: {:?} | size: {:?}", index, self.size);
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         if self.ratchet_opt(index, secret_type).is_none() {

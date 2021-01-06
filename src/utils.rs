@@ -14,6 +14,11 @@ pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
+#[cfg(all(test, feature = "test-vectors"))]
+pub(crate) fn random_u64() -> u64 {
+    OsRng.next_u64()
+}
+
 #[cfg(test)]
 pub(crate) fn random_u8() -> u8 {
     get_random_vec(1)[0]
@@ -212,7 +217,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                     (key_bytes, parent_hash_bytes)
                 }
                 NodeType::Parent => {
-                    if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
+                    if treemath::root(tree.leaf_count()).unwrap() == NodeIndex::from(i) {
                         print!("\tP(R)");
                     } else {
                         print!("\tP");
@@ -248,7 +253,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
             }
             print!("◼︎");
         } else {
-            if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
+            if treemath::root(tree.leaf_count()).unwrap() == NodeIndex::from(i) {
                 print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
             } else {
                 print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");

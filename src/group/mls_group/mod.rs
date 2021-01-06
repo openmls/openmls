@@ -337,6 +337,16 @@ impl MlsGroup {
     pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
         self.secret_tree.borrow_mut()
     }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
+        &mut self.epoch_secrets
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        &mut self.group_context
+    }
 }
 
 // Helper functions
