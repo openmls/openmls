@@ -57,7 +57,7 @@ fn test_reinit_proposal_codec() {
         let orig = ReInitProposal {
             group_id: GroupId::random(),
             version: ProtocolVersion::default(),
-            ciphersuite: ciphersuite_name.clone(),
+            ciphersuite: *ciphersuite_name,
             extensions: vec![],
         };
         let encoded = orig.encode_detached().unwrap();

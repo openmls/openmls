@@ -17,7 +17,7 @@ fn test_client_info() {
         client_key_package_bundle.key_package().hash(),
         client_key_package_bundle.key_package().clone(),
     )];
-    let client_data = ClientInfo::new(client_name.to_string(), client_key_package.clone());
+    let client_data = ClientInfo::new(client_name.to_string(), client_key_package);
 
     let encoded_client_data = client_data.encode_detached().unwrap();
     assert_eq!(

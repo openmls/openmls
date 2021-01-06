@@ -197,9 +197,7 @@ pub(crate) fn _descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
             r = (size.as_usize() * 2) - 2;
         }
 
-        (l..=r)
-            .map(|index| NodeIndex::from(index))
-            .collect::<Vec<NodeIndex>>()
+        (l..=r).map(NodeIndex::from).collect::<Vec<NodeIndex>>()
     }
 }
 

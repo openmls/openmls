@@ -322,7 +322,7 @@ impl<'a> ManagedGroup<'a> {
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
             &self.credential_bundle,
-            LeafIndex::from(self.group.tree().own_node_index()),
+            self.group.tree().own_node_index(),
         );
 
         self.plaintext_to_mls_messages(vec![remove_proposal])

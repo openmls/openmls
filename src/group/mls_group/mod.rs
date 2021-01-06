@@ -361,7 +361,7 @@ impl MlsGroup {
 // Private and crate functions
 impl MlsGroup {
     pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_node_index().into()
+        self.tree.borrow().own_node_index()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {

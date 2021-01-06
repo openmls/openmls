@@ -134,8 +134,7 @@ pub(crate) fn original_child_resolution(
         }
     };
     // Convert the exclusion list to a HashSet for faster searching
-    let exclusion_list: HashSet<&NodeIndex> =
-        HashSet::from_iter(unmerged_leaves.iter().map(|index| index));
+    let exclusion_list: HashSet<&NodeIndex> = HashSet::from_iter(unmerged_leaves.iter());
 
     // Compute the resolution for the index with the exclusion list
     let resolution = tree.resolve(index, &exclusion_list);

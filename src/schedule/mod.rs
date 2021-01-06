@@ -129,7 +129,7 @@ impl JoinerSecret {
         invited_members: Vec<(NodeIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
         mut path_secrets_option: Option<Vec<Secret>>,
-    ) -> Result<Vec<(HPKEPublicKey, Vec<u8>, Vec<u8>)>, CodecError> {
+    ) -> Result<Vec<PlaintextSecret>, CodecError> {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
         let dirpath = treemath::direct_path_root(
@@ -167,14 +167,20 @@ impl JoinerSecret {
             // Create the groupsecrets object for the respective member.
             // TODO #141: Implement PSK
             let group_secrets_bytes = GroupSecrets::new_encoded(&self, path_secret, None)?;
-            plaintext_secrets.push((
-                key_package.hpke_init_key().clone(),
+            plaintext_secrets.push(PlaintextSecret {
+                public_key: key_package.hpke_init_key().clone(),
                 group_secrets_bytes,
                 key_package_hash,
-            ));
+            });
         }
         Ok(plaintext_secrets)
     }
+}
+
+pub(crate) struct PlaintextSecret {
+    pub(crate) public_key: HPKEPublicKey,
+    pub(crate) group_secrets_bytes: Vec<u8>,
+    pub(crate) key_package_hash: Vec<u8>,
 }
 
 /// The intermediate secret includes the optional PSK and is used to later

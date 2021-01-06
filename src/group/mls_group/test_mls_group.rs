@@ -112,7 +112,7 @@ fn test_failed_groupinfo_decryption() {
 
             // Now build the welcome message.
             let broken_welcome = Welcome::new(
-                version.clone(),
+                *version,
                 ciphersuite,
                 broken_secrets,
                 encrypted_group_info.clone(),

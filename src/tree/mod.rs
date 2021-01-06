@@ -221,7 +221,7 @@ impl RatchetTree {
                     .iter()
                     .map(|n| NodeIndex::from(*n)),
             );
-            return unmerged_leaves;
+            unmerged_leaves
         } else {
             // Otherwise we take the resolution of the children
             // Unwrapping here is safe, since parent nodes always have children
@@ -439,7 +439,7 @@ impl RatchetTree {
             .unwrap();
 
         // Compute the parent hash extension and update the KeyPackage and sign it
-        let parent_hash = self.set_parent_hashes(own_index.into());
+        let parent_hash = self.set_parent_hashes(own_index);
         let key_package = self.own_key_package_mut();
         key_package.update_parent_hash(&parent_hash);
         // Sign the KeyPackage
@@ -474,7 +474,7 @@ impl RatchetTree {
         // Update private tree and merge corresponding public keys.
         let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
             ciphersuite,
-            own_index.into(),
+            own_index,
             key_package_bundle,
             &direct_path_root,
         );
@@ -485,7 +485,7 @@ impl RatchetTree {
 
         // Update own leaf node with the new values
         self.nodes[own_index] = Node::new_leaf(Some(key_package.clone()));
-        self.set_parent_hashes(self.own_node_index().into());
+        self.set_parent_hashes(self.own_node_index());
         if let Some(new_leaves_indexes) = new_leaves_indexes_option {
             let update_path_nodes = self
                 .encrypt_to_copath(new_public_keys, group_context, new_leaves_indexes)
@@ -780,7 +780,7 @@ impl RatchetTree {
                 let parent_hash_field = &node.parent_hash().unwrap();
                 // Calculate the current
                 let current_hash =
-                    ParentHashInput::new(&self, index.into(), right.into(), parent_hash_field)
+                    ParentHashInput::new(&self, index.into(), right, parent_hash_field)
                         .hash(&self.ciphersuite);
                 // Verify the left child first
                 if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {
@@ -798,7 +798,7 @@ impl RatchetTree {
                         // nor a leaf node
                         let mut child = right;
                         while !self.nodes[child].is_full_parent() {
-                            let right_option = treemath::left(child.into());
+                            let right_option = treemath::left(child);
                             match right_option {
                                 // Keep iterating
                                 Ok(r) => child = r,

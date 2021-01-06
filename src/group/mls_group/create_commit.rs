@@ -23,7 +23,7 @@ impl MlsGroup {
             ciphersuite,
             proposals_by_reference,
             proposals_by_value,
-            LeafIndex::from(self.tree().own_node_index()),
+            self.tree().own_node_index(),
             self.tree().leaf_count(),
         )?;
 
@@ -185,13 +185,20 @@ impl MlsGroup {
             // Encrypt group secrets
             let secrets = plaintext_secrets
                 .iter()
-                .map(|(init_key, bytes, key_package_hash)| {
-                    let encrypted_group_secrets = ciphersuite.hpke_seal(init_key, &[], &[], bytes);
-                    EncryptedGroupSecrets {
-                        key_package_hash: key_package_hash.clone(),
-                        encrypted_group_secrets,
-                    }
-                })
+                .map(
+                    |PlaintextSecret {
+                         public_key,
+                         group_secrets_bytes,
+                         key_package_hash,
+                     }| {
+                        let encrypted_group_secrets =
+                            ciphersuite.hpke_seal(public_key, &[], &[], group_secrets_bytes);
+                        EncryptedGroupSecrets {
+                            key_package_hash: key_package_hash.clone(),
+                            encrypted_group_secrets,
+                        }
+                    },
+                )
                 .collect();
             // Create welcome message
             let welcome = Welcome::new(
