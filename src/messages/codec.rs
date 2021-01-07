@@ -111,6 +111,11 @@ impl Codec for GroupSecrets {
         let joiner_secret = JoinerSecret::decode(cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
         let _psks = Option::<PreSharedKeys>::decode(cursor)?;
+        if _psks.is_some() {
+            log::error!(
+                "Error ocurred while decoding GroupSecrets: Found PSKs that are not yet supported"
+            );
+        }
         Ok(Self {
             joiner_secret,
             path_secret,

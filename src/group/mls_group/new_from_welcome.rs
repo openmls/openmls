@@ -149,8 +149,7 @@ impl MlsGroup {
             group_info.confirmed_transcript_hash().to_vec(),
         )?;
         // TODO #141: Implement PSK
-        let epoch_secret =
-            EpochSecret::from_intermediate_secret(ciphersuite, intermediate_secret, &group_context);
+        let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);
         let (epoch_secrets, init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(&ciphersuite, epoch_secret);
         let secret_tree = encryption_secret.create_secret_tree(tree.leaf_count());
@@ -164,7 +163,7 @@ impl MlsGroup {
             &ciphersuite,
             &MLSPlaintextCommitAuthData::from(&confirmation_tag),
             &group_context.confirmed_transcript_hash,
-        );
+        )?;
 
         // Verify confirmation tag
         if confirmation_tag != group_info.confirmation_tag() {
@@ -212,10 +211,8 @@ impl MlsGroup {
         let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes)?;
         let joiner_secret = group_secrets.joiner_secret;
         // TODO #141: Implement PSK
-        let intermediate_secret =
-            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
-        let welcome_secret =
-            WelcomeSecret::from_intermediate_secret(ciphersuite, &intermediate_secret);
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
+        let welcome_secret = WelcomeSecret::new(ciphersuite, &intermediate_secret);
         let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
         let group_info_bytes =
             match welcome_key.aead_open(encrypted_group_info, &[], &welcome_nonce) {

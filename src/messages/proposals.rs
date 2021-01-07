@@ -481,11 +481,24 @@ pub struct RemoveProposal {
     pub removed: u32,
 }
 
+/// Preshared Key proposal
+/// 11.1.4
+/// struct {
+///     PreSharedKeyID psk;
+/// } PreSharedKey;
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PreSharedKeyProposal {
     pub psk: PreSharedKeyID,
 }
 
+/// ReInit proposal
+/// 11.1.5
+/// struct {
+///     opaque group_id<0..255>;
+///     ProtocolVersion version;
+///     CipherSuite cipher_suite;
+///     Extension extensions<0..2^32-1>;
+/// } ReInit;
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ReInitProposal {
     pub group_id: GroupId,

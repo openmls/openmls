@@ -6,7 +6,7 @@ use crate::extensions::*;
 use crate::framing::Mac;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
-use crate::schedule::JoinerSecret;
+use crate::schedule::{ConfirmationKey, JoinerSecret};
 use crate::tree::{index::*, *};
 
 use serde::{Deserialize, Serialize};
@@ -111,6 +111,8 @@ impl Commit {
     }
 }
 
+/// Confirmation tag field of MLSPlaintext. For type saftey this is a wrapper
+/// around a `Mac`.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Mac);
 
@@ -125,13 +127,13 @@ impl ConfirmationTag {
     /// ```
     pub fn new(
         ciphersuite: &Ciphersuite,
-        confirmation_key: &Secret,
+        confirmation_key: &ConfirmationKey,
         confirmed_transcript_hash: &[u8],
     ) -> Self {
         ConfirmationTag(
             ciphersuite
                 .mac(
-                    confirmation_key,
+                    confirmation_key.secret(),
                     &Secret::from(confirmed_transcript_hash.to_vec()),
                 )
                 .into(),
@@ -303,7 +305,7 @@ pub(crate) struct GroupSecrets {
 }
 
 impl GroupSecrets {
-    /// Create new group secrets.
+    /// Create new encoded group secrets.
     pub(crate) fn new_encoded(
         joiner_secret: &JoinerSecret,
         path_secret: Option<PathSecret>,

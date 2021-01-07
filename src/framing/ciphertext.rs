@@ -194,15 +194,15 @@ impl MLSCiphertext {
     /// Encodes the `MLSCiphertextContent` struct with padding
     /// ```c
     /// struct {
-    /// select (MLSCiphertext.content_type) {
-    ///     case application:
-    ///       opaque application_data<0..2^32-1>;
+    ///     select (MLSCiphertext.content_type) {
+    ///         case application:
+    ///             opaque application_data<0..2^32-1>;
     ///
-    ///     case proposal:
-    ///       Proposal proposal;
+    ///         case proposal:
+    ///             Proposal proposal;
     ///
-    ///     case commit:
-    ///       Commit commit;
+    ///         case commit:
+    ///             Commit commit;
     /// }
     ///
     /// opaque signature<0..2^16-1>;

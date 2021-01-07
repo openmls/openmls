@@ -27,7 +27,7 @@ impl MlsGroup {
         };
         let received_confirmation_tag = match &mls_plaintext.confirmation_tag {
             Some(confirmation_tag) => confirmation_tag,
-            None => return Err(ApplyCommitError::WrongPlaintextContentType),
+            None => return Err(ApplyCommitError::ConfirmationTagMissing),
         };
 
         // Build a queue with all proposals from the Commit and check that we have all
@@ -106,7 +106,7 @@ impl MlsGroup {
             // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a Commit
             &MLSPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
-        );
+        )?;
 
         let joiner_secret = JoinerSecret::from_commit_and_init_secret(
             ciphersuite,
@@ -115,8 +115,7 @@ impl MlsGroup {
         );
 
         // TODO #141: Implement PSK
-        let intermediate_secret =
-            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
 
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
@@ -125,11 +124,8 @@ impl MlsGroup {
             confirmed_transcript_hash.clone(),
         )?;
 
-        let epoch_secret = EpochSecret::from_intermediate_secret(
-            ciphersuite,
-            intermediate_secret,
-            &provisional_group_context,
-        );
+        let epoch_secret =
+            EpochSecret::new(ciphersuite, intermediate_secret, &provisional_group_context);
 
         let (provisional_epoch_secrets, provisional_init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
@@ -144,7 +140,7 @@ impl MlsGroup {
             &ciphersuite,
             &mls_plaintext_commit_auth_data,
             &confirmed_transcript_hash,
-        );
+        )?;
 
         // Verify confirmation tag
         let own_confirmation_tag = ConfirmationTag::new(

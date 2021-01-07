@@ -1,4 +1,3 @@
-//#![allow(dead_code)]
 //! # Pre shared keys.
 
 use serde::{Deserialize, Serialize};

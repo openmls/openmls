@@ -69,7 +69,7 @@ pub struct InitSecret {
 
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
-    fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         InitSecret {
             secret: epoch_secret.secret.derive_secret(ciphersuite, "init"),
         }
@@ -106,7 +106,7 @@ impl JoinerSecret {
         }
     }
 
-    /// Derive the inital `JoinerSecret` when creating a new group from a
+    /// Derive the initial `JoinerSecret` when creating a new group from a
     /// `CommitSecret`. The `InitSecret` is randomly generated. TODO:
     /// For now, this takes a reference to a `CommitSecret` as input. This
     /// should change with #224.
@@ -164,7 +164,7 @@ impl JoinerSecret {
                 }
                 None => None,
             };
-            // Create the groupsecrets object for the respective member.
+            // Create the GroupSecrets object for the respective member.
             // TODO #141: Implement PSK
             let group_secrets_bytes = GroupSecrets::new_encoded(&self, path_secret, None)?;
             plaintext_secrets.push(PlaintextSecret {
@@ -192,7 +192,7 @@ pub(crate) struct IntermediateSecret {
 impl IntermediateSecret {
     /// Derive ans `IntermediateSecret` from a `JoinerSecret` and an optional
     /// PSK.
-    pub(crate) fn new_from_joiner_secret_and_psk(
+    pub(crate) fn new(
         ciphersuite: &Ciphersuite,
         joiner_secret: JoinerSecret,
         psk: Option<Secret>,
@@ -209,10 +209,7 @@ pub(crate) struct WelcomeSecret {
 
 impl WelcomeSecret {
     /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
-    pub(crate) fn from_intermediate_secret(
-        ciphersuite: &Ciphersuite,
-        intermediate_secret: &IntermediateSecret,
-    ) -> Self {
+    pub(crate) fn new(ciphersuite: &Ciphersuite, intermediate_secret: &IntermediateSecret) -> Self {
         // Unwrapping here is safe, because we know the key is not empty
         let secret = ciphersuite
             .hkdf_expand(
@@ -250,7 +247,7 @@ pub(crate) struct EpochSecret {
 
 impl EpochSecret {
     /// Derive an `EpochSecret` from a `JoinerSecret`
-    pub(crate) fn from_intermediate_secret(
+    pub(crate) fn new(
         ciphersuite: &Ciphersuite,
         intermediate_secret: IntermediateSecret,
         group_context: &GroupContext,
@@ -273,7 +270,7 @@ pub struct EncryptionSecret {
 
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
-    fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         EncryptionSecret {
             secret: epoch_secret.secret.derive_secret(ciphersuite, "encryption"),
         }
@@ -292,7 +289,7 @@ impl EncryptionSecret {
 
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
-    pub fn from_random(length: usize) -> Self {
+    pub fn random(length: usize) -> Self {
         EncryptionSecret {
             secret: Secret::random(length),
         }
@@ -308,13 +305,134 @@ pub(crate) struct ExporterSecret {
 
 impl ExporterSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    pub(crate) fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         let secret = epoch_secret.secret.derive_secret(ciphersuite, "exporter");
         ExporterSecret { secret }
     }
 
     /// Get the `Secret` of the `ExporterSecret`.
     pub(crate) fn secret(&self) -> &Secret {
+        &self.secret
+    }
+}
+
+/*
+    authentication_secret: Secret,
+    external_secret: Secret,
+    confirmation_key: Secret,
+    pub(crate) membership_key: Secret,
+    resumption_secret: Secret,
+}
+*/
+
+/// A secret that can be used among members to make sure everyone has the same
+/// group state.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub(crate) struct AuthenticationSecret {
+    secret: Secret,
+}
+
+impl AuthenticationSecret {
+    /// Derive an `AuthenticationSecret` from an `EpochSecret`.
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret
+            .secret
+            .derive_secret(ciphersuite, "authentication");
+        Self { secret }
+    }
+
+    /// Get the internal `Secret`.
+    pub(crate) fn secret(&self) -> &Secret {
+        &self.secret
+    }
+}
+
+/// A secret used when joining a group with an external Commit.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub(crate) struct ExternalSecret {
+    secret: Secret,
+}
+
+impl ExternalSecret {
+    /// Derive an `ExternalSecret` from an `EpochSecret`.
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret(ciphersuite, "external");
+        Self { secret }
+    }
+
+    /// Get the internal `Secret`.
+    // Will be used in #192
+    pub(crate) fn _secret(&self) -> &Secret {
+        &self.secret
+    }
+}
+
+/// The confirmation key is used to calculate the `ConfirmationTag`.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct ConfirmationKey {
+    secret: Secret,
+}
+
+impl ConfirmationKey {
+    /// Derive an `ConfirmationKey` from an `EpochSecret`.
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret
+            .secret
+            .derive_secret(ciphersuite, "confirmation");
+        Self { secret }
+    }
+
+    /// Get the internal `Secret`.
+    pub(crate) fn secret(&self) -> &Secret {
+        &self.secret
+    }
+}
+
+/// The membership key is used to calculate the `MembershipTag`.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct MembershipKey {
+    secret: Secret,
+}
+
+impl MembershipKey {
+    /// Derive an `MembershipKey` from an `EpochSecret`.
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret(ciphersuite, "membership");
+        Self { secret }
+    }
+
+    /// Get the internal `Secret`.
+    pub(crate) fn secret(&self) -> &Secret {
+        &self.secret
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_secret(secret: Secret) -> Self {
+        Self { secret }
+    }
+}
+
+/// A secret used in cross-group operations.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub(crate) struct ResumptionSecret {
+    secret: Secret,
+}
+
+impl ResumptionSecret {
+    /// Derive an `ResumptionSecret` from an `EpochSecret`.
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret(ciphersuite, "resumption");
+        Self { secret }
+    }
+
+    /// Get the internal `Secret`.
+    // Will be used in #141
+    pub(crate) fn _secret(&self) -> &Secret {
         &self.secret
     }
 }
@@ -328,7 +446,7 @@ pub(crate) struct SenderDataSecret {
 
 impl SenderDataSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    pub(crate) fn from_epoch_secret(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         let secret = epoch_secret
             .secret
             .derive_secret(ciphersuite, "sender data");
@@ -355,17 +473,16 @@ impl SenderDataSecret {
 /// | `confirmation_key`      | "confirm"       |
 /// | `membership_key`        | "membership"    |
 /// | `resumption_secret`     | "resumption"    |
-// TODO: Implement independent types for the various secrets
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct EpochSecrets {
     sender_data_secret: SenderDataSecret,
     pub(crate) exporter_secret: ExporterSecret,
-    authentication_secret: Secret,
-    external_secret: Secret,
-    confirmation_key: Secret,
-    pub(crate) membership_key: Secret,
-    resumption_secret: Secret,
+    authentication_secret: AuthenticationSecret,
+    external_secret: ExternalSecret,
+    confirmation_key: ConfirmationKey,
+    pub(crate) membership_key: MembershipKey,
+    resumption_secret: ResumptionSecret,
 }
 
 impl EpochSecrets {
@@ -375,13 +492,13 @@ impl EpochSecrets {
     }
 
     /// Get the confirmation key.
-    pub(crate) fn confirmation_key(&self) -> &Secret {
+    pub(crate) fn confirmation_key(&self) -> &ConfirmationKey {
         &self.confirmation_key
     }
 
     /// Authentication secret
-    pub(crate) fn authentication_secret(&self) -> &[u8] {
-        self.authentication_secret.to_bytes()
+    pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
+        &self.authentication_secret
     }
     /// Derive `EpochSecrets`, as well as an `EncryptionSecret` and an
     /// `InitSecret` from an `EpochSecret` and a given `GroupContext`. This
@@ -390,21 +507,16 @@ impl EpochSecrets {
         ciphersuite: &Ciphersuite,
         epoch_secret: EpochSecret,
     ) -> (Self, InitSecret, EncryptionSecret) {
-        //let epoch_secret =
-        //    EpochSecret::from_member_secret(ciphersuite, group_context,
-        // member_secret);
-        let sender_data_secret = SenderDataSecret::from_epoch_secret(ciphersuite, &epoch_secret);
-        let encryption_secret = EncryptionSecret::from_epoch_secret(ciphersuite, &epoch_secret);
-        let exporter_secret = ExporterSecret::from_epoch_secret(ciphersuite, &epoch_secret);
-        let authentication_secret = epoch_secret
-            .secret
-            .derive_secret(ciphersuite, "authentication");
-        let external_secret = epoch_secret.secret.derive_secret(ciphersuite, "external");
-        let confirmation_key = epoch_secret.secret.derive_secret(ciphersuite, "confirm");
-        let membership_key = epoch_secret.secret.derive_secret(ciphersuite, "membership");
-        let resumption_secret = epoch_secret.secret.derive_secret(ciphersuite, "resumption");
+        let sender_data_secret = SenderDataSecret::new(ciphersuite, &epoch_secret);
+        let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);
+        let exporter_secret = ExporterSecret::new(ciphersuite, &epoch_secret);
+        let authentication_secret = AuthenticationSecret::new(ciphersuite, &epoch_secret);
+        let external_secret = ExternalSecret::new(ciphersuite, &epoch_secret);
+        let confirmation_key = ConfirmationKey::new(ciphersuite, &epoch_secret);
+        let membership_key = MembershipKey::new(ciphersuite, &epoch_secret);
+        let resumption_secret = ResumptionSecret::new(ciphersuite, &epoch_secret);
 
-        let init_secret = InitSecret::from_epoch_secret(ciphersuite, &epoch_secret);
+        let init_secret = InitSecret::new(ciphersuite, &epoch_secret);
         let epoch_secrets = EpochSecrets {
             sender_data_secret,
             exporter_secret,

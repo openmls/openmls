@@ -8,22 +8,22 @@ use std::convert::TryFrom;
 ///
 /// ```c
 /// struct {
-/// opaque group_id<0..255>;
-/// uint64 epoch;
-/// Sender sender;
-/// opaque authenticated_data<0..2^32-1>;
+///     opaque group_id<0..255>;
+///     uint64 epoch;
+///     Sender sender;
+///     opaque authenticated_data<0..2^32-1>;
 ///
-/// ContentType content_type;
-/// select (MLSPlaintext.content_type) {
-///     case application:
-///       opaque application_data<0..2^32-1>;
+///     ContentType content_type;
+///     select (MLSPlaintext.content_type) {
+///         case application:
+///             opaque application_data<0..2^32-1>;
 ///
-///     case proposal:
-///       Proposal proposal;
+///         case proposal:
+///             Proposal proposal;
 ///
-///     case commit:
-///       Commit commit;
-/// }
+///         case commit:
+///             Commit commit;
+///     }
 ///
 /// opaque signature<0..2^16-1>;
 /// optional<MAC> confirmation_tag;
@@ -45,7 +45,7 @@ pub struct MLSPlaintext {
 
 impl MLSPlaintext {
     /// This constructor builds a new `MLSPlaintext` from the parameters
-    /// provided. It is ony used internally.
+    /// provided. It is only used internally.
     pub(crate) fn new_from_member(
         ciphersuite: &Ciphersuite,
         sender_index: LeafIndex,
@@ -53,7 +53,7 @@ impl MLSPlaintext {
         content: MLSPlaintextContentType,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        membership_key: &Secret,
+        membership_key: &MembershipKey,
     ) -> Self {
         let sender = Sender::member(sender_index);
 
@@ -79,7 +79,7 @@ impl MLSPlaintext {
         mls_plaintext
     }
 
-    /// This contructor builds an `MLSPlaintext` containing a Proposal.
+    /// This constructor builds an `MLSPlaintext` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
     pub fn new_from_proposal_member(
         ciphersuite: &Ciphersuite,
@@ -88,7 +88,7 @@ impl MLSPlaintext {
         proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        membership_key: &Secret,
+        membership_key: &MembershipKey,
     ) -> Self {
         let content = MLSPlaintextContentType::Proposal(proposal);
         Self::new_from_member(
@@ -102,18 +102,18 @@ impl MLSPlaintext {
         )
     }
 
-    /// This contructor builds an `MLSPlaintext` containing an application
+    /// This constructor builds an `MLSPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub fn new_from_application(
         ciphersuite: &Ciphersuite,
         sender_index: LeafIndex,
         authenticated_data: &[u8],
-        application_message: Vec<u8>,
+        application_message: &[u8],
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        membership_key: &Secret,
+        membership_key: &MembershipKey,
     ) -> Self {
-        let content = MLSPlaintextContentType::Application(application_message);
+        let content = MLSPlaintextContentType::Application(application_message.to_vec());
         Self::new_from_member(
             ciphersuite,
             sender_index,
@@ -125,7 +125,7 @@ impl MLSPlaintext {
         )
     }
 
-    /// Returns a reference to the `content` field
+    /// Returns a reference to the `content` field.
     pub fn content(&self) -> &MLSPlaintextContentType {
         &self.content
     }
@@ -141,13 +141,16 @@ impl MLSPlaintext {
         self.signature = tbs_payload.sign(credential_bundle);
     }
 
-    /// Sign this `MLSPlaintext` and add a membership tag
+    /// Sign this `MLSPlaintext` and add a membership tag. This populates the
+    /// `signature` and `membership_tag` fields. The signature is produced from
+    /// the private key conatined in the credential bundle, and the
+    /// membership_tag is produced using the the membership secret.
     pub fn sign_and_mac(
         &mut self,
         ciphersuite: &Ciphersuite,
         credential_bundle: &CredentialBundle,
         serialized_context: Vec<u8>,
-        membership_key: &Secret,
+        membership_key: &MembershipKey,
     ) {
         let tbs_payload =
             MLSPlaintextTBSPayload::new_from_mls_plaintext(&self, Some(serialized_context));
@@ -172,7 +175,7 @@ impl MLSPlaintext {
         &self,
         ciphersuite: &Ciphersuite,
         serialized_context: Vec<u8>,
-        membership_key: &Secret,
+        membership_key: &MembershipKey,
     ) -> bool {
         let tbs_payload =
             MLSPlaintextTBSPayload::new_from_mls_plaintext(&self, Some(serialized_context));
@@ -278,7 +281,7 @@ impl MLSPlaintextContentType {
 /// 9.2 Message framing
 ///
 /// struct {
-/// opaque mac_value<0..255>;
+///     opaque mac_value<0..255>;
 /// } MAC;
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct Mac {
@@ -331,6 +334,7 @@ impl From<Mac> for Vec<u8> {
     }
 }
 
+/// Wrapper around a `Mac` used for type safety.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct MembershipTag(pub(crate) Mac);
 
@@ -344,13 +348,13 @@ impl MembershipTag {
     /// ```
     pub(crate) fn new(
         ciphersuite: &Ciphersuite,
-        membership_key: &Secret,
+        membership_key: &MembershipKey,
         mls_plaintext_tbm_payload: MLSPlaintextTBMPayload,
     ) -> Self {
         MembershipTag(
             ciphersuite
                 .mac(
-                    membership_key,
+                    membership_key.secret(),
                     &Secret::from(mls_plaintext_tbm_payload.into_bytes()),
                 )
                 .into(),
@@ -388,7 +392,7 @@ impl<'a> MLSPlaintextTBS<'a> {
         let bytes = self.encode_detached().unwrap();
         credential_bundle.sign(&bytes).unwrap()
     }
-    pub fn verify(&self, credential: &Credential, signature: &Signature) -> bool {
+    pub(crate) fn verify(&self, credential: &Credential, signature: &Signature) -> bool {
         let bytes = self.encode_detached().unwrap();
         credential.verify(&bytes, &signature)
     }

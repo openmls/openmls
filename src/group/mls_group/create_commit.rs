@@ -86,10 +86,8 @@ impl MlsGroup {
             path_secrets_option,
         )?;
         // TODO #141: Implement PSK
-        let intermediate_secret =
-            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
-        let welcome_secret =
-            WelcomeSecret::from_intermediate_secret(ciphersuite, &intermediate_secret);
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
+        let welcome_secret = WelcomeSecret::new(ciphersuite, &intermediate_secret);
 
         // Derive the welcome key material before consuming the `MemberSecret`
         // immediately afterwards.
@@ -127,7 +125,7 @@ impl MlsGroup {
             // Commit
             &MLSPlaintextCommitContent::try_from(&mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
-        );
+        )?;
 
         let tree_hash = provisional_tree.tree_hash();
         let provisional_group_context = GroupContext::new(
@@ -137,11 +135,8 @@ impl MlsGroup {
             confirmed_transcript_hash.clone(),
         )?;
 
-        let epoch_secret = EpochSecret::from_intermediate_secret(
-            ciphersuite,
-            intermediate_secret,
-            &provisional_group_context,
-        );
+        let epoch_secret =
+            EpochSecret::new(ciphersuite, intermediate_secret, &provisional_group_context);
 
         // The init- and encryption secrets are not used here. They come into
         // play when the provisional group state is applied in `apply_commit`.

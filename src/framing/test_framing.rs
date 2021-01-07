@@ -66,7 +66,7 @@ fn membership_tag() {
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
         let serialized_context = group_context.serialized();
-        let membership_key = Secret::random(ciphersuite.hash_length());
+        let membership_key = MembershipKey::from_secret(Secret::random(ciphersuite.hash_length()));
         mls_plaintext.sign_and_mac(
             ciphersuite,
             &credential_bundle,
@@ -87,24 +87,21 @@ fn membership_tag() {
             &membership_key
         ));
 
-        // Construct a membership tag from a random memberhip key
-        let mls_plaintext_tbs_payload = MLSPlaintextTBSPayload::new_from_mls_plaintext(
-            &mls_plaintext,
+        // Change the content of the plaintext message
+        mls_plaintext.content = MLSPlaintextContentType::Application(vec![7, 8, 9]);
+
+        // Expect the signature verification to fail
+        assert!(!mls_plaintext.verify_signature(
             Some(serialized_context.to_vec()),
-        );
-        let mls_plaintext_tbm_payload =
-            MLSPlaintextTBMPayload::new(mls_plaintext_tbs_payload, &mls_plaintext);
-        mls_plaintext.membership_tag = Some(MembershipTag::new(
-            ciphersuite,
-            &Secret::random(ciphersuite.hash_length()),
-            mls_plaintext_tbm_payload,
+            &credential_bundle.credential()
         ));
+
         // Expect the membership tag verification to fail
         assert!(!mls_plaintext.verify_membership_tag(
             ciphersuite,
             serialized_context.to_vec(),
             &membership_key
-        ))
+        ));
     }
 }
 
@@ -300,10 +297,10 @@ fn unknown_sender() {
             ciphersuite,
             bogus_sender,
             &[],
-            vec![1, 2, 3],
+            &[1, 2, 3],
             &alice_credential_bundle,
             &group_alice.context(),
-            &Secret::default(),
+            &MembershipKey::from_secret(Secret::default()),
         );
 
         let enc_message = MLSCiphertext::try_from_plaintext(
@@ -330,14 +327,14 @@ fn unknown_sender() {
             ciphersuite,
             bogus_sender,
             &[],
-            vec![1, 2, 3],
+            &[1, 2, 3],
             &alice_credential_bundle,
             &group_alice.context(),
-            &Secret::default(),
+            &MembershipKey::from_secret(Secret::default()),
         );
 
         let mut secret_tree = SecretTree::new(
-            EncryptionSecret::from_random(ciphersuite.hash_length()),
+            EncryptionSecret::random(ciphersuite.hash_length()),
             LeafIndex::from(100usize),
         );
 

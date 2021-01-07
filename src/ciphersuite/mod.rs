@@ -58,23 +58,25 @@ implement_enum_display!(CiphersuiteName);
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum SignatureScheme {
+    /// ECDSA_SECP256R1_SHA256
     ECDSA_SECP256R1_SHA256 = 0x0403,
+    /// ECDSA_SECP521R1_SHA512
     ECDSA_SECP521R1_SHA512 = 0x0603,
+    /// ED25519
     ED25519 = 0x0807,
+    /// ED448
     ED448 = 0x0808,
 }
 
 impl SignatureScheme {
     /// Create a new signature key pair and return it.
-    pub(crate) fn new_signature_keypair(&self) -> Result<SignatureKeypair, CryptoError> {
-        // It's ok to use `unwrap()` here, since we checked the signature scheme is
-        // supported when the ciphersuite was instantiated.
+    pub(crate) fn new_keypair(&self) -> Result<SignatureKeypair, CryptoError> {
         SignatureKeypair::new(*self)
     }
 }
 
 impl TryFrom<u16> for SignatureScheme {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
@@ -82,7 +84,7 @@ impl TryFrom<u16> for SignatureScheme {
             0x0603 => Ok(SignatureScheme::ECDSA_SECP521R1_SHA512),
             0x0807 => Ok(SignatureScheme::ED25519),
             0x0808 => Ok(SignatureScheme::ED448),
-            _ => Err("Unsupported SignatureScheme"),
+            _ => Err(format!("Unsupported SignatureScheme: {}", value)),
         }
     }
 }
@@ -228,7 +230,7 @@ impl Secret {
     }
 
     /// Returns the inner bytes of a secret
-    pub fn to_bytes(&self) -> &[u8] {
+    pub(crate) fn to_bytes(&self) -> &[u8] {
         &self.value
     }
 }
@@ -410,7 +412,8 @@ impl Ciphersuite {
         get_digest_size(self.hash)
     }
 
-    /// HMAC.
+    /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
+    /// HMAC that is also used in HKDF.
     pub(crate) fn mac(&self, salt: &Secret, ikm: &Secret) -> Vec<u8> {
         hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice())
     }

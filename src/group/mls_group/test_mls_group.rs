@@ -1,9 +1,9 @@
-use crate::tree::TreeError;
 use crate::{
     group::GroupEpoch,
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfo},
     prelude::*,
-    tree::{UpdatePath, UpdatePathNode},
+    schedule::MembershipKey,
+    tree::{TreeError, UpdatePath, UpdatePathNode},
 };
 
 #[test]
@@ -277,7 +277,7 @@ fn test_update_path() {
             broken_commit_content,
             &bob_credential_bundle,
             group_bob.context(),
-            &Secret::random(ciphersuite.hash_length()),
+            &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
         );
 
         broken_plaintext.confirmation_tag = Some(ConfirmationTag::from(vec![1, 2, 3]));

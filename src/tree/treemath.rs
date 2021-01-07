@@ -180,6 +180,11 @@ pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     NodeIndex::from((xn << k) + (1 << (k - 1)) - 1)
 }
 
+/// Returns the number of leaves in a tree
+pub(crate) fn leaf_count(number_of_nodes: NodeIndex) -> LeafIndex {
+    LeafIndex::from((number_of_nodes.as_usize() + 1) / 2)
+}
+
 // The following is not currently used but could be useful in future parent hash
 // computations:
 

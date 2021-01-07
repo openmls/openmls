@@ -5,7 +5,6 @@ use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 
 use super::*;
-use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
 pub enum SecretTreeError {
@@ -20,29 +19,19 @@ pub enum SecretType {
     ApplicationSecret,
 }
 
-implement_error! {
-    pub enum SecretTypeError {
-        InvalidContentType = "The content type is not known.",
-    }
-}
-
-impl TryFrom<&ContentType> for SecretType {
-    type Error = SecretTypeError;
-
-    fn try_from(content_type: &ContentType) -> Result<SecretType, SecretTypeError> {
+impl From<&ContentType> for SecretType {
+    fn from(content_type: &ContentType) -> SecretType {
         match content_type {
-            ContentType::Application => Ok(SecretType::ApplicationSecret),
-            ContentType::Commit => Ok(SecretType::HandshakeSecret),
-            ContentType::Proposal => Ok(SecretType::HandshakeSecret),
+            ContentType::Application => SecretType::ApplicationSecret,
+            ContentType::Commit => SecretType::HandshakeSecret,
+            ContentType::Proposal => SecretType::HandshakeSecret,
         }
     }
 }
 
-impl TryFrom<&MLSPlaintext> for SecretType {
-    type Error = SecretTypeError;
-
-    fn try_from(mls_plaintext: &MLSPlaintext) -> Result<SecretType, SecretTypeError> {
-        SecretType::try_from(&mls_plaintext.content_type)
+impl From<&MLSPlaintext> for SecretType {
+    fn from(mls_plaintext: &MLSPlaintext) -> SecretType {
+        SecretType::from(&mls_plaintext.content_type)
     }
 }
 

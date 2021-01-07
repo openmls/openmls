@@ -70,15 +70,6 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
-    /*
-    /// Get the ciphersuite associated with the credential.
-    pub fn ciphersuite(&self) -> &Ciphersuite {
-        match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => &basic_credential.ciphersuite,
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-    }
-    */
 }
 
 impl From<MLSCredentialType> for Credential {
@@ -142,8 +133,7 @@ impl CredentialBundle {
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,
     ) -> Result<Self, CredentialError> {
-        //let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let (private_key, public_key) = signature_scheme.new_signature_keypair()?.into_tuple();
+        let (private_key, public_key) = signature_scheme.new_keypair()?.into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity,

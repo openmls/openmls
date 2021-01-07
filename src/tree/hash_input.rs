@@ -54,15 +54,17 @@ impl<'a> ParentHashInput<'a> {
         index: NodeIndex,
         child_index: NodeIndex,
         parent_hash: &'a [u8],
-    ) -> Self {
-        // It is ok to use `unwrap()` here, since we can be sure the node is not blank
-        let public_key = tree.nodes[index].public_hpke_key().unwrap();
+    ) -> Result<Self, TreeError> {
+        let public_key = match tree.nodes[index].public_hpke_key() {
+            Some(pk) => pk,
+            None => return Err(TreeError::InvalidArguments),
+        };
         let original_child_resolution = original_child_resolution(tree, child_index);
-        Self {
+        Ok(Self {
             public_key,
             parent_hash,
             original_child_resolution,
-        }
+        })
     }
     pub(crate) fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
         let payload = self.encode_detached().unwrap();
@@ -124,7 +126,8 @@ pub(crate) fn original_child_resolution(
     // Build the exclusion list that consists of the unmerged leaves of the parent
     // node
     let mut unmerged_leaves = vec![];
-    // Check if there is a parent_node
+    // If the current index is not the root, we collectthe unmerged leaves of the
+    // parent
     if let Ok(parent_index) = treemath::parent(index, tree.leaf_count()) {
         // Check if the parent node is not blank
         if let Some(parent_node) = &tree.nodes[parent_index].node {
@@ -139,11 +142,9 @@ pub(crate) fn original_child_resolution(
     // Compute the resolution for the index with the exclusion list
     let resolution = tree.resolve(index, &exclusion_list);
 
-    // Build the list of HPKE public keys by iterating over the resolution and
-    // filtering out blank leaf nodes
+    // Build the list of HPKE public keys by iterating over the resolution
     resolution
         .iter()
-        .filter(|index| !tree.nodes[*index].is_blank())
         .map(|index| tree.nodes[*index].public_hpke_key().unwrap())
         .collect()
 }
@@ -179,9 +180,9 @@ pub(crate) fn compute_parent_hashes(tree: &mut RatchetTree, index: LeafIndex) ->
             node_parent_hash(tree, parent, index)
         };
         // If the current node is a parent, replace the parent hash in that node
-        let current_node = &tree.nodes[index];
+        let current_node = &mut tree.nodes[index];
         // Get the parent node
-        if let Some(mut parent_node) = current_node.node.clone() {
+        if let Some(mut parent_node) = current_node.node.take() {
             // Set the parent hash
             parent_node.set_parent_hash(parent_hash);
             // Put the node back in the tree
@@ -193,6 +194,8 @@ pub(crate) fn compute_parent_hashes(tree: &mut RatchetTree, index: LeafIndex) ->
                 former_index_sibling,
                 &tree.nodes[index].node.as_ref().unwrap().parent_hash,
             )
+            // It is ok to use `unwrap()` here, since we can be sure the node is not blank
+            .unwrap()
             .hash(tree.ciphersuite)
         // Otherwise we reached the leaf level, just return the hash
         } else {
@@ -235,7 +238,7 @@ pub(crate) fn compute_tree_hash(tree: &RatchetTree) -> Vec<u8> {
             }
         }
     }
-    // We starte with the root and traverse the tree downwards
+    // We start with the root and traverse the tree downwards
     let root = treemath::root(tree.leaf_count());
     node_hash(&tree.ciphersuite, &tree, root)
 }

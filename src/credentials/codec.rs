@@ -21,7 +21,7 @@ impl Codec for Credential {
                 CredentialType::Basic.encode(buffer)?;
                 basic_credential.encode(buffer)?;
             }
-            // TODO: implement encoding for X509 certificates
+            // TODO #134: implement encoding for X509 certificates
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
         Ok(())

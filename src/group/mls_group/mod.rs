@@ -83,10 +83,8 @@ impl MlsGroup {
         // derivation.
         let joiner_secret = JoinerSecret::from_commit_secret(ciphersuite, commit_secret);
         // TODO #141: Implement PSK
-        let intermediate_secret =
-            IntermediateSecret::new_from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
-        let epoch_secret =
-            EpochSecret::from_intermediate_secret(ciphersuite, intermediate_secret, &group_context);
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
+        let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);
         let (epoch_secrets, init_secret, encryption_secret) =
             EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
         let secret_tree = encryption_secret.create_secret_tree(LeafIndex::from(1u32));
@@ -236,7 +234,7 @@ impl MlsGroup {
             self.ciphersuite,
             self.sender_index(),
             aad,
-            msg.to_vec(),
+            msg,
             credential_bundle,
             &self.context(),
             &self.epoch_secrets().membership_key,
@@ -323,7 +321,11 @@ impl MlsGroup {
 
     /// Returns the authentication secret
     pub fn authentication_secret(&self) -> Vec<u8> {
-        self.epoch_secrets().authentication_secret().to_vec()
+        self.epoch_secrets()
+            .authentication_secret()
+            .secret()
+            .to_bytes()
+            .to_vec()
     }
 
     /// Loads the state from persisted state
@@ -379,16 +381,16 @@ fn update_confirmed_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_content: &MLSPlaintextCommitContent,
     interim_transcript_hash: &[u8],
-) -> Vec<u8> {
-    let commit_content_bytes = mls_plaintext_commit_content.encode_detached().unwrap();
-    ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat())
+) -> Result<Vec<u8>, CodecError> {
+    let commit_content_bytes = mls_plaintext_commit_content.encode_detached()?;
+    Ok(ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat()))
 }
 
 fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
-) -> Vec<u8> {
+) -> Result<Vec<u8>, CodecError> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached().unwrap();
-    ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
+    Ok(ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat()))
 }

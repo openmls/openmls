@@ -22,7 +22,6 @@ pub use hash_input::*;
 use index::*;
 use node::*;
 use private_tree::{PathSecrets, PrivateTree};
-pub use secret_tree::SecretTypeError;
 
 use self::private_tree::CommitSecret;
 pub(crate) use serde::{
@@ -193,8 +192,7 @@ impl RatchetTree {
 
     /// Returns the number of leaves in a tree
     pub fn leaf_count(&self) -> LeafIndex {
-        let number_nodes = self.tree_size().as_usize();
-        LeafIndex::from((number_nodes + 1) / 2)
+        treemath::leaf_count(self.tree_size())
     }
 
     /// Compute the resolution for a given node index. Nodes listed in the
@@ -778,19 +776,29 @@ impl RatchetTree {
                 let right = treemath::right(index.into(), self.leaf_count()).unwrap();
                 // Unwrapping here is safe, because we know it is a full parent node
                 let parent_hash_field = &node.parent_hash().unwrap();
-                // Calculate the current
-                let current_hash =
+                // Current hash with right child resolution
+                let current_hash_right =
                     ParentHashInput::new(&self, index.into(), right, parent_hash_field)
+                        // It is ok to use `unwrap()` here, since we can be sure the node is not
+                        // blank
+                        .unwrap()
+                        .hash(&self.ciphersuite);
+                // Current hash with left child resolution
+                let current_hash_left =
+                    ParentHashInput::new(&self, index.into(), left, parent_hash_field)
+                        // It is ok to use `unwrap()` here, since we can be sure the node is not
+                        // blank
+                        .unwrap()
                         .hash(&self.ciphersuite);
                 // Verify the left child first
                 if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {
-                    if left_parent_hash_field == current_hash {
+                    if left_parent_hash_field == current_hash_right {
                         continue;
                     }
                 } else {
                     // Then verify the right child
-                    if let Some(right_parent_hash_field) = self.nodes[left].parent_hash() {
-                        if right_parent_hash_field == current_hash {
+                    if let Some(right_parent_hash_field) = self.nodes[right].parent_hash() {
+                        if right_parent_hash_field == current_hash_left {
                             continue;
                         }
                     } else {
@@ -807,7 +815,7 @@ impl RatchetTree {
                             }
                         }
                         // Unwrapping here is safe, because we know it is a full parent node
-                        if self.nodes[child].parent_hash().unwrap() == current_hash {
+                        if self.nodes[child].parent_hash().unwrap() == current_hash_left {
                             continue;
                         } else {
                             return false;

@@ -8,7 +8,7 @@ use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::framing::errors::MLSCiphertextError;
 use crate::messages::errors::ProposalQueueError;
-use crate::tree::{secret_tree::SecretTypeError, TreeError};
+use crate::tree::TreeError;
 
 implement_error! {
     pub enum GroupError {
@@ -24,12 +24,10 @@ implement_error! {
             "See [`ConfigError`](`crate::config::ConfigError`) for details.",
         ExporterError(ExporterError) =
             "See [`ExporterError`](`ExporterError`) for details.",
-        SecretTypeError(SecretTypeError) =
-            "See [`SecretTypeError`](`crate::tree::secret_tree::SecretTypeError`) for details.",
         ProposalQueueError(ProposalQueueError) =
             "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
         CodecError(CodecError) =
-            "Codec error occured.",
+            "Codec error occurred.",
     }
 }
 
@@ -63,7 +61,7 @@ implement_error! {
             GroupSecretsDecryptionFailure(CryptoError) =
                 "Unable to decrypt the EncryptedGroupSecrets.",
             CodecError(CodecError) =
-                "Codec error occured.",
+                "Codec error occurred.",
         }
     }
 }
@@ -102,7 +100,7 @@ implement_error! {
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(CodecError) =
-                "Codec error occured.",
+                "Codec error occurred.",
         }
     }
 }
