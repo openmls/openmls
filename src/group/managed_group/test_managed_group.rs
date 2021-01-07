@@ -20,7 +20,6 @@ fn test_managed_group_persistence() {
         KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![]).unwrap();
 
     // Define the managed group configuration
-
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(
