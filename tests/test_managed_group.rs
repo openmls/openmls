@@ -14,7 +14,6 @@ fn validate_add(
 ) -> bool {
     true
 }
-
 /// Validator function for RemoveProposals
 /// `(managed_group: &ManagedGroup, sender: &Credential, removed_member:
 /// &Credential) -> bool`
