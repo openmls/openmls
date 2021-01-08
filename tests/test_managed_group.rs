@@ -649,19 +649,26 @@ fn test_empty_input_errors() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Define credential bundles
-    let alice_credential_bundle =
-        CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![]).unwrap();
 
     // Define the managed group configuration
-
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config =
-        ManagedGroupConfig::new(HandshakeMessageFormat::Plaintext, update_policy, callbacks);
+    let managed_group_config = ManagedGroupConfig::new(
+        HandshakeMessageFormat::Plaintext,
+        update_policy,
+        0,
+        callbacks,
+    );
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
