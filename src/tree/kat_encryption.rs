@@ -9,18 +9,19 @@
 //! ## Format:
 //! ```text
 //! struct {
-//!   opaque data<0..255>;
-//! } CryptoValue;
-//!
-//! struct {
-//!   CryptoValue key;
-//!   CryptoValue nonce;
+//!   opaque key<0..255>;
+//!   opaque nonce<0..255>;
 //! } KeyAndNonce;
 //!
 //! struct {
 //!   opaque ciphertext<0..2^32-1>;
 //!   KeyAndNonce secret;
 //! } SenderDataInfo;
+//!
+//! struct {
+//!   opaque plaintext<0..2^32-1>;
+//!   opaque ciphertext<0..2^32-1>;
+//! } Message;
 //!
 //! struct {
 //!   uint32 generations;
@@ -33,8 +34,8 @@
 //! struct {
 //!   uint16 cipher_suite;
 //!   uint32 n_leaves;
-//!   CryptoValue encryption_secret;
-//!   CryptoValue sender_data_secret;
+//!   opaque encryption_secret<0..255>;
+//!   opaque sender_data_secret<0..255>;
 //!
 //!   LeafSequence leafs<0..2^32-1>;
 //! } EncryptionTestVector;
