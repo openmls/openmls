@@ -23,6 +23,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Test DS lib
         run: cargo test --verbose -p ds-lib
       - name: Test DS
