@@ -690,10 +690,10 @@ fn test_randomized_setup() {
         let mut groups = setup.groups.borrow_mut();
         let group = groups.get_mut(&group_id).unwrap();
         println!("Done creating group. Performing ten random operations.");
-        for i in 0..10 {
-            println!("Operation {:?}", i);
-            setup.perform_random_operation(group).unwrap();
-        }
+        //for i in 0..10 {
+        //    println!("Operation {:?}", i);
+        //    setup.perform_random_operation(group).unwrap();
+        //}
     }
 }
 
