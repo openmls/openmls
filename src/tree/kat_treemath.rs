@@ -9,20 +9,20 @@
 //!
 //! ## Format:
 //! ```text
-//! struct {
-//!   uint32 n_leaves;
-//!   optional<uint32> root;
-//!   optional<uint32> left<0..2^32-1>;
-//!   optional<uint32> right<0..2^32-1>;
-//!   optional<uint32> parent<0..2^32-1>;
-//!   optional<uint32> sibling<0..2^32-1>;
-//! } TreeMathTestVector;
+//! {
+//!     "cipher_suite": /* uint16 */,
+//!     "root": [ /* array of uint32 */ ],
+//!     "left": [ /* array of option<uint32> */ ],
+//!     "right": [ /* array of option<uint32> */ ],
+//!     "parent": [ /* array of option<uint32> */ ],
+//!     "sibling": [ /* array of option<uint32> */ ]
+//! }
 //! ```
 //!
 //! Any value that is invalid is represented as `null`.
 //!
 //! ## Verification:
-//! * `root` is the root node index of the tree
+//! * `root` is the node index of the left child of the root node index of the tree with `i+1` leaves.
 //! * `left[i]` is the node index of the left child of the node with index `i` in a tree with `n_leaves` leaves
 //! * `right[i]` is the node index of the right child of the node with index `i` in a tree with `n_leaves` leaves
 //! * `parent[i]` is the node index of the parent of the node with index `i` in a tree with `n_leaves` leaves
@@ -39,7 +39,7 @@ use serde::{self, Deserialize, Serialize};
 struct TreeMathTestVector {
     n_leaves: u32,
     n_nodes: u32,
-    root: Option<u32>,
+    root: Vec<u32>,
     left: Vec<Option<u32>>,
     right: Vec<Option<u32>>,
     parent: Vec<Option<u32>>,
@@ -62,11 +62,10 @@ fn generate_test_vectors() {
     fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
         let leaves = LeafIndex::from(n_leaves);
         let n_nodes = node_width(leaves.as_usize()) as u32;
-        let root = convert!(root(leaves));
         let mut test_vector = TreeMathTestVector {
             n_leaves,
             n_nodes,
-            root,
+            root: Vec::new(),
             left: Vec::new(),
             right: Vec::new(),
             parent: Vec::new(),
@@ -74,6 +73,7 @@ fn generate_test_vectors() {
         };
 
         for i in 0..n_leaves {
+            test_vector.root.push(root(LeafIndex::from(i+1)).as_u32());
             test_vector.left.push(convert!(left(NodeIndex::from(i))));
             test_vector
                 .right
@@ -110,9 +110,9 @@ fn run_test_vectors() {
         let n_leaves = test_vector.n_leaves;
         let leaves = LeafIndex::from(n_leaves);
         assert_eq!(test_vector.n_nodes, node_width(leaves.as_usize()) as u32);
-        assert_eq!(test_vector.root, convert!(root(leaves)));
-
+        
         for i in 0..(n_leaves as usize) {
+            assert_eq!(test_vector.root[i], root(LeafIndex::from(i+1)).as_u32());
             assert_eq!(test_vector.left[i], convert!(left(NodeIndex::from(i))));
             assert_eq!(
                 test_vector.right[i],

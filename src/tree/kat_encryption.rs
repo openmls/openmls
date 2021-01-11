@@ -9,37 +9,46 @@
 //!
 //! ## Format:
 //! ```text
-//! struct {
-//!   opaque key<0..255>;
-//!   opaque nonce<0..255>;
-//! } KeyAndNonce;
-//!
-//! struct {
-//!   opaque ciphertext<0..2^32-1>;
-//!   KeyAndNonce secret;
-//! } SenderDataInfo;
-//!
-//! struct {
-//!   opaque plaintext<0..2^32-1>;
-//!   opaque ciphertext<0..2^32-1>;
-//! } Message;
-//!
-//! struct {
-//!   uint32 generations;
-//!   KeyAndNonce handshake_keys<0..2^32-1>;
-//!   KeyAndNonce application_keys<0..2^32-1>;
-//!   SenderDataInfo sender_data_info<0..2^32-1>;
-//!   Message messages<0..2^32-1>;
-//! } LeafSequence;
-//!
-//! struct {
-//!   uint16 cipher_suite;
-//!   uint32 n_leaves;
-//!   opaque encryption_secret<0..255>;
-//!   opaque sender_data_secret<0..255>;
-//!
-//!   LeafSequence leafs<0..2^32-1>;
-//! } EncryptionTestVector;
+//! {
+//!     "cipher_suite": /* uint16 */,
+//!     "n_leaves": /* uint32 */,
+//!     "encryption_secret": /* hex-encoded binary data */,
+//!     "sender_data_secret": /* hex-encoded binary data */,
+//!     "sender_data_info": {
+//!         "ciphertext": /* hex-encoded binary data */,
+//!         "secrets": {
+//!             "key": /* hex-encoded binary data */,
+//!             "nonce": /* hex-encoded binary data */,
+//!         },
+//!     },
+//!     "leaves": [
+//!         {
+//!             "generations": /* uint32 */,
+//!             "handshake_keys": [ /* array with `generations` handshake keys and nonces */
+//!                 {
+//!                     "key": /* hex-encoded binary data */,
+//!                     "nonce": /* hex-encoded binary data */,
+//!                 },
+//!                 ...
+//!             ],
+//!             "application_keys": [ /* array with `generations` application keys and nonces */
+//!                 {
+//!                     "key": /* hex-encoded binary data */,
+//!                     "nonce": /* hex-encoded binary data */,
+//!                 },
+//!                 ...
+//!             ],
+//!             "messages": [
+//!                 /* array with `generations` TLS encoded MLSPlaintext/MLSCiphertext pairs. */
+//!                 {
+//!                     "plaintext": /* hex-encoded binary data */,
+//!                     "ciphertext": /* hex-encoded binary data */,
+//!                 },
+//!                 ...
+//!             ],
+//!         }
+//!     ]
+//! }
 //! ```
 //!
 //! ## Verification:
@@ -76,20 +85,20 @@ use std::{collections::HashMap, convert::TryFrom};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct KeyAndNonce {
-    key: Vec<u8>,
-    nonce: Vec<u8>,
+    key: String,
+    nonce: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct SenderDataInfo {
-    ciphertext: Vec<u8>,
+    ciphertext: String,
     secrets: KeyAndNonce,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Message {
-    plaintext: Vec<u8>,
-    ciphertext: Vec<u8>,
+    plaintext: String,
+    ciphertext: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -97,7 +106,6 @@ struct LeafSequence {
     generations: u32,
     handshake_keys: Vec<KeyAndNonce>,
     application_keys: Vec<KeyAndNonce>,
-    sender_data_info: Vec<SenderDataInfo>,
     messages: Vec<Message>,
 }
 
@@ -105,8 +113,9 @@ struct LeafSequence {
 struct EncryptionTestVector {
     cipher_suite: u16,
     n_leaves: u32,
-    encryption_secret: Vec<u8>,
-    sender_data_secret: Vec<u8>,
+    encryption_secret: String,
+    sender_data_secret: String,
+    sender_data_info: SenderDataInfo,
     leaves: Vec<LeafSequence>,
 }
 
@@ -222,6 +231,21 @@ fn generate_test_vectors() {
         let sender_data_secret_bytes = sender_data_secret.to_vec();
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(n_leaves));
 
+        // Create sender_data_key/secret
+        let ciphertext = randombytes(77);
+        let sender_data_key =
+            AeadKey::from_sender_data_secret(ciphersuite, &ciphertext, &sender_data_secret);
+        // Derive initial nonce from the key schedule using the ciphertext.
+        let sender_data_nonce =
+            AeadNonce::from_sender_data_secret(ciphersuite, &ciphertext, &sender_data_secret);
+        let sender_data_info = SenderDataInfo {
+            ciphertext: bytes_to_hex(&ciphertext),
+            secrets: KeyAndNonce {
+                key: bytes_to_hex(sender_data_key.as_slice()),
+                nonce: bytes_to_hex(sender_data_nonce.as_slice()),
+            },
+        };
+
         let mut group = group(ciphersuite);
         *group.epoch_secrets_mut().sender_data_secret_mut() =
             SenderDataSecret::from(sender_data_secret_bytes.as_slice());
@@ -231,7 +255,6 @@ fn generate_test_vectors() {
             let leaf = LeafIndex::from(leaf);
             let mut handshake_keys = Vec::new();
             let mut application_keys = Vec::new();
-            let mut sender_data_info = Vec::new();
             let mut messages = Vec::new();
             let mut content_type = ContentType::Application;
             for generation in 0..NUM_GENERATIONS {
@@ -244,8 +267,8 @@ fn generate_test_vectors() {
                     )
                     .expect("Error getting decryption secret");
                 application_keys.push(KeyAndNonce {
-                    key: application_secret_key.as_slice().to_vec(),
-                    nonce: application_secret_nonce.as_slice().to_vec(),
+                    key: bytes_to_hex(application_secret_key.as_slice()),
+                    nonce: bytes_to_hex(application_secret_nonce.as_slice()),
                 });
                 let (handshake_secret_key, handshake_secret_nonce) = secret_tree
                     .secret_for_decryption(
@@ -256,26 +279,8 @@ fn generate_test_vectors() {
                     )
                     .expect("Error getting decryption secret");
                 handshake_keys.push(KeyAndNonce {
-                    key: handshake_secret_key.as_slice().to_vec(),
-                    nonce: handshake_secret_nonce.as_slice().to_vec(),
-                });
-
-                // Create sender_data_key/secret
-                let ciphertext = randombytes(77);
-                let sender_data_key =
-                    AeadKey::from_sender_data_secret(ciphersuite, &ciphertext, &sender_data_secret);
-                // Derive initial nonce from the key schedule using the ciphertext.
-                let sender_data_nonce = AeadNonce::from_sender_data_secret(
-                    ciphersuite,
-                    &ciphertext,
-                    &sender_data_secret,
-                );
-                sender_data_info.push(SenderDataInfo {
-                    ciphertext,
-                    secrets: KeyAndNonce {
-                        key: sender_data_key.as_slice().to_vec(),
-                        nonce: sender_data_nonce.as_slice().to_vec(),
-                    },
+                    key: bytes_to_hex(handshake_secret_key.as_slice()),
+                    nonce: bytes_to_hex(handshake_secret_nonce.as_slice()),
                 });
 
                 // Create messages
@@ -290,15 +295,14 @@ fn generate_test_vectors() {
                     &mut content_type,
                 );
                 messages.push(Message {
-                    plaintext,
-                    ciphertext,
+                    plaintext: bytes_to_hex(&plaintext),
+                    ciphertext: bytes_to_hex(&ciphertext),
                 });
             }
             leaves.push(LeafSequence {
                 generations: NUM_GENERATIONS,
                 handshake_keys,
                 application_keys,
-                sender_data_info,
                 messages,
             });
         }
@@ -306,8 +310,9 @@ fn generate_test_vectors() {
         EncryptionTestVector {
             cipher_suite: ciphersuite_name as u16,
             n_leaves,
-            encryption_secret: encryption_secret_bytes,
-            sender_data_secret: sender_data_secret_bytes,
+            encryption_secret: bytes_to_hex(&encryption_secret_bytes),
+            sender_data_secret: bytes_to_hex(&sender_data_secret_bytes),
+            sender_data_info,
             leaves,
         }
     }
@@ -337,31 +342,51 @@ fn run_test_vectors() {
             Config::ciphersuite(ciphersuite).expect("Config error getting the ciphersuite");
 
         let mut secret_tree = SecretTree::new(
-            EncryptionSecret::from(test_vector.encryption_secret.as_slice()),
+            EncryptionSecret::from(hex_to_bytes(&test_vector.encryption_secret).as_slice()),
             LeafIndex::from(n_leaves),
         );
-        let sender_data_secret = SenderDataSecret::from(test_vector.sender_data_secret.as_slice());
+        let sender_data_secret =
+            SenderDataSecret::from(hex_to_bytes(&test_vector.sender_data_secret).as_slice());
+
+        let sender_data_key = AeadKey::from_sender_data_secret(
+            ciphersuite,
+            &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
+            &sender_data_secret,
+        );
+        let sender_data_nonce = AeadNonce::from_sender_data_secret(
+            ciphersuite,
+            &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
+            &sender_data_secret,
+        );
+        assert_eq!(
+            hex_to_bytes(&test_vector.sender_data_info.secrets.key),
+            sender_data_key.as_slice()
+        );
+        assert_eq!(
+            hex_to_bytes(&test_vector.sender_data_info.secrets.nonce),
+            sender_data_nonce.as_slice()
+        );
 
         for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
             assert_eq!(leaf.generations, leaf.application_keys.len() as u32);
             assert_eq!(leaf.generations, leaf.handshake_keys.len() as u32);
             assert_eq!(leaf.generations, leaf.messages.len() as u32);
-            assert_eq!(leaf.generations, leaf.sender_data_info.len() as u32);
             let leaf_index = LeafIndex::from(leaf_index);
 
-            for (generation, application_key, handshake_key, message, sender_data_info) in izip!(
+            for (generation, application_key, handshake_key, message) in izip!(
                 (0..leaf.generations).into_iter(),
                 &leaf.application_keys,
                 &leaf.handshake_keys,
                 &leaf.messages,
-                &leaf.sender_data_info
             ) {
                 // Setup group
-                let mls_ciphertext = MLSCiphertext::decode(&mut Cursor::new(&message.ciphertext))
-                    .expect("Error parsing MLSCiphertext");
+                let mls_ciphertext =
+                    MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&message.ciphertext)))
+                        .expect("Error parsing MLSCiphertext");
                 let mut group = receiver_group(ciphersuite, &mls_ciphertext.group_id);
-                *group.epoch_secrets_mut().sender_data_secret_mut() =
-                    SenderDataSecret::from(test_vector.sender_data_secret.as_slice());
+                *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from(
+                    hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
+                );
 
                 // Check keys
                 let (application_secret_key, application_secret_nonce) = secret_tree
@@ -372,8 +397,14 @@ fn run_test_vectors() {
                         generation,
                     )
                     .expect("Error getting decryption secret");
-                assert_eq!(application_key.key, application_secret_key.as_slice());
-                assert_eq!(application_key.nonce, application_secret_nonce.as_slice());
+                assert_eq!(
+                    hex_to_bytes(&application_key.key),
+                    application_secret_key.as_slice()
+                );
+                assert_eq!(
+                    hex_to_bytes(&application_key.nonce),
+                    application_secret_nonce.as_slice()
+                );
 
                 let (handshake_secret_key, handshake_secret_nonce) = secret_tree
                     .secret_for_decryption(
@@ -383,21 +414,14 @@ fn run_test_vectors() {
                         generation,
                     )
                     .expect("Error getting decryption secret");
-                assert_eq!(handshake_key.key, handshake_secret_key.as_slice());
-                assert_eq!(handshake_key.nonce, handshake_secret_nonce.as_slice());
-
-                let sender_data_key = AeadKey::from_sender_data_secret(
-                    ciphersuite,
-                    &sender_data_info.ciphertext,
-                    &sender_data_secret,
+                assert_eq!(
+                    hex_to_bytes(&handshake_key.key),
+                    handshake_secret_key.as_slice()
                 );
-                let sender_data_nonce = AeadNonce::from_sender_data_secret(
-                    ciphersuite,
-                    &sender_data_info.ciphertext,
-                    &sender_data_secret,
+                assert_eq!(
+                    hex_to_bytes(&handshake_key.nonce),
+                    handshake_secret_nonce.as_slice()
                 );
-                assert_eq!(sender_data_info.secrets.key, sender_data_key.as_slice());
-                assert_eq!(sender_data_info.secrets.nonce, sender_data_nonce.as_slice());
 
                 // Decrypt and check message
                 let indexed_members = HashMap::new();
@@ -415,7 +439,7 @@ fn run_test_vectors() {
                     )
                     .expect("Error decrypting MLSCiphertext");
                 assert_eq!(
-                    message.plaintext,
+                    hex_to_bytes(&message.plaintext),
                     mls_plaintext
                         .encode_detached()
                         .expect("Error encoding MLSPlaintext")
