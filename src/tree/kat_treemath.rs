@@ -73,7 +73,7 @@ fn generate_test_vectors() {
         };
 
         for i in 0..n_leaves {
-            test_vector.root.push(root(LeafIndex::from(i+1)).as_u32());
+            test_vector.root.push(root(LeafIndex::from(i + 1)).as_u32());
             test_vector.left.push(convert!(left(NodeIndex::from(i))));
             test_vector
                 .right
@@ -110,9 +110,9 @@ fn run_test_vectors() {
         let n_leaves = test_vector.n_leaves;
         let leaves = LeafIndex::from(n_leaves);
         assert_eq!(test_vector.n_nodes, node_width(leaves.as_usize()) as u32);
-        
+
         for i in 0..(n_leaves as usize) {
-            assert_eq!(test_vector.root[i], root(LeafIndex::from(i+1)).as_u32());
+            assert_eq!(test_vector.root[i], root(LeafIndex::from(i + 1)).as_u32());
             assert_eq!(test_vector.left[i], convert!(left(NodeIndex::from(i))));
             assert_eq!(
                 test_vector.right[i],

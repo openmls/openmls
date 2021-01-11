@@ -38,10 +38,7 @@ fn verify_binary_test_vector_treemath() {
     // Test if the `root` function is computed correctly according to the test
     // vector.
     for (i, &r) in root.iter().enumerate() {
-        assert_eq!(
-            NodeIndex::from(r),
-            treemath::root(LeafIndex::from(i + 1))
-        );
+        assert_eq!(NodeIndex::from(r), treemath::root(LeafIndex::from(i + 1)));
     }
     // Test if the `left` function is computed correctly according to the test
     // vector.
