@@ -4,16 +4,8 @@ use std::cmp::Ordering;
 implement_error! {
     pub enum TreeMathError {
         LeafHasNoChildren = "Leaf nodes don't have children.",
-        RootHasNoParent = "Root nodes don't have paretns.",
-        InvalidTreeSize = "Invalid tree size.",
+        RootHasNoParent = "Root nodes don't have parents.",
     }
-}
-
-fn check_tree_size(size: LeafIndex) -> Result<(), TreeMathError> {
-    if node_width(size.as_usize()) % 2 == 0 {
-        return Err(TreeMathError::InvalidTreeSize);
-    }
-    Ok(())
 }
 
 pub(crate) fn log2(x: usize) -> usize {
@@ -47,11 +39,10 @@ pub(crate) fn node_width(n: usize) -> usize {
     }
 }
 
-pub(crate) fn root(size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
-    check_tree_size(size)?;
+pub(crate) fn root(size: LeafIndex) -> NodeIndex {
     let n = size.as_usize();
     let w = node_width(n);
-    Ok(NodeIndex::from((1usize << log2(w)) - 1))
+    NodeIndex::from((1usize << log2(w)) - 1)
 }
 
 pub(crate) fn left(index: NodeIndex) -> Result<NodeIndex, TreeMathError> {
@@ -64,7 +55,6 @@ pub(crate) fn left(index: NodeIndex) -> Result<NodeIndex, TreeMathError> {
 }
 
 pub(crate) fn right(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
-    check_tree_size(size)?;
     let x = index.as_usize();
     let n = size.as_usize();
     let k = level(NodeIndex::from(x));
@@ -87,7 +77,7 @@ pub(crate) fn parent_step(x: usize) -> usize {
 pub(crate) fn parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
     let x = index.as_usize();
     let n = size.as_usize();
-    if index == root(size)? {
+    if index == root(size) {
         return Err(TreeMathError::RootHasNoParent);
     }
     let mut p = parent_step(x);
@@ -109,7 +99,7 @@ pub(crate) fn sibling(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, Tr
 // Ordered from leaf to root
 // Includes neither leaf nor root
 pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
-    let r = root(size)?;
+    let r = root(size);
     if index == r {
         return Ok(vec![]);
     }
@@ -129,7 +119,7 @@ pub(crate) fn dirpath_long(
     index: NodeIndex,
     size: LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
-    let r = root(size)?;
+    let r = root(size);
     if index == r {
         return Ok(vec![r]);
     }
@@ -149,7 +139,7 @@ pub(crate) fn direct_path_root(
     index: NodeIndex,
     size: LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
-    let r = root(size)?;
+    let r = root(size);
     if index == r {
         return Ok(vec![r]);
     }
@@ -165,7 +155,7 @@ pub(crate) fn direct_path_root(
 
 // Ordered from leaf to root
 pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
-    if index == root(size)? {
+    if index == root(size) {
         return Ok(vec![]);
     }
     let mut d = vec![index];

@@ -101,7 +101,7 @@ impl SecretTree {
     /// initialized when secrets are requested either through `secret()`
     /// or `next_secret()`.
     pub fn new(encryption_secret: EncryptionSecret, size: LeafIndex) -> Self {
-        let root = root(size).unwrap();
+        let root = root(size);
         let num_indices = NodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(SecretTreeNode {
@@ -150,9 +150,9 @@ impl SecretTree {
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(
             dirpath(index_in_tree, self.size)
-                .expect("initialize_sender_rathets: Error while computing direct path."),
+                .expect("initialize_sender_ratchets: Error while computing direct path."),
         );
-        dir_path.push(root(self.size)?);
+        dir_path.push(root(self.size));
         let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
             empty_nodes.push(n);

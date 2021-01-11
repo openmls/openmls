@@ -217,7 +217,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                     (key_bytes, parent_hash_bytes)
                 }
                 NodeType::Parent => {
-                    if treemath::root(tree.leaf_count()).unwrap() == NodeIndex::from(i) {
+                    if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
                         print!("\tP(R)");
                     } else {
                         print!("\tP");
@@ -253,7 +253,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
             }
             print!("◼︎");
         } else {
-            if treemath::root(tree.leaf_count()).unwrap() == NodeIndex::from(i) {
+            if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
                 print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
             } else {
                 print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");

@@ -1,6 +1,7 @@
 //! # Known Answer Tests for encrypting to tree nodes
 //!
 //! This currently differs from the test vectors in https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See https://github.com/mlswg/mls-implementations/issues/32 for a discussion.
 //!
 //! ## Parameters:
 //! * Ciphersuite

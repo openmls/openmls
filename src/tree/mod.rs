@@ -251,7 +251,7 @@ impl RatchetTree {
     fn blank_member(&mut self, index: NodeIndex) {
         let size = self.leaf_count();
         self.nodes[index.as_usize()].blank();
-        self.nodes[treemath::root(size).unwrap().as_usize()].blank();
+        self.nodes[treemath::root(size).as_usize()].blank();
         for index in treemath::direct_path_root(index, size)
             .expect("blank_member: TreeMath error when computing direct path.")
         {
@@ -768,12 +768,12 @@ impl RatchetTree {
                 NodeType::Default => panic!("Default node type not supported in tree hash."),
             }
         }
-        let root = treemath::root(self.leaf_count()).unwrap();
+        let root = treemath::root(self.leaf_count());
         node_hash(&self.ciphersuite, &self, root)
     }
     /// Computes the parent hash
     pub fn compute_parent_hash(&mut self, index: NodeIndex) -> Vec<u8> {
-        let root = treemath::root(self.leaf_count()).unwrap();
+        let root = treemath::root(self.leaf_count());
         // This should only happen when the group only contains one member
         if index == root {
             return vec![];

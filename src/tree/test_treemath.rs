@@ -1,15 +1,14 @@
 use super::treemath::TreeMathError;
+use crate::config::*;
+use crate::tree::{index::LeafIndex, treemath, *};
+use std::fs::File;
+use std::io::Read;
 
 /// The following test uses an old test vector that assumes an outdated version
 /// of the treemath defined in the spec. In a few select cases, we should now
 /// expect errors based on the new treemath.
 #[test]
 fn verify_binary_test_vector_treemath() {
-    use crate::tree::treemath;
-    use crate::tree::*;
-    use std::fs::File;
-    use std::io::Read;
-
     let mut file = File::open("test_vectors/tree_math.bin").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
@@ -41,7 +40,7 @@ fn verify_binary_test_vector_treemath() {
     for (i, &r) in root.iter().enumerate() {
         assert_eq!(
             NodeIndex::from(r),
-            treemath::root(LeafIndex::from(i + 1)).unwrap()
+            treemath::root(LeafIndex::from(i + 1))
         );
     }
     // Test if the `left` function is computed correctly according to the test
@@ -79,23 +78,22 @@ fn verify_binary_test_vector_treemath() {
 ///  - dirpath_long contains the leaf, the direct path and the root
 #[test]
 fn test_dir_path() {
-    use crate::tree::{treemath::*, *};
     const SIZE: u32 = 100;
     for size in 0..SIZE {
         for i in 0..size / 2 {
             let index = NodeIndex::from(i);
-            let mut dir_path_test = dirpath(index, LeafIndex::from(size)).unwrap();
-            let root = root(LeafIndex::from(size)).unwrap();
+            let mut dir_path_test = treemath::dirpath(index, LeafIndex::from(size)).unwrap();
+            let root = treemath::root(LeafIndex::from(size));
             dir_path_test.extend_from_slice(&[root]);
             assert_eq!(
                 dir_path_test,
-                direct_path_root(index, LeafIndex::from(size)).unwrap()
+                treemath::direct_path_root(index, LeafIndex::from(size)).unwrap()
             );
             let mut dirpath_long_test = vec![index];
             dirpath_long_test.extend(dir_path_test);
             assert_eq!(
                 dirpath_long_test,
-                dirpath_long(index, LeafIndex::from(size)).unwrap()
+                treemath::dirpath_long(index, LeafIndex::from(size)).unwrap()
             );
         }
     }
@@ -103,11 +101,6 @@ fn test_dir_path() {
 
 #[test]
 fn test_tree_hash() {
-    use crate::ciphersuite::*;
-    use crate::config::*;
-    use crate::credentials::*;
-    use crate::tree::*;
-
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
         let credential_bundle =
             CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite_name).unwrap();
@@ -132,4 +125,13 @@ fn test_tree_hash() {
         let tree_hash = tree.compute_tree_hash();
         println!("Tree hash: {:?}", tree_hash);
     }
+}
+
+#[test]
+fn test_treemath_functions() {
+    assert_eq!(0, treemath::root(LeafIndex::from(0u32)).as_u32());
+    // The tree with only one leaf has only one node, which is leaf and root at the same time.
+    assert_eq!(0, treemath::root(LeafIndex::from(1u32)).as_u32());
+    assert_eq!(1, treemath::root(LeafIndex::from(2u32)).as_u32());
+    assert_eq!(3, treemath::root(LeafIndex::from(3u32)).as_u32());
 }
