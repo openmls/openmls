@@ -1,9 +1,6 @@
 use openmls::prelude::{node::Node, *};
 use rand::{rngs::OsRng, RngCore};
-use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-};
+use std::{cell::RefCell, collections::HashMap};
 
 /// Errors that can occur when processing messages with the client.
 #[derive(Debug)]
@@ -200,7 +197,7 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
 #[derive(Clone)]
 struct Group {
     group_id: GroupId,
-    members: HashSet<Vec<u8>>,
+    members: Vec<(usize, Vec<u8>)>,
     ciphersuite: Ciphersuite,
     group_config: ManagedGroupConfig,
     public_tree: Vec<Option<Node>>,
@@ -211,7 +208,8 @@ impl Group {
         let index = (OsRng.next_u32() as usize) % self.members.len();
         // We can unwrap here, because the index is scoped with the size of the
         // HashSet.
-        self.members.iter().nth(index).unwrap().clone()
+        let (_, identity) = self.members.iter().nth(index).unwrap().clone();
+        identity
     }
 }
 
@@ -335,9 +333,9 @@ impl<'ks> ManagedTestSetup<'ks> {
         messages: Vec<MLSMessage>,
     ) -> Result<(), ClientError> {
         let clients = self.clients.borrow();
-        println!("Group members before distribution:");
+        println!("Distributing and processing messages...");
         // Distribute message to all members.
-        for member_id in &group.members {
+        for (_, member_id) in &group.members {
             println!("{:?}", member_id);
             let member = clients.get(member_id).unwrap().borrow();
             member.receive_messages_for_group(&group.group_id, messages.clone())?;
@@ -347,47 +345,30 @@ impl<'ks> ManagedTestSetup<'ks> {
         let sender_groups = sender.groups.borrow();
         let sender_group = sender_groups.get(&group.group_id).unwrap();
         let members_after = sender_group.members();
+        group.members = sender_group
+            .members()
+            .iter()
+            .map(|(index, cred)| (index.clone(), cred.identity().clone()))
+            .collect();
+        println!("Group members according to Credential list:");
+        for (_, cred) in &members_after {
+            println!("{:?}", cred.identity())
+        }
         group.public_tree = sender_group.export_ratchet_tree();
         drop(sender_group);
         drop(sender_groups);
         // Figure out if someone was removed and update the member list.
-        let mut members_to_be_removed = Vec::new();
         println!("Group members after distribution:");
-        for m_id in &group.members {
-            if members_after
-                .iter()
-                .find(|id| id.identity() == m_id)
-                .is_none()
-            {
-                members_to_be_removed.push(m_id.clone());
-            } else {
-                // Also make sure that everyone who's still in the group has the
-                // same view of the group.
-                println!("{:?}", m_id);
-                let m = clients.get(m_id).unwrap().borrow();
-                let group_states = m.groups.borrow_mut();
-                let group_state = group_states.get(&group.group_id).unwrap();
+        for (index, m_id) in &group.members {
+            println!("Id: {:?}, Index: {:?}", m_id, index);
+            let m = clients.get(m_id).unwrap().borrow();
+            let group_states = m.groups.borrow_mut();
+            // Some group members may not have received their welcome messages yet.
+            if let Some(group_state) = group_states.get(&group.group_id) {
                 assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
-                drop(group_states);
-            }
+            };
+            drop(group_states);
         }
-        for m_id in members_to_be_removed {
-            group.members.remove(&m_id);
-        }
-        let mut current_members = HashSet::new();
-        for index in 0..group.public_tree.len() {
-            // Is it a leaf?
-            if index % 2 == 0 && group.public_tree[index].is_some() {
-                match group.public_tree[index] {
-                    Some(ref leaf) => {
-                        let identity = leaf.key_package().unwrap().credential().identity();
-                        current_members.insert(identity.clone());
-                    }
-                    None => {}
-                };
-            }
-        }
-        group.members = current_members;
         Ok(())
     }
 
@@ -408,7 +389,7 @@ impl<'ks> ManagedTestSetup<'ks> {
                     (group
                         .members
                         .iter()
-                        .find(|&member_id| client_id == member_id)
+                        .find(|&(_, member_id)| client_id == member_id)
                         .is_none())
                         && (new_member_ids
                             .iter()
@@ -436,8 +417,8 @@ impl<'ks> ManagedTestSetup<'ks> {
 
         let public_tree =
             group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite);
-        let mut member_ids = HashSet::new();
-        member_ids.insert(group_creator_id);
+        let mut member_ids = Vec::new();
+        member_ids.push((0, group_creator_id));
         let group = Group {
             group_id: group_id.clone(),
             members: member_ids,
@@ -522,6 +503,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         let clients = self.clients.borrow();
         // Who's going to do it?
         let member_id = group.random_group_member();
+        println!("Member performing the operation: {:?}", member_id);
         let member = clients.get(&member_id).unwrap().borrow();
 
         let mut groups = member.groups.borrow_mut();
@@ -567,35 +549,44 @@ impl<'ks> ManagedTestSetup<'ks> {
                     let number_of_removals = 1;
                     //(((OsRng.next_u32() as usize) % group.members().len()) % 5) + 1;
 
-                    let own_index = member_group_state
+                    let (own_index, _) = member_group_state
                         .members()
                         .iter()
-                        .position(|cred| cred.identity() == &member.identity)
-                        .unwrap();
+                        .find(|(_, cred)| cred.identity() == &member.identity)
+                        .unwrap()
+                        .clone();
+                    println!(
+                        "Index of the member performing the operation: {:?}",
+                        own_index
+                    );
 
                     let mut target_members = Vec::new();
                     // Get the client references, as opposed to just the member indices.
+                    println!("Removing members:");
                     for _ in 0..number_of_removals {
                         // Get a random index.
-                        let mut index =
+                        let mut member_list_index =
                             (OsRng.next_u32() as usize) % member_group_state.members().len();
                         // Re-sample until the index is not our own index and
                         // not one that is not already being removed.
-                        while index == own_index || target_members.contains(&index) {
-                            index =
+                        let (mut leaf_index, mut leaf_credential) =
+                            member_group_state.members()[member_list_index].clone();
+                        while leaf_index == own_index || target_members.contains(&member_list_index)
+                        {
+                            member_list_index =
                                 (OsRng.next_u32() as usize) % member_group_state.members().len();
+                            let (new_leaf_index, new_leaf_credential) =
+                                member_group_state.members()[member_list_index].clone();
+                            leaf_index = new_leaf_index;
+                            leaf_credential = new_leaf_credential;
                         }
-                        target_members.push(index);
+                        println!(
+                            "Index: {:?}, Identity: {:?}",
+                            leaf_index,
+                            leaf_credential.identity(),
+                        );
+                        target_members.push(leaf_index);
                     }
-                    println!(
-                        "Target members: Index: {:?}, Identity: {:?}",
-                        target_members,
-                        member_group_state
-                            .members()
-                            .get(target_members[0])
-                            .unwrap()
-                            .identity()
-                    );
                     let (messages, welcome_option) = if action_type == 0 {
                         (
                             member_group_state
