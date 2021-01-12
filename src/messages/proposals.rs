@@ -5,7 +5,7 @@ use crate::key_packages::*;
 use crate::tree::index::*;
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::convert::TryFrom;
 
 use super::errors::*;
@@ -189,8 +189,8 @@ impl<'a> QueuedProposal<'a> {
         &self.proposal
     }
     /// Returns the `ProposalReference` as a reference
-    pub(crate) fn proposal_reference(&self) -> &ProposalReference {
-        &self.proposal_reference
+    pub(crate) fn proposal_reference(&self) -> ProposalReference {
+        self.proposal_reference.clone()
     }
     /// Returns the `Sender` as a reference
     pub(crate) fn sender(&self) -> &Sender {
@@ -199,29 +199,28 @@ impl<'a> QueuedProposal<'a> {
 }
 
 /// Proposal queue that helps filtering and sorting the Proposals from one
-/// epoch.
+/// epoch. The Proposals are stored in a `HashMap` which maps Proposal
+/// references to Proposals, such that, given a reference, a proposal can be
+/// accessed efficiently. To enable iteration over the queue in order, the
+/// `ProposalQueue` also contains a vector of `ProposalReference`s.
 #[derive(Default)]
 pub struct ProposalQueue<'a> {
-    // We keep the references in a separate `Vec` to enforce the correct order
+    /// `proposal_references` holds references to the proposals in the queue and
+    /// determines the order of the queue.
     proposal_references: Vec<ProposalReference>,
+    /// `queued_proposals` contains the actual proposals in the queue. They are
+    /// stored in a `HashMap` to allow for efficient access to the proposals.
     queued_proposals: HashMap<ProposalReference, QueuedProposal<'a>>,
 }
 
 impl<'a> ProposalQueue<'a> {
-    // Returns a new empty `ProposalQueue`
-    pub(crate) fn new() -> Self {
-        ProposalQueue {
-            proposal_references: Vec::new(),
-            queued_proposals: HashMap::new(),
-        }
-    }
     /// Returns a new `ProposalQueue` from proposals that were committed and
     /// don't need filtering
     pub(crate) fn from_proposals_by_reference(
         ciphersuite: &Ciphersuite,
         proposals: &'a [&MLSPlaintext],
     ) -> Self {
-        let mut proposal_queue = ProposalQueue::new();
+        let mut proposal_queue = ProposalQueue::default();
         for mls_plaintext in proposals {
             // It is safe to unwrap here, because we checked that only proposals can end up
             // here.
@@ -244,16 +243,13 @@ impl<'a> ProposalQueue<'a> {
         let mut proposals_by_reference_queue: HashMap<ProposalReference, QueuedProposal> =
             HashMap::new();
         for mls_plaintext in proposals_by_reference {
-            let queued_proposal =
-                QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext).unwrap();
-            proposals_by_reference_queue.insert(
-                queued_proposal.proposal_reference().clone(),
-                queued_proposal,
-            );
+            let queued_proposal = QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext)?;
+            proposals_by_reference_queue
+                .insert(queued_proposal.proposal_reference(), queued_proposal);
         }
 
         // Build the actual queue
-        let mut proposal_queue = ProposalQueue::new();
+        let mut proposal_queue = ProposalQueue::default();
 
         // Iterate over the committed proposals and insert the proposals in the queue
         for proposal_or_ref in committed_proposals.iter() {
@@ -344,9 +340,8 @@ impl<'a> ProposalQueue<'a> {
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal.proposal_type() {
                 ProposalType::Add => {
-                    let proposal_reference = queued_proposal.proposal_reference().clone();
-                    adds.insert(proposal_reference.clone());
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    adds.insert(queued_proposal.proposal_reference());
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 ProposalType::Update => {
                     let sender_index = queued_proposal.sender.sender.as_usize();
@@ -355,7 +350,7 @@ impl<'a> ProposalQueue<'a> {
                     } else {
                         contains_own_updates = true;
                     }
-                    let proposal_reference = queued_proposal.proposal_reference().clone();
+                    let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 ProposalType::Remove => {
@@ -364,7 +359,7 @@ impl<'a> ProposalQueue<'a> {
                     if removed_index < tree_size.as_usize() {
                         members[removed_index].updates.push(queued_proposal.clone());
                     }
-                    let proposal_reference = queued_proposal.proposal_reference().clone();
+                    let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 _ => {}
@@ -377,15 +372,15 @@ impl<'a> ProposalQueue<'a> {
                 // Delete all Updates when a Remove is found
                 member.updates = Vec::new();
                 // Only keep the last Remove
-                valid_proposals.insert(member.removes.last().unwrap().proposal_reference().clone());
+                valid_proposals.insert(member.removes.last().unwrap().proposal_reference());
             }
             if !member.updates.is_empty() {
                 // Only keep the last Update
-                valid_proposals.insert(member.updates.last().unwrap().proposal_reference().clone());
+                valid_proposals.insert(member.updates.last().unwrap().proposal_reference());
             }
         }
         // Only retain `adds` and `valid_proposals`
-        let mut proposal_queue = ProposalQueue::new();
+        let mut proposal_queue = ProposalQueue::default();
         for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
             proposal_queue.add(match proposal_pool.get(proposal_reference) {
                 Some(queued_proposal) => queued_proposal.clone(),
@@ -413,12 +408,11 @@ impl<'a> ProposalQueue<'a> {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal<'a>) {
         let proposal_reference = queued_proposal.proposal_reference();
         // Only add the proposal if it's not already there
-        if !self.queued_proposals.contains_key(proposal_reference) {
+        if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference.clone()) {
             // Add the proposal reference to ensure the correct order
-            self.proposal_references.push(proposal_reference.clone());
+            self.proposal_references.push(proposal_reference);
             // Add the proposal to the queue
-            self.queued_proposals
-                .insert(proposal_reference.clone(), queued_proposal);
+            entry.insert(queued_proposal);
         }
     }
     /// Returns the list of all proposals that are covered by a Commit

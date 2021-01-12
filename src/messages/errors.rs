@@ -2,7 +2,12 @@ use crate::codec::*;
 
 implement_error! {
     pub enum ProposalQueueError {
-        ProposalNotFound = "Not all proposals in the Commit were found locally.",
+        Simple {
+            ProposalNotFound = "Not all proposals in the Commit were found locally.",
+        }
+        Complex {
+            NotAProposal(QueuedProposalError) = "The given MLS Plaintext was not a Proposal.",
+        }
     }
 }
 

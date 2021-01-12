@@ -1,3 +1,5 @@
+use sender::Sender;
+
 use crate::config::*;
 use crate::credentials::*;
 use crate::extensions::*;
@@ -125,6 +127,108 @@ fn proposal_queue_functions() {
         for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {
             assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
         }
+    }
+}
+
+/// Test, that we the ProposalQueue is iterated in the right order.
+#[test]
+fn proposal_queue_order() {
+    for ciphersuite in Config::supported_ciphersuites() {
+        // Define identities
+        let alice_credential_bundle =
+            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
+                .unwrap();
+        let bob_credential_bundle =
+            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+
+        // Generate KeyPackages
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+                .unwrap();
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+                .unwrap();
+        let bob_key_package = bob_key_package_bundle.key_package();
+        let alice_update_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+                .unwrap();
+        let alice_update_key_package = alice_update_key_package_bundle.key_package();
+        assert!(alice_update_key_package.verify().is_ok());
+
+        let group_context = GroupContext {
+            group_id: GroupId::random(),
+            epoch: GroupEpoch(0),
+            tree_hash: vec![],
+            confirmed_transcript_hash: vec![],
+        };
+
+        // Let's create some proposals
+        let add_proposal_alice1 = AddProposal {
+            key_package: alice_key_package_bundle.key_package().clone(),
+        };
+        let add_proposal_bob1 = AddProposal {
+            key_package: bob_key_package.clone(),
+        };
+
+        let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
+        let proposal_reference_add_alice1 =
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
+        let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
+
+        // Frame proposals in MLSPlaintext
+        let mls_plaintext_add_alice1 = MLSPlaintext::new(
+            LeafIndex::from(0u32),
+            &[],
+            MLSPlaintextContentType::Proposal(proposal_add_alice1.clone()),
+            &alice_credential_bundle,
+            &group_context,
+        );
+        let mls_plaintext_add_bob1 = MLSPlaintext::new(
+            LeafIndex::from(1u32),
+            &[],
+            MLSPlaintextContentType::Proposal(proposal_add_bob1.clone()),
+            &alice_credential_bundle,
+            &group_context,
+        );
+
+        // This should set the order of the proposals.
+        let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_bob1];
+
+        let proposal_queue = ProposalQueue::from_proposals_by_reference(&ciphersuite, proposals);
+
+        // Now let's iterate over the queue. This should be in order.
+        let proposal_collection: Vec<&QueuedProposal> =
+            proposal_queue.filtered_by_type(ProposalType::Add).collect();
+
+        assert_eq!(proposal_collection[0].proposal(), &proposal_add_alice1);
+        assert_eq!(proposal_collection[1].proposal(), &proposal_add_bob1);
+
+        let proposal_or_refs = &[
+            ProposalOrRef::Proposal(proposal_add_bob1.clone()),
+            ProposalOrRef::Reference(proposal_reference_add_alice1),
+        ];
+
+        let sender = Sender {
+            sender_type: sender::SenderType::Member,
+            sender: LeafIndex::from(0u32),
+        };
+
+        // And the same should go for proposal queues built from committed
+        // proposals. The order here should be dictated by the proposals passed
+        // as ProposalOrRefs.
+        let proposal_queue = ProposalQueue::from_committed_proposals(
+            ciphersuite,
+            proposal_or_refs,
+            proposals,
+            sender,
+        )
+        .unwrap();
+
+        let proposal_collection: Vec<&QueuedProposal> =
+            proposal_queue.filtered_by_type(ProposalType::Add).collect();
+
+        assert_eq!(proposal_collection[0].proposal(), &proposal_add_bob1);
+        assert_eq!(proposal_collection[1].proposal(), &proposal_add_alice1);
     }
 }
 

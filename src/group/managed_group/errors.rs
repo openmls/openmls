@@ -32,6 +32,13 @@ implement_error! {
 }
 
 implement_error! {
+    pub enum EmptyInputError {
+        AddMembers = "An empty list of KeyPackages was provided.",
+        RemoveMembers = "An empty list of indexes was provided.",
+    }
+}
+
+implement_error! {
     pub enum UseAfterEviction {
         Error = "Tried to use a group after being evicted from it.",
     }
@@ -40,13 +47,6 @@ implement_error! {
 implement_error! {
     pub enum PendingProposalsError {
         Exists = "Can't create message because a pending proposal exists.",
-    }
-}
-
-implement_error! {
-    pub enum EmptyInputError {
-        AddMembers = "An empty list of KeyPackages was provided.",
-        RemoveMembers = "An empty list of indexes was provided.",
     }
 }
 
