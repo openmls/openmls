@@ -527,6 +527,8 @@ impl<'ks> ManagedTestSetup<'ks> {
             1 => {
                 // If it's a single-member group, don't remove anyone.
                 if member_group_state.members().len() == 1 {
+                    drop(member_group_state);
+                    drop(groups);
                     (Vec::new(), None)
                 } else {
                     // How many members?
