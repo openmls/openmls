@@ -40,16 +40,6 @@ struct KeyStore {
 }
 
 impl<'ks> KeyStore {
-    pub(crate) fn store_credential(
-        &mut self,
-        client_id: Vec<u8>,
-        ciphersuite_name: CiphersuiteName,
-        credential_bundle: CredentialBundle,
-    ) {
-        self.credential_bundles
-            .insert((client_id, ciphersuite_name), credential_bundle);
-    }
-
     pub(crate) fn store_credentials(
         &mut self,
         client_id: Vec<u8>,
@@ -335,8 +325,8 @@ impl<'ks> ManagedTestSetup<'ks> {
         let clients = self.clients.borrow();
         println!("Distributing and processing messages...");
         // Distribute message to all members.
-        for (_, member_id) in &group.members {
-            println!("{:?}", member_id);
+        for (index, member_id) in &group.members {
+            println!("Index: {:?}, Id: {:?}", index, member_id);
             let member = clients.get(member_id).unwrap().borrow();
             member.receive_messages_for_group(&group.group_id, messages.clone())?;
         }
@@ -344,16 +334,11 @@ impl<'ks> ManagedTestSetup<'ks> {
         let sender = clients.get(sender_id).unwrap().borrow();
         let sender_groups = sender.groups.borrow();
         let sender_group = sender_groups.get(&group.group_id).unwrap();
-        let members_after = sender_group.members();
         group.members = sender_group
             .members()
             .iter()
             .map(|(index, cred)| (index.clone(), cred.identity().clone()))
             .collect();
-        println!("Group members according to Credential list:");
-        for (_, cred) in &members_after {
-            println!("{:?}", cred.identity())
-        }
         group.public_tree = sender_group.export_ratchet_tree();
         drop(sender_group);
         drop(sender_groups);
@@ -474,30 +459,30 @@ impl<'ks> ManagedTestSetup<'ks> {
     }
 
     /// Have the given member of the given group add between 1 and 5 members to the group.
-    fn perform_random_add(
-        &'ks self,
-        client: &Client,
-        group: &mut Group,
-    ) -> Result<(Vec<MLSMessage>, Welcome), SetupError> {
-        let number_of_adds = ((OsRng.next_u32() as usize) % 5) + 1;
-        let new_members = self.random_new_members_for_group(group, number_of_adds)?;
+    //fn perform_random_add(
+    //    &'ks self,
+    //    client: &Client,
+    //    group: &mut Group,
+    //) -> Result<(Vec<MLSMessage>, Welcome), SetupError> {
+    //    let number_of_adds = ((OsRng.next_u32() as usize) % 5) + 1;
+    //    let new_members = self.random_new_members_for_group(group, number_of_adds)?;
 
-        let mut key_packages = Vec::new();
-        for member_id in &new_members {
-            let fresh_key_package = self.get_fresh_key_package(member_id, &group.ciphersuite);
-            key_packages.push(fresh_key_package);
-        }
+    //    let mut key_packages = Vec::new();
+    //    for member_id in &new_members {
+    //        let fresh_key_package = self.get_fresh_key_package(member_id, &group.ciphersuite);
+    //        key_packages.push(fresh_key_package);
+    //    }
 
-        let mut adder_group_states = client.groups.borrow_mut();
-        let adder_group_state = adder_group_states.get_mut(&group.group_id).unwrap();
+    //    let mut adder_group_states = client.groups.borrow_mut();
+    //    let adder_group_state = adder_group_states.get_mut(&group.group_id).unwrap();
 
-        let messages = adder_group_state
-            .add_members(key_packages.as_slice())
-            .unwrap();
-        drop(adder_group_state);
-        drop(adder_group_states);
-        Ok(messages)
-    }
+    //    let messages = adder_group_state
+    //        .add_members(key_packages.as_slice())
+    //        .unwrap();
+    //    drop(adder_group_state);
+    //    drop(adder_group_states);
+    //    Ok(messages)
+    //}
 
     pub fn perform_random_operation(&'ks self, group: &mut Group) -> Result<(), ClientError> {
         let clients = self.clients.borrow();
