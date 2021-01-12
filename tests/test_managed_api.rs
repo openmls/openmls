@@ -206,9 +206,19 @@ struct Group {
     public_tree: Vec<Option<Node>>,
 }
 
+impl Group {
+    pub fn random_group_member(&self) -> Vec<u8> {
+        let index = (OsRng.next_u32() as usize) % self.members.len();
+        // We can unwrap here, because the index is scoped with the size of the
+        // HashSet.
+        self.members.iter().nth(index).unwrap().clone()
+    }
+}
+
 #[derive(Debug)]
 pub enum SetupError {
     UnknownGroupId,
+    NotEnoughClients,
 }
 
 struct ManagedTestSetup<'client_lifetime> {
@@ -318,29 +328,49 @@ impl<'ks> ManagedTestSetup<'ks> {
 
     pub fn distribute_to_members(
         &self,
+        // We need the sender to know a group member that we know can not have
+        // been removed from the group.
+        sender_id: &Vec<u8>,
         group: &mut Group,
         messages: Vec<MLSMessage>,
     ) -> Result<(), ClientError> {
         // Distribute message to all members.
         let clients = self.clients.borrow();
+        println!("Group members before distribution:");
         for member_id in &group.members {
+            println!("{:?}", member_id);
             let member = clients.get(member_id).unwrap().borrow();
             member.receive_messages_for_group(&group.group_id, messages.clone())?;
         }
-        // Get the current tree from one of the up-to-date members.
-        let random_member_id = group.members.iter().find(|_| true).unwrap();
-        let random_member = clients.get(random_member_id).unwrap().borrow();
-        let random_member_groups = random_member.groups.borrow();
-        let random_member_group = random_member_groups.get(&group.group_id).unwrap();
-        group.public_tree = random_member_group.export_ratchet_tree();
-        drop(random_member_group);
-        drop(random_member_groups);
+        let sender = clients.get(sender_id).unwrap().borrow();
+        let sender_groups = sender.groups.borrow();
+        let sender_group = sender_groups.get(&group.group_id).unwrap();
+        let members_after = sender_group.members();
+
+        group.public_tree = sender_group.export_ratchet_tree();
+        drop(sender_group);
+        drop(sender_groups);
+        // Figure out if someone was removed and update the member list.
+        let mut members_to_be_removed = Vec::new();
+        println!("Group members after distribution:");
         for m_id in &group.members {
-            let m = clients.get(m_id).unwrap().borrow();
-            let group_states = m.groups.borrow_mut();
-            let group_state = group_states.get(&group.group_id).unwrap();
-            assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
-            drop(group_states);
+            if members_after
+                .iter()
+                .find(|id| id.identity() == m_id)
+                .is_none()
+            {
+                members_to_be_removed.push(m_id.clone());
+            } else {
+                println!("{:?}", m_id);
+                let m = clients.get(m_id).unwrap().borrow();
+                let group_states = m.groups.borrow_mut();
+                let group_state = group_states.get(&group.group_id).unwrap();
+                assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
+                drop(group_states);
+            }
+        }
+        for m_id in members_to_be_removed {
+            group.members.remove(&m_id);
         }
         let mut current_members = HashSet::new();
         for index in 0..group.public_tree.len() {
@@ -365,6 +395,9 @@ impl<'ks> ManagedTestSetup<'ks> {
         number_of_members: usize,
     ) -> Result<Vec<Vec<u8>>, SetupError> {
         let clients = self.clients.borrow();
+        if number_of_members + group.members.len() >= clients.len() {
+            return Err(SetupError::NotEnoughClients);
+        }
         let mut new_member_ids = Vec::new();
         for _ in 0..number_of_members {
             let new_member_id = clients
@@ -383,7 +416,7 @@ impl<'ks> ManagedTestSetup<'ks> {
                 .unwrap();
             new_member_ids.push(new_member_id.clone());
         }
-        drop(group);
+        drop(clients);
         Ok(new_member_ids)
     }
 
@@ -414,12 +447,6 @@ impl<'ks> ManagedTestSetup<'ks> {
         group_id
     }
 
-    // TODO: Not really random (yet).
-    pub fn random_group_member(&self, group: &Group) -> Vec<u8> {
-        // TODO: Error
-        group.members.iter().find(|_| true).unwrap().clone()
-    }
-
     /// Create a random group of size `group_size` and return the `GroupId`
     pub fn create_random_group(
         &'ks self,
@@ -437,21 +464,13 @@ impl<'ks> ManagedTestSetup<'ks> {
 
         let mut key_packages = Vec::new();
         for member_id in &new_members {
-            //let clients = self.clients.borrow();
-            //let client = clients.get(member_id).unwrap().borrow();
-            //let fresh_key_package = client.get_fresh_key_package(ciphersuite);
-            //self.waiting_for_welcome
-            //    .borrow_mut()
-            //    .insert(fresh_key_package.hash(), member_id.clone());
             key_packages.push(self.get_fresh_key_package(member_id, ciphersuite));
-            //drop(client);
-            //drop(clients);
         }
 
         let clients = self.clients.borrow();
         while !key_packages.is_empty() {
             // Pick a random adder.
-            let adder_id = self.random_group_member(group);
+            let adder_id = group.random_group_member();
             let adder = clients.get(&adder_id).unwrap().borrow();
             let mut adder_group_states = adder.groups.borrow_mut();
             let adder_group_state = adder_group_states.get_mut(&group_id).unwrap();
@@ -464,50 +483,44 @@ impl<'ks> ManagedTestSetup<'ks> {
             drop(adder_group_state);
             drop(adder_group_states);
             drop(adder);
-            self.distribute_to_members(group, mls_messages)
+            self.distribute_to_members(&adder_id, group, mls_messages)
                 .expect("Error distributing messages to group members while creating a new group.");
             self.deliver_welcome(welcome, group);
         }
         group_id
     }
 
-    /// Have the given member of the given group add `number_of_members` to the group.
-    fn increase_group_size(&'ks mut self, group: &mut Group, number_of_members: usize) {
-        let ciphersuite = group.ciphersuite.clone();
-        let clients = self.clients.borrow();
-        let new_members = self
-            .random_new_members_for_group(group, number_of_members)
-            .expect("Error when getting new members for group size increase.");
+    /// Have the given member of the given group add between 1 and 5 members to the group.
+    fn perform_random_add(
+        &'ks self,
+        client: &Client,
+        group: &mut Group,
+    ) -> Result<(Vec<MLSMessage>, Welcome), SetupError> {
+        let number_of_adds = ((OsRng.next_u32() as usize) % 5) + 1;
+        let new_members = self.random_new_members_for_group(group, number_of_adds)?;
 
         let mut key_packages = Vec::new();
         for member_id in &new_members {
-            let fresh_key_package = self.get_fresh_key_package(member_id, &ciphersuite);
+            let fresh_key_package = self.get_fresh_key_package(member_id, &group.ciphersuite);
             key_packages.push(fresh_key_package);
         }
 
-        while !new_members.is_empty() {
-            // Pick a random adder.
-            let adder_id = group.members.iter().find(|_| true).unwrap();
-            let adder = clients.get(adder_id).unwrap().borrow();
-            let mut adder_group_states = adder.groups.borrow_mut();
-            let adder_group_state = adder_group_states.get_mut(&group.group_id).unwrap();
+        let mut adder_group_states = client.groups.borrow_mut();
+        let adder_group_state = adder_group_states.get_mut(&group.group_id).unwrap();
 
-            let (mls_messages, welcome) = adder_group_state
-                .add_members(key_packages.as_slice())
-                .unwrap();
-            drop(adder_group_state);
-            drop(adder_group_states);
-            self.distribute_to_members(group, mls_messages)
-                .expect("Error distributing messages to group members while creating a new group.");
-            self.deliver_welcome(welcome, group);
-        }
+        let messages = adder_group_state
+            .add_members(key_packages.as_slice())
+            .unwrap();
+        drop(adder_group_state);
+        drop(adder_group_states);
+        Ok(messages)
     }
 
     pub fn perform_random_operation(&'ks self, group: &mut Group) -> Result<(), ClientError> {
         let clients = self.clients.borrow();
         // Who's going to do it?
-        let member_id = group.members.iter().find(|_| true).unwrap();
-        let member = clients.get(member_id).unwrap().borrow();
+        let member_id = group.random_group_member();
+        let member = clients.get(&member_id).unwrap().borrow();
 
         let mut groups = member.groups.borrow_mut();
         let member_group_state = groups.get_mut(&group.group_id).unwrap();
@@ -517,22 +530,25 @@ impl<'ks> ManagedTestSetup<'ks> {
         // 1: Commit,
         // TODO: 2: Both.
         // TODO: For now hardcode it to 0
-        let action_type = (OsRng.next_u32() as usize) % 3;
-        //let action_type = 1;
+        //let action_type = (OsRng.next_u32() as usize) % 3;
+        let action_type = 1;
 
-        // Let's propose something.
+        // Let's do something.
         // 0: Update,
         // 1: Remove,
         // 2: Add,
         // TODO: 3: All of the above,
         // TODO: For now hardcode it to 0
-        let proposal_type = (OsRng.next_u32() as usize) % 3;
-        //let proposal_type = 2;
-        let (messages, welcome_option) = match proposal_type {
+        //let group_operation = (OsRng.next_u32() as usize) % 3;
+        let group_operation = 1;
+        let (messages, welcome_option) = match group_operation {
             0 => {
+                // Issue a self-update.
                 let messages = if action_type == 0 {
+                    // Proposal
                     (member_group_state.propose_self_update(None).unwrap(), None)
                 } else {
+                    // Commit
                     member_group_state.self_update(None).unwrap()
                 };
                 drop(member_group_state);
@@ -540,6 +556,7 @@ impl<'ks> ManagedTestSetup<'ks> {
                 messages
             }
             1 => {
+                // If it's a single-member group, don't remove anyone.
                 if member_group_state.members().len() == 1 {
                     (Vec::new(), None)
                 } else {
@@ -547,7 +564,6 @@ impl<'ks> ManagedTestSetup<'ks> {
                     // TODO: Hard-code this to 1 for now.
                     let number_of_removals = 1;
                     //(((OsRng.next_u32() as usize) % group.members().len()) % 5) + 1;
-                    let mut target_members = Vec::new();
 
                     let own_index = member_group_state
                         .members()
@@ -555,16 +571,21 @@ impl<'ks> ManagedTestSetup<'ks> {
                         .position(|cred| cred.identity() == &member.identity)
                         .unwrap();
 
+                    let mut target_members = Vec::new();
                     // Get the client references, as opposed to just the member indices.
                     for _ in 0..number_of_removals {
+                        // Get a random index.
                         let mut index =
                             (OsRng.next_u32() as usize) % member_group_state.members().len();
+                        // Re-sample until the index is not our own index and
+                        // not one that is not already being removed.
                         while index == own_index || target_members.contains(&index) {
                             index =
                                 (OsRng.next_u32() as usize) % member_group_state.members().len();
                         }
                         target_members.push(index);
                     }
+                    println!("Target members: {:?}", target_members);
                     let (messages, welcome_option) = if action_type == 0 {
                         (
                             member_group_state
@@ -581,40 +602,46 @@ impl<'ks> ManagedTestSetup<'ks> {
                 }
             }
             2 => {
-                let number_of_adds = ((OsRng.next_u32() as usize) % 5) + 1;
-                let new_members = self
-                    .random_new_members_for_group(group, number_of_adds)
-                    .unwrap();
-                let mut key_packages = Vec::new();
-                for member in &new_members {
-                    let fresh_key_package =
-                        self.get_fresh_key_package(member, member_group_state.ciphersuite());
-                    key_packages.push(fresh_key_package);
-                }
-                // Have the adder add them to the group.
-                if action_type == 0 {
-                    let messages = member_group_state
-                        .propose_add_members(&key_packages)
-                        .unwrap();
-                    drop(member_group_state);
-                    drop(groups);
-                    (messages, None)
+                // First, figure out if there are clients left to add.
+                let clients_left = clients.len() - group.members.len();
+                if clients_left == 0 {
+                    (Vec::new(), None)
                 } else {
-                    let (messages, welcome) =
-                        member_group_state.add_members(&key_packages).unwrap();
-                    drop(member_group_state);
-                    drop(groups);
-                    //println!("Setup group members: {:?}", setup_group.members);
-                    (messages, Some(welcome))
+                    let number_of_adds = (((OsRng.next_u32() as usize) % clients_left) % 5) + 1;
+                    let new_members = self
+                        .random_new_members_for_group(group, number_of_adds)
+                        .unwrap();
+                    let mut key_packages = Vec::new();
+                    for member in &new_members {
+                        let fresh_key_package =
+                            self.get_fresh_key_package(member, member_group_state.ciphersuite());
+                        key_packages.push(fresh_key_package);
+                    }
+                    // Have the adder add them to the group.
+                    if action_type == 0 {
+                        let messages = member_group_state
+                            .propose_add_members(&key_packages)
+                            .unwrap();
+                        drop(member_group_state);
+                        drop(groups);
+                        (messages, None)
+                    } else {
+                        let (messages, welcome) =
+                            member_group_state.add_members(&key_packages).unwrap();
+                        drop(member_group_state);
+                        drop(groups);
+                        //println!("Setup group members: {:?}", setup_group.members);
+                        (messages, Some(welcome))
+                    }
                 }
             }
             _ => return Err(ClientError::Unknown),
         };
-        self.distribute_to_members(group, messages).unwrap();
+        self.distribute_to_members(&member_id, group, messages)
+            .unwrap();
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group);
         }
-
         Ok(())
     }
 }
@@ -690,10 +717,10 @@ fn test_randomized_setup() {
         let mut groups = setup.groups.borrow_mut();
         let group = groups.get_mut(&group_id).unwrap();
         println!("Done creating group. Performing ten random operations.");
-        //for i in 0..10 {
-        //    println!("Operation {:?}", i);
-        //    setup.perform_random_operation(group).unwrap();
-        //}
+        for i in 0..10 {
+            println!("Operation {:?}", i);
+            setup.perform_random_operation(group).unwrap();
+        }
     }
 }
 
