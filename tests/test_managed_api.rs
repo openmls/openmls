@@ -334,19 +334,19 @@ impl<'ks> ManagedTestSetup<'ks> {
         group: &mut Group,
         messages: Vec<MLSMessage>,
     ) -> Result<(), ClientError> {
-        // Distribute message to all members.
         let clients = self.clients.borrow();
         println!("Group members before distribution:");
+        // Distribute message to all members.
         for member_id in &group.members {
             println!("{:?}", member_id);
             let member = clients.get(member_id).unwrap().borrow();
             member.receive_messages_for_group(&group.group_id, messages.clone())?;
         }
+        // Get the current tree and figure out who's still in the group.
         let sender = clients.get(sender_id).unwrap().borrow();
         let sender_groups = sender.groups.borrow();
         let sender_group = sender_groups.get(&group.group_id).unwrap();
         let members_after = sender_group.members();
-
         group.public_tree = sender_group.export_ratchet_tree();
         drop(sender_group);
         drop(sender_groups);
@@ -361,6 +361,8 @@ impl<'ks> ManagedTestSetup<'ks> {
             {
                 members_to_be_removed.push(m_id.clone());
             } else {
+                // Also make sure that everyone who's still in the group has the
+                // same view of the group.
                 println!("{:?}", m_id);
                 let m = clients.get(m_id).unwrap().borrow();
                 let group_states = m.groups.borrow_mut();
@@ -585,7 +587,15 @@ impl<'ks> ManagedTestSetup<'ks> {
                         }
                         target_members.push(index);
                     }
-                    println!("Target members: {:?}", target_members);
+                    println!(
+                        "Target members: Index: {:?}, Identity: {:?}",
+                        target_members,
+                        member_group_state
+                            .members()
+                            .get(target_members[0])
+                            .unwrap()
+                            .identity()
+                    );
                     let (messages, welcome_option) = if action_type == 0 {
                         (
                             member_group_state
@@ -630,7 +640,6 @@ impl<'ks> ManagedTestSetup<'ks> {
                             member_group_state.add_members(&key_packages).unwrap();
                         drop(member_group_state);
                         drop(groups);
-                        //println!("Setup group members: {:?}", setup_group.members);
                         (messages, Some(welcome))
                     }
                 }
