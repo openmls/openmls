@@ -306,9 +306,20 @@ impl RatchetTree {
                 None => return Err(TreeError::InvalidArguments),
             };
 
+        // We can unwrap here, because own index is always within the tree.
+        let own_direct_path = treemath::direct_path_root(own_index, self.leaf_count()).unwrap();
+
         // Resolve the node of that co-path index
         let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
-        let position_in_resolution = resolution.iter().position(|&x| x == own_index).unwrap_or(0);
+        // Figure out the position in the resolution of the node that is either
+        // our own leaf node or a node in our direct path.
+        let position_in_resolution = match resolution
+            .iter()
+            .position(|&x| own_direct_path.contains(&x) || own_index == x)
+        {
+            Some(position) => position,
+            None => return Err(TreeError::InvalidArguments),
+        };
 
         // Decrypt the ciphertext of that node
         let common_ancestor_node =
@@ -328,12 +339,13 @@ impl RatchetTree {
         // Get the HPKE private key.
         // It's either the own key or must be in the path of the private tree.
         let private_key = if resolution[position_in_resolution] == own_index {
+            println!("Decrypting using leaf key at index {:?}", own_index);
             self.private_tree.hpke_private_key()
         } else {
             match self
                 .private_tree
                 .path_keys()
-                .get(common_ancestor_copath_index)
+                .get(resolution[position_in_resolution])
             {
                 Some(k) => k,
                 None => return Err(TreeError::InvalidArguments),
