@@ -339,7 +339,6 @@ impl RatchetTree {
         // Get the HPKE private key.
         // It's either the own key or must be in the path of the private tree.
         let private_key = if resolution[position_in_resolution] == own_index {
-            println!("Decrypting using leaf key at index {:?}", own_index);
             self.private_tree.hpke_private_key()
         } else {
             match self
