@@ -110,13 +110,8 @@ impl MlsGroup {
         };
 
         // Add signature and membership tag to the MLSPlaintext
-        let serialized_context = self.context().encode_detached().unwrap();
-        mls_plaintext.sign_and_mac(
-            ciphersuite,
-            credential_bundle,
-            serialized_context,
-            &self.epoch_secrets().membership_key,
-        );
+        let serialized_context = self.group_context.serialized();
+        mls_plaintext.sign_from_member(credential_bundle, serialized_context)?;
 
         // Calculate the confirmed transcript hash
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
@@ -151,6 +146,13 @@ impl MlsGroup {
         );
         // Set the confirmation tag
         mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
+
+        // Add membership tag
+        mls_plaintext.add_membership_tag(
+            ciphersuite,
+            serialized_context,
+            &self.epoch_secrets().membership_key,
+        )?;
 
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {

@@ -2,7 +2,6 @@ use crate::{
     group::GroupEpoch,
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfo},
     prelude::*,
-    schedule::MembershipKey,
     tree::{TreeError, UpdatePath, UpdatePathNode},
 };
 
@@ -173,11 +172,9 @@ fn test_update_path() {
         .unwrap();
 
         // === Alice adds Bob ===
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
@@ -197,6 +194,11 @@ fn test_update_path() {
         // Check that the function returned a Welcome message
         assert!(welcome_bundle_alice_bob_option.is_some());
 
+        println!(
+            " *** Confirmation tag: {:?}",
+            mls_plaintext_commit.confirmation_tag
+        );
+
         group_alice
             .apply_commit(&mls_plaintext_commit, epoch_proposals, &[])
             .expect("error applying commit");
@@ -214,11 +216,13 @@ fn test_update_path() {
             KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
                 .unwrap();
 
-        let update_proposal_bob = group_bob.create_update_proposal(
-            &[],
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_bob = group_bob
+            .create_update_proposal(
+                &[],
+                &bob_credential_bundle,
+                bob_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
             .create_commit(
                 &[],
@@ -271,16 +275,30 @@ fn test_update_path() {
         let broken_commit_content = MLSPlaintextContentType::Commit(broken_commit);
 
         let mut broken_plaintext = MLSPlaintext::new_from_member(
-            ciphersuite,
             mls_plaintext_commit.sender.to_leaf_index(),
             &mls_plaintext_commit.authenticated_data,
             broken_commit_content,
             &bob_credential_bundle,
             group_bob.context(),
-            &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
-        );
+        )
+        .expect("Could not create plaintext.");
 
-        broken_plaintext.confirmation_tag = Some(ConfirmationTag::from(vec![1, 2, 3]));
+        broken_plaintext.confirmation_tag = mls_plaintext_commit.confirmation_tag;
+
+        println!("Confirmation tag: {:?}", broken_plaintext.confirmation_tag);
+
+        let serialized_context = group_bob.group_context.serialized();
+
+        broken_plaintext
+            .sign_from_member(&bob_credential_bundle, serialized_context)
+            .expect("Could not sign plaintext.");
+        broken_plaintext
+            .add_membership_tag(
+                ciphersuite,
+                serialized_context,
+                &group_bob.epoch_secrets.membership_key,
+            )
+            .expect("Could not add membership key");
 
         assert_eq!(
             group_alice

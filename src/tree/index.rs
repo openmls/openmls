@@ -16,6 +16,12 @@ impl NodeIndex {
     pub fn as_usize(self) -> usize {
         self.0 as usize
     }
+    pub fn is_leaf(&self) -> bool {
+        self.0 % 2 == 0
+    }
+    pub fn is_parent(&self) -> bool {
+        self.0 % 2 == 1
+    }
 }
 
 impl From<u32> for NodeIndex {

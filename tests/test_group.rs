@@ -67,11 +67,9 @@ fn create_commit_optional_path() {
         // Alice proposes to add Bob with forced self-update
         // Even though there are only Add Proposals, this should generated a path field
         // on the Commit
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = vec![bob_add_proposal];
         let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
@@ -95,11 +93,9 @@ fn create_commit_optional_path() {
         // Since there are only Add Proposals, this does not generate a path field on
         // the Commit Creating a second proposal to add the same member should
         // not fail, only committing that proposal should fail
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
@@ -141,11 +137,13 @@ fn create_commit_optional_path() {
         );
 
         // Alice updates
-        let alice_update_proposal = group_alice.create_update_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            alice_update_key_package.clone(),
-        );
+        let alice_update_proposal = group_alice
+            .create_update_proposal(
+                group_aad,
+                &alice_credential_bundle,
+                alice_update_key_package.clone(),
+            )
+            .expect("Could not create proposal.");
         let proposals = &[&alice_update_proposal];
 
         // Only UpdateProposal
@@ -209,14 +207,12 @@ fn basic_group_setup() {
             alice_key_package_bundle,
             GroupConfig::default(),
         )
-        .unwrap();
+        .expect("Could not create group.");
 
         // Alice adds Bob
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let _commit = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
@@ -295,14 +291,12 @@ fn group_operations() {
             alice_key_package_bundle,
             GroupConfig::default(),
         )
-        .unwrap();
+        .expect("Could not create group.");
 
         // === Alice adds Bob ===
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
@@ -365,13 +359,15 @@ fn group_operations() {
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_bob = group_bob.create_update_proposal(
-            &[],
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_bob = group_bob
+            .create_update_proposal(
+                &[],
+                &bob_credential_bundle,
+                bob_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             &[],
             &bob_credential_bundle,
@@ -411,13 +407,15 @@ fn group_operations() {
             &alice_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_alice = group_alice.create_update_proposal(
-            &[],
-            &alice_credential_bundle,
-            alice_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_alice = group_alice
+            .create_update_proposal(
+                &[],
+                &alice_credential_bundle,
+                alice_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
@@ -455,13 +453,15 @@ fn group_operations() {
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_bob = group_bob.create_update_proposal(
-            &[],
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_bob = group_bob
+            .create_update_proposal(
+                &[],
+                &bob_credential_bundle,
+                bob_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
@@ -510,11 +510,12 @@ fn group_operations() {
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
-        let add_charlie_proposal_bob =
-            group_bob.create_add_proposal(&[], &bob_credential_bundle, charlie_key_package);
+        let add_charlie_proposal_bob = group_bob
+            .create_add_proposal(&[], &bob_credential_bundle, charlie_key_package)
+            .expect("Could not create proposal.");
 
         let (mls_plaintext_commit, welcome_for_charlie_option, kpb_option) = match group_bob
             .create_commit(
@@ -589,13 +590,15 @@ fn group_operations() {
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_charlie = group_charlie.create_update_proposal(
-            &[],
-            &charlie_credential_bundle,
-            charlie_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_charlie = group_charlie
+            .create_update_proposal(
+                &[],
+                &charlie_credential_bundle,
+                charlie_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,
@@ -635,11 +638,9 @@ fn group_operations() {
         }
 
         // === Charlie removes Bob ===
-        let remove_bob_proposal_charlie = group_charlie.create_remove_proposal(
-            &[],
-            &charlie_credential_bundle,
-            LeafIndex::from(1u32),
-        );
+        let remove_bob_proposal_charlie = group_charlie
+            .create_remove_proposal(&[], &charlie_credential_bundle, LeafIndex::from(1u32))
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,

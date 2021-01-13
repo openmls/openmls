@@ -63,15 +63,17 @@ impl MlsGroup {
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
-            // Verify KeyPackage and MLSPlaintext signature
+            // Verify KeyPackage and MLSPlaintext signature & membership tag
+            // TODO #106: Support external members
             let kp = &path.leaf_key_package;
             if kp.verify().is_err() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
             let serialized_context = self.group_context.serialized();
-            if !mls_plaintext.verify_signature(Some(serialized_context.to_vec()), kp.credential()) {
-                return Err(ApplyCommitError::PlaintextSignatureFailure);
-            }
+            mls_plaintext
+                .verify_signature(serialized_context, kp.credential())
+                .map_err(ApplyCommitError::PlaintextSignatureFailure)?;
+
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles and
                 // clone out the one that we need.

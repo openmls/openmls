@@ -28,3 +28,16 @@ implement_error! {
         }
     }
 }
+
+implement_error! {
+    pub enum VerificationError {
+        Simple {
+            InvalidSignature = "The MLSPlaintext signature is invalid",
+            MissingMembershipTag = "The MLSPlaintext membership tag is missing",
+            InvalidMembershipTag = "The MLSPlaintext membership tag is invalid",
+        }
+        Complex {
+            CodecError(CodecError) = "Codec error",
+        }
+    }
+}

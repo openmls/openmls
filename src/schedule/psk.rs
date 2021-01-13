@@ -97,14 +97,14 @@ pub enum Psk {
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PreSharedKeyID {
-    pub(crate) psktype: PSKType,
+    pub(crate) psk_type: PSKType,
     pub(crate) psk: Psk,
     pub(crate) psk_nonce: Vec<u8>,
 }
 
 impl PreSharedKeyID {
     pub fn psktype(&self) -> &PSKType {
-        &self.psktype
+        &self.psk_type
     }
     pub fn psk(&self) -> &Psk {
         &self.psk

@@ -96,7 +96,8 @@ fn proposal_queue_functions() {
             &alice_credential_bundle,
             &group_context,
             &MembershipKey::from_secret(Secret::default()),
-        );
+        )
+        .expect("Could not create proposal.");
         let mls_plaintext_add_alice2 = MLSPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(1u32),
@@ -105,7 +106,8 @@ fn proposal_queue_functions() {
             &alice_credential_bundle,
             &group_context,
             &MembershipKey::from_secret(Secret::default()),
-        );
+        )
+        .expect("Could not create proposal.");
         let _mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(1u32),
@@ -114,7 +116,8 @@ fn proposal_queue_functions() {
             &alice_credential_bundle,
             &group_context,
             &MembershipKey::from_secret(Secret::default()),
-        );
+        )
+        .expect("Could not create proposal.");
 
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_alice2];
 
@@ -198,7 +201,8 @@ fn proposal_queue_order() {
             &alice_credential_bundle,
             &group_context,
             &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
-        );
+        )
+        .expect("Could not create proposal.");
         let mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(1u32),
@@ -207,7 +211,8 @@ fn proposal_queue_order() {
             &alice_credential_bundle,
             &group_context,
             &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
-        );
+        )
+        .expect("Could not create proposal.");
 
         // This should set the order of the proposals.
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_bob1];

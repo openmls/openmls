@@ -106,12 +106,16 @@ fn test_update_proposal_encoding() {
         )
         .unwrap();
 
-        let update = group_state.create_update_proposal(
-            &[],
-            credential_bundle,
-            key_package_bundle.key_package().clone(),
-        );
-        let update_encoded = update.encode_detached().unwrap();
+        let update = group_state
+            .create_update_proposal(
+                &[],
+                credential_bundle,
+                key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
+        let update_encoded = update
+            .encode_detached()
+            .expect("Could not encode proposal.");
         let update_decoded = match MLSPlaintext::decode(&mut Cursor::new(&update_encoded)) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
@@ -151,12 +155,14 @@ fn test_add_proposal_encoding() {
         .unwrap();
 
         // Adds
-        let add = group_state.create_add_proposal(
-            &[],
-            credential_bundle,
-            key_package_bundle.key_package().clone(),
-        );
-        let add_encoded = add.encode_detached().unwrap();
+        let add = group_state
+            .create_add_proposal(
+                &[],
+                credential_bundle,
+                key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
+        let add_encoded = add.encode_detached().expect("Could not encode proposal.");
         let add_decoded = match MLSPlaintext::decode(&mut Cursor::new(&add_encoded)) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
@@ -179,9 +185,12 @@ fn test_remove_proposal_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let remove =
-            group_state.create_remove_proposal(&[], credential_bundle, LeafIndex::from(1u32));
-        let remove_encoded = remove.encode_detached().unwrap();
+        let remove = group_state
+            .create_remove_proposal(&[], credential_bundle, LeafIndex::from(1u32))
+            .expect("Could not create proposal.");
+        let remove_encoded = remove
+            .encode_detached()
+            .expect("Could not encode proposal.");
         let remove_decoded = match MLSPlaintext::decode(&mut Cursor::new(&remove_encoded)) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
@@ -223,11 +232,13 @@ fn test_commit_encoding() {
         // Create a few proposals to put into the commit
 
         // Alice updates her own leaf
-        let update = group_state.create_update_proposal(
-            &[],
-            alice_credential_bundle,
-            alice_key_package_bundle.key_package().clone(),
-        );
+        let update = group_state
+            .create_update_proposal(
+                &[],
+                alice_credential_bundle,
+                alice_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
 
         // Alice adds Charlie to the group
         let charlie_key_package = test_setup
@@ -237,15 +248,14 @@ fn test_commit_encoding() {
             .unwrap()
             .pop()
             .unwrap();
-        let add = group_state.create_add_proposal(
-            &[],
-            alice_credential_bundle,
-            charlie_key_package.clone(),
-        );
+        let add = group_state
+            .create_add_proposal(&[], alice_credential_bundle, charlie_key_package.clone())
+            .expect("Could not create proposal.");
 
         // Alice removes Bob
-        let remove =
-            group_state.create_remove_proposal(&[], alice_credential_bundle, LeafIndex::from(2u32));
+        let remove = group_state
+            .create_remove_proposal(&[], alice_credential_bundle, LeafIndex::from(2u32))
+            .expect("Could not create proposal.");
 
         let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
@@ -283,8 +293,9 @@ fn test_welcome_message_encoding() {
             .unwrap()
             .pop()
             .unwrap();
-        let add =
-            group_state.create_add_proposal(&[], credential_bundle, charlie_key_package.clone());
+        let add = group_state
+            .create_add_proposal(&[], credential_bundle, charlie_key_package.clone())
+            .expect("Could not create proposal.");
 
         let proposals = &[&add];
         let (commit, welcome_option, key_package_bundle_option) = group_state

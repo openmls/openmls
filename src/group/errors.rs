@@ -6,7 +6,7 @@
 use crate::ciphersuite::CryptoError;
 use crate::codec::CodecError;
 use crate::config::ConfigError;
-use crate::framing::errors::MLSCiphertextError;
+use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::tree::TreeError;
 
@@ -81,8 +81,6 @@ implement_error! {
                 "Parent hash extension is missing.",
             ParentHashMismatch =
                 "Parent hash values don't match.",
-            PlaintextSignatureFailure =
-                "MLSPlaintext signature is invalid.",
             RequiredPathNotFound =
                 "Unable to determine commit path.",
             ConfirmationTagMissing =
@@ -97,6 +95,8 @@ implement_error! {
                   "Missing own key to apply proposal.",
         }
         Complex {
+            PlaintextSignatureFailure(VerificationError) =
+                "MLSPlaintext signature is invalid.",
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(CodecError) =

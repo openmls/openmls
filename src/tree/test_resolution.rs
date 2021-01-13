@@ -1,5 +1,3 @@
-use hash_input::original_child_resolution;
-
 use super::*;
 
 /// This test makes sure the filtering of the exclusion list during resolution
@@ -69,7 +67,7 @@ fn test_exclusion_list() {
             .iter()
             .map(|index| NodeIndex::from(*index))
             .collect::<Vec<NodeIndex>>();
-        let exclusion_list = HashSet::from_iter(exclusion_list_node_indexes.iter());
+        let exclusion_list = exclusion_list_node_indexes.iter().collect();
         let filtered_resultion = tree
             .resolve(root, &exclusion_list)
             .iter()
@@ -144,7 +142,7 @@ fn test_original_child_resolution() {
 
         // Since the root node has no unmerged leaves, we expect all keys to be returned
         assert_eq!(
-            original_child_resolution(&tree, left_child_index),
+            tree.original_child_resolution(left_child_index),
             expected_public_keys_full
         );
 
@@ -173,7 +171,7 @@ fn test_original_child_resolution() {
         // Since the root node now has unmerged leaves, we expect only certain public
         // keys to be returned
         assert_eq!(
-            original_child_resolution(&tree, left_child_index),
+            tree.original_child_resolution(left_child_index),
             expected_public_keys_filtered
         );
     }

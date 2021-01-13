@@ -23,7 +23,6 @@ use serde::{
     Deserialize, Deserializer, Serialize,
 };
 use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
@@ -79,9 +78,12 @@ impl MlsGroup {
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
-        // Internally, this derives a random `InitSecret` and uses it in the
-        // derivation.
-        let joiner_secret = JoinerSecret::from_commit_secret(ciphersuite, commit_secret);
+        // We use a random `InitSecret` for initialization.
+        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
+            ciphersuite,
+            Some(commit_secret),
+            &InitSecret::random(ciphersuite.hash_length()),
+        );
         // TODO #141: Implement PSK
         let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
         let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);
@@ -122,7 +124,7 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
-    ) -> MLSPlaintext {
+    ) -> Result<MLSPlaintext, GroupError> {
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
@@ -136,6 +138,7 @@ impl MlsGroup {
             &self.context(),
             &self.epoch_secrets().membership_key,
         )
+        .map_err(GroupError::CodecError)
     }
 
     // 11.1.2. Update
@@ -147,7 +150,7 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
-    ) -> MLSPlaintext {
+    ) -> Result<MLSPlaintext, GroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         MLSPlaintext::new_from_proposal_member(
@@ -159,6 +162,7 @@ impl MlsGroup {
             &self.context(),
             &self.epoch_secrets().membership_key,
         )
+        .map_err(GroupError::CodecError)
     }
 
     // 11.1.3. Remove
@@ -170,7 +174,7 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
-    ) -> MLSPlaintext {
+    ) -> Result<MLSPlaintext, GroupError> {
         let remove_proposal = RemoveProposal {
             removed: removed_index.into(),
         };
@@ -184,6 +188,7 @@ impl MlsGroup {
             &self.context(),
             &self.epoch_secrets().membership_key,
         )
+        .map_err(GroupError::CodecError)
     }
 
     // === ===
@@ -238,7 +243,7 @@ impl MlsGroup {
             credential_bundle,
             &self.context(),
             &self.epoch_secrets().membership_key,
-        );
+        )?;
         self.encrypt(mls_plaintext, padding_size)
     }
 
@@ -271,37 +276,45 @@ impl MlsGroup {
             &mut self.secret_tree.borrow_mut(),
         )?;
 
-        self.validate_plaintext_signature(&mls_plaintext)?;
+        // Verify the signature. MLSCiphertext messages don't have a membership tag, so
+        // we don't have to verify that.
+        self.verify_signature(&mls_plaintext)?;
+
         Ok(mls_plaintext)
     }
 
-    /// Validates the signature and membership tag of an MLSPlaintext
-    pub fn validate_plaintext_signature(
+    /// Verify the signature of an MLSPlaintext
+    pub fn verify_signature(&self, mls_plaintext: &MLSPlaintext) -> Result<(), MLSPlaintextError> {
+        let tree = self.tree();
+
+        let node = &tree.nodes[mls_plaintext.sender()];
+        let credential = if let Some(kp) = node.key_package.as_ref() {
+            kp.credential()
+        } else {
+            return Err(MLSPlaintextError::UnknownSender);
+        };
+
+        let serialized_context = self.context().serialized();
+
+        mls_plaintext
+            .verify_signature(serialized_context, credential)
+            .map_err(|_| MLSPlaintextError::InvalidSignature)
+    }
+
+    /// Verify the membership tag an MLSPlaintext
+    pub fn verify_membership_tag(
         &self,
         mls_plaintext: &MLSPlaintext,
     ) -> Result<(), MLSPlaintextError> {
-        let tree = self.tree();
-        let mut indexed_members = HashMap::new();
-        for i in 0..tree.leaf_count().as_usize() {
-            let leaf_index = LeafIndex::from(i);
-            let node = &tree.nodes[leaf_index];
-            if let Some(kp) = node.key_package.as_ref() {
-                indexed_members.insert(leaf_index, kp.credential());
-            }
-        }
-        let serialized_context = self.context().encode_detached().unwrap();
-        let credential = match indexed_members.get(&mls_plaintext.sender.sender) {
-            Some(c) => c,
-            None => {
-                return Err(MLSPlaintextError::UnknownSender);
-            }
-        };
+        let serialized_context = self.context().serialized();
 
-        if mls_plaintext.verify_signature(Some(serialized_context), credential) {
-            Ok(())
-        } else {
-            Err(MLSPlaintextError::InvalidSignature)
-        }
+        mls_plaintext
+            .verify_membership_tag(
+                self.ciphersuite,
+                serialized_context,
+                &self.epoch_secrets().membership_key,
+            )
+            .map_err(|_| MLSPlaintextError::InvalidSignature)
     }
 
     /// Exporter

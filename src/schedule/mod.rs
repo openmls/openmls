@@ -106,21 +106,6 @@ impl JoinerSecret {
         }
     }
 
-    /// Derive the initial `JoinerSecret` when creating a new group from a
-    /// `CommitSecret`. The `InitSecret` is randomly generated. TODO:
-    /// For now, this takes a reference to a `CommitSecret` as input. This
-    /// should change with #224.
-    pub(crate) fn from_commit_secret(
-        ciphersuite: &Ciphersuite,
-        commit_secret: &CommitSecret,
-    ) -> Self {
-        let initial_init_secret = InitSecret::random(ciphersuite.hash_length());
-        JoinerSecret {
-            secret: ciphersuite
-                .hkdf_extract(Some(commit_secret.secret()), &initial_init_secret.secret),
-        }
-    }
-
     /// Create the `GroupSecrets` for a number of `invited_members` based on a
     /// provisional `RatchetTree`. If `path_secret_option` is `Some`, we need to
     /// include a `path_secret` into the `GroupSecrets`.

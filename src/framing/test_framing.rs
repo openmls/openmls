@@ -29,8 +29,10 @@ fn codec() {
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
         let serialized_context = group_context.serialized();
-        let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.to_vec()));
-        orig.signature = signature_input.sign(&credential_bundle);
+        let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context));
+        orig.signature = signature_input
+            .sign(&credential_bundle)
+            .expect("Signing failed.");
 
         let enc = orig.encode_detached().unwrap();
         let copy = MLSPlaintext::decode(&mut Cursor::new(&enc)).unwrap();
@@ -67,88 +69,45 @@ fn membership_tag() {
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
         let serialized_context = group_context.serialized();
         let membership_key = MembershipKey::from_secret(Secret::random(ciphersuite.hash_length()));
-        mls_plaintext.sign_and_mac(
-            ciphersuite,
-            &credential_bundle,
-            serialized_context.to_vec(),
-            &membership_key,
+        mls_plaintext
+            .sign_from_member(&credential_bundle, serialized_context)
+            .expect("Could not sign plaintext.");
+        mls_plaintext
+            .add_membership_tag(ciphersuite, serialized_context, &membership_key)
+            .expect("Could not mac plaintext.");
+
+        println!(
+            "Membership tag error: {:?}",
+            mls_plaintext.verify_from_member(
+                ciphersuite,
+                serialized_context,
+                &credential_bundle.credential(),
+                &membership_key,
+            )
         );
 
-        // Verify signature
-        assert!(mls_plaintext.verify_signature(
-            Some(serialized_context.to_vec()),
-            &credential_bundle.credential()
-        ));
-
-        // Verify membership tag
-        assert!(mls_plaintext.verify_membership_tag(
-            ciphersuite,
-            serialized_context.to_vec(),
-            &membership_key
-        ));
+        // Verify signature & membership tag
+        assert!(mls_plaintext
+            .verify_from_member(
+                ciphersuite,
+                serialized_context,
+                &credential_bundle.credential(),
+                &membership_key,
+            )
+            .is_ok());
 
         // Change the content of the plaintext message
         mls_plaintext.content = MLSPlaintextContentType::Application(vec![7, 8, 9]);
 
-        // Expect the signature verification to fail
-        assert!(!mls_plaintext.verify_signature(
-            Some(serialized_context.to_vec()),
-            &credential_bundle.credential()
-        ));
-
-        // Expect the membership tag verification to fail
-        assert!(!mls_plaintext.verify_membership_tag(
-            ciphersuite,
-            serialized_context.to_vec(),
-            &membership_key
-        ));
-    }
-}
-
-/// This tests the presence of the group context in MLSPlaintextTBS
-#[test]
-fn context_presence() {
-    for ciphersuite in Config::supported_ciphersuites() {
-        let credential_bundle = CredentialBundle::new(
-            "Random identity".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let sender = Sender {
-            sender_type: SenderType::Member,
-            sender: LeafIndex::from(2u32),
-        };
-        let mut orig = MLSPlaintext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(1u64),
-            sender,
-            authenticated_data: vec![1, 2, 3],
-            content_type: ContentType::Application,
-            content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
-            signature: Signature::new_empty(),
-            confirmation_tag: None,
-            membership_tag: None,
-        };
-        let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
-        let serialized_context = group_context.serialized();
-        let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context.to_vec()));
-        orig.signature = signature_input.sign(&credential_bundle);
-        assert!(orig.verify_signature(
-            Some(serialized_context.to_vec()),
-            credential_bundle.credential()
-        ));
-        assert!(!orig.verify_signature(None, credential_bundle.credential()));
-
-        let signature_input = MLSPlaintextTBS::new_from(&orig, None);
-        orig.signature = signature_input.sign(&credential_bundle);
-        assert!(!orig.verify_signature(
-            Some(serialized_context.to_vec()),
-            credential_bundle.credential()
-        ));
-        assert!(orig.verify_signature(None, credential_bundle.credential()));
-        assert!(!orig.is_handshake_message());
+        // Expect the signature & membership tag verification to fail
+        assert!(!mls_plaintext
+            .verify_from_member(
+                ciphersuite,
+                serialized_context,
+                &credential_bundle.credential(),
+                &membership_key,
+            )
+            .is_ok());
     }
 }
 
@@ -211,11 +170,9 @@ fn unknown_sender() {
         .unwrap();
 
         // Alice adds Bob
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
 
         let (commit, _welcome_option, _kpb_option) = group_alice
             .create_commit(
@@ -233,11 +190,13 @@ fn unknown_sender() {
 
         // Alice adds Charlie
 
-        let charlie_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            charlie_key_package.clone(),
-        );
+        let charlie_add_proposal = group_alice
+            .create_add_proposal(
+                group_aad,
+                &alice_credential_bundle,
+                charlie_key_package.clone(),
+            )
+            .expect("Could not create proposal.");
 
         let (commit, welcome_option, _kpb_option) = group_alice
             .create_commit(
@@ -261,11 +220,9 @@ fn unknown_sender() {
         .expect("Charlie: Error creating group from Welcome");
 
         // Alice removes Bob
-        let bob_remove_proposal = group_alice.create_remove_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            LeafIndex::from(1usize),
-        );
+        let bob_remove_proposal = group_alice
+            .create_remove_proposal(group_aad, &alice_credential_bundle, LeafIndex::from(1usize))
+            .expect("Could not create proposal.");
         let (commit, _welcome_option, kpb_option) = group_alice
             .create_commit(
                 group_aad,
@@ -301,7 +258,8 @@ fn unknown_sender() {
             &alice_credential_bundle,
             &group_alice.context(),
             &MembershipKey::from_secret(Secret::default()),
-        );
+        )
+        .expect("Could not create new MLSPlaintext.");
 
         let enc_message = MLSCiphertext::try_from_plaintext(
             &bogus_sender_message,
@@ -331,7 +289,8 @@ fn unknown_sender() {
             &alice_credential_bundle,
             &group_alice.context(),
             &MembershipKey::from_secret(Secret::default()),
-        );
+        )
+        .expect("Could not create new MLSPlaintext.");
 
         let mut secret_tree = SecretTree::new(
             EncryptionSecret::random(ciphersuite.hash_length()),

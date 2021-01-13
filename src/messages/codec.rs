@@ -113,7 +113,7 @@ impl Codec for GroupSecrets {
         let _psks = Option::<PreSharedKeys>::decode(cursor)?;
         if _psks.is_some() {
             log::error!(
-                "Error ocurred while decoding GroupSecrets: Found PSKs that are not yet supported"
+                "Error occurred while decoding GroupSecrets: Found PSKs that are not yet supported"
             );
         }
         Ok(Self {

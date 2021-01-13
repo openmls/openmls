@@ -171,11 +171,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .unwrap();
                 // Have the initial member create an Add proposal using the new
                 // KeyPackage.
-                let add_proposal = mls_group.create_add_proposal(
-                    group_aad,
-                    initial_credential_bundle,
-                    next_member_key_package,
-                );
+                let add_proposal = mls_group
+                    .create_add_proposal(
+                        group_aad,
+                        initial_credential_bundle,
+                        next_member_key_package,
+                    )
+                    .unwrap();
                 proposal_list.push(add_proposal);
             }
             // Create the commit based on the previously compiled list of

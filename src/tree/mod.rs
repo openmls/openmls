@@ -32,7 +32,6 @@ pub(crate) use serde::{
 
 use std::collections::HashSet;
 use std::convert::TryInto;
-use std::iter::FromIterator;
 
 // Internal tree tests
 #[cfg(test)]
@@ -107,15 +106,13 @@ impl RatchetTree {
             key_package: &KeyPackage,
             nodes: &[Option<Node>],
         ) -> Result<LeafIndex, TreeError> {
-            for (i, node_option) in nodes.iter().enumerate() {
-                // Only search in leaf nodes
-                if i % 2 == 0 {
-                    if let Some(node) = node_option {
-                        if let Some(kp) = &node.key_package {
-                            if kp == key_package {
-                                // Unwrapping here is safe, because we know it is a leaf node
-                                return Ok(NodeIndex::from(i).try_into().unwrap());
-                            }
+            // Only search in leaf nodes
+            for (i, node_option) in nodes.iter().enumerate().step_by(2) {
+                if let Some(node) = node_option {
+                    if let Some(kp) = &node.key_package {
+                        if kp == key_package {
+                            // Unwrapping here is safe, because we know it is a leaf node
+                            return Ok(NodeIndex::from(i).try_into().unwrap());
                         }
                     }
                 }
@@ -751,83 +748,69 @@ impl RatchetTree {
         }
     }
 
-    /// Computes the tree hash
-    pub fn tree_hash(&self) -> Vec<u8> {
-        compute_tree_hash(&self)
-    }
+    /// Verify the parent hash of a tree node. Returns `true` if the parent
+    /// hash has successfully been verified and `false` otherwise.
+    pub fn verify_parent_hash(&self, index: NodeIndex, node: &Node) -> bool {
+        let left = treemath::left(index).unwrap();
+        let right = treemath::right(index, self.leaf_count()).unwrap();
+        // Unwrapping here is safe, because we know it is a full parent node
+        let parent_hash_field = &node.parent_hash().unwrap();
+        // Current hash with right child resolution
+        let current_hash_right = ParentHashInput::new(&self, index, right, parent_hash_field)
+            // It is ok to use `unwrap()` here, since we can be sure the node is not
+            // blank
+            .unwrap()
+            .hash(&self.ciphersuite);
 
-    /// Computes and sets the parent hashes in the tree. Returns the parent hash
-    /// for the ParentHashExtension.
-    pub fn set_parent_hashes(&mut self, index: LeafIndex) -> Vec<u8> {
-        compute_parent_hashes(self, index)
+        // Verify the left child first
+        if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {
+            if left_parent_hash_field == current_hash_right {
+                return true;
+            }
+        } else {
+            // Current hash with left child resolution
+            let current_hash_left = ParentHashInput::new(&self, index, left, parent_hash_field)
+                // It is ok to use `unwrap()` here, since we can be sure the node is not
+                // blank
+                .unwrap()
+                .hash(&self.ciphersuite);
+            // Then verify the right child
+            if let Some(right_parent_hash_field) = self.nodes[right].parent_hash() {
+                if right_parent_hash_field == current_hash_left {
+                    return true;
+                }
+            } else {
+                // Iterate over children until we find a node that is neither blank
+                // nor a leaf node
+                let mut child = right;
+                while child.is_parent() && !self.nodes[child].is_blank() {
+                    // Unwrapping here is safe, because we know it is a full parent node
+                    child = treemath::left(child).unwrap();
+                }
+                // If the child is a leaf node, return false
+                if child.is_leaf() {
+                    return false;
+                }
+                // If the child is not a leaf node, it must be a non-blanl parent node and we
+                // can return the comparison of the parent hashes Unwrapping
+                // here is safe, because we know it is a full parent node
+                return self.nodes[child].parent_hash().unwrap() == current_hash_left;
+            }
+        }
+        // None of the checks succeeded so we must abort
+        false
     }
 
     /// Verify the parent hashes of the tree nodes. Returns `true` if all parent
     /// hashes have successfully been verified and `false` otherwise.
     pub fn verify_parent_hashes(&self) -> bool {
-        for (index, node) in self.nodes.iter().enumerate() {
-            // Only look at non-blank parent nodes
+        self.nodes.iter().enumerate().all(|(index, node)| {
             if index % 2 == 1 && node.is_full_parent() {
-                // Sanity check to see if it's a valid parent node
-                if node.node_type.is_leaf() || node.node.is_none() || node.key_package.is_some() {
-                    return false;
-                }
-                let left = treemath::left(index.into()).unwrap();
-                let right = treemath::right(index.into(), self.leaf_count()).unwrap();
-                // Unwrapping here is safe, because we know it is a full parent node
-                let parent_hash_field = &node.parent_hash().unwrap();
-                // Current hash with right child resolution
-                let current_hash_right =
-                    ParentHashInput::new(&self, index.into(), right, parent_hash_field)
-                        // It is ok to use `unwrap()` here, since we can be sure the node is not
-                        // blank
-                        .unwrap()
-                        .hash(&self.ciphersuite);
-                // Current hash with left child resolution
-                let current_hash_left =
-                    ParentHashInput::new(&self, index.into(), left, parent_hash_field)
-                        // It is ok to use `unwrap()` here, since we can be sure the node is not
-                        // blank
-                        .unwrap()
-                        .hash(&self.ciphersuite);
-                // Verify the left child first
-                if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {
-                    if left_parent_hash_field == current_hash_right {
-                        continue;
-                    }
-                } else {
-                    // Then verify the right child
-                    if let Some(right_parent_hash_field) = self.nodes[right].parent_hash() {
-                        if right_parent_hash_field == current_hash_left {
-                            continue;
-                        }
-                    } else {
-                        // Iterate over children until we find a node that is neither blank
-                        // nor a leaf node
-                        let mut child = right;
-                        while !self.nodes[child].is_full_parent() {
-                            let right_option = treemath::left(child);
-                            match right_option {
-                                // Keep iterating
-                                Ok(r) => child = r,
-                                // We didn't find any full parent node in this path
-                                Err(_) => return false,
-                            }
-                        }
-                        // Unwrapping here is safe, because we know it is a full parent node
-                        if self.nodes[child].parent_hash().unwrap() == current_hash_left {
-                            continue;
-                        } else {
-                            return false;
-                        }
-                    }
-                }
-                // None of the checks succeeded so we must abort
-                return false;
+                self.verify_parent_hash(NodeIndex::from(index), node)
+            } else {
+                true
             }
-        }
-        // Since nothing else has failed we can return true
-        true
+        })
     }
 }
 
@@ -845,8 +828,11 @@ impl ApplyProposalsValues {
     pub fn exclusion_list(&self) -> HashSet<&NodeIndex> {
         // Collect the new leaves' indexes so we can filter them out in the resolution
         // later
-        let new_leaves_indexes: HashSet<&NodeIndex> =
-            HashSet::from_iter(self.invitation_list.iter().map(|(index, _)| index));
+        let new_leaves_indexes: HashSet<&NodeIndex> = self
+            .invitation_list
+            .iter()
+            .map(|(index, _)| index)
+            .collect();
         new_leaves_indexes
     }
 }

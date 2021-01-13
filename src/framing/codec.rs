@@ -74,10 +74,7 @@ impl Codec for ContentType {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        match ContentType::try_from(u8::decode(cursor)?) {
-            Ok(content_type) => Ok(content_type),
-            Err(_) => Err(CodecError::DecodingError),
-        }
+        ContentType::try_from(u8::decode(cursor)?)
     }
 }
 

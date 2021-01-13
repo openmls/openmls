@@ -8,7 +8,7 @@ fn test_pre_shared_key_proposal_codec() {
     // ReInit
     let orig = PreSharedKeyProposal {
         psk: PreSharedKeyID {
-            psktype: PSKType::Reinit,
+            psk_type: PSKType::Reinit,
             psk: Psk::Reinit(ReinitPsk {
                 psk_group_id: vec![4, 5, 6],
                 psk_epoch: 1234,
@@ -23,7 +23,7 @@ fn test_pre_shared_key_proposal_codec() {
     // External
     let orig = PreSharedKeyProposal {
         psk: PreSharedKeyID {
-            psktype: PSKType::External,
+            psk_type: PSKType::External,
             psk: Psk::External(ExternalPsk {
                 psk_id: vec![4, 5, 6],
             }),
@@ -37,7 +37,7 @@ fn test_pre_shared_key_proposal_codec() {
     // Branch
     let orig = PreSharedKeyProposal {
         psk: PreSharedKeyID {
-            psktype: PSKType::Branch,
+            psk_type: PSKType::Branch,
             psk: Psk::Branch(BranchPsk {
                 psk_group_id: vec![4, 5, 6],
                 psk_epoch: 1234,

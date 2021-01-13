@@ -66,7 +66,7 @@ impl Codec for BranchPsk {
 
 impl Codec for PreSharedKeyID {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.psktype.encode(buffer)?;
+        self.psk_type.encode(buffer)?;
         match &self.psk {
             Psk::External(external_psk) => external_psk.encode(buffer)?,
             Psk::Reinit(reinit_psk) => reinit_psk.encode(buffer)?,
@@ -85,7 +85,7 @@ impl Codec for PreSharedKeyID {
         };
         let psk_nonce = decode_vec(VecSize::VecU8, cursor)?;
         Ok(Self {
-            psktype,
+            psk_type: psktype,
             psk,
             psk_nonce,
         })

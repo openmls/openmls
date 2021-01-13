@@ -68,7 +68,8 @@ macro_rules! test_welcome_msg {
             assert_eq!(msg_decoded.version, $version);
             assert_eq!(msg_decoded.cipher_suite, $ciphersuite);
             for secret in msg_decoded.secrets {
-                assert_eq!(secret.key_package_hash, secret.key_package_hash);
+                // TODO #304 Faulty comparison
+                //assert_eq!(secret.key_package_hash, secret.key_package_hash);
                 let ptxt = $ciphersuite
                     .hpke_open(
                         &secret.encrypted_group_secrets,

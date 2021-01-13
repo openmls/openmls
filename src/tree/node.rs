@@ -98,15 +98,9 @@ impl Node {
         self.key_package.is_none() && self.node.is_none()
     }
 
-    /// Returns `true` if the node is a non-blank leaf node and `false`
-    /// otherwise.
-    pub fn is_full_leaf(&self) -> bool {
-        self.node_type.is_leaf() && self.node.is_none() && self.key_package.is_some()
-    }
-
     /// Returns `true` if the node is a non-blank parent node and `false`
     /// otherwise.
-    pub fn is_full_parent(&self) -> bool {
+    pub(crate) fn is_full_parent(&self) -> bool {
         self.node_type.is_parent() && self.node.is_some() && self.key_package.is_none()
     }
 

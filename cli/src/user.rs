@@ -228,8 +228,7 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update();
-        let mut config = GroupConfig::default();
-        config.add_ratchet_tree_extension = true;
+        let config = GroupConfig::default();
         let mls_group = MlsGroup::new(group_id, CIPHERSUITE, kpb, config).unwrap();
         let group = Group {
             group_id: group_id.to_vec(),
@@ -268,11 +267,11 @@ impl User {
             None => return Err(format!("No group with name {} known.", group)),
         };
         let credentials = &self.identity.borrow().credential;
-        let add_proposal = group.mls_group.borrow().create_add_proposal(
-            &group.group_aad,
-            credentials,
-            key_package,
-        );
+        let add_proposal = group
+            .mls_group
+            .borrow()
+            .create_add_proposal(&group.group_aad, credentials, key_package)
+            .expect("Could not create proposal.");
         let proposals = vec![&add_proposal];
         let (commit, welcome_msg, _kpb) = group
             .mls_group
