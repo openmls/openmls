@@ -313,13 +313,13 @@ impl RatchetTree {
         let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
         // Figure out the position in the resolution of the node that is either
         // our own leaf node or a node in our direct path.
-        let position_in_resolution = match resolution
+        let position_in_resolution = resolution
             .iter()
             .position(|&x| own_direct_path.contains(&x) || own_index == x)
-        {
-            Some(position) => position,
-            None => return Err(TreeError::InvalidArguments),
-        };
+            // We can unwrap here, because regardless of what the resolution
+            // looks like, there has to be a an entry in the resolution that
+            // corresponds to either the own leaf or a node in the direct path.
+            .unwrap();
 
         // Decrypt the ciphertext of that node
         let common_ancestor_node =
