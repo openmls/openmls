@@ -35,8 +35,9 @@ macro_rules! test_welcome_msg {
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
+            let key_package_hash = vec![0, 0, 0, 0];
             let secrets = vec![EncryptedGroupSecrets {
-                key_package_hash: vec![0, 0, 0, 0],
+                key_package_hash: key_package_hash.clone(),
                 encrypted_group_secrets: $ciphersuite.hpke_seal(
                     receiver_key_pair.public_key(),
                     hpke_info,
@@ -68,7 +69,7 @@ macro_rules! test_welcome_msg {
             assert_eq!(msg_decoded.version, $version);
             assert_eq!(msg_decoded.cipher_suite, $ciphersuite);
             for secret in msg_decoded.secrets {
-                assert_eq!(secret.key_package_hash, secret.key_package_hash);
+                assert_eq!(key_package_hash, secret.key_package_hash);
                 let ptxt = $ciphersuite
                     .hpke_open(
                         &secret.encrypted_group_secrets,
