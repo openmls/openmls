@@ -9,14 +9,9 @@ use std::convert::TryFrom;
 
 implement_error! {
     pub enum SecretTreeError {
-        Simple {
-            TooDistantInThePast = "Generation is too old to be processed.",
-            TooDistantInTheFuture = "Generation is too far in the future to be processed.",
-            IndexOutOfBounds = "Index out of bounds",
-        }
-        Complex {
-            TreeMath(TreeMathError) = "An error in the tree arithmetic occurred.",
-        }
+        TooDistantInThePast = "Generation is too old to be processed.",
+        TooDistantInTheFuture = "Generation is too far in the future to be processed.",
+        IndexOutOfBounds = "Index out of bounds",
     }
 }
 
@@ -209,7 +204,6 @@ impl SecretTree {
     ) -> Result<RatchetSecrets, SecretTreeError> {
         // Check tree bounds
         if index >= self.size {
-            println!("index: {:?} | size: {:?}", index, self.size);
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         if self.ratchet_opt(index, secret_type).is_none() {
