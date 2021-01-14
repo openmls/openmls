@@ -1,6 +1,6 @@
 use openmls::prelude::*;
 mod utils;
-use utils::*;
+use utils::mls_utils::*;
 
 /// Creates a simple test setup for various encoding tests.
 fn create_encoding_test_setup() -> TestSetup {

@@ -342,14 +342,14 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Gets the current list of members
-    pub fn members(&self) -> Vec<(usize, Credential)> {
+    pub fn members(&self) -> Vec<Credential> {
         let mut members = vec![];
         let tree = self.group.tree();
         let leaf_count = self.group.tree().leaf_count();
         for index in 0..leaf_count.as_usize() {
             let leaf = &tree.nodes[LeafIndex::from(index)];
             if let Some(leaf_node) = leaf.key_package() {
-                members.push((index, leaf_node.credential().clone()));
+                members.push(leaf_node.credential().clone());
             }
         }
         members
