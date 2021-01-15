@@ -343,7 +343,7 @@ impl<'a> ManagedGroup<'a> {
 
     /// Gets the current list of members
     pub fn members(&self) -> Vec<Credential> {
-        let mut members = vec![];
+        let mut members: Vec<Credential> = vec![];
         let tree = self.group.tree();
         let leaf_count = self.group.tree().leaf_count();
         for index in 0..leaf_count.as_usize() {
@@ -908,7 +908,6 @@ impl<'a> ManagedGroup<'a> {
                 let removal = Removal::new(
                     self.credential_bundle.credential(),
                     sender_credential,
-                    // TODO: This can be called such that the following line panics.
                     &indexed_members[&LeafIndex::from(remove_proposal.removed)],
                 );
 

@@ -19,13 +19,16 @@ pub struct Client<'managed_group_lifetime> {
 }
 
 impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
-    pub fn get_fresh_key_package(&self, ciphersuite: &Ciphersuite) -> KeyPackage {
+    pub fn get_fresh_key_package(
+        &self,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<KeyPackage, ClientError> {
         // We unwrap here for now, because all ciphersuites are supported by all
         // clients.
         let credential_bundle = self
             .key_store
             .get_credential(&self.identity, ciphersuite.name())
-            .unwrap();
+            .ok_or(ClientError::CiphersuiteNotSupported)?;
         //let credential_bundle = self.credential_bundles.get(&ciphersuite.name()).unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
@@ -38,7 +41,7 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
         self.key_package_bundles
             .borrow_mut()
             .insert(key_package_bundle.key_package().hash(), key_package_bundle);
-        key_package
+        Ok(key_package)
     }
 
     pub fn create_group(
@@ -46,11 +49,11 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
         group_id: GroupId,
         managed_group_config: ManagedGroupConfig,
         ciphersuite: &Ciphersuite,
-    ) -> Vec<Option<Node>> {
+    ) -> Result<Vec<Option<Node>>, ClientError> {
         let credential_bundle = self
             .key_store
             .get_credential(&self.identity, ciphersuite.name())
-            .unwrap();
+            .ok_or(ClientError::CiphersuiteNotSupported)?;
         //let credential_bundle = self.credential_bundles.get(&ciphersuite.name()).unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
@@ -64,11 +67,10 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
             &managed_group_config,
             group_id.clone(),
             key_package_bundle,
-        )
-        .unwrap();
+        )?;
         let tree = group_state.export_ratchet_tree();
         self.groups.borrow_mut().insert(group_id, group_state);
-        tree
+        Ok(tree)
     }
 
     pub fn join_group(
@@ -77,15 +79,6 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
-        let ciphersuite = welcome.ciphersuite();
-        let credential_bundle = self
-            .key_store
-            .get_credential(&self.identity, ciphersuite.name())
-            .unwrap();
-        //let credential_bundles = &self.credential_bundles;
-        //let credential_bundle = credential_bundles
-        //    .get(&ciphersuite.name())
-        //    .ok_or(ClientError::NoMatchingCredential)?;
         let key_package_bundle = match welcome.secrets().iter().find(|egs| {
             self.key_package_bundles
                 .borrow()
@@ -101,6 +94,11 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
                 .unwrap()),
             None => Err(ClientError::NoMatchingKeyPackage),
         }?;
+        let ciphersuite = key_package_bundle.key_package().ciphersuite_name();
+        let credential_bundle = self
+            .key_store
+            .get_credential(&self.identity, ciphersuite)
+            .ok_or(ClientError::CiphersuiteNotSupported)?;
         let new_group: ManagedGroup<'managed_group_lifetime> = ManagedGroup::new_from_welcome(
             credential_bundle,
             &managed_group_config,

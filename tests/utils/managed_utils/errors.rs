@@ -29,6 +29,7 @@ impl From<ManagedGroupError> for SetupError {
 pub enum ClientError {
     NoMatchingKeyPackage,
     NoMatchingCredential,
+    CiphersuiteNotSupported,
     NoMatchingGroup,
     FailedToJoinGroup(WelcomeError),
     InvalidMessage(GroupError),

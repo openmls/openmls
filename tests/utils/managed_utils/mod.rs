@@ -165,13 +165,17 @@ impl<'ks> ManagedTestSetup<'ks> {
     /// Create a fresh `KeyPackage` for client `client` for use when adding it
     /// to a group. The `KeyPackageBundle` will be fetched automatically when
     /// delivering the `Welcome` via `deliver_welcome`.
-    pub fn get_fresh_key_package(&self, client: &Client, ciphersuite: &Ciphersuite) -> KeyPackage {
-        let key_package = client.get_fresh_key_package(ciphersuite);
+    pub fn get_fresh_key_package(
+        &self,
+        client: &Client,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<KeyPackage, SetupError> {
+        let key_package = client.get_fresh_key_package(ciphersuite)?;
         println!("Storing key package with hash: {:?}", key_package.hash());
         self.waiting_for_welcome
             .borrow_mut()
             .insert(key_package.hash(), client.identity.clone());
-        key_package
+        Ok(key_package)
     }
 
     /// Deliver a Welcome message to group `group` to the intended recipients.
@@ -280,8 +284,9 @@ impl<'ks> ManagedTestSetup<'ks> {
     }
 
     /// Have a random client create a new group with ciphersuite `ciphersuite`
-    /// and return the `GroupId`.
-    pub fn create_group(&self, ciphersuite: &Ciphersuite) -> GroupId {
+    /// and return the `GroupId`. Only works reliably if all clients support all
+    /// ciphersuites.
+    pub fn create_group(&self, ciphersuite: &Ciphersuite) -> Result<GroupId, SetupError> {
         // Pick a random group creator.
         let clients = self.clients.borrow();
         let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
@@ -294,7 +299,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         };
 
         let public_tree =
-            group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite);
+            group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite)?;
         let mut member_ids = Vec::new();
         member_ids.push((0, group_creator_id));
         let group = Group {
@@ -305,7 +310,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             public_tree,
         };
         groups.insert(group_id.clone(), group);
-        group_id
+        Ok(group_id)
     }
 
     /// Create a random group of size `group_size` and return the `GroupId`
@@ -314,7 +319,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         target_group_size: usize,
         ciphersuite: &Ciphersuite,
     ) -> Result<GroupId, SetupError> {
-        let group_id = self.create_group(ciphersuite);
+        let group_id = self.create_group(ciphersuite)?;
 
         let mut groups = self.groups.borrow_mut();
         let group = groups.get_mut(&group_id).unwrap();
@@ -325,7 +330,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         let clients = self.clients.borrow();
         for member_id in &new_members {
             let member = clients.get(member_id).unwrap().borrow();
-            key_packages.push(self.get_fresh_key_package(&member, ciphersuite));
+            key_packages.push(self.get_fresh_key_package(&member, ciphersuite)?);
         }
 
         while !key_packages.is_empty() {
@@ -382,9 +387,10 @@ impl<'ks> ManagedTestSetup<'ks> {
         Ok(())
     }
 
-    /// Has the `adder` add the `addee` to the Group `group`. If the `adder` is
-    /// not part of the group, or the `addee` is already part of the group, it
-    /// returns an error.
+    /// Has the `adder` add the `addee` to the Group `group`. Returns an error if
+    /// * the `adder` is not part of the group
+    /// * the `addee` is already part of the group
+    /// * the `addee` doesn't support the group's ciphersuite.
     pub fn add_clients(
         &self,
         action_type: ActionType,
@@ -418,7 +424,7 @@ impl<'ks> ManagedTestSetup<'ks> {
                 None => return Err(SetupError::UnknownClientId),
             }
             .borrow();
-            let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite);
+            let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite)?;
             key_packages.push(key_package);
         }
         let (messages, welcome_option) = match action_type {
