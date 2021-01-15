@@ -281,7 +281,7 @@ impl<'ks> ManagedTestSetup<'ks> {
 
     /// Have a random client create a new group with ciphersuite `ciphersuite`
     /// and return the `GroupId`.
-    pub fn create_group(&'ks self, ciphersuite: &Ciphersuite) -> GroupId {
+    pub fn create_group(&self, ciphersuite: &Ciphersuite) -> GroupId {
         // Pick a random group creator.
         let clients = self.clients.borrow();
         let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
@@ -310,7 +310,7 @@ impl<'ks> ManagedTestSetup<'ks> {
 
     /// Create a random group of size `group_size` and return the `GroupId`
     pub fn create_random_group(
-        &'ks self,
+        &self,
         target_group_size: usize,
         ciphersuite: &Ciphersuite,
     ) -> Result<GroupId, SetupError> {
@@ -510,7 +510,6 @@ impl<'ks> ManagedTestSetup<'ks> {
         // 0: Propose,
         // 1: Commit,
         // TODO: 2: Both.
-        // TODO: For now hardcode it to 0
         let action_type = match (OsRng.next_u32() as usize) % 2 {
             0 => ActionType::Proposal,
             1 => ActionType::Commit,
