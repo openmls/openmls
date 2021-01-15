@@ -11,10 +11,8 @@ pub struct Client<'managed_group_lifetime> {
     /// Ciphersuites supported by the client.
     pub(crate) _ciphersuites: Vec<CiphersuiteName>,
     pub(crate) key_store: &'managed_group_lifetime KeyStore,
-    //credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
     // Map from key package hash to the corresponding bundle.
     pub(crate) key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
-    //pub(crate) key_packages: HashMap<CiphersuiteName, KeyPackage>,
     pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup<'managed_group_lifetime>>>,
 }
 
@@ -29,7 +27,6 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
             .key_store
             .get_credential(&self.identity, ciphersuite.name())
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        //let credential_bundle = self.credential_bundles.get(&ciphersuite.name()).unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -54,7 +51,6 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
             .key_store
             .get_credential(&self.identity, ciphersuite.name())
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        //let credential_bundle = self.credential_bundles.get(&ciphersuite.name()).unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -79,21 +75,23 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
-        let key_package_bundle = match welcome.secrets().iter().find(|egs| {
-            self.key_package_bundles
-                .borrow()
-                .contains_key(&egs.key_package_hash)
-        }) {
-            // We can unwrap here, because we just checked that this kpb exists.
-            // Also, we should be fine just removing the KeyPackageBundle here,
-            // because it shouldn't be used again anyway.
-            Some(egs) => Ok(self
-                .key_package_bundles
-                .borrow_mut()
-                .remove(&egs.key_package_hash)
-                .unwrap()),
-            None => Err(ClientError::NoMatchingKeyPackage),
-        }?;
+        let encrypted_group_secret = welcome
+            .secrets()
+            .iter()
+            .find(|egs| {
+                self.key_package_bundles
+                    .borrow()
+                    .contains_key(&egs.key_package_hash)
+            })
+            .ok_or(ClientError::NoMatchingKeyPackage)?;
+        let key_package_bundle = self
+            .key_package_bundles
+            .borrow_mut()
+            .remove(&encrypted_group_secret.key_package_hash)
+            .unwrap();
+        // We can unwrap here, because we just checked that this kpb exists.
+        // Also, we should be fine just removing the KeyPackageBundle here,
+        // because it shouldn't be used again anyway.
         let ciphersuite = key_package_bundle.key_package().ciphersuite_name();
         let credential_bundle = self
             .key_store
@@ -118,10 +116,9 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
         messages: Vec<MLSMessage>,
     ) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
-        let group_state = match group_states.get_mut(group_id) {
-            Some(group_state) => group_state,
-            None => return Err(ClientError::NoMatchingGroup),
-        };
+        let group_state = group_states
+            .get_mut(group_id)
+            .ok_or(ClientError::NoMatchingGroup)?;
         Ok(group_state.process_messages(messages)?)
     }
 
@@ -130,10 +127,7 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
         group_id: &GroupId,
     ) -> Result<Vec<(usize, Credential)>, ClientError> {
         let groups = self.groups.borrow();
-        let group = match groups.get(group_id) {
-            Some(group) => group,
-            None => return Err(ClientError::NoMatchingGroup),
-        };
+        let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
         let mut members = vec![];
         let tree = group.export_ratchet_tree();
         for index in 0..tree.len() {

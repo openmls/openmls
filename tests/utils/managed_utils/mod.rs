@@ -361,16 +361,14 @@ impl<'ks> ManagedTestSetup<'ks> {
         client_id: &Vec<u8>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
-        let client = match clients.get(client_id) {
-            Some(client) => client,
-            None => return Err(SetupError::UnknownClientId),
-        }
-        .borrow();
+        let client = clients
+            .get(client_id)
+            .ok_or(SetupError::UnknownClientId)?
+            .borrow();
         let mut member_groups = client.groups.borrow_mut();
-        let member_group_state = match member_groups.get_mut(&group.group_id) {
-            Some(group_state) => group_state,
-            None => return Err(SetupError::ClientNotInGroup),
-        };
+        let member_group_state = member_groups
+            .get_mut(&group.group_id)
+            .ok_or(SetupError::ClientNotInGroup)?;
         let (messages, welcome_option) = match action_type {
             ActionType::Commit => {
                 // Let the function generate the key package bundle.
@@ -399,11 +397,10 @@ impl<'ks> ManagedTestSetup<'ks> {
         addees: Vec<Vec<u8>>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
-        let adder = match clients.get(adder_id) {
-            Some(client) => client,
-            None => return Err(SetupError::UnknownClientId),
-        }
-        .borrow();
+        let adder = clients
+            .get(adder_id)
+            .ok_or(SetupError::UnknownClientId)?
+            .borrow();
         if group
             .members
             .iter()
@@ -413,17 +410,15 @@ impl<'ks> ManagedTestSetup<'ks> {
             return Err(SetupError::ClientAlreadyInGroup);
         }
         let mut adder_groups = adder.groups.borrow_mut();
-        let adder_group_state = match adder_groups.get_mut(&group.group_id) {
-            Some(group_state) => group_state,
-            None => return Err(SetupError::ClientNotInGroup),
-        };
+        let adder_group_state = adder_groups
+            .get_mut(&group.group_id)
+            .ok_or(SetupError::ClientNotInGroup)?;
         let mut key_packages = Vec::new();
         for addee_id in &addees {
-            let addee = match clients.get(addee_id) {
-                Some(client) => client,
-                None => return Err(SetupError::UnknownClientId),
-            }
-            .borrow();
+            let addee = clients
+                .get(addee_id)
+                .ok_or(SetupError::UnknownClientId)?
+                .borrow();
             let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite)?;
             key_packages.push(key_package);
         }
@@ -456,11 +451,10 @@ impl<'ks> ManagedTestSetup<'ks> {
         target_members: Vec<Vec<u8>>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
-        let remover = match clients.get(remover_id) {
-            Some(client) => client,
-            None => return Err(SetupError::UnknownClientId),
-        }
-        .borrow();
+        let remover = clients
+            .get(remover_id)
+            .ok_or(SetupError::UnknownClientId)?
+            .borrow();
         if group
             .members
             .iter()
@@ -484,10 +478,9 @@ impl<'ks> ManagedTestSetup<'ks> {
             target_indices.push(*index);
         }
         let mut remover_groups = remover.groups.borrow_mut();
-        let remover_group_state = match remover_groups.get_mut(&group.group_id) {
-            Some(group_state) => group_state,
-            None => return Err(SetupError::ClientNotInGroup),
-        };
+        let remover_group_state = remover_groups
+            .get_mut(&group.group_id)
+            .ok_or(SetupError::ClientNotInGroup)?;
         let (messages, welcome_option) = match action_type {
             ActionType::Commit => remover_group_state.remove_members(target_indices.as_slice())?,
             ActionType::Proposal => {
@@ -512,21 +505,14 @@ impl<'ks> ManagedTestSetup<'ks> {
         let member_id = group.random_group_member();
         println!("Member performing the operation: {:?}", member_id);
 
-        // Should we propose or commit?
-        // 0: Propose,
-        // 1: Commit,
-        // TODO: 2: Both.
+        // TODO: Do both things.
         let action_type = match (OsRng.next_u32() as usize) % 2 {
             0 => ActionType::Proposal,
             1 => ActionType::Commit,
             _ => return Err(SetupError::Unknown),
         };
 
-        // Let's do something.
-        // 0: Update,
-        // 1: Remove,
-        // 2: Add,
-        // TODO: 3: All of the above,
+        // TODO: Do multiple things.
         let operation_type = match (OsRng.next_u32() as usize) % 3 {
             0 => OperationType::Update,
             1 => OperationType::Add,
