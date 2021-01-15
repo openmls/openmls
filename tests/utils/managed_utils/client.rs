@@ -21,8 +21,6 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
         &self,
         ciphersuite: &Ciphersuite,
     ) -> Result<KeyPackage, ClientError> {
-        // We unwrap here for now, because all ciphersuites are supported by all
-        // clients.
         let credential_bundle = self
             .key_store
             .get_credential(&self.identity, ciphersuite.name())
@@ -84,14 +82,14 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
                     .contains_key(&egs.key_package_hash)
             })
             .ok_or(ClientError::NoMatchingKeyPackage)?;
+        // We can unwrap here, because we just checked that this kpb exists.
+        // Also, we should be fine just removing the KeyPackageBundle here,
+        // because it shouldn't be used again anyway.
         let key_package_bundle = self
             .key_package_bundles
             .borrow_mut()
             .remove(&encrypted_group_secret.key_package_hash)
             .unwrap();
-        // We can unwrap here, because we just checked that this kpb exists.
-        // Also, we should be fine just removing the KeyPackageBundle here,
-        // because it shouldn't be used again anyway.
         let ciphersuite = key_package_bundle.key_package().ciphersuite_name();
         let credential_bundle = self
             .key_store
