@@ -75,7 +75,6 @@
 //! Keys](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys)
 //! section of the specification.
 
-
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Signature},
     codec::*,
@@ -295,8 +294,8 @@ fn generate_test_vectors() {
                         generation,
                     )
                     .expect("Error getting decryption secret");
-                    let handshake_key_string = bytes_to_hex(handshake_secret_key.as_slice());
-                    let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
+                let handshake_key_string = bytes_to_hex(handshake_secret_key.as_slice());
+                let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
                 let (handshake_plaintext, handshake_ciphertext) = build_handshake_messages(
                     leaf,
