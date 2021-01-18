@@ -6,60 +6,75 @@
 //! ## Parameters:
 //! * Ciphersuite
 //! * Number of leaves
+//! * Number of generations
 //!
 //! ## Format:
+//!
 //! ```text
 //! {
-//!     "cipher_suite": /* uint16 */,
-//!     "n_leaves": /* uint32 */,
-//!     "encryption_secret": /* hex-encoded binary data */,
-//!     "sender_data_secret": /* hex-encoded binary data */,
-//!     "sender_data_info": {
-//!         "ciphertext": /* hex-encoded binary data */,
-//!         "secrets": {
-//!             "key": /* hex-encoded binary data */,
-//!             "nonce": /* hex-encoded binary data */,
-//!         },
-//!     },
-//!     "leaves": [
+//!   "cipher_suite": /* uint16 */,
+//!   "n_leaves": /* uint32 */,
+//!   "encryption_secret": /* hex-encoded binary data */,
+//!   "sender_data_secret": /* hex-encoded binary data */,
+//!   "sender_data_info": {
+//!     "ciphertext": /* hex-encoded binary data */,
+//!     "key": /* hex-encoded binary data */,
+//!     "nonce": /* hex-encoded binary data */,
+//!   },
+//!   "leaves": [
+//!     {
+//!       "generations": /* uint32 */,
+//!       "handshake": [ /* array with `generations` handshake keys and nonces */
 //!         {
-//!             "generations": /* uint32 */,
-//!             "handshake_keys": [ /* array with `generations` handshake keys and nonces */
-//!                 {
-//!                     "key": /* hex-encoded binary data */,
-//!                     "nonce": /* hex-encoded binary data */,
-//!                 },
-//!                 ...
-//!             ],
-//!             "application_keys": [ /* array with `generations` application keys and nonces */
-//!                 {
-//!                     "key": /* hex-encoded binary data */,
-//!                     "nonce": /* hex-encoded binary data */,
-//!                 },
-//!                 ...
-//!             ],
-//!             "messages": [
-//!                 /* array with `generations` TLS encoded MLSPlaintext/MLSCiphertext pairs. */
-//!                 {
-//!                     "plaintext": /* hex-encoded binary data */,
-//!                     "ciphertext": /* hex-encoded binary data */,
-//!                 },
-//!                 ...
-//!             ],
-//!         }
-//!     ]
+//!           "key": /* hex-encoded binary data */,
+//!           "nonce": /* hex-encoded binary data */,
+//!           "plaintext": /* hex-encoded binary data */
+//!           "ciphertext": /* hex-encoded binary data */
+//!         },
+//!         ...
+//!       ],
+//!       "application": [ /* array with `generations` application keys and nonces */
+//!         {
+//!           "key": /* hex-encoded binary data */,
+//!           "nonce": /* hex-encoded binary data */,
+//!           "plaintext": /* hex-encoded binary data */
+//!           "ciphertext": /* hex-encoded binary data */
+//!         },
+//!         ...
+//!       ]
+//!     }
+//!   ]
 //! }
 //! ```
 //!
 //! ## Verification:
-//! For all `N` entries in the LeafSequence and all generations `j`
-//! * handshake_keys[N].steps[j].key = handshake_ratchet_key_[2*N]_[j]
-//! * handshake_keys[N].steps[j].nonce = handshake_ratchet_nonce_[2*N]_[j]
-//! * application_keys[N].steps[j].key = application_ratchet_key_[2*N]_[j]
-//! * application_keys[N].steps[j].nonce = application_ratchet_nonce_[2*N]_[j]
-//! * sender_data_info[N].steps[j].secret.key = sender_data_key_[2*N]_[j]
-//! * sender_data_info[N].steps[j].secret.nonce = sender_data_nonce_[2*N]_[j]
-//! * messages decrypt successfully with the respective key, nonce, and the sender_data_secret
+//!
+//! For all `N` entries in the `leaves` and all generations `j`
+//! * `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`
+//! * `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
+//! * `leaves[N].handshake[j].plaintext` represents an MLSPlaintext containing a
+//!   handshake message (Proposal or Commit) from leaf `N`
+//! * `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object that
+//!   successfully decrypts to an MLSPlaintext equivalent to
+//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
+//!   `j`.
+//! * `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`
+//! * `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
+//! * `leaves[N].application[j].plaintext` represents an MLSPlaintext containing
+//!   application data from leaf `N`
+//! * `leaves[N].application[j].ciphertext` represents an MLSCiphertext object that
+//!   successfully decrypts to an MLSPlaintext equivalent to
+//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
+//!   `j`.
+//! * `sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)`
+//! * `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)`
+//!
+//! The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes are
+//! tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
+//! [Encryption
+//! Keys](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys)
+//! section of the specification.
+
 
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Signature},
@@ -84,29 +99,19 @@ use serde::{self, Deserialize, Serialize};
 use std::{collections::HashMap, convert::TryFrom};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct KeyAndNonce {
+struct SenderDataInfo {
+    ciphertext: String,
     key: String,
     nonce: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct SenderDataInfo {
-    ciphertext: String,
-    secrets: KeyAndNonce,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct Message {
-    plaintext: String,
-    ciphertext: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct LeafSequence {
     generations: u32,
-    handshake_keys: Vec<KeyAndNonce>,
-    application_keys: Vec<KeyAndNonce>,
-    messages: Vec<Message>,
+    // (key, nonce, plaintext, ciphertext)
+    handshake: Vec<(String, String, String, String)>,
+    // (key, nonce, plaintext, ciphertext)
+    application: Vec<(String, String, String, String)>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -149,15 +154,13 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
     .unwrap()
 }
 
-fn build_messages(
+// XXX: we could be more creative in generating these messages.
+fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     generation: u32,
-    application_ratchet_key: AeadKey,
-    application_ratchet_nonce: AeadNonce,
     handshake_ratchet_key: AeadKey,
     handshake_ratchet_nonce: AeadNonce,
-    content_type: &mut ContentType,
 ) -> (Vec<u8>, Vec<u8>) {
     let sender = Sender {
         sender_type: SenderType::Member,
@@ -165,57 +168,61 @@ fn build_messages(
     };
     let epoch = GroupEpoch(random_u64());
     group.context_mut().epoch = epoch;
-    match content_type {
-        ContentType::Application => {
-            let plaintext = MLSPlaintext {
-                group_id: group.group_id().clone(),
-                epoch,
-                sender,
-                authenticated_data: vec![1, 2, 3],
-                content_type: ContentType::Application,
-                content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
-                signature: Signature::new_empty(),
-            };
-            let ciphertext = MLSCiphertext::new_from_plaintext(
-                &plaintext,
-                group,
-                generation,
-                application_ratchet_key,
-                application_ratchet_nonce,
-            );
-            *content_type = ContentType::Proposal;
-            (
-                plaintext.encode_detached().unwrap(),
-                ciphertext.encode_detached().unwrap(),
-            )
-        }
-        ContentType::Proposal => {
-            let plaintext = MLSPlaintext {
-                group_id: group.group_id().clone(),
-                epoch,
-                sender,
-                authenticated_data: vec![1, 2, 3, 4],
-                content_type: ContentType::Proposal,
-                content: MLSPlaintextContentType::Proposal(Proposal::Remove(RemoveProposal {
-                    removed: 0,
-                })),
-                signature: Signature::new_empty(),
-            };
-            let ciphertext = MLSCiphertext::new_from_plaintext(
-                &plaintext,
-                group,
-                generation,
-                handshake_ratchet_key,
-                handshake_ratchet_nonce,
-            );
-            *content_type = ContentType::Application;
-            (
-                plaintext.encode_detached().unwrap(),
-                ciphertext.encode_detached().unwrap(),
-            )
-        }
-        _ => unimplemented!(),
-    }
+    let plaintext = MLSPlaintext {
+        group_id: group.group_id().clone(),
+        epoch,
+        sender,
+        authenticated_data: vec![1, 2, 3, 4],
+        content_type: ContentType::Proposal,
+        content: MLSPlaintextContentType::Proposal(Proposal::Remove(RemoveProposal { removed: 0 })),
+        signature: Signature::new_empty(),
+    };
+    let ciphertext = MLSCiphertext::new_from_plaintext(
+        &plaintext,
+        group,
+        generation,
+        handshake_ratchet_key,
+        handshake_ratchet_nonce,
+    );
+    (
+        plaintext.encode_detached().unwrap(),
+        ciphertext.encode_detached().unwrap(),
+    )
+}
+
+fn build_application_messages(
+    leaf: LeafIndex,
+    group: &mut MlsGroup,
+    generation: u32,
+    application_ratchet_key: AeadKey,
+    application_ratchet_nonce: AeadNonce,
+) -> (Vec<u8>, Vec<u8>) {
+    let sender = Sender {
+        sender_type: SenderType::Member,
+        sender: leaf,
+    };
+    let epoch = GroupEpoch(random_u64());
+    group.context_mut().epoch = epoch;
+    let plaintext = MLSPlaintext {
+        group_id: group.group_id().clone(),
+        epoch,
+        sender,
+        authenticated_data: vec![1, 2, 3],
+        content_type: ContentType::Application,
+        content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
+        signature: Signature::new_empty(),
+    };
+    let ciphertext = MLSCiphertext::new_from_plaintext(
+        &plaintext,
+        group,
+        generation,
+        application_ratchet_key,
+        application_ratchet_nonce,
+    );
+    (
+        plaintext.encode_detached().unwrap(),
+        ciphertext.encode_detached().unwrap(),
+    )
 }
 
 #[test]
@@ -240,10 +247,8 @@ fn generate_test_vectors() {
             AeadNonce::from_sender_data_secret(ciphersuite, &ciphertext, &sender_data_secret);
         let sender_data_info = SenderDataInfo {
             ciphertext: bytes_to_hex(&ciphertext),
-            secrets: KeyAndNonce {
-                key: bytes_to_hex(sender_data_key.as_slice()),
-                nonce: bytes_to_hex(sender_data_nonce.as_slice()),
-            },
+            key: bytes_to_hex(sender_data_key.as_slice()),
+            nonce: bytes_to_hex(sender_data_nonce.as_slice()),
         };
 
         let mut group = group(ciphersuite);
@@ -253,11 +258,10 @@ fn generate_test_vectors() {
         let mut leaves = Vec::new();
         for leaf in 0..n_leaves {
             let leaf = LeafIndex::from(leaf);
-            let mut handshake_keys = Vec::new();
-            let mut application_keys = Vec::new();
-            let mut messages = Vec::new();
-            let mut content_type = ContentType::Application;
+            let mut handshake = Vec::new();
+            let mut application = Vec::new();
             for generation in 0..NUM_GENERATIONS {
+                // Application
                 let (application_secret_key, application_secret_nonce) = secret_tree
                     .secret_for_decryption(
                         ciphersuite,
@@ -266,10 +270,23 @@ fn generate_test_vectors() {
                         generation,
                     )
                     .expect("Error getting decryption secret");
-                application_keys.push(KeyAndNonce {
-                    key: bytes_to_hex(application_secret_key.as_slice()),
-                    nonce: bytes_to_hex(application_secret_nonce.as_slice()),
-                });
+                let application_key_string = bytes_to_hex(application_secret_key.as_slice());
+                let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
+                let (application_plaintext, application_ciphertext) = build_application_messages(
+                    leaf,
+                    &mut group,
+                    generation,
+                    application_secret_key,
+                    application_secret_nonce,
+                );
+                application.push((
+                    application_key_string,
+                    application_nonce_string,
+                    bytes_to_hex(&application_plaintext),
+                    bytes_to_hex(&application_ciphertext),
+                ));
+
+                // Handshake
                 let (handshake_secret_key, handshake_secret_nonce) = secret_tree
                     .secret_for_decryption(
                         ciphersuite,
@@ -278,32 +295,27 @@ fn generate_test_vectors() {
                         generation,
                     )
                     .expect("Error getting decryption secret");
-                handshake_keys.push(KeyAndNonce {
-                    key: bytes_to_hex(handshake_secret_key.as_slice()),
-                    nonce: bytes_to_hex(handshake_secret_nonce.as_slice()),
-                });
+                    let handshake_key_string = bytes_to_hex(handshake_secret_key.as_slice());
+                    let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
-                // Create messages
-                let (plaintext, ciphertext) = build_messages(
+                let (handshake_plaintext, handshake_ciphertext) = build_handshake_messages(
                     leaf,
                     &mut group,
                     generation,
-                    application_secret_key,
-                    application_secret_nonce,
                     handshake_secret_key,
                     handshake_secret_nonce,
-                    &mut content_type,
                 );
-                messages.push(Message {
-                    plaintext: bytes_to_hex(&plaintext),
-                    ciphertext: bytes_to_hex(&ciphertext),
-                });
+                handshake.push((
+                    handshake_key_string,
+                    handshake_nonce_string,
+                    bytes_to_hex(&handshake_plaintext),
+                    bytes_to_hex(&handshake_ciphertext),
+                ));
             }
             leaves.push(LeafSequence {
                 generations: NUM_GENERATIONS,
-                handshake_keys,
-                application_keys,
-                messages,
+                handshake,
+                application,
             });
         }
 
@@ -359,36 +371,25 @@ fn run_test_vectors() {
             &sender_data_secret,
         );
         assert_eq!(
-            hex_to_bytes(&test_vector.sender_data_info.secrets.key),
+            hex_to_bytes(&test_vector.sender_data_info.key),
             sender_data_key.as_slice()
         );
         assert_eq!(
-            hex_to_bytes(&test_vector.sender_data_info.secrets.nonce),
+            hex_to_bytes(&test_vector.sender_data_info.nonce),
             sender_data_nonce.as_slice()
         );
 
         for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
-            assert_eq!(leaf.generations, leaf.application_keys.len() as u32);
-            assert_eq!(leaf.generations, leaf.handshake_keys.len() as u32);
-            assert_eq!(leaf.generations, leaf.messages.len() as u32);
+            assert_eq!(leaf.generations, leaf.application.len() as u32);
+            assert_eq!(leaf.generations, leaf.handshake.len() as u32);
             let leaf_index = LeafIndex::from(leaf_index);
 
-            for (generation, application_key, handshake_key, message) in izip!(
+            for (generation, application, handshake) in izip!(
                 (0..leaf.generations).into_iter(),
-                &leaf.application_keys,
-                &leaf.handshake_keys,
-                &leaf.messages,
+                &leaf.application,
+                &leaf.handshake,
             ) {
-                // Setup group
-                let mls_ciphertext =
-                    MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&message.ciphertext)))
-                        .expect("Error parsing MLSCiphertext");
-                let mut group = receiver_group(ciphersuite, &mls_ciphertext.group_id);
-                *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from(
-                    hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
-                );
-
-                // Check keys
+                // Check application keys
                 let (application_secret_key, application_secret_nonce) = secret_tree
                     .secret_for_decryption(
                         ciphersuite,
@@ -398,38 +399,30 @@ fn run_test_vectors() {
                     )
                     .expect("Error getting decryption secret");
                 assert_eq!(
-                    hex_to_bytes(&application_key.key),
+                    hex_to_bytes(&application.0),
                     application_secret_key.as_slice()
                 );
                 assert_eq!(
-                    hex_to_bytes(&application_key.nonce),
+                    hex_to_bytes(&application.1),
                     application_secret_nonce.as_slice()
                 );
 
-                let (handshake_secret_key, handshake_secret_nonce) = secret_tree
-                    .secret_for_decryption(
-                        ciphersuite,
-                        leaf_index,
-                        SecretType::HandshakeSecret,
-                        generation,
-                    )
-                    .expect("Error getting decryption secret");
-                assert_eq!(
-                    hex_to_bytes(&handshake_key.key),
-                    handshake_secret_key.as_slice()
-                );
-                assert_eq!(
-                    hex_to_bytes(&handshake_key.nonce),
-                    handshake_secret_nonce.as_slice()
+                // Setup group
+                let mls_ciphertext_application =
+                    MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.3)))
+                        .expect("Error parsing MLSCiphertext");
+                let mut group = receiver_group(ciphersuite, &mls_ciphertext_application.group_id);
+                *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from(
+                    hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
                 );
 
-                // Decrypt and check message
+                // Decrypt and check application message
                 let indexed_members = HashMap::new();
                 let epoch_secret = group.epoch_secrets();
                 let context = group.context();
 
                 // The decryption doesn't check the plaintext in test mode!
-                let mls_plaintext = mls_ciphertext
+                let mls_plaintext_application = mls_ciphertext_application
                     .to_plaintext(
                         ciphersuite,
                         indexed_members,
@@ -439,8 +432,54 @@ fn run_test_vectors() {
                     )
                     .expect("Error decrypting MLSCiphertext");
                 assert_eq!(
-                    hex_to_bytes(&message.plaintext),
-                    mls_plaintext
+                    hex_to_bytes(&application.2),
+                    mls_plaintext_application
+                        .encode_detached()
+                        .expect("Error encoding MLSPlaintext")
+                );
+
+                // Check handshake keys
+                let (handshake_secret_key, handshake_secret_nonce) = secret_tree
+                    .secret_for_decryption(
+                        ciphersuite,
+                        leaf_index,
+                        SecretType::HandshakeSecret,
+                        generation,
+                    )
+                    .expect("Error getting decryption secret");
+                assert_eq!(hex_to_bytes(&handshake.0), handshake_secret_key.as_slice());
+                assert_eq!(
+                    hex_to_bytes(&handshake.1),
+                    handshake_secret_nonce.as_slice()
+                );
+
+                // Setup group
+                let mls_ciphertext_handshake =
+                    MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.3)))
+                        .expect("Error parsing MLSCiphertext");
+                let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
+                *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from(
+                    hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
+                );
+
+                // Decrypt and check message
+                let indexed_members = HashMap::new();
+                let epoch_secret = group.epoch_secrets();
+                let context = group.context();
+
+                // The decryption doesn't check the plaintext in test mode!
+                let mls_plaintext_handshake = mls_ciphertext_handshake
+                    .to_plaintext(
+                        ciphersuite,
+                        indexed_members,
+                        epoch_secret,
+                        &mut secret_tree,
+                        context,
+                    )
+                    .expect("Error decrypting MLSCiphertext");
+                assert_eq!(
+                    hex_to_bytes(&handshake.2),
+                    mls_plaintext_handshake
                         .encode_detached()
                         .expect("Error encoding MLSPlaintext")
                 );
