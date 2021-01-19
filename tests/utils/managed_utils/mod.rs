@@ -278,7 +278,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         let clients = self.clients.borrow();
         for (_, m_id) in &group.members {
             let m = clients.get(m_id).unwrap().borrow();
-            let group_states = m.groups.borrow_mut();
+            let group_states = m.groups.borrow();
             // Some group members may not have received their welcome messages yet.
             if let Some(group_state) = group_states.get(&group.group_id) {
                 assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
