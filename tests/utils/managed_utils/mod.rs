@@ -92,12 +92,6 @@ pub enum ActionType {
     Proposal,
 }
 
-pub enum OperationType {
-    Update,
-    Add,
-    Remove,
-}
-
 /// `ManagedTestSetup` is the main struct of the framework. It contains the
 /// state of all clients, as well as the global `KeyStore` containing the
 /// clients' `CredentialBundles`. The `waiting_for_welcome` field acts as a
@@ -518,21 +512,16 @@ impl<'ks> ManagedTestSetup<'ks> {
         };
 
         // TODO: Do multiple things.
-        let operation_type = match (OsRng.next_u32() as usize) % 3 {
-            0 => OperationType::Update,
-            1 => OperationType::Add,
-            2 => OperationType::Remove,
-            _ => return Err(SetupError::Unknown),
-        };
+        let operation_type = (OsRng.next_u32() as usize) % 3;
         match operation_type {
-            OperationType::Update => {
+            0 => {
                 println!(
                     "Perfoming a self-update with action type: {:?}",
                     action_type
                 );
                 self.self_update(action_type, group, &member_id, None)?;
             }
-            OperationType::Remove => {
+            1 => {
                 // If it's a single-member group, don't remove anyone.
                 if group.members.len() > 1 {
                     // How many members?
@@ -574,7 +563,7 @@ impl<'ks> ManagedTestSetup<'ks> {
                     self.remove_clients(action_type, group, &member_id, target_member_ids)?
                 };
             }
-            OperationType::Add => {
+            2 => {
                 // First, figure out if there are clients left to add.
                 let clients_left = self.number_of_clients - group.members.len();
                 if clients_left > 0 {
@@ -590,6 +579,7 @@ impl<'ks> ManagedTestSetup<'ks> {
                     self.add_clients(action_type, group, &member_id, new_member_ids)?;
                 }
             }
+            _ => return Err(SetupError::Unknown),
         };
         Ok(())
     }
