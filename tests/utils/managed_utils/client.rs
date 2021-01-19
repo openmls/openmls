@@ -36,7 +36,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         }
         let credential_bundle = self
             .key_store
-            .get_credential(&self.identity, ciphersuites[0])
+            .get_credential(&(self.identity.clone(), ciphersuites[0]))
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle =
@@ -59,7 +59,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
     ) -> Result<(), ClientError> {
         let credential_bundle = self
             .key_store
-            .get_credential(&self.identity, ciphersuite.name())
+            .get_credential(&(self.identity.clone(), ciphersuite.name()))
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
@@ -108,7 +108,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         let ciphersuite = key_package_bundle.key_package().ciphersuite_name();
         let credential_bundle = self
             .key_store
-            .get_credential(&self.identity, ciphersuite)
+            .get_credential(&(self.identity.clone(), ciphersuite))
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let new_group: ManagedGroup<'key_store_lifetime> = ManagedGroup::new_from_welcome(
             credential_bundle,

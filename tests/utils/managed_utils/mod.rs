@@ -36,11 +36,13 @@ pub mod errors;
 use self::client::*;
 use self::errors::*;
 
+pub type KeyStoreId = (Vec<u8>, CiphersuiteName);
+
 #[derive(Debug)]
 /// A storage struct for `CredentialBundles`.
 pub struct KeyStore {
     // Maps a client Id and a ciphersuite to a CredentialBundle.
-    credential_bundles: HashMap<(Vec<u8>, CiphersuiteName), CredentialBundle>,
+    credential_bundles: HashMap<KeyStoreId, CredentialBundle>,
 }
 
 impl<'ks> KeyStore {
@@ -54,13 +56,8 @@ impl<'ks> KeyStore {
         }
     }
 
-    pub(crate) fn get_credential(
-        &self,
-        client_id: &Vec<u8>,
-        ciphersuite_name: CiphersuiteName,
-    ) -> Option<&CredentialBundle> {
-        let key = &(client_id.clone(), ciphersuite_name);
-        self.credential_bundles.get(key)
+    pub(crate) fn get_credential(&self, key_store_id: &KeyStoreId) -> Option<&CredentialBundle> {
+        self.credential_bundles.get(key_store_id)
     }
 }
 
