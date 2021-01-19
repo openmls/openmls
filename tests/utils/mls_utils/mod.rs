@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! # Test utils
 //!
 //! Most tests require to set up groups, clients, credentials, and identities.
