@@ -207,9 +207,12 @@ impl<'ks> ManagedTestSetup<'ks> {
         Ok(key_package)
     }
 
-    /// Deliver a Welcome message to group `group` to the intended recipients.
-    /// This function will throw an error if no key package was previously
-    /// created for the client by `get_fresh_key_package`.
+    /// Deliver a Welcome message to the intended recipients. It uses the given
+    /// group `group` to obtain the current public tree of the group. Note, that
+    /// this tree only exists if `distribute_to_members` was previously used to
+    /// distribute the commit adding the members to the group. This function
+    /// will throw an error if no key package was previously created for the
+    /// client by `get_fresh_key_package`.
     pub fn deliver_welcome(&self, welcome: Welcome, group: &Group) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         for egs in welcome.secrets() {
