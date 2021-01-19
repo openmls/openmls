@@ -25,7 +25,6 @@ pub use crate::messages::{
     proposals::{AddProposal, RemoveProposal, UpdateProposal},
     Welcome,
 };
-pub use crate::tree::node;
 pub use crate::utils::*;
 
 // Things we need for fuzzing (but not otherwise)

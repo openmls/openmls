@@ -39,5 +39,7 @@ mod messages;
 mod schedule;
 pub mod tree;
 
+pub use crate::tree::node;
+
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;

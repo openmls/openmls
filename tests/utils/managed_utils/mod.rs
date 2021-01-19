@@ -25,7 +25,7 @@
 /// We allow dead code here due to the following issue:
 /// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
 /// a lot of unused code warnings.
-use openmls::prelude::{node::Node, *};
+use openmls::{node::Node, prelude::*};
 use rand::{rngs::OsRng, RngCore};
 use std::{cell::RefCell, collections::HashMap};
 
