@@ -41,7 +41,7 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
         }
     }
 }
-fn error_occured(managed_group: &ManagedGroup, error: ManagedGroupError) {
+fn error_occurred(managed_group: &ManagedGroup, error: ManagedGroupError) {
     println!(
         "Error occured in group {}: {:?}",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
@@ -53,5 +53,5 @@ pub fn default_callbacks() -> ManagedGroupCallbacks {
     ManagedGroupCallbacks::new()
         .with_member_added(member_added)
         .with_invalid_message_received(invalid_message_received)
-        .with_error_occured(error_occured)
+        .with_error_occured(error_occurred)
 }
