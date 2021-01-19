@@ -12,17 +12,17 @@ use super::{errors::ClientError, ActionType, KeyStore};
 /// It contains the group states, as well as a reference to a `KeyStore`
 /// containing its `CredentialBundle`s. The `key_package_bundles` field contains
 /// generated `KeyPackageBundle`s that are waiting to be used for new groups.
-pub struct Client<'managed_group_lifetime> {
+pub struct Client<'key_store_lifetime> {
     /// Name of the client.
     pub(crate) identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub(crate) key_store: &'managed_group_lifetime KeyStore,
+    pub(crate) key_store: &'key_store_lifetime KeyStore,
     // Map from key package hash to the corresponding bundle.
     pub(crate) key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
-    pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup<'managed_group_lifetime>>>,
+    pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup<'key_store_lifetime>>>,
 }
 
-impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
+impl<'key_store_lifetime> Client<'key_store_lifetime> {
     /// Generate a fresh key package bundle and store it in
     /// `self.key_package_bundles`. The first ciphersuite determines the
     /// credential used to generate the `KeyPackageBundle`. Returns the
@@ -110,7 +110,7 @@ impl<'managed_group_lifetime> Client<'managed_group_lifetime> {
             .key_store
             .get_credential(&self.identity, ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let new_group: ManagedGroup<'managed_group_lifetime> = ManagedGroup::new_from_welcome(
+        let new_group: ManagedGroup<'key_store_lifetime> = ManagedGroup::new_from_welcome(
             credential_bundle,
             &managed_group_config,
             welcome,
