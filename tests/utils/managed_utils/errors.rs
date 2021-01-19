@@ -24,6 +24,11 @@ impl From<ManagedGroupError> for SetupError {
     }
 }
 
+#[derive(Debug)]
+pub enum SetupGroupError {
+    NotEnoughMembers,
+}
+
 /// Errors that can occur when processing messages with the client.
 #[derive(Debug)]
 pub enum ClientError {
@@ -31,6 +36,7 @@ pub enum ClientError {
     NoMatchingCredential,
     CiphersuiteNotSupported,
     NoMatchingGroup,
+    NoCiphersuite,
     FailedToJoinGroup(WelcomeError),
     InvalidMessage(GroupError),
     ManagedGroupError(ManagedGroupError),
