@@ -300,21 +300,27 @@ impl<'ks> ManagedTestSetup<'ks> {
         if number_of_members + group.members.len() >= clients.len() {
             return Err(SetupError::NotEnoughClients);
         }
-        let mut new_member_ids = Vec::new();
+        let mut new_member_ids: Vec<Vec<u8>> = Vec::new();
+
         for _ in 0..number_of_members {
+            // Predicate which returns true if the client with the given id is
+            // either present in `new_members` or already a group member.
+            let is_eligible_member = |client_id| {
+                (group
+                    .members
+                    .iter()
+                    .find(|&(_, member_id)| client_id == member_id)
+                    .is_none())
+                    && (new_member_ids
+                        .iter()
+                        .find(|&new_member_id| client_id == new_member_id)
+                        .is_none())
+            };
+            // We can unwrap here, because we checked that enough eligible
+            // members exist.
             let new_member_id = clients
                 .keys()
-                .find(|&client_id| {
-                    (group
-                        .members
-                        .iter()
-                        .find(|&(_, member_id)| client_id == member_id)
-                        .is_none())
-                        && (new_member_ids
-                            .iter()
-                            .find(|&member_id| member_id == client_id)
-                            .is_none())
-                })
+                .find(|&client_id| is_eligible_member(client_id))
                 .unwrap();
             new_member_ids.push(new_member_id.clone());
         }
