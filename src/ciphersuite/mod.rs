@@ -40,6 +40,7 @@ pub(crate) const TAG_BYTES: usize = 16;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u16)]
 pub enum CiphersuiteName {
     MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
     MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,

@@ -7,11 +7,12 @@ use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 use super::*;
 use std::convert::TryFrom;
 
-#[derive(Debug, PartialEq)]
-pub enum SecretTreeError {
-    TooDistantInThePast,
-    TooDistantInTheFuture,
-    IndexOutOfBounds,
+implement_error! {
+    pub enum SecretTreeError {
+        TooDistantInThePast = "Generation is too old to be processed.",
+        TooDistantInTheFuture = "Generation is too far in the future to be processed.",
+        IndexOutOfBounds = "Index out of bounds",
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -144,7 +145,7 @@ impl SecretTree {
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(
             dirpath(index_in_tree, self.size)
-                .expect("initialize_sender_rathets: Error while computing direct path."),
+                .expect("initialize_sender_ratchets: Error while computing direct path."),
         );
         dir_path.push(root(self.size));
         let mut empty_nodes: Vec<NodeIndex> = vec![];
