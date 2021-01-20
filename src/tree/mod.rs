@@ -35,6 +35,10 @@ use std::collections::HashSet;
 use std::iter::FromIterator;
 
 // Internal tree tests
+#[cfg(all(test, feature = "test-vectors"))]
+mod kat_encryption;
+#[cfg(all(test, feature = "test-vectors"))]
+mod kat_treemath;
 #[cfg(test)]
 mod test_path_keys;
 #[cfg(test)]

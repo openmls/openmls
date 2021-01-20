@@ -320,9 +320,26 @@ impl EncryptionSecret {
 
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
+    #[doc(hidden)]
     pub fn from_random(length: usize) -> Self {
         EncryptionSecret {
             secret: Secret::random(length),
+        }
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.secret.to_vec()
+    }
+}
+
+#[cfg(test)]
+#[doc(hidden)]
+impl From<&[u8]> for EncryptionSecret {
+    fn from(bytes: &[u8]) -> Self {
+        Self {
+            secret: Secret::from(bytes),
         }
     }
 }
@@ -366,6 +383,30 @@ impl SenderDataSecret {
     /// Get the `Secret` of the `ExporterSecret`.
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub fn from_random(length: usize) -> Self {
+        Self {
+            secret: Secret::random(length),
+        }
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.secret.to_vec()
+    }
+}
+
+#[cfg(test)]
+#[doc(hidden)]
+impl From<&[u8]> for SenderDataSecret {
+    fn from(bytes: &[u8]) -> Self {
+        Self {
+            secret: Secret::from(bytes),
+        }
     }
 }
 
@@ -411,5 +452,11 @@ impl EpochSecrets {
             confirmation_key,
         };
         (epoch_secrets, init_secret, encryption_secret)
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
+        &mut self.sender_data_secret
     }
 }

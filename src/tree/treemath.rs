@@ -1,10 +1,11 @@
 use crate::tree::index::*;
 use std::cmp::Ordering;
 
-#[derive(Debug)]
-pub(crate) enum TreeMathError {
-    LeafHasNoChildren,
-    RootHasNoParent,
+implement_error! {
+    pub enum TreeMathError {
+        LeafHasNoChildren = "Leaf nodes don't have children.",
+        RootHasNoParent = "Root nodes don't have parents.",
+    }
 }
 
 pub(crate) fn log2(x: usize) -> usize {
