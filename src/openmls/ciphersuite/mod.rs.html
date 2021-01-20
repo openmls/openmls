@@ -690,6 +690,7 @@
 <span id="687">687</span>
 <span id="688">688</span>
 <span id="689">689</span>
+<span id="690">690</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
@@ -733,6 +734,7 @@
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CiphersuiteName</span> {
     <span class="ident">MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span> <span class="op">=</span> <span class="number">0x0001</span>,
     <span class="ident">MLS10_128_DHKEMP256_AES128GCM_SHA256_P256</span> <span class="op">=</span> <span class="number">0x0002</span>,
