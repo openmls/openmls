@@ -190,54 +190,57 @@ fn test_remove() {
 
 // TODO #141, #284: The external PSK, resumption and re-init tests should go here.
 
-// TODO: The large group lifecycle becomes possible once #305 is merged.
-//#[test]
-//fn test_large_group_lifecycle() {
-//    // Some basic setup functions for the managed group.
-//    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-//    let update_policy = UpdatePolicy::default();
-//    let callbacks = default_callbacks::default_callbacks();
-//    let managed_group_config =
-//        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
-//    // "Large" is 20 for now.
-//    let number_of_clients = 20;
-//    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
-//    setup.create_clients();
-//
-//    for ciphersuite in Config::supported_ciphersuites() {
-//        // Create a group with twenty members. The process includes creating a
-//        // one-person group and then adding new members in bunches of up to 5,
-//        // each bunch by a random group member.
-//        let group_id = setup
-//            .create_random_group(20, ciphersuite)
-//            .expect("Error while trying to create group.");
-//        let mut groups = setup.groups.borrow_mut();
-//        let group = groups.get_mut(&group_id).unwrap();
-//
-//        let mut group_members = group.members.clone();
-//
-//        // Have each member in turn update. In between each update, messages are
-//        // delivered to each member.
-//        for (_, member_id) in &group_members {
-//            setup
-//                .self_update(ActionType::Commit, group, member_id, None)
-//                .expect("Error while updating group.")
-//        }
-//
-//        while group_members.len() > 1 {
-//            let remover_id = group.random_group_member();
-//            let mut target_id = group.random_group_member();
-//            // Get a random member until it's not the one doing the remove operation.
-//            while remover_id == target_id {
-//                target_id = group.random_group_member();
-//            }
-//            setup
-//                .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
-//                .expect("Error while removing group member.");
-//            group_members = group.members.clone();
-//        }
-//
-//        // Check that group members agree on a group state.
-//        setup.check_group_states(group);
-//    }
-//}
+// TODO: The large group lifecycle becomes possible once #305 is merged. It
+// currently panics, because the decryption key indices are not properly
+// computed in large groups.
+#[test]
+#[should_panic]
+fn test_large_group_lifecycle() {
+    // Some basic setup functions for the managed group.
+    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let update_policy = UpdatePolicy::default();
+    let callbacks = default_callbacks::default_callbacks();
+    let managed_group_config =
+        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
+    // "Large" is 20 for now.
+    let number_of_clients = 20;
+    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    setup.create_clients();
+
+    for ciphersuite in Config::supported_ciphersuites() {
+        // Create a group with twenty members. The process includes creating a
+        // one-person group and then adding new members in bunches of up to 5,
+        // each bunch by a random group member.
+        let group_id = setup
+            .create_random_group(20, ciphersuite)
+            .expect("Error while trying to create group.");
+        let mut groups = setup.groups.borrow_mut();
+        let group = groups.get_mut(&group_id).unwrap();
+
+        let mut group_members = group.members.clone();
+
+        // Have each member in turn update. In between each update, messages are
+        // delivered to each member.
+        for (_, member_id) in &group_members {
+            setup
+                .self_update(ActionType::Commit, group, member_id, None)
+                .expect("Error while updating group.")
+        }
+
+        while group_members.len() > 1 {
+            let remover_id = group.random_group_member();
+            let mut target_id = group.random_group_member();
+            // Get a random member until it's not the one doing the remove operation.
+            while remover_id == target_id {
+                target_id = group.random_group_member();
+            }
+            setup
+                .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
+                .expect("Error while removing group member.");
+            group_members = group.members.clone();
+        }
+
+        // Check that group members agree on a group state.
+        setup.check_group_states(group);
+    }
+}
