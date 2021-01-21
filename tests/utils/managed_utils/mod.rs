@@ -315,7 +315,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         number_of_members: usize,
     ) -> Result<Vec<Vec<u8>>, SetupError> {
         let clients = self.clients.borrow();
-        if number_of_members + group.members.len() >= clients.len() {
+        if number_of_members + group.members.len() > clients.len() {
             return Err(SetupError::NotEnoughClients);
         }
         let mut new_member_ids: Vec<Vec<u8>> = Vec::new();
