@@ -58,7 +58,7 @@ impl TestClient {
 /// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
     pub(crate) _key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
-    pub(crate) clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
+    pub clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
 }
 
 /// The number of key packages that each client registers with the key store
@@ -254,11 +254,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
     }
 }
 
-pub(crate) fn random_usize() -> usize {
+#[allow(dead_code)]
+pub fn random_usize() -> usize {
     OsRng.next_u64() as usize
 }
 
-pub(crate) fn randombytes(n: usize) -> Vec<u8> {
+#[allow(dead_code)]
+pub fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
 }
 
