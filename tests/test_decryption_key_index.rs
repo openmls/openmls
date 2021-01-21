@@ -26,30 +26,32 @@ fn test_decryption_key_index_computation() {
         // the leaf, nor the common ancestor closest to the root. To do that, we
         // first have the member at index 0 remove the one at index 2, thus
         // populating its own parent node.
-        let (_, remover_id) = &group.members[0].clone();
-        let (_, target_id) = &group.members[2].clone();
+
+        // Find the identity of the member with leaf index 0.
+        let (_, remover_id) = &group
+            .members
+            .iter()
+            .find(|(index, _)| index == &0)
+            .unwrap()
+            .clone();
         setup
-            .remove_clients(
-                ActionType::Commit,
-                group,
-                &remover_id,
-                vec![target_id.clone()],
-            )
+            .remove_clients_by_index(ActionType::Commit, group, &remover_id, &[2])
             .unwrap();
 
-        // Then we have the member at index 7 (it's just index 6 in the member
-        // list) remove the one at index 3 (index 2 at the member list). This
+        // Then we have the member at index 7 remove the one at index 3. This
         // causes a secret to be encrypted to the parent node of index 0, which
         // fails if the index of the decryption key is computed incorrectly.
-        let (_, remover_id) = &group.members[6].clone();
-        let (_, target_id) = &group.members[2].clone();
+        // Find the member with index 0.
+
+        // Find the identity of the member with leaf index 7.
+        let (_, remover_id) = &group
+            .members
+            .iter()
+            .find(|(index, _)| index == &7)
+            .unwrap()
+            .clone();
         setup
-            .remove_clients(
-                ActionType::Commit,
-                group,
-                &remover_id,
-                vec![target_id.clone()],
-            )
+            .remove_clients_by_index(ActionType::Commit, group, &remover_id, &[3])
             .unwrap();
 
         // Since the decryption failure doesn't cause a panic, but only an error
