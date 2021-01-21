@@ -129,9 +129,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
     pub fn receive_messages_for_group(&self, messages: &[MLSMessage]) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
         for message in messages {
-            let group_id = GroupId {
-                value: message.group_id(),
-            };
+            let group_id = GroupId::from_slice(&message.group_id());
             let group_state = group_states
                 .get_mut(&group_id)
                 .ok_or(ClientError::NoMatchingGroup)?;
