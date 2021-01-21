@@ -295,7 +295,7 @@ impl<'ks> ManagedTestSetup<'ks> {
     /// Get `number_of_members` new members for the given group `group` for use
     /// with the `add_members` function. If not enough clients are left that are
     /// not already members of this group, this function will return an error.
-    /// TODO: Make this function ensure that the given members support the
+    /// TODO #310: Make this function ensure that the given members support the
     /// ciphersuite of the group.
     pub fn random_new_members_for_group(
         &self,
@@ -336,7 +336,7 @@ impl<'ks> ManagedTestSetup<'ks> {
     /// Have a random client create a new group with ciphersuite `ciphersuite`
     /// and return the `GroupId`. Only works reliably if all clients support all
     /// ciphersuites, as it will throw an error if the randomly chosen client
-    /// does not support the given ciphersuite. TODO: Fix to always work
+    /// does not support the given ciphersuite. TODO #310: Fix to always work
     /// reliably, probably by introducing a mapping from ciphersuite to the set
     /// of client ids supporting it.
     pub fn create_group(&self, ciphersuite: &Ciphersuite) -> Result<GroupId, SetupError> {
@@ -514,8 +514,8 @@ impl<'ks> ManagedTestSetup<'ks> {
     }
 
     /// This function picks a random member of group `group` and has them
-    /// perform a random commit- or proposal action. TODO: This won't work yet
-    /// due to the missing proposal validation.
+    /// perform a random commit- or proposal action. TODO #133: This won't work
+    /// yet due to the missing proposal validation.
     pub fn perform_random_operation(&self, group: &mut Group) -> Result<(), SetupError> {
         // Who's going to do it?
         let member_id = group.random_group_member();
