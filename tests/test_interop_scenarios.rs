@@ -10,16 +10,17 @@ use utils::managed_utils::*;
 // The tests are conducted for every available ciphersuite, but currently only
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
-#[test]
-fn test_one_to_one_join() {
-    // Some basic setup functions for the managed group.
+fn default_managed_group_config() -> ManagedGroupConfig {
     let handshake_message_format = HandshakeMessageFormat::Plaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = default_callbacks::default_callbacks();
-    let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
+    ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks)
+}
+
+#[test]
+fn test_one_to_one_join() {
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
     setup.create_clients();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -46,14 +47,8 @@ fn test_one_to_one_join() {
 
 #[test]
 fn test_three_party_join() {
-    // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = default_callbacks::default_callbacks();
-    let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
     setup.create_clients();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -88,14 +83,8 @@ fn test_three_party_join() {
 
 #[test]
 fn test_multiple_joins() {
-    // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = default_callbacks::default_callbacks();
-    let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
     setup.create_clients();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -125,14 +114,8 @@ fn test_multiple_joins() {
 
 #[test]
 fn test_update() {
-    // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = default_callbacks::default_callbacks();
-    let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
     setup.create_clients();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -157,14 +140,8 @@ fn test_update() {
 
 #[test]
 fn test_remove() {
-    // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = default_callbacks::default_callbacks();
-    let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
     setup.create_clients();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -196,15 +173,9 @@ fn test_remove() {
 #[test]
 #[should_panic]
 fn test_large_group_lifecycle() {
-    // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = default_callbacks::default_callbacks();
-    let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
     // "Large" is 20 for now.
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
     setup.create_clients();
 
     for ciphersuite in Config::supported_ciphersuites() {
