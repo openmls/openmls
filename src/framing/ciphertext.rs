@@ -163,6 +163,11 @@ impl MLSCiphertext {
             content: mls_ciphertext_content.content,
             signature: mls_ciphertext_content.signature,
         };
+
+        if cfg!(feature = "test-vectors") {
+            return Ok(mls_plaintext);
+        }
+
         let credential = match indexed_members.get(&sender_data.sender) {
             Some(c) => c,
             None => {

@@ -41,3 +41,6 @@ pub mod tree;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
+
+#[cfg(test)]
+mod test_util;
