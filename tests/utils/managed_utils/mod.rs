@@ -48,11 +48,11 @@ pub struct KeyStore {
 impl<'ks> KeyStore {
     pub(crate) fn store_credentials(
         &mut self,
-        client_id: Vec<u8>,
+        client_id: &[u8],
         credential_bundles: Vec<(CiphersuiteName, CredentialBundle)>,
     ) {
         for (cn, cb) in credential_bundles {
-            self.credential_bundles.insert((client_id.clone(), cn), cb);
+            self.credential_bundles.insert((client_id.to_vec(), cn), cb);
         }
     }
 
@@ -150,7 +150,7 @@ impl<'ks> ManagedTestSetup<'ks> {
                         .unwrap();
                 credential_bundles.push((*ciphersuite, credential_bundle));
             }
-            key_store.store_credentials(identity.clone(), credential_bundles);
+            key_store.store_credentials(&identity, credential_bundles);
         }
         let clients = RefCell::new(HashMap::new());
         let groups = RefCell::new(HashMap::new());
