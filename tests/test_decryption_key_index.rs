@@ -51,5 +51,10 @@ fn test_decryption_key_index_computation() {
                 vec![target_id.clone()],
             )
             .unwrap();
+
+        // Since the decryption failure doesn't cause a panic, but only an error
+        // message in the callback, we also have to check that the group states
+        // match for all group members.
+        setup.check_group_states(group);
     }
 }
