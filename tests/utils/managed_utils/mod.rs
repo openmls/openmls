@@ -274,21 +274,33 @@ impl<'ks> ManagedTestSetup<'ks> {
     }
 
     /// Check if the public tree and the exporter secret with label "test" and
-    /// length of the given group is the same for each group member. This
-    /// function panics if that is not the case.
-    pub fn check_group_states(&self, group: &Group) {
+    /// length of the given group is the same for each group member. It also has
+    /// each group member encrypt an application message and delivers all of
+    /// these messages to all other members. This function panics if any of the
+    /// above tests fail.
+    pub fn check_group_states(&self, group: &mut Group) {
         let clients = self.clients.borrow();
+        let mut messages = Vec::new();
         for (_, m_id) in &group.members {
             let m = clients.get(m_id).unwrap().borrow();
-            let group_states = m.groups.borrow();
+            let mut group_states = m.groups.borrow_mut();
             // Some group members may not have received their welcome messages yet.
-            if let Some(group_state) = group_states.get(&group.group_id) {
+            if let Some(group_state) = group_states.get_mut(&group.group_id) {
                 assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
                 assert_eq!(
                     group_state.export_secret("test", 32).unwrap(),
                     group.exporter_secret
                 );
+                let message = group_state
+                    .create_message("Hello World!".as_bytes())
+                    .expect("Error composing message while checking group states.");
+                messages.push((m_id.clone(), message));
             };
+        }
+        drop(clients);
+        for (sender_id, message) in messages {
+            self.distribute_to_members(&sender_id, group, &[message])
+                .expect("Error sending messages to clients while checking group states.");
         }
     }
 
