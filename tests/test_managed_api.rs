@@ -34,5 +34,8 @@ fn test_managed_api() {
         setup
             .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .unwrap();
+
+        // Check that all group members agree on the same group state.
+        setup.check_group_states(group);
     }
 }
