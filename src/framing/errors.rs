@@ -4,6 +4,7 @@
 //! handling `MLSPlaintext` and `MLSCiphertext`.
 
 use crate::codec::CodecError;
+use crate::tree::secret_tree::SecretTreeError;
 
 implement_error! {
     pub enum MLSPlaintextError {
@@ -24,6 +25,7 @@ implement_error! {
         }
         Complex {
             PlaintextError(MLSPlaintextError) = "MLSPlaintext error",
+            SecretTreeError(SecretTreeError) = "SecretTree error",
             CodecError(CodecError) = "Codec error",
         }
     }

@@ -7,7 +7,7 @@ fn test_boundaries() {
     use crate::tree::{index::*, secret_tree::*};
 
     for ciphersuite in Config::supported_ciphersuites() {
-        let encryption_secret = EncryptionSecret::random(32);
+        let encryption_secret = EncryptionSecret::from_random(32);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
         let secret_type = SecretType::ApplicationSecret;
         assert!(secret_tree
@@ -47,7 +47,7 @@ fn test_boundaries() {
             secret_tree.secret_for_decryption(&ciphersuite, LeafIndex::from(2u32), secret_type, 0),
             Err(SecretTreeError::IndexOutOfBounds)
         );
-        let encryption_secret = EncryptionSecret::random(32);
+        let encryption_secret = EncryptionSecret::from_random(32);
         let mut largetree = SecretTree::new(encryption_secret, LeafIndex::from(100_000u32));
         assert!(largetree
             .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
@@ -83,7 +83,7 @@ fn increment_generation() {
 
     for ciphersuite in Config::supported_ciphersuites() {
         let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
-        let encryption_secret = EncryptionSecret::random(32);
+        let encryption_secret = EncryptionSecret::from_random(32);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(SIZE as u32));
         for i in 0..SIZE {
             assert_eq!(
@@ -102,7 +102,8 @@ fn increment_generation() {
                         ciphersuite,
                         LeafIndex::from(j as u32),
                         SecretType::HandshakeSecret,
-                    );
+                    )
+                    .expect("Index out of bounds.");
                 assert_eq!(next_gen, i as u32);
                 assert!(unique_values
                     .insert(handshake_key.as_slice().to_vec(), true)
@@ -115,7 +116,8 @@ fn increment_generation() {
                         ciphersuite,
                         LeafIndex::from(j as u32),
                         SecretType::ApplicationSecret,
-                    );
+                    )
+                    .expect("Index out of bounds.");
                 assert_eq!(next_gen, i as u32);
                 assert!(unique_values
                     .insert(application_key.as_slice().to_vec(), true)

@@ -293,7 +293,7 @@ fn unknown_sender() {
         .expect("Could not create new MLSPlaintext.");
 
         let mut secret_tree = SecretTree::new(
-            EncryptionSecret::random(ciphersuite.hash_length()),
+            EncryptionSecret::from_random(ciphersuite.hash_length()),
             LeafIndex::from(100usize),
         );
 

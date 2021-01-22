@@ -1,6 +1,6 @@
 use openmls::prelude::*;
 mod utils;
-use utils::*;
+use utils::mls_utils::*;
 
 #[test]
 fn padding() {

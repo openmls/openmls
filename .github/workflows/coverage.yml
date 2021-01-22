@@ -1,4 +1,7 @@
 name: test coverage
+ignore:
+  - "tests/utils/managed_utils/*"
+  - "tests/utils/mls_utils/*"
 
 on: [push]
 

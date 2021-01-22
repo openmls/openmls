@@ -6,11 +6,12 @@ use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 
 use super::*;
 
-#[derive(Debug, PartialEq)]
-pub enum SecretTreeError {
-    TooDistantInThePast,
-    TooDistantInTheFuture,
-    IndexOutOfBounds,
+implement_error! {
+    pub enum SecretTreeError {
+        TooDistantInThePast = "Generation is too old to be processed.",
+        TooDistantInTheFuture = "Generation is too far in the future to be processed.",
+        IndexOutOfBounds = "Index out of bounds",
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -93,7 +94,10 @@ impl SecretTree {
     /// Get current generation for a specific SenderRatchet
     #[cfg(test)]
     pub(crate) fn generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
-        match self.ratchet_opt(index, secret_type) {
+        match self
+            .ratchet_opt(index, secret_type)
+            .expect("Index out of bounds.")
+        {
             Some(sender_ratchet) => sender_ratchet.generation(),
             None => 0,
         }
@@ -112,9 +116,11 @@ impl SecretTree {
         // Check if SenderRatchets are already initialized
         if self
             .ratchet_opt(index, SecretType::HandshakeSecret)
+            .expect("Index out of bounds.")
             .is_some()
             && self
                 .ratchet_opt(index, SecretType::ApplicationSecret)
+                .expect("Index out of bounds.")
                 .is_some()
         {
             return Ok(());
@@ -124,7 +130,7 @@ impl SecretTree {
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(
             dirpath(index_in_tree, self.size)
-                .expect("initialize_sender_rathets: Error while computing direct path."),
+                .expect("initialize_sender_ratchets: Error while computing direct path."),
         );
         dir_path.push(root(self.size));
         let mut empty_nodes: Vec<NodeIndex> = vec![];
@@ -185,7 +191,7 @@ impl SecretTree {
         if index >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
-        if self.ratchet_opt(index, secret_type).is_none() {
+        if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)?;
         }
         let sender_ratchet = self.ratchet_mut(index, secret_type);
@@ -199,13 +205,13 @@ impl SecretTree {
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
         secret_type: SecretType,
-    ) -> (u32, RatchetSecrets) {
-        if self.ratchet_opt(index, secret_type).is_none() {
+    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
+        if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)
                 .expect("Index out of bounds");
         }
         let sender_ratchet = self.ratchet_mut(index, secret_type);
-        sender_ratchet.secret_for_encryption(ciphersuite)
+        Ok(sender_ratchet.secret_for_encryption(ciphersuite))
     }
 
     /// Returns a mutable reference to a specific SenderRatchet. The
@@ -217,21 +223,25 @@ impl SecretTree {
         };
         sender_ratchets
             .get_mut(index.as_usize())
-            .expect("SenderRatchets not initialized")
+            .unwrap_or_else(|| panic!("SenderRatchets not initialized: {}", index.as_usize()))
             .as_mut()
             .expect("SecretTree not initialized")
     }
 
     /// Returns an optional reference to a specific SenderRatchet
-    fn ratchet_opt(&self, index: LeafIndex, secret_type: SecretType) -> Option<&SenderRatchet> {
+    fn ratchet_opt(
+        &self,
+        index: LeafIndex,
+        secret_type: SecretType,
+    ) -> Result<Option<&SenderRatchet>, SecretTreeError> {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &self.handshake_sender_ratchets,
             SecretType::ApplicationSecret => &self.application_sender_ratchets,
         };
-        sender_ratchets
-            .get(index.as_usize())
-            .expect("SenderRatchets not initialized")
-            .as_ref()
+        match sender_ratchets.get(index.as_usize()) {
+            Some(sender_ratchet_option) => Ok(sender_ratchet_option.as_ref()),
+            None => Err(SecretTreeError::IndexOutOfBounds),
+        }
     }
 
     /// Derives the secrets for the child leaves in a SecretTree and blanks the

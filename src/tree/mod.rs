@@ -34,6 +34,10 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 
 // Internal tree tests
+#[cfg(all(test, feature = "test-vectors"))]
+mod kat_encryption;
+#[cfg(all(test, feature = "test-vectors"))]
+mod kat_treemath;
 #[cfg(test)]
 mod test_hashes;
 #[cfg(test)]

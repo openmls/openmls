@@ -246,6 +246,13 @@ impl EpochSecret {
             ),
         }
     }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    pub(crate) fn from_random() -> Self {
+        Self {
+            secret: Secret::random(32),
+        }
+    }
 }
 
 /// The `EncryptionSecret` is used to create a `SecretTree`.
@@ -255,7 +262,7 @@ pub struct EncryptionSecret {
 
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    pub(crate) fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         EncryptionSecret {
             secret: epoch_secret.secret.derive_secret(ciphersuite, "encryption"),
         }
@@ -274,9 +281,26 @@ impl EncryptionSecret {
 
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
-    pub fn random(length: usize) -> Self {
+    #[doc(hidden)]
+    pub fn from_random(length: usize) -> Self {
         EncryptionSecret {
             secret: Secret::random(length),
+        }
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.secret.to_vec()
+    }
+}
+
+#[cfg(test)]
+#[doc(hidden)]
+impl From<&[u8]> for EncryptionSecret {
+    fn from(bytes: &[u8]) -> Self {
+        Self {
+            secret: Secret::from(bytes),
         }
     }
 }
@@ -442,6 +466,30 @@ impl SenderDataSecret {
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
     }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub fn from_random(length: usize) -> Self {
+        Self {
+            secret: Secret::random(length),
+        }
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.secret.to_vec()
+    }
+}
+
+#[cfg(test)]
+#[doc(hidden)]
+impl From<&[u8]> for SenderDataSecret {
+    fn from(bytes: &[u8]) -> Self {
+        Self {
+            secret: Secret::from(bytes),
+        }
+    }
 }
 
 /// The `EpochSecrets` contain keys (or secrets), which are accessible outside
@@ -512,5 +560,11 @@ impl EpochSecrets {
             resumption_secret,
         };
         (epoch_secrets, init_secret, encryption_secret)
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
+        &mut self.sender_data_secret
     }
 }

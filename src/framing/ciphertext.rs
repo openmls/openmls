@@ -38,7 +38,7 @@ impl MLSCiphertext {
         let secret_type = SecretType::try_from(mls_plaintext)
             .map_err(|_| MLSCiphertextError::InvalidContentType)?;
         let (generation, (ratchet_key, mut ratchet_nonce)) =
-            secret_tree.secret_for_encryption(ciphersuite, sender, secret_type);
+            secret_tree.secret_for_encryption(ciphersuite, sender, secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::from_random();
         // Prepare the nonce by xoring with the reuse guard.
