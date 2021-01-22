@@ -37,6 +37,8 @@ use std::convert::TryInto;
 #[cfg(test)]
 mod test_hashes;
 #[cfg(test)]
+mod test_index;
+#[cfg(test)]
 mod test_path_keys;
 #[cfg(test)]
 mod test_private_tree;
@@ -129,7 +131,7 @@ impl RatchetTree {
         for (i, node_option) in node_options.iter().enumerate() {
             if let Some(node) = node_option.clone() {
                 nodes.push(node);
-            } else if i % 2 == 0 {
+            } else if NodeIndex::from(i).is_leaf() {
                 nodes.push(Node::new_leaf(None));
             } else {
                 nodes.push(Node::new_blank_parent_node());
@@ -751,6 +753,7 @@ impl RatchetTree {
     /// Verify the parent hash of a tree node. Returns `true` if the parent
     /// hash has successfully been verified and `false` otherwise.
     pub fn verify_parent_hash(&self, index: NodeIndex, node: &Node) -> bool {
+        // "Let L and R be the left and right children of P, respectively"
         let left = treemath::left(index).unwrap();
         let right = treemath::right(index, self.leaf_count()).unwrap();
         // Unwrapping here is safe, because we know it is a full parent node
@@ -762,42 +765,40 @@ impl RatchetTree {
             .unwrap()
             .hash(&self.ciphersuite);
 
-        // Verify the left child first
+        // "If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the check passes"
         if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {
             if left_parent_hash_field == current_hash_right {
                 return true;
             }
-        } else {
-            // Current hash with left child resolution
-            let current_hash_left = ParentHashInput::new(&self, index, left, parent_hash_field)
-                // It is ok to use `unwrap()` here, since we can be sure the node is not
-                // blank
-                .unwrap()
-                .hash(&self.ciphersuite);
-            // Then verify the right child
-            if let Some(right_parent_hash_field) = self.nodes[right].parent_hash() {
-                if right_parent_hash_field == current_hash_left {
-                    return true;
-                }
-            } else {
-                // Iterate over children until we find a node that is neither blank
-                // nor a leaf node
-                let mut child = right;
-                while child.is_parent() && !self.nodes[child].is_blank() {
-                    // Unwrapping here is safe, because we know it is a full parent node
-                    child = treemath::left(child).unwrap();
-                }
-                // If the child is a leaf node, return false
-                if child.is_leaf() {
-                    return false;
-                }
-                // If the child is not a leaf node, it must be a non-blanl parent node and we
-                // can return the comparison of the parent hashes Unwrapping
-                // here is safe, because we know it is a full parent node
-                return self.nodes[child].parent_hash().unwrap() == current_hash_left;
+        }
+
+        // "If R is blank, replace R with its left child until R is either non-blank or a leaf node"
+        let mut child = right;
+        while self.nodes[child].is_blank() && child.is_parent() {
+            // Unwrapping here is safe, because we know it is a full parent node
+            child = treemath::left(child).unwrap();
+        }
+        let right = child;
+
+        // "If R is a leaf node, the check fails"
+        if right.is_leaf() {
+            return false;
+        }
+
+        // Current hash with left child resolution
+        let current_hash_left = ParentHashInput::new(&self, index, left, parent_hash_field)
+            // Unwrapping here is safe, since we can be sure the node is not blank
+            .unwrap()
+            .hash(&self.ciphersuite);
+
+        // "If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the check passes"
+        if let Some(right_parent_hash_field) = self.nodes[right].parent_hash() {
+            if right_parent_hash_field == current_hash_left {
+                return true;
             }
         }
-        // None of the checks succeeded so we must abort
+
+        // "Otherwise, the check fails"
         false
     }
 
@@ -805,7 +806,7 @@ impl RatchetTree {
     /// hashes have successfully been verified and `false` otherwise.
     pub fn verify_parent_hashes(&self) -> bool {
         self.nodes.iter().enumerate().all(|(index, node)| {
-            if index % 2 == 1 && node.is_full_parent() {
+            if NodeIndex::from(index).is_parent() && node.is_full_parent() {
                 self.verify_parent_hash(NodeIndex::from(index), node)
             } else {
                 true

@@ -100,14 +100,14 @@ fn membership_tag() {
         mls_plaintext.content = MLSPlaintextContentType::Application(vec![7, 8, 9]);
 
         // Expect the signature & membership tag verification to fail
-        assert!(!mls_plaintext
+        assert!(mls_plaintext
             .verify_from_member(
                 ciphersuite,
                 serialized_context,
                 &credential_bundle.credential(),
                 &membership_key,
             )
-            .is_ok());
+            .is_err());
     }
 }
 

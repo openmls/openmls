@@ -185,8 +185,9 @@ impl MLSPlaintext {
         tbs_payload.verify(credential, &self.signature)
     }
 
-    /// Verify the signature of an `MLSPlaintext` sent from an external party.
+    /// Verify the membership tag of an `MLSPlaintext` sent from member.
     /// Returns `Ok(())` if successful or `VerificationError` otherwise.
+    // TODO #133: Include this in the validation
     pub fn verify_membership_tag(
         &self,
         ciphersuite: &Ciphersuite,
@@ -215,6 +216,7 @@ impl MLSPlaintext {
     /// Verify the signature and the membership tag of an `MLSPlaintext` sent
     /// from a group member. Returns `Ok(())` if successful or
     /// `VerificationError` otherwise.
+    // TODO #133: Include this in the validation
     pub fn verify_from_member(
         &self,
         ciphersuite: &Ciphersuite,
@@ -224,7 +226,7 @@ impl MLSPlaintext {
     ) -> Result<(), VerificationError> {
         // Verify the signature first
         let tbs_payload = MLSPlaintextTBS::new_from(&self, Some(serialized_context));
-        tbs_payload.verify(credential, &self.signature)?;
+        let signature_result = tbs_payload.verify(credential, &self.signature);
 
         let tbm_payload =
             MLSPlaintextTBMPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)
@@ -234,10 +236,12 @@ impl MLSPlaintext {
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
+            // TODO #133: make this a constant-time comparison
             if membership_tag != expected_membership_tag {
                 Err(VerificationError::InvalidMembershipTag)
             } else {
-                Ok(())
+                // If the tags are equal we just return the signature result
+                signature_result
             }
         } else {
             Err(VerificationError::MissingMembershipTag)

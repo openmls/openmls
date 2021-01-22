@@ -45,7 +45,7 @@ fn test_parent_hash() {
         // Populate the parent nodes with fake values
         for index in 0..tree.tree_size().as_usize() {
             // Filter out leaf nodes
-            if index % 2 == 1 {
+            if NodeIndex::from(index).is_parent() {
                 let (_private_key, public_key) = ciphersuite
                     .derive_hpke_keypair(&Secret::random(ciphersuite.hash_length()))
                     .into_keys();

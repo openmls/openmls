@@ -86,7 +86,7 @@ impl TryFrom<NodeIndex> for LeafIndex {
     fn try_from(node_index: NodeIndex) -> Result<Self, Self::Error> {
         // A node with an odd index must be a parent node and therefore cannot be
         // converted to a leaf node
-        if node_index.as_usize() % 2 != 0 {
+        if node_index.is_parent() {
             Err("Cannot convert a parent node index to a leaf node index.")
         } else {
             Ok(LeafIndex((node_index.as_u32() + 1) / 2))
