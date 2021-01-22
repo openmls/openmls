@@ -14,3 +14,12 @@ implement_error! {
         }
     }
 }
+
+implement_error! {
+    pub enum ParentHashError {
+        EndedWithLeafNode = "The search for a valid child ended with a leaf node.",
+        AllChecksFailed = "All checks failed: Neither child has the right parent hash.",
+        InputNotParentNode = "The input node is not a parent node.",
+        NotAParentNode = "The node is not a parent node.",
+    }
+}

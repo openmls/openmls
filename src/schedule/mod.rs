@@ -199,7 +199,7 @@ impl WelcomeSecret {
         let secret = ciphersuite
             .hkdf_expand(
                 &intermediate_secret.secret,
-                b"mls 1.0 welcome",
+                b"welcome",
                 ciphersuite.hash_length(),
             )
             .unwrap();
