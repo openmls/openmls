@@ -469,11 +469,55 @@
 <span id="466">466</span>
 <span id="467">467</span>
 <span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ProtocolVersion</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="ident">Extension</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::{<span class="ident">sender</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupId</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">psk</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -485,21 +529,23 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalType</span> {
-    <span class="ident">Invalid</span> <span class="op">=</span> <span class="number">0</span>,
     <span class="ident">Add</span> <span class="op">=</span> <span class="number">1</span>,
     <span class="ident">Update</span> <span class="op">=</span> <span class="number">2</span>,
     <span class="ident">Remove</span> <span class="op">=</span> <span class="number">3</span>,
-    <span class="ident">Default</span> <span class="op">=</span> <span class="number">255</span>,
+    <span class="ident">Presharedkey</span> <span class="op">=</span> <span class="number">4</span>,
+    <span class="ident">Reinit</span> <span class="op">=</span> <span class="number">5</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalType</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalType</span> {
+    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="self">Self</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Invalid</span>,
-            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Add</span>,
-            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Update</span>,
-            <span class="number">3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Remove</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Default</span>,
+            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Add</span>),
+            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Update</span>),
+            <span class="number">3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Remove</span>),
+            <span class="number">4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Presharedkey</span>),
+            <span class="number">5</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Reinit</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown proposal type.&quot;</span>),
         }
     }
 }
@@ -558,13 +604,14 @@
 }
 
 <span class="doccomment">/// Proposal</span>
-<span class="doccomment">/// TODO #141: We should cover other types of proposals</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">large_enum_variant</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Proposal</span> {
     <span class="ident">Add</span>(<span class="ident">AddProposal</span>),
     <span class="ident">Update</span>(<span class="ident">UpdateProposal</span>),
     <span class="ident">Remove</span>(<span class="ident">RemoveProposal</span>),
+    <span class="ident">PreSharedKey</span>(<span class="ident">PreSharedKeyProposal</span>),
+    <span class="ident">ReInit</span>(<span class="ident">ReInitProposal</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">Proposal</span> {
@@ -573,6 +620,8 @@
             <span class="ident">Proposal</span>::<span class="ident">Add</span>(<span class="kw-2">ref</span> <span class="ident">_a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Add</span>,
             <span class="ident">Proposal</span>::<span class="ident">Update</span>(<span class="kw-2">ref</span> <span class="ident">_u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Update</span>,
             <span class="ident">Proposal</span>::<span class="ident">Remove</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Remove</span>,
+            <span class="ident">Proposal</span>::<span class="ident">PreSharedKey</span>(<span class="kw-2">ref</span> <span class="ident">_p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Presharedkey</span>,
+            <span class="ident">Proposal</span>::<span class="ident">ReInit</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Reinit</span>,
         }
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">proposal_type</span>: <span class="ident">ProposalType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -834,7 +883,12 @@
                     <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>();
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">proposal_reference</span>, <span class="ident">queued_proposal</span>);
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
+                <span class="ident">ProposalType</span>::<span class="ident">Presharedkey</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
+                }
+                <span class="ident">ProposalType</span>::<span class="ident">Reinit</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
+                }
             }
         }
         <span class="comment">// Check for presence of Removes and delete Updates</span>
@@ -937,6 +991,32 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RemoveProposal</span> {
     <span class="kw">pub</span> <span class="ident">removed</span>: <span class="ident">u32</span>,
+}
+
+<span class="doccomment">/// Preshared Key proposal</span>
+<span class="doccomment">/// 11.1.4</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///     PreSharedKeyID psk;</span>
+<span class="doccomment">/// } PreSharedKey;</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PreSharedKeyProposal</span> {
+    <span class="kw">pub</span> <span class="ident">psk</span>: <span class="ident">PreSharedKeyID</span>,
+}
+
+<span class="doccomment">/// ReInit proposal</span>
+<span class="doccomment">/// 11.1.5</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///     opaque group_id&lt;0..255&gt;;</span>
+<span class="doccomment">///     ProtocolVersion version;</span>
+<span class="doccomment">///     CipherSuite cipher_suite;</span>
+<span class="doccomment">///     Extension extensions&lt;0..2^32-1&gt;;</span>
+<span class="doccomment">/// } ReInit;</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReInitProposal</span> {
+    <span class="kw">pub</span> <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
+    <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
+    <span class="kw">pub</span> <span class="ident">ciphersuite</span>: <span class="ident">CiphersuiteName</span>,
+    <span class="kw">pub</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "openmls";</script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>

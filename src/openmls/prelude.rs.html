@@ -33,6 +33,11 @@
 <span id="30">30</span>
 <span id="31">31</span>
 <span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
@@ -58,8 +63,13 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupId</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::{
-    <span class="ident">proposals</span>::{<span class="ident">AddProposal</span>, <span class="ident">RemoveProposal</span>, <span class="ident">UpdateProposal</span>},
+    <span class="ident">proposals</span>::{
+        <span class="ident">AddProposal</span>, <span class="ident">PreSharedKeyProposal</span>, <span class="ident">ReInitProposal</span>, <span class="ident">RemoveProposal</span>, <span class="ident">UpdateProposal</span>,
+    },
     <span class="ident">Welcome</span>,
+};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">psk</span>::{
+    <span class="ident">BranchPsk</span>, <span class="ident">ExternalPsk</span>, <span class="ident">PSKType</span>, <span class="ident">PreSharedKeyID</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">Psk</span>, <span class="ident">ReinitPsk</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utils</span>::<span class="kw-2">*</span>;
 

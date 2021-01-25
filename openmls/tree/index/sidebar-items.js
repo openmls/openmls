@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["LeafIndex",""],["NodeIndex",""]]});
+initSidebarItems({"struct":[["LeafIndex","LeafIndex is an index to the leaves of a tree."],["NodeIndex","NodeIndex is an index to the nodes of a tree, both parent and leaf nodes."]]});

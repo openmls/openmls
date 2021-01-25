@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["openmls"] = [{"text":"impl Index&lt;LeafIndex&gt; for Vec&lt;Node&gt;","synthetic":false,"types":[]}];
+implementors["openmls"] = [{"text":"impl Index&lt;LeafIndex&gt; for Vec&lt;Node&gt;","synthetic":false,"types":[]},{"text":"impl Index&lt;NodeIndex&gt; for Vec&lt;Node&gt;","synthetic":false,"types":[]},{"text":"impl&lt;'_&gt; Index&lt;&amp;'_ NodeIndex&gt; for Vec&lt;Node&gt;","synthetic":false,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

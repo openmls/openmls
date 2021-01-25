@@ -463,6 +463,114 @@
 <span id="460">460</span>
 <span id="461">461</span>
 <span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
@@ -472,34 +580,37 @@
 <span class="doccomment">//! specification):</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
-<span class="doccomment">//!                    init_secret_[n-1]</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          V</span>
-<span class="doccomment">//!    commit_secret -&gt; KDF.Extract = joiner_secret</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          V</span>
-<span class="doccomment">//!                    Derive-Secret(., &quot;member&quot;)</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          V</span>
-<span class="doccomment">//!    psk_secret (or 0) -&gt; KDF.Extract = member_secret</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          +--&gt; Derive-Secret(., &quot;welcome&quot;)</span>
-<span class="doccomment">//!                          |    = welcome_secret</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          V</span>
-<span class="doccomment">//!                    ExpandWithLabel(., &quot;epoch&quot;, GroupContext_[n], KDF.Nh)</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          V</span>
-<span class="doccomment">//!                     epoch_secret</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          +--&gt; Derive-Secret(., &lt;label&gt;)</span>
-<span class="doccomment">//!                          |    = &lt;secret&gt;</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          V</span>
-<span class="doccomment">//!                    Derive-Secret(., &quot;init&quot;)</span>
-<span class="doccomment">//!                          |</span>
-<span class="doccomment">//!                          V</span>
-<span class="doccomment">//!                    init_secret_[n]</span>
+<span class="doccomment">//!                  init_secret_[n-1]</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//!    commit_secret -&gt; KDF.Extract</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//!                   DeriveSecret(., &quot;joiner&quot;)</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//!                    joiner_secret</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//! psk_secret (or 0) -&gt; KDF.Extract (= intermediary_secret)</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         +--&gt; DeriveSecret(., &quot;welcome&quot;)</span>
+<span class="doccomment">//!                         |    = welcome_secret</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//!                   ExpandWithLabel(., &quot;epoch&quot;, GroupContext_[n], KDF.Nh)</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//!                    epoch_secret</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         +--&gt; DeriveSecret(., &lt;label&gt;)</span>
+<span class="doccomment">//!                         |    = &lt;secret&gt;</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//!                   DeriveSecret(., &quot;init&quot;)</span>
+<span class="doccomment">//!                         |</span>
+<span class="doccomment">//!                         V</span>
+<span class="doccomment">//!                   init_secret_[n]</span>
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Each of the secrets in the key schedule (with exception of the</span>
@@ -520,12 +631,11 @@
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">psk</span>;
 
-<span class="doccomment">/// The `InitSecret` is used to connect the next epoch to the current one. It&#39;s</span>
-<span class="doccomment">/// necessary to be able clone this to create a provisional group state, which</span>
-<span class="doccomment">/// includes the `InitSecret`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="doccomment">/// The `InitSecret` is used to connect the next epoch to the current one.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">InitSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
@@ -533,7 +643,7 @@
 
 <span class="kw">impl</span> <span class="ident">InitSecret</span> {
     <span class="doccomment">/// Derive an `InitSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">InitSecret</span> {
             <span class="ident">secret</span>: <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;init&quot;</span>),
         }
@@ -547,10 +657,7 @@
     }
 }
 
-<span class="doccomment">/// It&#39;s necessary to clone this to be able generate `GroupSecret` object with</span>
-<span class="doccomment">/// multiple different `PathSecret` objects.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">JoinerSecret</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">JoinerSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
 
@@ -560,26 +667,16 @@
     <span class="doccomment">/// `CommitSecret` needs to be present if the current commit is not an</span>
     <span class="doccomment">/// Add-only commit. TODO: For now, this takes a reference to a</span>
     <span class="doccomment">/// `CommitSecret` as input. This should change with #224.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_commit_and_epoch_secret</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_commit_and_init_secret</span>(
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">commit_secret_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CommitSecret</span><span class="op">&gt;</span>,
-        <span class="ident">init_secret</span>: <span class="ident">InitSecret</span>,
+        <span class="ident">init_secret</span>: <span class="kw-2">&amp;</span><span class="ident">InitSecret</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">commit_secret_value</span> <span class="op">=</span> <span class="ident">commit_secret_option</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">commit_secret</span><span class="op">|</span> <span class="ident">commit_secret</span>.<span class="ident">secret</span>());
+        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span>
+            <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="ident">commit_secret_value</span>, <span class="kw-2">&amp;</span><span class="ident">init_secret</span>.<span class="ident">secret</span>);
         <span class="ident">JoinerSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="ident">commit_secret_value</span>, <span class="kw-2">&amp;</span><span class="ident">init_secret</span>.<span class="ident">secret</span>),
-        }
-    }
-
-    <span class="doccomment">/// Derive the inital `JoinerSecret` when creating a new group from a</span>
-    <span class="doccomment">/// `CommitSecret`. The `InitSecret` is randomly generated. TODO:</span>
-    <span class="doccomment">/// For now, this takes a reference to a `CommitSecret` as input. This</span>
-    <span class="doccomment">/// should change with #224.</span>
-    <span class="kw">fn</span> <span class="ident">from_commit_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">commit_secret</span>: <span class="kw-2">&amp;</span><span class="ident">CommitSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">initial_init_secret</span> <span class="op">=</span> <span class="ident">InitSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
-        <span class="ident">JoinerSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">ciphersuite</span>
-                .<span class="ident">hkdf_extract</span>(<span class="prelude-val">Some</span>(<span class="ident">commit_secret</span>.<span class="ident">secret</span>()), <span class="kw-2">&amp;</span><span class="ident">initial_init_secret</span>.<span class="ident">secret</span>),
+            <span class="ident">secret</span>: <span class="ident">intermediate_secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;joiner&quot;</span>),
         }
     }
 
@@ -591,11 +688,11 @@
         <span class="ident">invited_members</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">NodeIndex</span>, <span class="ident">AddProposal</span>)<span class="op">&gt;</span>,
         <span class="ident">provisional_tree</span>: <span class="kw-2">&amp;</span><span class="ident">RatchetTree</span>,
         <span class="kw-2">mut</span> <span class="ident">path_secrets_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">HPKEPublicKey</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PlaintextSecret</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="comment">// Get a Vector containing the node indices of the direct path to the</span>
         <span class="comment">// root from our own leaf.</span>
         <span class="kw">let</span> <span class="ident">dirpath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(
-            <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>(),
+            <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>().<span class="ident">into</span>(),
             <span class="ident">provisional_tree</span>.<span class="ident">leaf_count</span>(),
         )
         .<span class="ident">expect</span>(<span class="string">&quot;create_commit_internal: TreeMath error when computing direct path.&quot;</span>);
@@ -608,8 +705,10 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">path_secrets</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// Compute the index of the common ancestor lowest in the</span>
                     <span class="comment">// tree of our own leaf and the given index.</span>
-                    <span class="kw">let</span> <span class="ident">common_ancestor_index</span> <span class="op">=</span>
-                        <span class="ident">treemath</span>::<span class="ident">common_ancestor_index</span>(<span class="ident">index</span>, <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>());
+                    <span class="kw">let</span> <span class="ident">common_ancestor_index</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">common_ancestor_index</span>(
+                        <span class="ident">index</span>,
+                        <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>().<span class="ident">into</span>(),
+                    );
                     <span class="comment">// Get the position of the node index that represents the</span>
                     <span class="comment">// common ancestor in the direct path. We can unwrap here,</span>
                     <span class="comment">// because the direct path must contain the shared ancestor.</span>
@@ -624,77 +723,42 @@
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
             };
-            <span class="comment">// Create the groupsecrets object for the respective member.</span>
-            <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">clone</span>(), <span class="ident">path_secret</span>);
-            <span class="kw">let</span> <span class="ident">group_secrets_bytes</span> <span class="op">=</span> <span class="ident">group_secrets</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
-            <span class="ident">plaintext_secrets</span>.<span class="ident">push</span>((
-                <span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">clone</span>(),
+            <span class="comment">// Create the GroupSecrets object for the respective member.</span>
+            <span class="comment">// TODO #141: Implement PSK</span>
+            <span class="kw">let</span> <span class="ident">group_secrets_bytes</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">new_encoded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">path_secret</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+            <span class="ident">plaintext_secrets</span>.<span class="ident">push</span>(<span class="ident">PlaintextSecret</span> {
+                <span class="ident">public_key</span>: <span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">clone</span>(),
                 <span class="ident">group_secrets_bytes</span>,
                 <span class="ident">key_package_hash</span>,
-            ));
+            });
         }
-        <span class="ident">plaintext_secrets</span>
+        <span class="prelude-val">Ok</span>(<span class="ident">plaintext_secrets</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">JoinerSecret</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)
-    }
-
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">JoinerSecret</span> { <span class="ident">secret</span> })
-    }
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PlaintextSecret</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">public_key</span>: <span class="ident">HPKEPublicKey</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_secrets_bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">key_package_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// An intermediate secret in the key schedule. It can be used to derive the</span>
-<span class="doccomment">/// `EpochSecret` and the secrets required to decrypt the `Welcome` message.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MemberSecret</span> {
+<span class="doccomment">/// The intermediate secret includes the optional PSK and is used to later</span>
+<span class="doccomment">/// derive the welcome secret and epoch secret</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">IntermediateSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">MemberSecret</span> {
-    <span class="doccomment">/// Derive a `MemberSecret` from a `CommitSecret` and a `JoinerSecret`</span>
-    <span class="doccomment">/// object. This doesn&#39;t consume the `JoinerSecret` object, because we need</span>
-    <span class="doccomment">/// it later in the `create_commit` function to create `GroupSecret`</span>
-    <span class="doccomment">/// objects. TODO: The PSK should get its own dedicated type in the process</span>
-    <span class="doccomment">/// of tackling issue #141.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_joiner_secret_and_psk</span>(
+<span class="kw">impl</span> <span class="ident">IntermediateSecret</span> {
+    <span class="doccomment">/// Derive ans `IntermediateSecret` from a `JoinerSecret` and an optional</span>
+    <span class="doccomment">/// PSK.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">joiner_secret</span>: <span class="ident">JoinerSecret</span>,
         <span class="ident">psk</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">joiner_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;member&quot;</span>);
-        <span class="ident">MemberSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="ident">psk</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;</span><span class="ident">intermediate_secret</span>),
+        <span class="self">Self</span> {
+            <span class="ident">secret</span>: <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="ident">psk</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>.<span class="ident">secret</span>),
         }
-    }
-
-    <span class="doccomment">/// Derive an initial `MemberSecret` when creating a new group. This</span>
-    <span class="doccomment">/// function should not be used when computing secrets in an existing group.</span>
-    <span class="doccomment">/// TODO: The PSK should get its own dedicated type in the process of</span>
-    <span class="doccomment">/// tackling issue #141.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_commit_secret_and_psk</span>(
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">commit_secret</span>: <span class="kw-2">&amp;</span><span class="ident">CommitSecret</span>,
-        <span class="ident">psk</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">from_commit_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">commit_secret</span>);
-        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">joiner_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;member&quot;</span>);
-        <span class="ident">MemberSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="ident">psk</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;</span><span class="ident">intermediate_secret</span>),
-        }
-    }
-
-    <span class="doccomment">/// Derive an `AeadKey` and an `AeadNonce` from the `WelcomeSecret`,</span>
-    <span class="doccomment">/// consuming it in the process.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_welcome_key_nonce</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>) {
-        <span class="kw">let</span> <span class="ident">welcome_secret</span> <span class="op">=</span> <span class="ident">WelcomeSecret</span>::<span class="ident">from_member_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>);
-        <span class="ident">welcome_secret</span>.<span class="ident">derive_welcome_key_nonce</span>(<span class="ident">ciphersuite</span>)
     }
 }
 
@@ -704,14 +768,12 @@
 
 <span class="kw">impl</span> <span class="ident">WelcomeSecret</span> {
     <span class="doccomment">/// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_member_secret</span>(
-        <span class="ident">member_secret</span>: <span class="kw-2">&amp;</span><span class="ident">MemberSecret</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">intermediate_secret</span>: <span class="kw-2">&amp;</span><span class="ident">IntermediateSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="comment">// Unwrapping here is safe, because we know the key is not empty</span>
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">ciphersuite</span>
             .<span class="ident">hkdf_expand</span>(
-                <span class="kw-2">&amp;</span><span class="ident">member_secret</span>.<span class="ident">secret</span>,
-                <span class="string">b&quot;mls 1.0 welcome&quot;</span>,
+                <span class="kw-2">&amp;</span><span class="ident">intermediate_secret</span>.<span class="ident">secret</span>,
+                <span class="string">b&quot;welcome&quot;</span>,
                 <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
             )
             .<span class="ident">unwrap</span>();
@@ -725,7 +787,10 @@
 
     <span class="doccomment">/// Derive an `AeadKey` and an `AeadNonce` from the `WelcomeSecret`,</span>
     <span class="doccomment">/// consuming it in the process.</span>
-    <span class="kw">fn</span> <span class="ident">derive_welcome_key_nonce</span>(<span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_welcome_key_nonce</span>(
+        <span class="self">self</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>) {
         <span class="kw">let</span> <span class="ident">welcome_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_welcome_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">welcome_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_welcome_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="self">self</span>);
         (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>)
@@ -740,24 +805,28 @@
 }
 
 <span class="kw">impl</span> <span class="ident">EpochSecret</span> {
-    <span class="doccomment">/// Derive an `EpochSecret` from a `MemberSecret`, consuming it in the</span>
-    <span class="doccomment">/// process.</span>
-    <span class="kw">fn</span> <span class="ident">from_member_secret</span>(
+    <span class="doccomment">/// Derive an `EpochSecret` from a `JoinerSecret`</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">intermediate_secret</span>: <span class="ident">IntermediateSecret</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
-        <span class="ident">member_secret</span>: <span class="ident">MemberSecret</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">EpochSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">member_secret</span>.<span class="ident">secret</span>.<span class="ident">kdf_expand_label</span>(
+            <span class="ident">secret</span>: <span class="ident">intermediate_secret</span>.<span class="ident">secret</span>.<span class="ident">kdf_expand_label</span>(
                 <span class="ident">ciphersuite</span>,
                 <span class="string">&quot;epoch&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="ident">group_context</span>.<span class="ident">serialize</span>(),
+                <span class="kw-2">&amp;</span><span class="ident">group_context</span>.<span class="ident">serialized</span>(),
                 <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
             ),
         }
     }
 
-    <span class="comment">//</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">test</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-vectors&quot;</span>))]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+        }
+    }
 }
 
 <span class="doccomment">/// The `EncryptionSecret` is used to create a `SecretTree`.</span>
@@ -767,7 +836,7 @@
 
 <span class="kw">impl</span> <span class="ident">EncryptionSecret</span> {
     <span class="doccomment">/// Derive an encryption secret from a reference to an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">EncryptionSecret</span> {
             <span class="ident">secret</span>: <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;encryption&quot;</span>),
         }
@@ -819,13 +888,134 @@
 
 <span class="kw">impl</span> <span class="ident">ExporterSecret</span> {
     <span class="doccomment">/// Derive an `ExporterSecret` from an `EpochSecret`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;exporter&quot;</span>);
         <span class="ident">ExporterSecret</span> { <span class="ident">secret</span> }
     }
 
     <span class="doccomment">/// Get the `Secret` of the `ExporterSecret`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
+    }
+}
+
+<span class="comment">/*
+    authentication_secret: Secret,
+    external_secret: Secret,
+    confirmation_key: Secret,
+    pub(crate) membership_key: Secret,
+    resumption_secret: Secret,
+}
+*/</span>
+
+<span class="doccomment">/// A secret that can be used among members to make sure everyone has the same</span>
+<span class="doccomment">/// group state.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">AuthenticationSecret</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">AuthenticationSecret</span> {
+    <span class="doccomment">/// Derive an `AuthenticationSecret` from an `EpochSecret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
+            .<span class="ident">secret</span>
+            .<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;authentication&quot;</span>);
+        <span class="self">Self</span> { <span class="ident">secret</span> }
+    }
+
+    <span class="doccomment">/// Get the internal `Secret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
+    }
+}
+
+<span class="doccomment">/// A secret used when joining a group with an external Commit.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExternalSecret</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">ExternalSecret</span> {
+    <span class="doccomment">/// Derive an `ExternalSecret` from an `EpochSecret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;external&quot;</span>);
+        <span class="self">Self</span> { <span class="ident">secret</span> }
+    }
+
+    <span class="doccomment">/// Get the internal `Secret`.</span>
+    <span class="comment">// Will be used in #192</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
+    }
+}
+
+<span class="doccomment">/// The confirmation key is used to calculate the `ConfirmationTag`.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConfirmationKey</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">ConfirmationKey</span> {
+    <span class="doccomment">/// Derive an `ConfirmationKey` from an `EpochSecret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
+            .<span class="ident">secret</span>
+            .<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;confirmation&quot;</span>);
+        <span class="self">Self</span> { <span class="ident">secret</span> }
+    }
+
+    <span class="doccomment">/// Get the internal `Secret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
+    }
+}
+
+<span class="doccomment">/// The membership key is used to calculate the `MembershipTag`.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MembershipKey</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">MembershipKey</span> {
+    <span class="doccomment">/// Derive an `MembershipKey` from an `EpochSecret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;membership&quot;</span>);
+        <span class="self">Self</span> { <span class="ident">secret</span> }
+    }
+
+    <span class="doccomment">/// Get the internal `Secret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> { <span class="ident">secret</span> }
+    }
+}
+
+<span class="doccomment">/// A secret used in cross-group operations.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ResumptionSecret</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">ResumptionSecret</span> {
+    <span class="doccomment">/// Derive an `ResumptionSecret` from an `EpochSecret`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;resumption&quot;</span>);
+        <span class="self">Self</span> { <span class="ident">secret</span> }
+    }
+
+    <span class="doccomment">/// Get the internal `Secret`.</span>
+    <span class="comment">// Will be used in #141</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 }
@@ -839,7 +1029,7 @@
 
 <span class="kw">impl</span> <span class="ident">SenderDataSecret</span> {
     <span class="doccomment">/// Derive an `ExporterSecret` from an `EpochSecret`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
             .<span class="ident">secret</span>
             .<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;sender data&quot;</span>);
@@ -879,12 +1069,27 @@
 <span class="doccomment">/// The `EpochSecrets` contain keys (or secrets), which are accessible outside</span>
 <span class="doccomment">/// of the `KeySchedule` and which don&#39;t get consumed immediately upon first</span>
 <span class="doccomment">/// use.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// | Secret                  | Label           |</span>
+<span class="doccomment">/// |:------------------------|:----------------|</span>
+<span class="doccomment">/// | `sender_data_secret`    | &quot;sender data&quot;   |</span>
+<span class="doccomment">/// | `encryption_secret`     | &quot;encryption&quot;    |</span>
+<span class="doccomment">/// | `exporter_secret`       | &quot;exporter&quot;      |</span>
+<span class="doccomment">/// | `authentication_secret` | &quot;authentication&quot;|</span>
+<span class="doccomment">/// | `external_secret`       | &quot;external&quot;      |</span>
+<span class="doccomment">/// | `confirmation_key`      | &quot;confirm&quot;       |</span>
+<span class="doccomment">/// | `membership_key`        | &quot;membership&quot;    |</span>
+<span class="doccomment">/// | `resumption_secret`     | &quot;resumption&quot;    |</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EpochSecrets</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EpochSecrets</span> {
     <span class="ident">sender_data_secret</span>: <span class="ident">SenderDataSecret</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,
-    <span class="ident">confirmation_key</span>: <span class="ident">Secret</span>,
+    <span class="ident">authentication_secret</span>: <span class="ident">AuthenticationSecret</span>,
+    <span class="ident">external_secret</span>: <span class="ident">ExternalSecret</span>,
+    <span class="ident">confirmation_key</span>: <span class="ident">ConfirmationKey</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">membership_key</span>: <span class="ident">MembershipKey</span>,
+    <span class="ident">resumption_secret</span>: <span class="ident">ResumptionSecret</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">EpochSecrets</span> {
@@ -894,28 +1099,39 @@
     }
 
     <span class="doccomment">/// Get the confirmation key.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">confirmation_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">confirmation_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ConfirmationKey</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">confirmation_key</span>
     }
+
+    <span class="doccomment">/// Authentication secret</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">authentication_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">AuthenticationSecret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">authentication_secret</span>
+    }
     <span class="doccomment">/// Derive `EpochSecrets`, as well as an `EncryptionSecret` and an</span>
-    <span class="doccomment">/// `InitSecret` from a `MemberSecret` and a given `GroupContext`. This</span>
+    <span class="doccomment">/// `InitSecret` from an `EpochSecret` and a given `GroupContext`. This</span>
     <span class="doccomment">/// method is only used when initially creating a new `MlsGroup` state.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_epoch_secrets</span>(
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">member_secret</span>: <span class="ident">MemberSecret</span>,
-        <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
+        <span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> (<span class="self">Self</span>, <span class="ident">InitSecret</span>, <span class="ident">EncryptionSecret</span>) {
-        <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span>
-            <span class="ident">EpochSecret</span>::<span class="ident">from_member_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">group_context</span>, <span class="ident">member_secret</span>);
-        <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret</span>::<span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret</span>::<span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;confirm&quot;</span>);
-        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="ident">InitSecret</span>::<span class="ident">from_epoch_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">authentication_secret</span> <span class="op">=</span> <span class="ident">AuthenticationSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">external_secret</span> <span class="op">=</span> <span class="ident">ExternalSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">ConfirmationKey</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">resumption_secret</span> <span class="op">=</span> <span class="ident">ResumptionSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+
+        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="ident">InitSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
         <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">EpochSecrets</span> {
             <span class="ident">sender_data_secret</span>,
             <span class="ident">exporter_secret</span>,
+            <span class="ident">authentication_secret</span>,
+            <span class="ident">external_secret</span>,
             <span class="ident">confirmation_key</span>,
+            <span class="ident">membership_key</span>,
+            <span class="ident">resumption_secret</span>,
         };
         (<span class="ident">epoch_secrets</span>, <span class="ident">init_secret</span>, <span class="ident">encryption_secret</span>)
     }

@@ -17,6 +17,7 @@
 <span id="14">14</span>
 <span id="15">15</span>
 <span id="16">16</span>
+<span id="17">17</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Crypto errors</span>
 <span class="doccomment">//!</span>
@@ -31,7 +32,8 @@
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CryptoError</span> {
         <span class="ident">CryptoLibraryError</span> <span class="op">=</span> <span class="string">&quot;Unrecoverable error in the crypto library.&quot;</span>,
-        <span class="ident">HpkeDecryptionError</span> <span class="op">=</span> <span class="string">&quot;Error while decrypting an HPKE ciphertext&quot;</span>,
+        <span class="ident">HpkeDecryptionError</span> <span class="op">=</span> <span class="string">&quot;Error while decrypting an HPKE ciphertext.&quot;</span>,
+        <span class="ident">UnsupportedSignatureScheme</span> <span class="op">=</span> <span class="string">&quot;This SignatureScheme is not supported.&quot;</span>,
     }
 }
 </pre></div>

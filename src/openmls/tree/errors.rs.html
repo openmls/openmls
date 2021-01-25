@@ -19,9 +19,16 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeError</span> {
@@ -29,13 +36,22 @@
             <span class="ident">InvalidArguments</span> <span class="op">=</span> <span class="string">&quot;Invalid arguments.&quot;</span>,
             <span class="ident">InvalidUpdatePath</span> <span class="op">=</span> <span class="string">&quot;The computed update path is invalid.&quot;</span>,
             <span class="ident">InvalidTree</span> <span class="op">=</span> <span class="string">&quot;The tree is not valid.&quot;</span>,
+            <span class="ident">NotAParentNode</span> <span class="op">=</span> <span class="string">&quot;The node is not a parent node.&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
             <span class="ident">PathSecretDecryptionError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;Error while decrypting `PathSecret`.&quot;</span>,
         }
+    }
+}
+
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ParentHashError</span> {
+        <span class="ident">EndedWithLeafNode</span> <span class="op">=</span> <span class="string">&quot;The search for a valid child ended with a leaf node.&quot;</span>,
+        <span class="ident">AllChecksFailed</span> <span class="op">=</span> <span class="string">&quot;All checks failed: Neither child has the right parent hash.&quot;</span>,
+        <span class="ident">InputNotParentNode</span> <span class="op">=</span> <span class="string">&quot;The input node is not a parent node.&quot;</span>,
+        <span class="ident">NotAParentNode</span> <span class="op">=</span> <span class="string">&quot;The node is not a parent node.&quot;</span>,
+        <span class="ident">EmptyParentNode</span> <span class="op">=</span> <span class="string">&quot;The parent node was blank.&quot;</span>,
     }
 }
 </pre></div>

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["TreeError",""]]});
+initSidebarItems({"enum":[["ParentHashError",""],["TreeError",""]]});

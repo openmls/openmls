@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["LeafNodeHashInput",""],["ParentNodeHashInput",""]]});
+initSidebarItems({"struct":[["LeafNodeHashInput",""],["ParentHashInput",""],["ParentNodeTreeHashInput",""]]});

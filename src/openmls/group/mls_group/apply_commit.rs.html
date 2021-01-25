@@ -179,6 +179,18 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
@@ -202,12 +214,14 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">EpochMismatch</span>);
         }
 
-        <span class="comment">// Extract Commit from MLSPlaintext</span>
-        <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">received_confirmation_tag</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">content</span> {
-            <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Commit</span>((<span class="ident">commit</span>, <span class="ident">confirmation_tag</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                (<span class="ident">commit</span>, <span class="ident">confirmation_tag</span>)
-            }
+        <span class="comment">// Extract Commit &amp; Confirmation Tag from MLSPlaintext</span>
+        <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">content</span> {
+            <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Commit</span>(<span class="ident">commit</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">commit</span>,
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">WrongPlaintextContentType</span>),
+        };
+        <span class="kw">let</span> <span class="ident">received_confirmation_tag</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">confirmation_tag</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">confirmation_tag</span>,
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">ConfirmationTagMissing</span>),
         };
 
         <span class="comment">// Build a queue with all proposals from the Commit and check that we have all</span>
@@ -238,20 +252,22 @@
         <span class="comment">// Determine if Commit is own Commit</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>;
         <span class="kw">let</span> <span class="ident">is_own_commit</span> <span class="op">=</span>
-            <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">to_node_index</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>(); <span class="comment">// XXX: correct?</span>
+            <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">to_leaf_index</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>();
 
         <span class="kw">let</span> <span class="ident">zero_commit_secret</span> <span class="op">=</span> <span class="ident">CommitSecret</span>::<span class="ident">zero_secret</span>(<span class="ident">ciphersuite</span>);
         <span class="comment">// Determine if Commit has a path</span>
         <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">path</span>.<span class="ident">clone</span>() {
-            <span class="comment">// Verify KeyPackage and MLSPlaintext signature</span>
+            <span class="comment">// Verify KeyPackage and MLSPlaintext signature &amp; membership tag</span>
+            <span class="comment">// TODO #106: Support external members</span>
             <span class="kw">let</span> <span class="ident">kp</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">path</span>.<span class="ident">leaf_key_package</span>;
             <span class="kw">if</span> <span class="ident">kp</span>.<span class="ident">verify</span>().<span class="ident">is_err</span>() {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">PathKeyPackageVerificationFailure</span>);
             }
-            <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">mls_plaintext</span>.<span class="ident">verify</span>(<span class="prelude-val">Some</span>(<span class="ident">serialized_context</span>.<span class="ident">clone</span>()), <span class="ident">kp</span>.<span class="ident">credential</span>()) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">PlaintextSignatureFailure</span>);
-            }
+            <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">serialized</span>();
+            <span class="ident">mls_plaintext</span>
+                .<span class="ident">verify_signature</span>(<span class="ident">serialized_context</span>, <span class="ident">kp</span>.<span class="ident">credential</span>())
+                .<span class="ident">map_err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">PlaintextSignatureFailure</span>)<span class="question-mark">?</span>;
+
             <span class="kw">if</span> <span class="ident">is_own_commit</span> {
                 <span class="comment">// Find the right KeyPackageBundle among the pending bundles and</span>
                 <span class="comment">// clone out the one that we need.</span>
@@ -283,36 +299,44 @@
 
         <span class="kw">let</span> <span class="ident">confirmed_transcript_hash</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
             <span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitContent</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>, <span class="ident">sender</span>, <span class="ident">commit</span>.<span class="ident">clone</span>()),
+            <span class="comment">// It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a Commit</span>
+            <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitContent</span>::<span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>(),
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>,
-        );
+        )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">from_commit_and_epoch_secret</span>(
+        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">from_commit_and_init_secret</span>(
             <span class="ident">ciphersuite</span>,
             <span class="prelude-val">Some</span>(<span class="ident">commit_secret</span>),
-            <span class="self">self</span>.<span class="ident">init_secret</span>.<span class="ident">clone</span>(),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">init_secret</span>,
         );
-        <span class="kw">let</span> <span class="ident">member_secret</span> <span class="op">=</span>
-            <span class="ident">MemberSecret</span>::<span class="ident">from_joiner_secret_and_psk</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="prelude-val">None</span>);
 
-        <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span> {
-            <span class="ident">group_id</span>: <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
-            <span class="ident">epoch</span>: <span class="ident">provisional_epoch</span>,
-            <span class="ident">tree_hash</span>: <span class="ident">provisional_tree</span>.<span class="ident">compute_tree_hash</span>(),
-            <span class="ident">confirmed_transcript_hash</span>: <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
-        };
+        <span class="comment">// TODO #141: Implement PSK</span>
+        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="prelude-val">None</span>);
+
+        <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span>::<span class="ident">new</span>(
+            <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
+            <span class="ident">provisional_epoch</span>,
+            <span class="ident">provisional_tree</span>.<span class="ident">tree_hash</span>(),
+            <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
+        )<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span>
+            <span class="ident">EpochSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">intermediate_secret</span>, <span class="kw-2">&amp;</span><span class="ident">provisional_group_context</span>);
+
         <span class="kw">let</span> (<span class="ident">provisional_epoch_secrets</span>, <span class="ident">provisional_init_secret</span>, <span class="ident">encryption_secret</span>) <span class="op">=</span>
-            <span class="ident">EpochSecrets</span>::<span class="ident">derive_epoch_secrets</span>(
-                <span class="ident">ciphersuite</span>,
-                <span class="ident">member_secret</span>,
-                <span class="kw-2">&amp;</span><span class="ident">provisional_group_context</span>,
-            );
+            <span class="ident">EpochSecrets</span>::<span class="ident">derive_epoch_secrets</span>(<span class="ident">ciphersuite</span>, <span class="ident">epoch_secret</span>);
+
+        <span class="kw">let</span> <span class="ident">mls_plaintext_commit_auth_data</span> <span class="op">=</span>
+            <span class="kw">match</span> <span class="ident">MLSPlaintextCommitAuthData</span>::<span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>) {
+                <span class="prelude-val">Ok</span>(<span class="ident">mpcad</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">mpcad</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">ConfirmationTagMissing</span>),
+            };
 
         <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
             <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitAuthData</span>::<span class="ident">from</span>(<span class="ident">mls_plaintext</span>),
+            <span class="kw-2">&amp;</span><span class="ident">mls_plaintext_commit_auth_data</span>,
             <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>,
-        );
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// Verify confirmation tag</span>
         <span class="kw">let</span> <span class="ident">own_confirmation_tag</span> <span class="op">=</span> <span class="ident">ConfirmationTag</span>::<span class="ident">new</span>(
@@ -327,7 +351,7 @@
         <span class="comment">// Verify KeyPackage extensions</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">path</span> {
             <span class="kw">if</span> <span class="op">!</span><span class="ident">is_own_commit</span> {
-                <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">compute_parent_hash</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">sender</span>));
+                <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">sender</span>);
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">received_parent_hash</span>) <span class="op">=</span> <span class="ident">path</span>
                     .<span class="ident">leaf_key_package</span>
                     .<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType</span>::<span class="ident">ParentHash</span>)

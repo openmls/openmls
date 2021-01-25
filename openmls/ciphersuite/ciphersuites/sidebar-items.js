@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["aead_from_suite",""],["hash_from_suite",""],["hpke_aead_from_suite",""],["hpke_kdf_from_suite",""],["kdf_from_suite",""],["kem_from_suite",""],["signature_from_suite",""]]});
+initSidebarItems({"fn":[["aead_from_suite",""],["hash_from_suite",""],["hpke_aead_from_suite",""],["hpke_kdf_from_suite",""],["kdf_from_suite",""],["kem_from_suite",""]]});

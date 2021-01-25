@@ -19,23 +19,77 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MLSPlaintextError` and `MLSCiphertextError` are thrown on errors</span>
 <span class="doccomment">//! handling `MLSPlaintext` and `MLSCiphertext`.</span>
 
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">CodecError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">secret_tree</span>::<span class="ident">SecretTreeError</span>;
+
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MLSPlaintextError</span> {
         <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext message is not an application message.&quot;</span>,
+        <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Sender is not part of the group&quot;</span>,
+        <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext signature is invalid&quot;</span>,
+        <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is invalid&quot;</span>,
     }
 }
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MLSCiphertextError</span> {
-        <span class="ident">InvalidContentType</span> <span class="op">=</span> <span class="string">&quot;The MLSCiphertext has an invalid content type.&quot;</span>,
-        <span class="ident">GenerationOutOfBound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a ratcheting secret for the given sender and generation.&quot;</span>,
-        <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Sender is not part of the group&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">InvalidContentType</span> <span class="op">=</span> <span class="string">&quot;The MLSCiphertext has an invalid content type.&quot;</span>,
+            <span class="ident">GenerationOutOfBound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a ratcheting secret for the given sender and generation.&quot;</span>,
+            <span class="ident">EncryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occured while encrypting.&quot;</span>,
+            <span class="ident">DecryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occured while decrypting.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">PlaintextError</span>(<span class="ident">MLSPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;MLSPlaintext error&quot;</span>,
+            <span class="ident">SecretTreeError</span>(<span class="ident">SecretTreeError</span>) <span class="op">=</span> <span class="string">&quot;SecretTree error&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,
+        }
+    }
+}
+
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VerificationError</span> {
+        <span class="ident">Simple</span> {
+            <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext signature is invalid&quot;</span>,
+            <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is missing&quot;</span>,
+            <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is invalid&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,
+        }
     }
 }
 </pre></div>
