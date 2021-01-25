@@ -766,11 +766,8 @@ impl RatchetTree {
             None => return Err(ParentHashError::InputNotParentNode),
         };
         // Current hash with right child resolution
-        let current_hash_right = ParentHashInput::new(&self, index, right, parent_hash_field)
-            // It is ok to use `unwrap()` here, since we can be sure the node is not
-            // blank
-            .unwrap()
-            .hash(&self.ciphersuite);
+        let current_hash_right =
+            ParentHashInput::new(&self, index, right, parent_hash_field)?.hash(&self.ciphersuite);
 
         // "If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the check passes"
         if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {

@@ -54,10 +54,10 @@ impl<'a> ParentHashInput<'a> {
         index: NodeIndex,
         child_index: NodeIndex,
         parent_hash: &'a [u8],
-    ) -> Result<Self, TreeError> {
+    ) -> Result<Self, ParentHashError> {
         let public_key = match tree.nodes[index].public_hpke_key() {
             Some(pk) => pk,
-            None => return Err(TreeError::InvalidArguments),
+            None => return Err(ParentHashError::EmptyParentNode),
         };
         let original_child_resolution = tree.original_child_resolution(child_index);
         Ok(Self {
