@@ -11,7 +11,7 @@ fn test_decryption_key_index_computation() {
     let update_policy = UpdatePolicy::default();
     let callbacks = default_callbacks::default_callbacks();
     let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
+        ManagedGroupConfig::new(handshake_message_format, update_policy, 10, callbacks);
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
     setup.create_clients();

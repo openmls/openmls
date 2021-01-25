@@ -28,9 +28,9 @@ pub fn read<T: DeserializeOwned>(file_name: &str) -> T {
     };
     let reader = BufReader::new(file);
     match serde_json::from_reader(reader) {
-        Ok(r) => return r,
+        Ok(r) => r,
         Err(e) => panic!("Error reading file.\n{:?}", e),
-    };
+    }
 }
 
 /// Convert `bytes` to a hex string.

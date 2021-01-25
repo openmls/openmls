@@ -36,6 +36,9 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
                 e
             );
         }
+        InvalidMessageError::MembershipTagMismatch => {
+            println!("The membership tag did not match");
+        }
         InvalidMessageError::GroupError(e) => {
             println!("An error in the managed group occurred: {:?}", e);
         }

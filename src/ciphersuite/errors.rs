@@ -11,6 +11,7 @@ implement_error! {
 implement_error! {
     pub enum CryptoError {
         CryptoLibraryError = "Unrecoverable error in the crypto library.",
-        HpkeDecryptionError = "Error while decrypting an HPKE ciphertext",
+        HpkeDecryptionError = "Error while decrypting an HPKE ciphertext.",
+        UnsupportedSignatureScheme = "This SignatureScheme is not supported.",
     }
 }

@@ -1,5 +1,7 @@
 use crate::credentials::*;
 use crate::group::*;
+use crate::messages::proposals::*;
+use crate::schedule::psk::*;
 
 /// Collection of callback functions that are passed to a `ManagedGroup` as part
 /// of the configurations. All callback functions are optional.
@@ -40,18 +42,19 @@ use crate::group::*;
 /// Event listeners get called when certain messages are parsed, or other events
 /// occur. The event listeners are:
 /// ```
-/// # use openmls::prelude::{ManagedGroup, Credential, Removal, ManagedGroupError, InvalidMessageError};
-/// pub type MemberAdded = fn(
-///     managed_group: &ManagedGroup,
-///     aad: &[u8],
-///     sender: &Credential,
-///     added_member: &Credential,
-/// );
+/// # use openmls::prelude::{ManagedGroup, Credential, Removal, ManagedGroupError, InvalidMessageError, PreSharedKeyID, ReInitProposal};
+/// // Membership changes
+/// pub type MemberAdded =
+///     fn(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, added_member: &Credential);
 /// pub type MemberRemoved = fn(managed_group: &ManagedGroup, aad: &[u8], removal: &Removal);
-/// pub type MemberUpdated =
-///     fn(managed_group: &ManagedGroup, aad: &[u8], updated_member: &Credential);
+/// pub type MemberUpdated = fn(managed_group: &ManagedGroup, aad: &[u8], updated_member: &Credential);
+/// // PSKs
+/// pub type PskReceived = fn(managed_group: &ManagedGroup, aad: &[u8], psk_id: &PreSharedKeyID);
+/// pub type ReInitReceived = fn(managed_group: &ManagedGroup, aad: &[u8], re_init: &ReInitProposal);
+/// // Application messages
 /// pub type AppMessageReceived =
 ///     fn(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, message: &[u8]);
+/// // Errors
 /// pub type InvalidMessageReceived = fn(managed_group: &ManagedGroup, error: InvalidMessageError);
 /// pub type ErrorOccured = fn(managed_group: &ManagedGroup, error: ManagedGroupError);
 /// ```
@@ -66,6 +69,8 @@ pub struct ManagedGroupCallbacks {
     pub(crate) member_added: Option<MemberAdded>,
     pub(crate) member_removed: Option<MemberRemoved>,
     pub(crate) member_updated: Option<MemberUpdated>,
+    pub(crate) psk_received: Option<PskReceived>,
+    pub(crate) reinit_received: Option<ReInitReceived>,
     pub(crate) app_message_received: Option<AppMessageReceived>,
     pub(crate) invalid_message_received: Option<InvalidMessageReceived>,
     pub(crate) error_occured: Option<ErrorOccured>,
@@ -80,6 +85,8 @@ impl<'a> ManagedGroupCallbacks {
             member_added: None,
             member_removed: None,
             member_updated: None,
+            psk_received: None,
+            reinit_received: None,
             app_message_received: None,
             invalid_message_received: None,
             error_occured: None,
@@ -113,6 +120,16 @@ impl<'a> ManagedGroupCallbacks {
     /// Event listener function for UpdateProposals
     pub fn with_member_updated(mut self, member_updated: MemberUpdated) -> Self {
         self.member_updated = Some(member_updated);
+        self
+    }
+    /// Event listener function for PreSharedKeyProposals
+    pub fn with_psk_received(mut self, psk_received: PskReceived) -> Self {
+        self.psk_received = Some(psk_received);
+        self
+    }
+    /// Event listener function for ReInitProposals
+    pub fn with_reinit_received(mut self, reinit_received: ReInitReceived) -> Self {
+        self.reinit_received = Some(reinit_received);
         self
     }
     /// Event listener function for application messages
@@ -191,12 +208,18 @@ pub type ValidateRemove =
 // Auto-save
 pub type AutoSave = fn(managed_group: &ManagedGroup);
 
-// Event listeners
+// === Event listeners ===
+// Membership changes
 pub type MemberAdded =
     fn(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, added_member: &Credential);
 pub type MemberRemoved = fn(managed_group: &ManagedGroup, aad: &[u8], removal: &Removal);
 pub type MemberUpdated = fn(managed_group: &ManagedGroup, aad: &[u8], updated_member: &Credential);
+// PSKs
+pub type PskReceived = fn(managed_group: &ManagedGroup, aad: &[u8], psk_id: &PreSharedKeyID);
+pub type ReInitReceived = fn(managed_group: &ManagedGroup, aad: &[u8], re_init: &ReInitProposal);
+// Application messages
 pub type AppMessageReceived =
     fn(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, message: &[u8]);
+// Errors
 pub type InvalidMessageReceived = fn(managed_group: &ManagedGroup, error: InvalidMessageError);
 pub type ErrorOccured = fn(managed_group: &ManagedGroup, error: ManagedGroupError);

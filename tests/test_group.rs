@@ -12,11 +12,18 @@ fn create_commit_optional_path() {
         let group_aad = b"Alice's test group";
 
         // Define identities
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Mandatory extensions, will be fixed in #164
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
@@ -60,11 +67,9 @@ fn create_commit_optional_path() {
         // Alice proposes to add Bob with forced self-update
         // Even though there are only Add Proposals, this should generated a path field
         // on the Commit
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = vec![bob_add_proposal];
         let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
@@ -78,7 +83,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path());
@@ -88,11 +93,9 @@ fn create_commit_optional_path() {
         // Since there are only Add Proposals, this does not generate a path field on
         // the Commit Creating a second proposal to add the same member should
         // not fail, only committing that proposal should fail
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
@@ -106,7 +109,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -134,11 +137,13 @@ fn create_commit_optional_path() {
         );
 
         // Alice updates
-        let alice_update_proposal = group_alice.create_update_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            alice_update_key_package.clone(),
-        );
+        let alice_update_proposal = group_alice
+            .create_update_proposal(
+                group_aad,
+                &alice_credential_bundle,
+                alice_update_key_package.clone(),
+            )
+            .expect("Could not create proposal.");
         let proposals = &[&alice_update_proposal];
 
         // Only UpdateProposal
@@ -152,10 +157,8 @@ fn create_commit_optional_path() {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-        let (commit, _confirmation_tag) = match commit_mls_plaintext.content() {
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
-                (commit, confirmation_tag)
-            }
+        let commit = match commit_mls_plaintext.content() {
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path() && kpb_option.is_some());
@@ -173,11 +176,18 @@ fn basic_group_setup() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Generate KeyPackages
         let bob_key_package_bundle =
@@ -197,14 +207,12 @@ fn basic_group_setup() {
             alice_key_package_bundle,
             GroupConfig::default(),
         )
-        .unwrap();
+        .expect("Could not create group.");
 
         // Alice adds Bob
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let _commit = match group_alice.create_commit(
             group_aad,
             &alice_credential_bundle,
@@ -236,11 +244,18 @@ fn group_operations() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Mandatory extensions
         let capabilities_extension = Box::new(CapabilitiesExtension::new(
@@ -276,14 +291,12 @@ fn group_operations() {
             alice_key_package_bundle,
             GroupConfig::default(),
         )
-        .unwrap();
+        .expect("Could not create group.");
 
         // === Alice adds Bob ===
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
@@ -295,7 +308,7 @@ fn group_operations() {
             )
             .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -321,11 +334,15 @@ fn group_operations() {
             _print_tree(&group_alice.tree(), "Alice added Bob");
             panic!("Different public trees");
         }
+        // Make sure that both groups have the same group context
+        if group_alice.context() != group_bob.context() {
+            panic!("Different group contexts");
+        }
 
         // === Alice sends a message to Bob ===
         let message_alice = [1, 2, 3];
         let mls_ciphertext_alice = group_alice
-            .create_application_message(&[], &message_alice, &alice_credential_bundle)
+            .create_application_message(&[], &message_alice, &alice_credential_bundle, 0)
             .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
@@ -342,13 +359,15 @@ fn group_operations() {
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_bob = group_bob.create_update_proposal(
-            &[],
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_bob = group_bob
+            .create_update_proposal(
+                &[],
+                &bob_credential_bundle,
+                bob_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             &[],
             &bob_credential_bundle,
@@ -388,13 +407,15 @@ fn group_operations() {
             &alice_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_alice = group_alice.create_update_proposal(
-            &[],
-            &alice_credential_bundle,
-            alice_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_alice = group_alice
+            .create_update_proposal(
+                &[],
+                &alice_credential_bundle,
+                alice_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
@@ -432,13 +453,15 @@ fn group_operations() {
             &bob_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_bob = group_bob.create_update_proposal(
-            &[],
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_bob = group_bob
+            .create_update_proposal(
+                &[],
+                &bob_credential_bundle,
+                bob_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             &[],
             &alice_credential_bundle,
@@ -475,20 +498,24 @@ fn group_operations() {
         }
 
         // === Bob adds Charlie ===
-        let charlie_credential_bundle =
-            CredentialBundle::new("Charlie".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
+        let charlie_credential_bundle = CredentialBundle::new(
+            "Charlie".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         let charlie_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
-        let add_charlie_proposal_bob =
-            group_bob.create_add_proposal(&[], &bob_credential_bundle, charlie_key_package);
+        let add_charlie_proposal_bob = group_bob
+            .create_add_proposal(&[], &bob_credential_bundle, charlie_key_package)
+            .expect("Could not create proposal.");
 
         let (mls_plaintext_commit, welcome_for_charlie_option, kpb_option) = match group_bob
             .create_commit(
@@ -538,7 +565,7 @@ fn group_operations() {
         // === Charlie sends a message to the group ===
         let message_charlie = [1, 2, 3];
         let mls_ciphertext_charlie = group_charlie
-            .create_application_message(&[], &message_charlie, &charlie_credential_bundle)
+            .create_application_message(&[], &message_charlie, &charlie_credential_bundle, 0)
             .unwrap();
         let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,
@@ -563,13 +590,15 @@ fn group_operations() {
             &charlie_credential_bundle,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("Could not create key package bundle.");
 
-        let update_proposal_charlie = group_charlie.create_update_proposal(
-            &[],
-            &charlie_credential_bundle,
-            charlie_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_charlie = group_charlie
+            .create_update_proposal(
+                &[],
+                &charlie_credential_bundle,
+                charlie_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,
@@ -609,11 +638,9 @@ fn group_operations() {
         }
 
         // === Charlie removes Bob ===
-        let remove_bob_proposal_charlie = group_charlie.create_remove_proposal(
-            &[],
-            &charlie_credential_bundle,
-            LeafIndex::from(1u32),
-        );
+        let remove_bob_proposal_charlie = group_charlie
+            .create_remove_proposal(&[], &charlie_credential_bundle, LeafIndex::from(1u32))
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             &[],
             &charlie_credential_bundle,

@@ -14,7 +14,6 @@ fn validate_add(
 ) -> bool {
     true
 }
-
 /// Validator function for RemoveProposals
 /// `(managed_group: &ManagedGroup, sender: &Credential, removed_member:
 /// &Credential) -> bool`
@@ -128,14 +127,8 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
                 aad
             );
         }
-        InvalidMessageError::CommitWithInvalidProposals(_) => {
-            println!("A Commit message with one ore more invalid proposals was received");
-        }
-        InvalidMessageError::CommitError(e) => {
-            println!("An error occurred when applying a Commit message: {:?}", e);
-        }
-        InvalidMessageError::GroupError(e) => {
-            println!("An group error occurred: {:?}", e);
+        _ => {
+            println!("{:?}", error);
         }
     }
 }
@@ -175,12 +168,18 @@ fn managed_group_operations() {
             let group_id = GroupId::from_slice(b"Test Group");
 
             // Define credential bundles
-            let alice_credential_bundle =
-                CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
-            let bob_credential_bundle =
-                CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
+            let alice_credential_bundle = CredentialBundle::new(
+                "Alice".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
+            let bob_credential_bundle = CredentialBundle::new(
+                "Bob".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
 
             // Generate KeyPackages
             let alice_key_package_bundle =
@@ -206,7 +205,7 @@ fn managed_group_operations() {
                 .with_invalid_message_received(invalid_message_received)
                 .with_error_occured(error_occured);
             let managed_group_config =
-                ManagedGroupConfig::new(handshake_message_format, update_policy, callbacks);
+                ManagedGroupConfig::new(handshake_message_format, update_policy, 0, callbacks);
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
@@ -247,6 +246,12 @@ fn managed_group_operations() {
 
             // Make sure that both groups have the same members
             assert_eq!(alice_group.members(), bob_group.members());
+
+            // Make sure that both groups have the same authentication secret
+            assert_eq!(
+                alice_group.authentication_secret(),
+                bob_group.authentication_secret()
+            );
 
             // === Alice sends a message to Bob ===
             let message_alice = b"Hi, I'm Alice!";
@@ -320,9 +325,12 @@ fn managed_group_operations() {
             );
 
             // === Bob adds Charlie ===
-            let charlie_credential_bundle =
-                CredentialBundle::new("Charlie".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
+            let charlie_credential_bundle = CredentialBundle::new(
+                "Charlie".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
 
             let charlie_key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &charlie_credential_bundle, vec![])
@@ -641,19 +649,26 @@ fn test_empty_input_errors() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Define credential bundles
-    let alice_credential_bundle =
-        CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![]).unwrap();
 
     // Define the managed group configuration
-
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config =
-        ManagedGroupConfig::new(HandshakeMessageFormat::Plaintext, update_policy, callbacks);
+    let managed_group_config = ManagedGroupConfig::new(
+        HandshakeMessageFormat::Plaintext,
+        update_policy,
+        0,
+        callbacks,
+    );
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
