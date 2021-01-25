@@ -102,7 +102,8 @@ fn increment_generation() {
                         ciphersuite,
                         LeafIndex::from(j as u32),
                         SecretType::HandshakeSecret,
-                    );
+                    )
+                    .expect("Index out of bounds.");
                 assert_eq!(next_gen, i as u32);
                 assert!(unique_values
                     .insert(handshake_key.as_slice().to_vec(), true)
@@ -115,7 +116,8 @@ fn increment_generation() {
                         ciphersuite,
                         LeafIndex::from(j as u32),
                         SecretType::ApplicationSecret,
-                    );
+                    )
+                    .expect("Index out of bounds.");
                 assert_eq!(next_gen, i as u32);
                 assert!(unique_values
                     .insert(application_key.as_slice().to_vec(), true)

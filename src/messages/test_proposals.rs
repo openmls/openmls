@@ -1,5 +1,6 @@
 use sender::Sender;
 
+use crate::ciphersuite::Secret;
 use crate::config::*;
 use crate::credentials::*;
 use crate::extensions::*;
@@ -7,6 +8,7 @@ use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
+use crate::schedule::MembershipKey;
 use crate::tree::index::*;
 
 /// This test makes sure ProposalQueue works as intented. This functionality is
@@ -16,11 +18,18 @@ use crate::tree::index::*;
 fn proposal_queue_functions() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Define identities
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Mandatory extensions, will be fixed in #164
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
@@ -49,12 +58,8 @@ fn proposal_queue_functions() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        let group_context = GroupContext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(0),
-            tree_hash: vec![],
-            confirmed_transcript_hash: vec![],
-        };
+        let group_context = GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![])
+            .expect("Could not create new GroupContext");
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
@@ -83,27 +88,36 @@ fn proposal_queue_functions() {
         assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
         // Frame proposals in MLSPlaintext
-        let mls_plaintext_add_alice1 = MLSPlaintext::new(
+        let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(0u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_alice1),
+            proposal_add_alice1,
             &alice_credential_bundle,
             &group_context,
-        );
-        let mls_plaintext_add_alice2 = MLSPlaintext::new(
+            &MembershipKey::from_secret(Secret::default()),
+        )
+        .expect("Could not create proposal.");
+        let mls_plaintext_add_alice2 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(1u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_alice2),
+            proposal_add_alice2,
             &alice_credential_bundle,
             &group_context,
-        );
-        let _mls_plaintext_add_bob1 = MLSPlaintext::new(
+            &MembershipKey::from_secret(Secret::default()),
+        )
+        .expect("Could not create proposal.");
+        let _mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(1u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_bob1),
+            proposal_add_bob1,
             &alice_credential_bundle,
             &group_context,
-        );
+            &MembershipKey::from_secret(Secret::default()),
+        )
+        .expect("Could not create proposal.");
 
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_alice2];
 
@@ -135,11 +149,18 @@ fn proposal_queue_functions() {
 fn proposal_queue_order() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Define identities
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .expect("Could not create CredentialBundle");
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .expect("Could not create CredentialBundle");
 
         // Generate KeyPackages
         let alice_key_package_bundle =
@@ -155,12 +176,8 @@ fn proposal_queue_order() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        let group_context = GroupContext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(0),
-            tree_hash: vec![],
-            confirmed_transcript_hash: vec![],
-        };
+        let group_context =
+            GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![]).unwrap();
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
@@ -176,20 +193,26 @@ fn proposal_queue_order() {
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
         // Frame proposals in MLSPlaintext
-        let mls_plaintext_add_alice1 = MLSPlaintext::new(
+        let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(0u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_alice1.clone()),
+            proposal_add_alice1.clone(),
             &alice_credential_bundle,
             &group_context,
-        );
-        let mls_plaintext_add_bob1 = MLSPlaintext::new(
+            &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
+        )
+        .expect("Could not create proposal.");
+        let mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
+            ciphersuite,
             LeafIndex::from(1u32),
             &[],
-            MLSPlaintextContentType::Proposal(proposal_add_bob1.clone()),
+            proposal_add_bob1.clone(),
             &alice_credential_bundle,
             &group_context,
-        );
+            &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
+        )
+        .expect("Could not create proposal.");
 
         // This should set the order of the proposals.
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_bob1];

@@ -20,16 +20,18 @@ mod ciphersuites;
 mod codec;
 mod errors;
 pub(crate) mod signable;
-use ciphersuites::*;
-pub(crate) use errors::*;
+
 mod ser;
 
+use crate::codec::*;
 use crate::config::{Config, ConfigError};
 use crate::group::GroupContext;
 use crate::schedule::ExporterSecret;
 use crate::schedule::SenderDataSecret;
 use crate::schedule::WelcomeSecret;
 use crate::utils::random_u32;
+use ciphersuites::*;
+pub(crate) use errors::*;
 
 #[cfg(test)]
 mod test_ciphersuite;
@@ -51,6 +53,96 @@ pub enum CiphersuiteName {
 }
 
 implement_enum_display!(CiphersuiteName);
+
+/// SignatureScheme according to IANA TLS parameters
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+#[repr(u16)]
+pub enum SignatureScheme {
+    /// ECDSA_SECP256R1_SHA256
+    ECDSA_SECP256R1_SHA256 = 0x0403,
+    /// ECDSA_SECP521R1_SHA512
+    ECDSA_SECP521R1_SHA512 = 0x0603,
+    /// ED25519
+    ED25519 = 0x0807,
+    /// ED448
+    ED448 = 0x0808,
+}
+
+impl SignatureScheme {
+    /// Create a new signature key pair and return it.
+    pub(crate) fn new_keypair(&self) -> Result<SignatureKeypair, CryptoError> {
+        SignatureKeypair::new(*self)
+    }
+}
+
+impl TryFrom<u16> for SignatureScheme {
+    type Error = String;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            0x0403 => Ok(SignatureScheme::ECDSA_SECP256R1_SHA256),
+            0x0603 => Ok(SignatureScheme::ECDSA_SECP521R1_SHA512),
+            0x0807 => Ok(SignatureScheme::ED25519),
+            0x0808 => Ok(SignatureScheme::ED448),
+            _ => Err(format!("Unsupported SignatureScheme: {}", value)),
+        }
+    }
+}
+
+impl From<CiphersuiteName> for SignatureScheme {
+    fn from(ciphersuite_name: CiphersuiteName) -> Self {
+        match ciphersuite_name {
+            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
+                SignatureScheme::ED25519
+            }
+            CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => {
+                SignatureScheme::ECDSA_SECP256R1_SHA256
+            }
+            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+                SignatureScheme::ED25519
+            }
+            CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448 => SignatureScheme::ED448,
+            CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => {
+                SignatureScheme::ECDSA_SECP521R1_SHA512
+            }
+            CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+                SignatureScheme::ED448
+            }
+        }
+    }
+}
+
+// TODO #13: This should be independent from EverCrypt
+impl TryFrom<SignatureScheme> for SignatureMode {
+    type Error = &'static str;
+    fn try_from(signature_scheme: SignatureScheme) -> Result<Self, Self::Error> {
+        match signature_scheme {
+            SignatureScheme::ED25519 => Ok(SignatureMode::Ed25519),
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(SignatureMode::P256),
+            SignatureScheme::ED448 => Err("SignatureScheme ed448 is not supported."),
+            SignatureScheme::ECDSA_SECP521R1_SHA512 => {
+                Err("SignatureScheme ecdsa_secp521r1 is not supported.")
+            }
+        }
+    }
+}
+
+// TODO #13: This should be independent from EverCrypt
+impl TryFrom<SignatureScheme> for DigestMode {
+    type Error = &'static str;
+    fn try_from(signature_scheme: SignatureScheme) -> Result<Self, Self::Error> {
+        match signature_scheme {
+            // The digest mode for ed25519 is not really used
+            SignatureScheme::ED25519 => Ok(DigestMode::Sha256),
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(DigestMode::Sha256),
+            SignatureScheme::ED448 => Err("SignatureScheme ed448 is not supported."),
+            SignatureScheme::ECDSA_SECP521R1_SHA512 => {
+                Err("SignatureScheme ecdsa_secp521r1 is not supported.")
+            }
+        }
+    }
+}
 
 /// 7.7. Update Paths
 ///
@@ -97,7 +189,8 @@ impl KdfLabel {
             label: full_label,
             context: context.to_vec(),
         };
-        kdf_label.serialize()
+        // It is ok to use unwrap() here, because the context is already serialized
+        kdf_label.encode_detached().unwrap()
     }
 }
 
@@ -111,13 +204,6 @@ pub struct Secret {
 }
 
 impl Secret {
-    // TODO: The only reason we still need this, is because ConfirmationTag is
-    // currently not a MAC, but a Secret. This should be solved when we're up to
-    // spec, i.e. with issue #147.
-    pub(crate) fn to_vec(&self) -> Vec<u8> {
-        self.value.clone()
-    }
-
     /// Randomly sample a fresh `Secret`.
     pub(crate) fn random(length: usize) -> Self {
         Secret {
@@ -142,6 +228,17 @@ impl Secret {
     /// `label` and an empty `context`.
     pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
         self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
+    }
+
+    /// Returns the inner bytes of a secret
+    pub(crate) fn to_bytes(&self) -> &[u8] {
+        &self.value
+    }
+
+    #[cfg(all(test, feature = "test-vectors"))]
+    #[doc(hidden)]
+    pub(crate) fn to_vec(&self) -> Vec<u8> {
+        self.value.clone()
     }
 }
 
@@ -184,7 +281,7 @@ impl ExporterSecret {
         group_context: &GroupContext,
         key_length: usize,
     ) -> Vec<u8> {
-        let context = &group_context.serialize();
+        let context = &group_context.serialized();
         let context_hash = &ciphersuite.hash(context);
         self.secret()
             .derive_secret(ciphersuite, label)
@@ -227,21 +324,19 @@ pub struct Signature {
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct SignaturePrivateKey {
-    ciphersuite: &'static Ciphersuite,
+    signature_scheme: SignatureScheme,
+    value: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignaturePublicKey {
+    signature_scheme: SignatureScheme,
     value: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
-pub struct SignaturePublicKey {
-    ciphersuite: &'static Ciphersuite,
-    value: Vec<u8>,
-}
-
-implement_persistence!(SignaturePublicKey, value);
-
-#[derive(Clone)]
 pub struct SignatureKeypair {
-    ciphersuite: &'static Ciphersuite,
+    signature_scheme: SignatureScheme,
     private_key: SignaturePrivateKey,
     public_key: SignaturePublicKey,
 }
@@ -249,7 +344,7 @@ pub struct SignatureKeypair {
 #[derive(Debug)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
-    signature: SignatureMode,
+    signature_scheme: SignatureScheme,
     hpke: Hpke,
     aead: AeadMode,
     hash: DigestMode,
@@ -280,18 +375,27 @@ impl PartialEq for Ciphersuite {
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
     pub(crate) fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
-        let hpke_kem = kem_from_suite(&name).unwrap();
+        if !Config::supported_ciphersuite_names().contains(&name) {
+            return Err(ConfigError::UnsupportedCiphersuite);
+        }
+        let signature_scheme = SignatureScheme::from(name);
+        let hpke_kem = kem_from_suite(&name)?;
         let hpke_kdf = hpke_kdf_from_suite(&name);
         let hpke_aead = hpke_aead_from_suite(&name);
 
         Ok(Ciphersuite {
             name,
-            signature: signature_from_suite(&name)?,
+            signature_scheme,
             hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
             aead: aead_from_suite(&name),
             hash: hash_from_suite(&name),
             hmac: kdf_from_suite(&name),
         })
+    }
+
+    /// Get the signature scheme of this ciphersuite.
+    pub fn signature_scheme(&self) -> SignatureScheme {
+        self.signature_scheme
     }
 
     /// Get the name of this ciphersuite.
@@ -305,28 +409,6 @@ impl Ciphersuite {
         self.aead
     }
 
-    /// Create a new signature key pair and return it.
-    pub(crate) fn new_signature_keypair(&'static self) -> Result<SignatureKeypair, CryptoError> {
-        let (sk, pk) = match signature_key_gen(self.signature) {
-            Ok((sk, pk)) => (sk, pk),
-            Err(e) => {
-                error!("Key generation really shouldn't fail. {:?}", e);
-                return Err(CryptoError::CryptoLibraryError);
-            }
-        };
-        Ok(SignatureKeypair {
-            ciphersuite: self,
-            private_key: SignaturePrivateKey {
-                value: sk.to_vec(),
-                ciphersuite: self,
-            },
-            public_key: SignaturePublicKey {
-                value: pk.to_vec(),
-                ciphersuite: self,
-            },
-        })
-    }
-
     /// Hash `payload` and return the digest.
     pub(crate) fn hash(&self, payload: &[u8]) -> Vec<u8> {
         hash(self.hash, payload)
@@ -335,6 +417,12 @@ impl Ciphersuite {
     /// Get the length of the used hash algorithm.
     pub(crate) fn hash_length(&self) -> usize {
         get_digest_size(self.hash)
+    }
+
+    /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
+    /// HMAC that is also used in HKDF.
+    pub(crate) fn mac(&self, salt: &Secret, ikm: &Secret) -> Vec<u8> {
+        hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice())
     }
 
     /// HKDF extract.
@@ -626,20 +714,56 @@ impl PartialEq for SignaturePublicKey {
     }
 }
 
+impl SignatureKeypair {
+    pub(crate) fn new(signature_scheme: SignatureScheme) -> Result<SignatureKeypair, CryptoError> {
+        let signature_mode = match SignatureMode::try_from(signature_scheme) {
+            Ok(signature_mode) => signature_mode,
+            Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
+        };
+        let (sk, pk) = match signature_key_gen(signature_mode) {
+            Ok((sk, pk)) => (sk, pk),
+            Err(e) => {
+                error!("Key generation really shouldn't fail. {:?}", e);
+                return Err(CryptoError::CryptoLibraryError);
+            }
+        };
+        Ok(SignatureKeypair {
+            signature_scheme,
+            private_key: SignaturePrivateKey {
+                value: sk.to_vec(),
+                signature_scheme,
+            },
+            public_key: SignaturePublicKey {
+                value: pk.to_vec(),
+                signature_scheme,
+            },
+        })
+    }
+}
+
 impl SignaturePublicKey {
     /// Create a new signature public key from raw key bytes.
-    pub fn new(bytes: Vec<u8>, ciphersuite: CiphersuiteName) -> Result<Self, ConfigError> {
+    pub fn new(bytes: Vec<u8>, signature_scheme: SignatureScheme) -> Result<Self, SignatureError> {
+        // TODO #13: This should be independent from EverCrypt
+        if SignatureMode::try_from(signature_scheme).is_err() {
+            return Err(SignatureError::UnknownAlgorithm);
+        }
+        if DigestMode::try_from(signature_scheme).is_err() {
+            return Err(SignatureError::UnknownAlgorithm);
+        }
         Ok(Self {
             value: bytes,
-            ciphersuite: Config::ciphersuite(ciphersuite)?,
+            signature_scheme,
         })
     }
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
     pub fn verify(&self, signature: &Signature, payload: &[u8]) -> bool {
         verify(
-            self.ciphersuite.signature,
-            Some(self.ciphersuite.hash),
+            // It's ok to use `unwrap()` here, since we checked the signature scheme is supported
+            // when the public key was created.
+            SignatureMode::try_from(self.signature_scheme).unwrap(),
+            Some(DigestMode::try_from(self.signature_scheme).unwrap()),
             &self.value,
             &signature.value,
             payload,
@@ -652,17 +776,17 @@ impl SignaturePrivateKey {
     /// Sign the `payload` byte slice with this signature key.
     /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
-        let (hash, nonce) = match self.ciphersuite.signature {
+        // It's ok to use `unwrap()` here, since we checked the signature scheme is
+        // supported when the public key was created.
+        let signature_mode = SignatureMode::try_from(self.signature_scheme).unwrap();
+        let (hash, nonce) = match signature_mode {
             SignatureMode::Ed25519 => (None, None),
-            SignatureMode::P256 => (Some(self.ciphersuite.hash), Some(p256_ecdsa_random_nonce())),
+            SignatureMode::P256 => (
+                Some(DigestMode::try_from(self.signature_scheme).unwrap()),
+                Some(p256_ecdsa_random_nonce()),
+            ),
         };
-        match sign(
-            self.ciphersuite.signature,
-            hash,
-            &self.value,
-            payload,
-            nonce.as_ref(),
-        ) {
+        match sign(signature_mode, hash, &self.value, payload, nonce.as_ref()) {
             Ok(s) => Ok(Signature { value: s }),
             Err(e) => Err(e),
         }

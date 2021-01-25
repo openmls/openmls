@@ -22,8 +22,13 @@ pub use crate::framing::{errors::*, sender::Sender, *};
 pub use crate::group::GroupId;
 pub use crate::key_packages::*;
 pub use crate::messages::{
-    proposals::{AddProposal, RemoveProposal, UpdateProposal},
+    proposals::{
+        AddProposal, PreSharedKeyProposal, ReInitProposal, RemoveProposal, UpdateProposal,
+    },
     Welcome,
+};
+pub use crate::schedule::psk::{
+    BranchPsk, ExternalPsk, PSKType, PreSharedKeyID, PreSharedKeys, Psk, ReinitPsk,
 };
 pub use crate::utils::*;
 

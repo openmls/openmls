@@ -3,16 +3,17 @@ use crate::codec::*;
 use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
+use crate::framing::Mac;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
-use crate::schedule::JoinerSecret;
+use crate::schedule::{ConfirmationKey, JoinerSecret};
 use crate::tree::{index::*, *};
 
 use serde::{Deserialize, Serialize};
 
 mod codec;
 
-pub(crate) mod errors;
+pub mod errors;
 pub(crate) mod proposals;
 
 pub use codec::*;
@@ -24,6 +25,9 @@ mod test_proposals;
 
 #[cfg(test)]
 mod test_welcome;
+
+#[cfg(test)]
+mod test_codec;
 
 /// Welcome Messages
 ///
@@ -107,8 +111,10 @@ impl Commit {
     }
 }
 
+/// Confirmation tag field of MLSPlaintext. For type saftey this is a wrapper
+/// around a `Mac`.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct ConfirmationTag(pub(crate) Vec<u8>);
+pub struct ConfirmationTag(pub(crate) Mac);
 
 impl ConfirmationTag {
     /// Create a new confirmation tag.
@@ -121,22 +127,29 @@ impl ConfirmationTag {
     /// ```
     pub fn new(
         ciphersuite: &Ciphersuite,
-        confirmation_key: &Secret,
+        confirmation_key: &ConfirmationKey,
         confirmed_transcript_hash: &[u8],
     ) -> Self {
         ConfirmationTag(
             ciphersuite
-                .hkdf_extract(
-                    Some(confirmation_key),
+                .mac(
+                    confirmation_key.secret(),
                     &Secret::from(confirmed_transcript_hash.to_vec()),
                 )
-                .to_vec(),
+                .into(),
         )
     }
+}
 
-    /// Get a copy of the raw byte vector.
-    pub(crate) fn to_vec(&self) -> Vec<u8> {
-        self.0.to_vec()
+impl From<ConfirmationTag> for Vec<u8> {
+    fn from(confirmation_tag: ConfirmationTag) -> Self {
+        confirmation_tag.0.into()
+    }
+}
+
+impl From<Vec<u8>> for ConfirmationTag {
+    fn from(bytes: Vec<u8>) -> Self {
+        ConfirmationTag(bytes.into())
     }
 }
 
@@ -174,7 +187,7 @@ impl GroupInfo {
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
         extensions: Vec<Box<dyn Extension>>,
-        confirmation_tag: Vec<u8>,
+        confirmation_tag: ConfirmationTag,
         signer_index: LeafIndex,
     ) -> Self {
         Self {
@@ -183,7 +196,7 @@ impl GroupInfo {
             tree_hash,
             confirmed_transcript_hash,
             extensions,
-            confirmation_tag,
+            confirmation_tag: confirmation_tag.into(),
             signer_index,
             signature: Signature::new_empty(),
         }
@@ -225,8 +238,8 @@ impl GroupInfo {
     }
 
     /// Get the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> &[u8] {
-        &self.confirmation_tag
+    pub(crate) fn confirmation_tag(&self) -> ConfirmationTag {
+        ConfirmationTag::from(self.confirmation_tag.clone())
     }
 
     /// Get the extensions.
@@ -237,30 +250,6 @@ impl GroupInfo {
     /// Get the extensions as mutable reference.
     pub(crate) fn extensions_mut(&mut self) -> &mut Vec<Box<dyn Extension>> {
         &mut self.extensions
-    }
-}
-
-impl GroupInfo {
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, CodecError> {
-        let mut cursor = Cursor::new(bytes);
-        let group_id = GroupId::decode(&mut cursor)?;
-        let epoch = GroupEpoch::decode(&mut cursor)?;
-        let tree_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let confirmed_transcript_hash = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let extensions = extensions_vec_from_cursor(&mut cursor)?;
-        let confirmation_tag = decode_vec(VecSize::VecU8, &mut cursor)?;
-        let signer_index = LeafIndex::from(u32::decode(&mut cursor)?);
-        let signature = Signature::decode(&mut cursor)?;
-        Ok(GroupInfo {
-            group_id,
-            epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            extensions,
-            confirmation_tag,
-            signer_index,
-            signature,
-        })
     }
 }
 
@@ -308,20 +297,24 @@ pub(crate) struct PathSecret {
 ///   optional<PreSharedKeys> psks;
 /// } GroupSecrets;
 /// ```
-#[allow(dead_code)]
+
 pub(crate) struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
-    pub(crate) psks: Option<PreSharedKeys>,
+    pub(crate) _psks: Option<PreSharedKeys>,
 }
 
 impl GroupSecrets {
-    /// Create a new group secret.
-    pub(crate) fn new(joiner_secret: JoinerSecret, path_secret: Option<PathSecret>) -> Self {
-        Self {
-            joiner_secret,
-            path_secret,
-            psks: None,
-        }
+    /// Create new encoded group secrets.
+    pub(crate) fn new_encoded(
+        joiner_secret: &JoinerSecret,
+        path_secret: Option<PathSecret>,
+        psks: Option<PreSharedKeys>,
+    ) -> Result<Vec<u8>, CodecError> {
+        let buffer = &mut Vec::new();
+        joiner_secret.encode(buffer)?;
+        path_secret.encode(buffer)?;
+        psks.encode(buffer)?;
+        Ok(buffer.to_vec())
     }
 }

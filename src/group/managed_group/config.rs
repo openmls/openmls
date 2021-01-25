@@ -18,6 +18,8 @@ pub struct ManagedGroupConfig {
     pub(crate) handshake_message_format: HandshakeMessageFormat,
     /// Defines the update policy
     pub(crate) update_policy: UpdatePolicy,
+    /// Size of padding in bytes
+    pub(crate) padding_size: usize,
     /// Callbacks
     #[serde(skip)]
     pub(crate) callbacks: ManagedGroupCallbacks,
@@ -27,13 +29,18 @@ impl ManagedGroupConfig {
     pub fn new(
         handshake_message_format: HandshakeMessageFormat,
         update_policy: UpdatePolicy,
+        padding_size: usize,
         callbacks: ManagedGroupCallbacks,
     ) -> Self {
         ManagedGroupConfig {
             handshake_message_format,
             update_policy,
+            padding_size,
             callbacks,
         }
+    }
+    pub fn padding_size(&self) -> usize {
+        self.padding_size
     }
     pub fn callbacks(&self) -> &ManagedGroupCallbacks {
         &self.callbacks

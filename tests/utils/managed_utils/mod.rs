@@ -145,10 +145,13 @@ impl<'ks> ManagedTestSetup<'ks> {
             let identity = i.to_be_bytes().to_vec();
             // For now, everyone supports all ciphersuites.
             let mut credential_bundles = Vec::new();
-            for ciphersuite in &Config::supported_ciphersuite_names() {
-                let credential_bundle =
-                    CredentialBundle::new(identity.clone(), CredentialType::Basic, *ciphersuite)
-                        .unwrap();
+            for ciphersuite in Config::supported_ciphersuite_names() {
+                let credential_bundle = CredentialBundle::new(
+                    identity.clone(),
+                    CredentialType::Basic,
+                    SignatureScheme::from(*ciphersuite),
+                )
+                .unwrap();
                 credential_bundles.push((*ciphersuite, credential_bundle));
             }
             key_store.store_credentials(&identity, credential_bundles);
@@ -181,10 +184,13 @@ impl<'ks> ManagedTestSetup<'ks> {
                 key_package_bundles,
                 groups: RefCell::new(HashMap::new()),
             };
-            for ciphersuite in &Config::supported_ciphersuite_names() {
-                let credential_bundle =
-                    CredentialBundle::new(identity.clone(), CredentialType::Basic, *ciphersuite)
-                        .unwrap();
+            for ciphersuite in Config::supported_ciphersuite_names() {
+                let credential_bundle = CredentialBundle::new(
+                    identity.clone(),
+                    CredentialType::Basic,
+                    SignatureScheme::from(*ciphersuite),
+                )
+                .unwrap();
                 credential_bundles.push((*ciphersuite, credential_bundle));
             }
             clients.insert(identity, RefCell::new(client));
@@ -262,7 +268,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         group.members = sender
             .get_members_of_group(&group.group_id)?
             .iter()
-            .map(|(index, cred)| (index.clone(), cred.identity().clone()))
+            .map(|(index, cred)| (*index, cred.identity().clone()))
             .collect();
         println!("Members still in the group:");
         for (index, member_id) in &group.members {
@@ -312,15 +318,13 @@ impl<'ks> ManagedTestSetup<'ks> {
             let is_in_new_members = |client_id| {
                 new_member_ids
                     .iter()
-                    .find(|&new_member_id| client_id == new_member_id)
-                    .is_some()
+                    .any(|new_member_id| client_id == new_member_id)
             };
             let is_in_group = |client_id| {
                 group
                     .members
                     .iter()
-                    .find(|&(_, member_id)| client_id == member_id)
-                    .is_some()
+                    .any(|(_, member_id)| client_id == member_id)
             };
             // We can unwrap here, because we checked that enough eligible
             // members exist.
@@ -405,7 +409,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         &self,
         action_type: ActionType,
         group: &mut Group,
-        client_id: &Vec<u8>,
+        client_id: &[u8],
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
@@ -432,7 +436,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         &self,
         action_type: ActionType,
         group: &mut Group,
-        adder_id: &Vec<u8>,
+        adder_id: &[u8],
         addees: Vec<Vec<u8>>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
@@ -443,8 +447,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         if group
             .members
             .iter()
-            .find(|(_, id)| addees.iter().find(|&client_id| &client_id == &id).is_some())
-            .is_some()
+            .any(|(_, id)| addees.iter().any(|client_id| client_id == id))
         {
             return Err(SetupError::ClientAlreadyInGroup);
         }
@@ -485,12 +488,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         if group
             .members
             .iter()
-            .find(|(_, id)| {
-                target_members
-                    .iter()
-                    .find(|&client_id| client_id == id)
-                    .is_some()
-            })
+            .find(|(_, id)| target_members.iter().any(|client_id| client_id == id))
             .is_none()
         {
             return Err(SetupError::ClientNotInGroup);

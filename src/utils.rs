@@ -228,13 +228,12 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                         &[]
                     };
                     let parent_hash_bytes = if let Some(ph) = node.parent_hash() {
-                        ph
+                        ph.to_vec()
                     } else {
                         vec![]
                     };
                     (key_bytes, parent_hash_bytes)
                 }
-                _ => unreachable!(),
             };
             if !key_bytes.is_empty() {
                 print!("\tPK: {}", _bytes_to_hex(&key_bytes));

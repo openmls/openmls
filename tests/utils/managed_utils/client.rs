@@ -149,9 +149,8 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
         let mut members = vec![];
         let tree = group.export_ratchet_tree();
-        for index in 0..tree.len() {
+        for (index, leaf) in tree.iter().enumerate() {
             if index % 2 == 0 {
-                let leaf = &tree[index];
                 if let Some(leaf_node) = leaf {
                     let key_package = leaf_node.key_package().unwrap();
                     members.push((index / 2, key_package.credential().clone()));

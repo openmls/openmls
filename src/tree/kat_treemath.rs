@@ -89,12 +89,7 @@ fn generate_test_vectors() {
         test_vector
     }
 
-    for n_leaves in 1..1000 {
-        let test_vector = generate_test_vector(n_leaves);
-        tests.push(test_vector);
-    }
-
-    for n_leaves in (1000..100_000).step_by(10000) {
+    for n_leaves in 1..99 {
         let test_vector = generate_test_vector(n_leaves);
         tests.push(test_vector);
     }

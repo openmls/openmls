@@ -81,7 +81,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let credential_bundle = CredentialBundle::new(
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
-                ciphersuite,
+                SignatureScheme::from(ciphersuite),
             )
             .unwrap();
             // Create a number of key packages.
@@ -150,7 +150,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         initial_group_member
             .group_states
             .borrow_mut()
-            .insert(mls_group.context().group_id.clone(), mls_group);
+            .insert(mls_group.context().group_id().clone(), mls_group);
         // If there is more than one member in the group, prepare proposals and
         // commit. Then distribute the Welcome message to the new
         // members.
@@ -171,11 +171,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .unwrap();
                 // Have the initial member create an Add proposal using the new
                 // KeyPackage.
-                let add_proposal = mls_group.create_add_proposal(
-                    group_aad,
-                    initial_credential_bundle,
-                    next_member_key_package,
-                );
+                let add_proposal = mls_group
+                    .create_add_proposal(
+                        group_aad,
+                        initial_credential_bundle,
+                        next_member_key_package,
+                    )
+                    .unwrap();
                 proposal_list.push(add_proposal);
             }
             // Create the commit based on the previously compiled list of

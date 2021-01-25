@@ -4,29 +4,30 @@
 //! `CreateCommitError`.
 
 use crate::ciphersuite::CryptoError;
+use crate::codec::CodecError;
 use crate::config::ConfigError;
-use crate::framing::errors::MLSCiphertextError;
+use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
-use crate::tree::{secret_tree::SecretTypeError, TreeError};
+use crate::tree::TreeError;
 
 implement_error! {
     pub enum GroupError {
         MLSCiphertextError(MLSCiphertextError) =
-            "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details",
+            "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.",
         WelcomeError(WelcomeError) =
-            "See [`WelcomeError`](`WelcomeError`) for details",
+            "See [`WelcomeError`](`WelcomeError`) for details.",
         ApplyCommitError(ApplyCommitError) =
-            "See [`ApplyCommitError`](`ApplyCommitError`) for details",
+            "See [`ApplyCommitError`](`ApplyCommitError`) for details.",
         CreateCommitError(CreateCommitError) =
-            "See [`CreateCommitError`](`CreateCommitError`) for details",
+            "See [`CreateCommitError`](`CreateCommitError`) for details.",
         ConfigError(ConfigError) =
-            "See [`ConfigError`](`crate::config::ConfigError`) for details",
+            "See [`ConfigError`](`crate::config::ConfigError`) for details.",
         ExporterError(ExporterError) =
-            "See [`ExporterError`](`ExporterError`) for details",
-        SecretTypeError(SecretTypeError) =
-            "See [`SecretTypeError`](`crate::tree::secret_tree::SecretTypeError`) for details",
-            ProposalQueueError(ProposalQueueError) =
-        "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details",
+            "See [`ExporterError`](`ExporterError`) for details.",
+        ProposalQueueError(ProposalQueueError) =
+            "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
+        CodecError(CodecError) =
+            "Codec error occurred.",
     }
 }
 
@@ -59,6 +60,8 @@ implement_error! {
                 "Invalid ratchet tree in Welcome message.",
             GroupSecretsDecryptionFailure(CryptoError) =
                 "Unable to decrypt the EncryptedGroupSecrets.",
+            CodecError(CodecError) =
+                "Codec error occurred.",
         }
     }
 }
@@ -78,10 +81,10 @@ implement_error! {
                 "Parent hash extension is missing.",
             ParentHashMismatch =
                 "Parent hash values don't match.",
-            PlaintextSignatureFailure =
-                "MLSPlaintext signature is invalid.",
             RequiredPathNotFound =
                 "Unable to determine commit path.",
+            ConfirmationTagMissing =
+                "Confirmation Tag is missing.",
             ConfirmationTagMismatch =
                 "Confirmation tag is invalid.",
             MissingOwnKeyPackage =
@@ -92,8 +95,12 @@ implement_error! {
                   "Missing own key to apply proposal.",
         }
         Complex {
+            PlaintextSignatureFailure(VerificationError) =
+                "MLSPlaintext signature is invalid.",
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
+            CodecError(CodecError) =
+                "Codec error occurred.",
         }
     }
 }

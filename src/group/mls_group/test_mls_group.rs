@@ -1,9 +1,8 @@
-use crate::tree::TreeError;
 use crate::{
     group::GroupEpoch,
-    messages::{Commit, EncryptedGroupSecrets, GroupInfo},
+    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfo},
     prelude::*,
-    tree::{UpdatePath, UpdatePathNode},
+    tree::{TreeError, UpdatePath, UpdatePathNode},
 };
 
 #[test]
@@ -13,8 +12,12 @@ fn test_mls_group_persistence() {
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
     // Define credential bundles
-    let alice_credential_bundle =
-        CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
@@ -53,7 +56,7 @@ fn test_failed_groupinfo_decryption() {
             let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
-            let confirmation_tag = vec![6, 6, 6];
+            let confirmation_tag = ConfirmationTag::from(vec![6, 6, 6]);
             let signer_index = LeafIndex::from(8u32);
             let group_info = GroupInfo::new(
                 group_id,
@@ -82,9 +85,12 @@ fn test_failed_groupinfo_decryption() {
                 hpke_input,
             );
 
-            let alice_credential_bundle =
-                CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                    .unwrap();
+            let alice_credential_bundle = CredentialBundle::new(
+                "Alice".into(),
+                CredentialType::Basic,
+                ciphersuite.signature_scheme(),
+            )
+            .unwrap();
 
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![])
@@ -105,7 +111,7 @@ fn test_failed_groupinfo_decryption() {
 
             // Now build the welcome message.
             let broken_welcome = Welcome::new(
-                version.clone(),
+                *version,
                 ciphersuite,
                 broken_secrets,
                 encrypted_group_info.clone(),
@@ -124,18 +130,26 @@ fn test_failed_groupinfo_decryption() {
 }
 
 #[test]
-/// Test what happens if the KEM ciphertext for the receiver in the UpdatePath is broken.
+/// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
+/// is broken.
 fn test_update_path() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Basic group setup.
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle =
-            CredentialBundle::new("Alice".into(), CredentialType::Basic, ciphersuite.name())
-                .unwrap();
-        let bob_credential_bundle =
-            CredentialBundle::new("Bob".into(), CredentialType::Basic, ciphersuite.name()).unwrap();
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
         // Generate KeyPackages
         let alice_key_package_bundle =
@@ -158,11 +172,9 @@ fn test_update_path() {
         .unwrap();
 
         // === Alice adds Bob ===
-        let bob_add_proposal = group_alice.create_add_proposal(
-            group_aad,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-        );
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
@@ -175,12 +187,17 @@ fn test_update_path() {
             .expect("Error creating commit");
 
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit((commit, _)) => commit,
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
         // Check that the function returned a Welcome message
         assert!(welcome_bundle_alice_bob_option.is_some());
+
+        println!(
+            " *** Confirmation tag: {:?}",
+            mls_plaintext_commit.confirmation_tag
+        );
 
         group_alice
             .apply_commit(&mls_plaintext_commit, epoch_proposals, &[])
@@ -199,11 +216,13 @@ fn test_update_path() {
             KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
                 .unwrap();
 
-        let update_proposal_bob = group_bob.create_update_proposal(
-            &[],
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-        );
+        let update_proposal_bob = group_bob
+            .create_update_proposal(
+                &[],
+                &bob_credential_bundle,
+                bob_update_key_package_bundle.key_package().clone(),
+            )
+            .expect("Could not create proposal.");
         let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
             .create_commit(
                 &[],
@@ -217,10 +236,8 @@ fn test_update_path() {
         // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
         // apart the commit, manipulating the ciphertexts and the piecing it
         // back together.
-        let (commit, confirmation_tag) = match &mls_plaintext_commit.content {
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
-                (commit, confirmation_tag)
-            }
+        let commit = match &mls_plaintext_commit.content {
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Bob created a commit, which does not contain an actual commit."),
         };
 
@@ -255,21 +272,38 @@ fn test_update_path() {
             path: Some(broken_path),
         };
 
-        let broken_commit_content =
-            MLSPlaintextContentType::Commit((broken_commit, confirmation_tag.clone()));
+        let broken_commit_content = MLSPlaintextContentType::Commit(broken_commit);
 
-        let broken_plaintext = MLSPlaintext::new(
+        let mut broken_plaintext = MLSPlaintext::new_from_member(
             mls_plaintext_commit.sender.to_leaf_index(),
             &mls_plaintext_commit.authenticated_data,
             broken_commit_content,
             &bob_credential_bundle,
             group_bob.context(),
-        );
+        )
+        .expect("Could not create plaintext.");
+
+        broken_plaintext.confirmation_tag = mls_plaintext_commit.confirmation_tag;
+
+        println!("Confirmation tag: {:?}", broken_plaintext.confirmation_tag);
+
+        let serialized_context = group_bob.group_context.serialized();
+
+        broken_plaintext
+            .sign_from_member(&bob_credential_bundle, serialized_context)
+            .expect("Could not sign plaintext.");
+        broken_plaintext
+            .add_membership_tag(
+                ciphersuite,
+                serialized_context,
+                &group_bob.epoch_secrets.membership_key,
+            )
+            .expect("Could not add membership key");
 
         assert_eq!(
             group_alice
                 .apply_commit(&broken_plaintext, &[&update_proposal_bob], &[])
-                .expect_err("Successfull processing of a broken commit."),
+                .expect_err("Successful processing of a broken commit."),
             GroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))

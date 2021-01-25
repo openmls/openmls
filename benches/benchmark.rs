@@ -19,7 +19,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
                         CredentialBundle::new(
                             vec![1, 2, 3],
                             CredentialType::Basic,
-                            ciphersuite.name(),
+                            ciphersuite.signature_scheme(),
                         )
                         .unwrap()
                     },

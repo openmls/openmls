@@ -20,12 +20,14 @@ impl MlsGroup {
             return Err(ApplyCommitError::EpochMismatch);
         }
 
-        // Extract Commit from MLSPlaintext
-        let (commit, received_confirmation_tag) = match &mls_plaintext.content {
-            MLSPlaintextContentType::Commit((commit, confirmation_tag)) => {
-                (commit, confirmation_tag)
-            }
+        // Extract Commit & Confirmation Tag from MLSPlaintext
+        let commit = match &mls_plaintext.content {
+            MLSPlaintextContentType::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
+        };
+        let received_confirmation_tag = match &mls_plaintext.confirmation_tag {
+            Some(confirmation_tag) => confirmation_tag,
+            None => return Err(ApplyCommitError::ConfirmationTagMissing),
         };
 
         // Build a queue with all proposals from the Commit and check that we have all
@@ -56,20 +58,22 @@ impl MlsGroup {
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender.sender;
         let is_own_commit =
-            mls_plaintext.sender.to_node_index() == provisional_tree.own_node_index(); // XXX: correct?
+            mls_plaintext.sender.to_leaf_index() == provisional_tree.own_node_index();
 
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
-            // Verify KeyPackage and MLSPlaintext signature
+            // Verify KeyPackage and MLSPlaintext signature & membership tag
+            // TODO #106: Support external members
             let kp = &path.leaf_key_package;
             if kp.verify().is_err() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
-            let serialized_context = self.group_context.encode_detached().unwrap();
-            if !mls_plaintext.verify(Some(serialized_context.clone()), kp.credential()) {
-                return Err(ApplyCommitError::PlaintextSignatureFailure);
-            }
+            let serialized_context = self.group_context.serialized();
+            mls_plaintext
+                .verify_signature(serialized_context, kp.credential())
+                .map_err(ApplyCommitError::PlaintextSignatureFailure)?;
+
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles and
                 // clone out the one that we need.
@@ -101,36 +105,44 @@ impl MlsGroup {
 
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
-            &MLSPlaintextCommitContent::new(&self.group_context, sender, commit.clone()),
+            // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a Commit
+            &MLSPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
-        );
+        )?;
 
-        let joiner_secret = JoinerSecret::from_commit_and_epoch_secret(
+        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
             ciphersuite,
             Some(commit_secret),
-            self.init_secret.clone(),
+            &self.init_secret,
         );
-        let member_secret =
-            MemberSecret::from_joiner_secret_and_psk(ciphersuite, joiner_secret, None);
 
-        let provisional_group_context = GroupContext {
-            group_id: self.group_context.group_id.clone(),
-            epoch: provisional_epoch,
-            tree_hash: provisional_tree.compute_tree_hash(),
-            confirmed_transcript_hash: confirmed_transcript_hash.clone(),
-        };
+        // TODO #141: Implement PSK
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
+
+        let provisional_group_context = GroupContext::new(
+            self.group_context.group_id.clone(),
+            provisional_epoch,
+            provisional_tree.tree_hash(),
+            confirmed_transcript_hash.clone(),
+        )?;
+
+        let epoch_secret =
+            EpochSecret::new(ciphersuite, intermediate_secret, &provisional_group_context);
+
         let (provisional_epoch_secrets, provisional_init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(
-                ciphersuite,
-                member_secret,
-                &provisional_group_context,
-            );
+            EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
+
+        let mls_plaintext_commit_auth_data =
+            match MLSPlaintextCommitAuthData::try_from(mls_plaintext) {
+                Ok(mpcad) => mpcad,
+                Err(_) => return Err(ApplyCommitError::ConfirmationTagMissing),
+            };
 
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
-            &MLSPlaintextCommitAuthData::from(mls_plaintext),
+            &mls_plaintext_commit_auth_data,
             &confirmed_transcript_hash,
-        );
+        )?;
 
         // Verify confirmation tag
         let own_confirmation_tag = ConfirmationTag::new(
@@ -145,7 +157,7 @@ impl MlsGroup {
         // Verify KeyPackage extensions
         if let Some(path) = &commit.path {
             if !is_own_commit {
-                let parent_hash = provisional_tree.compute_parent_hash(NodeIndex::from(sender));
+                let parent_hash = provisional_tree.set_parent_hashes(sender);
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)
