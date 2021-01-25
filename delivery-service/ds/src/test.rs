@@ -37,7 +37,7 @@ async fn test_list_clients() {
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,
-        ciphersuite,
+        SignatureScheme::from(ciphersuite),
     )
     .unwrap();
     let client_id = credential_bundle.credential().identity().to_vec();
@@ -123,7 +123,7 @@ async fn test_group() {
         let credential_bundle = CredentialBundle::new(
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
-            ciphersuite,
+            SignatureScheme::from(ciphersuite),
         )
         .unwrap();
         let client_key_package =
@@ -188,8 +188,9 @@ async fn test_group() {
         client2_key_packages.remove(client2_key_package);
 
     // With the key package we can build a proposal.
-    let client2_add_proposal =
-        group.create_add_proposal(group_aad, &credentials[0], client2_key_package);
+    let client2_add_proposal = group
+        .create_add_proposal(group_aad, &credentials[0], client2_key_package)
+        .unwrap();
     let epoch_proposals_ref = vec![&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
         .create_commit(group_aad, &credentials[0], &epoch_proposals_ref, &[], false)
@@ -251,7 +252,7 @@ async fn test_group() {
     // === Client2 sends a message to the group ===
     let client2_message = b"Thanks for adding me Client1.";
     let mls_ciphertext = group_on_client2
-        .create_application_message(&[], &client2_message[..], &credentials[1])
+        .create_application_message(&[], &client2_message[..], &credentials[1], 0)
         .unwrap();
 
     // Send mls_ciphertext to the group

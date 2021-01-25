@@ -7,6 +7,7 @@ use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
 const CIPHERSUITE: CiphersuiteName =
     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+const PADDING_SIZE: usize = 0;
 
 pub struct Contact {
     username: String,
@@ -88,6 +89,7 @@ impl User {
             &group.group_aad,
             msg.as_bytes(),
             &self.identity.borrow().credential,
+            PADDING_SIZE,
         ) {
             Ok(m) => m,
             Err(e) => return Err(format!("{}", e)),
@@ -172,7 +174,7 @@ impl User {
                             // corresponding commit.
                             group.pending_proposals.push(msg);
                         }
-                        MLSPlaintextContentType::Commit((_commit, _confirmation_tag)) => {
+                        MLSPlaintextContentType::Commit(_commit) => {
                             match group.mls_group.borrow_mut().apply_commit(
                                 &msg,
                                 &(group
@@ -226,8 +228,7 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update();
-        let mut config = GroupConfig::default();
-        config.add_ratchet_tree_extension = true;
+        let config = GroupConfig::default();
         let mls_group = MlsGroup::new(group_id, CIPHERSUITE, kpb, config).unwrap();
         let group = Group {
             group_id: group_id.to_vec(),
@@ -266,11 +267,11 @@ impl User {
             None => return Err(format!("No group with name {} known.", group)),
         };
         let credentials = &self.identity.borrow().credential;
-        let add_proposal = group.mls_group.borrow().create_add_proposal(
-            &group.group_aad,
-            credentials,
-            key_package,
-        );
+        let add_proposal = group
+            .mls_group
+            .borrow()
+            .create_add_proposal(&group.group_aad, credentials, key_package)
+            .expect("Could not create proposal.");
         let proposals = vec![&add_proposal];
         let (commit, welcome_msg, _kpb) = group
             .mls_group

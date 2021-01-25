@@ -1,19 +1,26 @@
 //! Unit test for PrivateTree
 
 #[cfg(test)]
-use super::{index::NodeIndex, private_tree::*, test_util::*};
+use super::{
+    index::{LeafIndex, NodeIndex},
+    private_tree::*,
+    test_util::*,
+};
 #[cfg(test)]
 use crate::{ciphersuite::*, credentials::*, key_packages::*, utils::*};
 
 #[cfg(test)]
 // Common setup for tests.
-fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, NodeIndex, Vec<NodeIndex>) {
-    let credential_bundle =
-        CredentialBundle::new("username".into(), CredentialType::Basic, ciphersuite.name())
-            .unwrap();
+fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex, Vec<NodeIndex>) {
+    let credential_bundle = CredentialBundle::new(
+        "username".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
-    let own_index = NodeIndex::from(0u32);
+    let own_index = LeafIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 
     (key_package_bundle, own_index, direct_path)

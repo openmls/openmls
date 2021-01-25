@@ -33,7 +33,7 @@ impl MlsGroup {
         }
 
         // Compute keys to decrypt GroupInfo
-        let (mut group_info, member_secret, path_secret_option) = Self::decrypt_group_info(
+        let (mut group_info, intermediate_secret, path_secret_option) = Self::decrypt_group_info(
             &ciphersuite,
             &egs,
             key_package_bundle.private_key(),
@@ -92,8 +92,14 @@ impl MlsGroup {
         let mut tree = RatchetTree::new_from_nodes(ciphersuite, key_package_bundle, &nodes)?;
 
         // Verify tree hash
-        if tree.compute_tree_hash() != group_info.tree_hash() {
+        let tree_hash = tree.tree_hash();
+        if tree_hash != group_info.tree_hash() {
             return Err(WelcomeError::TreeHashMismatch);
+        }
+
+        // Verify parent hashes
+        if !tree.verify_parent_hashes() {
+            return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
         }
 
         // Verify GroupInfo signature
@@ -107,18 +113,11 @@ impl MlsGroup {
             return Err(WelcomeError::InvalidGroupInfoSignature);
         }
 
-        // Verify ratchet tree
-        // TODO: #35 Why does this get the nodes? Shouldn't `new_from_nodes` consume the
-        // nodes?
-        if !RatchetTree::verify_integrity(&ciphersuite, &nodes) {
-            return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
-        }
-
         // Compute path secrets
         // TODO: #36 check if path_secret has to be optional
         if let Some(path_secret) = path_secret_option {
             let common_ancestor_index = treemath::common_ancestor_index(
-                tree.own_node_index(),
+                tree.own_node_index().into(),
                 NodeIndex::from(group_info.signer_index()),
             );
             let common_path = treemath::direct_path_root(common_ancestor_index, tree.leaf_count())
@@ -143,14 +142,16 @@ impl MlsGroup {
         }
 
         // Compute state
-        let group_context = GroupContext {
-            group_id: group_info.group_id().clone(),
-            epoch: group_info.epoch(),
-            tree_hash: tree.compute_tree_hash(),
-            confirmed_transcript_hash: group_info.confirmed_transcript_hash().to_vec(),
-        };
+        let group_context = GroupContext::new(
+            group_info.group_id().clone(),
+            group_info.epoch(),
+            tree_hash,
+            group_info.confirmed_transcript_hash().to_vec(),
+        )?;
+        // TODO #141: Implement PSK
+        let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);
         let (epoch_secrets, init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(&ciphersuite, member_secret, &group_context);
+            EpochSecrets::derive_epoch_secrets(&ciphersuite, epoch_secret);
         let secret_tree = encryption_secret.create_secret_tree(tree.leaf_count());
 
         let confirmation_tag = ConfirmationTag::new(
@@ -162,10 +163,10 @@ impl MlsGroup {
             &ciphersuite,
             &MLSPlaintextCommitAuthData::from(&confirmation_tag),
             &group_context.confirmed_transcript_hash,
-        );
+        )?;
 
         // Verify confirmation tag
-        if confirmation_tag.0 != group_info.confirmation_tag() {
+        if confirmation_tag != group_info.confirmation_tag() {
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
@@ -200,29 +201,27 @@ impl MlsGroup {
         encrypted_group_secrets: &EncryptedGroupSecrets,
         private_key: &HPKEPrivateKey,
         encrypted_group_info: &[u8],
-    ) -> Result<(GroupInfo, MemberSecret, Option<PathSecret>), WelcomeError> {
+    ) -> Result<(GroupInfo, IntermediateSecret, Option<PathSecret>), WelcomeError> {
         let group_secrets_bytes = ciphersuite.hpke_open(
             &encrypted_group_secrets.encrypted_group_secrets,
             &private_key,
             &[],
             &[],
         )?;
-        let group_secrets = GroupSecrets::decode(&mut Cursor::new(&group_secrets_bytes)).unwrap();
-        // TODO: Currently the PSK is None. This should be fixed with issue #141
-        let member_secret = MemberSecret::from_joiner_secret_and_psk(
-            ciphersuite,
-            group_secrets.joiner_secret,
-            None,
-        );
-        let (welcome_key, welcome_nonce) = member_secret.derive_welcome_key_nonce(ciphersuite);
+        let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes)?;
+        let joiner_secret = group_secrets.joiner_secret;
+        // TODO #141: Implement PSK
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
+        let welcome_secret = WelcomeSecret::new(ciphersuite, &intermediate_secret);
+        let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
         let group_info_bytes =
             match welcome_key.aead_open(encrypted_group_info, &[], &welcome_nonce) {
                 Ok(bytes) => bytes,
                 Err(_) => return Err(WelcomeError::GroupInfoDecryptionFailure),
             };
         Ok((
-            GroupInfo::from_bytes(&group_info_bytes).unwrap(),
-            member_secret,
+            GroupInfo::decode_detached(&group_info_bytes)?,
+            intermediate_secret,
             group_secrets.path_secret,
         ))
     }

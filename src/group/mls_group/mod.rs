@@ -23,11 +23,9 @@ use serde::{
     Deserialize, Deserializer, Serialize,
 };
 use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
-#[cfg(test)]
 use std::cell::RefMut;
 
 use super::errors::ExporterError;
@@ -75,19 +73,22 @@ impl MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
-        let group_context = GroupContext::create_initial_group_context(
-            ciphersuite,
-            group_id,
-            tree.compute_tree_hash(),
-        );
+        let group_context =
+            GroupContext::create_initial_group_context(ciphersuite, group_id, tree.tree_hash())?;
         let commit_secret = tree.private_tree().commit_secret();
-        // Derive an initial member secret based on the commit secret.
-        // Internally, this derives a random `InitSecret` and uses it in the
-        // derivation.
-        let member_secret =
-            MemberSecret::from_commit_secret_and_psk(ciphersuite, commit_secret, None);
+        // Derive an initial joiner secret based on the commit secret.
+        // Derive an epoch secret from the joiner secret.
+        // We use a random `InitSecret` for initialization.
+        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
+            ciphersuite,
+            Some(commit_secret),
+            &InitSecret::random(ciphersuite.hash_length()),
+        );
+        // TODO #141: Implement PSK
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
+        let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);
         let (epoch_secrets, init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(ciphersuite, member_secret, &group_context);
+            EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
         let secret_tree = encryption_secret.create_secret_tree(LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {
@@ -123,19 +124,21 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
-    ) -> MLSPlaintext {
+    ) -> Result<MLSPlaintext, GroupError> {
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        MLSPlaintext::new_from_proposal_member(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            proposal,
             credential_bundle,
             &self.context(),
+            &self.epoch_secrets().membership_key,
         )
+        .map_err(GroupError::CodecError)
     }
 
     // 11.1.2. Update
@@ -147,17 +150,19 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
-    ) -> MLSPlaintext {
+    ) -> Result<MLSPlaintext, GroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        MLSPlaintext::new_from_proposal_member(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            proposal,
             credential_bundle,
             &self.context(),
+            &self.epoch_secrets().membership_key,
         )
+        .map_err(GroupError::CodecError)
     }
 
     // 11.1.3. Remove
@@ -169,19 +174,21 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
-    ) -> MLSPlaintext {
+    ) -> Result<MLSPlaintext, GroupError> {
         let remove_proposal = RemoveProposal {
             removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
-        let content = MLSPlaintextContentType::Proposal(proposal);
-        MLSPlaintext::new(
+        MLSPlaintext::new_from_proposal_member(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            proposal,
             credential_bundle,
             &self.context(),
+            &self.epoch_secrets().membership_key,
         )
+        .map_err(GroupError::CodecError)
     }
 
     // === ===
@@ -226,57 +233,91 @@ impl MlsGroup {
         aad: &[u8],
         msg: &[u8],
         credential_bundle: &CredentialBundle,
+        padding_size: usize,
     ) -> Result<MLSCiphertext, GroupError> {
-        let content = MLSPlaintextContentType::Application(msg.to_vec());
-        let mls_plaintext = MLSPlaintext::new(
+        let mls_plaintext = MLSPlaintext::new_from_application(
+            self.ciphersuite,
             self.sender_index(),
             aad,
-            content,
+            msg,
             credential_bundle,
             &self.context(),
-        );
-        self.encrypt(mls_plaintext)
+            &self.epoch_secrets().membership_key,
+        )?;
+        self.encrypt(mls_plaintext, padding_size)
     }
 
-    // Encrypt/Decrypt MLS message
-    pub fn encrypt(&mut self, mls_plaintext: MLSPlaintext) -> Result<MLSCiphertext, GroupError> {
-        let mut secret_tree = self.secret_tree.borrow_mut();
-        let secret_type = SecretType::try_from(&mls_plaintext)?;
-        let (generation, (ratchet_key, ratchet_nonce)) =
-            secret_tree.secret_for_encryption(self.ciphersuite(), self.sender_index(), secret_type);
-        Ok(MLSCiphertext::new_from_plaintext(
+    // Encrypt an MLSPlaintext into an MLSCiphertext
+    pub fn encrypt(
+        &mut self,
+        mls_plaintext: MLSPlaintext,
+        padding_size: usize,
+    ) -> Result<MLSCiphertext, GroupError> {
+        MLSCiphertext::try_from_plaintext(
             &mls_plaintext,
-            &self,
-            generation,
-            ratchet_key,
-            ratchet_nonce,
-        ))
+            &self.ciphersuite,
+            self.context(),
+            self.sender_index(),
+            self.epoch_secrets(),
+            &mut self.secret_tree_mut(),
+            padding_size,
+        )
+        .map_err(GroupError::MLSCiphertextError)
     }
 
+    /// Decrypt an MLSCiphertext into an MLSPlaintext
     pub fn decrypt(
         &mut self,
         mls_ciphertext: &MLSCiphertext,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
-        let tree = self.tree();
-        let mut indexed_members = HashMap::new();
-        for i in 0..tree.leaf_count().as_usize() {
-            let leaf_index = LeafIndex::from(i);
-            let node = &tree.nodes[leaf_index];
-            if let Some(kp) = node.key_package.as_ref() {
-                indexed_members.insert(leaf_index, kp.credential());
-            }
-        }
-
-        Ok(mls_ciphertext.to_plaintext(
+        let mls_plaintext = mls_ciphertext.to_plaintext(
             self.ciphersuite(),
-            indexed_members,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
-            &self.group_context,
-        )?)
+        )?;
+
+        // Verify the signature. MLSCiphertext messages don't have a membership tag, so
+        // we don't have to verify that.
+        self.verify_signature(&mls_plaintext)?;
+
+        Ok(mls_plaintext)
     }
 
-    // Exporter
+    /// Verify the signature of an MLSPlaintext
+    pub fn verify_signature(&self, mls_plaintext: &MLSPlaintext) -> Result<(), MLSPlaintextError> {
+        let tree = self.tree();
+
+        let node = &tree.nodes[mls_plaintext.sender()];
+        let credential = if let Some(kp) = node.key_package.as_ref() {
+            kp.credential()
+        } else {
+            return Err(MLSPlaintextError::UnknownSender);
+        };
+
+        let serialized_context = self.context().serialized();
+
+        mls_plaintext
+            .verify_signature(serialized_context, credential)
+            .map_err(|_| MLSPlaintextError::InvalidSignature)
+    }
+
+    /// Verify the membership tag an MLSPlaintext
+    pub fn verify_membership_tag(
+        &self,
+        mls_plaintext: &MLSPlaintext,
+    ) -> Result<(), MLSPlaintextError> {
+        let serialized_context = self.context().serialized();
+
+        mls_plaintext
+            .verify_membership_tag(
+                self.ciphersuite,
+                serialized_context,
+                &self.epoch_secrets().membership_key,
+            )
+            .map_err(|_| MLSPlaintextError::InvalidSignature)
+    }
+
+    /// Exporter
     pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, GroupError> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
@@ -289,6 +330,15 @@ impl MlsGroup {
             &self.context(),
             key_length,
         ))
+    }
+
+    /// Returns the authentication secret
+    pub fn authentication_secret(&self) -> Vec<u8> {
+        self.epoch_secrets()
+            .authentication_secret()
+            .secret()
+            .to_bytes()
+            .to_vec()
     }
 
     /// Loads the state from persisted state
@@ -325,15 +375,14 @@ impl MlsGroup {
 
 // Private and crate functions
 impl MlsGroup {
-    fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_node_index().into()
+    pub(crate) fn sender_index(&self) -> LeafIndex {
+        self.tree.borrow().own_node_index()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
         &self.epoch_secrets
     }
 
-    #[cfg(test)]
     pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
         self.secret_tree.borrow_mut()
     }
@@ -355,16 +404,16 @@ fn update_confirmed_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_content: &MLSPlaintextCommitContent,
     interim_transcript_hash: &[u8],
-) -> Vec<u8> {
-    let commit_content_bytes = mls_plaintext_commit_content.serialize();
-    ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat())
+) -> Result<Vec<u8>, CodecError> {
+    let commit_content_bytes = mls_plaintext_commit_content.encode_detached()?;
+    Ok(ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat()))
 }
 
 fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
-) -> Vec<u8> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.serialize();
-    ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat())
+) -> Result<Vec<u8>, CodecError> {
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached().unwrap();
+    Ok(ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat()))
 }

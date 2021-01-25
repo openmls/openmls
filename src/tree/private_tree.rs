@@ -40,7 +40,7 @@ pub(crate) type PathSecrets = Vec<Secret>;
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
-    node_index: NodeIndex,
+    leaf_index: LeafIndex,
 
     // This is the HPKE private key corresponding to the HPKEPublicKey in the
     // node with index `node_index`.
@@ -63,9 +63,9 @@ pub(crate) struct PrivateTree {
 impl PrivateTree {
     /// Create a new empty placeholder `PrivateTree` with default values and no
     /// `HPKEPrivateKey`
-    pub(crate) fn new(node_index: NodeIndex) -> PrivateTree {
+    pub(crate) fn new(leaf_index: LeafIndex) -> PrivateTree {
         PrivateTree {
-            node_index,
+            leaf_index,
             hpke_private_key: None,
             path_keys: PathKeys::default(),
             commit_secret: CommitSecret::default(),
@@ -78,7 +78,7 @@ impl PrivateTree {
     /// will only be derived in a further step. The HPKE private key is
     /// derived from the leaf secret contained in the KeyPackageBundle.
     pub(crate) fn from_key_package_bundle(
-        node_index: NodeIndex,
+        leaf_index: LeafIndex,
         key_package_bundle: &KeyPackageBundle,
     ) -> Self {
         let leaf_secret = key_package_bundle.leaf_secret();
@@ -88,7 +88,7 @@ impl PrivateTree {
         let (private_key, _) = keypair.into_keys();
 
         Self {
-            node_index,
+            leaf_index,
             hpke_private_key: Some(private_key),
             path_keys: PathKeys::default(),
             commit_secret: CommitSecret {
@@ -103,11 +103,11 @@ impl PrivateTree {
     /// KeyPackageBundle.
     pub(crate) fn new_with_keys(
         ciphersuite: &Ciphersuite,
-        node_index: NodeIndex,
+        leaf_index: LeafIndex,
         key_package_bundle: &KeyPackageBundle,
         path: &[NodeIndex],
     ) -> (Self, Vec<HPKEPublicKey>) {
-        let mut private_tree = PrivateTree::from_key_package_bundle(node_index, key_package_bundle);
+        let mut private_tree = PrivateTree::from_key_package_bundle(leaf_index, key_package_bundle);
 
         // Compute path secrets and generate keypairs
         let public_keys =
@@ -124,8 +124,8 @@ impl PrivateTree {
             None => panic!("Library error, private key was never initialized"),
         }
     }
-    pub(crate) fn node_index(&self) -> NodeIndex {
-        self.node_index
+    pub(crate) fn leaf_index(&self) -> LeafIndex {
+        self.leaf_index
     }
     pub(crate) fn path_keys(&self) -> &PathKeys {
         &self.path_keys

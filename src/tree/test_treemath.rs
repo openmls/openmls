@@ -1,6 +1,7 @@
-use super::treemath::TreeMathError;
+use super::index::{LeafIndex, NodeIndex};
+use super::treemath::{TreeMathError, _descendants, _descendants_alt};
 use crate::config::*;
-use crate::tree::{index::LeafIndex, treemath, *};
+use crate::tree::{treemath, *};
 use std::fs::File;
 use std::io::Read;
 
@@ -99,8 +100,9 @@ fn test_dir_path() {
 #[test]
 fn test_tree_hash() {
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
+        let signature_scheme = SignatureScheme::from(ciphersuite_name);
         let credential_bundle =
-            CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite_name).unwrap();
+            CredentialBundle::new(id.to_vec(), CredentialType::Basic, signature_scheme).unwrap();
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap()
     }
 
@@ -109,7 +111,7 @@ fn test_tree_hash() {
 
         // Initialise tree
         let mut tree = RatchetTree::new(ciphersuite, kbp);
-        let tree_hash = tree.compute_tree_hash();
+        let tree_hash = tree.tree_hash();
         println!("Tree hash: {:?}", tree_hash);
 
         // Add 5 nodes to the tree.
@@ -119,11 +121,23 @@ fn test_tree_hash() {
         }
         let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
         let _ = tree.add_nodes(&key_packages);
-        let tree_hash = tree.compute_tree_hash();
+        let tree_hash = tree.tree_hash();
         println!("Tree hash: {:?}", tree_hash);
     }
 }
 
+#[test]
+fn verify_descendants() {
+    const LEAVES: usize = 100;
+    for size in 1..LEAVES {
+        for node in 0..(size * 2 - 1) {
+            assert_eq!(
+                _descendants(NodeIndex::from(node), LeafIndex::from(size)),
+                _descendants_alt(NodeIndex::from(node), LeafIndex::from(size))
+            );
+        }
+    }
+}
 #[test]
 fn test_treemath_functions() {
     assert_eq!(0, treemath::root(LeafIndex::from(0u32)).as_u32());

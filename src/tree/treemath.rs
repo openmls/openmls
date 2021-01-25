@@ -180,3 +180,47 @@ pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     }
     NodeIndex::from((xn << k) + (1 << (k - 1)) - 1)
 }
+
+/// Returns the number of leaves in a tree
+pub(crate) fn leaf_count(number_of_nodes: NodeIndex) -> LeafIndex {
+    LeafIndex::from((number_of_nodes.as_usize() + 1) / 2)
+}
+
+// The following is not currently used but could be useful in future parent hash
+// computations:
+
+/// Returns the list of nodes that are descendants of a given parent node,
+/// including the parent node itself
+pub(crate) fn _descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
+    let l = level(x);
+    if l == 0 {
+        vec![x]
+    } else {
+        let s = (1 << l) - 1;
+        let l = x.as_usize() - s;
+        let mut r = x.as_usize() + s;
+        if r > (size.as_usize() * 2) - 2 {
+            r = (size.as_usize() * 2) - 2;
+        }
+
+        (l..=r).map(NodeIndex::from).collect::<Vec<NodeIndex>>()
+    }
+}
+
+/// Returns the list of nodes that are descendants of a given parent node,
+/// including the parent node itself
+/// (Alternative, easier to verify implementation)
+pub(crate) fn _descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
+    if level(x) == 0 {
+        vec![x]
+    } else {
+        let left_child = left(x).unwrap();
+        let right_child = right(x, size).unwrap();
+        [
+            _descendants_alt(left_child, size),
+            vec![x],
+            _descendants_alt(right_child, size),
+        ]
+        .concat()
+    }
+}

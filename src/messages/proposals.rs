@@ -1,7 +1,11 @@
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::config::ProtocolVersion;
+use crate::extensions::Extension;
 use crate::framing::{sender::*, *};
+use crate::group::GroupId;
 use crate::key_packages::*;
+use crate::schedule::psk::*;
 use crate::tree::index::*;
 
 use serde::{Deserialize, Serialize};
@@ -13,21 +17,23 @@ use super::errors::*;
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum ProposalType {
-    Invalid = 0,
     Add = 1,
     Update = 2,
     Remove = 3,
-    Default = 255,
+    Presharedkey = 4,
+    Reinit = 5,
 }
 
-impl From<u8> for ProposalType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for ProposalType {
+    type Error = &'static str;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => ProposalType::Invalid,
-            1 => ProposalType::Add,
-            2 => ProposalType::Update,
-            3 => ProposalType::Remove,
-            _ => ProposalType::Default,
+            1 => Ok(ProposalType::Add),
+            2 => Ok(ProposalType::Update),
+            3 => Ok(ProposalType::Remove),
+            4 => Ok(ProposalType::Presharedkey),
+            5 => Ok(ProposalType::Reinit),
+            _ => Err("Unknown proposal type."),
         }
     }
 }
@@ -86,13 +92,14 @@ impl ProposalOrRef {
 }
 
 /// Proposal
-/// TODO #141: We should cover other types of proposals
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Proposal {
     Add(AddProposal),
     Update(UpdateProposal),
     Remove(RemoveProposal),
+    PreSharedKey(PreSharedKeyProposal),
+    ReInit(ReInitProposal),
 }
 
 impl Proposal {
@@ -101,6 +108,8 @@ impl Proposal {
             Proposal::Add(ref _a) => ProposalType::Add,
             Proposal::Update(ref _u) => ProposalType::Update,
             Proposal::Remove(ref _r) => ProposalType::Remove,
+            Proposal::PreSharedKey(ref _p) => ProposalType::Presharedkey,
+            Proposal::ReInit(ref _r) => ProposalType::Reinit,
         }
     }
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
@@ -362,7 +371,12 @@ impl<'a> ProposalQueue<'a> {
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                _ => {}
+                ProposalType::Presharedkey => {
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
+                ProposalType::Reinit => {
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
             }
         }
         // Check for presence of Removes and delete Updates
@@ -465,4 +479,30 @@ pub struct UpdateProposal {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RemoveProposal {
     pub removed: u32,
+}
+
+/// Preshared Key proposal
+/// 11.1.4
+/// struct {
+///     PreSharedKeyID psk;
+/// } PreSharedKey;
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct PreSharedKeyProposal {
+    pub psk: PreSharedKeyID,
+}
+
+/// ReInit proposal
+/// 11.1.5
+/// struct {
+///     opaque group_id<0..255>;
+///     ProtocolVersion version;
+///     CipherSuite cipher_suite;
+///     Extension extensions<0..2^32-1>;
+/// } ReInit;
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct ReInitProposal {
+    pub group_id: GroupId,
+    pub version: ProtocolVersion,
+    pub ciphersuite: CiphersuiteName,
+    pub extensions: Vec<Box<dyn Extension>>,
 }

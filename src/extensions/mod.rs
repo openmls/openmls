@@ -143,8 +143,8 @@ fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension
 
 /// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
 ///
-/// Note that this function returns a `CodecError` instead of an `ExtensionError`
-/// because it's only used in decoding functions.
+/// Note that this function returns a `CodecError` instead of an
+/// `ExtensionError` because it's only used in decoding functions.
 pub(crate) fn extensions_vec_from_cursor(
     cursor: &mut Cursor,
 ) -> Result<Vec<Box<dyn Extension>>, CodecError> {

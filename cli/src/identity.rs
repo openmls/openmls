@@ -9,8 +9,12 @@ pub struct Identity {
 
 impl Identity {
     pub(crate) fn new(ciphersuite: CiphersuiteName, id: &[u8]) -> Self {
-        let credential_bundle =
-            CredentialBundle::new(id.to_vec(), CredentialType::Basic, ciphersuite).unwrap();
+        let credential_bundle = CredentialBundle::new(
+            id.to_vec(),
+            CredentialType::Basic,
+            SignatureScheme::from(ciphersuite),
+        )
+        .unwrap();
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &credential_bundle, vec![]).unwrap();
         Self {

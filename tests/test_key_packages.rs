@@ -16,7 +16,8 @@ macro_rules! key_package_generation {
             assert_eq!($supported, supported_ciphersuites.contains(&$ciphersuite));
             let id = vec![1, 2, 3];
             let credential_bundle =
-                CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
+                CredentialBundle::new(id, CredentialType::Basic, ciphersuite.signature_scheme())
+                    .unwrap();
             let mut kpb =
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new())
                     .unwrap();

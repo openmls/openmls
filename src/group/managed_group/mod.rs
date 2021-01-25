@@ -281,16 +281,18 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let plaintext_messages: Vec<MLSPlaintext> = key_packages
-            .iter()
-            .map(|key_package| {
-                self.group.create_add_proposal(
+        let plaintext_messages: Vec<MLSPlaintext> = {
+            let mut messages = vec![];
+            for key_package in key_packages.iter() {
+                let add_proposal = self.group.create_add_proposal(
                     &self.aad,
                     &self.credential_bundle,
                     key_package.clone(),
-                )
-            })
-            .collect();
+                )?;
+                messages.push(add_proposal);
+            }
+            messages
+        };
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
@@ -308,16 +310,18 @@ impl<'a> ManagedGroup<'a> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let plaintext_messages: Vec<MLSPlaintext> = members
-            .iter()
-            .map(|member| {
-                self.group.create_remove_proposal(
+        let plaintext_messages: Vec<MLSPlaintext> = {
+            let mut messages = vec![];
+            for member in members.iter() {
+                let remove_proposal = self.group.create_remove_proposal(
                     &self.aad,
                     &self.credential_bundle,
                     LeafIndex::from(*member),
-                )
-            })
-            .collect();
+                )?;
+                messages.push(remove_proposal);
+            }
+            messages
+        };
 
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
@@ -335,8 +339,8 @@ impl<'a> ManagedGroup<'a> {
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
             &self.credential_bundle,
-            LeafIndex::from(self.group.tree().own_node_index()),
-        );
+            self.group.tree().own_node_index(),
+        )?;
 
         self.plaintext_to_mls_messages(vec![remove_proposal])
     }
@@ -367,7 +371,7 @@ impl<'a> ManagedGroup<'a> {
         for message in messages {
             // Check the type of message we received
             let (plaintext, aad_option) = match message {
-                // If it is a ciphertext we decrypt it and return the plaintext by value
+                // If it is a ciphertext we decrypt it and return the plaintext message
                 MLSMessage::Ciphertext(ciphertext) => {
                     let aad = ciphertext.authenticated_data.clone();
                     match self.group.decrypt(&ciphertext) {
@@ -383,8 +387,22 @@ impl<'a> ManagedGroup<'a> {
                         }
                     }
                 }
-                // If it is a plaintext message we just return the reference
-                MLSMessage::Plaintext(plaintext) => (plaintext, None),
+                // If it is a plaintext message we just return it
+                MLSMessage::Plaintext(plaintext) => {
+                    // Verify signature & membership tag
+                    // TODO #106: Support external senders
+                    if plaintext.is_proposal()
+                        && plaintext.sender.is_member()
+                        && self.group.verify_membership_tag(&plaintext).is_err()
+                    {
+                        // If there is a callback for that event we should call it
+                        self.invalid_message_event(InvalidMessageError::MembershipTagMismatch);
+                        // Since the membership tag verification failed, we skip the message
+                        // and go to the next one
+                        continue;
+                    }
+                    (plaintext, None)
+                }
             };
             // Save the current member list for validation end events
             let indexed_members = self.indexed_members();
@@ -406,7 +424,7 @@ impl<'a> ManagedGroup<'a> {
                         );
                     }
                 }
-                MLSPlaintextContentType::Commit((ref commit, ref _confirmation_tag)) => {
+                MLSPlaintextContentType::Commit(ref commit) => {
                     // Validate inline proposals
                     if !self.validate_inline_proposals(
                         &commit.proposals,
@@ -506,9 +524,12 @@ impl<'a> ManagedGroup<'a> {
                 PendingProposalsError::Exists,
             ));
         }
-        let ciphertext =
-            self.group
-                .create_application_message(&self.aad, message, &self.credential_bundle)?;
+        let ciphertext = self.group.create_application_message(
+            &self.aad,
+            message,
+            &self.credential_bundle,
+            self.configuration().padding_size(),
+        )?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -566,6 +587,11 @@ impl<'a> ManagedGroup<'a> {
         } else {
             Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error))
         }
+    }
+
+    /// Returns the authentication secret
+    pub fn authentication_secret(&self) -> Vec<u8> {
+        self.group.authentication_secret().to_vec()
     }
 
     // === Configuration ===
@@ -647,7 +673,7 @@ impl<'a> ManagedGroup<'a> {
                 &self.aad,
                 &self.credential_bundle,
                 key_package_bundle.key_package().clone(),
-            );
+            )?;
             self.own_kpbs.push(key_package_bundle);
             vec![update_proposal]
         } else {
@@ -718,7 +744,7 @@ impl<'a> ManagedGroup<'a> {
             &self.aad,
             &self.credential_bundle,
             key_package_bundle.key_package().clone(),
-        )];
+        )?];
         drop(tree);
 
         self.own_kpbs.push(key_package_bundle);
@@ -776,7 +802,9 @@ impl<'a> ManagedGroup<'a> {
             let msg = match self.configuration().handshake_message_format {
                 HandshakeMessageFormat::Plaintext => MLSMessage::Plaintext(plaintext),
                 HandshakeMessageFormat::Ciphertext => {
-                    let ciphertext = self.group.encrypt(plaintext)?;
+                    let ciphertext = self
+                        .group
+                        .encrypt(plaintext, self.configuration().padding_size())?;
                     MLSMessage::Ciphertext(ciphertext)
                 }
             };
@@ -817,6 +845,8 @@ impl<'a> ManagedGroup<'a> {
             }
             // Update proposals don't have validators
             Proposal::Update(_) => {}
+            Proposal::PreSharedKey(_) => {}
+            Proposal::ReInit(_) => {}
         }
         true
     }
@@ -913,6 +943,20 @@ impl<'a> ManagedGroup<'a> {
 
                 if let Some(member_removed) = self.managed_group_config.callbacks.member_removed {
                     member_removed(&self, &self.aad, &removal)
+                }
+            }
+            // PSK proposals
+            Proposal::PreSharedKey(psk_proposal) => {
+                let psk_id = &psk_proposal.psk;
+
+                if let Some(psk_received) = self.managed_group_config.callbacks.psk_received {
+                    psk_received(&self, &self.aad, psk_id)
+                }
+            }
+            // ReInit proposals
+            Proposal::ReInit(reinit_proposal) => {
+                if let Some(reinit_received) = self.managed_group_config.callbacks.reinit_received {
+                    reinit_received(&self, &self.aad, &reinit_proposal)
                 }
             }
         }

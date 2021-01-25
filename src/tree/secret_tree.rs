@@ -5,7 +5,6 @@ use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 
 use super::*;
-use std::convert::TryFrom;
 
 implement_error! {
     pub enum SecretTreeError {
@@ -21,30 +20,19 @@ pub enum SecretType {
     ApplicationSecret,
 }
 
-implement_error! {
-    pub enum SecretTypeError {
-        InvalidContentType = "The content type is not known.",
-    }
-}
-
-impl TryFrom<&ContentType> for SecretType {
-    type Error = SecretTypeError;
-
-    fn try_from(content_type: &ContentType) -> Result<SecretType, SecretTypeError> {
+impl From<&ContentType> for SecretType {
+    fn from(content_type: &ContentType) -> SecretType {
         match content_type {
-            ContentType::Application => Ok(SecretType::ApplicationSecret),
-            ContentType::Commit => Ok(SecretType::HandshakeSecret),
-            ContentType::Proposal => Ok(SecretType::HandshakeSecret),
-            _ => Err(SecretTypeError::InvalidContentType),
+            ContentType::Application => SecretType::ApplicationSecret,
+            ContentType::Commit => SecretType::HandshakeSecret,
+            ContentType::Proposal => SecretType::HandshakeSecret,
         }
     }
 }
 
-impl TryFrom<&MLSPlaintext> for SecretType {
-    type Error = SecretTypeError;
-
-    fn try_from(mls_plaintext: &MLSPlaintext) -> Result<SecretType, SecretTypeError> {
-        SecretType::try_from(&mls_plaintext.content_type)
+impl From<&MLSPlaintext> for SecretType {
+    fn from(mls_plaintext: &MLSPlaintext) -> SecretType {
+        SecretType::from(&mls_plaintext.content_type)
     }
 }
 
@@ -63,16 +51,8 @@ pub(crate) fn derive_tree_secret(
 }
 
 pub struct TreeContext {
-    node: u32,
-    generation: u32,
-}
-
-impl Codec for TreeContext {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node.encode(buffer)?;
-        self.generation.encode(buffer)?;
-        Ok(())
-    }
+    pub(crate) node: u32,
+    pub(crate) generation: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -114,7 +94,10 @@ impl SecretTree {
     /// Get current generation for a specific SenderRatchet
     #[cfg(test)]
     pub(crate) fn generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
-        match self.ratchet_opt(index, secret_type) {
+        match self
+            .ratchet_opt(index, secret_type)
+            .expect("Index out of bounds.")
+        {
             Some(sender_ratchet) => sender_ratchet.generation(),
             None => 0,
         }
@@ -133,9 +116,11 @@ impl SecretTree {
         // Check if SenderRatchets are already initialized
         if self
             .ratchet_opt(index, SecretType::HandshakeSecret)
+            .expect("Index out of bounds.")
             .is_some()
             && self
                 .ratchet_opt(index, SecretType::ApplicationSecret)
+                .expect("Index out of bounds.")
                 .is_some()
         {
             return Ok(());
@@ -206,7 +191,7 @@ impl SecretTree {
         if index >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
-        if self.ratchet_opt(index, secret_type).is_none() {
+        if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)?;
         }
         let sender_ratchet = self.ratchet_mut(index, secret_type);
@@ -220,13 +205,13 @@ impl SecretTree {
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
         secret_type: SecretType,
-    ) -> (u32, RatchetSecrets) {
-        if self.ratchet_opt(index, secret_type).is_none() {
+    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
+        if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, index)
                 .expect("Index out of bounds");
         }
         let sender_ratchet = self.ratchet_mut(index, secret_type);
-        sender_ratchet.secret_for_encryption(ciphersuite)
+        Ok(sender_ratchet.secret_for_encryption(ciphersuite))
     }
 
     /// Returns a mutable reference to a specific SenderRatchet. The
@@ -238,21 +223,25 @@ impl SecretTree {
         };
         sender_ratchets
             .get_mut(index.as_usize())
-            .expect("SenderRatchets not initialized")
+            .unwrap_or_else(|| panic!("SenderRatchets not initialized: {}", index.as_usize()))
             .as_mut()
             .expect("SecretTree not initialized")
     }
 
     /// Returns an optional reference to a specific SenderRatchet
-    fn ratchet_opt(&self, index: LeafIndex, secret_type: SecretType) -> Option<&SenderRatchet> {
+    fn ratchet_opt(
+        &self,
+        index: LeafIndex,
+        secret_type: SecretType,
+    ) -> Result<Option<&SenderRatchet>, SecretTreeError> {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &self.handshake_sender_ratchets,
             SecretType::ApplicationSecret => &self.application_sender_ratchets,
         };
-        sender_ratchets
-            .get(index.as_usize())
-            .expect("SenderRatchets not initialized")
-            .as_ref()
+        match sender_ratchets.get(index.as_usize()) {
+            Some(sender_ratchet_option) => Ok(sender_ratchet_option.as_ref()),
+            None => Err(SecretTreeError::IndexOutOfBounds),
+        }
     }
 
     /// Derives the secrets for the child leaves in a SecretTree and blanks the
