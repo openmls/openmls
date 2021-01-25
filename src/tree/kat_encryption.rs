@@ -328,12 +328,10 @@ fn generate_test_vectors() {
     }
 
     for ciphersuite in Config::supported_ciphersuites() {
-        for n_leaves in 1u32..50 {
+        for n_leaves in 1u32..9 {
             let test = generate_test_vector(n_leaves, ciphersuite);
             tests.push(test);
         }
-        let test = generate_test_vector(100, ciphersuite);
-        tests.push(test);
     }
 
     write("test_vectors/kat_encryption_openmls-new.json", &tests);
