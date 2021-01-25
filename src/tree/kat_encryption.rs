@@ -236,7 +236,7 @@ fn generate_test_vectors() {
 
     fn generate_test_vector(n_leaves: u32, ciphersuite: &Ciphersuite) -> EncryptionTestVector {
         let ciphersuite_name = ciphersuite.name();
-        let epoch_secret = EpochSecret::from_random();
+        let epoch_secret = EpochSecret::from_random(ciphersuite);
         let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);
         let encryption_secret_group = EncryptionSecret::new(ciphersuite, &epoch_secret);
         let encryption_secret_bytes = encryption_secret.to_vec();
@@ -328,7 +328,7 @@ fn generate_test_vectors() {
     }
 
     for ciphersuite in Config::supported_ciphersuites() {
-        for n_leaves in 1u32..9 {
+        for n_leaves in 1u32..20 {
             let test = generate_test_vector(n_leaves, ciphersuite);
             tests.push(test);
         }

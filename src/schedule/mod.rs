@@ -248,9 +248,9 @@ impl EpochSecret {
     }
 
     #[cfg(all(test, feature = "test-vectors"))]
-    pub(crate) fn from_random() -> Self {
+    pub(crate) fn from_random(ciphersuite: &Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(32),
+            secret: Secret::random(ciphersuite.hash_length()),
         }
     }
 }
