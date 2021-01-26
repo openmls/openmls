@@ -6,8 +6,8 @@ fn serialize_primitives() {
     77u8.tls_serialize(&mut v).expect("Error encoding u8");
     88u8.tls_serialize(&mut v).expect("Error encoding u8");
     355u16.tls_serialize(&mut v).expect("Error encoding u8");
-    let b = [77, 88, 1, 99];
-    assert_eq!(&b[..], &v);
+    let b = [77u8, 88, 1, 99];
+    assert_eq!(&b[..], &v[..]);
 }
 
 #[test]
@@ -18,6 +18,6 @@ fn serialize_tls_vec() {
         .tls_serialize(&mut v)
         .expect("Error encoding u8");
 
-    let b = [1, 0, 4, 77, 88, 1, 99];
-    assert_eq!(&b[..], &v);
+    let b = [1u8, 0, 4, 77, 88, 1, 99];
+    assert_eq!(&b[..], &v[..]);
 }
