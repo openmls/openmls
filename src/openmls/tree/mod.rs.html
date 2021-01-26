@@ -818,71 +818,6 @@
 <span id="815">815</span>
 <span id="816">816</span>
 <span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-<span id="826">826</span>
-<span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
-<span id="835">835</span>
-<span id="836">836</span>
-<span id="837">837</span>
-<span id="838">838</span>
-<span id="839">839</span>
-<span id="840">840</span>
-<span id="841">841</span>
-<span id="842">842</span>
-<span id="843">843</span>
-<span id="844">844</span>
-<span id="845">845</span>
-<span id="846">846</span>
-<span id="847">847</span>
-<span id="848">848</span>
-<span id="849">849</span>
-<span id="850">850</span>
-<span id="851">851</span>
-<span id="852">852</span>
-<span id="853">853</span>
-<span id="854">854</span>
-<span id="855">855</span>
-<span id="856">856</span>
-<span id="857">857</span>
-<span id="858">858</span>
-<span id="859">859</span>
-<span id="860">860</span>
-<span id="861">861</span>
-<span id="862">862</span>
-<span id="863">863</span>
-<span id="864">864</span>
-<span id="865">865</span>
-<span id="866">866</span>
-<span id="867">867</span>
-<span id="868">868</span>
-<span id="869">869</span>
-<span id="870">870</span>
-<span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
-<span id="874">874</span>
-<span id="875">875</span>
-<span id="876">876</span>
-<span id="877">877</span>
-<span id="878">878</span>
-<span id="879">879</span>
-<span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -894,7 +829,7 @@
 <span class="comment">// Tree modules</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">hash_input</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">hashes</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">index</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">node</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">path_keys</span>;
@@ -904,7 +839,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">treemath</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">hash_input</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">hashes</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">index</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">node</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">private_tree</span>::{<span class="ident">PathSecrets</span>, <span class="ident">PrivateTree</span>};
@@ -1638,71 +1573,6 @@
         <span class="kw">if</span> <span class="ident">new_tree_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">truncate</span>(<span class="ident">new_tree_size</span>);
         }
-    }
-
-    <span class="doccomment">/// Verify the parent hash of a tree node. Returns `Ok(())` if the parent</span>
-    <span class="doccomment">/// hash has successfully been verified and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>, <span class="ident">node</span>: <span class="kw-2">&amp;</span><span class="ident">Node</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ParentHashError</span><span class="op">&gt;</span> {
-        <span class="comment">// &quot;Let L and R be the left and right children of P, respectively&quot;</span>
-        <span class="kw">let</span> <span class="ident">left</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">left</span>(<span class="ident">index</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ParentHashError</span>::<span class="ident">InputNotParentNode</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">right</span>(<span class="ident">index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>()).<span class="ident">unwrap</span>();
-        <span class="comment">// Extract the parent hash field</span>
-        <span class="kw">let</span> <span class="ident">parent_hash_field</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">node</span>.<span class="ident">parent_hash</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">parent_hash</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">parent_hash</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParentHashError</span>::<span class="ident">InputNotParentNode</span>),
-        };
-        <span class="comment">// Current hash with right child resolution</span>
-        <span class="kw">let</span> <span class="ident">current_hash_right</span> <span class="op">=</span>
-            <span class="ident">ParentHashInput</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>, <span class="ident">right</span>, <span class="ident">parent_hash_field</span>)<span class="question-mark">?</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphersuite</span>);
-
-        <span class="comment">// &quot;If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the check passes&quot;</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">left_parent_hash_field</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">left</span>].<span class="ident">parent_hash</span>() {
-            <span class="kw">if</span> <span class="ident">left_parent_hash_field</span> <span class="op">=</span><span class="op">=</span> <span class="ident">current_hash_right</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
-            }
-        }
-
-        <span class="comment">// &quot;If R is blank, replace R with its left child until R is either non-blank or a leaf node&quot;</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">child</span> <span class="op">=</span> <span class="ident">right</span>;
-        <span class="kw">while</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">child</span>].<span class="ident">is_blank</span>() <span class="op">&amp;&amp;</span> <span class="ident">child</span>.<span class="ident">is_parent</span>() {
-            <span class="comment">// Unwrapping here is safe, because we know it is a full parent node</span>
-            <span class="ident">child</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">left</span>(<span class="ident">child</span>).<span class="ident">unwrap</span>();
-        }
-        <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">child</span>;
-
-        <span class="comment">// &quot;If R is a leaf node, the check fails&quot;</span>
-        <span class="kw">if</span> <span class="ident">right</span>.<span class="ident">is_leaf</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParentHashError</span>::<span class="ident">EndedWithLeafNode</span>);
-        }
-
-        <span class="comment">// Current hash with left child resolution</span>
-        <span class="kw">let</span> <span class="ident">current_hash_left</span> <span class="op">=</span> <span class="ident">ParentHashInput</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>, <span class="ident">left</span>, <span class="ident">parent_hash_field</span>)
-            <span class="comment">// Unwrapping here is safe, since we can be sure the node is not blank</span>
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphersuite</span>);
-
-        <span class="comment">// &quot;If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the check passes&quot;</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">right_parent_hash_field</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">right</span>].<span class="ident">parent_hash</span>() {
-            <span class="kw">if</span> <span class="ident">right_parent_hash_field</span> <span class="op">=</span><span class="op">=</span> <span class="ident">current_hash_left</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
-            }
-        }
-
-        <span class="comment">// &quot;Otherwise, the check fails&quot;</span>
-        <span class="prelude-val">Err</span>(<span class="ident">ParentHashError</span>::<span class="ident">AllChecksFailed</span>)
-    }
-
-    <span class="doccomment">/// Verify the parent hashes of the tree nodes. Returns `true` if all parent</span>
-    <span class="doccomment">/// hashes have successfully been verified and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hashes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">all</span>(<span class="op">|</span>(<span class="ident">index</span>, <span class="ident">node</span>)<span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">index</span>).<span class="ident">is_parent</span>() <span class="op">&amp;&amp;</span> <span class="ident">node</span>.<span class="ident">is_full_parent</span>() {
-                <span class="self">self</span>.<span class="ident">verify_parent_hash</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">index</span>), <span class="ident">node</span>)
-                    .<span class="ident">is_ok</span>()
-            } <span class="kw">else</span> {
-                <span class="bool-val">true</span>
-            }
-        })
     }
 }
 
