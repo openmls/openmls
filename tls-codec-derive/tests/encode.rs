@@ -22,9 +22,9 @@ pub struct ExtensionStruct {
 
 #[test]
 fn simple_enum() {
-    let serialized = ExtensionType::KeyID.serialize_detached().unwrap();
+    let serialized = ExtensionType::KeyID.tls_serialize_detached().unwrap();
     assert_eq!(vec![0, 3], serialized);
-    let serialized = ExtensionType::SomethingElse.serialize_detached().unwrap();
+    let serialized = ExtensionType::SomethingElse.tls_serialize_detached().unwrap();
     assert_eq!(vec![1, 244], serialized);
 }
 
@@ -34,13 +34,13 @@ fn simple_struct() {
         extension_type: ExtensionType::KeyID,
         extension_data: TlsVecU16::from_slice(&[1, 2, 3, 4, 5]),
     };
-    let serialized = extension.serialize_detached().unwrap();
+    let serialized = extension.tls_serialize_detached().unwrap();
     assert_eq!(vec![0, 3, 0, 5, 1, 2, 3, 4, 5], serialized);
 }
 
 #[test]
 fn byte_arrays() {
     let x = [0u8, 1, 2, 3];
-    let serialized = x.serialize_detached().unwrap();
+    let serialized = x.tls_serialize_detached().unwrap();
     assert_eq!(vec![0, 1, 2, 3], serialized);
 }

@@ -1,3 +1,5 @@
+//! Codec implementations for unsigned integer primitives.
+
 use super::{Cursor, Deserialize, Error, Serialize};
 
 use std::convert::TryInto;

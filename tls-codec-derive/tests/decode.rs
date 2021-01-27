@@ -33,7 +33,7 @@ pub struct ArrayWrap {
 #[test]
 fn simple_enum() {
     let b = [0, 5];
-    let deserialized = ExtensionType::deserialize_detached(&b).unwrap();
+    let deserialized = ExtensionType::tls_deserialize_detached(&b).unwrap();
     assert_eq!(ExtensionType::RatchetTree, deserialized);
 
     let b = [0, 5, 1, 244, 0, 1];
@@ -56,7 +56,7 @@ fn simple_struct() {
         extension_type: ExtensionType::KeyID,
         extension_data: TlsVecU16::from_slice(&[1, 2, 3, 4, 5]),
     };
-    let deserialized = ExtensionStruct::deserialize_detached(&b).unwrap();
+    let deserialized = ExtensionStruct::tls_deserialize_detached(&b).unwrap();
     assert_eq!(extension, deserialized);
 
     let b = [8, 0, 1, 0, 2, 0, 3, 1, 244];
@@ -68,24 +68,24 @@ fn simple_struct() {
             ExtensionType::SomethingElse,
         ]),
     };
-    let deserialized = ExtensionTypeVec::deserialize_detached(&b).unwrap();
+    let deserialized = ExtensionTypeVec::tls_deserialize_detached(&b).unwrap();
     assert_eq!(extension, deserialized);
 }
 
 #[test]
 fn byte_arrays() {
     let x = [0u8, 1, 2, 3];
-    let serialized = x.serialize_detached().unwrap();
+    let serialized = x.tls_serialize_detached().unwrap();
     assert_eq!(x.to_vec(), serialized);
 
-    let y = <[u8; 4]>::deserialize_detached(&serialized).unwrap();
+    let y = <[u8; 4]>::tls_deserialize_detached(&serialized).unwrap();
     assert_eq!(y, x);
 
     let x = [0u8, 1, 2, 3, 7, 6, 5, 4];
     let w = ArrayWrap { data: x.clone() };
-    let serialized = x.serialize_detached().unwrap();
+    let serialized = x.tls_serialize_detached().unwrap();
     assert_eq!(x.to_vec(), serialized);
 
-    let y = ArrayWrap::deserialize_detached(&serialized).unwrap();
+    let y = ArrayWrap::tls_deserialize_detached(&serialized).unwrap();
     assert_eq!(y, w);
 }
