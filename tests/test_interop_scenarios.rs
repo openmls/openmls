@@ -173,10 +173,6 @@ ctest!(remove {
 
 // TODO #141, #284: The external PSK, resumption and re-init tests should go here.
 
-// TODO: The large group lifecycle becomes possible once #305 is merged. It
-// currently panics, because the decryption key indices are not properly
-// computed in large groups.
-
 ctest!(large_group_lifecycle {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
