@@ -24,7 +24,9 @@ pub struct ExtensionStruct {
 fn simple_enum() {
     let serialized = ExtensionType::KeyID.tls_serialize_detached().unwrap();
     assert_eq!(vec![0, 3], serialized);
-    let serialized = ExtensionType::SomethingElse.tls_serialize_detached().unwrap();
+    let serialized = ExtensionType::SomethingElse
+        .tls_serialize_detached()
+        .unwrap();
     assert_eq!(vec![1, 244], serialized);
 }
 
