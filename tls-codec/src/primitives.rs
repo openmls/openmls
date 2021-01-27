@@ -32,10 +32,7 @@ impl Serialize for u64 {
 
 impl Deserialize for u8 {
     fn tls_deserialize(cursor: &Cursor) -> Result<Self, Error> {
-        match cursor.read(1) {
-            Ok(bytes) => Ok(bytes[0]),
-            Err(e) => Err(e),
-        }
+        cursor.read(1).map(|b| b[0])
     }
 }
 

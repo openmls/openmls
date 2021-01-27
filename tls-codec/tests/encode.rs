@@ -5,7 +5,7 @@ fn serialize_primitives() {
     let mut v = Vec::new();
     77u8.tls_serialize(&mut v).expect("Error encoding u8");
     88u8.tls_serialize(&mut v).expect("Error encoding u8");
-    355u16.tls_serialize(&mut v).expect("Error encoding u8");
+    355u16.tls_serialize(&mut v).expect("Error encoding u16");
     let b = [77u8, 88, 1, 99];
     assert_eq!(&b[..], &v[..]);
 }

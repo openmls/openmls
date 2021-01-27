@@ -27,5 +27,5 @@ fn deserialize_tls_vec() {
     assert_eq!(&[77, 88, 1, 99], v.as_slice());
 
     // It's empty now.
-    assert!(u8::tls_deserialize(&cursor).is_err())
+    assert!(u8::tls_deserialize(&cursor).is_err());
 }

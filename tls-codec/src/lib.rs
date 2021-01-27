@@ -5,7 +5,7 @@ mod arrays;
 mod hpke;
 mod primitives;
 mod tls_vec;
-pub use tls_vec::{TlsVecU16, TlsVecU32, TlsVecU64, TlsVecU8};
+pub use tls_vec::{TlsVecU16, TlsVecU32, TlsVecU8};
 
 #[cfg(feature = "derive")]
 pub use tls_codec_derive::{TlsDeserialize, TlsSerialize};
@@ -37,7 +37,7 @@ pub trait Deserialize {
     where
         Self: Sized,
     {
-        Self::tls_deserialize(&mut Cursor::new(bytes))
+        Self::tls_deserialize(&Cursor::new(bytes))
     }
 }
 

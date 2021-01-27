@@ -52,7 +52,8 @@ fn impl_serialize(ast: DeriveInput) -> Result<TokenStream> {
                     break;
                 }
             }
-            let repr = repr.ok_or(syn::Error::new(call_site, "missing #[repr(...)] attribute"))?;
+            let repr =
+                repr.ok_or_else(|| syn::Error::new(call_site, "missing #[repr(...)] attribute"))?;
             let variants = variants.iter().map(|variant| {
                 let variant = &variant.ident;
                 quote! {
@@ -93,16 +94,13 @@ fn impl_deserialize(ast: DeriveInput) -> Result<TokenStream> {
                     syn::Type::Path(mut p) => {
                         let path = &mut p.path;
                         // Convert generic arguments in the path to const arguments.
-                        path.segments
-                            .iter_mut()
-                            .for_each(|mut p| match &mut p.arguments {
-                                syn::PathArguments::AngleBracketed(ab) => {
-                                    let mut ab = ab.clone();
-                                    ab.colon2_token = Some(syn::token::Colon2::default());
-                                    p.arguments = syn::PathArguments::AngleBracketed(ab);
-                                }
-                                _ => (),
-                            });
+                        path.segments.iter_mut().for_each(|mut p| {
+                            if let syn::PathArguments::AngleBracketed(ab) = &mut p.arguments {
+                                let mut ab = ab.clone();
+                                ab.colon2_token = Some(syn::token::Colon2::default());
+                                p.arguments = syn::PathArguments::AngleBracketed(ab);
+                            }
+                        });
                         syn::Type::Path(p).to_token_stream()
                     }
                     syn::Type::Array(a) => {
@@ -140,7 +138,8 @@ fn impl_deserialize(ast: DeriveInput) -> Result<TokenStream> {
                     break;
                 }
             }
-            let repr = repr.ok_or(syn::Error::new(call_site, "missing #[repr(...)] attribute"))?;
+            let repr =
+                repr.ok_or_else(|| syn::Error::new(call_site, "missing #[repr(...)] attribute"))?;
 
             let discriminants = variants.iter().map(|variant| {
                 let variant = &variant.ident;

@@ -32,7 +32,7 @@ pub struct ArrayWrap {
 
 #[test]
 fn simple_enum() {
-    let b = [0, 5, 1, 99];
+    let b = [0, 5];
     let deserialized = ExtensionType::deserialize_detached(&b).unwrap();
     assert_eq!(ExtensionType::RatchetTree, deserialized);
 

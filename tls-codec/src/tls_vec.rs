@@ -59,9 +59,9 @@ macro_rules! impl_tls_vec {
             }
         }
 
-        impl<T: Serialize + Deserialize + Clone + PartialEq> Into<Vec<T>> for $name<T> {
-            fn into(self) -> Vec<T> {
-                self.vec
+        impl<T: Serialize + Deserialize + Clone + PartialEq> From<$name<T>> for Vec<T> {
+            fn from(v: $name<T>) -> Self {
+                v.vec
             }
         }
 
@@ -210,7 +210,7 @@ macro_rules! impl_tls_vec {
 impl_tls_vec!(u8, TlsVecU8);
 impl_tls_vec!(u16, TlsVecU16);
 impl_tls_vec!(u32, TlsVecU32);
-impl_tls_vec!(u64, TlsVecU64);
+// TODO: #319 impl_tls_vec!(u64, TlsVecU64);
 
 impl From<std::num::TryFromIntError> for Error {
     fn from(_e: std::num::TryFromIntError) -> Self {
