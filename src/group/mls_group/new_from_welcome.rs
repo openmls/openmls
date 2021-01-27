@@ -123,7 +123,7 @@ impl MlsGroup {
             // We can unwrap here, because, upon closer inspection,
             // `dirpath_long` will never throw an error.
             let common_path =
-                treemath::dirpath_long(common_ancestor_index, tree.leaf_count()).unwrap();
+                treemath::parent_direct_path(common_ancestor_index, tree.leaf_count()).unwrap();
 
             // Update the private tree.
             let private_tree = tree.private_tree_mut();
