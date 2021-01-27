@@ -297,7 +297,7 @@ impl RatchetTree {
 
         // Find common ancestor of own leaf and sender leaf
         let common_ancestor_index =
-            treemath::common_ancestor_index(NodeIndex::from(sender), own_index.into());
+            treemath::common_ancestor_index(NodeIndex::from(sender), own_index);
 
         // Calculate sender direct path & co-path, common path
         let sender_direct_path =
@@ -350,7 +350,7 @@ impl RatchetTree {
 
         // Get the HPKE private key.
         // It's either the own key or must be in the path of the private tree.
-        let private_key = if resolution[position_in_resolution] == own_index.into() {
+        let private_key = if resolution[position_in_resolution] == own_index {
             self.private_tree.hpke_private_key()
         } else {
             match self
