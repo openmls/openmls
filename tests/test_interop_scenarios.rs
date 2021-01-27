@@ -215,7 +215,6 @@ ctest!(remove {
 /// * All members update
 /// * While the group size is >1, a randomly-chosen group member removes a
 ///   randomly-chosen other group member
-
 ctest!(large_group_lifecycle {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
