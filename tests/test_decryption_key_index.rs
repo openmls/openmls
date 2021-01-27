@@ -1,11 +1,17 @@
+//! Test decryption key index computation in larger trees.
 use openmls::prelude::*;
 
 mod utils;
 
+use std::convert::TryFrom;
+use test_macros::ctest;
 use utils::managed_utils::*;
 
-#[test]
-fn test_decryption_key_index_computation() {
+ctest!(decryption_key_index_computation {
+    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+
     // Some basic setup functions for the managed group.
     let handshake_message_format = HandshakeMessageFormat::Plaintext;
     let update_policy = UpdatePolicy::default();
@@ -15,8 +21,6 @@ fn test_decryption_key_index_computation() {
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
     setup.create_clients();
-
-    for ciphersuite in Config::supported_ciphersuites() {
         // Create a basic group with more than 4 members to create a tree with intermediate nodes.
         let group_id = setup.create_random_group(10, ciphersuite).unwrap();
         let mut groups = setup.groups.borrow_mut();
@@ -58,5 +62,4 @@ fn test_decryption_key_index_computation() {
         // message in the callback, we also have to check that the group states
         // match for all group members.
         setup.check_group_states(group);
-    }
-}
+});
