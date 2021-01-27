@@ -482,6 +482,44 @@ impl<'ks> ManagedTestSetup<'ks> {
     }
 
     /// Has the `remover` propose or commit (depending on the `action_type`) the
+    /// removal the members in in the given leaf indices in the tree from the
+    /// Group `group`. If the `remover` or one of the `target_members` is not
+    /// part of the group, it returns an error.
+    pub fn remove_clients_by_index(
+        &self,
+        action_type: ActionType,
+        group: &mut Group,
+        remover_id: &[u8],
+        target_indices: &[usize],
+    ) -> Result<(), SetupError> {
+        let clients = self.clients.borrow();
+        let remover = clients
+            .get(remover_id)
+            .ok_or(SetupError::UnknownClientId)?
+            .borrow();
+        if group
+            .members
+            .iter()
+            .find(|(member_index, _)| {
+                target_indices
+                    .iter()
+                    .find(|&target_index| target_index == member_index)
+                    .is_some()
+            })
+            .is_none()
+        {
+            return Err(SetupError::ClientNotInGroup);
+        }
+        let (messages, welcome_option) =
+            remover.remove_members(action_type, &group.group_id, &target_indices)?;
+        self.distribute_to_members(remover_id, group, &messages)?;
+        if let Some(welcome) = welcome_option {
+            self.deliver_welcome(welcome, group)?;
+        }
+        Ok(())
+    }
+
+    /// Has the `remover` propose or commit (depending on the `action_type`) the
     /// removal the `target_members` from the Group `group`. If the `remover` or
     /// one of the `target_members` is not part of the group, it returns an
     /// error.
@@ -492,34 +530,16 @@ impl<'ks> ManagedTestSetup<'ks> {
         remover_id: &[u8],
         target_members: Vec<Vec<u8>>,
     ) -> Result<(), SetupError> {
-        let clients = self.clients.borrow();
-        let remover = clients
-            .get(remover_id)
-            .ok_or(SetupError::UnknownClientId)?
-            .borrow();
-        if group
-            .members
-            .iter()
-            .find(|(_, id)| target_members.iter().any(|client_id| client_id == id))
-            .is_none()
-        {
-            return Err(SetupError::ClientNotInGroup);
-        }
-        let members = remover.get_members_of_group(&group.group_id)?;
         let mut target_indices = Vec::new();
         for target in &target_members {
-            let (index, _) = members
+            let (index, _) = group
+                .members
                 .iter()
-                .find(|(_, credential)| credential.identity() == target)
-                .unwrap();
+                .find(|(_, identity)| identity == target)
+                .ok_or(SetupError::ClientNotInGroup)?;
             target_indices.push(*index);
         }
-        let (messages, welcome_option) =
-            remover.remove_members(action_type, &group.group_id, &target_indices)?;
-        self.distribute_to_members(remover_id, group, &messages)?;
-        if let Some(welcome) = welcome_option {
-            self.deliver_welcome(welcome, group)?;
-        }
+        self.remove_clients_by_index(action_type, group, remover_id, &target_indices)?;
         Ok(())
     }
 
