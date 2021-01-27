@@ -5,11 +5,11 @@
 //!
 //! With the feature `derive` `TlsSerialize` and `TlsDeserialize` can be derived.
 //!
-//! Tis crate provides the following data structures that implement TLS serialization
+//! This crate provides the following data structures that implement TLS serialization
 //! * `u8`, `u16`, `u32`, `u64`
 //! * `TlsVecU8`, `TlsVecU16`, `TlsVecU32`
 //! * `[u8; 2]`, `[u8; 4]`, `[u8; 8]`, `[u8; 16]`, `[u8; 32]`, `[u8; 64]`
-//! * If the `hpke` features is enabled, the TLS codec is implemented for
+//! * If the `hpke` feature is enabled, the TLS codec is implemented for
 //!  `HPKEPublicKeys` from [hpke-rs](https://github.com/franziskuskiefer/hpke-rs).
 
 use std::cell::Cell;
