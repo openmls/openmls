@@ -15,6 +15,7 @@ members = [
     "delivery-service/ds-lib",
     "delivery-service/ds",
     "cli",
+    "test_macros",
 ]
 default-members = [ "." ]
 
@@ -40,6 +41,7 @@ criterion = "^0.3"
 flexi_logger = "0.17"
 pretty_env_logger = "0.4.0"
 itertools = "0.10"
+test_macros = { path = "test_macros" }
 
 
 [[bench]]

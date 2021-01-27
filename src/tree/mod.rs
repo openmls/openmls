@@ -293,11 +293,11 @@ impl RatchetTree {
         group_context: &[u8],
         new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<&CommitSecret, TreeError> {
-        let own_index = self.own_node_index();
+        let own_index = NodeIndex::from(self.own_node_index());
 
         // Find common ancestor of own leaf and sender leaf
         let common_ancestor_index =
-            treemath::common_ancestor_index(NodeIndex::from(sender), own_index.into());
+            treemath::common_ancestor_index(NodeIndex::from(sender), own_index);
 
         // Calculate sender direct path & co-path, common path
         let sender_direct_path =
@@ -317,12 +317,21 @@ impl RatchetTree {
                 None => return Err(TreeError::InvalidArguments),
             };
 
+        // We can unwrap here, because own index is always within the tree.
+        let own_direct_path = treemath::direct_path_root(own_index, self.leaf_count()).unwrap();
+
         // Resolve the node of that co-path index
         let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
+
+        // Figure out the position in the resolution of the node that is either
+        // our own leaf node or a node in our direct path.
         let position_in_resolution = resolution
             .iter()
-            .position(|&x| x == own_index.into())
-            .unwrap_or(0);
+            .position(|&x| own_direct_path.contains(&x) || own_index == x)
+            // We can unwrap here, because regardless of what the resolution
+            // looks like, there has to be a an entry in the resolution that
+            // corresponds to either the own leaf or a node in the direct path.
+            .unwrap();
 
         // Decrypt the ciphertext of that node
         let common_ancestor_node =
@@ -341,13 +350,13 @@ impl RatchetTree {
 
         // Get the HPKE private key.
         // It's either the own key or must be in the path of the private tree.
-        let private_key = if resolution[position_in_resolution] == own_index.into() {
+        let private_key = if resolution[position_in_resolution] == own_index {
             self.private_tree.hpke_private_key()
         } else {
             match self
                 .private_tree
                 .path_keys()
-                .get(common_ancestor_copath_index)
+                .get(resolution[position_in_resolution])
             {
                 Some(k) => k,
                 None => return Err(TreeError::InvalidArguments),
