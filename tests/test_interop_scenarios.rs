@@ -1,6 +1,6 @@
 use openmls::prelude::*;
 use std::convert::TryFrom;
-use test_macros::{ctest, ctest_panic};
+use test_macros::ctest;
 
 mod utils;
 
@@ -177,7 +177,7 @@ ctest!(remove {
 // currently panics, because the decryption key indices are not properly
 // computed in large groups.
 
-ctest_panic!(large_group_lifecycle {
+ctest!(large_group_lifecycle {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
