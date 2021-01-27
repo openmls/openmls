@@ -259,15 +259,13 @@ impl RatchetTree {
 
     /// Verify the parent hashes of the tree nodes. Returns `true` if all parent
     /// hashes have successfully been verified and `false` otherwise.
-    pub fn verify_parent_hashes(&self) -> bool {
-        self.nodes.iter().enumerate().all(|(index, node)| {
+    pub fn verify_parent_hashes(&self) -> Result<(), ParentHashError> {
+        for (index, node) in self.nodes.iter().enumerate() {
             if NodeIndex::from(index).is_parent() && node.is_full_parent() {
-                self.verify_parent_hash(NodeIndex::from(index), node)
-                    .is_ok()
-            } else {
-                true
+                self.verify_parent_hash(NodeIndex::from(index), node)?;
             }
-        })
+        }
+        Ok(())
     }
 
     // === Tree hash ===
