@@ -6,8 +6,7 @@ mod utils;
 
 use utils::managed_utils::*;
 
-// The following tests are test corresponding the the interop test scenarios
-// detailed here:
+// The following tests correspond to the interop test scenarios detailed here:
 // https://github.com/mlswg/mls-implementations/blob/master/test-scenarios.md
 // The tests are conducted for every available ciphersuite, but currently only
 // using BasicCredentials. We can change the test setup once #134 is fixed.
@@ -19,11 +18,11 @@ fn default_managed_group_config() -> ManagedGroupConfig {
     ManagedGroupConfig::new(handshake_message_format, update_policy, 10, callbacks)
 }
 
-/// # 1:1 join
-/// A:    Create group
-/// B->A: KeyPackage
-/// A->B: Welcome
-/// ***:  Verify group state
+// # 1:1 join
+// A:    Create group
+// B->A: KeyPackage
+// A->B: Welcome
+// ***:  Verify group state
 ctest!(one_to_one_join {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
@@ -52,14 +51,14 @@ ctest!(one_to_one_join {
     setup.check_group_states(group);
 });
 
-/// # 3-party join
-/// A: Create group
-/// B->A: KeyPackage
-/// A->B: Welcome
-/// C->A: KeyPackage
-/// A->B: Add(C), Commit
-/// A->C: Welcome
-/// ***:  Verify group state
+// # 3-party join
+// A: Create group
+// B->A: KeyPackage
+// A->B: Welcome
+// C->A: KeyPackage
+// A->B: Add(C), Commit
+// A->C: Welcome
+// ***:  Verify group state
 ctest!(three_party_join {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
@@ -97,13 +96,13 @@ ctest!(three_party_join {
     setup.check_group_states(group);
 });
 
-/// # Multiple joins at once
-/// A:    Create group
-/// B->A: KeyPackage
-/// C->A: KeyPackage
-/// A->B: Welcome
-/// A->C: Welcome
-/// ***:  Verify group state
+// # Multiple joins at once
+// A:    Create group
+// B->A: KeyPackage
+// C->A: KeyPackage
+// A->B: Welcome
+// A->C: Welcome
+// ***:  Verify group state
 ctest!(multiple_joins {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
@@ -136,12 +135,12 @@ ctest!(multiple_joins {
 
 // TODO #192, #286, #289: The external join test should go here.
 
-/// # Update
-/// A:    Create group
-/// B->A: KeyPackage
-/// A->B: Welcome
-/// A->B: Update, Commit
-/// ***:  Verify group state
+// # Update
+// A:    Create group
+// B->A: KeyPackage
+// A->B: Welcome
+// A->B: Update, Commit
+// ***:  Verify group state
 ctest!(update {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
@@ -169,14 +168,14 @@ ctest!(update {
     setup.check_group_states(group);
 });
 
-/// # Remove
-/// A:    Create group
-/// B->A: KeyPackage
-/// C->A: KeyPackage
-/// A->B: Welcome
-/// A->C: Welcome
-/// A->B: Remove(B), Commit
-/// ***:  Verify group state
+// # Remove
+// A:    Create group
+// B->A: KeyPackage
+// C->A: KeyPackage
+// A->B: Welcome
+// A->C: Welcome
+// A->B: Remove(B), Commit
+// ***:  Verify group state
 ctest!(remove {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
@@ -207,14 +206,14 @@ ctest!(remove {
 
 // TODO #141, #284: The external PSK, resumption and re-init tests should go here.
 
-/// # Large Group, Full Lifecycle
-/// * Create group
-/// * Group creator adds the first M members
-/// * Until group size reaches N members, a randomly-chosen group member adds a
-///   new member
-/// * All members update
-/// * While the group size is >1, a randomly-chosen group member removes a
-///   randomly-chosen other group member
+// # Large Group, Full Lifecycle
+// * Create group
+// * Group creator adds the first M members
+// * Until group size reaches N members, a randomly-chosen group member adds a
+//   new member
+// * All members update
+// * While the group size is >1, a randomly-chosen group member removes a
+//   randomly-chosen other group member
 ctest!(large_group_lifecycle {
     let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
