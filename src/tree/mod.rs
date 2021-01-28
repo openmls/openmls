@@ -6,6 +6,8 @@ use crate::key_packages::*;
 use crate::messages::proposals::*;
 
 // Tree modules
+pub(crate) mod binary_tree;
+pub(crate) mod blanked_tree;
 pub(crate) mod codec;
 pub(crate) mod errors;
 pub(crate) mod hashes;
