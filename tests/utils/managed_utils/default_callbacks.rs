@@ -1,5 +1,3 @@
-use std::str;
-
 use openmls::prelude::*;
 
 // Callbacks
@@ -10,20 +8,20 @@ fn member_added(
     added_member: &Credential,
 ) {
     println!(
-        "AddProposal received in group '{}' by '{}': '{}' added '{}'",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&managed_group.credential().identity()).unwrap(),
-        str::from_utf8(sender.identity()).unwrap(),
-        str::from_utf8(added_member.identity()).unwrap(),
+        "AddProposal received in group '{:?}' by '{:?}': '{:?}' added '{:?}'",
+        &managed_group.group_id().as_slice(),
+        &managed_group.credential().identity(),
+        sender.identity(),
+        added_member.identity(),
     );
 }
 fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageError) {
     match error {
         InvalidMessageError::InvalidCiphertext(aad) => {
             println!(
-                "Invalid ciphertext message received in group '{}' by '{}' with AAD {:?}",
-                str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-                str::from_utf8(&managed_group.credential().identity()).unwrap(),
+                "Invalid ciphertext message received in group '{:?}' by '{:?}' with AAD {:?}",
+                &managed_group.group_id().as_slice(),
+                &managed_group.credential().identity(),
                 aad
             );
         }
@@ -46,8 +44,8 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
 }
 fn error_occurred(managed_group: &ManagedGroup, error: ManagedGroupError) {
     println!(
-        "Error occured in group {}: {:?}",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
+        "Error occured in group {:?}: {:?}",
+        &managed_group.group_id().as_slice(),
         error
     );
 }
