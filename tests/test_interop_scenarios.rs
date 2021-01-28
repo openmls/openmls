@@ -224,11 +224,11 @@ ctest!(large_group_lifecycle {
     let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
     setup.create_clients();
 
-    // Create a group with twenty members. The process includes creating a
-    // one-person group and then adding new members in bunches of up to 5,
+    // Create a group with all available clients. The process includes creating
+    // a one-person group and then adding new members in bunches of up to 5,
     // each bunch by a random group member.
     let group_id = setup
-        .create_random_group(20, ciphersuite)
+        .create_random_group(number_of_clients, ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
