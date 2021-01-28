@@ -24,10 +24,25 @@ impl Parse for TestInput {
 #[proc_macro]
 pub fn ctest(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as TestInput);
-    impl_ciphersuite_tests(input).unwrap()
+    impl_ciphersuite_tests(input, quote! {}).unwrap()
 }
 
-fn impl_ciphersuite_tests(input: TestInput) -> Result<TokenStream> {
+#[proc_macro]
+pub fn ctest_panic(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as TestInput);
+    impl_ciphersuite_tests(
+        input,
+        quote! {
+            #[should_panic]
+        },
+    )
+    .unwrap()
+}
+
+fn impl_ciphersuite_tests(
+    input: TestInput,
+    test_attribute: proc_macro2::TokenStream,
+) -> Result<TokenStream> {
     let ast = input.body;
     let test_name = input.test_name;
     let tests = openmls::config::Config::supported_ciphersuite_names()
@@ -40,6 +55,7 @@ fn impl_ciphersuite_tests(input: TestInput) -> Result<TokenStream> {
             );
             quote! {
                 #[test]
+                #test_attribute
                 fn #test_name () {
                     let _ciphersuite_code = #ciphersuite_code;
                     #ast
