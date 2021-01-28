@@ -92,7 +92,7 @@ impl KeyPackage {
         self.credential
             .verify(&self.unsigned_payload().unwrap(), &self.signature)
             .map_err(|_| {
-                log::error!("Key package signature is empty.");
+                log::error!("Key package signature is invalid.");
                 KeyPackageError::InvalidSignature
             })
     }
