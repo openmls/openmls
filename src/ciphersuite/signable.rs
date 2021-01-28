@@ -16,7 +16,7 @@ pub trait Signable: Sized {
 
     /// Verifies the payload against the given `credential` and `signature`.
     ///
-    /// Returns a `Ok(())` if the signature is valid and `CredentialError::InvalidSignature` otherwise.
+    /// Returns `Ok(())` if the signature is valid and `CredentialError::InvalidSignature` otherwise.
     fn verify(
         &self,
         credential: &Credential,
