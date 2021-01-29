@@ -497,17 +497,12 @@ impl<'ks> ManagedTestSetup<'ks> {
             .get(remover_id)
             .ok_or(SetupError::UnknownClientId)?
             .borrow();
-        if group
-            .members
-            .iter()
-            .find(|(member_index, _)| {
-                target_indices
-                    .iter()
-                    .find(|&target_index| target_index == member_index)
-                    .is_some()
-            })
-            .is_none()
-        {
+        let client_in_group = group.members.iter().any(|(member_index, _)| {
+            target_indices
+                .iter()
+                .any(|target_index| target_index == member_index)
+        });
+        if !client_in_group {
             return Err(SetupError::ClientNotInGroup);
         }
         let (messages, welcome_option) =
