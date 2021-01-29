@@ -7,12 +7,14 @@ impl GroupContext {
         epoch: GroupEpoch,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
+        extensions: &[Box<dyn Extension>],
     ) -> Result<Self, CodecError> {
         let mut group_context = GroupContext {
             group_id,
             epoch,
             tree_hash,
             confirmed_transcript_hash,
+            extensions: extensions.to_vec(),
             serialized: vec![],
         };
         let serialized = group_context.encode_detached()?;
@@ -24,12 +26,14 @@ impl GroupContext {
         ciphersuite: &Ciphersuite,
         group_id: GroupId,
         tree_hash: Vec<u8>,
+        extensions: &[Box<dyn Extension>],
     ) -> Result<Self, CodecError> {
         Self::new(
             group_id,
             GroupEpoch(0),
             tree_hash,
             zero(ciphersuite.hash_length()),
+            extensions,
         )
     }
     /// Return the serialized group context

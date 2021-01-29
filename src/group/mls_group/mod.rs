@@ -73,8 +73,13 @@ impl MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
-        let group_context =
-            GroupContext::create_initial_group_context(ciphersuite, group_id, tree.tree_hash())?;
+        // TODO #186: Implement extensions
+        let group_context = GroupContext::create_initial_group_context(
+            ciphersuite,
+            group_id,
+            tree.tree_hash(),
+            &[],
+        )?;
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.

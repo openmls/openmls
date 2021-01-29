@@ -26,8 +26,9 @@ fn codec() {
             confirmation_tag: None,
             membership_tag: None,
         };
+        // TODO #186: Implement extensions
         let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
+            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
         let serialized_context = group_context.serialized();
         let signature_input = MLSPlaintextTBS::new_from(&orig, Some(serialized_context));
         orig.signature = signature_input
@@ -65,8 +66,9 @@ fn membership_tag() {
             confirmation_tag: None,
             membership_tag: None,
         };
+        // TODO #186: Implement extensions
         let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![]).unwrap();
+            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
         let serialized_context = group_context.serialized();
         let membership_key = MembershipKey::from_secret(Secret::random(ciphersuite.hash_length()));
         mls_plaintext

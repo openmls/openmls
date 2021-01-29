@@ -119,11 +119,13 @@ impl MlsGroup {
         // TODO #141: Implement PSK
         let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
 
+        // TODO #186: Implement extensions
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
             provisional_tree.tree_hash(),
             confirmed_transcript_hash.clone(),
+            &[],
         )?;
 
         let epoch_secret =
