@@ -54,23 +54,25 @@
 //! * `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
 //! * `leaves[N].handshake[j].plaintext` represents an MLSPlaintext containing a
 //!   handshake message (Proposal or Commit) from leaf `N`
-//! * `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object that
-//!   successfully decrypts to an MLSPlaintext equivalent to
-//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
-//!   `j`.
+//! * `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object
+//!   that successfully decrypts to an MLSPlaintext equivalent to
+//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
+//!   generation `j`.
 //! * `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`
 //! * `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
 //! * `leaves[N].application[j].plaintext` represents an MLSPlaintext containing
 //!   application data from leaf `N`
-//! * `leaves[N].application[j].ciphertext` represents an MLSCiphertext object that
-//!   successfully decrypts to an MLSPlaintext equivalent to
-//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
-//!   `j`.
-//! * `sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)`
-//! * `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)`
+//! * `leaves[N].application[j].ciphertext` represents an MLSCiphertext object
+//!   that successfully decrypts to an MLSPlaintext equivalent to
+//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
+//!   generation `j`.
+//! * `sender_data_info.secret.key = sender_data_key(sender_data_secret,
+//!   sender_data_info.ciphertext)`
+//! * `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret,
+//!   sender_data_info.ciphertext)`
 //!
-//! The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes are
-//! tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
+//! The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes
+//! are tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
 //! [Encryption
 //! Keys](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys)
 //! section of the specification.

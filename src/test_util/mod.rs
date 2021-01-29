@@ -1,5 +1,4 @@
 //! Test utilities
-//!
 #![allow(dead_code)]
 
 use serde::{self, de::DeserializeOwned, Serialize};

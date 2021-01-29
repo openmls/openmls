@@ -9,7 +9,7 @@ mod test_mls_group;
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::Config;
-use crate::credentials::CredentialBundle;
+use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -376,6 +376,28 @@ impl MlsGroup {
     pub fn group_id(&self) -> &GroupId {
         &self.group_context.group_id
     }
+
+    /// Get thr groups extensions.
+    /// Right now this is limited to the ratchet tree extension, which is built
+    /// on the fly when calling this function.
+    pub fn extensions(&self) -> Vec<Box<dyn Extension>> {
+        let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
+            vec![Box::new(RatchetTreeExtension::new(
+                self.tree().public_key_tree_copy(),
+            ))]
+        } else {
+            Vec::new()
+        };
+        extensions
+    }
+
+    /// Export the `PublicGroupState`
+    pub fn export_public_group_state(
+        &self,
+        credential_bundle: &CredentialBundle,
+    ) -> Result<PublicGroupState, CredentialError> {
+        PublicGroupState::new(self, credential_bundle)
+    }
 }
 
 // Private and crate functions
@@ -390,6 +412,11 @@ impl MlsGroup {
 
     pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
         self.secret_tree.borrow_mut()
+    }
+
+    /// Current interim transcript hash of the group
+    pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
+        &self.interim_transcript_hash
     }
 
     #[cfg(all(test, feature = "test-vectors"))]

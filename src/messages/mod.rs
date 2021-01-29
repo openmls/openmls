@@ -2,6 +2,7 @@ use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
 use crate::config::ProtocolVersion;
+use crate::credentials::*;
 use crate::extensions::*;
 use crate::framing::Mac;
 use crate::group::*;
@@ -28,6 +29,9 @@ mod test_welcome;
 
 #[cfg(test)]
 mod test_codec;
+
+#[cfg(test)]
+mod test_pgs;
 
 /// Welcome Messages
 ///
@@ -324,14 +328,115 @@ impl GroupSecrets {
 ///     opaque interim_transcript_hash<0..255>;
 ///     Extension extensions<0..2^32-1>;
 ///     HPKEPublicKey external_pub;
+///     uint32 signer_index;
+///     opaque signature<0..2^16-1>;
 /// } PublicGroupState;
 /// ```
 pub struct PublicGroupState {
-    pub(crate) ciphersuite: CiphersuiteName,
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) tree_hash: Vec<u8>,
-    pub(crate) interim_transcript_hash: Vec<u8>,
-    pub(crate) extensions: Vec<Box<dyn Extension>>,
-    pub(crate) external_pub: HPKEPublicKey,
+    pub ciphersuite: CiphersuiteName,
+    pub group_id: GroupId,
+    pub epoch: GroupEpoch,
+    pub tree_hash: Vec<u8>,
+    pub interim_transcript_hash: Vec<u8>,
+    pub extensions: Vec<Box<dyn Extension>>,
+    pub external_pub: HPKEPublicKey,
+    pub signer_index: LeafIndex,
+    pub signature: Signature,
+}
+
+impl PublicGroupState {
+    /// Creates a new `PublicGroupState` struct from the current internal state
+    /// of the group and signs it.
+    pub(crate) fn new(
+        mls_group: &MlsGroup,
+        credential_bundle: &CredentialBundle,
+    ) -> Result<Self, CredentialError> {
+        let ciphersuite = mls_group.ciphersuite();
+        let (_external_priv, external_pub) = mls_group
+            .epoch_secrets()
+            .external_secret()
+            .derive_external_keypair(ciphersuite)
+            .into_keys();
+
+        let group_id = mls_group.group_id().clone();
+        let epoch = mls_group.context().epoch();
+        let tree_hash = mls_group.tree().tree_hash();
+        let interim_transcript_hash = mls_group.interim_transcript_hash().to_vec();
+        let extensions = mls_group.extensions();
+
+        let pgstbs = PublicGroupStateTBS {
+            group_id: &group_id,
+            epoch: &epoch,
+            tree_hash: &tree_hash,
+            interim_transcript_hash: &interim_transcript_hash,
+            extensions: &extensions,
+            external_pub: &external_pub,
+        };
+        let signature = pgstbs.sign(credential_bundle)?;
+        Ok(Self {
+            ciphersuite: ciphersuite.name(),
+            group_id,
+            epoch,
+            tree_hash,
+            interim_transcript_hash,
+            extensions,
+            external_pub,
+            signer_index: mls_group.sender_index(),
+            signature,
+        })
+    }
+
+    /// Verifies the signature of the `PublicGroupState`.
+    /// Returns `Ok(())` in case of of success and `CredentialError` otherwise.
+    pub fn verify(&self, credential_bundle: &CredentialBundle) -> Result<(), CredentialError> {
+        let pgstbs = PublicGroupStateTBS {
+            group_id: &self.group_id,
+            epoch: &self.epoch,
+            tree_hash: &self.tree_hash,
+            interim_transcript_hash: &self.interim_transcript_hash,
+            extensions: &self.extensions,
+            external_pub: &self.external_pub,
+        };
+        let payload = pgstbs
+            .encode_detached()
+            .map_err(CredentialError::CodecError)?;
+        credential_bundle
+            .credential()
+            .verify(&payload, &self.signature)
+    }
+}
+
+/// PublicGroupStateTBS
+///
+/// ```test
+/// struct {
+///     opaque group_id<0..255>;
+///     uint64 epoch;
+///     opaque tree_hash<0..255>;
+///     opaque interim_transcript_hash<0..255>;
+///     Extension extensions<0..2^32-1>;
+///     HPKEPublicKey external_pub;
+/// } PublicGroupStateTBS;
+/// ```
+pub(crate) struct PublicGroupStateTBS<'a> {
+    pub(crate) group_id: &'a GroupId,
+    pub(crate) epoch: &'a GroupEpoch,
+    pub(crate) tree_hash: &'a [u8],
+    pub(crate) interim_transcript_hash: &'a [u8],
+    pub(crate) extensions: &'a [Box<dyn Extension>],
+    pub(crate) external_pub: &'a HPKEPublicKey,
+}
+
+impl<'a> PublicGroupStateTBS<'a> {
+    /// Signs the `PublicGroubStateTBS` with a `CredentialBundle`.
+    fn sign(&self, credential_bundle: &CredentialBundle) -> Result<Signature, CredentialError> {
+        let payload = self
+            .encode_detached()
+            .map_err(CredentialError::CodecError)?;
+        // Unwrapping here is safe, because signing should not cause an error with a
+        // valid key
+        Ok(credential_bundle
+            .sign(&payload)
+            .map_err(|_| CredentialError::SignatureError)?)
+    }
 }

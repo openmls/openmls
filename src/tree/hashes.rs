@@ -118,8 +118,8 @@ impl<'a> ParentNodeTreeHashInput<'a> {
 // === Parent hashes ===
 
 impl RatchetTree {
-    /// The list of HPKEPublicKey values of the nodes in the resolution of `index`
-    /// but with the `unmerged_leaves` of the parent node omitted.
+    /// The list of HPKEPublicKey values of the nodes in the resolution of
+    /// `index` but with the `unmerged_leaves` of the parent node omitted.
     pub(crate) fn original_child_resolution(&self, index: NodeIndex) -> Vec<&HPKEPublicKey> {
         // Build the exclusion list that consists of the unmerged leaves of the parent
         // node
@@ -147,8 +147,8 @@ impl RatchetTree {
             .collect()
     }
 
-    /// Computes the parent hashes for a leaf node and returns the parent hash for
-    /// the parent hash extension
+    /// Computes the parent hashes for a leaf node and returns the parent hash
+    /// for the parent hash extension
     pub(crate) fn set_parent_hashes(&mut self, index: LeafIndex) -> Vec<u8> {
         // Recursive helper function used to calculate parent hashes
         fn node_parent_hash(
@@ -220,14 +220,16 @@ impl RatchetTree {
         let current_hash_right =
             ParentHashInput::new(&self, index, right, parent_hash_field)?.hash(&self.ciphersuite);
 
-        // "If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the check passes"
+        // "If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the
+        // check passes"
         if let Some(left_parent_hash_field) = self.nodes[left].parent_hash() {
             if left_parent_hash_field == current_hash_right {
                 return Ok(());
             }
         }
 
-        // "If R is blank, replace R with its left child until R is either non-blank or a leaf node"
+        // "If R is blank, replace R with its left child until R is either non-blank or
+        // a leaf node"
         let mut child = right;
         while self.nodes[child].is_blank() && child.is_parent() {
             // Unwrapping here is safe, because we know it is a full parent node
@@ -246,7 +248,8 @@ impl RatchetTree {
             .unwrap()
             .hash(&self.ciphersuite);
 
-        // "If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the check passes"
+        // "If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the
+        // check passes"
         if let Some(right_parent_hash_field) = self.nodes[right].parent_hash() {
             if right_parent_hash_field == current_hash_left {
                 return Ok(());

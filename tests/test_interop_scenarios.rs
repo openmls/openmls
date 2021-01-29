@@ -204,7 +204,8 @@ ctest!(remove {
     setup.check_group_states(group);
 });
 
-// TODO #141, #284: The external PSK, resumption and re-init tests should go here.
+// TODO #141, #284: The external PSK, resumption and re-init tests should go
+// here.
 
 // # Large Group, Full Lifecycle
 // * Create group

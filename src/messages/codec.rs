@@ -285,15 +285,6 @@ impl Codec for ReInitProposal {
 
 impl Codec for PublicGroupState {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        /*
-            pub(crate) ciphersuite: Ciphersuite,
-        pub(crate) group_id: GroupId,
-        pub(crate) epoch: GroupEpoch,
-        pub(crate) tree_hash: Vec<u8>,
-        pub(crate) interim_transcript_hash: Vec<u8>,
-        pub(crate) extensions: Vec<Box<dyn Extension>>,
-        pub(crate) external_pub: HPKEPublicKey,
-            */
         self.ciphersuite.encode(buffer)?;
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
@@ -302,6 +293,8 @@ impl Codec for PublicGroupState {
         encode_extensions(&self.extensions, buffer)?;
         encode_extensions(&self.extensions, buffer)?;
         self.external_pub.encode(buffer)?;
+        self.signer_index.as_u32().encode(buffer)?;
+        self.signature.encode(buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
@@ -312,6 +305,8 @@ impl Codec for PublicGroupState {
         let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = extensions_vec_from_cursor(cursor)?;
         let external_pub = HPKEPublicKey::decode(cursor)?;
+        let signer_index = LeafIndex::from(u32::decode(cursor)?);
+        let signature = Signature::decode(cursor)?;
         Ok(Self {
             ciphersuite,
             group_id,
@@ -320,6 +315,21 @@ impl Codec for PublicGroupState {
             interim_transcript_hash,
             extensions,
             external_pub,
+            signer_index,
+            signature,
         })
+    }
+}
+
+impl<'a> Codec for PublicGroupStateTBS<'a> {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.group_id.encode(buffer)?;
+        self.epoch.encode(buffer)?;
+        encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
+        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
+        encode_extensions(&self.extensions, buffer)?;
+        encode_extensions(&self.extensions, buffer)?;
+        self.external_pub.encode(buffer)?;
+        Ok(())
     }
 }
