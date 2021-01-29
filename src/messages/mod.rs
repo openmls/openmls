@@ -266,7 +266,7 @@ impl Signable for GroupInfo {
             .iter()
             .map(|e| e.to_extension_struct())
             .collect();
-        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
+        encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
         self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())

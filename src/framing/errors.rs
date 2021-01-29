@@ -4,6 +4,7 @@
 //! handling `MLSPlaintext` and `MLSCiphertext`.
 
 use crate::codec::CodecError;
+use crate::credentials::CredentialError;
 use crate::tree::secret_tree::SecretTreeError;
 
 implement_error! {
@@ -34,12 +35,12 @@ implement_error! {
 implement_error! {
     pub enum VerificationError {
         Simple {
-            InvalidSignature = "The MLSPlaintext signature is invalid",
             MissingMembershipTag = "The MLSPlaintext membership tag is missing",
             InvalidMembershipTag = "The MLSPlaintext membership tag is invalid",
         }
         Complex {
             CodecError(CodecError) = "Codec error",
+            CredentialError(CredentialError) = "Credential error",
         }
     }
 }

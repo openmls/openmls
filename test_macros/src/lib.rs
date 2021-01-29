@@ -46,7 +46,7 @@ fn impl_ciphersuite_tests(
     let ast = input.body;
     let test_name = input.test_name;
     let tests = openmls::config::Config::supported_ciphersuite_names()
-        .into_iter()
+        .iter()
         .map(|&ciphersuite_name| {
             let ciphersuite_code = ciphersuite_name as u16;
             let test_name = Ident::new(

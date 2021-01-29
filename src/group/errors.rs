@@ -8,7 +8,7 @@ use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
-use crate::tree::TreeError;
+use crate::tree::{ParentHashError, TreeError};
 
 implement_error! {
     pub enum GroupError {
@@ -58,6 +58,8 @@ implement_error! {
         Complex {
             InvalidRatchetTree(TreeError) =
                 "Invalid ratchet tree in Welcome message.",
+            ParentHashMismatch(ParentHashError) =
+                "The parent hash verification failed.",
             GroupSecretsDecryptionFailure(CryptoError) =
                 "Unable to decrypt the EncryptedGroupSecrets.",
             CodecError(CodecError) =

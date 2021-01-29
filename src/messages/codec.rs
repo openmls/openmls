@@ -272,7 +272,7 @@ impl Codec for ReInitProposal {
             .iter()
             .map(|e| e.to_extension_struct())
             .collect();
-        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
+        encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {

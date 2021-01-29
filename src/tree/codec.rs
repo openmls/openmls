@@ -73,12 +73,12 @@ impl Codec for UpdatePathNode {
 impl Codec for UpdatePath {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.leaf_key_package.encode(buffer)?;
-        encode_vec(VecSize::VecU16, buffer, &self.nodes)?;
+        encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let leaf_key_package = KeyPackage::decode(cursor)?;
-        let nodes = decode_vec(VecSize::VecU16, cursor)?;
+        let nodes = decode_vec(VecSize::VecU32, cursor)?;
         Ok(UpdatePath {
             leaf_key_package,
             nodes,

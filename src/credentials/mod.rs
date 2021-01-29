@@ -53,11 +53,12 @@ pub struct Credential {
 impl Credential {
     /// Verify a signature of a given payload against the public key contained
     /// in a credential.
-    pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
+    pub fn verify(&self, payload: &[u8], signature: &Signature) -> Result<(), CredentialError> {
         match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => {
-                basic_credential.public_key.verify(signature, payload)
-            }
+            MLSCredentialType::Basic(basic_credential) => basic_credential
+                .public_key
+                .verify(signature, payload)
+                .map_err(|_| CredentialError::InvalidSignature),
             // TODO: implement verification for X509 certificates. See issue #134.
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
@@ -92,8 +93,10 @@ pub struct BasicCredential {
 }
 
 impl BasicCredential {
-    pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.public_key.verify(signature, payload)
+    pub fn verify(&self, payload: &[u8], signature: &Signature) -> Result<(), CredentialError> {
+        self.public_key
+            .verify(signature, payload)
+            .map_err(|_| CredentialError::InvalidSignature)
     }
 }
 
