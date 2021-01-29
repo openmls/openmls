@@ -191,6 +191,8 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
@@ -313,11 +315,13 @@
         <span class="comment">// TODO #141: Implement PSK</span>
         <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="prelude-val">None</span>);
 
+        <span class="comment">// TODO #186: Implement extensions</span>
         <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span>::<span class="ident">new</span>(
             <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
             <span class="ident">provisional_epoch</span>,
             <span class="ident">provisional_tree</span>.<span class="ident">tree_hash</span>(),
             <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
+            <span class="kw-2">&amp;</span>[],
         )<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span>

@@ -213,12 +213,16 @@
 <span id="210">210</span>
 <span id="211">211</span>
 <span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Signable</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="ident">CredentialBundle</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::{<span class="ident">sender</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">mls_group</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="kw-2">*</span>;
@@ -339,11 +343,13 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">tree_hash</span>();
+        <span class="comment">// TODO #186: Implement extensions</span>
         <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span>::<span class="ident">new</span>(
             <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
             <span class="ident">provisional_epoch</span>,
             <span class="ident">tree_hash</span>.<span class="ident">clone</span>(),
             <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
+            <span class="kw-2">&amp;</span>[],
         )<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span>
@@ -372,13 +378,17 @@
 
         <span class="comment">// Check if new members were added an create welcome message</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">plaintext_secrets</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">add_ratchet_tree_extension</span> {
-                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RatchetTreeExtension</span>::<span class="ident">new</span>(
-                    <span class="ident">provisional_tree</span>.<span class="ident">public_key_tree_copy</span>(),
+            <span class="comment">// TODO #186: Implement group extensions</span>
+            <span class="comment">/*
+            let extensions: Vec&lt;Box&lt;dyn Extension&gt;&gt; = if self.add_ratchet_tree_extension {
+                vec![Box::new(RatchetTreeExtension::new(
+                    provisional_tree.public_key_tree_copy(),
                 ))]
-            } <span class="kw">else</span> {
-                <span class="ident">Vec</span>::<span class="ident">new</span>()
+            } else {
+                Vec::new()
             };
+            */</span>
+            <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
 
             <span class="comment">// Create GroupInfo object</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfo</span>::<span class="ident">new</span>(

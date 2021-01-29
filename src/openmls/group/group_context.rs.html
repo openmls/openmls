@@ -48,6 +48,10 @@
 <span id="45">45</span>
 <span id="46">46</span>
 <span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -58,12 +62,14 @@
         <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
         <span class="ident">tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">confirmed_transcript_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span> {
             <span class="ident">group_id</span>,
             <span class="ident">epoch</span>,
             <span class="ident">tree_hash</span>,
             <span class="ident">confirmed_transcript_hash</span>,
+            <span class="ident">extensions</span>: <span class="ident">extensions</span>.<span class="ident">to_vec</span>(),
             <span class="ident">serialized</span>: <span class="macro">vec</span><span class="macro">!</span>[],
         };
         <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">group_context</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
@@ -75,12 +81,14 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
         <span class="ident">tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">Self</span>::<span class="ident">new</span>(
             <span class="ident">group_id</span>,
             <span class="ident">GroupEpoch</span>(<span class="number">0</span>),
             <span class="ident">tree_hash</span>,
             <span class="ident">zero</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+            <span class="ident">extensions</span>,
         )
     }
     <span class="doccomment">/// Return the serialized group context</span>

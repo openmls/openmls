@@ -420,6 +420,11 @@
 <span id="417">417</span>
 <span id="418">418</span>
 <span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 
@@ -496,8 +501,13 @@
         <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId</span> { <span class="ident">value</span>: <span class="ident">id</span>.<span class="ident">to_vec</span>() };
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite_name</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">RatchetTree</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">key_package_bundle</span>);
-        <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span>
-            <span class="ident">GroupContext</span>::<span class="ident">create_initial_group_context</span>(<span class="ident">ciphersuite</span>, <span class="ident">group_id</span>, <span class="ident">tree</span>.<span class="ident">tree_hash</span>())<span class="question-mark">?</span>;
+        <span class="comment">// TODO #186: Implement extensions</span>
+        <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span>::<span class="ident">create_initial_group_context</span>(
+            <span class="ident">ciphersuite</span>,
+            <span class="ident">group_id</span>,
+            <span class="ident">tree</span>.<span class="ident">tree_hash</span>(),
+            <span class="kw-2">&amp;</span>[],
+        )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">private_tree</span>().<span class="ident">commit_secret</span>();
         <span class="comment">// Derive an initial joiner secret based on the commit secret.</span>
         <span class="comment">// Derive an epoch secret from the joiner secret.</span>
