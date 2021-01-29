@@ -698,7 +698,7 @@ impl SignatureKeypair {
 
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
-    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> bool {
+    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), SignatureError> {
         self.public_key.verify(signature, payload)
     }
 
@@ -758,8 +758,8 @@ impl SignaturePublicKey {
     }
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
-    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> bool {
-        verify(
+    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), SignatureError> {
+        if verify(
             // It's ok to use `unwrap()` here, since we checked the signature scheme is supported
             // when the public key was created.
             SignatureMode::try_from(self.signature_scheme).unwrap(),
@@ -769,6 +769,11 @@ impl SignaturePublicKey {
             payload,
         )
         .unwrap()
+        {
+            Ok(())
+        } else {
+            Err(SignatureError::InvalidSignature)
+        }
     }
 }
 

@@ -40,7 +40,7 @@ fn test_parent_hash() {
         let mut tree =
             RatchetTree::new_from_nodes(&ciphersuite, key_package_bundle, &nodes).unwrap();
 
-        assert!(tree.verify_parent_hashes());
+        assert!(tree.verify_parent_hashes().is_ok());
 
         // Populate the parent nodes with fake values
         for index in 0..tree.tree_size().as_usize() {
