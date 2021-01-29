@@ -35,9 +35,10 @@ pub struct RatchetTreeExtension {
     tree: Vec<Option<Node>>,
 }
 
+// TODO #186: Implement group extensions
 impl RatchetTreeExtension {
     /// Build a new extension from a vector of `Node`s.
-    pub(crate) fn new(tree: Vec<Option<Node>>) -> Self {
+    pub(crate) fn _new(tree: Vec<Option<Node>>) -> Self {
         RatchetTreeExtension { tree }
     }
 

@@ -146,6 +146,7 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
+            group_info.extensions(),
         )?;
         // TODO #141: Implement PSK
         let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);

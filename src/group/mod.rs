@@ -13,6 +13,7 @@ mod mls_group;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
+use crate::extensions::*;
 use crate::utils::*;
 
 pub(crate) use serde::{Deserialize, Serialize};
@@ -61,6 +62,7 @@ pub struct GroupContext {
     epoch: GroupEpoch,
     tree_hash: Vec<u8>,
     confirmed_transcript_hash: Vec<u8>,
+    extensions: Vec<Box<dyn Extension>>,
     // The group context in serialized form for efficiency. This field is not encoded.
     serialized: Vec<u8>,
 }
