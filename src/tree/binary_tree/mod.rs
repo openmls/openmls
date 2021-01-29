@@ -13,17 +13,24 @@ pub(crate) mod errors;
 pub(crate) mod test_binary_tree;
 pub(crate) mod utils;
 
-/// A binary tree in the array (vector) representation used in the MLS spec.
-/// Note, that this is not a full implementation of a binary tree, but rather
-/// only enables the operations needed by MLS.
+/// A full binary tree in the array (vector) representation used in the MLS
+/// spec. Note, that this is not a full implementation of a binary tree, but
+/// rather only enables the operations needed by MLS.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct BinaryTree<T: PartialEq> {
     nodes: Vec<T>,
 }
 
-impl<T: PartialEq> From<Vec<T>> for BinaryTree<T> {
-    fn from(nodes: Vec<T>) -> Self {
-        BinaryTree { nodes }
+impl<T: PartialEq> TryFrom<Vec<T>> for BinaryTree<T> {
+    type Error = BinaryTreeError;
+
+    /// Create a binary tree from a vector of nodes. Throws an error if the
+    /// number of given nodes can not be represented as a full tree.
+    fn try_from(value: Vec<T>) -> Result<Self, Self::Error> {
+        if value.len() % 3 != 0 && value.len() != 1 {
+            return Err(BinaryTreeError::TreeNotFull);
+        }
+        Ok(BinaryTree { nodes: value })
     }
 }
 
@@ -35,22 +42,25 @@ impl<T: PartialEq> BinaryTree<T> {
 
     /// Get the number of leaves in the tree.
     pub(crate) fn leaf_count(&self) -> LeafIndex {
-        // We unwrap here, because we assume the tree to be full.
-        LeafIndex::try_from(self.size()).unwrap()
+        LeafIndex::from((self.size().as_usize() + 1) / 2)
     }
 
+    /// Get the index corresponding to the root of the tree.
     pub(crate) fn root(&self) -> NodeIndex {
         let w = self.size();
         NodeIndex::from((1usize << log2(w.as_usize())) - 1)
     }
 
     fn is_out_of_bounds(&self, index: NodeIndex) -> Result<(), BinaryTreeError> {
-        if index > self.size() {
+        if index >= self.size() {
             return Err(BinaryTreeError::IndexOutOfBounds);
         };
         Ok(())
     }
 
+    /// Returns the index of the left child of the node corresponding to the
+    /// given index. Throws an error if the given node is a leaf node or if the
+    /// index is out of bounds.
     pub(crate) fn left(&self, index: NodeIndex) -> Result<NodeIndex, BinaryTreeError> {
         self.is_out_of_bounds(index)?;
         let x = index.as_usize();
@@ -61,6 +71,9 @@ impl<T: PartialEq> BinaryTree<T> {
         Ok(NodeIndex::from(x ^ (0x01 << (k - 1))))
     }
 
+    /// Returns the index of the right child of the node corresponding to the
+    /// given index. Throws an error if the given node is a leaf node or if the
+    /// index is out of bounds.
     pub(crate) fn right(&self, index: NodeIndex) -> Result<NodeIndex, BinaryTreeError> {
         self.is_out_of_bounds(index)?;
         let size = self.leaf_count();
@@ -77,6 +90,9 @@ impl<T: PartialEq> BinaryTree<T> {
         Ok(NodeIndex::from(r))
     }
 
+    /// Returns the index of the parent of the node corresponding to the given
+    /// index. Throws an error if the given node is the root node or if the
+    /// index is out of bounds.
     pub(crate) fn parent(&self, index: NodeIndex) -> Result<NodeIndex, BinaryTreeError> {
         self.is_out_of_bounds(index)?;
         let size = self.leaf_count();
@@ -92,6 +108,9 @@ impl<T: PartialEq> BinaryTree<T> {
         Ok(NodeIndex::from(p))
     }
 
+    /// Returns the index of the sibling of the node corresponding to the
+    /// given index. Throws an error if the given node is the root node or if
+    /// the index is out of bounds.
     pub(crate) fn sibling(&self, index: NodeIndex) -> Result<NodeIndex, BinaryTreeError> {
         let p = self.parent(index)?;
         match index.cmp(&p) {
@@ -101,53 +120,23 @@ impl<T: PartialEq> BinaryTree<T> {
         }
     }
 
-    // Ordered from leaf to root
-    // Includes neither leaf nor root
-    pub(crate) fn dirpath(&self, index: NodeIndex) -> Result<Vec<NodeIndex>, BinaryTreeError> {
-        let r = self.root();
-        if index == r {
-            return Ok(vec![]);
-        }
-
-        let mut d = vec![];
-        let mut x = self.parent(index)?;
-        while x != r {
-            d.push(x);
-            x = self.parent(x)?;
-        }
-        Ok(d)
-    }
-
-    // Ordered from leaf to root
-    // Includes leaf and root
-    pub(crate) fn direct_path(&self, index: NodeIndex) -> Result<Vec<NodeIndex>, BinaryTreeError> {
-        let r = self.root();
-        if index == r {
-            return Ok(vec![r]);
-        }
-
-        let mut x = index;
-        let mut d = vec![index];
-        while x != r {
-            x = self.parent(x)?;
-            d.push(x);
-        }
-        Ok(d)
-    }
-
-    // Ordered from leaf to root
-    // Includes root but not leaf
-    pub(crate) fn direct_path_root(
+    /// Direct path from a leaf node to the root. Does not include the leaf node
+    /// but includes the root. If the given leaf index is also the root index,
+    /// it returns the given index. Throws an error if the given leaf index is
+    /// out of bounds.
+    pub(crate) fn leaf_direct_path(
         &self,
-        index: NodeIndex,
+        leaf_index: LeafIndex,
     ) -> Result<Vec<NodeIndex>, BinaryTreeError> {
+        let node_index = NodeIndex::from(leaf_index);
+        self.is_out_of_bounds(node_index)?;
         let r = self.root();
-        if index == r {
+        if node_index == r {
             return Ok(vec![r]);
         }
 
         let mut d = vec![];
-        let mut x = index;
+        let mut x = node_index;
         while x != r {
             x = self.parent(x)?;
             d.push(x);
@@ -155,16 +144,55 @@ impl<T: PartialEq> BinaryTree<T> {
         Ok(d)
     }
 
-    // Ordered from leaf to root
-    pub(crate) fn copath(&self, index: NodeIndex) -> Result<Vec<NodeIndex>, BinaryTreeError> {
-        if index == self.root() {
-            return Ok(vec![]);
+    /// Direct path from a parent node to the root. Includes the parent node and
+    /// the root. If the given leaf index is also the root index, it returns the
+    /// given index. Returns an error if the `index` is not a parent node or if
+    /// it's out of bounds.
+    pub(crate) fn parent_direct_path(
+        &self,
+        node_index: NodeIndex,
+    ) -> Result<Vec<NodeIndex>, BinaryTreeError> {
+        if !node_index.is_parent() {
+            return Err(BinaryTreeError::NotAParentNode);
         }
-        let mut d = vec![index];
-        d.append(&mut self.dirpath(index)?);
-        d.iter().map(|&index| self.sibling(index)).collect()
+        self.is_out_of_bounds(node_index)?;
+        let r = self.root();
+        if node_index == r {
+            return Ok(vec![r]);
+        }
+
+        let mut x = node_index;
+        let mut d = vec![node_index];
+        while x != r {
+            x = self.parent(x)?;
+            d.push(x);
+        }
+        Ok(d)
     }
 
+    /// Copath of a leaf. Ordered from leaf to root. Throws an error if the
+    /// given leaf index is out of bounds.
+    pub(crate) fn copath(&self, leaf_index: LeafIndex) -> Result<Vec<NodeIndex>, BinaryTreeError> {
+        let node_index = NodeIndex::from(leaf_index);
+        // If the tree only has one leaf
+        if node_index == self.root() {
+            return Ok(vec![]);
+        }
+        // Add leaf node
+        let mut d = vec![node_index];
+        // Add direct path
+        d.append(&mut self.leaf_direct_path(leaf_index)?);
+        // Remove root node
+        d.pop();
+        // Calculate copath
+        d.iter()
+            .map(|&node_index| self.sibling(node_index))
+            .collect()
+    }
+
+    /// Get the index of the common ancestor of the nodes corresponding to the
+    /// two given indices. Throws an error if one of the indices is out of
+    /// bounds.
     pub(crate) fn common_ancestor(
         &self,
         x: NodeIndex,
@@ -190,17 +218,9 @@ impl<T: PartialEq> BinaryTree<T> {
     }
 
     /// Replace the node at index `index`, consuming the new node and returning
-    /// the old one.
-    pub(crate) fn replace(
-        &mut self,
-        node_index: &NodeIndex,
-        node: T,
-    ) -> Result<T, BinaryTreeError> {
-        // Check if the index is within bounds to prevent `swap_remove` from
-        // panicking.
-        if node_index >= &self.size() {
-            return Err(BinaryTreeError::IndexOutOfBounds);
-        };
+    /// the old one. Throws an error if the given index is out of bounds.
+    pub(crate) fn replace(&mut self, node_index: NodeIndex, node: T) -> Result<T, BinaryTreeError> {
+        self.is_out_of_bounds(node_index)?;
         // First push the node to the end of the nodes array.
         self.nodes.push(node);
         // Then use `swap_remove`, which replaces the target node with the one
@@ -210,7 +230,9 @@ impl<T: PartialEq> BinaryTree<T> {
 
     /// Add nodes to the tree on the right side such that the tree is still
     /// left-balanced. The number of nodes added has to be even, as we want the
-    /// tree to remain full.
+    /// tree to remain full. Throws an error if the number of nodes added would
+    /// cause the tree to become non-full, i.e. if the number of nodes added
+    /// modulo 2 is not zero.
     pub(crate) fn add(&mut self, nodes: Vec<T>) -> Result<(), BinaryTreeError> {
         if nodes.len() % 2 != 0 {
             return Err(BinaryTreeError::TreeNotFull);
@@ -219,7 +241,10 @@ impl<T: PartialEq> BinaryTree<T> {
         Ok(())
     }
 
-    /// Remove the right-most node.
+    /// Remove the given number of nodes from the right of the tree. Throws an
+    /// error if the number of nodes to remove is either larger than the size of
+    /// the tree or if it would cause the tree to become non-full, i.e. if the
+    /// number of nodes to remove modulo 2 is not zero.
     pub(crate) fn remove(&mut self, nodes_to_remove: usize) -> Result<(), BinaryTreeError> {
         if nodes_to_remove % 2 != 0 {
             return Err(BinaryTreeError::TreeNotFull);
@@ -231,51 +256,49 @@ impl<T: PartialEq> BinaryTree<T> {
         Ok(())
     }
 
-    /// Truncate the tree to size `size` by removing nodes on the right until
-    /// the tree has reached size `size`.
-    #[cfg(test)]
-    pub(crate) fn truncate(&mut self, size: usize) {
-        self.nodes.truncate(size);
-    }
-
-    /// Get a reference to a node of the tree by index.
-    pub(crate) fn node(&self, node_index: &NodeIndex) -> Result<&T, BinaryTreeError> {
+    /// Get a reference to a node of the tree by index. Throws an error if the
+    /// given index is out of bounds.
+    pub(crate) fn node(&self, node_index: NodeIndex) -> Result<&T, BinaryTreeError> {
         self.nodes
             .get(node_index.as_usize())
             .ok_or(BinaryTreeError::IndexOutOfBounds)
     }
 
-    /// Get a mutable reference to a node of the tree by index.
-    pub(crate) fn node_mut(&mut self, node_index: &NodeIndex) -> Result<&mut T, BinaryTreeError> {
+    /// Get a mutable reference to a node of the tree by index. Throws an error
+    /// if the given index is out of bounds.
+    pub(crate) fn node_mut(&mut self, node_index: NodeIndex) -> Result<&mut T, BinaryTreeError> {
         self.nodes
             .get_mut(node_index.as_usize())
             .ok_or(BinaryTreeError::IndexOutOfBounds)
     }
 
-    /// Get a reference to a leaf of the tree by index.
-    pub(crate) fn leaf(&self, leaf_index: &LeafIndex) -> Result<&T, BinaryTreeError> {
-        self.node(&NodeIndex::from(leaf_index))
+    /// Get a reference to a leaf of the tree by index. Throws an error if the
+    /// given leaf index is out of bounds.
+    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Result<&T, BinaryTreeError> {
+        self.node(NodeIndex::from(leaf_index))
     }
 
-    /// Get a mutable reference to a leaf of the tree by index.
-    pub(crate) fn leaf_mut(&mut self, leaf_index: &LeafIndex) -> Result<&mut T, BinaryTreeError> {
-        self.node_mut(&NodeIndex::from(leaf_index))
+    /// Get a mutable reference to a leaf of the tree by index. Throws an error
+    /// if the given leaf index is out of bounds.
+    pub(crate) fn leaf_mut(&mut self, leaf_index: LeafIndex) -> Result<&mut T, BinaryTreeError> {
+        self.node_mut(NodeIndex::from(leaf_index))
     }
 
     /// Given two nodes `origin` and `target`, return the index of the node in
     /// the copath of the `origin`, such that the `target` is in the subtree of
-    /// the returned node.
+    /// the returned node. Throws an error if one of the given leaf indices is
+    /// out of bounds.
     pub(crate) fn copath_node(
         &self,
-        copath_origin: &NodeIndex,
-        copath_target: &NodeIndex,
+        copath_origin: LeafIndex,
+        copath_target: LeafIndex,
     ) -> Result<NodeIndex, BinaryTreeError> {
-        let copath = self.copath(*copath_origin)?;
+        let copath = self.copath(copath_origin)?;
 
-        let target_direct_path = self.direct_path_root(*copath_target).unwrap();
-        let copath_node_index = match target_direct_path.iter().find(|x| copath.contains(x)) {
+        let target_direct_path = self.leaf_direct_path(copath_target).unwrap();
+        let copath_node_index = match target_direct_path.iter().find(|&x| copath.contains(x)) {
             Some(index) => index.to_owned(),
-            None => copath_target.to_owned(),
+            None => NodeIndex::from(copath_target),
         };
         Ok(copath_node_index)
     }
