@@ -70,14 +70,6 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
-    /// Get the signature scheme used by the credential.
-    pub fn signature_scheme(&self) -> SignatureScheme {
-        match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => basic_credential.signature_scheme,
-            // TODO: implement getter for signature scheme for X509 certificates. See issue #134.
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-    }
 }
 
 impl From<MLSCredentialType> for Credential {

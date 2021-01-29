@@ -1,15 +1,14 @@
+#[cfg(test)]
 use crate::config::*;
+#[cfg(test)]
 use crate::{extensions::*, key_packages::*};
 
 #[test]
 fn generate_key_package() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let credential_bundle = CredentialBundle::new(
-            vec![1, 2, 3],
-            CredentialType::Basic,
-            ciphersuite.name().into(),
-        )
-        .unwrap();
+        let credential_bundle =
+            CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, ciphersuite.name())
+                .unwrap();
 
         // Generate a valid KeyPackage.
         let lifetime_extension = Box::new(LifetimeExtension::new(60));
@@ -19,7 +18,7 @@ fn generate_key_package() {
             vec![lifetime_extension],
         )
         .unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        std::thread::sleep(std::time::Duration::from_secs(1));
         assert!(kpb.key_package().verify().is_ok());
 
         // Now we add an invalid lifetime.
@@ -30,7 +29,7 @@ fn generate_key_package() {
             vec![lifetime_extension],
         )
         .unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        std::thread::sleep(std::time::Duration::from_secs(1));
         assert!(kpb.key_package().verify().is_err());
 
         // Now with two lifetime extensions, the key package should be invalid.
@@ -49,7 +48,7 @@ fn test_codec() {
     for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
         let credential_bundle =
-            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name().into()).unwrap();
+            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
         let mut kpb =
             KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
 
@@ -69,7 +68,7 @@ fn key_package_id_extension() {
     for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
         let credential_bundle =
-            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name().into()).unwrap();
+            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name()).unwrap();
         let mut kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
@@ -91,34 +90,6 @@ fn key_package_id_extension() {
         assert!(kpb.key_package().verify().is_ok());
 
         // Check ID
-        assert_eq!(&id[..], &kpb.key_package().key_id().expect("No key ID")[..]);
+        assert_eq!(&id[..], &kpb.key_package().id().unwrap()[..]);
     }
-}
-
-#[test]
-fn test_mismatch() {
-    // === KeyPackageBundle negative test ===
-
-    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
-
-    let credential_bundle =
-        CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, signature_scheme)
-            .expect("Could not create credential bundle");
-
-    assert_eq!(
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![],),
-        Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch)
-    );
-
-    // === KeyPackageBundle positive test ===
-
-    let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let signature_scheme = SignatureScheme::ED25519;
-
-    let credential_bundle =
-        CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, signature_scheme)
-            .expect("Could not create credential bundle");
-
-    assert!(KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![]).is_ok());
 }

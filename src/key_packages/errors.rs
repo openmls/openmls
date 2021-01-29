@@ -17,7 +17,6 @@ implement_error! {
             DuplicateExtension = "Duplicate extensions are not allowed.",
             NoCiphersuitesSupplied = "Creating a new key package requires at least one ciphersuite.",
             CiphersuiteMismatch = "The list of ciphersuites is not consistent with the capabilities extension.",
-            CiphersuiteSignatureSchemeMismatch = "The ciphersuite does not match the signature scheme.",
         }
         Complex {
             ExtensionError(ExtensionError) =
