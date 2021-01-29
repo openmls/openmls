@@ -1,18 +1,13 @@
 use std::convert::TryFrom;
 
 use super::BinaryTree;
-use crate::{prelude::random_u8, tree::index::NodeIndex};
+use crate::tree::index::NodeIndex;
 use evercrypt::prelude::get_random_vec;
-
-fn create_random_tree() -> BinaryTree<u8> {
-    let size = random_u8() % 3;
-    let nodes = get_random_vec(size as usize);
-    BinaryTree::try_from(nodes).unwrap()
-}
 
 #[test]
 fn test_basic_operations() {
-    let tree = create_random_tree();
+    let nodes = get_random_vec(9 as usize);
+    let tree = BinaryTree::try_from(nodes).unwrap();
     // Get current tree size.
     let tree_size = tree.size().as_usize();
     // Create nodes to add.
@@ -52,7 +47,8 @@ fn test_basic_operations() {
 
 #[test]
 fn test_out_of_bounds() {
-    let mut tree = create_random_tree();
+    let nodes = get_random_vec(9 as usize);
+    let mut tree = BinaryTree::try_from(nodes).unwrap();
 
     let node = tree.node(NodeIndex::from(tree.size().as_usize() + 1));
 
