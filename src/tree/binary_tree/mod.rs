@@ -230,15 +230,18 @@ impl<T: PartialEq> BinaryTree<T> {
 
     /// Add nodes to the tree on the right side such that the tree is still
     /// left-balanced. The number of nodes added has to be even, as we want the
-    /// tree to remain full. Throws an error if the number of nodes added would
-    /// cause the tree to become non-full, i.e. if the number of nodes added
-    /// modulo 2 is not zero.
-    pub(crate) fn add(&mut self, nodes: Vec<T>) -> Result<(), BinaryTreeError> {
-        if nodes.len() % 2 != 0 {
-            return Err(BinaryTreeError::TreeNotFull);
-        }
-        self.nodes.extend(nodes);
-        Ok(())
+    /// tree to remain full.
+    pub(crate) fn add(&mut self, mut nodes: Vec<(T, T)>) {
+        let flattened_nodes_len = nodes.len() * 2;
+        let flattened_nodes = nodes.drain(..).fold(
+            Vec::with_capacity(flattened_nodes_len),
+            |mut vector, tuple| {
+                vector.push(tuple.0);
+                vector.push(tuple.1);
+                vector
+            },
+        );
+        self.nodes.extend(flattened_nodes)
     }
 
     /// Remove the given number of nodes from the right of the tree. Throws an

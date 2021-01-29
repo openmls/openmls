@@ -168,8 +168,7 @@ impl<T: Clone + PartialEq> BlankableTree<T> {
         // Add the remaining nodes.
         let mut leaf_index = self.size().as_usize() + 1;
         for new_node in new_nodes.drain(free_leaves_len..new_nodes.len()) {
-            // We unwrap here, because we're adding two nodes.
-            self.add(vec![None, Some(new_node.clone())]).unwrap();
+            self.add(vec![(None, Some(new_node.clone()))]);
             added_members.push(LeafIndex::from(leaf_index));
             leaf_index += 2;
         }

@@ -11,11 +11,26 @@ fn test_basic_operations() {
     // Get current tree size.
     let tree_size = tree.size().as_usize();
     // Create nodes to add.
-    let new_nodes = get_random_vec(10);
+    let mut new_nodes_part1 = get_random_vec(5);
+    let mut new_nodes_part2 = get_random_vec(5);
+    let new_nodes: Vec<(u8, u8)> = new_nodes_part1
+        .drain(..)
+        .zip(new_nodes_part2.drain(..))
+        .collect();
+
+    let flattened_new_nodes_len = new_nodes.len() * 2;
+    let flattened_new_nodes = new_nodes.clone().drain(..).fold(
+        Vec::with_capacity(flattened_new_nodes_len),
+        |mut vector, tuple| {
+            vector.push(tuple.0);
+            vector.push(tuple.1);
+            vector
+        },
+    );
     // Clone so we can compare later.
     let mut new_tree = tree.clone();
     // Add new nodes to the tree.
-    new_tree.add(new_nodes.clone()).unwrap();
+    new_tree.add(new_nodes.clone());
     let new_tree_size = new_tree.size().as_usize();
 
     // Compare sizes of old and new tree.
@@ -24,7 +39,7 @@ fn test_basic_operations() {
     // Check that nodes were added properly.
     assert_eq!(
         &new_tree.nodes().as_slice()[tree_size..new_tree_size],
-        new_nodes.as_slice()
+        flattened_new_nodes.as_slice()
     );
 
     // Remove newly added nodes.
