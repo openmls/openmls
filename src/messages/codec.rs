@@ -266,13 +266,7 @@ impl Codec for ReInitProposal {
         self.group_id.encode(buffer)?;
         self.version.encode(buffer)?;
         self.ciphersuite.encode(buffer)?;
-        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
-        let encoded_extensions: Vec<ExtensionStruct> = self
-            .extensions
-            .iter()
-            .map(|e| e.to_extension_struct())
-            .collect();
-        encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
+        encode_extensions(&self.extensions, buffer)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
@@ -285,6 +279,47 @@ impl Codec for ReInitProposal {
             version,
             ciphersuite,
             extensions,
+        })
+    }
+}
+
+impl Codec for PublicGroupState {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        /*
+            pub(crate) ciphersuite: Ciphersuite,
+        pub(crate) group_id: GroupId,
+        pub(crate) epoch: GroupEpoch,
+        pub(crate) tree_hash: Vec<u8>,
+        pub(crate) interim_transcript_hash: Vec<u8>,
+        pub(crate) extensions: Vec<Box<dyn Extension>>,
+        pub(crate) external_pub: HPKEPublicKey,
+            */
+        self.ciphersuite.encode(buffer)?;
+        self.group_id.encode(buffer)?;
+        self.epoch.encode(buffer)?;
+        encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
+        encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
+        encode_extensions(&self.extensions, buffer)?;
+        encode_extensions(&self.extensions, buffer)?;
+        self.external_pub.encode(buffer)?;
+        Ok(())
+    }
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        let ciphersuite = CiphersuiteName::decode(cursor)?;
+        let group_id = GroupId::decode(cursor)?;
+        let epoch = GroupEpoch::decode(cursor)?;
+        let tree_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let interim_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let extensions = extensions_vec_from_cursor(cursor)?;
+        let external_pub = HPKEPublicKey::decode(cursor)?;
+        Ok(Self {
+            ciphersuite,
+            group_id,
+            epoch,
+            tree_hash,
+            interim_transcript_hash,
+            extensions,
+            external_pub,
         })
     }
 }

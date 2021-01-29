@@ -260,13 +260,7 @@ impl Signable for GroupInfo {
         self.epoch.encode(buffer)?;
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
-        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
-        let encoded_extensions: Vec<ExtensionStruct> = self
-            .extensions
-            .iter()
-            .map(|e| e.to_extension_struct())
-            .collect();
-        encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
+        encode_extensions(&self.extensions, buffer)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
         self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())
@@ -317,4 +311,27 @@ impl GroupSecrets {
         psks.encode(buffer)?;
         Ok(buffer.to_vec())
     }
+}
+
+/// PublicGroupState
+///
+/// ```test
+/// struct {
+///     CipherSuite cipher_suite;
+///     opaque group_id<0..255>;
+///     uint64 epoch;
+///     opaque tree_hash<0..255>;
+///     opaque interim_transcript_hash<0..255>;
+///     Extension extensions<0..2^32-1>;
+///     HPKEPublicKey external_pub;
+/// } PublicGroupState;
+/// ```
+pub struct PublicGroupState {
+    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) group_id: GroupId,
+    pub(crate) epoch: GroupEpoch,
+    pub(crate) tree_hash: Vec<u8>,
+    pub(crate) interim_transcript_hash: Vec<u8>,
+    pub(crate) extensions: Vec<Box<dyn Extension>>,
+    pub(crate) external_pub: HPKEPublicKey,
 }

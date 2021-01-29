@@ -6,10 +6,7 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
-use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionError, ExtensionStruct, ExtensionType,
-    LifetimeExtension, ParentHashExtension,
-};
+use crate::extensions::*;
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -171,13 +168,7 @@ impl KeyPackage {
         self.ciphersuite.name().encode(buffer)?;
         self.hpke_init_key.encode(buffer)?;
         self.credential.encode(buffer)?;
-        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
-        let encoded_extensions: Vec<ExtensionStruct> = self
-            .extensions
-            .iter()
-            .map(|e| e.to_extension_struct())
-            .collect();
-        encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
+        encode_extensions(&self.extensions, buffer)?;
         Ok(buffer.to_vec())
     }
 }
