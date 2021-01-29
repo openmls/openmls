@@ -1085,24 +1085,24 @@
     }
 
     <span class="doccomment">/// Blanks all the nodes in the direct path of a member</span>
-    <span class="kw">fn</span> <span class="ident">blank_member</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>) {
+    <span class="kw">fn</span> <span class="ident">blank_member</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">index</span>: <span class="ident">LeafIndex</span>) {
         <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">leaf_count</span>();
         <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">index</span>].<span class="ident">blank</span>();
         <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">treemath</span>::<span class="ident">root</span>(<span class="ident">size</span>)].<span class="ident">blank</span>();
         <span class="comment">// Unwrapping here is safe, because we start at the leaf level</span>
-        <span class="kw">for</span> <span class="ident">index</span> <span class="kw">in</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(<span class="ident">index</span>, <span class="ident">size</span>).<span class="ident">unwrap</span>() {
+        <span class="kw">for</span> <span class="ident">index</span> <span class="kw">in</span> <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(<span class="ident">index</span>, <span class="ident">size</span>).<span class="ident">unwrap</span>() {
             <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">index</span>].<span class="ident">blank</span>();
         }
     }
 
     <span class="doccomment">/// Returns the list of blank leaves within the tree</span>
-    <span class="kw">fn</span> <span class="ident">free_leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">free_leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">free_leaves</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">leaf_count</span>().<span class="ident">as_usize</span>() {
             <span class="comment">// TODO use an iterator instead</span>
             <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">i</span>);
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">leaf_index</span>].<span class="ident">is_blank</span>() {
-                <span class="ident">free_leaves</span>.<span class="ident">push</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">leaf_index</span>));
+                <span class="ident">free_leaves</span>.<span class="ident">push</span>(<span class="ident">leaf_index</span>);
             }
         }
         <span class="ident">free_leaves</span>
@@ -1130,10 +1130,9 @@
             <span class="ident">treemath</span>::<span class="ident">common_ancestor_index</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">sender</span>), <span class="ident">own_index</span>);
 
         <span class="comment">// Calculate sender direct path &amp; co-path, common path</span>
-        <span class="kw">let</span> <span class="ident">sender_direct_path</span> <span class="op">=</span>
-            <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">sender</span>), <span class="self">self</span>.<span class="ident">leaf_count</span>())
-                .<span class="ident">expect</span>(<span class="string">&quot;update_path: Error when computing direct path.&quot;</span>);
-        <span class="kw">let</span> <span class="ident">sender_co_path</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">copath</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">sender</span>), <span class="self">self</span>.<span class="ident">leaf_count</span>())
+        <span class="kw">let</span> <span class="ident">sender_direct_path</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(<span class="ident">sender</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
+            .<span class="ident">expect</span>(<span class="string">&quot;update_path: Error when computing direct path.&quot;</span>);
+        <span class="kw">let</span> <span class="ident">sender_co_path</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">copath</span>(<span class="ident">sender</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;update_path: Error when computing copath.&quot;</span>);
 
         <span class="comment">// Find the position of the common ancestor in the sender&#39;s direct path</span>
@@ -1148,7 +1147,8 @@
             };
 
         <span class="comment">// We can unwrap here, because own index is always within the tree.</span>
-        <span class="kw">let</span> <span class="ident">own_direct_path</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(<span class="ident">own_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>()).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">own_direct_path</span> <span class="op">=</span>
+            <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(<span class="self">self</span>.<span class="ident">own_node_index</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>()).<span class="ident">unwrap</span>();
 
         <span class="comment">// Resolve the node of that co-path index</span>
         <span class="kw">let</span> <span class="ident">resolution</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">resolve</span>(<span class="ident">common_ancestor_copath_index</span>, <span class="kw-2">&amp;</span><span class="ident">new_leaves_indexes</span>);
@@ -1194,7 +1194,7 @@
         };
 
         <span class="comment">// Compute the common path between the common ancestor and the root</span>
-        <span class="kw">let</span> <span class="ident">common_path</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">dirpath_long</span>(<span class="ident">common_ancestor_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
+        <span class="kw">let</span> <span class="ident">common_path</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">parent_direct_path</span>(<span class="ident">common_ancestor_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;update_path: Error when computing direct path.&quot;</span>);
 
         <span class="macro">debug_assert</span><span class="macro">!</span>(
@@ -1309,7 +1309,7 @@
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">ciphersuite</span>();
         <span class="comment">// Compute the direct path and keypairs along it</span>
         <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>();
-        <span class="kw">let</span> <span class="ident">direct_path_root</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(<span class="ident">own_index</span>.<span class="ident">into</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>())
+        <span class="kw">let</span> <span class="ident">direct_path_root</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(<span class="ident">own_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;replace_private_tree: Error when computing direct path.&quot;</span>);
         <span class="comment">// Update private tree and merge corresponding public keys.</span>
         <span class="kw">let</span> (<span class="ident">private_tree</span>, <span class="ident">new_public_keys</span>) <span class="op">=</span> <span class="ident">PrivateTree</span>::<span class="ident">new_with_keys</span>(
@@ -1344,7 +1344,7 @@
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">new_leaves_indexes</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span>, <span class="ident">TreeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">copath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">copath</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">leaf_index</span>().<span class="ident">into</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>())
+        <span class="kw">let</span> <span class="ident">copath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">copath</span>(<span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">leaf_index</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;encrypt_to_copath: Error when computing copath.&quot;</span>);
         <span class="comment">// Return if the length of the copath is zero</span>
         <span class="kw">if</span> <span class="ident">copath</span>.<span class="ident">is_empty</span>() {
@@ -1463,7 +1463,7 @@
         <span class="kw">let</span> <span class="ident">free_leaves_len</span> <span class="op">=</span> <span class="ident">free_leaves</span>.<span class="ident">len</span>();
         <span class="kw">for</span> (<span class="ident">new_kp</span>, <span class="ident">leaf_index</span>) <span class="kw">in</span> <span class="ident">new_kps</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">free_leaves</span>) {
             <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">leaf_index</span>] <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">new_leaf</span>(<span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">new_kp</span>).<span class="ident">clone</span>()));
-            <span class="kw">let</span> <span class="ident">dirpath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(<span class="ident">leaf_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
+            <span class="kw">let</span> <span class="ident">dirpath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(<span class="ident">leaf_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
                 .<span class="ident">expect</span>(<span class="string">&quot;add_nodes: Error when computing direct path.&quot;</span>);
             <span class="kw">for</span> <span class="ident">d</span> <span class="kw">in</span> <span class="ident">dirpath</span>.<span class="ident">iter</span>() {
                 <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">d</span>].<span class="ident">is_blank</span>() {
@@ -1477,19 +1477,19 @@
                     <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">d</span>].<span class="ident">node</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">parent_node</span>);
                 }
             }
-            <span class="ident">added_members</span>.<span class="ident">push</span>((<span class="ident">leaf_index</span>, <span class="ident">new_kp</span>.<span class="ident">credential</span>().<span class="ident">clone</span>()));
+            <span class="ident">added_members</span>.<span class="ident">push</span>((<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">leaf_index</span>), <span class="ident">new_kp</span>.<span class="ident">credential</span>().<span class="ident">clone</span>()));
         }
         <span class="comment">// Add the remaining nodes.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_nodes</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="ident">num_new_kp</span> <span class="op">*</span> <span class="number">2</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">1</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">index_counter</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">1</span>;
         <span class="kw">for</span> <span class="ident">add_proposal</span> <span class="kw">in</span> <span class="ident">new_kps</span>.<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="ident">free_leaves_len</span>) {
+            <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">index_counter</span>);
             <span class="ident">new_nodes</span>.<span class="ident">extend</span>(<span class="macro">vec</span><span class="macro">!</span>[
                 <span class="ident">Node</span>::<span class="ident">new_blank_parent_node</span>(),
                 <span class="ident">Node</span>::<span class="ident">new_leaf</span>(<span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">add_proposal</span>).<span class="ident">clone</span>())),
             ]);
-            <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">leaf_index</span>);
             <span class="ident">added_members</span>.<span class="ident">push</span>((<span class="ident">node_index</span>, <span class="ident">add_proposal</span>.<span class="ident">credential</span>().<span class="ident">clone</span>()));
-            <span class="ident">leaf_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">2</span>;
+            <span class="ident">index_counter</span> <span class="op">+</span><span class="op">=</span> <span class="number">2</span>;
         }
         <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">extend</span>(<span class="ident">new_nodes</span>);
         <span class="self">self</span>.<span class="ident">trim_tree</span>();
@@ -1519,7 +1519,7 @@
             <span class="comment">// Prepare leaf node</span>
             <span class="kw">let</span> <span class="ident">leaf_node</span> <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">new_leaf</span>(<span class="prelude-val">Some</span>(<span class="ident">update_proposal</span>.<span class="ident">key_package</span>.<span class="ident">clone</span>()));
             <span class="comment">// Blank the direct path of that leaf node</span>
-            <span class="self">self</span>.<span class="ident">blank_member</span>(<span class="ident">sender_index</span>.<span class="ident">into</span>());
+            <span class="self">self</span>.<span class="ident">blank_member</span>(<span class="ident">sender_index</span>);
             <span class="comment">// Replace the leaf node</span>
             <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">sender_index</span>] <span class="op">=</span> <span class="ident">leaf_node</span>;
             <span class="comment">// Check if it is a self-update</span>
@@ -1539,9 +1539,9 @@
         <span class="kw">for</span> <span class="ident">queued_proposal</span> <span class="kw">in</span> <span class="ident">proposal_queue</span>.<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType</span>::<span class="ident">Remove</span>) {
             <span class="ident">has_removes</span> <span class="op">=</span> <span class="bool-val">true</span>;
             <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>().<span class="ident">as_remove</span>().<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">remove_proposal</span>.<span class="ident">removed</span>));
+            <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">remove_proposal</span>.<span class="ident">removed</span>);
             <span class="comment">// Check if we got removed from the group</span>
-            <span class="kw">if</span> <span class="ident">removed</span> <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>().<span class="ident">into</span>() {
+            <span class="kw">if</span> <span class="ident">removed</span> <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>() {
                 <span class="ident">self_removed</span> <span class="op">=</span> <span class="bool-val">true</span>;
             }
             <span class="comment">// Blank the direct path of the removed member</span>

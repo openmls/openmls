@@ -352,7 +352,7 @@
             <span class="comment">// We can unwrap here, because, upon closer inspection,</span>
             <span class="comment">// `dirpath_long` will never throw an error.</span>
             <span class="kw">let</span> <span class="ident">common_path</span> <span class="op">=</span>
-                <span class="ident">treemath</span>::<span class="ident">dirpath_long</span>(<span class="ident">common_ancestor_index</span>, <span class="ident">tree</span>.<span class="ident">leaf_count</span>()).<span class="ident">unwrap</span>();
+                <span class="ident">treemath</span>::<span class="ident">parent_direct_path</span>(<span class="ident">common_ancestor_index</span>, <span class="ident">tree</span>.<span class="ident">leaf_count</span>()).<span class="ident">unwrap</span>();
 
             <span class="comment">// Update the private tree.</span>
             <span class="kw">let</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">private_tree_mut</span>();

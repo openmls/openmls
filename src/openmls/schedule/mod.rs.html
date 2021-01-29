@@ -570,7 +570,6 @@
 <span id="567">567</span>
 <span id="568">568</span>
 <span id="569">569</span>
-<span id="570">570</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
@@ -622,8 +621,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="ident">AddProposal</span>, <span class="ident">GroupSecrets</span>, <span class="ident">PathSecret</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::<span class="ident">LeafIndex</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::<span class="ident">NodeIndex</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::{<span class="ident">LeafIndex</span>, <span class="ident">NodeIndex</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">private_tree</span>::<span class="ident">CommitSecret</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">secret_tree</span>::<span class="ident">SecretTree</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">treemath</span>;
@@ -691,8 +689,8 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PlaintextSecret</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="comment">// Get a Vector containing the node indices of the direct path to the</span>
         <span class="comment">// root from our own leaf.</span>
-        <span class="kw">let</span> <span class="ident">dirpath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">direct_path_root</span>(
-            <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>().<span class="ident">into</span>(),
+        <span class="kw">let</span> <span class="ident">dirpath</span> <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(
+            <span class="ident">provisional_tree</span>.<span class="ident">own_node_index</span>(),
             <span class="ident">provisional_tree</span>.<span class="ident">leaf_count</span>(),
         )
         .<span class="ident">expect</span>(<span class="string">&quot;create_commit_internal: TreeMath error when computing direct path.&quot;</span>);
