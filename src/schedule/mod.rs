@@ -48,8 +48,7 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::group::*;
 use crate::messages::{proposals::AddProposal, GroupSecrets, PathSecret};
-use crate::tree::index::LeafIndex;
-use crate::tree::index::NodeIndex;
+use crate::tree::index::{LeafIndex, NodeIndex};
 use crate::tree::private_tree::CommitSecret;
 use crate::tree::secret_tree::SecretTree;
 use crate::tree::treemath;
@@ -117,8 +116,8 @@ impl JoinerSecret {
     ) -> Result<Vec<PlaintextSecret>, CodecError> {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
-        let dirpath = treemath::direct_path_root(
-            provisional_tree.own_node_index().into(),
+        let dirpath = treemath::leaf_direct_path(
+            provisional_tree.own_node_index(),
             provisional_tree.leaf_count(),
         )
         .expect("create_commit_internal: TreeMath error when computing direct path.");
