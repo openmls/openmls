@@ -319,7 +319,7 @@ impl GroupSecrets {
 
 /// PublicGroupState
 ///
-/// ```test
+/// ```text
 /// struct {
 ///     CipherSuite cipher_suite;
 ///     opaque group_id<0..255>;
@@ -387,7 +387,7 @@ impl PublicGroupState {
     }
 
     /// Verifies the signature of the `PublicGroupState`.
-    /// Returns `Ok(())` in case of of success and `CredentialError` otherwise.
+    /// Returns `Ok(())` in case of success and `CredentialError` otherwise.
     pub fn verify(&self, credential_bundle: &CredentialBundle) -> Result<(), CredentialError> {
         let pgstbs = PublicGroupStateTBS {
             group_id: &self.group_id,
@@ -408,7 +408,7 @@ impl PublicGroupState {
 
 /// PublicGroupStateTBS
 ///
-/// ```test
+/// ```text
 /// struct {
 ///     opaque group_id<0..255>;
 ///     uint64 epoch;
@@ -428,7 +428,7 @@ pub(crate) struct PublicGroupStateTBS<'a> {
 }
 
 impl<'a> PublicGroupStateTBS<'a> {
-    /// Signs the `PublicGroubStateTBS` with a `CredentialBundle`.
+    /// Signs the `PublicGroupStateTBS` with a `CredentialBundle`.
     fn sign(&self, credential_bundle: &CredentialBundle) -> Result<Signature, CredentialError> {
         let payload = self
             .encode_detached()

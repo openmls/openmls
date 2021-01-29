@@ -377,8 +377,8 @@ impl MlsGroup {
         &self.group_context.group_id
     }
 
-    /// Get thr groups extensions.
-    /// Right now this is limited to the ratchet tree extension, which is built
+    /// Get the groups extensions.
+    /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
     pub fn extensions(&self) -> Vec<Box<dyn Extension>> {
         let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
