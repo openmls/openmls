@@ -2,6 +2,7 @@ use super::index::{LeafIndex, NodeIndex};
 use super::treemath::{TreeMathError, _descendants, _descendants_alt};
 use crate::config::*;
 use crate::tree::{treemath, *};
+use std::convert::TryFrom;
 use std::fs::File;
 use std::io::Read;
 
@@ -78,21 +79,16 @@ fn verify_binary_test_vector_treemath() {
 fn test_dir_path() {
     const SIZE: u32 = 100;
     for size in 0..SIZE {
-        for i in 0..size / 2 {
-            let index = NodeIndex::from(i);
-            let mut dir_path_test = treemath::dirpath(index, LeafIndex::from(size)).unwrap();
-            let root = treemath::root(LeafIndex::from(size));
-            dir_path_test.extend_from_slice(&[root]);
-            assert_eq!(
-                dir_path_test,
-                treemath::direct_path_root(index, LeafIndex::from(size)).unwrap()
-            );
-            let mut dirpath_long_test = vec![index];
-            dirpath_long_test.extend(dir_path_test);
-            assert_eq!(
-                dirpath_long_test,
-                treemath::dirpath_long(index, LeafIndex::from(size)).unwrap()
-            );
+        for i in (0..size / 2).step_by(2) {
+            let leaf_index = LeafIndex::try_from(i).expect("Could not create LeafIndex");
+            let tree_size = LeafIndex::from(size);
+            let leaf_dir_path = treemath::leaf_direct_path(leaf_index, tree_size).unwrap();
+            let parent_node = treemath::parent(NodeIndex::from(leaf_index), tree_size)
+                .expect("Could not calculate parent node");
+            let parent_direct_path = treemath::parent_direct_path(parent_node, tree_size)
+                .expect("Could not calculate direct path");
+
+            assert_eq!(leaf_dir_path, parent_direct_path);
         }
     }
 }

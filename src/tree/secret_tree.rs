@@ -129,10 +129,9 @@ impl SecretTree {
         let index_in_tree = NodeIndex::from(index);
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(
-            dirpath(index_in_tree, self.size)
+            leaf_direct_path(index, self.size)
                 .expect("initialize_sender_ratchets: Error while computing direct path."),
         );
-        dir_path.push(root(self.size));
         let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
             empty_nodes.push(n);

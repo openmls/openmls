@@ -255,24 +255,24 @@ impl RatchetTree {
     }
 
     /// Blanks all the nodes in the direct path of a member
-    fn blank_member(&mut self, index: NodeIndex) {
+    fn blank_member(&mut self, index: LeafIndex) {
         let size = self.leaf_count();
         self.nodes[index].blank();
         self.nodes[treemath::root(size)].blank();
         // Unwrapping here is safe, because we start at the leaf level
-        for index in treemath::direct_path_root(index, size).unwrap() {
+        for index in treemath::leaf_direct_path(index, size).unwrap() {
             self.nodes[index].blank();
         }
     }
 
     /// Returns the list of blank leaves within the tree
-    fn free_leaves(&self) -> Vec<NodeIndex> {
+    fn free_leaves(&self) -> Vec<LeafIndex> {
         let mut free_leaves = vec![];
         for i in 0..self.leaf_count().as_usize() {
             // TODO use an iterator instead
             let leaf_index = LeafIndex::from(i);
             if self.nodes[leaf_index].is_blank() {
-                free_leaves.push(NodeIndex::from(leaf_index));
+                free_leaves.push(leaf_index);
             }
         }
         free_leaves
@@ -300,10 +300,9 @@ impl RatchetTree {
             treemath::common_ancestor_index(NodeIndex::from(sender), own_index);
 
         // Calculate sender direct path & co-path, common path
-        let sender_direct_path =
-            treemath::direct_path_root(NodeIndex::from(sender), self.leaf_count())
-                .expect("update_path: Error when computing direct path.");
-        let sender_co_path = treemath::copath(NodeIndex::from(sender), self.leaf_count())
+        let sender_direct_path = treemath::leaf_direct_path(sender, self.leaf_count())
+            .expect("update_path: Error when computing direct path.");
+        let sender_co_path = treemath::copath(sender, self.leaf_count())
             .expect("update_path: Error when computing copath.");
 
         // Find the position of the common ancestor in the sender's direct path
@@ -318,7 +317,8 @@ impl RatchetTree {
             };
 
         // We can unwrap here, because own index is always within the tree.
-        let own_direct_path = treemath::direct_path_root(own_index, self.leaf_count()).unwrap();
+        let own_direct_path =
+            treemath::leaf_direct_path(self.own_node_index(), self.leaf_count()).unwrap();
 
         // Resolve the node of that co-path index
         let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
@@ -364,7 +364,7 @@ impl RatchetTree {
         };
 
         // Compute the common path between the common ancestor and the root
-        let common_path = treemath::dirpath_long(common_ancestor_index, self.leaf_count())
+        let common_path = treemath::parent_direct_path(common_ancestor_index, self.leaf_count())
             .expect("update_path: Error when computing direct path.");
 
         debug_assert!(
@@ -479,7 +479,7 @@ impl RatchetTree {
         let ciphersuite = key_package.ciphersuite();
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
-        let direct_path_root = treemath::direct_path_root(own_index.into(), self.leaf_count())
+        let direct_path_root = treemath::leaf_direct_path(own_index, self.leaf_count())
             .expect("replace_private_tree: Error when computing direct path.");
         // Update private tree and merge corresponding public keys.
         let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
@@ -514,7 +514,7 @@ impl RatchetTree {
         group_context: &[u8],
         new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
-        let copath = treemath::copath(self.private_tree.leaf_index().into(), self.leaf_count())
+        let copath = treemath::copath(self.private_tree.leaf_index(), self.leaf_count())
             .expect("encrypt_to_copath: Error when computing copath.");
         // Return if the length of the copath is zero
         if copath.is_empty() {
@@ -633,7 +633,7 @@ impl RatchetTree {
         let free_leaves_len = free_leaves.len();
         for (new_kp, leaf_index) in new_kps.iter().zip(free_leaves) {
             self.nodes[leaf_index] = Node::new_leaf(Some((*new_kp).clone()));
-            let dirpath = treemath::direct_path_root(leaf_index, self.leaf_count())
+            let dirpath = treemath::leaf_direct_path(leaf_index, self.leaf_count())
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
                 if !self.nodes[d].is_blank() {
@@ -647,19 +647,19 @@ impl RatchetTree {
                     self.nodes[d].node = Some(parent_node);
                 }
             }
-            added_members.push((leaf_index, new_kp.credential().clone()));
+            added_members.push((NodeIndex::from(leaf_index), new_kp.credential().clone()));
         }
         // Add the remaining nodes.
         let mut new_nodes = Vec::with_capacity(num_new_kp * 2);
-        let mut leaf_index = self.nodes.len() + 1;
+        let mut index_counter = self.nodes.len() + 1;
         for add_proposal in new_kps.iter().skip(free_leaves_len) {
+            let node_index = NodeIndex::from(index_counter);
             new_nodes.extend(vec![
                 Node::new_blank_parent_node(),
                 Node::new_leaf(Some((*add_proposal).clone())),
             ]);
-            let node_index = NodeIndex::from(leaf_index);
             added_members.push((node_index, add_proposal.credential().clone()));
-            leaf_index += 2;
+            index_counter += 2;
         }
         self.nodes.extend(new_nodes);
         self.trim_tree();
@@ -689,7 +689,7 @@ impl RatchetTree {
             // Prepare leaf node
             let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
             // Blank the direct path of that leaf node
-            self.blank_member(sender_index.into());
+            self.blank_member(sender_index);
             // Replace the leaf node
             self.nodes[sender_index] = leaf_node;
             // Check if it is a self-update
@@ -709,9 +709,9 @@ impl RatchetTree {
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
             has_removes = true;
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
-            let removed = NodeIndex::from(LeafIndex::from(remove_proposal.removed));
+            let removed = LeafIndex::from(remove_proposal.removed);
             // Check if we got removed from the group
-            if removed == self.own_node_index().into() {
+            if removed == self.own_node_index() {
                 self_removed = true;
             }
             // Blank the direct path of the removed member

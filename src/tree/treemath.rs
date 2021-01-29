@@ -5,6 +5,7 @@ implement_error! {
     pub enum TreeMathError {
         LeafHasNoChildren = "Leaf nodes don't have children.",
         RootHasNoParent = "Root nodes don't have parents.",
+        NotAParentNode = "Node index was not a parent node.",
     }
 }
 
@@ -96,56 +97,20 @@ pub(crate) fn sibling(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, Tr
     }
 }
 
-// Ordered from leaf to root
-// Includes neither leaf nor root
-pub(crate) fn dirpath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
-    let r = root(size);
-    if index == r {
-        return Ok(vec![]);
-    }
-
-    let mut d = vec![];
-    let mut x = parent(index, size)?;
-    while x != r {
-        d.push(x);
-        x = parent(x, size)?;
-    }
-    Ok(d)
-}
-
-// Ordered from leaf to root
-// Includes leaf and root
-pub(crate) fn dirpath_long(
-    index: NodeIndex,
+/// Direct path from a leaf node to the root.
+/// Does not include the leaf node but includes the root.
+pub(crate) fn leaf_direct_path(
+    leaf_index: LeafIndex,
     size: LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
+    let node_index = NodeIndex::from(leaf_index);
     let r = root(size);
-    if index == r {
-        return Ok(vec![r]);
-    }
-
-    let mut x = index;
-    let mut d = vec![index];
-    while x != r {
-        x = parent(x, size)?;
-        d.push(x);
-    }
-    Ok(d)
-}
-
-// Ordered from leaf to root
-// Includes root but not leaf
-pub(crate) fn direct_path_root(
-    index: NodeIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    let r = root(size);
-    if index == r {
+    if node_index == r {
         return Ok(vec![r]);
     }
 
     let mut d = vec![];
-    let mut x = index;
+    let mut x = node_index;
     while x != r {
         x = parent(x, size)?;
         d.push(x);
@@ -153,14 +118,51 @@ pub(crate) fn direct_path_root(
     Ok(d)
 }
 
-// Ordered from leaf to root
-pub(crate) fn copath(index: NodeIndex, size: LeafIndex) -> Result<Vec<NodeIndex>, TreeMathError> {
-    if index == root(size) {
+/// Direct path from a parent node to the root.
+/// Includes the parent node and the root.
+/// Returns an error if the `index` is not a parent node.
+pub(crate) fn parent_direct_path(
+    node_index: NodeIndex,
+    size: LeafIndex,
+) -> Result<Vec<NodeIndex>, TreeMathError> {
+    if !node_index.is_parent() {
+        return Err(TreeMathError::NotAParentNode);
+    }
+    let r = root(size);
+    if node_index == r {
+        return Ok(vec![r]);
+    }
+
+    let mut x = node_index;
+    let mut d = vec![node_index];
+    while x != r {
+        x = parent(x, size)?;
+        d.push(x);
+    }
+    Ok(d)
+}
+
+/// Copath of a leaf.
+/// Ordered from leaf to root.
+pub(crate) fn copath(
+    leaf_index: LeafIndex,
+    size: LeafIndex,
+) -> Result<Vec<NodeIndex>, TreeMathError> {
+    let node_index = NodeIndex::from(leaf_index);
+    // If the tree only has one leaf
+    if node_index == root(size) {
         return Ok(vec![]);
     }
-    let mut d = vec![index];
-    d.append(&mut dirpath(index, size)?);
-    d.iter().map(|&index| sibling(index, size)).collect()
+    // Add leaf node
+    let mut d = vec![node_index];
+    // Add direct path
+    d.append(&mut leaf_direct_path(leaf_index, size)?);
+    // Remove root node
+    d.pop();
+    // Calculate copath
+    d.iter()
+        .map(|&node_index| sibling(node_index, size))
+        .collect()
 }
 
 pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
