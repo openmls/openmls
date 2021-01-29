@@ -25,6 +25,10 @@
 <span id="22">22</span>
 <span id="23">23</span>
 <span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="kw-2">*</span>;
@@ -44,8 +48,12 @@
 
     <span class="doccomment">/// Verifies the payload against the given `credential` and `signature`.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns a `true` if the signature is valid and `false` otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="doccomment">/// Returns `Ok(())` if the signature is valid and `CredentialError::InvalidSignature` otherwise.</span>
+    <span class="kw">fn</span> <span class="ident">verify</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>,
+        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CredentialError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unsigned_payload</span>().<span class="ident">unwrap</span>();
         <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="ident">signature</span>)
     }

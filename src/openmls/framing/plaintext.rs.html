@@ -541,8 +541,6 @@
 <span id="538">538</span>
 <span id="539">539</span>
 <span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
@@ -1010,11 +1008,9 @@
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">VerificationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>) {
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">VerificationError</span>::<span class="ident">InvalidSignature</span>)
-        }
+        <span class="ident">credential</span>
+            .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>)
+            .<span class="ident">map_err</span>(<span class="ident">VerificationError</span>::<span class="ident">CredentialError</span>)
     }
 }
 

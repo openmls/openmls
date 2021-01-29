@@ -463,9 +463,6 @@
 <span id="460">460</span>
 <span id="461">461</span>
 <span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">error</span>;
 
@@ -558,15 +555,12 @@
         }
 
         <span class="comment">// Verify the signature on this key package.</span>
-        <span class="kw">if</span> <span class="self">self</span>
-            .<span class="ident">credential</span>
+        <span class="self">self</span>.<span class="ident">credential</span>
             .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">unsigned_payload</span>().<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>)
-        {
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else</span> {
-            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Key package signature is empty.&quot;</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">InvalidSignature</span>)
-        }
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Key package signature is invalid.&quot;</span>);
+                <span class="ident">KeyPackageError</span>::<span class="ident">InvalidSignature</span>
+            })
     }
 
     <span class="doccomment">/// Compute the hash of the encoding of this key package.</span>

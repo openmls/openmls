@@ -46,6 +46,7 @@
 <span id="43">43</span>
 <span id="44">44</span>
 <span id="45">45</span>
+<span id="46">46</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
@@ -53,6 +54,7 @@
 <span class="doccomment">//! handling `MLSPlaintext` and `MLSCiphertext`.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">CodecError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="ident">CredentialError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">secret_tree</span>::<span class="ident">SecretTreeError</span>;
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
@@ -83,12 +85,12 @@
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VerificationError</span> {
         <span class="ident">Simple</span> {
-            <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext signature is invalid&quot;</span>,
             <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is missing&quot;</span>,
             <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is invalid&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,
+            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;Credential error&quot;</span>,
         }
     }
 }

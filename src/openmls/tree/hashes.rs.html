@@ -307,8 +307,6 @@
 <span id="304">304</span>
 <span id="305">305</span>
 <span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! 7.4. Parent Hash</span>
 <span class="doccomment">//!</span>
@@ -571,15 +569,13 @@
 
     <span class="doccomment">/// Verify the parent hashes of the tree nodes. Returns `true` if all parent</span>
     <span class="doccomment">/// hashes have successfully been verified and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hashes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">all</span>(<span class="op">|</span>(<span class="ident">index</span>, <span class="ident">node</span>)<span class="op">|</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hashes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ParentHashError</span><span class="op">&gt;</span> {
+        <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">node</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">if</span> <span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">index</span>).<span class="ident">is_parent</span>() <span class="op">&amp;&amp;</span> <span class="ident">node</span>.<span class="ident">is_full_parent</span>() {
-                <span class="self">self</span>.<span class="ident">verify_parent_hash</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">index</span>), <span class="ident">node</span>)
-                    .<span class="ident">is_ok</span>()
-            } <span class="kw">else</span> {
-                <span class="bool-val">true</span>
+                <span class="self">self</span>.<span class="ident">verify_parent_hash</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">index</span>), <span class="ident">node</span>)<span class="question-mark">?</span>;
             }
-        })
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="comment">// === Tree hash ===</span>
