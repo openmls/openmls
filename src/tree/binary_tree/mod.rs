@@ -27,7 +27,7 @@ impl<T: PartialEq> TryFrom<Vec<T>> for BinaryTree<T> {
     /// Create a binary tree from a vector of nodes. Throws an error if the
     /// number of given nodes can not be represented as a full tree.
     fn try_from(value: Vec<T>) -> Result<Self, Self::Error> {
-        if value.len() % 3 != 0 && value.len() != 1 {
+        if value.len() % 2 != 1 {
             return Err(BinaryTreeError::TreeNotFull);
         }
         Ok(BinaryTree { nodes: value })
@@ -246,9 +246,11 @@ impl<T: PartialEq> BinaryTree<T> {
     /// the tree or if it would cause the tree to become non-full, i.e. if the
     /// number of nodes to remove modulo 2 is not zero.
     pub(crate) fn remove(&mut self, nodes_to_remove: usize) -> Result<(), BinaryTreeError> {
+        // We can't have a non-full tree.
         if nodes_to_remove % 2 != 0 {
             return Err(BinaryTreeError::TreeNotFull);
-        } else if nodes_to_remove > self.size().as_usize() {
+        // The following ensures that we always have at least one node left.
+        } else if nodes_to_remove >= self.size().as_usize() {
             return Err(BinaryTreeError::NotEnoughNodes);
         }
         self.nodes
