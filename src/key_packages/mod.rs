@@ -89,15 +89,12 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        if self
-            .credential
+        self.credential
             .verify(&self.unsigned_payload().unwrap(), &self.signature)
-        {
-            Ok(())
-        } else {
-            log::error!("Key package signature is empty.");
-            Err(KeyPackageError::InvalidSignature)
-        }
+            .map_err(|_| {
+                log::error!("Key package signature is invalid.");
+                KeyPackageError::InvalidSignature
+            })
     }
 
     /// Compute the hash of the encoding of this key package.
@@ -185,7 +182,7 @@ impl KeyPackage {
             .iter()
             .map(|e| e.to_extension_struct())
             .collect();
-        encode_vec(VecSize::VecU16, buffer, &encoded_extensions)?;
+        encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
         Ok(buffer.to_vec())
     }
 }

@@ -464,11 +464,9 @@ impl<'a> MLSPlaintextTBS<'a> {
         signature: &Signature,
     ) -> Result<(), VerificationError> {
         let bytes = self.encode_detached()?;
-        if credential.verify(&bytes, &signature) {
-            Ok(())
-        } else {
-            Err(VerificationError::InvalidSignature)
-        }
+        credential
+            .verify(&bytes, &signature)
+            .map_err(VerificationError::CredentialError)
     }
 }
 

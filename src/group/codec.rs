@@ -28,6 +28,13 @@ impl Codec for GroupContext {
         self.epoch.encode(buffer)?;
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
+        // Get extensions encoded. We need to build a Vec::<ExtensionStruct> first.
+        let encoded_extensions: Vec<ExtensionStruct> = self
+            .extensions
+            .iter()
+            .map(|e| e.to_extension_struct())
+            .collect();
+        encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
         Ok(())
     }
 }

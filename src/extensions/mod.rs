@@ -149,7 +149,7 @@ pub(crate) fn extensions_vec_from_cursor(
     cursor: &mut Cursor,
 ) -> Result<Vec<Box<dyn Extension>>, CodecError> {
     // First parse the extension bytes into the `ExtensionStruct`.
-    let extension_struct_vec: Vec<ExtensionStruct> = decode_vec(VecSize::VecU16, cursor)?;
+    let extension_struct_vec: Vec<ExtensionStruct> = decode_vec(VecSize::VecU32, cursor)?;
 
     // Now create the result vector of `Extension`s.
     let mut result: Vec<Box<dyn Extension>> = Vec::new();

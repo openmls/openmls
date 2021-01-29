@@ -98,20 +98,17 @@ impl MlsGroup {
         }
 
         // Verify parent hashes
-        if !tree.verify_parent_hashes() {
-            return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
-        }
+        tree.verify_parent_hashes()?;
 
         // Verify GroupInfo signature
         let signer_node = tree.nodes[group_info.signer_index()].clone();
         let signer_key_package = signer_node.key_package.unwrap();
         let payload = group_info.unsigned_payload().unwrap();
-        if !signer_key_package
+
+        signer_key_package
             .credential()
             .verify(&payload, group_info.signature())
-        {
-            return Err(WelcomeError::InvalidGroupInfoSignature);
-        }
+            .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
 
         // Compute path secrets
         // TODO: #36 check if path_secret has to be optional
@@ -149,6 +146,7 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
+            group_info.extensions(),
         )?;
         // TODO #141: Implement PSK
         let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);

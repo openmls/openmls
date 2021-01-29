@@ -53,7 +53,7 @@ fn test_sign_verify() {
         let keypair = ciphersuite.signature_scheme().new_keypair().unwrap();
         let payload = &[1, 2, 3];
         let signature = keypair.sign(payload).unwrap();
-        assert!(keypair.verify(&signature, payload));
+        assert!(keypair.verify(&signature, payload).is_ok());
     }
 }
 

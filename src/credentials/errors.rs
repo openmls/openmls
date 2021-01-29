@@ -4,7 +4,8 @@ use crate::config::ConfigError;
 implement_error! {
     pub enum CredentialError {
         Simple {
-            UnsupportedCredentialType = "Unsupported credential type",
+            UnsupportedCredentialType = "Unsupported credential type.",
+            InvalidSignature = "Invalid signature.",
         }
         Complex {
             ConfigError(ConfigError) = "See `ConfigError` for details.",
