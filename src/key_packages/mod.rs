@@ -6,7 +6,10 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
-use crate::extensions::*;
+use crate::extensions::{
+    encode_extensions, CapabilitiesExtension, Extension, ExtensionError, ExtensionType,
+    LifetimeExtension, ParentHashExtension,
+};
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},

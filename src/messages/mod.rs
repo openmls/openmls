@@ -334,15 +334,15 @@ impl GroupSecrets {
 /// ```
 #[derive(PartialEq, Debug)]
 pub struct PublicGroupState {
-    pub ciphersuite: CiphersuiteName,
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub tree_hash: Vec<u8>,
-    pub interim_transcript_hash: Vec<u8>,
-    pub extensions: Vec<Box<dyn Extension>>,
-    pub external_pub: HPKEPublicKey,
-    pub signer_index: LeafIndex,
-    pub signature: Signature,
+    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) group_id: GroupId,
+    pub(crate) epoch: GroupEpoch,
+    pub(crate) tree_hash: Vec<u8>,
+    pub(crate) interim_transcript_hash: Vec<u8>,
+    pub(crate) extensions: Vec<Box<dyn Extension>>,
+    pub(crate) external_pub: HPKEPublicKey,
+    pub(crate) signer_index: LeafIndex,
+    pub(crate) signature: Signature,
 }
 
 impl PublicGroupState {

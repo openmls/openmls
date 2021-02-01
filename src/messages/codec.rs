@@ -327,7 +327,6 @@ impl<'a> Codec for PublicGroupStateTBS<'a> {
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         encode_extensions(&self.extensions, buffer)?;
-        encode_extensions(&self.extensions, buffer)?;
         self.external_pub.encode(buffer)?;
         Ok(())
     }
