@@ -29,6 +29,7 @@
 <span id="26">26</span>
 <span id="27">27</span>
 <span id="28">28</span>
+<span id="29">29</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Key Package errors</span>
 <span class="doccomment">//!</span>
@@ -49,6 +50,7 @@
             <span class="ident">DuplicateExtension</span> <span class="op">=</span> <span class="string">&quot;Duplicate extensions are not allowed.&quot;</span>,
             <span class="ident">NoCiphersuitesSupplied</span> <span class="op">=</span> <span class="string">&quot;Creating a new key package requires at least one ciphersuite.&quot;</span>,
             <span class="ident">CiphersuiteMismatch</span> <span class="op">=</span> <span class="string">&quot;The list of ciphersuites is not consistent with the capabilities extension.&quot;</span>,
+            <span class="ident">CiphersuiteSignatureSchemeMismatch</span> <span class="op">=</span> <span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">ExtensionError</span>(<span class="ident">ExtensionError</span>) <span class="op">=</span>
