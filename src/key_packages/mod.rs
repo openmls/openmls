@@ -21,7 +21,7 @@ mod codec;
 pub mod errors;
 pub(crate) use errors::*;
 
-#[cfg(tests)]
+#[cfg(test)]
 mod test_key_packages;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -150,6 +150,11 @@ impl KeyPackage {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, KeyPackageError> {
+        if SignatureScheme::from(ciphersuite_name)
+            != credential_bundle.credential().signature_scheme()
+        {
+            return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
+        }
         let mut key_package = Self {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
@@ -255,6 +260,11 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, KeyPackageError> {
+        if SignatureScheme::from(ciphersuites[0])
+            != credential_bundle.credential().signature_scheme()
+        {
+            return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
+        }
         debug_assert!(!ciphersuites.is_empty());
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
