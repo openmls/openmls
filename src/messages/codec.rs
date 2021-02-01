@@ -291,7 +291,6 @@ impl Codec for PublicGroupState {
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.interim_transcript_hash)?;
         encode_extensions(&self.extensions, buffer)?;
-        encode_extensions(&self.extensions, buffer)?;
         self.external_pub.encode(buffer)?;
         self.signer_index.as_u32().encode(buffer)?;
         self.signature.encode(buffer)?;

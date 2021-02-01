@@ -332,6 +332,7 @@ impl GroupSecrets {
 ///     opaque signature<0..2^16-1>;
 /// } PublicGroupState;
 /// ```
+#[derive(PartialEq, Debug)]
 pub struct PublicGroupState {
     pub ciphersuite: CiphersuiteName,
     pub group_id: GroupId,
@@ -433,8 +434,6 @@ impl<'a> PublicGroupStateTBS<'a> {
         let payload = self
             .encode_detached()
             .map_err(CredentialError::CodecError)?;
-        // Unwrapping here is safe, because signing should not cause an error with a
-        // valid key
         Ok(credential_bundle
             .sign(&payload)
             .map_err(|_| CredentialError::SignatureError)?)

@@ -74,5 +74,11 @@ fn test_pgs() {
 
         // Verify the signature
         assert!(pgs.verify(&alice_credential_bundle).is_ok());
+
+        // Test codec
+        let encoded = pgs.encode_detached().expect("Could not encode");
+        let decoded = PublicGroupState::decode_detached(&encoded).expect("Could not decode");
+
+        assert_eq!(decoded, pgs);
     }
 }
