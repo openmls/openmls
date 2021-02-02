@@ -307,6 +307,9 @@
 <span id="304">304</span>
 <span id="305">305</span>
 <span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! 7.4. Parent Hash</span>
 <span class="doccomment">//!</span>
@@ -428,8 +431,8 @@
 <span class="comment">// === Parent hashes ===</span>
 
 <span class="kw">impl</span> <span class="ident">RatchetTree</span> {
-    <span class="doccomment">/// The list of HPKEPublicKey values of the nodes in the resolution of `index`</span>
-    <span class="doccomment">/// but with the `unmerged_leaves` of the parent node omitted.</span>
+    <span class="doccomment">/// The list of HPKEPublicKey values of the nodes in the resolution of</span>
+    <span class="doccomment">/// `index` but with the `unmerged_leaves` of the parent node omitted.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">original_child_resolution</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HPKEPublicKey</span><span class="op">&gt;</span> {
         <span class="comment">// Build the exclusion list that consists of the unmerged leaves of the parent</span>
         <span class="comment">// node</span>
@@ -457,8 +460,8 @@
             .<span class="ident">collect</span>()
     }
 
-    <span class="doccomment">/// Computes the parent hashes for a leaf node and returns the parent hash for</span>
-    <span class="doccomment">/// the parent hash extension</span>
+    <span class="doccomment">/// Computes the parent hashes for a leaf node and returns the parent hash</span>
+    <span class="doccomment">/// for the parent hash extension</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_parent_hashes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">index</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="comment">// Recursive helper function used to calculate parent hashes</span>
         <span class="kw">fn</span> <span class="ident">node_parent_hash</span>(
@@ -530,14 +533,16 @@
         <span class="kw">let</span> <span class="ident">current_hash_right</span> <span class="op">=</span>
             <span class="ident">ParentHashInput</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>, <span class="ident">right</span>, <span class="ident">parent_hash_field</span>)<span class="question-mark">?</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphersuite</span>);
 
-        <span class="comment">// &quot;If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the check passes&quot;</span>
+        <span class="comment">// &quot;If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the</span>
+        <span class="comment">// check passes&quot;</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">left_parent_hash_field</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">left</span>].<span class="ident">parent_hash</span>() {
             <span class="kw">if</span> <span class="ident">left_parent_hash_field</span> <span class="op">=</span><span class="op">=</span> <span class="ident">current_hash_right</span> {
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
             }
         }
 
-        <span class="comment">// &quot;If R is blank, replace R with its left child until R is either non-blank or a leaf node&quot;</span>
+        <span class="comment">// &quot;If R is blank, replace R with its left child until R is either non-blank or</span>
+        <span class="comment">// a leaf node&quot;</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">child</span> <span class="op">=</span> <span class="ident">right</span>;
         <span class="kw">while</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">child</span>].<span class="ident">is_blank</span>() <span class="op">&amp;&amp;</span> <span class="ident">child</span>.<span class="ident">is_parent</span>() {
             <span class="comment">// Unwrapping here is safe, because we know it is a full parent node</span>
@@ -556,7 +561,8 @@
             .<span class="ident">unwrap</span>()
             .<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphersuite</span>);
 
-        <span class="comment">// &quot;If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the check passes&quot;</span>
+        <span class="comment">// &quot;If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the</span>
+        <span class="comment">// check passes&quot;</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">right_parent_hash_field</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">right</span>].<span class="ident">parent_hash</span>() {
             <span class="kw">if</span> <span class="ident">right_parent_hash_field</span> <span class="op">=</span><span class="op">=</span> <span class="ident">current_hash_left</span> {
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(());

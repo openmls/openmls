@@ -566,10 +566,6 @@
 <span id="563">563</span>
 <span id="564">564</span>
 <span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
@@ -897,15 +893,6 @@
     }
 }
 
-<span class="comment">/*
-    authentication_secret: Secret,
-    external_secret: Secret,
-    confirmation_key: Secret,
-    pub(crate) membership_key: Secret,
-    resumption_secret: Secret,
-}
-*/</span>
-
 <span class="doccomment">/// A secret that can be used among members to make sure everyone has the same</span>
 <span class="doccomment">/// group state.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
@@ -943,10 +930,9 @@
         <span class="self">Self</span> { <span class="ident">secret</span> }
     }
 
-    <span class="doccomment">/// Get the internal `Secret`.</span>
-    <span class="comment">// Will be used in #192</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
+    <span class="doccomment">/// Derive the external keypair for External Commits</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_external_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HPKEKeyPair</span> {
+        <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>)
     }
 }
 
@@ -1105,6 +1091,12 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">authentication_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">AuthenticationSecret</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">authentication_secret</span>
     }
+
+    <span class="doccomment">/// External secret</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">external_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ExternalSecret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">external_secret</span>
+    }
+
     <span class="doccomment">/// Derive `EpochSecrets`, as well as an `EncryptionSecret` and an</span>
     <span class="doccomment">/// `InitSecret` from an `EpochSecret` and a given `GroupContext`. This</span>
     <span class="doccomment">/// method is only used when initially creating a new `MlsGroup` state.</span>

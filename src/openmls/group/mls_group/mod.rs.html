@@ -425,6 +425,33 @@
 <span id="422">422</span>
 <span id="423">423</span>
 <span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 
@@ -437,7 +464,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="ident">CredentialBundle</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
@@ -804,6 +831,28 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>
     }
+
+    <span class="doccomment">/// Get the groups extensions.</span>
+    <span class="doccomment">/// Right now this is limited to the ratchet tree extension which is built</span>
+    <span class="doccomment">/// on the fly when calling this function.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">add_ratchet_tree_extension</span> {
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RatchetTreeExtension</span>::<span class="ident">new</span>(
+                <span class="self">self</span>.<span class="ident">tree</span>().<span class="ident">public_key_tree_copy</span>(),
+            ))]
+        } <span class="kw">else</span> {
+            <span class="ident">Vec</span>::<span class="ident">new</span>()
+        };
+        <span class="ident">extensions</span>
+    }
+
+    <span class="doccomment">/// Export the `PublicGroupState`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_public_group_state</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicGroupState</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span> {
+        <span class="ident">PublicGroupState</span>::<span class="ident">new</span>(<span class="self">self</span>, <span class="ident">credential_bundle</span>)
+    }
 }
 
 <span class="comment">// Private and crate functions</span>
@@ -818,6 +867,11 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret_tree_mut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">RefMut</span><span class="op">&lt;</span><span class="ident">SecretTree</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">secret_tree</span>.<span class="ident">borrow_mut</span>()
+    }
+
+    <span class="doccomment">/// Current interim transcript hash of the group</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">interim_transcript_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">test</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-vectors&quot;</span>))]</span>

@@ -123,15 +123,19 @@
 <span id="120">120</span>
 <span id="121">121</span>
 <span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # TLS Codec</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This crate implements the TLS codec as defined in [RFC 8446](https://tools.ietf.org/html/rfc8446)</span>
 <span class="doccomment">//! as well as some extensions required by MLS.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! With the feature `derive` `TlsSerialize` and `TlsDeserialize` can be derived.</span>
+<span class="doccomment">//! With the feature `derive` `TlsSerialize` and `TlsDeserialize` can be</span>
+<span class="doccomment">//! derived.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! This crate provides the following data structures that implement TLS serialization</span>
+<span class="doccomment">//! This crate provides the following data structures that implement TLS</span>
+<span class="doccomment">//! serialization</span>
 <span class="doccomment">//! * `u8`, `u16`, `u32`, `u64`</span>
 <span class="doccomment">//! * `TlsVecU8`, `TlsVecU16`, `TlsVecU32`</span>
 <span class="doccomment">//! * `[u8; 2]`, `[u8; 4]`, `[u8; 8]`, `[u8; 16]`, `[u8; 32]`, `[u8; 64]`</span>
@@ -201,8 +205,8 @@
 }
 
 <span class="doccomment">/// The `Cursor` is a helper used to read byte slices when deserializing.</span>
-<span class="doccomment">/// Note that this shouldn&#39;t be needed in most cases and `tls_deserialize_detached`</span>
-<span class="doccomment">/// can be used instead.</span>
+<span class="doccomment">/// Note that this shouldn&#39;t be needed in most cases and</span>
+<span class="doccomment">/// `tls_deserialize_detached` can be used instead.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Cursor</span> {
     <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
