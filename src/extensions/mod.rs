@@ -141,6 +141,18 @@ fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension
     }
 }
 
+/// Encode extensions with TLS encoding. This is used whenever a struct contains
+/// extensions.
+pub(crate) fn encode_extensions(
+    extensions: &[Box<dyn Extension>],
+    buffer: &mut Vec<u8>,
+) -> Result<(), CodecError> {
+    let encoded_extensions: Vec<ExtensionStruct> =
+        extensions.iter().map(|e| e.to_extension_struct()).collect();
+    encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
+    Ok(())
+}
+
 /// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
 ///
 /// Note that this function returns a `CodecError` instead of an

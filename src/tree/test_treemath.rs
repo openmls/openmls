@@ -137,7 +137,8 @@ fn verify_descendants() {
 #[test]
 fn test_treemath_functions() {
     assert_eq!(0, treemath::root(LeafIndex::from(0u32)).as_u32());
-    // The tree with only one leaf has only one node, which is leaf and root at the same time.
+    // The tree with only one leaf has only one node, which is leaf and root at the
+    // same time.
     assert_eq!(0, treemath::root(LeafIndex::from(1u32)).as_u32());
     assert_eq!(1, treemath::root(LeafIndex::from(2u32)).as_u32());
     assert_eq!(3, treemath::root(LeafIndex::from(3u32)).as_u32());
