@@ -56,7 +56,8 @@ fn test_managed_group_persistence() {
     assert_eq!(alice_group, alice_group_deserialized);
 }
 
-// This tests if the remover is correctly passed to the callback when one member issues a RemoveProposal and another members issues the next Commit.
+// This tests if the remover is correctly passed to the callback when one member
+// issues a RemoveProposal and another members issues the next Commit.
 #[test]
 fn remover() {
     // Callback
