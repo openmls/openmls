@@ -898,7 +898,7 @@ impl<'a> ManagedGroup<'a> {
                     if let Some(queued_proposal) = pending_proposals_queue.get(proposal_reference) {
                         self.send_proposal_event(
                             queued_proposal.proposal(),
-                            sender,
+                            &queued_proposal.sender().to_leaf_index(),
                             indexed_members,
                         );
                     }
