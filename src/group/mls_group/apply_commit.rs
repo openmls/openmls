@@ -4,7 +4,7 @@ use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::*;
-use crate::tree::private_tree::CommitSecret;
+use crate::schedule::CommitSecret;
 
 impl MlsGroup {
     pub(crate) fn apply_commit_internal(
@@ -99,6 +99,8 @@ impl MlsGroup {
             &zero_commit_secret
         };
 
+        let joiner_secret = JoinerSecret::new(ciphersuite, commit_secret, &self.init_secret);
+
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
         provisional_epoch.increment();
@@ -110,16 +112,6 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         )?;
 
-        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
-            ciphersuite,
-            Some(commit_secret),
-            &self.init_secret,
-        );
-
-        // TODO #141: Implement PSK
-        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
-
-        // TODO #186: Implement extensions
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
@@ -128,11 +120,11 @@ impl MlsGroup {
             &[],
         )?;
 
-        let epoch_secret =
-            EpochSecret::new(ciphersuite, intermediate_secret, &provisional_group_context);
-
-        let (provisional_epoch_secrets, provisional_init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
+        // TODO #141: Implement PSK
+        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
+        key_schedule.add_context(&provisional_group_context)?;
+        let provisional_init_secret = key_schedule.init_secret()?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets()?;
 
         let mls_plaintext_commit_auth_data =
             match MLSPlaintextCommitAuthData::try_from(mls_plaintext) {
@@ -178,15 +170,18 @@ impl MlsGroup {
             }
         }
 
+        // Create a secret_tree, consuming the `encryption_secret` in the
+        // process.
+        let secret_tree = provisional_epoch_secrets
+            .encryption_secret()
+            .create_secret_tree(provisional_tree.leaf_count());
+
         // Apply provisional tree and state to group
         self.group_context = provisional_group_context;
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
         self.init_secret = provisional_init_secret;
-        // Create a secret_tree, consuming the `encryption_secret` in the
-        // process.
-        self.secret_tree =
-            RefCell::new(encryption_secret.create_secret_tree(provisional_tree.leaf_count()));
+        self.secret_tree = RefCell::new(secret_tree);
         Ok(())
     }
 }

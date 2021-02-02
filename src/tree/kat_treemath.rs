@@ -1,8 +1,8 @@
 //! # Known Answer Tests for treemath
 //!
 //! This test file generates and read test vectors for tree math.
-//! This currently differs from the test vectors in https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
-//! See https://github.com/mlswg/mls-implementations/issues/32 for a discussion.
+//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! for more description on the test vectors.
 //!
 //! ## Parameter:
 //! Number of leaves `n_leaves`.
@@ -22,16 +22,12 @@
 //! Any value that is invalid is represented as `null`.
 //!
 //! ## Verification:
-//! * `root` is the node index of the left child of the root node index of the
-//!   tree with `i+1` leaves.
-//! * `left[i]` is the node index of the left child of the node with index `i`
-//!   in a tree with `n_leaves` leaves
-//! * `right[i]` is the node index of the right child of the node with index `i`
-//!   in a tree with `n_leaves` leaves
-//! * `parent[i]` is the node index of the parent of the node with index `i` in
-//!   a tree with `n_leaves` leaves
-//! * `sibling[i]` is the node index of the sibling of the node with index `i`
-//!   in a tree with `n_leaves` leaves
+//! * `n_nodes` is the number of nodes in the tree with `n_leaves` leaves
+//! * `root[i]` is the root node index of the tree with `i+1` leaves
+//! * `left[i]` is the node index of the left child of the node with index `i` in a tree with `n_leaves` leaves
+//! * `right[i]` is the node index of the right child of the node with index `i` in a tree with `n_leaves` leaves
+//! * `parent[i]` is the node index of the parent of the node with index `i` in a tree with `n_leaves` leaves
+//! * `sibling[i]` is the node index of the sibling of the node with index `i` in a tree with `n_leaves` leaves
 
 use crate::{
     test_util::*,

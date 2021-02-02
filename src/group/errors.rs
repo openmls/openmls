@@ -8,6 +8,7 @@ use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
+use crate::schedule::errors::KeyScheduleError;
 use crate::tree::{ParentHashError, TreeError};
 
 implement_error! {
@@ -28,6 +29,8 @@ implement_error! {
             "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
         CodecError(CodecError) =
             "Codec error occurred.",
+        KeyScheduleError(KeyScheduleError) =
+            "An error occurred in the key schedule.",
     }
 }
 
@@ -64,6 +67,8 @@ implement_error! {
                 "Unable to decrypt the EncryptedGroupSecrets.",
             CodecError(CodecError) =
                 "Codec error occurred.",
+            KeyScheduleError(KeyScheduleError) =
+                "An error occurred in the key schedule.",
         }
     }
 }
@@ -103,6 +108,8 @@ implement_error! {
                 "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(CodecError) =
                 "Codec error occurred.",
+            KeyScheduleError(KeyScheduleError) =
+                "An error occurred in the key schedule.",
         }
     }
 }

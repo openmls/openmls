@@ -21,9 +21,9 @@ pub(crate) use errors::*;
 pub use hashes::*;
 use index::*;
 use node::*;
-use private_tree::{PathSecrets, PrivateTree};
+use private_tree::PrivateTree;
 
-use self::private_tree::CommitSecret;
+use crate::schedule::CommitSecret;
 pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
@@ -34,9 +34,9 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 
 // Internal tree tests
-#[cfg(all(test, feature = "test-vectors"))]
+#[cfg(test)]
 mod kat_encryption;
-#[cfg(all(test, feature = "test-vectors"))]
+#[cfg(test)]
 mod kat_treemath;
 #[cfg(test)]
 mod test_hashes;
@@ -425,12 +425,14 @@ impl RatchetTree {
     }
 
     /// Update the private tree.
+    ///
+    /// Returns the update path and an updated key package bundle.
     pub(crate) fn refresh_private_tree(
         &mut self,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
         new_leaves_indexes: HashSet<&NodeIndex>,
-    ) -> (&CommitSecret, UpdatePath, PathSecrets, KeyPackageBundle) {
+    ) -> (UpdatePath, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.own_node_index();
 
@@ -460,9 +462,9 @@ impl RatchetTree {
         key_package_bundle.set_key_package(key_package.clone());
 
         (
-            self.private_tree.commit_secret(),
+            // self.private_tree.commit_secret(),
             path,
-            self.private_tree.path_secrets().to_vec(),
+            // self.private_tree.path_secrets().to_vec(),
             key_package_bundle,
         )
     }
@@ -761,6 +763,16 @@ impl RatchetTree {
         if new_tree_size > 0 {
             self.nodes.truncate(new_tree_size);
         }
+    }
+
+    /// Get a reference to the commit secret.
+    pub(crate) fn commit_secret(&self) -> &CommitSecret {
+        self.private_tree.commit_secret()
+    }
+
+    /// Get a slice with the path secrets.
+    pub(crate) fn path_secrets(&self) -> &[Secret] {
+        self.private_tree.path_secrets()
     }
 }
 
