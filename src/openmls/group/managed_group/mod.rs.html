@@ -1503,7 +1503,7 @@
                             <span class="self">self</span>.<span class="ident">send_events</span>(
                                 <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
                                 <span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">proposals</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>,
+                                <span class="ident">plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>,
                                 <span class="kw-2">&amp;</span><span class="ident">indexed_members</span>,
                             );
                             <span class="comment">// We don&#39;t need the pending proposals and key package bundles any</span>
@@ -1517,7 +1517,7 @@
                                 <span class="self">self</span>.<span class="ident">send_events</span>(
                                     <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
                                     <span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">proposals</span>,
-                                    <span class="kw-2">&amp;</span><span class="ident">plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>,
+                                    <span class="ident">plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>,
                                     <span class="kw-2">&amp;</span><span class="ident">indexed_members</span>,
                                 );
                                 <span class="comment">// The group is no longer active</span>
@@ -1924,7 +1924,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">proposals</span>: <span class="kw-2">&amp;</span>[<span class="ident">ProposalOrRef</span>],
-        <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">LeafIndex</span>,
+        <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">indexed_members</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">Credential</span><span class="op">&gt;</span>,
     ) {
         <span class="comment">// We want to send the events in the order specified by the committer.</span>
@@ -1945,7 +1945,7 @@
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">queued_proposal</span>) <span class="op">=</span> <span class="ident">pending_proposals_queue</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>) {
                         <span class="self">self</span>.<span class="ident">send_proposal_event</span>(
                             <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>(),
-                            <span class="ident">sender</span>,
+                            <span class="ident">queued_proposal</span>.<span class="ident">sender</span>().<span class="ident">to_leaf_index</span>(),
                             <span class="ident">indexed_members</span>,
                         );
                     }
@@ -1958,10 +1958,10 @@
     <span class="kw">fn</span> <span class="ident">send_proposal_event</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">proposal</span>: <span class="kw-2">&amp;</span><span class="ident">Proposal</span>,
-        <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">LeafIndex</span>,
+        <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">indexed_members</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">Credential</span><span class="op">&gt;</span>,
     ) {
-        <span class="kw">let</span> <span class="ident">sender_credential</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">indexed_members</span>[<span class="ident">sender</span>];
+        <span class="kw">let</span> <span class="ident">sender_credential</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">indexed_members</span>[<span class="kw-2">&amp;</span><span class="ident">sender</span>];
         <span class="kw">match</span> <span class="ident">proposal</span> {
             <span class="comment">// Add proposals</span>
             <span class="ident">Proposal</span>::<span class="ident">Add</span>(<span class="ident">add_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
