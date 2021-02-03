@@ -45,7 +45,38 @@
 //! out-of-order.
 //!
 //! ## The real key schedules
-//! The spec isn't great here. The key schedule is actually
+//! The key schedule as described in the spec isn't really one key schedule.
+//! The `joiner_secret` is an intermediate value *and* an output value. This
+//! must never be the case within a key schedule. The actual key schedule is
+//! therefore only the second half starting with the `joiner_secret`, which
+//! indeed is what happens when starting a group from a welcome message.
+//!
+//! The `joiner_secret` is computed as
+//!
+//! ```text
+//!     DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), "joiner")
+//! ```
+//!
+//! or
+//!
+//! ```text
+//!                  init_secret_[n-1]
+//!                         |
+//!                         V
+//!    commit_secret -> KDF.Extract
+//!                         |
+//!                         V
+//!                   DeriveSecret(., "joiner")
+//!                         |
+//!                         V
+//!                    joiner_secret
+//! ```
+//!
+//! The remainder of the key schedule then starts with the `joiner_secret` and
+//! `psk_secret`. Note that the following graph also adds the `GroupContext_[n]`
+//! as input, which is omitted in the spec.
+//! Further note that the derivation of the secrets from the `epoch_secret` is
+//! simplified here.
 //!
 //! ```text
 //!                    joiner_secret
@@ -57,25 +88,30 @@
 //!                         |    = welcome_secret
 //!                         |
 //!                         V
-//! GroupContext_[n] -> ExpandWithLabel(., "epoch", context, KDF.Nh)
+//! GroupContext_[n] -> ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
 //!                         |
 //!                         V
 //!                    epoch_secret
 //!                         |
-//!                         +--> DeriveSecret(., <label>)
-//!                         |    = <secret>
-//!                         |
-//!                         V
-//!                   DeriveSecret(., "init")
-//!                         |
-//!                         V
-//!                   init_secret_[n]
+//!                         v
+//!                 DeriveSecret(., <label>)
+//!                     = <secret>
 //! ```
 //!
-//! The `joiner_secret` is computed as
+//! with
 //!
 //! ```text
-//!     DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), "joiner")
+//! | secret                  | label           |
+//! |:------------------------|:----------------|
+//! | `init_secret`           | "init"          |
+//! | `sender_data_secret`    | "sender data"   |
+//! | `encryption_secret`     | "encryption"    |
+//! | `exporter_secret`       | "exporter"      |
+//! | `authentication_secret` | "authentication"|
+//! | `external_secret`       | "external"      |
+//! | `confirmation_key`      | "confirm"       |
+//! | `membership_key`        | "membership"    |
+//! | `resumption_secret`     | "resumption"    |
 //! ```
 
 use crate::ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HPKEKeyPair, Secret};
@@ -182,6 +218,7 @@ impl JoinerSecret {
 enum State {
     Initial,
     Context,
+    EpochSecrets,
     Done,
 }
 
@@ -247,9 +284,10 @@ impl KeySchedule {
     /// Derive the init secret.
     pub(crate) fn init_secret(&mut self) -> Result<InitSecret, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
-            log::error!("Trying to derive the init secret while not in the initial state.");
+            log::error!("Trying to derive the init secret while not in the right state.");
             return Err(KeyScheduleError::InvalidState(ErrorState::NotContext));
         }
+        self.state = State::EpochSecrets;
 
         Ok(InitSecret::new(
             self.ciphersuite,
@@ -259,9 +297,11 @@ impl KeySchedule {
 
     /// Derive the epoch secrets.
     pub(crate) fn epoch_secrets(&mut self) -> Result<EpochSecrets, KeyScheduleError> {
-        if self.state != State::Context || self.epoch_secret.is_none() {
-            log::error!("Trying to derive the epoch secrets while not in the initial state.");
-            return Err(KeyScheduleError::InvalidState(ErrorState::NotContext));
+        if (self.state != State::EpochSecrets && self.state != State::Context)
+            || self.epoch_secret.is_none()
+        {
+            log::error!("Trying to derive the epoch secrets while not in the right state.");
+            return Err(KeyScheduleError::InvalidState(ErrorState::NotEpochSecrets));
         }
         self.state = State::Done;
 
@@ -677,9 +717,7 @@ impl EpochSecrets {
         self.encryption_secret.replace(EncryptionSecret::default())
     }
 
-    /// Derive `EpochSecrets`, as well as an `EncryptionSecret` and an
-    /// `InitSecret` from an `EpochSecret` and a given `GroupContext`. This
-    /// method is only used when initially creating a new `MlsGroup` state.
+    /// Derive `EpochSecrets` from an `EpochSecret`.
     fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         let sender_data_secret = SenderDataSecret::new(ciphersuite, &epoch_secret);
         let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);

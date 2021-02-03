@@ -41,7 +41,7 @@ impl MlsGroup {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
 
-        let (path, kpb_option) =
+        let (path_option, kpb_option) =
             if apply_proposals_values.path_required || contains_own_updates || force_self_update {
                 // If path is needed, compute path values
                 let (path, key_package_bundle) = provisional_tree.refresh_private_tree(
@@ -58,7 +58,7 @@ impl MlsGroup {
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
-            path,
+            path: path_option,
         };
 
         // Create provisional group state
@@ -203,6 +203,9 @@ impl MlsGroup {
     }
 }
 
+/// Helper struct holding values that are encryptedin the `EncryptedGroupSecrets`.
+/// In particular, the `group_secrets_bytes` are encrypted for the `public_key`
+/// into `encrypted_group_secrets` later.
 pub(crate) struct PlaintextSecret {
     pub(crate) public_key: HPKEPublicKey,
     pub(crate) group_secrets_bytes: Vec<u8>,
@@ -221,10 +224,10 @@ impl PlaintextSecret {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
         let dirpath = treemath::leaf_direct_path(
-            provisional_tree.own_node_index().into(),
+            provisional_tree.own_node_index(),
             provisional_tree.leaf_count(),
         )
-        .expect("create_commit_internal: TreeMath error when computing direct path.");
+        .unwrap();
 
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {

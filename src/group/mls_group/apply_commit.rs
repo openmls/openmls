@@ -112,6 +112,8 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         )?;
 
+        // TODO #186: Implement extensions
+
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,

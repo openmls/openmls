@@ -45,11 +45,9 @@ impl MlsGroup {
             .welcome()?
             .derive_welcome_key_nonce(ciphersuite);
 
-        let group_info_bytes =
-            match welcome_key.aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce) {
-                Ok(bytes) => bytes,
-                Err(_) => return Err(WelcomeError::GroupInfoDecryptionFailure),
-            };
+        let group_info_bytes = welcome_key
+            .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
+            .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
         let mut group_info = GroupInfo::decode_detached(&group_info_bytes)?;
         let path_secret_option = group_secrets.path_secret;
 
