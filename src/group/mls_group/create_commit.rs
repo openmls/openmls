@@ -106,7 +106,9 @@ impl MlsGroup {
         let joiner_secret = JoinerSecret::new(
             ciphersuite,
             provisional_tree.commit_secret(),
-            self.epoch_secrets().init_secret().ok_or(GroupError::InitSecretNotFound)?,
+            self.epoch_secrets()
+                .init_secret()
+                .ok_or(GroupError::InitSecretNotFound)?,
         );
 
         // Create group secrets for later use, so we can afterwards consume the
@@ -203,9 +205,9 @@ impl MlsGroup {
     }
 }
 
-/// Helper struct holding values that are encryptedin the `EncryptedGroupSecrets`.
-/// In particular, the `group_secrets_bytes` are encrypted for the `public_key`
-/// into `encrypted_group_secrets` later.
+/// Helper struct holding values that are encryptedin the
+/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
+/// encrypted for the `public_key` into `encrypted_group_secrets` later.
 pub(crate) struct PlaintextSecret {
     pub(crate) public_key: HPKEPublicKey,
     pub(crate) group_secrets_bytes: Vec<u8>,
@@ -214,8 +216,9 @@ pub(crate) struct PlaintextSecret {
 
 impl PlaintextSecret {
     /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
-    /// provisional `RatchetTree`. If there are `path_secrets` in the provisional
-    /// tree, we need to include a `path_secret` into the `GroupSecrets`.
+    /// provisional `RatchetTree`. If there are `path_secrets` in the
+    /// provisional tree, we need to include a `path_secret` into the
+    /// `GroupSecrets`.
     pub(crate) fn new(
         joiner_secret: &JoinerSecret,
         invited_members: Vec<(NodeIndex, AddProposal)>,

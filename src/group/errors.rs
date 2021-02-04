@@ -9,7 +9,7 @@ use crate::config::ConfigError;
 use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::KeyScheduleError;
-use crate::tree::{ParentHashError, TreeError, treemath::TreeMathError};
+use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
 
 implement_error! {
     pub enum GroupError {
