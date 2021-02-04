@@ -25,7 +25,7 @@ impl KeyStore {
     /// corresponding `KeyPackage`. Returns an error if no `KeyPackageBundle`
     /// can be found corresponding to the given `KeyPackage` hash. TODO: This is
     /// not in use yet, because the groups are not yet refactored to use the key
-    /// store for KeyPackageBundle.
+    /// store for KeyPackageBundles.
     pub(crate) fn _key_package_bundle(
         &self,
         kp_hash: &[u8],
@@ -40,7 +40,9 @@ impl KeyStore {
     /// if no `CredentialBundle` can be found corresponding to the given
     /// `SignaturePublicKey`.
     /// TODO: This is currently public, because the groups are not yet
-    /// refactored to use the key store for KeyPackageBundle.
+    /// refactored to use the key store for KeyPackageBundles and thus in tests
+    /// we need to access the credential bundle to create KeyPackageBundles
+    /// ad-hoc.
     pub fn credential_bundle(
         &self,
         cred_pk: &SignaturePublicKey,
