@@ -82,7 +82,7 @@ fn byte_arrays() {
     assert_eq!(y, x);
 
     let x = [0u8, 1, 2, 3, 7, 6, 5, 4];
-    let w = ArrayWrap { data: x.clone() };
+    let w = ArrayWrap { data: x };
     let serialized = x.tls_serialize_detached().unwrap();
     assert_eq!(x.to_vec(), serialized);
 

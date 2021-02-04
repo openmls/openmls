@@ -3,9 +3,11 @@
 //! This crate implements the TLS codec as defined in [RFC 8446](https://tools.ietf.org/html/rfc8446)
 //! as well as some extensions required by MLS.
 //!
-//! With the feature `derive` `TlsSerialize` and `TlsDeserialize` can be derived.
+//! With the feature `derive` `TlsSerialize` and `TlsDeserialize` can be
+//! derived.
 //!
-//! This crate provides the following data structures that implement TLS serialization
+//! This crate provides the following data structures that implement TLS
+//! serialization
 //! * `u8`, `u16`, `u32`, `u64`
 //! * `TlsVecU8`, `TlsVecU16`, `TlsVecU32`
 //! * `[u8; 2]`, `[u8; 4]`, `[u8; 8]`, `[u8; 16]`, `[u8; 32]`, `[u8; 64]`
@@ -75,8 +77,8 @@ pub trait Deserialize {
 }
 
 /// The `Cursor` is a helper used to read byte slices when deserializing.
-/// Note that this shouldn't be needed in most cases and `tls_deserialize_detached`
-/// can be used instead.
+/// Note that this shouldn't be needed in most cases and
+/// `tls_deserialize_detached` can be used instead.
 #[derive(Debug)]
 pub struct Cursor {
     bytes: Vec<u8>,

@@ -194,7 +194,7 @@ impl<'a> Removal<'a> {
         } else if leaver_credential == remover_credential {
             Self::TheyLeft(leaver_credential)
         } else {
-            Self::TheyWereRemovedBy(remover_credential, leaver_credential)
+            Self::TheyWereRemovedBy(leaver_credential, remover_credential)
         }
     }
 }

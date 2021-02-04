@@ -324,15 +324,6 @@ impl ExporterSecret {
     }
 }
 
-/*
-    authentication_secret: Secret,
-    external_secret: Secret,
-    confirmation_key: Secret,
-    pub(crate) membership_key: Secret,
-    resumption_secret: Secret,
-}
-*/
-
 /// A secret that can be used among members to make sure everyone has the same
 /// group state.
 #[derive(Debug, Serialize, Deserialize)]
@@ -370,10 +361,9 @@ impl ExternalSecret {
         Self { secret }
     }
 
-    /// Get the internal `Secret`.
-    // Will be used in #192
-    pub(crate) fn _secret(&self) -> &Secret {
-        &self.secret
+    /// Derive the external keypair for External Commits
+    pub(crate) fn derive_external_keypair(&self, ciphersuite: &Ciphersuite) -> HPKEKeyPair {
+        ciphersuite.derive_hpke_keypair(&self.secret)
     }
 }
 
@@ -532,6 +522,12 @@ impl EpochSecrets {
     pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
         &self.authentication_secret
     }
+
+    /// External secret
+    pub(crate) fn external_secret(&self) -> &ExternalSecret {
+        &self.external_secret
+    }
+
     /// Derive `EpochSecrets`, as well as an `EncryptionSecret` and an
     /// `InitSecret` from an `EpochSecret` and a given `GroupContext`. This
     /// method is only used when initially creating a new `MlsGroup` state.

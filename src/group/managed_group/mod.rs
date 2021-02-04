@@ -461,7 +461,7 @@ impl<'a> ManagedGroup<'a> {
                             self.send_events(
                                 self.ciphersuite(),
                                 &commit.proposals,
-                                &plaintext.sender.sender,
+                                plaintext.sender.sender,
                                 &indexed_members,
                             );
                             // We don't need the pending proposals and key package bundles any
@@ -475,7 +475,7 @@ impl<'a> ManagedGroup<'a> {
                                 self.send_events(
                                     self.ciphersuite(),
                                     &commit.proposals,
-                                    &plaintext.sender.sender,
+                                    plaintext.sender.sender,
                                     &indexed_members,
                                 );
                                 // The group is no longer active
@@ -894,7 +894,7 @@ impl<'a> ManagedGroup<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         proposals: &[ProposalOrRef],
-        sender: &LeafIndex,
+        sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,
     ) {
         // We want to send the events in the order specified by the committer.
@@ -915,7 +915,7 @@ impl<'a> ManagedGroup<'a> {
                     if let Some(queued_proposal) = pending_proposals_queue.get(proposal_reference) {
                         self.send_proposal_event(
                             queued_proposal.proposal(),
-                            sender,
+                            queued_proposal.sender().to_leaf_index(),
                             indexed_members,
                         );
                     }
@@ -928,10 +928,10 @@ impl<'a> ManagedGroup<'a> {
     fn send_proposal_event(
         &self,
         proposal: &Proposal,
-        sender: &LeafIndex,
+        sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,
     ) {
-        let sender_credential = &indexed_members[sender];
+        let sender_credential = &indexed_members[&sender];
         match proposal {
             // Add proposals
             Proposal::Add(add_proposal) => {
