@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["CommitSecret",""],["PrivateTree",""]],"type":[["PathSecrets",""]]});
+initSidebarItems({"struct":[["PrivateTree",""]],"type":[["PathSecrets",""]]});

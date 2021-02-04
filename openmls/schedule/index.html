@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `schedule` mod in crate `openmls`."><meta name="keywords" content="rust, rustlang, rust-lang, schedule"><title>openmls::schedule - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings"></script><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a><p class="location">Module schedule</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></div><p class="location"><a href="../index.html">openmls</a></p><script>window.sidebarCurrent = {name: "schedule", ty: "mod", relpath: "../"};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
-                <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../src/openmls/schedule/mod.rs.html#1-565" title="goto source code">[src]</a></span><span class="in-band">Module <a href="../index.html">openmls</a>::<wbr><a class="mod" href="">schedule</a></span></h1><div class="docblock"><p>This module represents the key schedule as introduced in Section 8 of the
+<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a><p class="location">Module schedule</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></div><p class="location"><a href="../index.html">openmls</a></p><script>window.sidebarCurrent = {name: "schedule", ty: "mod", relpath: "../"};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+                <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../src/openmls/schedule/mod.rs.html#1-753" title="goto source code">[src]</a></span><span class="in-band">Module <a href="../index.html">openmls</a>::<wbr><a class="mod" href="">schedule</a></span></h1><div class="docblock"><p>This module represents the key schedule as introduced in Section 8 of the
 MLS specification. The key schedule evolves in epochs, where in each epoch
 new key material is injected.</p>
 <p>The flow of the key schedule is as follows (from Section 8 of the MLS
@@ -42,12 +42,69 @@ psk_secret (or 0) -&gt; KDF.Extract (= intermediary_secret)
 welcome_secret) is represented by its own struct to ensure that the keys are
 not confused with one-another and/or that the schedule is not derived
 out-of-order.</p>
+<h2 id="the-real-key-schedules" class="section-header"><a href="#the-real-key-schedules">The real key schedules</a></h2>
+<p>The key schedule as described in the spec isn't really one key schedule.
+The <code>joiner_secret</code> is an intermediate value <em>and</em> an output value. This
+must never be the case within a key schedule. The actual key schedule is
+therefore only the second half starting with the <code>joiner_secret</code>, which
+indeed is what happens when starting a group from a welcome message.</p>
+<p>The <code>joiner_secret</code> is computed as</p>
+<pre><code class="language-text">    DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), &quot;joiner&quot;)
+</code></pre>
+<p>or</p>
+<pre><code class="language-text">                 init_secret_[n-1]
+                        |
+                        V
+   commit_secret -&gt; KDF.Extract
+                        |
+                        V
+                  DeriveSecret(., &quot;joiner&quot;)
+                        |
+                        V
+                   joiner_secret
+</code></pre>
+<p>The remainder of the key schedule then starts with the <code>joiner_secret</code> and
+<code>psk_secret</code>. Note that the following graph also adds the <code>GroupContext_[n]</code>
+as input, which is omitted in the spec.
+Further note that the derivation of the secrets from the <code>epoch_secret</code> is
+simplified here.</p>
+<pre><code class="language-text">                   joiner_secret
+                        |
+                        V
+psk_secret (or 0) -&gt; KDF.Extract
+                        |
+                        +--&gt; DeriveSecret(., &quot;welcome&quot;)
+                        |    = welcome_secret
+                        |
+                        V
+GroupContext_[n] -&gt; ExpandWithLabel(., &quot;epoch&quot;, GroupContext_[n], KDF.Nh)
+                        |
+                        V
+                   epoch_secret
+                        |
+                        v
+                DeriveSecret(., &lt;label&gt;)
+                    = &lt;secret&gt;
+</code></pre>
+<p>with</p>
+<pre><code class="language-text">| secret                  | label           |
+|:------------------------|:----------------|
+| `init_secret`           | &quot;init&quot;          |
+| `sender_data_secret`    | &quot;sender data&quot;   |
+| `encryption_secret`     | &quot;encryption&quot;    |
+| `exporter_secret`       | &quot;exporter&quot;      |
+| `authentication_secret` | &quot;authentication&quot;|
+| `external_secret`       | &quot;external&quot;      |
+| `confirmation_key`      | &quot;confirm&quot;       |
+| `membership_key`        | &quot;membership&quot;    |
+| `resumption_secret`     | &quot;resumption&quot;    |
+</code></pre>
 </div><h2 id="modules" class="section-header"><a href="#modules">Modules</a></h2>
-<table><tr class="module-item"><td><a class="mod" href="codec/index.html" title="openmls::schedule::codec mod">codec</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="mod" href="psk/index.html" title="openmls::schedule::psk mod">psk</a></td><td class="docblock-short"><p>Pre shared keys.</p>
+<table><tr class="module-item"><td><a class="mod" href="codec/index.html" title="openmls::schedule::codec mod">codec</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="mod" href="errors/index.html" title="openmls::schedule::errors mod">errors</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="mod" href="psk/index.html" title="openmls::schedule::psk mod">psk</a></td><td class="docblock-short"><p>Pre shared keys.</p>
 </td></tr></table><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2>
 <table><tr class="module-item"><td><a class="struct" href="struct.AuthenticationSecret.html" title="openmls::schedule::AuthenticationSecret struct">AuthenticationSecret</a></td><td class="docblock-short"><p>A secret that can be used among members to make sure everyone has the same
 group state.</p>
-</td></tr><tr class="module-item"><td><a class="struct" href="struct.ConfirmationKey.html" title="openmls::schedule::ConfirmationKey struct">ConfirmationKey</a></td><td class="docblock-short"><p>The confirmation key is used to calculate the <code>ConfirmationTag</code>.</p>
+</td></tr><tr class="module-item"><td><a class="struct" href="struct.CommitSecret.html" title="openmls::schedule::CommitSecret struct">CommitSecret</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.ConfirmationKey.html" title="openmls::schedule::ConfirmationKey struct">ConfirmationKey</a></td><td class="docblock-short"><p>The confirmation key is used to calculate the <code>ConfirmationTag</code>.</p>
 </td></tr><tr class="module-item"><td><a class="struct" href="struct.EncryptionSecret.html" title="openmls::schedule::EncryptionSecret struct">EncryptionSecret</a></td><td class="docblock-short"><p>The <code>EncryptionSecret</code> is used to create a <code>SecretTree</code>.</p>
 </td></tr><tr class="module-item"><td><a class="struct" href="struct.EpochSecret.html" title="openmls::schedule::EpochSecret struct">EpochSecret</a></td><td class="docblock-short"><p>An intermediate secret in the key schedule, the <code>EpochSecret</code> is used to
 create an <code>EpochSecrets</code> object and is finally consumed when creating that
@@ -60,7 +117,8 @@ use.</p>
 </td></tr><tr class="module-item"><td><a class="struct" href="struct.InitSecret.html" title="openmls::schedule::InitSecret struct">InitSecret</a></td><td class="docblock-short"><p>The <code>InitSecret</code> is used to connect the next epoch to the current one.</p>
 </td></tr><tr class="module-item"><td><a class="struct" href="struct.IntermediateSecret.html" title="openmls::schedule::IntermediateSecret struct">IntermediateSecret</a></td><td class="docblock-short"><p>The intermediate secret includes the optional PSK and is used to later
 derive the welcome secret and epoch secret</p>
-</td></tr><tr class="module-item"><td><a class="struct" href="struct.JoinerSecret.html" title="openmls::schedule::JoinerSecret struct">JoinerSecret</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.MembershipKey.html" title="openmls::schedule::MembershipKey struct">MembershipKey</a></td><td class="docblock-short"><p>The membership key is used to calculate the <code>MembershipTag</code>.</p>
-</td></tr><tr class="module-item"><td><a class="struct" href="struct.PlaintextSecret.html" title="openmls::schedule::PlaintextSecret struct">PlaintextSecret</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.ResumptionSecret.html" title="openmls::schedule::ResumptionSecret struct">ResumptionSecret</a></td><td class="docblock-short"><p>A secret used in cross-group operations.</p>
+</td></tr><tr class="module-item"><td><a class="struct" href="struct.JoinerSecret.html" title="openmls::schedule::JoinerSecret struct">JoinerSecret</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.KeySchedule.html" title="openmls::schedule::KeySchedule struct">KeySchedule</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.MembershipKey.html" title="openmls::schedule::MembershipKey struct">MembershipKey</a></td><td class="docblock-short"><p>The membership key is used to calculate the <code>MembershipTag</code>.</p>
+</td></tr><tr class="module-item"><td><a class="struct" href="struct.ResumptionSecret.html" title="openmls::schedule::ResumptionSecret struct">ResumptionSecret</a></td><td class="docblock-short"><p>A secret used in cross-group operations.</p>
 </td></tr><tr class="module-item"><td><a class="struct" href="struct.SenderDataSecret.html" title="openmls::schedule::SenderDataSecret struct">SenderDataSecret</a></td><td class="docblock-short"><p>A key that can be used to derive an <code>AeadKey</code> and an <code>AeadNonce</code>.</p>
-</td></tr><tr class="module-item"><td><a class="struct" href="struct.WelcomeSecret.html" title="openmls::schedule::WelcomeSecret struct">WelcomeSecret</a></td><td class="docblock-short"></td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "openmls";</script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>
+</td></tr><tr class="module-item"><td><a class="struct" href="struct.WelcomeSecret.html" title="openmls::schedule::WelcomeSecret struct">WelcomeSecret</a></td><td class="docblock-short"></td></tr></table><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2>
+<table><tr class="module-item"><td><a class="enum" href="enum.State.html" title="openmls::schedule::State enum">State</a></td><td class="docblock-short"></td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "openmls";</script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>

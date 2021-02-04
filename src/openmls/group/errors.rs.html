@@ -125,6 +125,23 @@
 <span id="122">122</span>
 <span id="123">123</span>
 <span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
@@ -136,26 +153,37 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::{<span class="ident">MLSCiphertextError</span>, <span class="ident">VerificationError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">errors</span>::<span class="ident">ProposalQueueError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">errors</span>::<span class="ident">KeyScheduleError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">treemath</span>::<span class="ident">TreeMathError</span>, <span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupError</span> {
-        <span class="ident">MLSCiphertextError</span>(<span class="ident">MLSCiphertextError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.&quot;</span>,
-        <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`WelcomeError`](`WelcomeError`) for details.&quot;</span>,
-        <span class="ident">ApplyCommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`ApplyCommitError`](`ApplyCommitError`) for details.&quot;</span>,
-        <span class="ident">CreateCommitError</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`CreateCommitError`](`CreateCommitError`) for details.&quot;</span>,
-        <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
-        <span class="ident">ExporterError</span>(<span class="ident">ExporterError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`ExporterError`](`ExporterError`) for details.&quot;</span>,
-        <span class="ident">ProposalQueueError</span>(<span class="ident">ProposalQueueError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.&quot;</span>,
-        <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
-            <span class="string">&quot;Codec error occurred.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
+                <span class="string">&quot;Missing init secret when creating commit.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">MLSCiphertextError</span>(<span class="ident">MLSCiphertextError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.&quot;</span>,
+            <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`WelcomeError`](`WelcomeError`) for details.&quot;</span>,
+            <span class="ident">ApplyCommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ApplyCommitError`](`ApplyCommitError`) for details.&quot;</span>,
+            <span class="ident">CreateCommitError</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CreateCommitError`](`CreateCommitError`) for details.&quot;</span>,
+            <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
+            <span class="ident">ExporterError</span>(<span class="ident">ExporterError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ExporterError`](`ExporterError`) for details.&quot;</span>,
+            <span class="ident">ProposalQueueError</span>(<span class="ident">ProposalQueueError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;Codec error occurred.&quot;</span>,
+            <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
+            <span class="ident">MathError</span>(<span class="ident">TreeMathError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred during a tree math operation.&quot;</span>,
+        }
     }
 }
 
@@ -192,6 +220,8 @@
                 <span class="string">&quot;Unable to decrypt the EncryptedGroupSecrets.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
                 <span class="string">&quot;Codec error occurred.&quot;</span>,
+            <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
         }
     }
 }
@@ -223,6 +253,8 @@
                 <span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>,
             <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
                   <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
+            <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
+                  <span class="string">&quot;Missing init secret to apply proposal.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextSignatureFailure</span>(<span class="ident">VerificationError</span>) <span class="op">=</span>
@@ -231,6 +263,8 @@
                 <span class="string">&quot;A matching EncryptedPathSecret failed to decrypt.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
                 <span class="string">&quot;Codec error occurred.&quot;</span>,
+            <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
         }
     }
 }

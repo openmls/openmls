@@ -211,35 +211,16 @@
 <span id="208">208</span>
 <span id="209">209</span>
 <span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">error</span>};
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="ident">ExtensionType</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">mls_group</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="ident">node</span>::<span class="kw-2">*</span>, <span class="ident">treemath</span>, <span class="kw-2">*</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Signable</span>, <span class="ident">codec</span>::<span class="kw-2">*</span>};
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_welcome_internal</span>(
@@ -264,13 +245,25 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
         }
 
-        <span class="comment">// Compute keys to decrypt GroupInfo</span>
-        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">group_info</span>, <span class="ident">intermediate_secret</span>, <span class="ident">path_secret_option</span>) <span class="op">=</span> <span class="self">Self</span>::<span class="ident">decrypt_group_info</span>(
-            <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">egs</span>,
-            <span class="ident">key_package_bundle</span>.<span class="ident">private_key</span>(),
-            <span class="ident">welcome</span>.<span class="ident">encrypted_group_info</span>(),
+        <span class="kw">let</span> <span class="ident">group_secrets_bytes</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hpke_open</span>(
+            <span class="kw-2">&amp;</span><span class="ident">egs</span>.<span class="ident">encrypted_group_secrets</span>,
+            <span class="kw-2">&amp;</span><span class="ident">key_package_bundle</span>.<span class="ident">private_key</span>(),
+            <span class="kw-2">&amp;</span>[],
+            <span class="kw-2">&amp;</span>[],
         )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">group_secrets_bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">group_secrets</span>.<span class="ident">joiner_secret</span>;
+        <span class="comment">// TODO #141: Implement PSK</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule</span>::<span class="ident">init</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let</span> (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>) <span class="op">=</span> <span class="ident">key_schedule</span>
+            .<span class="ident">welcome</span>()<span class="question-mark">?</span>
+            .<span class="ident">derive_welcome_key_nonce</span>(<span class="ident">ciphersuite</span>);
+
+        <span class="kw">let</span> <span class="ident">group_info_bytes</span> <span class="op">=</span> <span class="ident">welcome_key</span>
+            .<span class="ident">aead_open</span>(<span class="ident">welcome</span>.<span class="ident">encrypted_group_info</span>(), <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="ident">welcome_nonce</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">WelcomeError</span>::<span class="ident">GroupInfoDecryptionFailure</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfo</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">group_info_bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">path_secret_option</span> <span class="op">=</span> <span class="ident">group_secrets</span>.<span class="ident">path_secret</span>;
 
         <span class="comment">// Build the ratchet tree</span>
         <span class="comment">// First check the extensions to see if the tree is in there.</span>
@@ -381,10 +374,12 @@
             <span class="ident">group_info</span>.<span class="ident">extensions</span>(),
         )<span class="question-mark">?</span>;
         <span class="comment">// TODO #141: Implement PSK</span>
-        <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span> <span class="ident">EpochSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">intermediate_secret</span>, <span class="kw-2">&amp;</span><span class="ident">group_context</span>);
-        <span class="kw">let</span> (<span class="ident">epoch_secrets</span>, <span class="ident">init_secret</span>, <span class="ident">encryption_secret</span>) <span class="op">=</span>
-            <span class="ident">EpochSecrets</span>::<span class="ident">derive_epoch_secrets</span>(<span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>, <span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">encryption_secret</span>.<span class="ident">create_secret_tree</span>(<span class="ident">tree</span>.<span class="ident">leaf_count</span>());
+        <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="kw-2">&amp;</span><span class="ident">group_context</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
+            .<span class="ident">encryption_secret</span>()
+            .<span class="ident">create_secret_tree</span>(<span class="ident">tree</span>.<span class="ident">leaf_count</span>());
 
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">ConfirmationTag</span>::<span class="ident">new</span>(
             <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
@@ -405,7 +400,6 @@
                 <span class="ident">ciphersuite</span>,
                 <span class="ident">group_context</span>,
                 <span class="ident">epoch_secrets</span>,
-                <span class="ident">init_secret</span>,
                 <span class="ident">secret_tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">secret_tree</span>),
                 <span class="ident">tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">tree</span>),
                 <span class="ident">interim_transcript_hash</span>,
@@ -426,36 +420,6 @@
             }
         }
         <span class="prelude-val">None</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">decrypt_group_info</span>(
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">encrypted_group_secrets</span>: <span class="kw-2">&amp;</span><span class="ident">EncryptedGroupSecrets</span>,
-        <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">HPKEPrivateKey</span>,
-        <span class="ident">encrypted_group_info</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">GroupInfo</span>, <span class="ident">IntermediateSecret</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span>), <span class="ident">WelcomeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">group_secrets_bytes</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hpke_open</span>(
-            <span class="kw-2">&amp;</span><span class="ident">encrypted_group_secrets</span>.<span class="ident">encrypted_group_secrets</span>,
-            <span class="kw-2">&amp;</span><span class="ident">private_key</span>,
-            <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span>[],
-        )<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">group_secrets_bytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">group_secrets</span>.<span class="ident">joiner_secret</span>;
-        <span class="comment">// TODO #141: Implement PSK</span>
-        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="prelude-val">None</span>);
-        <span class="kw">let</span> <span class="ident">welcome_secret</span> <span class="op">=</span> <span class="ident">WelcomeSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">intermediate_secret</span>);
-        <span class="kw">let</span> (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>) <span class="op">=</span> <span class="ident">welcome_secret</span>.<span class="ident">derive_welcome_key_nonce</span>(<span class="ident">ciphersuite</span>);
-        <span class="kw">let</span> <span class="ident">group_info_bytes</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">welcome_key</span>.<span class="ident">aead_open</span>(<span class="ident">encrypted_group_info</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="ident">welcome_nonce</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">bytes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">bytes</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError</span>::<span class="ident">GroupInfoDecryptionFailure</span>),
-            };
-        <span class="prelude-val">Ok</span>((
-            <span class="ident">GroupInfo</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">group_info_bytes</span>)<span class="question-mark">?</span>,
-            <span class="ident">intermediate_secret</span>,
-            <span class="ident">group_secrets</span>.<span class="ident">path_secret</span>,
-        ))
     }
 }
 </pre></div>
