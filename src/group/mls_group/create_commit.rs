@@ -40,62 +40,34 @@ impl MlsGroup {
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
-        // Determine if Commit needs path field
-        let path_required =
-            apply_proposals_values.path_required || contains_own_updates || force_self_update;
 
-        let (commit_secret, path, path_secrets_option, kpb_option) = if path_required {
-            // If path is needed, compute path values
-            let (commit_secret, path, path_secrets, key_package_bundle) = provisional_tree
-                .refresh_private_tree(
+        let (path_option, kpb_option) =
+            if apply_proposals_values.path_required || contains_own_updates || force_self_update {
+                // If path is needed, compute path values
+                let (path, key_package_bundle) = provisional_tree.refresh_private_tree(
                     credential_bundle,
                     &self.group_context.serialized(),
                     apply_proposals_values.exclusion_list(),
                 );
-            (
-                Some(commit_secret),
-                Some(path),
-                Some(path_secrets),
-                Some(key_package_bundle),
-            )
-        } else {
-            // If path is not needed, return empty commit secret
-            (None, None, None, None)
-        };
+                (Some(path), Some(key_package_bundle))
+            } else {
+                // If path is not needed, return empty commit secret
+                (None, None)
+            };
+
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
-            path,
+            path: path_option,
         };
+
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
         provisional_epoch.increment();
-        // We clone the init secret here, as the `joiner_secret` is only for the
-        // provisional group state.
-        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
-            ciphersuite,
-            commit_secret,
-            &self.init_secret,
-        );
-        // Create group secrets for later use, so we can afterwards consume the
-        // `joiner_secret`.
-        let plaintext_secrets = joiner_secret.group_secrets(
-            apply_proposals_values.invitation_list,
-            &provisional_tree,
-            path_secrets_option,
-        )?;
-        // TODO #141: Implement PSK
-        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
-        let welcome_secret = WelcomeSecret::new(ciphersuite, &intermediate_secret);
-
-        // Derive the welcome key material before consuming the `MemberSecret`
-        // immediately afterwards.
-        let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
 
         // Build MLSPlaintext
         let content = MLSPlaintextContentType::Commit(commit);
         let sender = Sender::member(sender_index);
-
         let mut mls_plaintext = MLSPlaintext {
             group_id: self.context().group_id.clone(),
             epoch: self.context().epoch,
@@ -131,13 +103,27 @@ impl MlsGroup {
             &[],
         )?;
 
-        let epoch_secret =
-            EpochSecret::new(ciphersuite, intermediate_secret, &provisional_group_context);
+        let joiner_secret = JoinerSecret::new(
+            ciphersuite,
+            provisional_tree.commit_secret(),
+            self.epoch_secrets()
+                .init_secret()
+                .ok_or(GroupError::InitSecretNotFound)?,
+        );
 
-        // The init- and encryption secrets are not used here. They come into
-        // play when the provisional group state is applied in `apply_commit`.
-        let (provisional_epoch_secrets, _provisional_init_secret, _provisional_encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(&ciphersuite, epoch_secret);
+        // Create group secrets for later use, so we can afterwards consume the
+        // `joiner_secret`.
+        let plaintext_secrets = PlaintextSecret::new(
+            &joiner_secret,
+            apply_proposals_values.invitation_list,
+            &provisional_tree,
+        )?;
+
+        // TODO #141: Implement PSK
+        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
+        let welcome_secret = key_schedule.welcome()?;
+        key_schedule.add_context(&provisional_group_context)?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(false)?;
 
         // Calculate the confirmation tag
         let confirmation_tag = ConfirmationTag::new(
@@ -145,6 +131,7 @@ impl MlsGroup {
             &provisional_epoch_secrets.confirmation_key(),
             &confirmed_transcript_hash,
         );
+
         // Set the confirmation tag
         mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
 
@@ -152,7 +139,7 @@ impl MlsGroup {
         mls_plaintext.add_membership_tag(
             ciphersuite,
             serialized_context,
-            &self.epoch_secrets().membership_key,
+            self.epoch_secrets().membership_key(),
         )?;
 
         // Check if new members were added an create welcome message
@@ -180,7 +167,9 @@ impl MlsGroup {
                 sender_index,
             );
             group_info.set_signature(group_info.sign(credential_bundle));
+
             // Encrypt GroupInfo object
+            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
@@ -213,5 +202,72 @@ impl MlsGroup {
         } else {
             Ok((mls_plaintext, None, kpb_option))
         }
+    }
+}
+
+/// Helper struct holding values that are encryptedin the
+/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
+/// encrypted for the `public_key` into `encrypted_group_secrets` later.
+pub(crate) struct PlaintextSecret {
+    pub(crate) public_key: HPKEPublicKey,
+    pub(crate) group_secrets_bytes: Vec<u8>,
+    pub(crate) key_package_hash: Vec<u8>,
+}
+
+impl PlaintextSecret {
+    /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
+    /// provisional `RatchetTree`. If there are `path_secrets` in the
+    /// provisional tree, we need to include a `path_secret` into the
+    /// `GroupSecrets`.
+    pub(crate) fn new(
+        joiner_secret: &JoinerSecret,
+        invited_members: Vec<(NodeIndex, AddProposal)>,
+        provisional_tree: &RatchetTree,
+    ) -> Result<Vec<Self>, GroupError> {
+        // Get a Vector containing the node indices of the direct path to the
+        // root from our own leaf.
+        let dirpath = treemath::leaf_direct_path(
+            provisional_tree.own_node_index(),
+            provisional_tree.leaf_count(),
+        )?;
+
+        let mut plaintext_secrets = vec![];
+        for (index, add_proposal) in invited_members {
+            let key_package = add_proposal.key_package;
+            let key_package_hash = key_package.hash();
+
+            let path_secrets = provisional_tree.path_secrets();
+            let path_secret = if !path_secrets.is_empty() {
+                // Compute the index of the common ancestor lowest in the
+                // tree of our own leaf and the given index.
+                let common_ancestor_index = treemath::common_ancestor_index(
+                    index,
+                    provisional_tree.own_node_index().into(),
+                );
+                // Get the position of the node index that represents the
+                // common ancestor in the direct path. We can unwrap here,
+                // because the direct path must contain the shared ancestor.
+                let position = dirpath
+                    .iter()
+                    .position(|&x| x == common_ancestor_index)
+                    .unwrap();
+                // We have to clone the element of the vector here to
+                // preserve its order.
+                let path_secret = path_secrets[position].clone();
+                Some(PathSecret { path_secret })
+            } else {
+                None
+            };
+
+            // Create the GroupSecrets object for the respective member.
+            // TODO #141: Implement PSK
+            let group_secrets_bytes = GroupSecrets::new_encoded(joiner_secret, path_secret, None)?;
+            plaintext_secrets.push(PlaintextSecret {
+                public_key: key_package.hpke_init_key().clone(),
+                group_secrets_bytes,
+                key_package_hash,
+            });
+        }
+        Ok(plaintext_secrets)
     }
 }

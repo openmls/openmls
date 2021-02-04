@@ -17,7 +17,7 @@ pub struct MLSCiphertext {
 
 impl MLSCiphertext {
     /// Try to create a new `MLSCiphertext` from an `MLSPlaintext`
-    pub fn try_from_plaintext(
+    pub(crate) fn try_from_plaintext(
         mls_plaintext: &MLSPlaintext,
         ciphersuite: &Ciphersuite,
         context: &GroupContext,

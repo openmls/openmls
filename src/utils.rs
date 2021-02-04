@@ -14,7 +14,7 @@ pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
-#[cfg(all(test, feature = "test-vectors"))]
+#[cfg(test)]
 pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }
