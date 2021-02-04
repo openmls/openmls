@@ -12,6 +12,7 @@ pub(crate) use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
+use std::hash::{Hash, Hasher};
 
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
@@ -328,7 +329,7 @@ pub struct SignaturePrivateKey {
     value: Vec<u8>,
 }
 
-#[derive(Debug, Eq, Hash, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, Clone, Serialize, Deserialize)]
 pub struct SignaturePublicKey {
     signature_scheme: SignatureScheme,
     value: Vec<u8>,
@@ -711,6 +712,12 @@ impl SignatureKeypair {
 impl PartialEq for SignaturePublicKey {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
+    }
+}
+
+impl Hash for SignaturePublicKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state)
     }
 }
 
