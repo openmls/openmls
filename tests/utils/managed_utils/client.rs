@@ -5,7 +5,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use openmls::{node::Node, prelude::*};
 
-use super::{errors::ClientError, ActionType, KeyStore};
+use super::{errors::ClientError, ActionType};
 
 #[derive(Debug)]
 /// The client contains the necessary state for a client in the context of MLS.
@@ -16,6 +16,7 @@ pub struct Client<'key_store_lifetime> {
     /// Name of the client.
     pub(crate) identity: Vec<u8>,
     /// Ciphersuites supported by the client.
+    pub(crate) credentials: &'key_store_lifetime HashMap<CiphersuiteName, Credential>,
     pub(crate) key_store: &'key_store_lifetime KeyStore,
     // Map from key package hash to the corresponding bundle.
     pub(crate) key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
@@ -34,10 +35,14 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         if ciphersuites.is_empty() {
             return Err(ClientError::NoCiphersuite);
         }
+        let credential = self
+            .credentials
+            .get(&ciphersuites[0])
+            .ok_or(ClientError::CiphersuiteNotSupported)?;
         let credential_bundle = self
             .key_store
-            .get_credential(&(self.identity.clone(), ciphersuites[0]))
-            .ok_or(ClientError::CiphersuiteNotSupported)?;
+            .credential_bundle(credential.signature_key())
+            .unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle =
             KeyPackageBundle::new(ciphersuites, &credential_bundle, mandatory_extensions).unwrap();
@@ -57,10 +62,14 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         managed_group_config: ManagedGroupConfig,
         ciphersuite: &Ciphersuite,
     ) -> Result<(), ClientError> {
+        let credential = self
+            .credentials
+            .get(&ciphersuite.name())
+            .ok_or(ClientError::CiphersuiteNotSupported)?;
         let credential_bundle = self
             .key_store
-            .get_credential(&(self.identity.clone(), ciphersuite.name()))
-            .ok_or(ClientError::CiphersuiteNotSupported)?;
+            .credential_bundle(credential.signature_key())
+            .unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -69,7 +78,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         )
         .unwrap();
         let group_state = ManagedGroup::new(
-            credential_bundle,
+            self.key_store,
             &managed_group_config,
             group_id.clone(),
             key_package_bundle,
@@ -105,13 +114,8 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             .borrow_mut()
             .remove(&encrypted_group_secret.key_package_hash)
             .unwrap();
-        let ciphersuite = key_package_bundle.key_package().ciphersuite_name();
-        let credential_bundle = self
-            .key_store
-            .get_credential(&(self.identity.clone(), ciphersuite))
-            .ok_or(ClientError::CiphersuiteNotSupported)?;
         let new_group: ManagedGroup<'key_store_lifetime> = ManagedGroup::new_from_welcome(
-            credential_bundle,
+            self.key_store,
             &managed_group_config,
             welcome,
             ratchet_tree,

@@ -25,10 +25,17 @@ fn validate_remove(
     true
 }
 
+fn own_identity(managed_group: &ManagedGroup) -> Vec<u8> {
+    match managed_group.credential() {
+        Ok(credential) => credential.identity().clone(),
+        Err(_) => "us".as_bytes().to_vec(),
+    }
+}
+
 /// Auto-save
 /// `(managed_group: &ManagedGroup)`
 fn auto_save(managed_group: &ManagedGroup) {
-    let name = String::from_utf8(managed_group.credential().identity().to_vec())
+    let name = String::from_utf8(own_identity(managed_group))
         .expect("Could not create name from identity")
         .to_lowercase();
     let filename = format!("target/test_managed_group_{}.json", &name);
@@ -49,9 +56,8 @@ fn member_added(
     added_member: &Credential,
 ) {
     println!(
-        "AddProposal received in group '{}' by '{}': '{}' added '{}'",
+        "AddProposal received in group '{}' by us: '{}' added '{}'",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&managed_group.credential().identity()).unwrap(),
         str::from_utf8(sender.identity()).unwrap(),
         str::from_utf8(added_member.identity()).unwrap(),
     );
@@ -60,9 +66,8 @@ fn member_added(
 /// `(managed_group: &ManagedGroup, aad: &[u8], removal: &Removal)`
 fn member_removed(managed_group: &ManagedGroup, _aad: &[u8], removal: &Removal) {
     print!(
-        "RemoveProposal received in group '{}' by '{}': ",
+        "RemoveProposal received in group '{}' by us: ",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&managed_group.credential().identity()).unwrap(),
     );
     match removal {
         Removal::WeLeft => {
@@ -93,7 +98,7 @@ fn member_updated(managed_group: &ManagedGroup, _aad: &[u8], updated_member: &Cr
     println!(
         "UpdateProposal received in group '{}' by '{}': '{}'",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&managed_group.credential().identity()).unwrap(),
+        str::from_utf8(&own_identity(managed_group)).unwrap(),
         str::from_utf8(updated_member.identity()).unwrap(),
     );
 }
@@ -109,7 +114,7 @@ fn app_message_received(
     println!(
         "Message received in group '{}' by '{}' from '{}': {}",
         str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&managed_group.credential().identity()).unwrap(),
+        str::from_utf8(&own_identity(managed_group)).unwrap(),
         str::from_utf8(sender.identity()).unwrap(),
         str::from_utf8(message).unwrap()
     );
@@ -123,7 +128,7 @@ fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageE
             println!(
                 "Invalid ciphertext message received in group '{}' by '{}' with AAD {:?}",
                 str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-                str::from_utf8(&managed_group.credential().identity()).unwrap(),
+                str::from_utf8(&own_identity(managed_group)).unwrap(),
                 aad
             );
         }
@@ -167,19 +172,40 @@ fn managed_group_operations() {
         {
             let group_id = GroupId::from_slice(b"Test Group");
 
-            // Define credential bundles
-            let alice_credential_bundle = CredentialBundle::new(
-                "Alice".into(),
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
-            let bob_credential_bundle = CredentialBundle::new(
-                "Bob".into(),
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
+            let mut key_store = KeyStore::default();
+
+            // Generate credential bundles
+            let alice_credential = key_store
+                .fresh_credential(
+                    "Alice".into(),
+                    CredentialType::Basic,
+                    ciphersuite.signature_scheme(),
+                )
+                .unwrap();
+
+            let bob_credential = key_store
+                .fresh_credential(
+                    "Bob".into(),
+                    CredentialType::Basic,
+                    ciphersuite.signature_scheme(),
+                )
+                .unwrap();
+
+            let charly_credential = key_store
+                .fresh_credential(
+                    "Charlie".into(),
+                    CredentialType::Basic,
+                    ciphersuite.signature_scheme(),
+                )
+                .unwrap();
+
+            let alice_credential_bundle = key_store
+                .credential_bundle(alice_credential.signature_key())
+                .unwrap();
+
+            let bob_credential_bundle = key_store
+                .credential_bundle(bob_credential.signature_key())
+                .unwrap();
 
             // Generate KeyPackages
             let alice_key_package_bundle =
@@ -209,7 +235,7 @@ fn managed_group_operations() {
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
-                &alice_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 group_id,
                 alice_key_package_bundle,
@@ -236,7 +262,7 @@ fn managed_group_operations() {
             assert_eq!(members[1].identity(), b"Bob");
 
             let mut bob_group = ManagedGroup::new_from_welcome(
-                &bob_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome,
                 Some(alice_group.export_ratchet_tree()),
@@ -325,12 +351,9 @@ fn managed_group_operations() {
             );
 
             // === Bob adds Charlie ===
-            let charlie_credential_bundle = CredentialBundle::new(
-                "Charlie".into(),
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
+            let charlie_credential_bundle = key_store
+                .credential_bundle(charly_credential.signature_key())
+                .unwrap();
 
             let charlie_key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &charlie_credential_bundle, vec![])
@@ -350,7 +373,7 @@ fn managed_group_operations() {
                 .expect("The group is no longer active");
 
             let mut charlie_group = ManagedGroup::new_from_welcome(
-                &charlie_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome,
                 Some(bob_group.export_ratchet_tree()),
@@ -517,7 +540,7 @@ fn managed_group_operations() {
 
             // Bob creates a new group
             let mut bob_group = ManagedGroup::new_from_welcome(
-                &bob_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome_option.expect("Welcome was not returned"),
                 Some(alice_group.export_ratchet_tree()),
@@ -611,7 +634,7 @@ fn managed_group_operations() {
                 .expect("Could not process messages");
 
             let bob_group = ManagedGroup::new_from_welcome(
-                &bob_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome,
                 Some(alice_group.export_ratchet_tree()),
@@ -627,12 +650,8 @@ fn managed_group_operations() {
             // Re-load Bob's state from file
             let path = Path::new("target/test_managed_group_bob.json");
             let file = File::open(&path).expect("Could not open file");
-            let bob_group = ManagedGroup::load(
-                file,
-                &bob_credential_bundle,
-                managed_group_config.callbacks(),
-            )
-            .expect("Could not load group from file");
+            let bob_group = ManagedGroup::load(file, &key_store, managed_group_config.callbacks())
+                .expect("Could not load group from file");
 
             // Make sure the state is still the same
             assert_eq!(
@@ -648,13 +667,20 @@ fn test_empty_input_errors() {
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .unwrap();
+    let mut key_store = KeyStore::default();
+
+    // Generate credential bundles
+    let alice_credential = key_store
+        .fresh_credential(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+
+    let alice_credential_bundle = key_store
+        .credential_bundle(alice_credential.signature_key())
+        .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
@@ -672,7 +698,7 @@ fn test_empty_input_errors() {
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
-        &alice_credential_bundle,
+        &key_store,
         &managed_group_config,
         group_id,
         alice_key_package_bundle,

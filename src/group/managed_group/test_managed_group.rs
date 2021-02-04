@@ -7,13 +7,20 @@ fn test_managed_group_persistence() {
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .unwrap();
+    let mut key_store = KeyStore::default();
+
+    // Generate credential bundles
+    let alice_credential = key_store
+        .fresh_credential(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+
+    let alice_credential_bundle = key_store
+        .credential_bundle(alice_credential.signature_key())
+        .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
@@ -30,8 +37,9 @@ fn test_managed_group_persistence() {
     );
 
     // === Alice creates a group ===
+
     let alice_group = ManagedGroup::new(
-        &alice_credential_bundle,
+        &key_store,
         &managed_group_config,
         group_id,
         alice_key_package_bundle,
@@ -46,12 +54,18 @@ fn test_managed_group_persistence() {
 
     let in_file = File::open(&path).expect("Could not open file");
 
-    let alice_group_deserialized = ManagedGroup::load(
-        in_file,
-        &alice_credential_bundle,
-        &ManagedGroupCallbacks::default(),
-    )
-    .expect("Could not deserialize managed group");
+    let alice_group_deserialized =
+        ManagedGroup::load(in_file, &key_store, &ManagedGroupCallbacks::default())
+            .expect("Could not deserialize managed group");
 
-    assert_eq!(alice_group, alice_group_deserialized);
+    assert_eq!(
+        (
+            alice_group.export_ratchet_tree(),
+            alice_group.export_secret("test", 32)
+        ),
+        (
+            alice_group_deserialized.export_ratchet_tree(),
+            alice_group_deserialized.export_secret("test", 32)
+        )
+    );
 }

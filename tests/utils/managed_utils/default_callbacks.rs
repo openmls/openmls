@@ -7,10 +7,14 @@ fn member_added(
     sender: &Credential,
     added_member: &Credential,
 ) {
+    let own_identity = match managed_group.credential() {
+        Ok(credential) => credential.identity().clone(),
+        Err(_) => "us".as_bytes().to_vec(),
+    };
     println!(
         "AddProposal received in group '{:?}' by '{:?}': '{:?}' added '{:?}'",
         &managed_group.group_id().as_slice(),
-        &managed_group.credential().identity(),
+        own_identity,
         sender.identity(),
         added_member.identity(),
     );
@@ -18,10 +22,14 @@ fn member_added(
 fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageError) {
     match error {
         InvalidMessageError::InvalidCiphertext(aad) => {
+            let own_identity = match managed_group.credential() {
+                Ok(credential) => credential.identity().clone(),
+                Err(_) => "us".as_bytes().to_vec(),
+            };
             println!(
                 "Invalid ciphertext message received in group '{:?}' by '{:?}' with AAD {:?}",
                 &managed_group.group_id().as_slice(),
-                &managed_group.credential().identity(),
+                own_identity,
                 aad
             );
         }

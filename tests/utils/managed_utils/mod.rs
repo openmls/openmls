@@ -36,31 +36,6 @@ pub mod errors;
 use self::client::*;
 use self::errors::*;
 
-pub type KeyStoreId = (Vec<u8>, CiphersuiteName);
-
-#[derive(Debug)]
-/// A storage struct for `CredentialBundles`.
-pub struct KeyStore {
-    // Maps a client Id and a ciphersuite to a CredentialBundle.
-    credential_bundles: HashMap<KeyStoreId, CredentialBundle>,
-}
-
-impl<'ks> KeyStore {
-    pub(crate) fn store_credentials(
-        &mut self,
-        client_id: &[u8],
-        credential_bundles: Vec<(CiphersuiteName, CredentialBundle)>,
-    ) {
-        for (cn, cb) in credential_bundles {
-            self.credential_bundles.insert((client_id.to_vec(), cn), cb);
-        }
-    }
-
-    pub(crate) fn get_credential(&self, key_store_id: &KeyStoreId) -> Option<&CredentialBundle> {
-        self.credential_bundles.get(key_store_id)
-    }
-}
-
 #[derive(Clone)]
 /// The `Group` struct represents the "global" shared state of the group. Note,
 /// that this state is only consistent if operations are conducted as per spec
@@ -105,7 +80,7 @@ pub struct ManagedTestSetup<'client_lifetime> {
     // The clients identity is its position in the vector in be_bytes.
     pub clients: RefCell<HashMap<Vec<u8>, RefCell<Client<'client_lifetime>>>>,
     pub groups: RefCell<HashMap<GroupId, Group>>,
-    pub key_store: KeyStore,
+    pub key_stores: HashMap<Vec<u8>, (HashMap<CiphersuiteName, Credential>, KeyStore)>,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RefCell<HashMap<Vec<u8>, Vec<u8>>>,
     pub default_mgc: ManagedGroupConfig,
@@ -137,24 +112,24 @@ impl<'ks> ManagedTestSetup<'ks> {
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
     pub fn new(default_mgc: ManagedGroupConfig, number_of_clients: usize) -> Self {
-        let mut key_store = KeyStore {
-            credential_bundles: HashMap::new(),
-        };
+        let mut key_stores = HashMap::new();
         // Create credentials first to avoid borrowing issues.
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
+            let mut key_store = KeyStore::default();
             // For now, everyone supports all ciphersuites.
-            let mut credential_bundles = Vec::new();
+            let mut credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
-                let credential_bundle = CredentialBundle::new(
-                    identity.clone(),
-                    CredentialType::Basic,
-                    SignatureScheme::from(*ciphersuite),
-                )
-                .unwrap();
-                credential_bundles.push((*ciphersuite, credential_bundle));
+                let credential = key_store
+                    .fresh_credential(
+                        identity.clone(),
+                        CredentialType::Basic,
+                        SignatureScheme::from(*ciphersuite),
+                    )
+                    .unwrap();
+                credentials.insert(*ciphersuite, credential);
             }
-            key_store.store_credentials(&identity, credential_bundles);
+            key_stores.insert(identity, (credentials, key_store));
         }
         let clients = RefCell::new(HashMap::new());
         let groups = RefCell::new(HashMap::new());
@@ -163,7 +138,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             number_of_clients,
             clients,
             groups,
-            key_store,
+            key_stores,
             waiting_for_welcome,
             default_mgc,
         }
@@ -178,9 +153,11 @@ impl<'ks> ManagedTestSetup<'ks> {
             let _ciphersuites = Config::supported_ciphersuite_names();
             let mut credential_bundles = Vec::new();
             let key_package_bundles = RefCell::new(HashMap::new());
+            let (credentials, key_store) = self.key_stores.get(&identity).unwrap();
             let client = Client {
                 identity: identity.clone(),
-                key_store: &self.key_store,
+                credentials,
+                key_store,
                 key_package_bundles,
                 groups: RefCell::new(HashMap::new()),
             };

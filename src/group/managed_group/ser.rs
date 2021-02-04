@@ -17,11 +17,11 @@ pub struct SerializedManagedGroup {
 impl<'a> SerializedManagedGroup {
     pub(crate) fn into_managed_group(
         self,
-        credential_bundle: &'a CredentialBundle,
+        key_store: &'a KeyStore,
         callbacks: &ManagedGroupCallbacks,
     ) -> ManagedGroup<'a> {
         let mut managed_group = ManagedGroup {
-            credential_bundle,
+            key_store,
             managed_group_config: self.managed_group_config,
             group: self.group,
             pending_proposals: self.pending_proposals,
