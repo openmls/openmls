@@ -461,12 +461,7 @@ impl RatchetTree {
         // Update it in the KeyPackageBundle
         key_package_bundle.set_key_package(key_package.clone());
 
-        (
-            // self.private_tree.commit_secret(),
-            path,
-            // self.private_tree.path_secrets().to_vec(),
-            key_package_bundle,
-        )
+        (path, key_package_bundle)
     }
 
     /// Replace the private tree with a new one based on the

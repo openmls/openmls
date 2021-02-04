@@ -106,7 +106,7 @@ impl MlsGroup {
         let joiner_secret = JoinerSecret::new(
             ciphersuite,
             provisional_tree.commit_secret(),
-            &self.init_secret,
+            self.epoch_secrets().init_secret().ok_or(GroupError::InitSecretNotFound)?,
         );
 
         // Create group secrets for later use, so we can afterwards consume the
@@ -121,7 +121,7 @@ impl MlsGroup {
         let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
         let welcome_secret = key_schedule.welcome()?;
         key_schedule.add_context(&provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets()?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(false)?;
 
         // Calculate the confirmation tag
         let confirmation_tag = ConfirmationTag::new(
@@ -220,14 +220,13 @@ impl PlaintextSecret {
         joiner_secret: &JoinerSecret,
         invited_members: Vec<(NodeIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
-    ) -> Result<Vec<Self>, CodecError> {
+    ) -> Result<Vec<Self>, GroupError> {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
         let dirpath = treemath::leaf_direct_path(
             provisional_tree.own_node_index(),
             provisional_tree.leaf_count(),
-        )
-        .unwrap();
+        )?;
 
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {

@@ -99,7 +99,13 @@ impl MlsGroup {
             &zero_commit_secret
         };
 
-        let joiner_secret = JoinerSecret::new(ciphersuite, commit_secret, &self.init_secret);
+        let joiner_secret = JoinerSecret::new(
+            ciphersuite,
+            commit_secret,
+            self.epoch_secrets
+                .init_secret()
+                .ok_or(ApplyCommitError::InitSecretNotFound)?,
+        );
 
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
@@ -125,8 +131,7 @@ impl MlsGroup {
         // TODO #141: Implement PSK
         let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
         key_schedule.add_context(&provisional_group_context)?;
-        let provisional_init_secret = key_schedule.init_secret()?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets()?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(true)?;
 
         let mls_plaintext_commit_auth_data =
             match MLSPlaintextCommitAuthData::try_from(mls_plaintext) {
@@ -182,7 +187,6 @@ impl MlsGroup {
         self.group_context = provisional_group_context;
         self.epoch_secrets = provisional_epoch_secrets;
         self.interim_transcript_hash = interim_transcript_hash;
-        self.init_secret = provisional_init_secret;
         self.secret_tree = RefCell::new(secret_tree);
         Ok(())
     }

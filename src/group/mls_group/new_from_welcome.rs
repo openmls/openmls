@@ -161,8 +161,7 @@ impl MlsGroup {
         )?;
         // TODO #141: Implement PSK
         key_schedule.add_context(&group_context)?;
-        let init_secret = key_schedule.init_secret()?;
-        let epoch_secrets = key_schedule.epoch_secrets()?;
+        let epoch_secrets = key_schedule.epoch_secrets(true)?;
 
         let secret_tree = epoch_secrets
             .encryption_secret()
@@ -187,7 +186,6 @@ impl MlsGroup {
                 ciphersuite,
                 group_context,
                 epoch_secrets,
-                init_secret,
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,

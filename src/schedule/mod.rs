@@ -174,7 +174,7 @@ pub(crate) struct InitSecret {
 
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    fn new(ciphersuite: &Ciphersuite, epoch_secret: EpochSecret) -> Self {
         InitSecret {
             secret: epoch_secret.secret.derive_secret(ciphersuite, "init"),
         }
@@ -218,7 +218,6 @@ impl JoinerSecret {
 enum State {
     Initial,
     Context,
-    EpochSecrets,
     Done,
 }
 
@@ -274,40 +273,30 @@ impl KeySchedule {
 
         self.epoch_secret = Some(EpochSecret::new(
             self.ciphersuite,
-            self.intermediate_secret.as_ref().unwrap(),
+            self.intermediate_secret.take().unwrap(),
             group_context,
         ));
         self.intermediate_secret = None;
         Ok(())
     }
 
-    /// Derive the init secret.
-    pub(crate) fn init_secret(&mut self) -> Result<InitSecret, KeyScheduleError> {
-        if self.state != State::Context || self.epoch_secret.is_none() {
-            log::error!("Trying to derive the init secret while not in the right state.");
-            return Err(KeyScheduleError::InvalidState(ErrorState::NotContext));
-        }
-        self.state = State::EpochSecrets;
-
-        Ok(InitSecret::new(
-            self.ciphersuite,
-            self.epoch_secret.as_ref().unwrap(),
-        ))
-    }
-
     /// Derive the epoch secrets.
-    pub(crate) fn epoch_secrets(&mut self) -> Result<EpochSecrets, KeyScheduleError> {
-        if (self.state != State::EpochSecrets && self.state != State::Context)
-            || self.epoch_secret.is_none()
-        {
+    /// If the `init_secret` argument is `true`, the init secret is derived and
+    /// part of the `EpochSecrets`. Otherwise not.
+    pub(crate) fn epoch_secrets(
+        &mut self,
+        init_secret: bool,
+    ) -> Result<EpochSecrets, KeyScheduleError> {
+        if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
-            return Err(KeyScheduleError::InvalidState(ErrorState::NotEpochSecrets));
+            return Err(KeyScheduleError::InvalidState(ErrorState::NotContext));
         }
         self.state = State::Done;
 
         Ok(EpochSecrets::new(
             self.ciphersuite,
-            self.epoch_secret.as_ref().unwrap(),
+            self.epoch_secret.take().unwrap(),
+            init_secret,
         ))
     }
 }
@@ -374,7 +363,7 @@ impl EpochSecret {
     /// Derive an `EpochSecret` from a `JoinerSecret`
     fn new(
         ciphersuite: &Ciphersuite,
-        intermediate_secret: &IntermediateSecret,
+        intermediate_secret: IntermediateSecret,
         group_context: &GroupContext,
     ) -> Self {
         EpochSecret {
@@ -620,6 +609,7 @@ impl From<&[u8]> for SenderDataSecret {
 ///
 /// | Secret                  | Label           |
 /// |:------------------------|:----------------|
+/// | `init_secret`           | "init"          |
 /// | `sender_data_secret`    | "sender data"   |
 /// | `encryption_secret`     | "encryption"    |
 /// | `exporter_secret`       | "exporter"      |
@@ -630,6 +620,7 @@ impl From<&[u8]> for SenderDataSecret {
 /// | `resumption_secret`     | "resumption"    |
 #[derive(Serialize, Deserialize)]
 pub(crate) struct EpochSecrets {
+    init_secret: Option<InitSecret>,
     sender_data_secret: SenderDataSecret,
     encryption_secret: RefCell<EncryptionSecret>,
     exporter_secret: ExporterSecret,
@@ -706,6 +697,11 @@ impl EpochSecrets {
         &self.resumption_secret
     }
 
+    /// Init secret
+    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
+        self.init_secret.as_ref()
+    }
+
     /// Encryption secret
     /// Note that this consumes the encryption secret.
     pub(crate) fn encryption_secret(&self) -> EncryptionSecret {
@@ -718,7 +714,9 @@ impl EpochSecrets {
     }
 
     /// Derive `EpochSecrets` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    /// If the `init_secret` argument is `true`, the init secret is derived and
+    /// part of the `EpochSecrets`. Otherwise not.
+    fn new(ciphersuite: &Ciphersuite, epoch_secret: EpochSecret, init_secret: bool) -> Self {
         let sender_data_secret = SenderDataSecret::new(ciphersuite, &epoch_secret);
         let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);
         let exporter_secret = ExporterSecret::new(ciphersuite, &epoch_secret);
@@ -728,7 +726,14 @@ impl EpochSecrets {
         let membership_key = MembershipKey::new(ciphersuite, &epoch_secret);
         let resumption_secret = ResumptionSecret::new(ciphersuite, &epoch_secret);
 
+        let init_secret = if init_secret {
+            Some(InitSecret::new(ciphersuite, epoch_secret))
+        } else {
+            None
+        };
+
         EpochSecrets {
+            init_secret,
             sender_data_secret,
             encryption_secret: RefCell::new(encryption_secret),
             exporter_secret,
