@@ -90,25 +90,44 @@ fn remover() {
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .expect("Could not create credential bundle");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .expect("Could not create credential bundle");
-    let charlie_credential_bundle = CredentialBundle::new(
-        "Charlie".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .expect("Could not create credential bundle");
+    let mut key_store = KeyStore::default();
+
+    // Generate credential bundles
+    let alice_credential = key_store
+        .fresh_credential(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+
+    let bob_credential = key_store
+        .fresh_credential(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+
+    let charlie_credential = key_store
+        .fresh_credential(
+            "Charly".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+
+    let alice_credential_bundle = key_store
+        .credential_bundle(alice_credential.signature_key())
+        .unwrap();
+
+    let bob_credential_bundle = key_store
+        .credential_bundle(bob_credential.signature_key())
+        .unwrap();
+
+    let charlie_credential_bundle = key_store
+        .credential_bundle(charlie_credential.signature_key())
+        .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
@@ -133,7 +152,7 @@ fn remover() {
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
-        &alice_credential_bundle,
+        &key_store,
         &managed_group_config,
         group_id,
         alice_key_package_bundle,
@@ -152,7 +171,7 @@ fn remover() {
         .expect("The group is no longer active");
 
     let mut bob_group = ManagedGroup::new_from_welcome(
-        &bob_credential_bundle,
+        &key_store,
         &managed_group_config,
         welcome,
         Some(alice_group.export_ratchet_tree()),
@@ -177,7 +196,7 @@ fn remover() {
     let charlie_callbacks = ManagedGroupCallbacks::new().with_member_removed(member_removed);
     managed_group_config.set_callbacks(&charlie_callbacks);
     let mut charlie_group = ManagedGroup::new_from_welcome(
-        &charlie_credential_bundle,
+        &key_store,
         &managed_group_config,
         welcome,
         Some(bob_group.export_ratchet_tree()),
