@@ -56,7 +56,7 @@ pub enum CiphersuiteName {
 implement_enum_display!(CiphersuiteName);
 
 /// SignatureScheme according to IANA TLS parameters
-#[derive(Eq, Hash, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum SignatureScheme {
