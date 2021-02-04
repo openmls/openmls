@@ -329,7 +329,7 @@ pub struct SignaturePrivateKey {
     value: Vec<u8>,
 }
 
-#[derive(Debug, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignaturePublicKey {
     signature_scheme: SignatureScheme,
     value: Vec<u8>,
@@ -713,6 +713,10 @@ impl PartialEq for SignaturePublicKey {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
     }
+}
+
+impl Eq for SignaturePublicKey {
+    fn assert_receiver_is_total_eq(&self) {}
 }
 
 impl Hash for SignaturePublicKey {
