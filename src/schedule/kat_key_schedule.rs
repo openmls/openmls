@@ -181,9 +181,17 @@ fn run_test_vectors() {
     for test_vector in tests {
         let ciphersuite =
             CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+        let ciphersuite = match Config::ciphersuite(ciphersuite) {
+            Ok(cs) => cs,
+            Err(_) => {
+                println!(
+                    "Unsupported ciphersuite {} in test vector. Skipping ...",
+                    ciphersuite
+                );
+                continue;
+            }
+        };
         println!("Testing test vector for ciphersuite {:?}", ciphersuite);
-        let ciphersuite =
-            Config::ciphersuite(ciphersuite).expect("Config error getting the ciphersuite");
 
         let group_id = hex_to_bytes(&test_vector.group_id);
         let init_secret = hex_to_bytes(&test_vector.initial_init_secret);
