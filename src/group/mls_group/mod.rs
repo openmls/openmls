@@ -39,7 +39,6 @@ pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
     epoch_secrets: EpochSecrets,
-    init_secret: InitSecret,
     secret_tree: RefCell<SecretTree>,
     tree: RefCell<RatchetTree>,
     interim_transcript_hash: Vec<u8>,
@@ -52,7 +51,6 @@ pub struct MlsGroup {
 implement_persistence!(
     MlsGroup,
     group_context,
-    init_secret,
     epoch_secrets,
     secret_tree,
     tree,
@@ -84,23 +82,25 @@ impl MlsGroup {
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
-        let joiner_secret = JoinerSecret::from_commit_and_init_secret(
+        let joiner_secret = JoinerSecret::new(
             ciphersuite,
-            Some(commit_secret),
+            commit_secret,
             &InitSecret::random(ciphersuite.hash_length()),
         );
+
         // TODO #141: Implement PSK
-        let intermediate_secret = IntermediateSecret::new(ciphersuite, joiner_secret, None);
-        let epoch_secret = EpochSecret::new(ciphersuite, intermediate_secret, &group_context);
-        let (epoch_secrets, init_secret, encryption_secret) =
-            EpochSecrets::derive_epoch_secrets(ciphersuite, epoch_secret);
-        let secret_tree = encryption_secret.create_secret_tree(LeafIndex::from(1u32));
+        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
+        key_schedule.add_context(&group_context)?;
+        let epoch_secrets = key_schedule.epoch_secrets(true)?;
+
+        let secret_tree = epoch_secrets
+            .encryption_secret()
+            .create_secret_tree(LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {
             ciphersuite,
             group_context,
             epoch_secrets,
-            init_secret,
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
             interim_transcript_hash,
@@ -141,7 +141,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             &self.context(),
-            &self.epoch_secrets().membership_key,
+            self.epoch_secrets().membership_key(),
         )
         .map_err(GroupError::CodecError)
     }
@@ -165,7 +165,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             &self.context(),
-            &self.epoch_secrets().membership_key,
+            self.epoch_secrets().membership_key(),
         )
         .map_err(GroupError::CodecError)
     }
@@ -191,7 +191,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             &self.context(),
-            &self.epoch_secrets().membership_key,
+            self.epoch_secrets().membership_key(),
         )
         .map_err(GroupError::CodecError)
     }
@@ -247,7 +247,7 @@ impl MlsGroup {
             msg,
             credential_bundle,
             &self.context(),
-            &self.epoch_secrets().membership_key,
+            self.epoch_secrets().membership_key(),
         )?;
         self.encrypt(mls_plaintext, padding_size)
     }
@@ -317,7 +317,7 @@ impl MlsGroup {
             .verify_membership_tag(
                 self.ciphersuite,
                 serialized_context,
-                &self.epoch_secrets().membership_key,
+                self.epoch_secrets().membership_key(),
             )
             .map_err(|_| MLSPlaintextError::InvalidSignature)
     }
@@ -329,7 +329,7 @@ impl MlsGroup {
         if key_length > u16::MAX.into() {
             return Err(ExporterError::KeyLengthTooLong.into());
         }
-        Ok(self.epoch_secrets.exporter_secret.derive_exported_secret(
+        Ok(self.epoch_secrets.exporter_secret().derive_exported_secret(
             self.ciphersuite(),
             label,
             &self.context(),
@@ -363,7 +363,7 @@ impl MlsGroup {
     }
 
     /// Get the ciphersuite implementation used in this group.
-    pub fn ciphersuite(&self) -> &Ciphersuite {
+    pub fn ciphersuite(&self) -> &'static Ciphersuite {
         self.ciphersuite
     }
 
@@ -419,12 +419,12 @@ impl MlsGroup {
         &self.interim_transcript_hash
     }
 
-    #[cfg(all(test, feature = "test-vectors"))]
+    #[cfg(test)]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
         &mut self.epoch_secrets
     }
 
-    #[cfg(all(test, feature = "test-vectors"))]
+    #[cfg(test)]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }

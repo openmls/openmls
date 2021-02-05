@@ -4,35 +4,6 @@
 use super::{index::NodeIndex, path_keys::PathKeys, *};
 use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
 use crate::prelude::Secret;
-use crate::utils::zero;
-
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct CommitSecret {
-    secret: Secret,
-}
-
-impl Default for CommitSecret {
-    fn default() -> Self {
-        CommitSecret {
-            secret: Secret::default(),
-        }
-    }
-}
-
-impl CommitSecret {
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
-    }
-
-    /// Create a CommitSecret consisting of an all-zero string of length
-    /// `hash_length`.
-    pub(crate) fn zero_secret(ciphersuite: &Ciphersuite) -> Self {
-        CommitSecret {
-            secret: Secret::from(zero(ciphersuite.hash_length())),
-        }
-    }
-}
 
 pub(crate) type PathSecrets = Vec<Secret>;
 
@@ -91,9 +62,7 @@ impl PrivateTree {
             leaf_index,
             hpke_private_key: Some(private_key),
             path_keys: PathKeys::default(),
-            commit_secret: CommitSecret {
-                secret: Secret::default(),
-            },
+            commit_secret: CommitSecret::default(),
             path_secrets: Vec::default(),
         }
     }
@@ -218,15 +187,7 @@ impl PrivateTree {
     /// Returns a path secret that's a `CommitSecret`.
     fn generate_commit_secret(&mut self, ciphersuite: &Ciphersuite) {
         let path_secret = self.path_secrets.last().unwrap();
-
-        self.commit_secret = CommitSecret {
-            secret: path_secret.kdf_expand_label(
-                ciphersuite,
-                "path",
-                &[],
-                ciphersuite.hash_length(),
-            ),
-        };
+        self.commit_secret = CommitSecret::new(ciphersuite, path_secret);
     }
 
     /// Generate HPKE key pairs for all path secrets in `path_secrets`.

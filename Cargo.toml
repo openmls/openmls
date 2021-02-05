@@ -42,7 +42,6 @@ evercrypt = { version = "0.0.6", features = ["serialization"] }
 [features]
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
-test-vectors = []
 
 [dev-dependencies]
 criterion = "^0.3"

@@ -27,8 +27,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Tests
         run: cargo test --verbose
-      - name: KAT
-        run: cargo test  --verbose --features="test-vectors" kat
   checks:
     runs-on: ubuntu-latest
     steps:

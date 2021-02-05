@@ -235,12 +235,6 @@ impl Secret {
     pub(crate) fn to_bytes(&self) -> &[u8] {
         &self.value
     }
-
-    #[cfg(all(test, feature = "test-vectors"))]
-    #[doc(hidden)]
-    pub(crate) fn to_vec(&self) -> Vec<u8> {
-        self.value.clone()
-    }
 }
 
 impl Default for Secret {

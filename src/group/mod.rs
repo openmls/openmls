@@ -67,7 +67,7 @@ pub struct GroupContext {
     serialized: Vec<u8>,
 }
 
-#[cfg(all(test, feature = "test-vectors"))]
+#[cfg(test)]
 impl GroupContext {
     pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;

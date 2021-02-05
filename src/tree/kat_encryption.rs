@@ -1,7 +1,7 @@
 //! # Known Answer Tests for encrypting to tree nodes
 //!
-//! This currently differs from the test vectors in https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
-//! See https://github.com/mlswg/mls-implementations/issues/32 for a discussion.
+//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! for more description on the test vectors.
 //!
 //! ## Parameters:
 //! * Ciphersuite
@@ -87,7 +87,7 @@ use crate::{
     group::*,
     key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
-    schedule::{EncryptionSecret, EpochSecret, SenderDataSecret},
+    schedule::{EncryptionSecret, SenderDataSecret},
     test_util::*,
     tree::index::LeafIndex,
     tree::secret_tree::{SecretTree, SecretType},
@@ -238,12 +238,12 @@ fn generate_test_vectors() {
 
     fn generate_test_vector(n_leaves: u32, ciphersuite: &Ciphersuite) -> EncryptionTestVector {
         let ciphersuite_name = ciphersuite.name();
-        let epoch_secret = EpochSecret::from_random(ciphersuite);
-        let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);
-        let encryption_secret_group = EncryptionSecret::new(ciphersuite, &epoch_secret);
-        let encryption_secret_bytes = encryption_secret.to_vec();
+        let epoch_secret = randombytes(ciphersuite.hash_length());
+        let encryption_secret = EncryptionSecret::from(&epoch_secret[..]);
+        let encryption_secret_group = EncryptionSecret::from(&epoch_secret[..]);
+        let encryption_secret_bytes = encryption_secret.as_slice().to_vec();
         let sender_data_secret = SenderDataSecret::from_random(32);
-        let sender_data_secret_bytes = sender_data_secret.to_vec();
+        let sender_data_secret_bytes = sender_data_secret.as_slice();
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(n_leaves));
         let group_secret_tree = SecretTree::new(encryption_secret_group, LeafIndex::from(n_leaves));
 
@@ -262,7 +262,7 @@ fn generate_test_vectors() {
 
         let mut group = group(ciphersuite);
         *group.epoch_secrets_mut().sender_data_secret_mut() =
-            SenderDataSecret::from(sender_data_secret_bytes.as_slice());
+            SenderDataSecret::from(sender_data_secret_bytes);
         *group.secret_tree_mut() = group_secret_tree;
 
         let mut leaves = Vec::new();
@@ -323,7 +323,7 @@ fn generate_test_vectors() {
             cipher_suite: ciphersuite_name as u16,
             n_leaves,
             encryption_secret: bytes_to_hex(&encryption_secret_bytes),
-            sender_data_secret: bytes_to_hex(&sender_data_secret_bytes),
+            sender_data_secret: bytes_to_hex(sender_data_secret_bytes),
             sender_data_info,
             leaves,
         }

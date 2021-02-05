@@ -8,26 +8,37 @@ use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
-use crate::tree::{ParentHashError, TreeError};
+use crate::schedule::errors::KeyScheduleError;
+use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
 
 implement_error! {
     pub enum GroupError {
-        MLSCiphertextError(MLSCiphertextError) =
-            "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.",
-        WelcomeError(WelcomeError) =
-            "See [`WelcomeError`](`WelcomeError`) for details.",
-        ApplyCommitError(ApplyCommitError) =
-            "See [`ApplyCommitError`](`ApplyCommitError`) for details.",
-        CreateCommitError(CreateCommitError) =
-            "See [`CreateCommitError`](`CreateCommitError`) for details.",
-        ConfigError(ConfigError) =
-            "See [`ConfigError`](`crate::config::ConfigError`) for details.",
-        ExporterError(ExporterError) =
-            "See [`ExporterError`](`ExporterError`) for details.",
-        ProposalQueueError(ProposalQueueError) =
-            "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
-        CodecError(CodecError) =
-            "Codec error occurred.",
+        Simple {
+            InitSecretNotFound =
+                "Missing init secret when creating commit.",
+        }
+        Complex {
+            MLSCiphertextError(MLSCiphertextError) =
+                "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.",
+            WelcomeError(WelcomeError) =
+                "See [`WelcomeError`](`WelcomeError`) for details.",
+            ApplyCommitError(ApplyCommitError) =
+                "See [`ApplyCommitError`](`ApplyCommitError`) for details.",
+            CreateCommitError(CreateCommitError) =
+                "See [`CreateCommitError`](`CreateCommitError`) for details.",
+            ConfigError(ConfigError) =
+                "See [`ConfigError`](`crate::config::ConfigError`) for details.",
+            ExporterError(ExporterError) =
+                "See [`ExporterError`](`ExporterError`) for details.",
+            ProposalQueueError(ProposalQueueError) =
+                "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
+            CodecError(CodecError) =
+                "Codec error occurred.",
+            KeyScheduleError(KeyScheduleError) =
+                "An error occurred in the key schedule.",
+            MathError(TreeMathError) =
+                "An error occurred during a tree math operation.",
+        }
     }
 }
 
@@ -64,6 +75,8 @@ implement_error! {
                 "Unable to decrypt the EncryptedGroupSecrets.",
             CodecError(CodecError) =
                 "Codec error occurred.",
+            KeyScheduleError(KeyScheduleError) =
+                "An error occurred in the key schedule.",
         }
     }
 }
@@ -95,6 +108,8 @@ implement_error! {
                 "The proposal queue is missing a proposal for the commit.",
             OwnKeyNotFound =
                   "Missing own key to apply proposal.",
+            InitSecretNotFound =
+                  "Missing init secret to apply proposal.",
         }
         Complex {
             PlaintextSignatureFailure(VerificationError) =
@@ -103,6 +118,8 @@ implement_error! {
                 "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(CodecError) =
                 "Codec error occurred.",
+            KeyScheduleError(KeyScheduleError) =
+                "An error occurred in the key schedule.",
         }
     }
 }

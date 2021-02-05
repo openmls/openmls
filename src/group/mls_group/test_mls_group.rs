@@ -296,7 +296,7 @@ fn test_update_path() {
             .add_membership_tag(
                 ciphersuite,
                 serialized_context,
-                &group_bob.epoch_secrets.membership_key,
+                group_bob.epoch_secrets.membership_key(),
             )
             .expect("Could not add membership key");
 
