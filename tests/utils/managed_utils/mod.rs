@@ -121,12 +121,13 @@ impl<'ks> ManagedTestSetup<'ks> {
             let mut credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
                 let credential = key_store
-                    .fresh_credential(
+                    .generate_credential(
                         identity.clone(),
                         CredentialType::Basic,
                         SignatureScheme::from(*ciphersuite),
                     )
-                    .unwrap();
+                    .unwrap()
+                    .clone();
                 credentials.insert(*ciphersuite, credential);
             }
             key_stores.insert(identity, (credentials, key_store));

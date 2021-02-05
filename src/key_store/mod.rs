@@ -22,28 +22,28 @@ pub struct KeyStore {
 
 impl KeyStore {
     /// Retrieve a `KeyPackageBundle` from the key store given the hash of the
-    /// corresponding `KeyPackage`. Returns an error if no `KeyPackageBundle`
-    /// can be found corresponding to the given `KeyPackage` hash. TODO: This is
-    /// not in use yet, because the groups are not yet refactored to use the key
-    /// store for KeyPackageBundles.
-    pub(crate) fn _key_package_bundle(
-        &self,
+    /// corresponding `KeyPackage`. This removes the `KeyPackageBundle` from the
+    /// store. Returns an error if no `KeyPackageBundle` can be found
+    /// corresponding to the given `KeyPackage` hash. TODO: This is not in use
+    /// yet, because the groups are not yet refactored to use the key store for
+    /// KeyPackageBundles.
+    pub(crate) fn _get_key_package_bundle(
+        &mut self,
         kp_hash: &[u8],
-    ) -> Result<&KeyPackageBundle, KeyStoreError> {
+    ) -> Result<KeyPackageBundle, KeyStoreError> {
         self.key_packages
-            .get(kp_hash)
+            .remove(kp_hash)
             .ok_or(KeyStoreError::NoMatchingKeyPackageBundle)
     }
 
-    /// Retrieve a `CredentialBundle` from the key store given the
+    /// Retrieve a `CredentialBundle` reference from the key store given the
     /// `SignaturePublicKey` of the corresponding `Credential`. Returns an error
     /// if no `CredentialBundle` can be found corresponding to the given
-    /// `SignaturePublicKey`.
-    /// TODO: This is currently public, because the groups are not yet
-    /// refactored to use the key store for KeyPackageBundles and thus in tests
-    /// we need to access the credential bundle to create KeyPackageBundles
-    /// ad-hoc.
-    pub fn credential_bundle(
+    /// `SignaturePublicKey`. TODO: This is currently public, because the groups
+    /// are not yet refactored to use the key store for KeyPackageBundles and
+    /// thus in tests we need to access the credential bundle to create
+    /// KeyPackageBundles ad-hoc.
+    pub fn get_credential_bundle(
         &self,
         cred_pk: &SignaturePublicKey,
     ) -> Result<&CredentialBundle, KeyStoreError> {
@@ -57,32 +57,32 @@ impl KeyStore {
     /// error if no `CredentialBundle` can be found in the `KeyStore`
     /// corresponding to the given `Credential` or if an error occurred during
     /// the creation of the `KeyPackageBundle`.
-    pub fn fresh_key_package(
+    pub fn generate_key_package(
         &mut self,
         ciphersuites: &[CiphersuiteName],
         credential: &Credential,
         extensions: Vec<Box<dyn Extension>>,
-    ) -> Result<KeyPackage, KeyStoreError> {
-        let credential_bundle = self.credential_bundle(credential.signature_key())?;
+    ) -> Result<&KeyPackage, KeyStoreError> {
+        let credential_bundle = self.get_credential_bundle(credential.signature_key())?;
         let kpb = KeyPackageBundle::new(ciphersuites, credential_bundle, extensions)?;
-        let kp = kpb.key_package().clone();
-        let kp_hash = kp.hash();
-        self.key_packages.insert(kp_hash, kpb);
+        let kp_hash = kpb.key_package().hash();
+        self.key_packages.insert(kp_hash.clone(), kpb);
+        let kp = self.key_packages.get(&kp_hash).unwrap().key_package();
         Ok(kp)
     }
 
     /// Generate a fresh `CredentialBundle` with the given parameters and store
     /// it in the `KeyStore`. Returns the corresponding `Credential`.
-    pub fn fresh_credential(
+    pub fn generate_credential(
         &mut self,
         identity: Vec<u8>,
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,
-    ) -> Result<Credential, KeyStoreError> {
+    ) -> Result<&Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
-        let credential = cb.credential().clone();
-        self.credentials
-            .insert(credential.signature_key().clone(), cb);
+        let signature_key = cb.credential().signature_key().clone();
+        self.credentials.insert(signature_key.clone(), cb);
+        let credential = self.credentials.get(&signature_key).unwrap().credential();
         Ok(credential)
     }
 }

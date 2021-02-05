@@ -532,7 +532,7 @@ impl<'a> ManagedGroup<'a> {
 
         let credential_bundle = self
             .key_store
-            .credential_bundle(self.credential()?.signature_key())?;
+            .get_credential_bundle(self.credential()?.signature_key())?;
 
         let ciphertext = self.group.create_application_message(
             &self.aad,
@@ -660,7 +660,7 @@ impl<'a> ManagedGroup<'a> {
     pub fn credential_bundle(&self) -> Result<&CredentialBundle, ManagedGroupError> {
         Ok(self
             .key_store
-            .credential_bundle(self.credential()?.signature_key())?)
+            .get_credential_bundle(self.credential()?.signature_key())?)
     }
 
     /// Get group ID

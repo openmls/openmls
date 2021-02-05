@@ -41,7 +41,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let credential_bundle = self
             .key_store
-            .credential_bundle(credential.signature_key())
+            .get_credential_bundle(credential.signature_key())
             .unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle =
@@ -68,7 +68,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let credential_bundle = self
             .key_store
-            .credential_bundle(credential.signature_key())
+            .get_credential_bundle(credential.signature_key())
             .unwrap();
         let mandatory_extensions = Vec::new();
         let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(

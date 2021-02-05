@@ -11,15 +11,16 @@ fn test_managed_group_persistence() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .fresh_credential(
+        .generate_credential(
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap();
+        .unwrap()
+        .clone();
 
     let alice_credential_bundle = key_store
-        .credential_bundle(alice_credential.signature_key())
+        .get_credential_bundle(alice_credential.signature_key())
         .unwrap();
 
     // Generate KeyPackages
@@ -94,39 +95,42 @@ fn remover() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .fresh_credential(
+        .generate_credential(
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap();
+        .unwrap()
+        .clone();
 
     let bob_credential = key_store
-        .fresh_credential(
+        .generate_credential(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap();
+        .unwrap()
+        .clone();
 
     let charlie_credential = key_store
-        .fresh_credential(
+        .generate_credential(
             "Charly".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap();
+        .unwrap()
+        .clone();
 
     let alice_credential_bundle = key_store
-        .credential_bundle(alice_credential.signature_key())
+        .get_credential_bundle(alice_credential.signature_key())
         .unwrap();
 
     let bob_credential_bundle = key_store
-        .credential_bundle(bob_credential.signature_key())
+        .get_credential_bundle(bob_credential.signature_key())
         .unwrap();
 
     let charlie_credential_bundle = key_store
-        .credential_bundle(charlie_credential.signature_key())
+        .get_credential_bundle(charlie_credential.signature_key())
         .unwrap();
 
     // Generate KeyPackages
