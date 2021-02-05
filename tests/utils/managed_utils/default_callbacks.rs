@@ -1,5 +1,12 @@
 use openmls::prelude::*;
 
+fn own_identity(managed_group: &ManagedGroup) -> Vec<u8> {
+    match managed_group.credential() {
+        Ok(credential) => credential.identity().clone(),
+        Err(_) => "us".as_bytes().to_vec(),
+    }
+}
+
 // Callbacks
 fn member_added(
     managed_group: &ManagedGroup,
@@ -7,14 +14,10 @@ fn member_added(
     sender: &Credential,
     added_member: &Credential,
 ) {
-    let own_identity = match managed_group.credential() {
-        Ok(credential) => credential.identity().clone(),
-        Err(_) => "us".as_bytes().to_vec(),
-    };
     println!(
         "AddProposal received in group '{:?}' by '{:?}': '{:?}' added '{:?}'",
         &managed_group.group_id().as_slice(),
-        own_identity,
+        own_identity(managed_group),
         sender.identity(),
         added_member.identity(),
     );
@@ -22,14 +25,10 @@ fn member_added(
 fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageError) {
     match error {
         InvalidMessageError::InvalidCiphertext(aad) => {
-            let own_identity = match managed_group.credential() {
-                Ok(credential) => credential.identity().clone(),
-                Err(_) => "us".as_bytes().to_vec(),
-            };
             println!(
                 "Invalid ciphertext message received in group '{:?}' by '{:?}' with AAD {:?}",
                 &managed_group.group_id().as_slice(),
-                own_identity,
+                own_identity(managed_group),
                 aad
             );
         }
