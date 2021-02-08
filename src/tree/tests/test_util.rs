@@ -1,11 +1,8 @@
 //! A bunch of test utilities for tree tests.
 
-#[cfg(test)]
-use super::index::NodeIndex;
-#[cfg(test)]
+use crate::tree::index::NodeIndex;
 use crate::utils::*;
 
-#[cfg(test)]
 /// Generate a random sequence of node indices.
 /// Note that this can be an endless loop if len > u8::MAX
 pub(crate) fn generate_path_u8(len: usize) -> Vec<NodeIndex> {
@@ -20,7 +17,6 @@ pub(crate) fn generate_path_u8(len: usize) -> Vec<NodeIndex> {
     out
 }
 
-#[cfg(test)]
 /// Generate a random sequence of node indices.
 /// Note that this can be an endless loop if len > u32::MAX
 pub(crate) fn generate_path_u32(len: usize) -> Vec<NodeIndex> {

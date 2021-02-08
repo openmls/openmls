@@ -1,5 +1,7 @@
-use super::*;
-use crate::schedule::psk::*;
+use crate::{
+    messages::{Codec, Config, GroupId, PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
+    schedule::psk::{BranchPsk, ExternalPsk, PSKType, PreSharedKeyID, Psk, ReinitPsk},
+};
 
 /// Test the encoding for PreSharedKeyProposal, that also covers some of the
 /// other PSK-related structs

@@ -1,10 +1,8 @@
-use super::index::{LeafIndex, NodeIndex};
-use super::treemath::{TreeMathError, _descendants, _descendants_alt};
 use crate::config::*;
+use crate::tree::index::{LeafIndex, NodeIndex};
+use crate::tree::treemath::{descendants, descendants_alt};
 use crate::tree::{treemath, *};
 use std::convert::TryFrom;
-use std::fs::File;
-use std::io::Read;
 
 /// Tests the variants of the direct path calculations.
 /// Expected result:
@@ -64,8 +62,8 @@ fn verify_descendants() {
     for size in 1..LEAVES {
         for node in 0..(size * 2 - 1) {
             assert_eq!(
-                _descendants(NodeIndex::from(node), LeafIndex::from(size)),
-                _descendants_alt(NodeIndex::from(node), LeafIndex::from(size))
+                descendants(NodeIndex::from(node), LeafIndex::from(size)),
+                descendants_alt(NodeIndex::from(node), LeafIndex::from(size))
             );
         }
     }

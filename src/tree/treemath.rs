@@ -193,7 +193,8 @@ pub(crate) fn leaf_count(number_of_nodes: NodeIndex) -> LeafIndex {
 
 /// Returns the list of nodes that are descendants of a given parent node,
 /// including the parent node itself
-pub(crate) fn _descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
+#[cfg(test)]
+pub(crate) fn descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     let l = level(x);
     if l == 0 {
         vec![x]
@@ -212,16 +213,17 @@ pub(crate) fn _descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
 /// Returns the list of nodes that are descendants of a given parent node,
 /// including the parent node itself
 /// (Alternative, easier to verify implementation)
-pub(crate) fn _descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
+#[cfg(test)]
+pub(crate) fn descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
     if level(x) == 0 {
         vec![x]
     } else {
         let left_child = left(x).unwrap();
         let right_child = right(x, size).unwrap();
         [
-            _descendants_alt(left_child, size),
+            descendants_alt(left_child, size),
             vec![x],
-            _descendants_alt(right_child, size),
+            descendants_alt(right_child, size),
         ]
         .concat()
     }
