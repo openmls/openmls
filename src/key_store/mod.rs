@@ -41,6 +41,9 @@ use crate::{
 
 pub mod errors;
 
+#[cfg(test)]
+mod test_key_store;
+
 pub use errors::KeyStoreError;
 
 #[derive(Debug, Default)]
