@@ -22,9 +22,7 @@ use crate::utils::*;
 pub(crate) use serde::{Deserialize, Serialize};
 
 pub use codec::*;
-pub(crate) use errors::{
-    ApplyCommitError, CreateCommitError, ExporterError, GroupError, WelcomeError,
-};
+pub use errors::{ApplyCommitError, CreateCommitError, ExporterError, GroupError, WelcomeError};
 pub use group_context::*;
 pub use managed_group::*;
 pub use mls_group::*;
