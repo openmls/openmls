@@ -9,7 +9,7 @@ use crate::codec::{Codec, CodecError, Cursor};
 use crate::extensions::ExtensionType;
 
 pub mod codec;
-mod errors;
+pub mod errors;
 pub use codec::*;
 pub use errors::ConfigError;
 

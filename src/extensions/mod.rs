@@ -4,7 +4,7 @@ use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
 pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
-mod errors;
+pub mod errors;
 mod key_package_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
