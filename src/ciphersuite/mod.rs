@@ -508,6 +508,12 @@ impl Ciphersuite {
     pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HPKEKeyPair {
         self.hpke.derive_key_pair(&ikm.value)
     }
+
+    /// Get a `Vec<u8>` of length `len` filled with random values
+    #[cfg(test)]
+    pub(crate) fn random_vec(len: usize) -> Vec<u8> {
+        get_random_vec(len)
+    }
 }
 
 impl AeadKey {

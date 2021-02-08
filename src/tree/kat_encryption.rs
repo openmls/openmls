@@ -140,6 +140,7 @@ fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
         ciphersuite.name(),
         key_package_bundle,
         GroupConfig::default(),
+        None, /* Initial PSK */
     )
     .unwrap()
 }
@@ -158,6 +159,7 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
         ciphersuite.name(),
         key_package_bundle,
         GroupConfig::default(),
+        None, /* Initial PSK */
     )
     .unwrap()
 }
@@ -230,7 +232,6 @@ fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>
         ciphertext.encode_detached().unwrap(),
     )
 }
-
 #[test]
 fn generate_test_vectors() {
     let mut tests = Vec::new();

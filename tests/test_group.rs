@@ -61,6 +61,7 @@ fn create_commit_optional_path() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
+            None, /* Initial PSK */
         )
         .unwrap();
 
@@ -78,6 +79,7 @@ fn create_commit_optional_path() {
                 &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
                 &[],
                 true, /* force self-update */
+                None, /* No PSK fetcher */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -104,6 +106,7 @@ fn create_commit_optional_path() {
                 epoch_proposals,
                 &[],
                 false, /* don't force selfupdate */
+                None,  /* PSK fetcher */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -115,7 +118,7 @@ fn create_commit_optional_path() {
         assert!(!commit.has_path() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
-        match group_alice.apply_commit(&mls_plaintext_commit, epoch_proposals, &[]) {
+        match group_alice.apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None) {
             Ok(_) => {}
             Err(e) => panic!("Error applying commit: {:?}", e),
         };
@@ -126,6 +129,7 @@ fn create_commit_optional_path() {
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
+            None, /* PSK fetcher */
         ) {
             Ok(group) => group,
             Err(e) => panic!("Error creating group from Welcome: {:?}", e),
@@ -153,6 +157,7 @@ fn create_commit_optional_path() {
             proposals,
             &[],
             false, /* force self update */
+            None,  /* PSK fetcher */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -165,7 +170,12 @@ fn create_commit_optional_path() {
 
         // Apply UpdateProposal
         group_alice
-            .apply_commit(&commit_mls_plaintext, proposals, &[kpb_option.unwrap()])
+            .apply_commit(
+                &commit_mls_plaintext,
+                proposals,
+                &[kpb_option.unwrap()],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit");
     }
 }
@@ -206,6 +216,7 @@ fn basic_group_setup() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
+            None, /* Initial PSK */
         )
         .expect("Could not create group.");
 
@@ -219,6 +230,7 @@ fn basic_group_setup() {
             &[&bob_add_proposal],
             &[],
             true,
+            None, /* PSK fetcher */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -290,6 +302,7 @@ fn group_operations() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
+            None, /* Initial PSK */
         )
         .expect("Could not create group.");
 
@@ -305,6 +318,7 @@ fn group_operations() {
                 epoch_proposals,
                 &[],
                 false,
+                None, /* PSK fetcher */
             )
             .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
@@ -316,7 +330,12 @@ fn group_operations() {
         assert!(welcome_bundle_alice_bob_option.is_some());
 
         group_alice
-            .apply_commit(&mls_plaintext_commit, epoch_proposals, &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                epoch_proposals,
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("error applying commit");
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
@@ -324,6 +343,7 @@ fn group_operations() {
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
+            None, /* PSK fetcher */
         ) {
             Ok(group) => group,
             Err(e) => panic!("Error creating group from Welcome: {:?}", e),
@@ -374,6 +394,7 @@ fn group_operations() {
             &[&update_proposal_bob],
             &[],
             false, /* force self update */
+            None,  /* PSK fetcher */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -385,13 +406,19 @@ fn group_operations() {
         assert!(welcome_option.is_none());
 
         group_alice
-            .apply_commit(&mls_plaintext_commit, &[&update_proposal_bob], &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                &[&update_proposal_bob],
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit (Alice)");
         group_bob
             .apply_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_bob],
                 &[kpb_option.unwrap()],
+                None, /* PSK fetcher */
             )
             .expect("Error applying commit (Bob)");
 
@@ -422,6 +449,7 @@ fn group_operations() {
             &[&update_proposal_alice],
             &[],
             false, /* force self update */
+            None,  /* PSK fetcher */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -435,10 +463,16 @@ fn group_operations() {
                 &mls_plaintext_commit,
                 &[&update_proposal_alice],
                 &[kpb_option.unwrap()],
+                None, /* PSK fetcher */
             )
             .expect("Error applying commit (Alice)");
         group_bob
-            .apply_commit(&mls_plaintext_commit, &[&update_proposal_alice], &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                &[&update_proposal_alice],
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit (Bob)");
 
         // Make sure that both groups have the same public tree
@@ -468,6 +502,7 @@ fn group_operations() {
             &[&update_proposal_bob],
             &[],
             false, /* force self update */
+            None,  /* PSK fetcher */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -481,6 +516,7 @@ fn group_operations() {
                 &mls_plaintext_commit,
                 &[&update_proposal_bob],
                 &[kpb_option.unwrap()],
+                None, /* PSK fetcher */
             )
             .expect("Error applying commit (Alice)");
         group_bob
@@ -488,6 +524,7 @@ fn group_operations() {
                 &mls_plaintext_commit,
                 &[&update_proposal_bob],
                 &[bob_update_key_package_bundle],
+                None, /* PSK fetcher */
             )
             .expect("Error applying commit (Bob)");
 
@@ -524,6 +561,7 @@ fn group_operations() {
                 &[&add_charlie_proposal_bob],
                 &[],
                 false, /* force self update */
+                None,  /* PSK fetcher */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -536,10 +574,20 @@ fn group_operations() {
         assert!(welcome_for_charlie_option.is_some());
 
         group_alice
-            .apply_commit(&mls_plaintext_commit, &[&add_charlie_proposal_bob], &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                &[&add_charlie_proposal_bob],
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit (Alice)");
         group_bob
-            .apply_commit(&mls_plaintext_commit, &[&add_charlie_proposal_bob], &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                &[&add_charlie_proposal_bob],
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit (Bob)");
 
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
@@ -547,6 +595,7 @@ fn group_operations() {
             welcome_for_charlie_option.unwrap(),
             Some(ratchet_tree),
             charlie_key_package_bundle,
+            None, /* PSK fetcher */
         ) {
             Ok(group) => group,
             Err(e) => panic!("Error creating group from Welcome: {:?}", e),
@@ -605,6 +654,7 @@ fn group_operations() {
             &[&update_proposal_charlie],
             &[],
             false, /* force self update */
+            None,  /* PSK fetcher */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -614,16 +664,27 @@ fn group_operations() {
         assert!(kpb_option.is_some());
 
         group_alice
-            .apply_commit(&mls_plaintext_commit, &[&update_proposal_charlie], &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                &[&update_proposal_charlie],
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit (Alice)");
         group_bob
-            .apply_commit(&mls_plaintext_commit, &[&update_proposal_charlie], &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                &[&update_proposal_charlie],
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit (Bob)");
         group_charlie
             .apply_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_charlie],
                 &[kpb_option.unwrap()],
+                None, /* PSK fetcher */
             )
             .expect("Error applying commit (Charlie)");
 
@@ -647,6 +708,7 @@ fn group_operations() {
             &[&remove_bob_proposal_charlie],
             &[],
             false, /* force self update */
+            None,  /* PSK fetcher */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -656,11 +718,21 @@ fn group_operations() {
         assert!(kpb_option.is_some());
 
         group_alice
-            .apply_commit(&mls_plaintext_commit, &[&remove_bob_proposal_charlie], &[])
+            .apply_commit(
+                &mls_plaintext_commit,
+                &[&remove_bob_proposal_charlie],
+                &[],
+                None, /* PSK fetcher */
+            )
             .expect("Error applying commit (Alice)");
         assert!(
             group_bob
-                .apply_commit(&mls_plaintext_commit, &[&remove_bob_proposal_charlie], &[],)
+                .apply_commit(
+                    &mls_plaintext_commit,
+                    &[&remove_bob_proposal_charlie],
+                    &[],
+                    None, /* PSK fetcher */
+                )
                 .unwrap_err()
                 == GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved)
         );
@@ -669,6 +741,7 @@ fn group_operations() {
                 &mls_plaintext_commit,
                 &[&remove_bob_proposal_charlie],
                 &[kpb_option.unwrap()],
+                None, /* PSK fetcher */
             )
             .expect("Error applying commit (Charlie)");
 

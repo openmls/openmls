@@ -1,5 +1,7 @@
 //! # Pre shared keys.
 
+use super::*;
+use crate::group::{GroupEpoch, GroupId};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -32,40 +34,71 @@ impl TryFrom<u8> for PSKType {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ExternalPsk {
-    pub(crate) psk_id: Vec<u8>,
+    psk_id: Vec<u8>,
 }
 
 impl ExternalPsk {
+    pub fn new(psk_id: Vec<u8>) -> Self {
+        Self { psk_id }
+    }
     pub fn psk_id(&self) -> &[u8] {
         &self.psk_id
     }
 }
+
+#[cfg(test)]
+pub struct ExternalPskBundle {
+    secret: Secret,
+    nonce: Vec<u8>,
+    external_psk: ExternalPsk,
+}
+
+#[cfg(test)]
+impl ExternalPskBundle {
+    pub fn new(ciphersuite: &Ciphersuite, secret: Secret, psk_id: Vec<u8>) -> Self {
+        Self {
+            secret,
+            nonce: Ciphersuite::random_vec(ciphersuite.hash_length()),
+            external_psk: ExternalPsk { psk_id },
+        }
+    }
+    pub fn to_presharedkey_id(&self) -> PreSharedKeyID {
+        PreSharedKeyID {
+            psk_type: PSKType::External,
+            psk: Psk::External(self.external_psk.clone()),
+            psk_nonce: self.nonce.clone(),
+        }
+    }
+    pub fn secret(&self) -> &Secret {
+        &self.secret
+    }
+}
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ReinitPsk {
-    pub(crate) psk_group_id: Vec<u8>,
-    pub(crate) psk_epoch: u64,
+    pub(crate) psk_group_id: GroupId,
+    pub(crate) psk_epoch: GroupEpoch,
 }
 
 impl ReinitPsk {
-    pub fn psk_group_id(&self) -> &[u8] {
+    pub fn psk_group_id(&self) -> &GroupId {
         &self.psk_group_id
     }
-    pub fn psk_epoch(&self) -> u64 {
+    pub fn psk_epoch(&self) -> GroupEpoch {
         self.psk_epoch
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct BranchPsk {
-    pub(crate) psk_group_id: Vec<u8>,
-    pub(crate) psk_epoch: u64,
+    pub(crate) psk_group_id: GroupId,
+    pub(crate) psk_epoch: GroupEpoch,
 }
 
 impl BranchPsk {
-    pub fn psk_group_id(&self) -> &[u8] {
+    pub fn psk_group_id(&self) -> &GroupId {
         &self.psk_group_id
     }
-    pub fn psk_epoch(&self) -> u64 {
+    pub fn psk_epoch(&self) -> GroupEpoch {
         self.psk_epoch
     }
 }
@@ -103,6 +136,13 @@ pub struct PreSharedKeyID {
 }
 
 impl PreSharedKeyID {
+    pub fn new(psk_type: PSKType, psk: Psk, psk_nonce: Vec<u8>) -> Self {
+        Self {
+            psk_type,
+            psk,
+            psk_nonce,
+        }
+    }
     pub fn psktype(&self) -> &PSKType {
         &self.psk_type
     }
@@ -124,5 +164,58 @@ pub struct PreSharedKeys {
 impl PreSharedKeys {
     pub fn psks(&self) -> &Vec<PreSharedKeyID> {
         &self.psks
+    }
+}
+
+/// struct {
+///     PreSharedKeyID id;
+///     uint16 index;
+///     uint16 count;
+/// } PSKLabel;
+pub(crate) struct PskLabel<'a> {
+    pub(crate) id: &'a PreSharedKeyID,
+    pub(crate) index: u16,
+    pub(crate) count: u16,
+}
+
+impl<'a> PskLabel<'a> {
+    /// Create a new `PskLabel`
+    fn new(id: &'a PreSharedKeyID, index: u16, count: u16) -> Self {
+        Self { id, index, count }
+    }
+}
+
+/// This contains the `psk-secret` calculated from the PSKs contained in a Commit or a PreSharedKey proposal.
+pub struct PskSecret {
+    secret: Secret,
+}
+
+impl PskSecret {
+    /// Create a new `PskSecret` from PSK IDs and PSKs
+    pub fn new(ciphersuite: &Ciphersuite, psk_ids: &[PreSharedKeyID], psks: &[Secret]) -> Self {
+        let mut secret = vec![];
+        for (index, psk) in psks.iter().enumerate() {
+            let psk_input = ciphersuite.hkdf_extract(None, psk);
+            let psk_label = PskLabel::new(&psk_ids[index], index as u16, psks.len() as u16)
+                .encode_detached()
+                // It is safe to unwrap here, because the struct contains no vectors
+                .unwrap();
+
+            let psk_secret = psk_input.kdf_expand_label(
+                ciphersuite,
+                "derived psk",
+                &psk_label,
+                ciphersuite.hash_length(),
+            );
+            secret.extend_from_slice(psk_secret.to_bytes());
+        }
+        Self {
+            secret: Secret::from(secret),
+        }
+    }
+
+    /// Return the inner secret
+    pub fn secret(&self) -> &Secret {
+        &self.secret
     }
 }

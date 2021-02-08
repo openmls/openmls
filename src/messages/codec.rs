@@ -110,16 +110,11 @@ impl Codec for GroupSecrets {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let joiner_secret = JoinerSecret::decode(cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
-        let _psks = Option::<PreSharedKeys>::decode(cursor)?;
-        if _psks.is_some() {
-            log::error!(
-                "Error occurred while decoding GroupSecrets: Found PSKs that are not yet supported"
-            );
-        }
+        let psks = Option::<PreSharedKeys>::decode(cursor)?;
         Ok(Self {
             joiner_secret,
             path_secret,
-            _psks,
+            psks,
         })
     }
 }
