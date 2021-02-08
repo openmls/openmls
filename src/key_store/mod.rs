@@ -51,8 +51,9 @@ mod test_key_store;
 pub use errors::KeyStoreError;
 
 #[derive(Debug, Default)]
-/// The `KeyStore` contains private key material of `Credentials` and
-/// `KeyPackage`s.
+/// The `KeyStore` contains `CredentialBundle`s and `KeyPackageBundle`s and
+/// makes them available via information in the corresponding `Credential` and
+/// `KeyPackage` instances.
 pub struct KeyStore {
     // Map from signature public keys to credential bundles
     credentials: HashMap<SignaturePublicKey, CredentialBundle>,
