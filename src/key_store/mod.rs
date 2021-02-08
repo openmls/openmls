@@ -9,6 +9,10 @@
 //! and grants access to `CredentialBundle` references via the
 //! `SignaturePublicKey` of the corresponding `Credential`.
 //!
+//! A `KeyStore` is meant to be used across multiple `ManagedGroup` instances to
+//! allow sharing the same `CredentialBundle`. If this is not desired, multiple
+//! `KeyStore` instances can be used across groups.
+//!
 //! # Example
 //!
 //! A simple example for the generation and the retrieval of a
