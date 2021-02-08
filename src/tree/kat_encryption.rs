@@ -349,8 +349,16 @@ fn run_test_vectors() {
         assert_eq!(n_leaves, test_vector.leaves.len() as u32);
         let ciphersuite =
             CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-        let ciphersuite =
-            Config::ciphersuite(ciphersuite).expect("Config error getting the ciphersuite");
+        let ciphersuite = match Config::ciphersuite(ciphersuite) {
+            Ok(cs) => cs,
+            Err(_) => {
+                println!(
+                    "Unsupported ciphersuite {} in test vector. Skipping ...",
+                    ciphersuite
+                );
+                continue;
+            }
+        };
 
         let mut secret_tree = SecretTree::new(
             EncryptionSecret::from(hex_to_bytes(&test_vector.encryption_secret).as_slice()),

@@ -11,6 +11,9 @@ mod group_context;
 mod managed_group;
 mod mls_group;
 
+#[cfg(test)]
+mod tests;
+
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::extensions::*;
@@ -19,9 +22,7 @@ use crate::utils::*;
 pub(crate) use serde::{Deserialize, Serialize};
 
 pub use codec::*;
-pub(crate) use errors::{
-    ApplyCommitError, CreateCommitError, ExporterError, GroupError, WelcomeError,
-};
+pub use errors::{ApplyCommitError, CreateCommitError, ExporterError, GroupError, WelcomeError};
 pub use group_context::*;
 pub use managed_group::*;
 pub use mls_group::*;

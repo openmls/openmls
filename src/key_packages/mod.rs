@@ -19,7 +19,7 @@ use serde::{
 
 mod codec;
 pub mod errors;
-pub(crate) use errors::*;
+pub use errors::*;
 
 #[cfg(test)]
 mod test_key_packages;

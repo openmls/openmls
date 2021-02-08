@@ -5,3 +5,4 @@ delivery-service/ds/target
 .vscode
 Cargo.lock
 *.code-workspace
+/test_vectors/

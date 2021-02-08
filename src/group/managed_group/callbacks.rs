@@ -56,7 +56,7 @@ use crate::schedule::psk::*;
 ///     fn(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, message: &[u8]);
 /// // Errors
 /// pub type InvalidMessageReceived = fn(managed_group: &ManagedGroup, error: InvalidMessageError);
-/// pub type ErrorOccured = fn(managed_group: &ManagedGroup, error: ManagedGroupError);
+/// pub type ErrorOccurred = fn(managed_group: &ManagedGroup, error: ManagedGroupError);
 /// ```
 #[derive(Default, Copy, Clone)]
 pub struct ManagedGroupCallbacks {
@@ -73,7 +73,7 @@ pub struct ManagedGroupCallbacks {
     pub(crate) reinit_received: Option<ReInitReceived>,
     pub(crate) app_message_received: Option<AppMessageReceived>,
     pub(crate) invalid_message_received: Option<InvalidMessageReceived>,
-    pub(crate) error_occured: Option<ErrorOccured>,
+    pub(crate) error_occurred: Option<ErrorOccurred>,
 }
 
 impl<'a> ManagedGroupCallbacks {
@@ -89,7 +89,7 @@ impl<'a> ManagedGroupCallbacks {
             reinit_received: None,
             app_message_received: None,
             invalid_message_received: None,
-            error_occured: None,
+            error_occurred: None,
         }
     }
     /// Validator function for AddProposals
@@ -146,8 +146,8 @@ impl<'a> ManagedGroupCallbacks {
         self
     }
     /// Event listener function for errors that occur
-    pub fn with_error_occured(mut self, error_occured: ErrorOccured) -> Self {
-        self.error_occured = Some(error_occured);
+    pub fn with_error_occurred(mut self, error_occurred: ErrorOccurred) -> Self {
+        self.error_occurred = Some(error_occurred);
         self
     }
 }
@@ -222,4 +222,4 @@ pub type AppMessageReceived =
     fn(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, message: &[u8]);
 // Errors
 pub type InvalidMessageReceived = fn(managed_group: &ManagedGroup, error: InvalidMessageError);
-pub type ErrorOccured = fn(managed_group: &ManagedGroup, error: ManagedGroupError);
+pub type ErrorOccurred = fn(managed_group: &ManagedGroup, error: ManagedGroupError);

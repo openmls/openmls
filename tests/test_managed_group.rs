@@ -203,7 +203,7 @@ fn managed_group_operations() {
                 .with_member_updated(member_updated)
                 .with_app_message_received(app_message_received)
                 .with_invalid_message_received(invalid_message_received)
-                .with_error_occured(error_occured);
+                .with_error_occurred(error_occured);
             let managed_group_config =
                 ManagedGroupConfig::new(handshake_message_format, update_policy, 0, 0, callbacks);
 

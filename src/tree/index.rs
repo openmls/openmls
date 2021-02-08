@@ -63,21 +63,21 @@ impl From<u32> for LeafIndex {
     }
 }
 
-impl Into<u32> for LeafIndex {
-    fn into(self) -> u32 {
-        self.0
-    }
-}
-
-impl Into<usize> for LeafIndex {
-    fn into(self) -> usize {
-        self.0 as usize
-    }
-}
-
 impl From<usize> for LeafIndex {
     fn from(i: usize) -> LeafIndex {
         LeafIndex(i as u32)
+    }
+}
+
+impl From<LeafIndex> for u32 {
+    fn from(i: LeafIndex) -> u32 {
+        i.as_u32()
+    }
+}
+
+impl From<LeafIndex> for usize {
+    fn from(i: LeafIndex) -> usize {
+        i.as_usize()
     }
 }
 

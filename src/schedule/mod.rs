@@ -128,7 +128,10 @@ pub mod codec;
 pub mod errors;
 pub(crate) mod psk;
 
-use errors::{ErrorState, KeyScheduleError};
+#[cfg(test)]
+mod kat_key_schedule;
+
+pub use errors::{ErrorState, KeyScheduleError};
 pub use psk::{PreSharedKeyID, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -164,6 +167,23 @@ impl CommitSecret {
             secret: Secret::from(zero(ciphersuite.hash_length())),
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn random(length: usize) -> Self {
+        Self {
+            secret: Secret::random(length),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_slice(b: &[u8]) -> Self {
+        Self { secret: b.into() }
+    }
 }
 
 /// The `InitSecret` is used to connect the next epoch to the current one.
@@ -186,6 +206,23 @@ impl InitSecret {
         InitSecret {
             secret: Secret::random(length),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn clone(&self) -> Self {
+        Self {
+            secret: self.secret.clone(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_slice(b: &[u8]) -> Self {
+        Self { secret: b.into() }
     }
 }
 
@@ -212,6 +249,18 @@ impl JoinerSecret {
         JoinerSecret {
             secret: intermediate_secret.derive_secret(ciphersuite, "joiner"),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn clone(&self) -> Self {
+        Self {
+            secret: self.secret.clone(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
     }
 }
 
@@ -356,6 +405,11 @@ impl WelcomeSecret {
         let welcome_key = AeadKey::from_welcome_secret(ciphersuite, &self);
         (welcome_key, welcome_nonce)
     }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
+    }
 }
 
 /// An intermediate secret in the key schedule, the `EpochSecret` is used to
@@ -451,6 +505,11 @@ impl ExporterSecret {
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
     }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
+    }
 }
 
 /// A secret that can be used among members to make sure everyone has the same
@@ -474,6 +533,11 @@ impl AuthenticationSecret {
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
     }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
+    }
 }
 
 /// A secret used when joining a group with an external Commit.
@@ -493,6 +557,11 @@ impl ExternalSecret {
     /// Derive the external keypair for External Commits
     pub(crate) fn derive_external_keypair(&self, ciphersuite: &Ciphersuite) -> HPKEKeyPair {
         ciphersuite.derive_hpke_keypair(&self.secret)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
     }
 }
 
@@ -515,6 +584,16 @@ impl ConfirmationKey {
     /// Get the internal `Secret`.
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_secret(secret: Secret) -> Self {
+        Self { secret }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
     }
 }
 
@@ -541,6 +620,11 @@ impl MembershipKey {
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
+    }
 }
 
 /// A secret used in cross-group operations.
@@ -560,6 +644,11 @@ impl ResumptionSecret {
     /// Get the internal `Secret`.
     pub fn secret(&self) -> &Secret {
         &self.secret
+    }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
     }
 }
 

@@ -7,7 +7,7 @@ use crate::{ciphersuite::*, prelude::PreSharedKeyID};
 
 // Tree modules
 pub(crate) mod codec;
-pub(crate) mod errors;
+pub mod errors;
 pub(crate) mod hashes;
 pub mod index;
 pub mod node;

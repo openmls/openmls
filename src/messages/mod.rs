@@ -434,8 +434,8 @@ impl<'a> PublicGroupStateTBS<'a> {
         let payload = self
             .encode_detached()
             .map_err(CredentialError::CodecError)?;
-        Ok(credential_bundle
+        credential_bundle
             .sign(&payload)
-            .map_err(|_| CredentialError::SignatureError)?)
+            .map_err(|_| CredentialError::SignatureError)
     }
 }
