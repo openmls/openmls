@@ -12,7 +12,7 @@ impl Codec for CiphersuiteName {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(CiphersuiteName::try_from(u16::decode(cursor)?)?)
+        CiphersuiteName::try_from(u16::decode(cursor)?)
     }
 }
 

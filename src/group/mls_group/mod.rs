@@ -432,7 +432,7 @@ impl MlsGroup {
 
 // Helper functions
 
-fn update_confirmed_transcript_hash(
+pub(crate) fn update_confirmed_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_content: &MLSPlaintextCommitContent,
     interim_transcript_hash: &[u8],
@@ -441,11 +441,11 @@ fn update_confirmed_transcript_hash(
     Ok(ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat()))
 }
 
-fn update_interim_transcript_hash(
+pub(crate) fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, CodecError> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached().unwrap();
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached()?;
     Ok(ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat()))
 }
