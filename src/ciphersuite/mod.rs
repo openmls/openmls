@@ -56,7 +56,7 @@ pub enum CiphersuiteName {
 implement_enum_display!(CiphersuiteName);
 
 /// SignatureScheme according to IANA TLS parameters
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum SignatureScheme {
@@ -323,7 +323,7 @@ pub struct SignaturePrivateKey {
     value: Vec<u8>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
 pub struct SignaturePublicKey {
     signature_scheme: SignatureScheme,
     value: Vec<u8>,
@@ -700,22 +700,6 @@ impl SignatureKeypair {
     /// Get the private and public key objects
     pub fn into_tuple(self) -> (SignaturePrivateKey, SignaturePublicKey) {
         (self.private_key, self.public_key)
-    }
-}
-
-impl PartialEq for SignaturePublicKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
-}
-
-impl Eq for SignaturePublicKey {
-    fn assert_receiver_is_total_eq(&self) {}
-}
-
-impl Hash for SignaturePublicKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.value.hash(state)
     }
 }
 
