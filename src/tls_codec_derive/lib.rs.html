@@ -287,7 +287,7 @@
                     <span class="ident">syn</span>::<span class="ident">Type</span>::<span class="ident">Array</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="macro">quote</span><span class="macro">!</span> { <span class="op">&lt;</span>#<span class="ident">a</span><span class="op">&gt;</span> }
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;Invalid field type for {:?}&quot;</span>, <span class="ident">f</span>.<span class="ident">ident</span>)),
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Invalid field type for {:?}&quot;</span>, <span class="ident">f</span>.<span class="ident">ident</span>),
                 });
 
                 <span class="kw">let</span> <span class="ident">gen</span> <span class="op">=</span> <span class="macro">quote</span><span class="macro">!</span> {

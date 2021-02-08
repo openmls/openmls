@@ -210,21 +210,21 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LeafIndex</span> {
-    <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LeafIndex</span> {
-    <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>
-    }
-}
-
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LeafIndex</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">i</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LeafIndex</span> {
         <span class="ident">LeafIndex</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u32</span>)
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">u32</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">i</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
+        <span class="ident">i</span>.<span class="ident">as_u32</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">i</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+        <span class="ident">i</span>.<span class="ident">as_usize</span>()
     }
 }
 
