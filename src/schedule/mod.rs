@@ -131,7 +131,7 @@ pub(crate) mod psk;
 #[cfg(test)]
 mod kat_key_schedule;
 
-use errors::{ErrorState, KeyScheduleError};
+pub use errors::{ErrorState, KeyScheduleError};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
