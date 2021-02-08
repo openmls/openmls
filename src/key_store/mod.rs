@@ -18,7 +18,8 @@
 //! A simple example for the generation and the retrieval of a
 //! `CredentialBundle`.
 //!
-//! ``` let mut key_store = KeyStore::default();
+//! ```
+//! let mut key_store = KeyStore::default();
 //!
 //! // Generate credential bundles
 //! let alice_credential = key_store
