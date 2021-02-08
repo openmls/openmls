@@ -7,8 +7,8 @@ implement_error! {
            NoMatchingKeyPackageBundle = "No `KeyPackageBundle` found for the given `KeyPackage` hash.",
        }
        Complex {
-           KeyPackageError(KeyPackageError) = "Error while creating `KeyPackageBundle`. See [`KeyPackageError`](`crate::key_packages::KeyPackageError`) for details.",
-           CredentialError(CredentialError) = "Error while creating `CredentialBundle`. See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
+           KeyPackageError(KeyPackageError) = "Error while creating `KeyPackageBundle`. See [`KeyPackageError`](`crate::prelude::KeyPackageError`) for details.",
+           CredentialError(CredentialError) = "Error while creating `CredentialBundle`. See [`CredentialError`](`crate::prelude::CredentialError`) for details.",
        }
     }
 }
