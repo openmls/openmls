@@ -1,4 +1,4 @@
-//! A storage solution for private key material.
+//! A storage solution for cryptographic key material.
 //!
 //! This module provides access to the `KeyStore` struct, which manages the
 //! storage of `CredentialBundle` and `KeyPackageBundle` instances. The
