@@ -887,7 +887,7 @@
 
 <span class="comment">// Helper functions</span>
 
-<span class="kw">fn</span> <span class="ident">update_confirmed_transcript_hash</span>(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_confirmed_transcript_hash</span>(
     <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
     <span class="ident">mls_plaintext_commit_content</span>: <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitContent</span>,
     <span class="ident">interim_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
@@ -896,7 +896,7 @@
     <span class="prelude-val">Ok</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span>[<span class="ident">interim_transcript_hash</span>, <span class="kw-2">&amp;</span><span class="ident">commit_content_bytes</span>].<span class="ident">concat</span>()))
 }
 
-<span class="kw">fn</span> <span class="ident">update_interim_transcript_hash</span>(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_interim_transcript_hash</span>(
     <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
     <span class="ident">mls_plaintext_commit_auth_data</span>: <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitAuthData</span>,
     <span class="ident">confirmed_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
