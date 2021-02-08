@@ -11,6 +11,9 @@ mod group_context;
 mod managed_group;
 mod mls_group;
 
+#[cfg(test)]
+mod tests;
+
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::extensions::*;

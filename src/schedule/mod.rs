@@ -581,6 +581,11 @@ impl ConfirmationKey {
     }
 
     #[cfg(test)]
+    pub(crate) fn from_secret(secret: Secret) -> Self {
+        Self { secret }
+    }
+
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
