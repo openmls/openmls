@@ -1,3 +1,35 @@
+//! A storage solution for private key material.
+//!
+//! This module provides access to the `KeyStore` struct, which manages the
+//! storage of `CredentialBundle` and `KeyPackageBundle` instances. The
+//! development of this module is tracked in #337, which also includes a
+//! roadmap.
+//!
+//! The current key store enables the storage of `CredentialBundle` instances,
+//! and grants access to `CredentialBundle` references via the
+//! `SignaturePublicKey` of the corresponding `Credential`.
+//!
+//! # Example
+//!
+//! A simple example for the generation and the retrieval of a
+//! `CredentialBundle`.
+//!
+//! ``` let mut key_store = KeyStore::default();
+//!
+//! // Generate credential bundles
+//! let alice_credential = key_store
+//!     .generate_credential(
+//!         "Alice".into(),
+//!         CredentialType::Basic,
+//!         SignatureScheme::ED25519,
+//!     )
+//!     .unwrap()
+//!     .clone();
+//!
+//! let alice_credential_bundle = key_store
+//!     .get_credential_bundle(alice_credential.signature_key())
+//!     .unwrap();
+//! ```
 use std::collections::HashMap;
 
 use crate::{
@@ -72,7 +104,8 @@ impl KeyStore {
     }
 
     /// Generate a fresh `CredentialBundle` with the given parameters and store
-    /// it in the `KeyStore`. Returns the corresponding `Credential`.
+    /// it in the `KeyStore`. Returns the corresponding `Credential` or an error
+    /// if the creation of the `CredentialBundle` fails.
     pub fn generate_credential(
         &mut self,
         identity: Vec<u8>,
