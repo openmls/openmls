@@ -106,7 +106,7 @@ fn impl_deserialize(ast: DeriveInput) -> Result<TokenStream> {
                     syn::Type::Array(a) => {
                         quote! { <#a> }
                     }
-                    _ => panic!(format!("Invalid field type for {:?}", f.ident)),
+                    _ => panic!("Invalid field type for {:?}", f.ident),
                 });
 
                 let gen = quote! {

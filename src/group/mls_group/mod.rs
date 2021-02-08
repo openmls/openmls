@@ -446,6 +446,6 @@ pub(crate) fn update_interim_transcript_hash(
     mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, CodecError> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached().unwrap();
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached()?;
     Ok(ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat()))
 }
