@@ -12,7 +12,7 @@ pub(crate) use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
