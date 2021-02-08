@@ -69,7 +69,7 @@ macro_rules! implement_persistence {
                         $fields,
                     )*
                     ciphersuite,
-                };
+                }
 
                 struct MyVisitor;
 
