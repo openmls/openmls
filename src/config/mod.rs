@@ -9,9 +9,9 @@ use crate::codec::{Codec, CodecError, Cursor};
 use crate::extensions::ExtensionType;
 
 pub mod codec;
-pub mod errors;
+mod errors;
 pub use codec::*;
-pub(crate) use errors::ConfigError;
+pub use errors::ConfigError;
 
 /// This value is used as the default lifetime of `KeyPackage`s if no default
 /// lifetime is configured. The value is in seconds and amounts to 3 * 28 Days,

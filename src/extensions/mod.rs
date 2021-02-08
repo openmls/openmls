@@ -4,14 +4,14 @@ use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
 pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
-pub mod errors;
+mod errors;
 mod key_package_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
 
 pub use capabilities_extension::CapabilitiesExtension;
-pub(crate) use errors::*;
+pub use errors::*;
 pub use key_package_id_extension::KeyIDExtension;
 pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
