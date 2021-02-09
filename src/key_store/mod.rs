@@ -19,6 +19,8 @@
 //! `CredentialBundle`.
 //!
 //! ```
+//! use openmls::prelude::*;
+//!
 //! let mut key_store = KeyStore::default();
 //!
 //! // Generate credential bundles
