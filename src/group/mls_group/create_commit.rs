@@ -2,7 +2,7 @@ use crate::ciphersuite::signable::Signable;
 use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::CredentialBundle;
-use crate::framing::{sender::*, *};
+use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::messages::*;

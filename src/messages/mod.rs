@@ -22,16 +22,7 @@ pub use errors::*;
 use proposals::*;
 
 #[cfg(test)]
-mod test_proposals;
-
-#[cfg(test)]
-mod test_welcome;
-
-#[cfg(test)]
-mod test_codec;
-
-#[cfg(test)]
-mod test_pgs;
+mod tests;
 
 /// Welcome Messages
 ///

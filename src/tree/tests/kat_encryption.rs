@@ -82,7 +82,6 @@ use crate::{
     codec::*,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
-    framing::sender::*,
     framing::*,
     group::*,
     key_packages::KeyPackageBundle,

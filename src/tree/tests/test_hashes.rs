@@ -1,4 +1,4 @@
-use super::*;
+use crate::tree::*;
 
 #[test]
 fn test_parent_hash() {

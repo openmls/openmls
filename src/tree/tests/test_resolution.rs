@@ -1,4 +1,4 @@
-use super::*;
+use crate::tree::*;
 
 /// This test makes sure the filtering of the exclusion list during resolution
 /// works as intended.
