@@ -419,7 +419,7 @@ impl Ciphersuite {
         hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice())
     }
 
-    /// Get the length of the used hash algorithm.
+    /// Get the length of the used mac algorithm.
     pub(crate) fn mac_length(&self) -> usize {
         // TODO: don't hard-code tag bytes, but use the mac_size func (Issue #205)
         16
