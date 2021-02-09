@@ -229,6 +229,8 @@
 <span id="226">226</span>
 <span id="227">227</span>
 <span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ordering</span>;
@@ -425,7 +427,8 @@
 
 <span class="doccomment">/// Returns the list of nodes that are descendants of a given parent node,</span>
 <span class="doccomment">/// including the parent node itself</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_descendants</span>(<span class="ident">x</span>: <span class="ident">NodeIndex</span>, <span class="ident">size</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span> {
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">descendants</span>(<span class="ident">x</span>: <span class="ident">NodeIndex</span>, <span class="ident">size</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="ident">level</span>(<span class="ident">x</span>);
     <span class="kw">if</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>]
@@ -444,16 +447,17 @@
 <span class="doccomment">/// Returns the list of nodes that are descendants of a given parent node,</span>
 <span class="doccomment">/// including the parent node itself</span>
 <span class="doccomment">/// (Alternative, easier to verify implementation)</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_descendants_alt</span>(<span class="ident">x</span>: <span class="ident">NodeIndex</span>, <span class="ident">size</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span> {
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">descendants_alt</span>(<span class="ident">x</span>: <span class="ident">NodeIndex</span>, <span class="ident">size</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="ident">level</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>]
     } <span class="kw">else</span> {
         <span class="kw">let</span> <span class="ident">left_child</span> <span class="op">=</span> <span class="ident">left</span>(<span class="ident">x</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">right_child</span> <span class="op">=</span> <span class="ident">right</span>(<span class="ident">x</span>, <span class="ident">size</span>).<span class="ident">unwrap</span>();
         [
-            <span class="ident">_descendants_alt</span>(<span class="ident">left_child</span>, <span class="ident">size</span>),
+            <span class="ident">descendants_alt</span>(<span class="ident">left_child</span>, <span class="ident">size</span>),
             <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>],
-            <span class="ident">_descendants_alt</span>(<span class="ident">right_child</span>, <span class="ident">size</span>),
+            <span class="ident">descendants_alt</span>(<span class="ident">right_child</span>, <span class="ident">size</span>),
         ]
         .<span class="ident">concat</span>()
     }
