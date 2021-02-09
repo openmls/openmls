@@ -421,6 +421,7 @@ impl Ciphersuite {
 
     /// Get the length of the used hash algorithm.
     pub(crate) fn mac_length(&self) -> usize {
+        // TODO: don't hard-code tag bytes, but use the mac_size func (Issue #205)
         16
     }
 
@@ -606,7 +607,6 @@ impl AeadKey {
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AeadError> {
-        // TODO: don't hard-code tag bytes (Issue #205)
         if ciphertext.len() < self.mac_len {
             error!(
                 "Ciphertext is too short (less than {:?} bytes)",
