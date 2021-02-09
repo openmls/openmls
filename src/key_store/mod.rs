@@ -59,22 +59,21 @@ pub use errors::KeyStoreError;
 /// `KeyPackage` instances.
 pub struct KeyStore {
     // Map from signature public keys to credential bundles
-    credentials: HashMap<SignaturePublicKey, CredentialBundle>,
-    key_packages: HashMap<Vec<u8>, KeyPackageBundle>,
+    credential_bundles: HashMap<SignaturePublicKey, CredentialBundle>,
+    init_key_package_bundles: HashMap<Vec<u8>, KeyPackageBundle>,
 }
 
 impl KeyStore {
-    /// Retrieve a `KeyPackageBundle` from the key store given the hash of the
-    /// corresponding `KeyPackage`. This removes the `KeyPackageBundle` from the
-    /// store. Returns an error if no `KeyPackageBundle` can be found
-    /// corresponding to the given `KeyPackage` hash. TODO: This is not in use
-    /// yet, because the groups are not yet refactored to use the key store for
-    /// KeyPackageBundles.
-    pub(crate) fn _get_key_package_bundle(
+    /// Remove a `KeyPackageBundle` from the key store given the hash of the
+    /// corresponding `KeyPackage` and return it. Returns an error if no
+    /// `KeyPackageBundle` can be found corresponding to the given `KeyPackage`
+    /// hash. TODO: This is not in use yet, because the groups are not yet
+    /// refactored to use the key store for KeyPackageBundles.
+    pub(crate) fn _take_key_package_bundle(
         &mut self,
         kp_hash: &[u8],
     ) -> Result<KeyPackageBundle, KeyStoreError> {
-        self.key_packages
+        self.init_key_package_bundles
             .remove(kp_hash)
             .ok_or(KeyStoreError::NoMatchingKeyPackageBundle)
     }
@@ -90,7 +89,7 @@ impl KeyStore {
         &self,
         cred_pk: &SignaturePublicKey,
     ) -> Result<&CredentialBundle, KeyStoreError> {
-        self.credentials
+        self.credential_bundles
             .get(cred_pk)
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)
     }
@@ -109,8 +108,12 @@ impl KeyStore {
         let credential_bundle = self.get_credential_bundle(credential.signature_key())?;
         let kpb = KeyPackageBundle::new(ciphersuites, credential_bundle, extensions)?;
         let kp_hash = kpb.key_package().hash();
-        self.key_packages.insert(kp_hash.clone(), kpb);
-        let kp = self.key_packages.get(&kp_hash).unwrap().key_package();
+        self.init_key_package_bundles.insert(kp_hash.clone(), kpb);
+        let kp = self
+            .init_key_package_bundles
+            .get(&kp_hash)
+            .unwrap()
+            .key_package();
         Ok(kp)
     }
 
@@ -125,8 +128,12 @@ impl KeyStore {
     ) -> Result<&Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
         let signature_key = cb.credential().signature_key().clone();
-        self.credentials.insert(signature_key.clone(), cb);
-        let credential = self.credentials.get(&signature_key).unwrap().credential();
+        self.credential_bundles.insert(signature_key.clone(), cb);
+        let credential = self
+            .credential_bundles
+            .get(&signature_key)
+            .unwrap()
+            .credential();
         Ok(credential)
     }
 }
