@@ -1,9 +1,8 @@
 //! Unit test for PathKeys
 
-#[cfg(test)]
-use super::{path_keys::*, test_util::*};
-#[cfg(test)]
+use super::test_util::*;
 use crate::ciphersuite::*;
+use crate::tree::path_keys::*;
 
 #[test]
 fn test_insert_retrieve() {
