@@ -295,10 +295,11 @@ pub(crate) struct GroupSecrets {
 
 impl GroupSecrets {
     /// Create new encoded group secrets.
-    pub(crate) fn new_encoded(
+    pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
         path_secret: Option<PathSecret>,
-        psks_option: Option<&PreSharedKeys>,
+        //psks_option: Option<&PreSharedKeys>,
+        psks_option: impl Into<Option<&'a PreSharedKeys>> + crate::codec::Codec,
     ) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
         joiner_secret.encode(buffer)?;

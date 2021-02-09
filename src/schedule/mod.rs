@@ -131,7 +131,7 @@ pub(crate) mod psk;
 #[cfg(test)]
 mod kat_key_schedule;
 
-pub use errors::{ErrorState, KeyScheduleError};
+pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
 pub use psk::{PreSharedKeyID, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -8,7 +8,7 @@ use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
-use crate::schedule::errors::KeyScheduleError;
+use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
 
 implement_error! {
@@ -148,9 +148,15 @@ implement_error! {
 
 implement_error! {
     pub enum PskError {
-        NoPskFetcherProvided =
-            "A PSK was needed, but no PSK fetcher function was provided.",
-        PskIdNotFound =
-            "No PSK was found for PSK ID.",
+        Simple {
+            NoPskFetcherProvided =
+                "A PSK was needed, but no PSK fetcher function was provided.",
+            PskIdNotFound =
+                "No PSK was found for PSK ID.",
+        }
+        Complex {
+            PskSecretError(PskSecretError) =
+                "An error occured when concatenating the PSKs.",
+        }
     }
 }

@@ -729,11 +729,7 @@ impl RatchetTree {
                 psk_proposal.psk
             })
             .collect();
-        if psks.is_empty() {
-            println!("No PSKs");
-        } else {
-            println!("Found PSKs");
-        }
+
         let presharedkeys = PreSharedKeys { psks };
 
         // Determine if Commit needs a path field

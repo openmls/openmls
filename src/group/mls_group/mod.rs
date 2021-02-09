@@ -66,7 +66,7 @@ impl MlsGroup {
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
-        psk_option: Option<PskSecret>,
+        psk_option: impl Into<Option<PskSecret>>,
     ) -> Result<Self, GroupError> {
         debug!("Created group {:x?}", id);
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
@@ -470,6 +470,10 @@ impl MlsGroup {
 }
 
 // Callback functions
+
+/// This callback functions is used in several places in `MlsGroup`.
+/// It gets called whenever the key schedule is advanced and references to PSKs are encountered.
+/// Since the PSKs are to be trandmitted out-of-band, they need to be fetched from wherever they are stored.
 pub type PskFetcher = fn(psks: &PreSharedKeys) -> Option<Vec<Secret>>;
 
 // Helper functions
@@ -505,7 +509,7 @@ fn psk_output(
                 match psk_fetcher(&presharedkeys) {
                     Some(psks) => {
                         // Combine the PSKs in to a PskSecret
-                        let psk_secret = PskSecret::new(ciphersuite, &presharedkeys.psks, &psks);
+                        let psk_secret = PskSecret::new(ciphersuite, &presharedkeys.psks, &psks)?;
                         Ok(Some(psk_secret))
                     }
                     None => Err(PskError::PskIdNotFound),

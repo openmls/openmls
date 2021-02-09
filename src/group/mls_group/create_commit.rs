@@ -272,13 +272,8 @@ impl PlaintextSecret {
             };
 
             // Create the GroupSecrets object for the respective member.
-            let psks_option = if presharedkeys.psks.is_empty() {
-                None
-            } else {
-                Some(presharedkeys)
-            };
             let group_secrets_bytes =
-                GroupSecrets::new_encoded(joiner_secret, path_secret, psks_option)?;
+                GroupSecrets::new_encoded(joiner_secret, path_secret, presharedkeys)?;
             plaintext_secrets.push(PlaintextSecret {
                 public_key: key_package.hpke_init_key().clone(),
                 group_secrets_bytes,

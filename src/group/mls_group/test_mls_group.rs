@@ -1,3 +1,5 @@
+use test_macros::ctest;
+
 use crate::{
     group::GroupEpoch,
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfo},
@@ -5,6 +7,8 @@ use crate::{
     schedule::psk::*,
     tree::{TreeError, UpdatePath, UpdatePathNode},
 };
+
+use std::convert::TryFrom;
 
 #[test]
 fn test_mls_group_persistence() {
@@ -317,141 +321,142 @@ fn test_update_path() {
     }
 }
 
-#[test]
-/// Test several scenarios when PSKs are used in a group
-fn test_psks() {
-    fn psk_fetcher(psks: &PreSharedKeys) -> Option<Vec<Secret>> {
-        let psk_id = vec![1u8, 2, 3];
-        let secret = Secret::from(vec![4u8, 5, 6]);
+// Test several scenarios when PSKs are used in a group
+ctest!(test_psks {
+        fn psk_fetcher(psks: &PreSharedKeys) -> Option<Vec<Secret>> {
+            let psk_id = vec![1u8, 2, 3];
+            let secret = Secret::from(vec![4u8, 5, 6]);
 
-        let psk = &psks.psks[0];
-        if psk.psk_type == PSKType::External {
-            if let Psk::External(external_psk) = &psk.psk {
-                if external_psk.psk_id() == psk_id {
-                    Some(vec![secret])
+            let psk = &psks.psks[0];
+            if psk.psk_type == PSKType::External {
+                if let Psk::External(external_psk) = &psk.psk {
+                    if external_psk.psk_id() == psk_id {
+                        Some(vec![secret])
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             } else {
                 None
             }
-        } else {
-            None
         }
-    }
 
-    for ciphersuite in Config::supported_ciphersuites() {
-        // Basic group setup.
-        let group_aad = b"Alice's test group";
+    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
-        // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
 
-        // Generate KeyPackages
-        let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-                .unwrap();
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
-        let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
-        let bob_key_package = bob_key_package_bundle.key_package();
+    // Generate KeyPackages
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+            .unwrap();
 
-        // === Alice creates a group with a PSK ===
-        let group_id = [1, 2, 3, 4];
-        let psk_id = vec![1u8, 2, 3];
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+            .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
 
-        let external_psk_bundle = ExternalPskBundle::new(
-            ciphersuite,
-            Secret::random(ciphersuite.hash_length()),
-            psk_id,
-        );
-        let preshared_key_id = external_psk_bundle.to_presharedkey_id();
-        let initial_psk = PskSecret::new(
-            ciphersuite,
-            &[preshared_key_id.clone()],
-            &[external_psk_bundle.secret().clone()],
-        );
-        let mut alice_group = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            alice_key_package_bundle,
-            GroupConfig::default(),
-            Some(initial_psk),
-        )
-        .unwrap();
+    // === Alice creates a group with a PSK ===
+    let group_id = [1, 2, 3, 4];
+    let psk_id = vec![1u8, 2, 3];
 
-        // === Alice creates a PSK proposal ===
-        let psk_proposal = alice_group
-            .create_presharedkey_proposal(group_aad, &alice_credential_bundle, preshared_key_id)
-            .expect("Could not create PSK proposal");
+    let external_psk_bundle = ExternalPskBundle::new(
+        ciphersuite,
+        Secret::random(ciphersuite.hash_length()),
+        psk_id,
+    );
+    let preshared_key_id = external_psk_bundle.to_presharedkey_id();
+    let initial_psk = PskSecret::new(
+        ciphersuite,
+        &[preshared_key_id.clone()],
+        &[external_psk_bundle.secret().clone()],
+    ).expect("Could not create PskSecret");
+    let mut alice_group = MlsGroup::new(
+        &group_id,
+        ciphersuite.name(),
+        alice_key_package_bundle,
+        GroupConfig::default(),
+        Some(initial_psk),
+    )
+    .unwrap();
 
-        // === Alice adds Bob ===
-        let bob_add_proposal = alice_group
-            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
-            .expect("Could not create proposal");
-        let epoch_proposals = &[&bob_add_proposal, &psk_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
-            .create_commit(
-                group_aad,
-                &alice_credential_bundle,
-                epoch_proposals,
-                &[],
-                false,
-                Some(psk_fetcher),
-            )
-            .expect("Error creating commit");
+    // === Alice creates a PSK proposal ===
+    let psk_proposal = alice_group
+        .create_presharedkey_proposal(group_aad, &alice_credential_bundle, preshared_key_id)
+        .expect("Could not create PSK proposal");
 
-        alice_group
-            .apply_commit(
-                &mls_plaintext_commit,
-                epoch_proposals,
-                &[],
-                Some(psk_fetcher),
-            )
-            .expect("error applying commit");
-        let ratchet_tree = alice_group.tree().public_key_tree_copy();
-
-        let group_bob = MlsGroup::new_from_welcome(
-            welcome_bundle_alice_bob_option.unwrap(),
-            Some(ratchet_tree),
-            bob_key_package_bundle,
+    // === Alice adds Bob ===
+    let bob_add_proposal = alice_group
+        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .expect("Could not create proposal");
+    let epoch_proposals = &[&bob_add_proposal, &psk_proposal];
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+        .create_commit(
+            group_aad,
+            &alice_credential_bundle,
+            epoch_proposals,
+            &[],
+            false,
             Some(psk_fetcher),
         )
+        .expect("Error creating commit");
+
+    alice_group
+        .apply_commit(
+            &mls_plaintext_commit,
+            epoch_proposals,
+            &[],
+            Some(psk_fetcher),
+        )
+        .expect("error applying commit");
+    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+
+    let group_bob = MlsGroup::new_from_welcome(
+        welcome_bundle_alice_bob_option.unwrap(),
+        Some(ratchet_tree),
+        bob_key_package_bundle,
+        Some(psk_fetcher),
+    )
+    .unwrap();
+
+    // === Bob updates and commits ===
+    let bob_update_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+            .unwrap();
+
+    let update_proposal_bob = group_bob
+        .create_update_proposal(
+            &[],
+            &bob_credential_bundle,
+            bob_update_key_package_bundle.key_package().clone(),
+        )
+        .expect("Could not create proposal.");
+    let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
+        .create_commit(
+            &[],
+            &bob_credential_bundle,
+            &[&update_proposal_bob],
+            &[],
+            false, /* force self update */
+            None,
+        )
         .unwrap();
 
-        // === Bob updates and commits ===
-        let bob_update_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
-
-        let update_proposal_bob = group_bob
-            .create_update_proposal(
-                &[],
-                &bob_credential_bundle,
-                bob_update_key_package_bundle.key_package().clone(),
-            )
-            .expect("Could not create proposal.");
-        let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
-            .create_commit(
-                &[],
-                &bob_credential_bundle,
-                &[&update_proposal_bob],
-                &[],
-                false, /* force self update */
-                None,
-            )
-            .unwrap();
-    }
-}
+});

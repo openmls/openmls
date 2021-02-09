@@ -1,6 +1,7 @@
 //! Codec implementations for message structs.
 
 use super::*;
+use crate::codec::Codec;
 use crate::{key_packages::KeyPackage, schedule::psk::PreSharedKeyID};
 
 use std::convert::TryFrom;
