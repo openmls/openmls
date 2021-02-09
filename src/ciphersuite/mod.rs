@@ -566,11 +566,11 @@ impl AeadKey {
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn from_random(aead_mode: AeadMode) -> Self {
+    pub fn from_random(ciphersuite: &Ciphersuite) -> Self {
         AeadKey {
-            aead_mode,
-            value: aead_key_gen(aead_mode),
-            mac_len: 16,
+            aead_mode: ciphersuite.aead(),
+            value: aead_key_gen(ciphersuite.aead()),
+            mac_len: ciphersuite.mac_length(),
         }
     }
 
