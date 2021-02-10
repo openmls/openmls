@@ -87,10 +87,10 @@ impl KeyStore {
     /// KeyPackageBundles ad-hoc.
     pub fn get_credential_bundle(
         &self,
-        cred_pk: &SignaturePublicKey,
+        signature_public_key: &SignaturePublicKey,
     ) -> Result<&CredentialBundle, KeyStoreError> {
         self.credential_bundles
-            .get(cred_pk)
+            .get(signature_public_key)
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)
     }
 
