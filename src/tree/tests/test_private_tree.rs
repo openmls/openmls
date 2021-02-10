@@ -1,15 +1,17 @@
 //! Unit test for PrivateTree
 
-#[cfg(test)]
-use super::{
-    index::{LeafIndex, NodeIndex},
-    private_tree::*,
-    test_util::*,
+use super::test_util::*;
+use crate::{
+    ciphersuite::*,
+    credentials::*,
+    key_packages::*,
+    tree::{
+        index::{LeafIndex, NodeIndex},
+        private_tree::*,
+    },
+    utils::*,
 };
-#[cfg(test)]
-use crate::{ciphersuite::*, credentials::*, key_packages::*, utils::*};
 
-#[cfg(test)]
 // Common setup for tests.
 fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex, Vec<NodeIndex>) {
     let credential_bundle = CredentialBundle::new(
@@ -26,7 +28,6 @@ fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex,
     (key_package_bundle, own_index, direct_path)
 }
 
-#[cfg(test)]
 // Common tests after setup.
 fn test_private_tree(
     private_tree: &PrivateTree,
