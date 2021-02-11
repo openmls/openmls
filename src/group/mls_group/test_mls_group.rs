@@ -434,7 +434,7 @@ ctest!(test_psks {
         bob_key_package_bundle,
         Some(psk_fetcher),
     )
-    .unwrap();
+    .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle =
