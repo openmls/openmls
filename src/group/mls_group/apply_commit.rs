@@ -63,7 +63,7 @@ impl MlsGroup {
 
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
         // Determine if Commit has a path
-        let commit_secret = if let Some(path) = commit.path.clone() {
+        let commit_secret = if let Some(path) = &commit.path {
             // Verify KeyPackage and MLSPlaintext signature & membership tag
             // TODO #106: Support external members
             let kp = &path.leaf_key_package;
@@ -92,7 +92,7 @@ impl MlsGroup {
                 // later.
                 provisional_tree.update_path(
                     sender,
-                    &path,
+                    path,
                     &serialized_context,
                     apply_proposals_values.exclusion_list(),
                 )?

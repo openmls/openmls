@@ -3,8 +3,9 @@ use crate::tree::{index::*, node::*, *};
 
 use evercrypt::prelude::*;
 
-use rand::rngs::OsRng;
-use rand::RngCore;
+#[cfg(test)]
+use rand::{distributions::uniform::SampleRange, thread_rng, Rng};
+use rand::{rngs::OsRng, RngCore};
 
 pub(crate) fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
@@ -12,6 +13,11 @@ pub(crate) fn randombytes(n: usize) -> Vec<u8> {
 
 pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
+}
+
+#[cfg(test)]
+pub(crate) fn u32_range<T: SampleRange<u32>>(range: T) -> u32 {
+    thread_rng().gen_range(range)
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]

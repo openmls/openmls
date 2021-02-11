@@ -278,8 +278,16 @@ impl Signable for GroupInfo {
 ///   opaque path_secret<1..255>;
 /// } PathSecret;
 /// ```
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct PathSecret {
-    pub path_secret: Secret,
+    pub(crate) path_secret: Secret,
+}
+
+impl From<Secret> for PathSecret {
+    fn from(path_secret: Secret) -> Self {
+        Self { path_secret }
+    }
 }
 
 /// GroupSecrets
@@ -304,7 +312,7 @@ impl GroupSecrets {
     /// Create new encoded group secrets.
     pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
-        path_secret: Option<PathSecret>,
+        path_secret: Option<&'a PathSecret>,
         psks_option: impl Into<Option<&'a PreSharedKeys>> + crate::codec::Codec,
     ) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();

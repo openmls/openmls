@@ -237,40 +237,12 @@ impl PlaintextSecret {
         provisional_tree: &RatchetTree,
         presharedkeys: &PreSharedKeys,
     ) -> Result<Vec<Self>, GroupError> {
-        // Get a Vector containing the node indices of the direct path to the
-        // root from our own leaf.
-        let dirpath = treemath::leaf_direct_path(
-            provisional_tree.own_node_index(),
-            provisional_tree.leaf_count(),
-        )?;
-
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
             let key_package_hash = key_package.hash();
 
-            let path_secrets = provisional_tree.path_secrets();
-            let path_secret = if !path_secrets.is_empty() {
-                // Compute the index of the common ancestor lowest in the
-                // tree of our own leaf and the given index.
-                let common_ancestor_index = treemath::common_ancestor_index(
-                    index,
-                    provisional_tree.own_node_index().into(),
-                );
-                // Get the position of the node index that represents the
-                // common ancestor in the direct path. We can unwrap here,
-                // because the direct path must contain the shared ancestor.
-                let position = dirpath
-                    .iter()
-                    .position(|&x| x == common_ancestor_index)
-                    .unwrap();
-                // We have to clone the element of the vector here to
-                // preserve its order.
-                let path_secret = path_secrets[position].clone();
-                Some(PathSecret { path_secret })
-            } else {
-                None
-            };
+            let path_secret = provisional_tree.path_secret(index);
 
             // Create the GroupSecrets object for the respective member.
             let psks_option = if presharedkeys.psks.is_empty() {

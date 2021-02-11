@@ -150,7 +150,7 @@ impl MlsGroup {
             // Derive path secrets and generate keypairs
             let new_public_keys = private_tree.continue_path_secrets(
                 &ciphersuite,
-                path_secret.path_secret,
+                path_secret,
                 &common_path,
             );
 

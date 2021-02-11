@@ -60,6 +60,7 @@ impl<'a> ParentHashInput<'a> {
             None => return Err(ParentHashError::EmptyParentNode),
         };
         let original_child_resolution = tree.original_child_resolution(child_index);
+        println!("original_child_resolution: {:?}", original_child_resolution);
         Ok(Self {
             public_key,
             parent_hash,
@@ -205,17 +206,30 @@ impl RatchetTree {
         node_parent_hash(self, index.into(), index.into())
     }
 
+    /// Computes the parent hashes for all leaf nodes and returns the parent hashes
+    /// for the parent hash extensions.
+    #[cfg(test)]
+    pub(crate) fn all_parent_hashes(&mut self) -> Vec<Vec<u8>> {
+        (0..self.nodes.len())
+            .step_by(2)
+            .map(|index| {
+                self.set_parent_hashes(LeafIndex::try_from(NodeIndex::from(index)).unwrap())
+            })
+            .collect()
+    }
+
     /// Verify the parent hash of a tree node. Returns `Ok(())` if the parent
     /// hash has successfully been verified and `false` otherwise.
     pub fn verify_parent_hash(&self, index: NodeIndex, node: &Node) -> Result<(), ParentHashError> {
         // "Let L and R be the left and right children of P, respectively"
         let left = treemath::left(index).map_err(|_| ParentHashError::InputNotParentNode)?;
         let right = treemath::right(index, self.leaf_count()).unwrap();
+
         // Extract the parent hash field
-        let parent_hash_field = match node.parent_hash() {
-            Some(parent_hash) => parent_hash,
-            None => return Err(ParentHashError::InputNotParentNode),
-        };
+        let parent_hash_field = node
+            .parent_hash()
+            .ok_or(ParentHashError::InputNotParentNode)?;
+
         // Current hash with right child resolution
         let current_hash_right =
             ParentHashInput::new(&self, index, right, parent_hash_field)?.hash(&self.ciphersuite);
