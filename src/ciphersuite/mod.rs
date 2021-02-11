@@ -38,7 +38,6 @@ mod test_ciphersuite;
 
 pub(crate) const NONCE_BYTES: usize = 12;
 pub(crate) const REUSE_GUARD_BYTES: usize = 4;
-pub(crate) const TAG_BYTES: usize = 16;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -289,6 +288,7 @@ impl ExporterSecret {
 pub struct AeadKey {
     aead_mode: AeadMode,
     value: Vec<u8>,
+    mac_len: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -419,6 +419,12 @@ impl Ciphersuite {
         hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice())
     }
 
+    /// Get the length of the used mac algorithm.
+    pub(crate) fn mac_length(&self) -> usize {
+        // TODO: don't hard-code tag bytes, but use the mac_size func (Issue #205)
+        16
+    }
+
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
         let salt = salt_option.unwrap_or_default();
@@ -517,6 +523,7 @@ impl AeadKey {
         AeadKey {
             aead_mode: ciphersuite.aead,
             value: secret.value,
+            mac_len: ciphersuite.mac_length(),
         }
     }
 
@@ -535,6 +542,7 @@ impl AeadKey {
         AeadKey {
             aead_mode: ciphersuite.aead,
             value: key.value,
+            mac_len: ciphersuite.mac_length(),
         }
     }
 
@@ -553,15 +561,17 @@ impl AeadKey {
         AeadKey {
             aead_mode: ciphersuite.aead,
             value: aead_secret.value,
+            mac_len: ciphersuite.mac_length(),
         }
     }
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn from_random(aead_mode: AeadMode) -> Self {
+    pub fn from_random(ciphersuite: &Ciphersuite) -> Self {
         AeadKey {
-            aead_mode,
-            value: aead_key_gen(aead_mode),
+            aead_mode: ciphersuite.aead(),
+            value: aead_key_gen(ciphersuite.aead()),
+            mac_len: ciphersuite.mac_length(),
         }
     }
 
@@ -597,12 +607,14 @@ impl AeadKey {
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, AeadError> {
-        // TODO: don't hard-code tag bytes (Issue #205)
-        if ciphertext.len() < TAG_BYTES {
-            error!("Ciphertext is too short (less than {:?} bytes)", TAG_BYTES);
+        if ciphertext.len() < self.mac_len {
+            error!(
+                "Ciphertext is too short (less than {:?} bytes)",
+                self.mac_len
+            );
             return Err(AeadError::Decrypting);
         }
-        let (ct, tag) = ciphertext.split_at(ciphertext.len() - TAG_BYTES);
+        let (ct, tag) = ciphertext.split_at(ciphertext.len() - self.mac_len);
         aead_decrypt(
             self.aead_mode,
             self.value.as_slice(),

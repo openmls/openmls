@@ -75,7 +75,7 @@ fn test_failed_groupinfo_decryption() {
             );
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_random(ciphersuite.aead());
+            let welcome_key = AeadKey::from_random(ciphersuite);
             let welcome_nonce = AeadNonce::from_random();
 
             // Generate receiver key pair.
