@@ -181,7 +181,6 @@ impl MlsGroup {
 
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
-            println!("Create Commit: Welcome key: {:?}", welcome_key);
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
