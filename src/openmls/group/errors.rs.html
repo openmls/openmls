@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -142,6 +142,27 @@
 <span id="139">139</span>
 <span id="140">140</span>
 <span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
@@ -153,7 +174,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::{<span class="ident">MLSCiphertextError</span>, <span class="ident">VerificationError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">errors</span>::<span class="ident">ProposalQueueError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">errors</span>::<span class="ident">KeyScheduleError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">treemath</span>::<span class="ident">TreeMathError</span>, <span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
@@ -183,6 +204,8 @@
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
             <span class="ident">MathError</span>(<span class="ident">TreeMathError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred during a tree math operation.&quot;</span>,
+            <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
+                <span class="string">&quot;A PSK error occured.&quot;</span>,
         }
     }
 }
@@ -222,6 +245,8 @@
                 <span class="string">&quot;Codec error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
+            <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
+                <span class="string">&quot;A PSK error occured.&quot;</span>,
         }
     }
 }
@@ -265,6 +290,8 @@
                 <span class="string">&quot;Codec error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
+            <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
+                <span class="string">&quot;A PSK error occured.&quot;</span>,
         }
     }
 }
@@ -282,6 +309,21 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExporterError</span> {
         <span class="ident">KeyLengthTooLong</span> <span class="op">=</span>
             <span class="string">&quot;The requested key length is not supported (too large).&quot;</span>,
+    }
+}
+
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskError</span> {
+        <span class="ident">Simple</span> {
+            <span class="ident">NoPskFetcherProvided</span> <span class="op">=</span>
+                <span class="string">&quot;A PSK was needed, but no PSK fetcher function was provided.&quot;</span>,
+            <span class="ident">PskIdNotFound</span> <span class="op">=</span>
+                <span class="string">&quot;No PSK was found for PSK ID.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">PskSecretError</span>(<span class="ident">PskSecretError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occured when concatenating the PSKs.&quot;</span>,
+        }
     }
 }
 </pre></div>

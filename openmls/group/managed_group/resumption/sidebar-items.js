@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ResumptionSecretStore","Resumption secrets store. This is where the resumption secrets are kept in a rollover list."]]});

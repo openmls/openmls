@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+<link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../../settings.html"><img src="../../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -452,8 +452,81 @@
 <span id="449">449</span>
 <span id="450">450</span>
 <span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
+<span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
 
 <span class="kw">mod</span> <span class="ident">apply_commit</span>;
 <span class="kw">mod</span> <span class="ident">create_commit</span>;
@@ -483,7 +556,7 @@
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefMut</span>;
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">errors</span>::<span class="ident">ExporterError</span>;
+<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">errors</span>::{<span class="ident">ExporterError</span>, <span class="ident">PskError</span>};
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">CreateCommitResult</span> <span class="op">=</span>
     <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MLSPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>), <span class="ident">GroupError</span><span class="op">&gt;</span>;
@@ -520,6 +593,7 @@
         <span class="ident">ciphersuite_name</span>: <span class="ident">CiphersuiteName</span>,
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">config</span>: <span class="ident">GroupConfig</span>,
+        <span class="ident">psk_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, <span class="ident">id</span>);
         <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, <span class="ident">ciphersuite_name</span>, <span class="ident">config</span>);
@@ -543,8 +617,7 @@
             <span class="kw-2">&amp;</span><span class="ident">InitSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
         );
 
-        <span class="comment">// TODO #141: Implement PSK</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule</span>::<span class="ident">init</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule</span>::<span class="ident">init</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>, <span class="ident">psk_option</span>);
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="kw-2">&amp;</span><span class="ident">group_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
@@ -568,8 +641,14 @@
         <span class="ident">welcome</span>: <span class="ident">Welcome</span>,
         <span class="ident">nodes_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>,
+        <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::<span class="ident">new_from_welcome_internal</span>(<span class="ident">welcome</span>, <span class="ident">nodes_option</span>, <span class="ident">kpb</span>)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::<span class="ident">new_from_welcome_internal</span>(
+            <span class="ident">welcome</span>,
+            <span class="ident">nodes_option</span>,
+            <span class="ident">kpb</span>,
+            <span class="ident">psk_fetcher_option</span>,
+        )<span class="question-mark">?</span>)
     }
 
     <span class="comment">// === Create handshake messages ===</span>
@@ -651,6 +730,30 @@
         .<span class="ident">map_err</span>(<span class="ident">GroupError</span>::<span class="ident">CodecError</span>)
     }
 
+    <span class="comment">// 11.1.4. PreSharedKey</span>
+    <span class="comment">// struct {</span>
+    <span class="comment">//     PreSharedKeyID psk;</span>
+    <span class="comment">// } PreSharedKey;</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_presharedkey_proposal</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
+        <span class="ident">psk</span>: <span class="ident">PreSharedKeyID</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">presharedkey_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal</span> { <span class="ident">psk</span> };
+        <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal</span>::<span class="ident">PreSharedKey</span>(<span class="ident">presharedkey_proposal</span>);
+        <span class="ident">MLSPlaintext</span>::<span class="ident">new_from_proposal_member</span>(
+            <span class="self">self</span>.<span class="ident">ciphersuite</span>,
+            <span class="self">self</span>.<span class="ident">sender_index</span>(),
+            <span class="ident">aad</span>,
+            <span class="ident">proposal</span>,
+            <span class="ident">credential_bundle</span>,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>(),
+            <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>(),
+        )
+        .<span class="ident">map_err</span>(<span class="ident">GroupError</span>::<span class="ident">CodecError</span>)
+    }
+
     <span class="comment">// === ===</span>
 
     <span class="comment">// 11.2. Commit</span>
@@ -667,6 +770,7 @@
         <span class="ident">proposals_by_reference</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span>],
         <span class="ident">proposals_by_value</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">Proposal</span>],
         <span class="ident">force_self_update</span>: <span class="ident">bool</span>,
+        <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CreateCommitResult</span> {
         <span class="self">self</span>.<span class="ident">create_commit_internal</span>(
             <span class="ident">aad</span>,
@@ -674,6 +778,7 @@
             <span class="ident">proposals_by_reference</span>,
             <span class="ident">proposals_by_value</span>,
             <span class="ident">force_self_update</span>,
+            <span class="ident">psk_fetcher_option</span>,
         )
     }
 
@@ -683,8 +788,14 @@
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span>,
         <span class="ident">proposals</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span>],
         <span class="ident">own_key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
+        <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">GroupError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">apply_commit_internal</span>(<span class="ident">mls_plaintext</span>, <span class="ident">proposals</span>, <span class="ident">own_key_packages</span>)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">apply_commit_internal</span>(
+            <span class="ident">mls_plaintext</span>,
+            <span class="ident">proposals</span>,
+            <span class="ident">own_key_packages</span>,
+            <span class="ident">psk_fetcher_option</span>,
+        )<span class="question-mark">?</span>)
     }
 
     <span class="comment">// Create application message</span>
@@ -835,8 +946,8 @@
     <span class="doccomment">/// Get the groups extensions.</span>
     <span class="doccomment">/// Right now this is limited to the ratchet tree extension which is built</span>
     <span class="doccomment">/// on the fly when calling this function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">add_ratchet_tree_extension</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">add_ratchet_tree_extension</span> {
             <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RatchetTreeExtension</span>::<span class="ident">new</span>(
                 <span class="self">self</span>.<span class="ident">tree</span>().<span class="ident">public_key_tree_copy</span>(),
             ))]
@@ -885,6 +996,13 @@
     }
 }
 
+<span class="comment">// Callback functions</span>
+
+<span class="doccomment">/// This callback function is used in several places in `MlsGroup`.</span>
+<span class="doccomment">/// It gets called whenever the key schedule is advanced and references to PSKs are encountered.</span>
+<span class="doccomment">/// Since the PSKs are to be trandmitted out-of-band, they need to be fetched from wherever they are stored.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PskFetcher</span> <span class="op">=</span> <span class="kw">fn</span>(<span class="ident">psks</span>: <span class="kw-2">&amp;</span><span class="ident">PreSharedKeys</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
 <span class="comment">// Helper functions</span>
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_confirmed_transcript_hash</span>(
@@ -903,6 +1021,32 @@
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">commit_auth_data_bytes</span> <span class="op">=</span> <span class="ident">mls_plaintext_commit_auth_data</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span>[<span class="ident">confirmed_transcript_hash</span>, <span class="kw-2">&amp;</span><span class="ident">commit_auth_data_bytes</span>].<span class="ident">concat</span>()))
+}
+
+<span class="kw">fn</span> <span class="ident">psk_output</span>(
+    <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+    <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
+    <span class="ident">presharedkeys</span>: <span class="kw-2">&amp;</span><span class="ident">PreSharedKeys</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span>, <span class="ident">PskError</span><span class="op">&gt;</span> {
+    <span class="kw">if</span> <span class="op">!</span><span class="ident">presharedkeys</span>.<span class="ident">psks</span>.<span class="ident">is_empty</span>() {
+        <span class="comment">// Check if a PSK fetcher function was provided</span>
+        <span class="kw">match</span> <span class="ident">psk_fetcher_option</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">psk_fetcher</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="comment">// Try to fetch the PSKs with the IDs</span>
+                <span class="kw">match</span> <span class="ident">psk_fetcher</span>(<span class="kw-2">&amp;</span><span class="ident">presharedkeys</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">psks</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// Combine the PSKs in to a PskSecret</span>
+                        <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">presharedkeys</span>.<span class="ident">psks</span>, <span class="kw-2">&amp;</span><span class="ident">psks</span>)<span class="question-mark">?</span>;
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">psk_secret</span>))
+                    }
+                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">PskError</span>::<span class="ident">PskIdNotFound</span>),
+                }
+            }
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">PskError</span>::<span class="ident">NoPskFetcherProvided</span>),
+        }
+    } <span class="kw">else</span> {
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+    }
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../../";window.currentCrate = "openmls";</script><script src="../../../../main.js"></script><script src="../../../../source-script.js"></script><script src="../../../../source-files.js"></script><script defer src="../../../../search-index.js"></script></body></html>
