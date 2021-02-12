@@ -532,7 +532,8 @@ impl<'a> ManagedGroup<'a> {
 
         let credential_bundle = self
             .key_store
-            .get_credential_bundle(self.credential()?.signature_key())?;
+            .get_credential_bundle(self.credential()?.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let ciphertext = self.group.create_application_message(
             &self.aad,
@@ -658,9 +659,9 @@ impl<'a> ManagedGroup<'a> {
     /// Tries to obtain the credential bundle corresponding to the group's
     /// credential from the key store.
     pub fn credential_bundle(&self) -> Result<&CredentialBundle, ManagedGroupError> {
-        Ok(self
-            .key_store
-            .get_credential_bundle(self.credential()?.signature_key())?)
+        self.key_store
+            .get_credential_bundle(self.credential()?.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)
     }
 
     /// Get group ID

@@ -69,13 +69,8 @@ impl KeyStore {
     /// `KeyPackageBundle` can be found corresponding to the given `KeyPackage`
     /// hash. TODO: This is not in use yet, because the groups are not yet
     /// refactored to use the key store for KeyPackageBundles.
-    pub(crate) fn _take_key_package_bundle(
-        &mut self,
-        kp_hash: &[u8],
-    ) -> Result<KeyPackageBundle, KeyStoreError> {
-        self.init_key_package_bundles
-            .remove(kp_hash)
-            .ok_or(KeyStoreError::NoMatchingKeyPackageBundle)
+    pub(crate) fn _take_key_package_bundle(&mut self, kp_hash: &[u8]) -> Option<KeyPackageBundle> {
+        self.init_key_package_bundles.remove(kp_hash)
     }
 
     /// Retrieve a `CredentialBundle` reference from the key store given the
@@ -88,10 +83,8 @@ impl KeyStore {
     pub fn get_credential_bundle(
         &self,
         signature_public_key: &SignaturePublicKey,
-    ) -> Result<&CredentialBundle, KeyStoreError> {
-        self.credential_bundles
-            .get(signature_public_key)
-            .ok_or(KeyStoreError::NoMatchingCredentialBundle)
+    ) -> Option<&CredentialBundle> {
+        self.credential_bundles.get(signature_public_key)
     }
 
     /// Generate a fresh `KeyPackageBundle` with the given parameters, store it
@@ -105,7 +98,9 @@ impl KeyStore {
         credential: &Credential,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Result<&KeyPackage, KeyStoreError> {
-        let credential_bundle = self.get_credential_bundle(credential.signature_key())?;
+        let credential_bundle = self
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
         let kpb = KeyPackageBundle::new(ciphersuites, credential_bundle, extensions)?;
         let kp_hash = kpb.key_package().hash();
         self.init_key_package_bundles.insert(kp_hash.clone(), kpb);
