@@ -13,6 +13,7 @@ impl MlsGroup {
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
+        psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<Self, WelcomeError> {
         let ciphersuite = welcome.ciphersuite();
 
@@ -39,8 +40,22 @@ impl MlsGroup {
         )?;
         let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes)?;
         let joiner_secret = group_secrets.joiner_secret;
-        // TODO #141: Implement PSK
-        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
+
+        // Create key schedule
+        let presharedkeys = PreSharedKeys {
+            psks: match group_secrets.psks {
+                Some(psks) => psks.psks,
+                None => vec![],
+            },
+        };
+
+        let mut key_schedule = KeySchedule::init(
+            ciphersuite,
+            joiner_secret,
+            psk_output(ciphersuite, psk_fetcher_option, &presharedkeys)?,
+        );
+
+        // Derive welcome key & noce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
             .welcome()?
             .derive_welcome_key_nonce(ciphersuite);

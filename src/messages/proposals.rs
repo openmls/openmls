@@ -133,6 +133,12 @@ impl Proposal {
             _ => None,
         }
     }
+    pub(crate) fn as_presharedkey(&self) -> Option<PreSharedKeyProposal> {
+        match self {
+            Proposal::PreSharedKey(psk_proposal) => Some(psk_proposal.clone()),
+            _ => None,
+        }
+    }
 }
 
 /// Reference to a Proposal. This can be used in Commit messages to reference
@@ -372,9 +378,11 @@ impl<'a> ProposalQueue<'a> {
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 ProposalType::Presharedkey => {
+                    valid_proposals.insert(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 ProposalType::Reinit => {
+                    // TODO #141: Only keep one ReInit
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
             }

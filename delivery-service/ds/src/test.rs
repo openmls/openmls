@@ -157,6 +157,7 @@ async fn test_group() {
         group_ciphersuite,
         key_package_bundles.remove(0),
         GroupConfig::default(),
+        None, /* Initial PSK */
     )
     .unwrap();
 
@@ -193,12 +194,19 @@ async fn test_group() {
         .unwrap();
     let epoch_proposals_ref = vec![&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
-        .create_commit(group_aad, &credentials[0], &epoch_proposals_ref, &[], false)
+        .create_commit(
+            group_aad,
+            &credentials[0],
+            &epoch_proposals_ref,
+            &[],
+            false,
+            None,
+        )
         .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
     let epoch_proposals = &[&client2_add_proposal];
     group
-        .apply_commit(&commit, epoch_proposals, &[])
+        .apply_commit(&commit, epoch_proposals, &[], None)
         .expect("error applying commit");
 
     // Send welcome message for Client2
@@ -241,6 +249,7 @@ async fn test_group() {
         welcome_message,
         Some(group.tree().public_key_tree_copy()), // delivered out of band
         key_package_bundles.remove(0),
+        None, /* PSK fetcher */
     )
     .expect("Error creating group from Welcome");
 

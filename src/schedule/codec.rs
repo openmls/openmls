@@ -1,6 +1,7 @@
 use psk::*;
 
 use super::*;
+use crate::group::{GroupEpoch, GroupId};
 
 use std::convert::TryFrom;
 
@@ -20,26 +21,26 @@ impl Codec for PSKType {
 
 impl Codec for ExternalPsk {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.psk_id)?;
+        encode_vec(VecSize::VecU8, buffer, &self.psk_id())?;
         Ok(())
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let psk_id = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Self { psk_id })
+        Ok(Self::new(psk_id))
     }
 }
 
 impl Codec for ReinitPsk {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.psk_group_id)?;
+        self.psk_group_id.encode(buffer)?;
         self.psk_epoch.encode(buffer)?;
         Ok(())
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let psk_group_id = decode_vec(VecSize::VecU8, cursor)?;
-        let psk_epoch = u64::decode(cursor)?;
+        let psk_group_id = GroupId::decode(cursor)?;
+        let psk_epoch = GroupEpoch::decode(cursor)?;
         Ok(Self {
             psk_group_id,
             psk_epoch,
@@ -49,14 +50,14 @@ impl Codec for ReinitPsk {
 
 impl Codec for BranchPsk {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.psk_group_id)?;
+        self.psk_group_id.encode(buffer)?;
         self.psk_epoch.encode(buffer)?;
         Ok(())
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let psk_group_id = decode_vec(VecSize::VecU8, cursor)?;
-        let psk_epoch = u64::decode(cursor)?;
+        let psk_group_id = GroupId::decode(cursor)?;
+        let psk_epoch = GroupEpoch::decode(cursor)?;
         Ok(Self {
             psk_group_id,
             psk_epoch,
@@ -112,5 +113,13 @@ impl Codec for JoinerSecret {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let secret = Secret::decode(cursor)?;
         Ok(JoinerSecret { secret })
+    }
+}
+
+impl<'a> Codec for PskLabel<'a> {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        self.id.encode(buffer)?;
+        self.index.encode(buffer)?;
+        self.count.encode(buffer)
     }
 }

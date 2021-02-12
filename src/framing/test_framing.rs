@@ -168,6 +168,7 @@ fn unknown_sender() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
+            None, /* Initial PSK */
         )
         .unwrap();
 
@@ -183,11 +184,12 @@ fn unknown_sender() {
                 &[&bob_add_proposal],
                 &[],
                 false,
+                None,
             )
             .expect("Error creating Commit");
 
         group_alice
-            .apply_commit(&commit, &[&bob_add_proposal], &[])
+            .apply_commit(&commit, &[&bob_add_proposal], &[], None)
             .expect("Could not apply Commit");
 
         // Alice adds Charlie
@@ -207,17 +209,19 @@ fn unknown_sender() {
                 &[&charlie_add_proposal],
                 &[],
                 false,
+                None,
             )
             .expect("Error creating Commit");
 
         group_alice
-            .apply_commit(&commit, &[&charlie_add_proposal], &[])
+            .apply_commit(&commit, &[&charlie_add_proposal], &[], None)
             .expect("Could not apply Commit");
 
         let mut group_charlie = MlsGroup::new_from_welcome(
             welcome_option.unwrap(),
             Some(group_alice.tree().public_key_tree_copy()),
             charlie_key_package_bundle,
+            None,
         )
         .expect("Charlie: Error creating group from Welcome");
 
@@ -232,6 +236,7 @@ fn unknown_sender() {
                 &[&bob_remove_proposal],
                 &[],
                 false,
+                None,
             )
             .expect("Error creating Commit");
 
@@ -239,10 +244,15 @@ fn unknown_sender() {
         _print_tree(&group_charlie.tree(), "Charlie tree");
 
         group_charlie
-            .apply_commit(&commit, &[&bob_remove_proposal], &[])
+            .apply_commit(&commit, &[&bob_remove_proposal], &[], None)
             .expect("Charlie: Could not apply Commit");
         group_alice
-            .apply_commit(&commit, &[&bob_remove_proposal], &[kpb_option.unwrap()])
+            .apply_commit(
+                &commit,
+                &[&bob_remove_proposal],
+                &[kpb_option.unwrap()],
+                None,
+            )
             .expect("Alice: Could not apply Commit");
 
         _print_tree(&group_alice.tree(), "Alice tree");

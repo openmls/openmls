@@ -131,7 +131,8 @@ pub(crate) mod psk;
 #[cfg(test)]
 mod kat_key_schedule;
 
-pub use errors::{ErrorState, KeyScheduleError};
+pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
+pub use psk::{PreSharedKeyID, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -282,7 +283,7 @@ impl KeySchedule {
     pub(crate) fn init(
         ciphersuite: &'static Ciphersuite,
         joiner_secret: JoinerSecret,
-        psk: impl Into<Option<Secret>>,
+        psk: impl Into<Option<PskSecret>>,
     ) -> Self {
         let intermediate_secret = IntermediateSecret::new(ciphersuite, &joiner_secret, psk.into());
         Self {
@@ -357,11 +358,16 @@ struct IntermediateSecret {
 }
 
 impl IntermediateSecret {
-    /// Derive ans `IntermediateSecret` from a `JoinerSecret` and an optional
+    /// Derive an `IntermediateSecret` from a `JoinerSecret` and an optional
     /// PSK.
-    fn new(ciphersuite: &Ciphersuite, joiner_secret: &JoinerSecret, psk: Option<Secret>) -> Self {
+    fn new(
+        ciphersuite: &Ciphersuite,
+        joiner_secret: &JoinerSecret,
+        psk: Option<PskSecret>,
+    ) -> Self {
         Self {
-            secret: ciphersuite.hkdf_extract(psk.as_ref(), &joiner_secret.secret),
+            secret: ciphersuite
+                .hkdf_extract(psk.as_ref().map(|p| p.secret()), &joiner_secret.secret),
         }
     }
 }
@@ -622,9 +628,9 @@ impl MembershipKey {
 }
 
 /// A secret used in cross-group operations.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct ResumptionSecret {
+pub struct ResumptionSecret {
     secret: Secret,
 }
 
@@ -636,8 +642,7 @@ impl ResumptionSecret {
     }
 
     /// Get the internal `Secret`.
-    // Will be used in #141
-    pub(crate) fn _secret(&self) -> &Secret {
+    pub fn secret(&self) -> &Secret {
         &self.secret
     }
 
@@ -778,8 +783,6 @@ impl EpochSecrets {
         &self.external_secret
     }
 
-    // XXX: This is currently only used in tests but will be used in future.
-    #[cfg(test)]
     /// External secret
     pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
         &self.resumption_secret

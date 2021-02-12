@@ -182,6 +182,7 @@ impl User {
                                     .iter()
                                     .collect::<Vec<&MLSPlaintext>>()),
                                 &[], // TODO: store key packages.
+                                None,
                             ) {
                                 Ok(_) => (),
                                 Err(e) => {
@@ -229,7 +230,14 @@ impl User {
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update();
         let config = GroupConfig::default();
-        let mls_group = MlsGroup::new(group_id, CIPHERSUITE, kpb, config).unwrap();
+        let mls_group = MlsGroup::new(
+            group_id,
+            CIPHERSUITE,
+            kpb,
+            config,
+            None, /* Initial PSK */
+        )
+        .unwrap();
         let group = Group {
             group_id: group_id.to_vec(),
             group_name: name.clone(),
@@ -276,13 +284,13 @@ impl User {
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
-            .create_commit(&group.group_aad, credentials, &proposals, &[], false)
+            .create_commit(&group.group_aad, credentials, &proposals, &[], false, None)
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
         group
             .mls_group
             .borrow_mut()
-            .apply_commit(&commit, &[&add_proposal], &[])
+            .apply_commit(&commit, &[&add_proposal], &[], None)
             .expect("error applying commit");
 
         // Send Welcome to the client.
@@ -317,7 +325,7 @@ impl User {
         let kpb = self.identity.borrow_mut().update();
         let mls_group = match MlsGroup::new_from_welcome(
             welcome, None, /* no public tree here, has to be in the extension */
-            kpb,
+            kpb, None, /* PSK fetcher */
         ) {
             Ok(g) => g,
             Err(e) => {

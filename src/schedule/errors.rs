@@ -12,3 +12,10 @@ implement_error! {
             "The requested operation is not valid on the key schedule state.",
     }
 }
+
+implement_error! {
+    pub enum PskSecretError {
+        TooManyKeys = "More than 2^16 PSKS were provided.",
+        DifferentLength = "The IDs and secrets vectors have different lengths.",
+    }
+}

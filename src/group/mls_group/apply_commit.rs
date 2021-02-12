@@ -12,6 +12,7 @@ impl MlsGroup {
         mls_plaintext: &MLSPlaintext,
         proposals_by_reference: &[&MLSPlaintext],
         own_key_packages: &[KeyPackageBundle],
+        psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.ciphersuite();
 
@@ -128,8 +129,16 @@ impl MlsGroup {
             &[],
         )?;
 
-        // TODO #141: Implement PSK
-        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
+        // Create key schedule
+        let mut key_schedule = KeySchedule::init(
+            ciphersuite,
+            joiner_secret,
+            psk_output(
+                ciphersuite,
+                psk_fetcher_option,
+                &apply_proposals_values.presharedkeys,
+            )?,
+        );
         key_schedule.add_context(&provisional_group_context)?;
         let provisional_epoch_secrets = key_schedule.epoch_secrets(true)?;
 
