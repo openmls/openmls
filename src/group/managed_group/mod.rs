@@ -10,10 +10,7 @@ use crate::key_packages::{KeyPackage, KeyPackageBundle};
 use crate::messages::{proposals::*, Welcome};
 use crate::tree::index::LeafIndex;
 use crate::tree::node::Node;
-use crate::{
-    credentials::Credential,
-    key_store::{KeyStore, KeyStoreError},
-};
+use crate::{credentials::Credential, key_store::KeyStore};
 use crate::{credentials::CredentialBundle, group::*};
 
 use std::{cell::Ref, collections::HashMap};
@@ -182,7 +179,7 @@ impl<'a> ManagedGroup<'a> {
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &self.credential_bundle().unwrap().credential_bundle(),
+            &self.credential_bundle()?.borrow(),
             proposals_by_reference,
             proposals_by_value,
             false,
@@ -251,12 +248,10 @@ impl<'a> ManagedGroup<'a> {
             .iter()
             .collect::<Vec<&MLSPlaintext>>();
 
-        let credential_bundle = &self.credential_bundle()?;
-
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            credential_bundle.credential_bundle(),
+            &self.credential_bundle()?.borrow(),
             proposals_by_reference,
             proposals_by_value,
             false,
@@ -290,14 +285,12 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
-        let credential_bundle = &self.credential_bundle()?;
-
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for key_package in key_packages.iter() {
                 let add_proposal = self.group.create_add_proposal(
                     &self.aad,
-                    credential_bundle.credential_bundle(),
+                    &self.credential_bundle()?.borrow(),
                     key_package.clone(),
                 )?;
                 messages.push(add_proposal);
@@ -322,14 +315,12 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
-        let credential_bundle = &self.credential_bundle()?;
-
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for member in members.iter() {
                 let remove_proposal = self.group.create_remove_proposal(
                     &self.aad,
-                    credential_bundle.credential_bundle(),
+                    &self.credential_bundle()?.borrow(),
                     LeafIndex::from(*member),
                 )?;
                 messages.push(remove_proposal);
@@ -351,11 +342,9 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
-        let credential_bundle = &self.credential_bundle()?;
-
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
-            credential_bundle.credential_bundle(),
+            &self.credential_bundle()?.borrow(),
             self.group.tree().own_node_index(),
         )?;
 
@@ -542,12 +531,10 @@ impl<'a> ManagedGroup<'a> {
             ));
         }
 
-        let credential_bundle = &self.credential_bundle()?;
-
         let ciphertext = self.group.create_application_message(
             &self.aad,
             message,
-            credential_bundle.credential_bundle(),
+            &self.credential_bundle()?.borrow(),
             self.configuration().padding_size(),
         )?;
 
@@ -572,7 +559,7 @@ impl<'a> ManagedGroup<'a> {
         // Create Commit over all pending proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            credential_bundle.credential_bundle(),
+            &credential_bundle.borrow(),
             &messages_to_commit,
             &[],
             true,
@@ -677,7 +664,7 @@ impl<'a> ManagedGroup<'a> {
         Ok(self
             .key_store
             .get_credential_bundle(self.credential()?.signature_key())
-            .ok_or(KeyStoreError::NoMatchingCredentialBundle)?)
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?)
     }
 
     /// Get group ID
@@ -702,13 +689,11 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
-        let credential_bundle = &self.credential_bundle()?;
-
         // If a KeyPackageBundle was provided, create an UpdateProposal
         let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
             let update_proposal = self.group.create_update_proposal(
                 &self.aad,
-                credential_bundle.credential_bundle(),
+                &self.credential_bundle()?.borrow(),
                 key_package_bundle.key_package().clone(),
             )?;
             self.own_kpbs.push(key_package_bundle);
@@ -727,7 +712,7 @@ impl<'a> ManagedGroup<'a> {
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            credential_bundle.credential_bundle(),
+            &self.credential_bundle()?.borrow(),
             &messages_to_commit,
             &[],
             true, /* force_self_update */
@@ -767,20 +752,19 @@ impl<'a> ManagedGroup<'a> {
         }
         let tree = self.group.tree();
         let existing_key_package = tree.own_key_package();
-        let cb = &self.credential_bundle()?;
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
             None => {
                 let mut key_package_bundle =
                     KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
-                key_package_bundle.sign(cb.credential_bundle());
+                key_package_bundle.sign(&self.credential_bundle()?.borrow());
                 key_package_bundle
             }
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
-            cb.credential_bundle(),
+            &self.credential_bundle()?.borrow(),
             key_package_bundle.key_package().clone(),
         )?];
         drop(tree);

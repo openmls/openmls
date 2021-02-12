@@ -22,16 +22,7 @@ pub use errors::*;
 use proposals::*;
 
 #[cfg(test)]
-mod test_proposals;
-
-#[cfg(test)]
-mod test_welcome;
-
-#[cfg(test)]
-mod test_codec;
-
-#[cfg(test)]
-mod test_pgs;
+mod tests;
 
 /// Welcome Messages
 ///
@@ -434,8 +425,8 @@ impl<'a> PublicGroupStateTBS<'a> {
         let payload = self
             .encode_detached()
             .map_err(CredentialError::CodecError)?;
-        Ok(credential_bundle
+        credential_bundle
             .sign(&payload)
-            .map_err(|_| CredentialError::SignatureError)?)
+            .map_err(|_| CredentialError::SignatureError)
     }
 }

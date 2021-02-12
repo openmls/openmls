@@ -1,4 +1,4 @@
-//! A storage solution for private key material.
+//! A storage solution for cryptographic key material.
 //!
 //! This module provides access to the `KeyStore` struct, which manages the
 //! storage of `CredentialBundle` and `KeyPackageBundle` instances. The
@@ -18,7 +18,10 @@
 //! A simple example for the generation and the retrieval of a
 //! `CredentialBundle`.
 //!
-//! ``` let mut key_store = KeyStore::default();
+//! ```
+//! use openmls::prelude::*;
+//!
+//! let mut key_store = KeyStore::default();
 //!
 //! // Generate credential bundles
 //! let alice_credential = key_store
@@ -72,7 +75,7 @@ impl KeyStore {
     /// corresponding to the given `KeyPackage` hash. TODO: This is not in use
     /// yet, because the groups are not yet refactored to use the key store for
     /// KeyPackageBundles.
-    pub(crate) fn _get_key_package_bundle(
+    pub(crate) fn _take_key_package_bundle(
         &mut self,
         kp_hash: &[u8],
     ) -> Result<KeyPackageBundle, KeyStoreError> {

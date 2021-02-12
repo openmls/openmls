@@ -2,7 +2,7 @@ use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::extensions::Extension;
-use crate::framing::{sender::*, *};
+use crate::framing::*;
 use crate::group::GroupId;
 use crate::key_packages::*;
 use crate::schedule::psk::*;

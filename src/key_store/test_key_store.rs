@@ -39,7 +39,7 @@ ctest!(key_storage {
     assert_eq!(cb.credential(), &credential);
 
     let kpb = ks
-        ._get_key_package_bundle(&key_package.hash())
+        ._take_key_package_bundle(&key_package.hash())
         .expect("Error while getting KeyPackageBundle from the store.");
 
     assert_eq!(kpb.key_package(), &key_package);
@@ -64,7 +64,7 @@ ctest!(key_storage {
         .expect("Error while generating key package.");
 
     let kpb_fetch_err = ks
-        ._get_key_package_bundle(&kpb_external.key_package().hash())
+        ._take_key_package_bundle(&kpb_external.key_package().hash())
         .expect_err("No error when fetching non-existent KPB from store.");
 
     assert_eq!(kpb_fetch_err, KeyStoreError::NoMatchingKeyPackageBundle);

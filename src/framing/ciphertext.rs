@@ -46,7 +46,11 @@ impl MLSCiphertext {
         // Encrypt the payload
         let ciphertext = ratchet_key
             .aead_seal(
-                &Self::encode_padded_ciphertext_content_detached(mls_plaintext, padding_size)?,
+                &Self::encode_padded_ciphertext_content_detached(
+                    mls_plaintext,
+                    padding_size,
+                    ciphersuite.mac_length(),
+                )?,
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_nonce,
             )
@@ -213,6 +217,7 @@ impl MLSCiphertext {
     fn encode_padded_ciphertext_content_detached(
         mls_plaintext: &MLSPlaintext,
         padding_size: usize,
+        mac_len: usize,
     ) -> Result<Vec<u8>, CodecError> {
         // Persist all initial fields manually (avoids cloning them)
         let buffer = &mut Vec::new();
@@ -223,7 +228,7 @@ impl MLSCiphertext {
         let padding_length = if padding_size > 0 {
             // Calculate padding block size
             // The length of the padding block takes 2 bytes and the AEAD tag is also added.
-            let padding_offset = buffer.len() + 2 + TAG_BYTES;
+            let padding_offset = buffer.len() + 2 + mac_len;
             // Return padding block size
             (padding_size - (padding_offset % padding_size)) % padding_size
         } else {

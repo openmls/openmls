@@ -1,4 +1,4 @@
-use super::*;
+use crate::tree::*;
 
 /// Test whether a NodeIndex is a leaf or a parent
 #[test]

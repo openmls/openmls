@@ -14,9 +14,9 @@ pub mod errors;
 pub mod plaintext;
 pub mod sender;
 pub use ciphertext::*;
-pub(crate) use errors::*;
+pub use errors::*;
 pub use plaintext::*;
-use sender::*;
+pub use sender::*;
 
 #[cfg(test)]
 mod test_framing;

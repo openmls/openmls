@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
-use super::{EncryptedGroupSecrets, GroupInfo, Welcome};
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Secret, Signature},
-    codec::*,
+    codec::{Codec, Cursor},
     config::Config,
     group::{GroupEpoch, GroupId},
+    messages::{EncryptedGroupSecrets, GroupInfo, Welcome},
     tree::index::LeafIndex,
 };
 
@@ -26,7 +26,7 @@ macro_rules! test_welcome_msg {
             };
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_random($ciphersuite.aead());
+            let welcome_key = AeadKey::from_random($ciphersuite);
             let welcome_nonce = AeadNonce::from_random();
 
             // Generate receiver key pair.

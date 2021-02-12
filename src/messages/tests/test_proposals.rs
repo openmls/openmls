@@ -1,15 +1,19 @@
-use sender::Sender;
-
-use crate::ciphersuite::Secret;
-use crate::config::*;
-use crate::credentials::*;
-use crate::extensions::*;
-use crate::framing::*;
-use crate::group::*;
-use crate::key_packages::*;
-use crate::messages::proposals::*;
-use crate::schedule::MembershipKey;
-use crate::tree::index::*;
+use crate::{
+    ciphersuite::Secret,
+    config::Config,
+    credentials::{CredentialBundle, CredentialType},
+    extensions::{Extension, LifetimeExtension},
+    framing::sender::{Sender, SenderType},
+    framing::MLSPlaintext,
+    group::{GroupContext, GroupEpoch, GroupId},
+    key_packages::KeyPackageBundle,
+    messages::proposals::{
+        AddProposal, Proposal, ProposalOrRef, ProposalQueue, ProposalReference, ProposalType,
+        QueuedProposal, RemoveProposal,
+    },
+    schedule::MembershipKey,
+    tree::index::*,
+};
 
 /// This test makes sure ProposalQueue works as intented. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
@@ -235,7 +239,7 @@ fn proposal_queue_order() {
         ];
 
         let sender = Sender {
-            sender_type: sender::SenderType::Member,
+            sender_type: SenderType::Member,
             sender: LeafIndex::from(0u32),
         };
 
