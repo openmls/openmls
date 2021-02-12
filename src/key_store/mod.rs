@@ -34,7 +34,10 @@
 //!     .get_credential_bundle(alice_credential.signature_key())
 //!     .unwrap();
 //! ```
-use std::collections::HashMap;
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+};
 
 use crate::{
     ciphersuite::{CiphersuiteName, SignaturePublicKey, SignatureScheme},
@@ -44,6 +47,8 @@ use crate::{
 };
 
 pub mod errors;
+//pub mod test;
+//pub mod test2;
 
 #[cfg(test)]
 mod test_key_store;
@@ -56,8 +61,8 @@ pub use errors::KeyStoreError;
 /// `KeyPackage` instances.
 pub struct KeyStore {
     // Map from signature public keys to credential bundles
-    credentials: HashMap<SignaturePublicKey, CredentialBundle>,
-    key_packages: HashMap<Vec<u8>, KeyPackageBundle>,
+    credential_bundles: RefCell<HashMap<SignaturePublicKey, RefCell<CredentialBundle>>>,
+    init_key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
 }
 
 impl KeyStore {
@@ -71,9 +76,11 @@ impl KeyStore {
         &mut self,
         kp_hash: &[u8],
     ) -> Result<KeyPackageBundle, KeyStoreError> {
-        self.key_packages
+        let mut kpbs = self.init_key_package_bundles.borrow_mut();
+        let kpb = kpbs
             .remove(kp_hash)
-            .ok_or(KeyStoreError::NoMatchingKeyPackageBundle)
+            .ok_or(KeyStoreError::NoMatchingKeyPackageBundle)?;
+        Ok(kpb)
     }
 
     /// Retrieve a `CredentialBundle` reference from the key store given the
@@ -83,13 +90,17 @@ impl KeyStore {
     /// are not yet refactored to use the key store for KeyPackageBundles and
     /// thus in tests we need to access the credential bundle to create
     /// KeyPackageBundles ad-hoc.
-    pub fn get_credential_bundle(
-        &self,
-        cred_pk: &SignaturePublicKey,
-    ) -> Result<&CredentialBundle, KeyStoreError> {
-        self.credentials
-            .get(cred_pk)
-            .ok_or(KeyStoreError::NoMatchingCredentialBundle)
+    pub fn get_credential_bundle<'key_store>(
+        &'key_store self,
+        signature_public_key: &'key_store SignaturePublicKey,
+    ) -> Option<Ref<'_, RefCell<CredentialBundle>>> {
+        let cbs_ref = self.credential_bundles.borrow();
+        if !cbs_ref.contains_key(signature_public_key) {
+            return None;
+        }
+        Some(Ref::map(self.credential_bundles.borrow(), |cbs| {
+            cbs.get(&signature_public_key).unwrap()
+        }))
     }
 
     /// Generate a fresh `KeyPackageBundle` with the given parameters, store it
@@ -103,12 +114,15 @@ impl KeyStore {
         credential: &Credential,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Result<&KeyPackage, KeyStoreError> {
-        let credential_bundle = self.get_credential_bundle(credential.signature_key())?;
-        let kpb = KeyPackageBundle::new(ciphersuites, credential_bundle, extensions)?;
+        let credential_bundle = self
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
+        let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle.borrow(), extensions)?;
         let kp_hash = kpb.key_package().hash();
-        self.key_packages.insert(kp_hash.clone(), kpb);
-        let kp = self.key_packages.get(&kp_hash).unwrap().key_package();
-        Ok(kp)
+        let kpbs = self.init_key_package_bundles.borrow_mut();
+        kpbs.insert(kp_hash.clone(), kpb);
+        let kp = kpbs.get(&kp_hash).unwrap();
+        Ok(&kp.key_package())
     }
 
     /// Generate a fresh `CredentialBundle` with the given parameters and store
@@ -122,8 +136,10 @@ impl KeyStore {
     ) -> Result<&Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
         let signature_key = cb.credential().signature_key().clone();
-        self.credentials.insert(signature_key.clone(), cb);
-        let credential = self.credentials.get(&signature_key).unwrap().credential();
+        let cbs = self.credential_bundles.borrow();
+        cbs.insert(signature_key.clone(), RefCell::new(cb));
+        let cb_ref = cbs.get(&signature_key).unwrap().borrow();
+        let credential = cb_ref.credential();
         Ok(credential)
     }
 }

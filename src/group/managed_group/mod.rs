@@ -6,18 +6,21 @@ mod ser;
 mod test_managed_group;
 
 use crate::framing::*;
-use crate::group::*;
 use crate::key_packages::{KeyPackage, KeyPackageBundle};
 use crate::messages::{proposals::*, Welcome};
 use crate::tree::index::LeafIndex;
 use crate::tree::node::Node;
 use crate::{
-    credentials::{Credential, CredentialBundle},
-    key_store::KeyStore,
+    credentials::Credential,
+    key_store::{KeyStore, KeyStoreError},
 };
+use crate::{credentials::CredentialBundle, group::*};
 
-use std::collections::HashMap;
-use std::io::{Error, Read, Write};
+use std::{cell::Ref, collections::HashMap};
+use std::{
+    cell::RefCell,
+    io::{Error, Read, Write},
+};
 
 pub use callbacks::*;
 pub use config::*;
@@ -179,11 +182,12 @@ impl<'a> ManagedGroup<'a> {
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            self.credential_bundle()?,
+            &self.credential_bundle().unwrap().credential_bundle(),
             proposals_by_reference,
             proposals_by_value,
             false,
         )?;
+
         let welcome = match welcome_option {
             Some(welcome) => welcome,
             None => {
@@ -247,10 +251,12 @@ impl<'a> ManagedGroup<'a> {
             .iter()
             .collect::<Vec<&MLSPlaintext>>();
 
+        let credential_bundle = &self.credential_bundle()?;
+
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            self.credential_bundle()?,
+            credential_bundle.credential_bundle(),
             proposals_by_reference,
             proposals_by_value,
             false,
@@ -284,12 +290,14 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        let credential_bundle = &self.credential_bundle()?;
+
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for key_package in key_packages.iter() {
                 let add_proposal = self.group.create_add_proposal(
                     &self.aad,
-                    self.credential_bundle()?,
+                    credential_bundle.credential_bundle(),
                     key_package.clone(),
                 )?;
                 messages.push(add_proposal);
@@ -314,12 +322,14 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        let credential_bundle = &self.credential_bundle()?;
+
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for member in members.iter() {
                 let remove_proposal = self.group.create_remove_proposal(
                     &self.aad,
-                    self.credential_bundle()?,
+                    credential_bundle.credential_bundle(),
                     LeafIndex::from(*member),
                 )?;
                 messages.push(remove_proposal);
@@ -341,9 +351,11 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        let credential_bundle = &self.credential_bundle()?;
+
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
-            self.credential_bundle()?,
+            credential_bundle.credential_bundle(),
             self.group.tree().own_node_index(),
         )?;
 
@@ -530,14 +542,12 @@ impl<'a> ManagedGroup<'a> {
             ));
         }
 
-        let credential_bundle = self
-            .key_store
-            .get_credential_bundle(self.credential()?.signature_key())?;
+        let credential_bundle = &self.credential_bundle()?;
 
         let ciphertext = self.group.create_application_message(
             &self.aad,
             message,
-            credential_bundle,
+            credential_bundle.credential_bundle(),
             self.configuration().padding_size(),
         )?;
 
@@ -557,10 +567,12 @@ impl<'a> ManagedGroup<'a> {
         // Include pending proposals into Commit
         let messages_to_commit: Vec<&MLSPlaintext> = self.pending_proposals.iter().collect();
 
+        let credential_bundle = &self.credential_bundle()?;
+
         // Create Commit over all pending proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            self.credential_bundle()?,
+            credential_bundle.credential_bundle(),
             &messages_to_commit,
             &[],
             true,
@@ -656,11 +668,16 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Tries to obtain the credential bundle corresponding to the group's
-    /// credential from the key store.
-    pub fn credential_bundle(&self) -> Result<&CredentialBundle, ManagedGroupError> {
+    /// credential from the key store. Throws an error if the key store doesn't
+    /// contain the `CredentialBundle` corresponding to the `Credential` in our
+    /// leaf.
+    pub fn credential_bundle(
+        &self,
+    ) -> Result<Ref<'_, RefCell<CredentialBundle>>, ManagedGroupError> {
         Ok(self
             .key_store
-            .get_credential_bundle(self.credential()?.signature_key())?)
+            .get_credential_bundle(self.credential()?.signature_key())
+            .ok_or(KeyStoreError::NoMatchingCredentialBundle)?)
     }
 
     /// Get group ID
@@ -685,11 +702,13 @@ impl<'a> ManagedGroup<'a> {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        let credential_bundle = &self.credential_bundle()?;
+
         // If a KeyPackageBundle was provided, create an UpdateProposal
         let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
             let update_proposal = self.group.create_update_proposal(
                 &self.aad,
-                self.credential_bundle()?,
+                credential_bundle.credential_bundle(),
                 key_package_bundle.key_package().clone(),
             )?;
             self.own_kpbs.push(key_package_bundle);
@@ -708,7 +727,7 @@ impl<'a> ManagedGroup<'a> {
         // Create Commit over all proposals
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            self.credential_bundle()?,
+            credential_bundle.credential_bundle(),
             &messages_to_commit,
             &[],
             true, /* force_self_update */
@@ -748,19 +767,20 @@ impl<'a> ManagedGroup<'a> {
         }
         let tree = self.group.tree();
         let existing_key_package = tree.own_key_package();
+        let cb = &self.credential_bundle()?;
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
             None => {
                 let mut key_package_bundle =
                     KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
-                key_package_bundle.sign(self.credential_bundle()?);
+                key_package_bundle.sign(cb.credential_bundle());
                 key_package_bundle
             }
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
-            self.credential_bundle()?,
+            cb.credential_bundle(),
             key_package_bundle.key_package().clone(),
         )?];
         drop(tree);
