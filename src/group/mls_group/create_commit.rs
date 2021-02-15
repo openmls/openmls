@@ -15,6 +15,7 @@ impl MlsGroup {
         proposals_by_reference: &[&MLSPlaintext],
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
+        psk_fetcher_option: Option<PskFetcher>,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
@@ -117,10 +118,20 @@ impl MlsGroup {
             &joiner_secret,
             apply_proposals_values.invitation_list,
             &provisional_tree,
+            &apply_proposals_values.presharedkeys,
         )?;
 
-        // TODO #141: Implement PSK
-        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
+        // Create key schedule
+        let mut key_schedule = KeySchedule::init(
+            ciphersuite,
+            joiner_secret,
+            psk_output(
+                ciphersuite,
+                psk_fetcher_option,
+                &apply_proposals_values.presharedkeys,
+            )?,
+        );
+
         let welcome_secret = key_schedule.welcome()?;
         key_schedule.add_context(&provisional_group_context)?;
         let provisional_epoch_secrets = key_schedule.epoch_secrets(false)?;
@@ -223,6 +234,7 @@ impl PlaintextSecret {
         joiner_secret: &JoinerSecret,
         invited_members: Vec<(NodeIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
+        presharedkeys: &PreSharedKeys,
     ) -> Result<Vec<Self>, GroupError> {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
@@ -260,8 +272,14 @@ impl PlaintextSecret {
             };
 
             // Create the GroupSecrets object for the respective member.
-            // TODO #141: Implement PSK
-            let group_secrets_bytes = GroupSecrets::new_encoded(joiner_secret, path_secret, None)?;
+            let psks_option = if presharedkeys.psks.is_empty() {
+                None
+            } else {
+                Some(presharedkeys)
+            };
+
+            let group_secrets_bytes =
+                GroupSecrets::new_encoded(joiner_secret, path_secret, psks_option)?;
             plaintext_secrets.push(PlaintextSecret {
                 public_key: key_package.hpke_init_key().clone(),
                 group_secrets_bytes,

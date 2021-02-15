@@ -25,7 +25,8 @@ fn test_managed_group_persistence() {
     let managed_group_config = ManagedGroupConfig::new(
         HandshakeMessageFormat::Plaintext,
         update_policy,
-        0,
+        0, // padding_size
+        0, // number_of_resumption_secrets
         callbacks,
     );
 
@@ -113,7 +114,8 @@ fn remover() {
     let mut managed_group_config = ManagedGroupConfig::new(
         HandshakeMessageFormat::Plaintext,
         update_policy,
-        0,
+        0, // padding_size
+        0, // number_of_resumption_secrets
         callbacks,
     );
 

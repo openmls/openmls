@@ -143,6 +143,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             group_config.ciphersuite,
             initial_key_package_bundle,
             group_config.config,
+            None, /* Initial PSK */
         )
         .unwrap();
         let mut proposal_list = Vec::new();
@@ -189,6 +190,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
                     &[],
                     true, /* Set this to true to populate the tree a little bit. */
+                    None, /* PSKs are not supported here */
                 )
                 .unwrap();
             let welcome = welcome_option.unwrap();
@@ -199,6 +201,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 &commit_mls_plaintext,
                 &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
                 &[key_package_bundle],
+                None,
             ) {
                 Ok(_) => (),
                 Err(err) => panic!("Error applying Commit: {:?}", err),
@@ -238,6 +241,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     welcome.clone(),
                     Some(mls_group.tree().public_key_tree_copy()),
                     key_package_bundle,
+                    None, /* PSKs not supported here */
                 ) {
                     Ok(group) => group,
                     Err(err) => panic!("Error creating new group from Welcome: {:?}", err),

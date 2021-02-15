@@ -1,9 +1,9 @@
-use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
+use crate::{ciphersuite::*, prelude::PreSharedKeyID};
 
 // Tree modules
 pub(crate) mod codec;
@@ -23,7 +23,7 @@ use index::*;
 use node::*;
 use private_tree::PrivateTree;
 
-use crate::schedule::CommitSecret;
+use crate::schedule::{CommitSecret, PreSharedKeys};
 pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
@@ -656,12 +656,12 @@ impl RatchetTree {
     ) -> Result<ApplyProposalsValues, TreeError> {
         let mut has_updates = false;
         let mut has_removes = false;
-
         let mut self_removed = false;
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
             has_updates = true;
+            // Unwrapping here is safe because we know the proposal type
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
             let sender_index = queued_proposal.sender().to_leaf_index();
             // Prepare leaf node
@@ -684,8 +684,11 @@ impl RatchetTree {
                 self.private_tree = PrivateTree::from_key_package_bundle(sender_index, &own_kpb);
             }
         }
+
+        // Process removes
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
             has_removes = true;
+            // Unwrapping here is safe because we know the proposal type
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
             let removed = LeafIndex::from(remove_proposal.removed);
             // Check if we got removed from the group
@@ -702,6 +705,7 @@ impl RatchetTree {
             .filtered_by_type(ProposalType::Add)
             .map(|queued_proposal| {
                 let proposal = &queued_proposal.proposal();
+                // Unwrapping here is safe because we know the proposal type
                 proposal.as_add().unwrap()
             })
             .collect();
@@ -716,6 +720,18 @@ impl RatchetTree {
             invitation_list.push((added.0, add_proposals.get(i).unwrap().clone()));
         }
 
+        // Process PSK proposals
+        let psks: Vec<PreSharedKeyID> = proposal_queue
+            .filtered_by_type(ProposalType::Presharedkey)
+            .map(|queued_proposal| {
+                // Unwrapping here is safe because we know the proposal type
+                let psk_proposal = queued_proposal.proposal().as_presharedkey().unwrap();
+                psk_proposal.psk
+            })
+            .collect();
+
+        let presharedkeys = PreSharedKeys { psks };
+
         // Determine if Commit needs a path field
         let path_required = has_updates || has_removes || !has_adds;
 
@@ -723,6 +739,7 @@ impl RatchetTree {
             path_required,
             self_removed,
             invitation_list,
+            presharedkeys,
         })
     }
 
@@ -757,6 +774,7 @@ pub struct ApplyProposalsValues {
     pub path_required: bool,
     pub self_removed: bool,
     pub invitation_list: Vec<(NodeIndex, AddProposal)>,
+    pub presharedkeys: PreSharedKeys,
 }
 
 impl ApplyProposalsValues {

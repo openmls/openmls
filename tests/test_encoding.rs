@@ -259,7 +259,7 @@ fn test_commit_encoding() {
 
         let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], alice_credential_bundle, proposals, &[], true)
+            .create_commit(&[], alice_credential_bundle, proposals, &[], true, None)
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
         let commit_decoded = match MLSPlaintext::decode(&mut Cursor::new(&commit_encoded)) {
@@ -299,11 +299,16 @@ fn test_welcome_message_encoding() {
 
         let proposals = &[&add];
         let (commit, welcome_option, key_package_bundle_option) = group_state
-            .create_commit(&[], credential_bundle, proposals, &[], true)
+            .create_commit(&[], credential_bundle, proposals, &[], true, None)
             .unwrap();
         // Alice applies the commit
         assert!(group_state
-            .apply_commit(&commit, proposals, &[key_package_bundle_option.unwrap()])
+            .apply_commit(
+                &commit,
+                proposals,
+                &[key_package_bundle_option.unwrap()],
+                None
+            )
             .is_ok());
 
         // Welcome messages
@@ -329,7 +334,8 @@ fn test_welcome_message_encoding() {
         assert!(MlsGroup::new_from_welcome(
             welcome,
             Some(group_state.tree().public_key_tree_copy()),
-            charlie_key_package_bundle
+            charlie_key_package_bundle,
+            None,
         )
         .is_ok());
     }
