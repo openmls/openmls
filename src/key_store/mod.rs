@@ -21,21 +21,40 @@
 //! ```
 //! use openmls::prelude::*;
 //!
-//! let mut key_store = KeyStore::default();
+//! let key_store = KeyStore::default();
 //!
-//! // Generate credential bundles
+//! // Generate a credential bundle.
 //! let alice_credential = key_store
 //!     .generate_credential(
 //!         "Alice".into(),
 //!         CredentialType::Basic,
 //!         SignatureScheme::ED25519,
 //!     )
-//!     .unwrap()
-//!     .clone();
-//!
-//! let alice_credential_bundle = key_store
-//!     .get_credential_bundle(alice_credential.signature_key())
 //!     .unwrap();
+//!
+//! // Generate a key package bundle with a matching ciphersuite.
+//! let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//!
+//! let alice_key_package = key_store
+//!     .generate_key_package(&[ciphersuite_name], &alice_credential, vec![])
+//!     .unwrap();
+//!
+//! // Create a group with the previously generated credential and key package.
+//!
+//! let managed_group_config = ManagedGroupConfig::new(
+//!     HandshakeMessageFormat::Plaintext,
+//!     UpdatePolicy::default(),
+//!     0,
+//!     ManagedGroupCallbacks::default(),
+//! );
+//!
+//! let alice_group = ManagedGroup::new(
+//!     &key_store,
+//!     &managed_group_config,
+//!     GroupId::from_slice(b"Test Group"),
+//!     &alice_key_package.hash(),
+//! )
+//! .unwrap();
 //! ```
 use std::{
     cell::{Ref, RefCell},
@@ -50,8 +69,6 @@ use crate::{
 };
 
 pub mod errors;
-//pub mod test;
-//pub mod test2;
 
 #[cfg(test)]
 mod test_key_store;
@@ -72,28 +89,17 @@ impl KeyStore {
     /// Retrieve a `KeyPackageBundle` from the key store given the hash of the
     /// corresponding `KeyPackage`. This removes the `KeyPackageBundle` from the
     /// store. Returns an error if no `KeyPackageBundle` can be found
-    /// corresponding to the given `KeyPackage` hash. TODO: This is not in use
-    /// yet, because the groups are not yet refactored to use the key store for
-    /// KeyPackageBundles.
-    pub(crate) fn _take_key_package_bundle(
-        &mut self,
-        kp_hash: &[u8],
-    ) -> Result<KeyPackageBundle, KeyStoreError> {
+    /// corresponding to the given `KeyPackage` hash.
+    pub fn take_key_package_bundle(&self, kp_hash: &[u8]) -> Option<KeyPackageBundle> {
         let mut kpbs = self.init_key_package_bundles.borrow_mut();
-        let kpb = kpbs
-            .remove(kp_hash)
-            .ok_or(KeyStoreError::NoMatchingKeyPackageBundle)?;
-        Ok(kpb)
+        kpbs.remove(kp_hash)
     }
 
     /// Retrieve a `CredentialBundle` reference from the key store given the
     /// `SignaturePublicKey` of the corresponding `Credential`. Returns an error
     /// if no `CredentialBundle` can be found corresponding to the given
-    /// `SignaturePublicKey`. TODO: This is currently public, because the groups
-    /// are not yet refactored to use the key store for KeyPackageBundles and
-    /// thus in tests we need to access the credential bundle to create
-    /// KeyPackageBundles ad-hoc.
-    pub fn get_credential_bundle<'key_store>(
+    /// `SignaturePublicKey`.
+    pub(crate) fn get_credential_bundle<'key_store>(
         &'key_store self,
         signature_public_key: &'key_store SignaturePublicKey,
     ) -> Option<Ref<'_, RefCell<CredentialBundle>>> {
@@ -112,37 +118,37 @@ impl KeyStore {
     /// corresponding to the given `Credential` or if an error occurred during
     /// the creation of the `KeyPackageBundle`.
     pub fn generate_key_package(
-        &mut self,
+        &self,
         ciphersuites: &[CiphersuiteName],
         credential: &Credential,
         extensions: Vec<Box<dyn Extension>>,
-    ) -> Result<&KeyPackage, KeyStoreError> {
+    ) -> Result<KeyPackage, KeyStoreError> {
         let credential_bundle = self
             .get_credential_bundle(credential.signature_key())
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
         let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle.borrow(), extensions)?;
         let kp_hash = kpb.key_package().hash();
-        let kpbs = self.init_key_package_bundles.borrow_mut();
+        let mut kpbs = self.init_key_package_bundles.borrow_mut();
         kpbs.insert(kp_hash.clone(), kpb);
-        let kp = kpbs.get(&kp_hash).unwrap();
-        Ok(&kp.key_package())
+        let kp = kpbs.get(&kp_hash).unwrap().key_package().clone();
+        Ok(kp)
     }
 
     /// Generate a fresh `CredentialBundle` with the given parameters and store
     /// it in the `KeyStore`. Returns the corresponding `Credential` or an error
     /// if the creation of the `CredentialBundle` fails.
     pub fn generate_credential(
-        &mut self,
+        &self,
         identity: Vec<u8>,
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,
-    ) -> Result<&Credential, KeyStoreError> {
+    ) -> Result<Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
         let signature_key = cb.credential().signature_key().clone();
-        let cbs = self.credential_bundles.borrow();
+        let mut cbs = self.credential_bundles.borrow_mut();
         cbs.insert(signature_key.clone(), RefCell::new(cb));
         let cb_ref = cbs.get(&signature_key).unwrap().borrow();
-        let credential = cb_ref.credential();
+        let credential = cb_ref.credential().clone();
         Ok(credential)
     }
 }
