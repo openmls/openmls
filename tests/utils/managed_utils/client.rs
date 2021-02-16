@@ -18,8 +18,6 @@ pub struct Client<'key_store_lifetime> {
     /// Ciphersuites supported by the client.
     pub(crate) credentials: &'key_store_lifetime HashMap<CiphersuiteName, Credential>,
     pub(crate) key_store: &'key_store_lifetime KeyStore,
-    // Map from key package hash to the corresponding bundle.
-    pub(crate) key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
     pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup<'key_store_lifetime>>>,
 }
 
@@ -39,17 +37,11 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             .credentials
             .get(&ciphersuites[0])
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let credential_bundle = self
-            .key_store
-            .get_credential_bundle(credential.signature_key())
-            .unwrap();
         let mandatory_extensions = Vec::new();
-        let key_package_bundle: KeyPackageBundle =
-            KeyPackageBundle::new(ciphersuites, &credential_bundle, mandatory_extensions).unwrap();
-        let key_package = key_package_bundle.key_package().clone();
-        self.key_package_bundles
-            .borrow_mut()
-            .insert(key_package_bundle.key_package().hash(), key_package_bundle);
+        let key_package: KeyPackage = self
+            .key_store
+            .generate_key_package(ciphersuites, credential, mandatory_extensions)
+            .unwrap();
         Ok(key_package)
     }
 
@@ -66,22 +58,16 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             .credentials
             .get(&ciphersuite.name())
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let credential_bundle = self
-            .key_store
-            .get_credential_bundle(credential.signature_key())
-            .unwrap();
         let mandatory_extensions = Vec::new();
-        let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &credential_bundle,
-            mandatory_extensions,
-        )
-        .unwrap();
+        let key_package: KeyPackage = self
+            .key_store
+            .generate_key_package(&[ciphersuite.name()], credential, mandatory_extensions)
+            .unwrap();
         let group_state = ManagedGroup::new(
             self.key_store,
             &managed_group_config,
             group_id.clone(),
-            key_package_bundle,
+            &key_package.hash(),
         )?;
         self.groups.borrow_mut().insert(group_id, group_state);
         Ok(())
@@ -97,29 +83,11 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
-        let encrypted_group_secret = welcome
-            .secrets()
-            .iter()
-            .find(|egs| {
-                self.key_package_bundles
-                    .borrow()
-                    .contains_key(&egs.key_package_hash)
-            })
-            .ok_or(ClientError::NoMatchingKeyPackage)?;
-        // We can unwrap here, because we just checked that this kpb exists.
-        // Also, we should be fine just removing the KeyPackageBundle here,
-        // because it shouldn't be used again anyway.
-        let key_package_bundle = self
-            .key_package_bundles
-            .borrow_mut()
-            .remove(&encrypted_group_secret.key_package_hash)
-            .unwrap();
         let new_group: ManagedGroup<'key_store_lifetime> = ManagedGroup::new_from_welcome(
             self.key_store,
             &managed_group_config,
             welcome,
             ratchet_tree,
-            key_package_bundle,
         )?;
         self.groups
             .borrow_mut()

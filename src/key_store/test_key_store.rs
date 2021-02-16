@@ -13,7 +13,7 @@ ctest!(key_storage {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
-    let mut ks = KeyStore::default();
+    let ks = KeyStore::default();
 
     let credential = ks
         .generate_credential(
@@ -52,10 +52,10 @@ ctest!(key_storage {
         .get_credential_bundle(credential.signature_key())
         .expect("Error while getting CredentialBundle from the store.");
 
-    assert_eq!(cb.credential(), &credential);
+    assert_eq!(cb.borrow().credential(), &credential);
 
     let kpb = ks
-        ._take_key_package_bundle(&key_package.hash())
+        .take_key_package_bundle(&key_package.hash())
         .expect("Error while getting KeyPackageBundle from the store.");
 
     assert_eq!(kpb.key_package(), &key_package);
@@ -70,12 +70,11 @@ ctest!(key_storage {
     )
     .expect("Error while creating credential.");
 
-
-    assert_eq!(ks.get_credential_bundle(cb_external.credential().signature_key()), None);
+    assert_eq!(ks.get_credential_bundle(cb_external.credential().signature_key()).is_none(), true);
 
     let kpb_external = KeyPackageBundle::new(&[ciphersuite.name()], &cb_external, Vec::new())
         .expect("Error while generating key package.");
 
-    assert_eq!(ks._take_key_package_bundle(&kpb_external.key_package().hash()), None);
+    assert_eq!(ks.take_key_package_bundle(&kpb_external.key_package().hash()).is_none(), true);
 
 });

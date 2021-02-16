@@ -116,7 +116,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         // Create credentials first to avoid borrowing issues.
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
-            let mut key_store = KeyStore::default();
+            let key_store = KeyStore::default();
             // For now, everyone supports all ciphersuites.
             let mut credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
@@ -153,13 +153,11 @@ impl<'ks> ManagedTestSetup<'ks> {
             // For now, everyone supports all ciphersuites.
             let _ciphersuites = Config::supported_ciphersuite_names();
             let mut credential_bundles = Vec::new();
-            let key_package_bundles = RefCell::new(HashMap::new());
             let (credentials, key_store) = self.key_stores.get(&identity).unwrap();
             let client = Client {
                 identity: identity.clone(),
                 credentials,
                 key_store,
-                key_package_bundles,
                 groups: RefCell::new(HashMap::new()),
             };
             for ciphersuite in Config::supported_ciphersuite_names() {
