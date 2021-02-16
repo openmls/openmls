@@ -16,8 +16,7 @@ fn test_managed_group_persistence() {
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap()
-        .clone();
+        .unwrap();
 
     // Generate KeyPackages
     let alice_key_package = key_store
@@ -98,8 +97,7 @@ fn remover() {
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap()
-        .clone();
+        .unwrap();
 
     let bob_credential = key_store
         .generate_credential(
@@ -107,8 +105,7 @@ fn remover() {
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap()
-        .clone();
+        .unwrap();
 
     let charlie_credential = key_store
         .generate_credential(
@@ -116,8 +113,7 @@ fn remover() {
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap()
-        .clone();
+        .unwrap();
 
     // Generate KeyPackages
     let alice_key_package = key_store
@@ -154,7 +150,7 @@ fn remover() {
     .unwrap();
 
     // === Alice adds Bob ===
-    let (queued_messages, welcome) = match alice_group.add_members(&[bob_key_package.clone()]) {
+    let (queued_messages, welcome) = match alice_group.add_members(&[bob_key_package]) {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
@@ -172,7 +168,7 @@ fn remover() {
     .expect("Error creating group from Welcome");
 
     // === Bob adds Charlie ===
-    let (queued_messages, welcome) = match bob_group.add_members(&[charlie_key_package.clone()]) {
+    let (queued_messages, welcome) = match bob_group.add_members(&[charlie_key_package]) {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };

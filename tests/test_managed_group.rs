@@ -181,8 +181,7 @@ fn managed_group_operations() {
                     CredentialType::Basic,
                     ciphersuite.signature_scheme(),
                 )
-                .unwrap()
-                .clone();
+                .unwrap();
 
             let bob_credential = key_store
                 .generate_credential(
@@ -190,8 +189,7 @@ fn managed_group_operations() {
                     CredentialType::Basic,
                     ciphersuite.signature_scheme(),
                 )
-                .unwrap()
-                .clone();
+                .unwrap();
 
             let charlie_credential = key_store
                 .generate_credential(
@@ -199,8 +197,7 @@ fn managed_group_operations() {
                     CredentialType::Basic,
                     ciphersuite.signature_scheme(),
                 )
-                .unwrap()
-                .clone();
+                .unwrap();
 
             // Generate KeyPackages
             let alice_key_package = key_store
@@ -237,11 +234,10 @@ fn managed_group_operations() {
             .unwrap();
 
             // === Alice adds Bob ===
-            let (queued_messages, welcome) =
-                match alice_group.add_members(&[bob_key_package.clone()]) {
-                    Ok((qm, welcome)) => (qm, welcome),
-                    Err(e) => panic!("Could not add member to group: {:?}", e),
-                };
+            let (queued_messages, welcome) = match alice_group.add_members(&[bob_key_package]) {
+                Ok((qm, welcome)) => (qm, welcome),
+                Err(e) => panic!("Could not add member to group: {:?}", e),
+            };
 
             alice_group
                 .process_messages(queued_messages.clone())
@@ -659,8 +655,7 @@ fn test_empty_input_errors() {
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap()
-        .clone();
+        .unwrap();
 
     // Generate KeyPackages
     let alice_key_package = key_store
