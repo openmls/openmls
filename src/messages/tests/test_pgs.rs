@@ -44,6 +44,7 @@ fn test_pgs() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
+            None, /* Initial PSK */
         )
         .expect("Could not create group.");
 
@@ -57,6 +58,7 @@ fn test_pgs() {
             &[&bob_add_proposal],
             &[],
             true,
+            None,
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -67,6 +69,7 @@ fn test_pgs() {
                 &commit,
                 &[&bob_add_proposal],
                 &[kpb_option.expect("No KeyPackageBundle")],
+                None,
             )
             .expect("Could not apply Commit");
 

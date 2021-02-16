@@ -13,6 +13,9 @@ pub use crate::group::errors::{ApplyCommitError, CreateCommitError, GroupError, 
 // Indexes
 pub use crate::tree::index::LeafIndex;
 
+// PSKs
+pub use crate::schedule::psk::ExternalPskBundle;
+
 pub use crate::ciphersuite::*;
 pub use crate::codec::*;
 pub use crate::config::*;

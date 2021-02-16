@@ -20,6 +20,8 @@ pub struct ManagedGroupConfig {
     pub(crate) update_policy: UpdatePolicy,
     /// Size of padding in bytes
     pub(crate) padding_size: usize,
+    /// Number of resumtion secrets to keep
+    pub(crate) number_of_resumption_secrets: usize,
     /// Callbacks
     #[serde(skip)]
     pub(crate) callbacks: ManagedGroupCallbacks,
@@ -30,12 +32,14 @@ impl ManagedGroupConfig {
         handshake_message_format: HandshakeMessageFormat,
         update_policy: UpdatePolicy,
         padding_size: usize,
+        number_of_resumption_secrets: usize,
         callbacks: ManagedGroupCallbacks,
     ) -> Self {
         ManagedGroupConfig {
             handshake_message_format,
             update_policy,
             padding_size,
+            number_of_resumption_secrets,
             callbacks,
         }
     }

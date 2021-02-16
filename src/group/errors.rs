@@ -8,7 +8,7 @@ use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
-use crate::schedule::errors::KeyScheduleError;
+use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
 
 implement_error! {
@@ -38,6 +38,8 @@ implement_error! {
                 "An error occurred in the key schedule.",
             MathError(TreeMathError) =
                 "An error occurred during a tree math operation.",
+            PskError(PskError) =
+                "A PSK error occured.",
         }
     }
 }
@@ -77,6 +79,8 @@ implement_error! {
                 "Codec error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
+            PskError(PskError) =
+                "A PSK error occured.",
         }
     }
 }
@@ -120,6 +124,8 @@ implement_error! {
                 "Codec error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
+            PskError(PskError) =
+                "A PSK error occured.",
         }
     }
 }
@@ -137,5 +143,20 @@ implement_error! {
     pub enum ExporterError {
         KeyLengthTooLong =
             "The requested key length is not supported (too large).",
+    }
+}
+
+implement_error! {
+    pub enum PskError {
+        Simple {
+            NoPskFetcherProvided =
+                "A PSK was needed, but no PSK fetcher function was provided.",
+            PskIdNotFound =
+                "No PSK was found for PSK ID.",
+        }
+        Complex {
+            PskSecretError(PskSecretError) =
+                "An error occured when concatenating the PSKs.",
+        }
     }
 }

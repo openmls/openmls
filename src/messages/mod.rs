@@ -290,20 +290,20 @@ pub(crate) struct PathSecret {
 pub(crate) struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
-    pub(crate) _psks: Option<PreSharedKeys>,
+    pub(crate) psks: Option<PreSharedKeys>,
 }
 
 impl GroupSecrets {
     /// Create new encoded group secrets.
-    pub(crate) fn new_encoded(
+    pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
         path_secret: Option<PathSecret>,
-        psks: Option<PreSharedKeys>,
+        psks_option: impl Into<Option<&'a PreSharedKeys>> + crate::codec::Codec,
     ) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
         joiner_secret.encode(buffer)?;
         path_secret.encode(buffer)?;
-        psks.encode(buffer)?;
+        psks_option.encode(buffer)?;
         Ok(buffer.to_vec())
     }
 }

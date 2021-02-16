@@ -1,4 +1,4 @@
-use crate::group::managed_group::*;
+use super::*;
 
 use serde::{
     ser::{SerializeStruct, Serializer},
@@ -11,6 +11,7 @@ pub struct SerializedManagedGroup {
     pending_proposals: Vec<MLSPlaintext>,
     own_kpbs: Vec<KeyPackageBundle>,
     aad: Vec<u8>,
+    resumption_secret_store: ResumptionSecretStore,
     active: bool,
 }
 
@@ -27,6 +28,7 @@ impl<'a> SerializedManagedGroup {
             pending_proposals: self.pending_proposals,
             own_kpbs: self.own_kpbs,
             aad: self.aad,
+            resumption_secret_store: self.resumption_secret_store,
             active: self.active,
         };
         managed_group.managed_group_config.set_callbacks(callbacks);
@@ -45,6 +47,7 @@ impl<'a> Serialize for ManagedGroup<'a> {
         state.serialize_field("pending_proposals", &self.pending_proposals)?;
         state.serialize_field("own_kpbs", &self.own_kpbs)?;
         state.serialize_field("aad", &self.aad)?;
+        state.serialize_field("resumption_secret_store", &self.resumption_secret_store)?;
         state.serialize_field("active", &self.active)?;
         state.end()
     }

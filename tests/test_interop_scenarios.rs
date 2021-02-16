@@ -15,7 +15,7 @@ fn default_managed_group_config() -> ManagedGroupConfig {
     let handshake_message_format = HandshakeMessageFormat::Plaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = default_callbacks::default_callbacks();
-    ManagedGroupConfig::new(handshake_message_format, update_policy, 10, callbacks)
+    ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, callbacks)
 }
 
 // # 1:1 join

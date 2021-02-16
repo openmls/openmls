@@ -1,6 +1,7 @@
 pub mod callbacks;
 pub mod config;
 pub mod errors;
+mod resumption;
 mod ser;
 #[cfg(test)]
 mod test_managed_group;
@@ -14,6 +15,7 @@ use crate::tree::node::Node;
 use crate::{
     credentials::{Credential, CredentialBundle},
     key_store::KeyStore,
+    schedule::ResumptionSecret,
 };
 
 use std::collections::HashMap;
@@ -25,6 +27,7 @@ pub use errors::{
     EmptyInputError, InvalidMessageError, ManagedGroupError, PendingProposalsError,
     UseAfterEviction,
 };
+pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
@@ -73,6 +76,8 @@ pub struct ManagedGroup<'a> {
     // The AAD that is used for all outgoing handshake messages. The AAD can be set through
     // `set_aad()`.
     aad: Vec<u8>,
+    // Resumption secret store. This is where the resumption secrets are kept in a rollover list.
+    resumption_secret_store: ResumptionSecretStore,
     // A flag that indicates if the current client is still a member of a group. The value is set
     // to `true` upon group creation and is set to `false` when the client gets evicted from the
     // group`.
@@ -89,12 +94,17 @@ impl<'a> ManagedGroup<'a> {
         group_id: GroupId,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, ManagedGroupError> {
+        // TODO #141
         let group = MlsGroup::new(
             &group_id.as_slice(),
             key_package_bundle.key_package().ciphersuite_name(),
             key_package_bundle,
             GroupConfig::default(),
+            None, /* Initial PSK */
         )?;
+
+        let resumption_secret_store =
+            ResumptionSecretStore::new(managed_group_config.number_of_resumption_secrets);
 
         let managed_group = ManagedGroup {
             key_store,
@@ -103,6 +113,7 @@ impl<'a> ManagedGroup<'a> {
             pending_proposals: vec![],
             own_kpbs: vec![],
             aad: vec![],
+            resumption_secret_store,
             active: true,
         };
 
@@ -120,7 +131,11 @@ impl<'a> ManagedGroup<'a> {
         ratchet_tree: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, GroupError> {
-        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle)?;
+        // TODO #141
+        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None)?;
+
+        let resumption_secret_store =
+            ResumptionSecretStore::new(managed_group_config.number_of_resumption_secrets);
 
         let managed_group = ManagedGroup {
             key_store,
@@ -129,6 +144,7 @@ impl<'a> ManagedGroup<'a> {
             pending_proposals: vec![],
             own_kpbs: vec![],
             aad: vec![],
+            resumption_secret_store,
             active: true,
         };
 
@@ -177,12 +193,14 @@ impl<'a> ManagedGroup<'a> {
             .collect::<Vec<&MLSPlaintext>>();
 
         // Create Commit over all proposals
+        // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             self.credential_bundle()?,
             proposals_by_reference,
             proposals_by_value,
             false,
+            None,
         )?;
         let welcome = match welcome_option {
             Some(welcome) => welcome,
@@ -248,12 +266,14 @@ impl<'a> ManagedGroup<'a> {
             .collect::<Vec<&MLSPlaintext>>();
 
         // Create Commit over all proposals
+        // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             self.credential_bundle()?,
             proposals_by_reference,
             proposals_by_value,
             false,
+            None,
         )?;
 
         // It has to be a full Commit and we have to save the KeyPackageBundle for later
@@ -451,9 +471,10 @@ impl<'a> ManagedGroup<'a> {
                         .pending_proposals
                         .iter()
                         .collect::<Vec<&MLSPlaintext>>();
+                    // TODO #141
                     match self
                         .group
-                        .apply_commit(&plaintext, proposals, &self.own_kpbs)
+                        .apply_commit(&plaintext, proposals, &self.own_kpbs, None)
                     {
                         Ok(()) => {
                             // Since the Commit was applied without errors, we can call all
@@ -464,6 +485,10 @@ impl<'a> ManagedGroup<'a> {
                                 plaintext.sender.sender,
                                 &indexed_members,
                             );
+                            // Extract and store the resumption secret for the current epoch
+                            let resumption_secret = self.group.epoch_secrets().resumption_secret();
+                            self.resumption_secret_store
+                                .add(self.group.context().epoch(), resumption_secret.clone());
                             // We don't need the pending proposals and key package bundles any
                             // longer
                             self.pending_proposals.clear();
@@ -559,12 +584,14 @@ impl<'a> ManagedGroup<'a> {
         let messages_to_commit: Vec<&MLSPlaintext> = self.pending_proposals.iter().collect();
 
         // Create Commit over all pending proposals
+        // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             self.credential_bundle()?,
             &messages_to_commit,
             &[],
             true,
+            None,
         )?;
 
         // Add the Commit message to the other pending messages
@@ -603,6 +630,11 @@ impl<'a> ManagedGroup<'a> {
     /// Returns the authentication secret
     pub fn authentication_secret(&self) -> Vec<u8> {
         self.group.authentication_secret().to_vec()
+    }
+
+    /// Returns a resumption secret for a given epoch. If no resumption secret is available `None` is returned.
+    pub fn get_resumption_secret(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
+        self.resumption_secret_store.get(epoch)
     }
 
     // === Configuration ===
@@ -707,12 +739,14 @@ impl<'a> ManagedGroup<'a> {
             .collect();
 
         // Create Commit over all proposals
+        // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
             self.credential_bundle()?,
             &messages_to_commit,
             &[],
             true, /* force_self_update */
+            None,
         )?;
 
         // Add the Commit message to the other pending messages

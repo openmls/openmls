@@ -1,4 +1,5 @@
 use log::{debug, trace};
+use psk::{PreSharedKeys, PskSecret};
 
 mod apply_commit;
 mod create_commit;
@@ -28,7 +29,7 @@ use std::io::{Error, Read, Write};
 
 use std::cell::RefMut;
 
-use super::errors::ExporterError;
+use super::errors::{ExporterError, PskError};
 
 pub type CreateCommitResult =
     Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), GroupError>;
@@ -65,6 +66,7 @@ impl MlsGroup {
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
+        psk_option: impl Into<Option<PskSecret>>,
     ) -> Result<Self, GroupError> {
         debug!("Created group {:x?}", id);
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
@@ -88,8 +90,7 @@ impl MlsGroup {
             &InitSecret::random(ciphersuite.hash_length()),
         );
 
-        // TODO #141: Implement PSK
-        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, None);
+        let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, psk_option);
         key_schedule.add_context(&group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(true)?;
 
@@ -113,8 +114,14 @@ impl MlsGroup {
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
+        psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<Self, GroupError> {
-        Ok(Self::new_from_welcome_internal(welcome, nodes_option, kpb)?)
+        Ok(Self::new_from_welcome_internal(
+            welcome,
+            nodes_option,
+            kpb,
+            psk_fetcher_option,
+        )?)
     }
 
     // === Create handshake messages ===
@@ -196,6 +203,30 @@ impl MlsGroup {
         .map_err(GroupError::CodecError)
     }
 
+    // 11.1.4. PreSharedKey
+    // struct {
+    //     PreSharedKeyID psk;
+    // } PreSharedKey;
+    pub fn create_presharedkey_proposal(
+        &self,
+        aad: &[u8],
+        credential_bundle: &CredentialBundle,
+        psk: PreSharedKeyID,
+    ) -> Result<MLSPlaintext, GroupError> {
+        let presharedkey_proposal = PreSharedKeyProposal { psk };
+        let proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        MLSPlaintext::new_from_proposal_member(
+            self.ciphersuite,
+            self.sender_index(),
+            aad,
+            proposal,
+            credential_bundle,
+            &self.context(),
+            self.epoch_secrets().membership_key(),
+        )
+        .map_err(GroupError::CodecError)
+    }
+
     // === ===
 
     // 11.2. Commit
@@ -212,6 +243,7 @@ impl MlsGroup {
         proposals_by_reference: &[&MLSPlaintext],
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
+        psk_fetcher_option: Option<PskFetcher>,
     ) -> CreateCommitResult {
         self.create_commit_internal(
             aad,
@@ -219,6 +251,7 @@ impl MlsGroup {
             proposals_by_reference,
             proposals_by_value,
             force_self_update,
+            psk_fetcher_option,
         )
     }
 
@@ -228,8 +261,14 @@ impl MlsGroup {
         mls_plaintext: &MLSPlaintext,
         proposals: &[&MLSPlaintext],
         own_key_packages: &[KeyPackageBundle],
+        psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<(), GroupError> {
-        Ok(self.apply_commit_internal(mls_plaintext, proposals, own_key_packages)?)
+        Ok(self.apply_commit_internal(
+            mls_plaintext,
+            proposals,
+            own_key_packages,
+            psk_fetcher_option,
+        )?)
     }
 
     // Create application message
@@ -430,6 +469,13 @@ impl MlsGroup {
     }
 }
 
+// Callback functions
+
+/// This callback function is used in several places in `MlsGroup`.
+/// It gets called whenever the key schedule is advanced and references to PSKs are encountered.
+/// Since the PSKs are to be trandmitted out-of-band, they need to be fetched from wherever they are stored.
+pub type PskFetcher = fn(psks: &PreSharedKeys) -> Option<Vec<Secret>>;
+
 // Helper functions
 
 pub(crate) fn update_confirmed_transcript_hash(
@@ -448,4 +494,30 @@ pub(crate) fn update_interim_transcript_hash(
 ) -> Result<Vec<u8>, CodecError> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached()?;
     Ok(ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat()))
+}
+
+fn psk_output(
+    ciphersuite: &Ciphersuite,
+    psk_fetcher_option: Option<PskFetcher>,
+    presharedkeys: &PreSharedKeys,
+) -> Result<Option<PskSecret>, PskError> {
+    if !presharedkeys.psks.is_empty() {
+        // Check if a PSK fetcher function was provided
+        match psk_fetcher_option {
+            Some(psk_fetcher) => {
+                // Try to fetch the PSKs with the IDs
+                match psk_fetcher(&presharedkeys) {
+                    Some(psks) => {
+                        // Combine the PSKs in to a PskSecret
+                        let psk_secret = PskSecret::new(ciphersuite, &presharedkeys.psks, &psks)?;
+                        Ok(Some(psk_secret))
+                    }
+                    None => Err(PskError::PskIdNotFound),
+                }
+            }
+            None => Err(PskError::NoPskFetcherProvided),
+        }
+    } else {
+        Ok(None)
+    }
 }
