@@ -46,7 +46,7 @@ pub struct MlsGroup {
     // Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
     // Defaults to `false`.
-    add_ratchet_tree_extension: bool,
+    use_ratchet_tree_extension: bool,
 }
 
 implement_persistence!(
@@ -56,7 +56,7 @@ implement_persistence!(
     secret_tree,
     tree,
     interim_transcript_hash,
-    add_ratchet_tree_extension
+    use_ratchet_tree_extension
 );
 
 /// Public `MlsGroup` functions.
@@ -73,12 +73,20 @@ impl MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
-        // TODO #186: Implement extensions
+        let extensions: Vec<Box<dyn Extension>> = if config.add_ratchet_tree_extension {
+            vec![Box::new(RatchetTreeExtension::new(
+                tree.public_key_tree_copy(),
+            ))]
+        } else {
+            Vec::new()
+        };
+
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
             group_id,
             tree.tree_hash(),
-            &[],
+            // No need to add group extensions when creating an empty group
+            &extensions,
         )?;
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
@@ -105,7 +113,7 @@ impl MlsGroup {
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
             interim_transcript_hash,
-            add_ratchet_tree_extension: config.add_ratchet_tree_extension,
+            use_ratchet_tree_extension: config.add_ratchet_tree_extension,
         })
     }
 
@@ -420,7 +428,7 @@ impl MlsGroup {
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
     pub fn extensions(&self) -> Vec<Box<dyn Extension>> {
-        let extensions: Vec<Box<dyn Extension>> = if self.add_ratchet_tree_extension {
+        let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
             vec![Box::new(RatchetTreeExtension::new(
                 self.tree().public_key_tree_copy(),
             ))]
@@ -436,6 +444,11 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, CredentialError> {
         PublicGroupState::new(self, credential_bundle)
+    }
+
+    /// Returns `true` if the group uses the ratchet tree extension anf `false otherwise
+    pub fn use_ratchet_tree_extension(&self) -> bool {
+        self.use_ratchet_tree_extension
     }
 }
 

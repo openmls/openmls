@@ -62,7 +62,6 @@ fn proposal_queue_functions() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        // TODO #186: Implement extensions
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![], &[])
                 .expect("Could not create new GroupContext");
@@ -182,7 +181,6 @@ fn proposal_queue_order() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        // TODO #186: Implement extensions
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![], &[]).unwrap();
 

@@ -73,24 +73,27 @@ impl MlsGroup {
             .iter()
             .position(|e| e.extension_type() == ExtensionType::RatchetTree);
         let ratchet_tree_extension = if let Some(i) = ratchet_tree_ext_index {
-            let extension = group_info.extensions_mut().remove(i);
             // Throw an error if we there is another ratchet tree extension.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
             if group_info
                 .extensions()
                 .iter()
-                .any(|e| e.extension_type() == ExtensionType::RatchetTree)
+                .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
+                .count()
+                > 1
             {
                 return Err(WelcomeError::DuplicateRatchetTreeExtension);
             }
+            let extension = group_info.extensions_mut().get(i).unwrap();
             match extension.as_ratchet_tree_extension() {
                 Ok(e) => {
-                    let ext = Some(e.clone());
+                    //let ext = Some(e.clone());
                     // Put the extension back into the GroupInfo, so the
                     // signature verifies.
-                    group_info.extensions_mut().insert(i, extension);
-                    ext
+                    //group_info.extensions_mut().insert(i, extension);
+                    //ext
+                    Some(e.clone())
                 }
                 Err(e) => {
                     error!("Library error retrieving ratchet tree extension ({:?}", e);
@@ -204,7 +207,7 @@ impl MlsGroup {
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
-                add_ratchet_tree_extension: enable_ratchet_tree_extension,
+                use_ratchet_tree_extension: enable_ratchet_tree_extension,
             })
         }
     }
