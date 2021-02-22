@@ -446,7 +446,8 @@ impl MlsGroup {
         PublicGroupState::new(self, credential_bundle)
     }
 
-    /// Returns `true` if the group uses the ratchet tree extension anf `false otherwise
+    /// Returns `true` if the group uses the ratchet tree extension anf `false
+    /// otherwise
     pub fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
@@ -485,8 +486,9 @@ impl MlsGroup {
 // Callback functions
 
 /// This callback function is used in several places in `MlsGroup`.
-/// It gets called whenever the key schedule is advanced and references to PSKs are encountered.
-/// Since the PSKs are to be trandmitted out-of-band, they need to be fetched from wherever they are stored.
+/// It gets called whenever the key schedule is advanced and references to PSKs
+/// are encountered. Since the PSKs are to be trandmitted out-of-band, they need
+/// to be fetched from wherever they are stored.
 pub type PskFetcher = fn(psks: &PreSharedKeys) -> Option<Vec<Secret>>;
 
 // Helper functions

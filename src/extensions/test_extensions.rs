@@ -60,7 +60,8 @@ fn lifetime() {
     assert!(!ext.is_valid());
 }
 
-// This tests the ratchet tree extension to deliver the public ratcheting tree in-band
+// This tests the ratchet tree extension to deliver the public ratcheting tree
+// in-band
 #[test]
 fn ratchet_tree_extension() {
     for ciphersuite in Config::supported_ciphersuites() {
