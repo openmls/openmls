@@ -158,7 +158,8 @@ pub enum Psk {
 }
 
 /// A `PreSharedKeyID` is used to uniquely identify the PSKs that get injected
-/// in the key schedule. ```text
+/// in the key schedule.
+/// ```text
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
