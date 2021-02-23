@@ -85,7 +85,6 @@ impl MlsGroup {
             ciphersuite,
             group_id,
             tree.tree_hash(),
-            // No need to add group extensions when creating an empty group
             &extensions,
         )?;
         let commit_secret = tree.private_tree().commit_secret();

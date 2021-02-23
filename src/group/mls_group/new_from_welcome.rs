@@ -87,14 +87,7 @@ impl MlsGroup {
             }
             let extension = group_info.extensions_mut().get(i).unwrap();
             match extension.as_ratchet_tree_extension() {
-                Ok(e) => {
-                    //let ext = Some(e.clone());
-                    // Put the extension back into the GroupInfo, so the
-                    // signature verifies.
-                    //group_info.extensions_mut().insert(i, extension);
-                    //ext
-                    Some(e.clone())
-                }
+                Ok(e) => Some(e.clone()),
                 Err(e) => {
                     error!("Library error retrieving ratchet tree extension ({:?}", e);
                     None
