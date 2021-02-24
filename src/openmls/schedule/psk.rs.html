@@ -287,6 +287,8 @@
 <span id="284">284</span>
 <span id="285">285</span>
 <span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
@@ -373,7 +375,8 @@
     }
 }
 
-<span class="doccomment">/// External PSK Bundle. This contains the secret part of the PSK as well as the public part that is used as a marker for injection into the key schedule.</span>
+<span class="doccomment">/// External PSK Bundle. This contains the secret part of the PSK as well as the</span>
+<span class="doccomment">/// public part that is used as a marker for injection into the key schedule.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExternalPskBundle</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
     <span class="ident">nonce</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
@@ -511,8 +514,8 @@
     }
 }
 
-<span class="doccomment">/// `PskLabel` is used in the final concatentation of PSKs before they are injected in the key schedule.</span>
-<span class="doccomment">/// struct {</span>
+<span class="doccomment">/// `PskLabel` is used in the final concatentation of PSKs before they are</span>
+<span class="doccomment">/// injected in the key schedule. struct {</span>
 <span class="doccomment">///     PreSharedKeyID id;</span>
 <span class="doccomment">///     uint16 index;</span>
 <span class="doccomment">///     uint16 count;</span>
@@ -530,7 +533,8 @@
     }
 }
 
-<span class="doccomment">/// This contains the `psk-secret` calculated from the PSKs contained in a Commit or a PreSharedKey proposal.</span>
+<span class="doccomment">/// This contains the `psk-secret` calculated from the PSKs contained in a</span>
+<span class="doccomment">/// Commit or a PreSharedKey proposal.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PskSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
