@@ -83,7 +83,8 @@ impl ExternalPsk {
     }
 }
 
-/// External PSK Bundle. This contains the secret part of the PSK as well as the public part that is used as a marker for injection into the key schedule.
+/// External PSK Bundle. This contains the secret part of the PSK as well as the
+/// public part that is used as a marker for injection into the key schedule.
 pub struct ExternalPskBundle {
     secret: Secret,
     nonce: Vec<u8>,
@@ -221,8 +222,8 @@ impl PreSharedKeys {
     }
 }
 
-/// `PskLabel` is used in the final concatentation of PSKs before they are injected in the key schedule.
-/// struct {
+/// `PskLabel` is used in the final concatentation of PSKs before they are
+/// injected in the key schedule. struct {
 ///     PreSharedKeyID id;
 ///     uint16 index;
 ///     uint16 count;
@@ -240,7 +241,8 @@ impl<'a> PskLabel<'a> {
     }
 }
 
-/// This contains the `psk-secret` calculated from the PSKs contained in a Commit or a PreSharedKey proposal.
+/// This contains the `psk-secret` calculated from the PSKs contained in a
+/// Commit or a PreSharedKey proposal.
 pub struct PskSecret {
     secret: Secret,
 }

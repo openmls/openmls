@@ -1,4 +1,3 @@
-comment_width = 80
 wrap_comments = true
 edition = "2018"
 format_code_in_doc_comments = true
