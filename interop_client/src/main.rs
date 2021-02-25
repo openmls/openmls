@@ -58,6 +58,7 @@ pub struct MlsClientImpl<'client> {
     client: Arc<Mutex<Client<'client>>>,
 }
 
+#[tonic::async_trait]
 impl<'client> MlsClient for MlsClientImpl<'client> {
     async fn name(&self, _request: Request<NameRequest>) -> Result<Response<NameResponse>, Status> {
         println!("Got Name request");
@@ -68,7 +69,7 @@ impl<'client> MlsClient for MlsClientImpl<'client> {
         Ok(Response::new(response))
     }
 
-    fn supported_ciphersuites(
+    async fn supported_ciphersuites(
         &self,
         _request: tonic::Request<SupportedCiphersuitesRequest>,
     ) -> Result<tonic::Response<SupportedCiphersuitesResponse>, tonic::Status> {
@@ -81,7 +82,7 @@ impl<'client> MlsClient for MlsClientImpl<'client> {
         Ok(Response::new(response))
     }
 
-    fn generate_test_vector(
+    async fn generate_test_vector(
         &self,
         request: tonic::Request<GenerateTestVectorRequest>,
     ) -> Result<tonic::Response<GenerateTestVectorResponse>, tonic::Status> {
@@ -137,7 +138,7 @@ impl<'client> MlsClient for MlsClientImpl<'client> {
         Ok(Response::new(response))
     }
 
-    fn verify_test_vector(
+    async fn verify_test_vector(
         &self,
         request: tonic::Request<VerifyTestVectorRequest>,
     ) -> Result<tonic::Response<VerifyTestVectorResponse>, tonic::Status> {
@@ -171,126 +172,126 @@ impl<'client> MlsClient for MlsClientImpl<'client> {
         Ok(Response::new(VerifyTestVectorResponse::default()))
     }
 
-    fn create_group(
+    async fn create_group(
         &self,
         _request: tonic::Request<CreateGroupRequest>,
     ) -> Result<tonic::Response<CreateGroupResponse>, tonic::Status> {
         Ok(Response::new(CreateGroupResponse::default())) // TODO
     }
 
-    fn create_key_package(
+    async fn create_key_package(
         &self,
         _request: tonic::Request<CreateKeyPackageRequest>,
     ) -> Result<tonic::Response<CreateKeyPackageResponse>, tonic::Status> {
         Ok(Response::new(CreateKeyPackageResponse::default())) // TODO
     }
 
-    fn join_group(
+    async fn join_group(
         &self,
         _request: tonic::Request<JoinGroupRequest>,
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
         Ok(Response::new(JoinGroupResponse::default())) // TODO
     }
 
-    fn external_join(
+    async fn external_join(
         &self,
         _request: tonic::Request<ExternalJoinRequest>,
     ) -> Result<tonic::Response<ExternalJoinResponse>, tonic::Status> {
         Ok(Response::new(ExternalJoinResponse::default())) // TODO
     }
 
-    fn public_group_state(
+    async fn public_group_state(
         &self,
         _request: tonic::Request<PublicGroupStateRequest>,
     ) -> Result<tonic::Response<PublicGroupStateResponse>, tonic::Status> {
         Ok(Response::new(PublicGroupStateResponse::default())) // TODO
     }
 
-    fn state_auth(
+    async fn state_auth(
         &self,
         _request: tonic::Request<StateAuthRequest>,
     ) -> Result<tonic::Response<StateAuthResponse>, tonic::Status> {
         Ok(Response::new(StateAuthResponse::default())) // TODO
     }
 
-    fn export(
+    async fn export(
         &self,
         _request: tonic::Request<ExportRequest>,
     ) -> Result<tonic::Response<ExportResponse>, tonic::Status> {
         Ok(Response::new(ExportResponse::default())) // TODO
     }
 
-    fn protect(
+    async fn protect(
         &self,
         _request: tonic::Request<ProtectRequest>,
     ) -> Result<tonic::Response<ProtectResponse>, tonic::Status> {
         Ok(Response::new(ProtectResponse::default())) // TODO
     }
 
-    fn unprotect(
+    async fn unprotect(
         &self,
         _request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
         Ok(Response::new(UnprotectResponse::default())) // TODO
     }
 
-    fn store_psk(
+    async fn store_psk(
         &self,
         _request: tonic::Request<StorePskRequest>,
     ) -> Result<tonic::Response<StorePskResponse>, tonic::Status> {
         Ok(Response::new(StorePskResponse::default())) // TODO
     }
 
-    fn add_proposal(
+    async fn add_proposal(
         &self,
         _request: tonic::Request<AddProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         Ok(Response::new(ProposalResponse::default())) // TODO
     }
 
-    fn update_proposal(
+    async fn update_proposal(
         &self,
         _request: tonic::Request<UpdateProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         Ok(Response::new(ProposalResponse::default())) // TODO
     }
 
-    fn remove_proposal(
+    async fn remove_proposal(
         &self,
         _request: tonic::Request<RemoveProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         Ok(Response::new(ProposalResponse::default())) // TODO
     }
 
-    fn psk_proposal(
+    async fn psk_proposal(
         &self,
         _request: tonic::Request<PskProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         Ok(Response::new(ProposalResponse::default())) // TODO
     }
 
-    fn re_init_proposal(
+    async fn re_init_proposal(
         &self,
         _request: tonic::Request<ReInitProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         Ok(Response::new(ProposalResponse::default())) // TODO
     }
 
-    fn app_ack_proposal(
+    async fn app_ack_proposal(
         &self,
         _request: tonic::Request<AppAckProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         Ok(Response::new(ProposalResponse::default())) // TODO
     }
 
-    fn commit(
+    async fn commit(
         &self,
         _request: tonic::Request<CommitRequest>,
     ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
         Ok(Response::new(CommitResponse::default())) // TODO
     }
 
-    fn handle_commit(
+    async fn handle_commit(
         &self,
         _request: tonic::Request<HandleCommitRequest>,
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
@@ -307,7 +308,8 @@ struct Opts {
     port: u16,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = Opts::parse();
 
     // XXX(RLB): There's probably a more direct way to do this than building a string and then
