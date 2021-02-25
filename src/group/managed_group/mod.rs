@@ -696,7 +696,8 @@ impl<'a> ManagedGroup<'a> {
         self.group.authentication_secret().to_vec()
     }
 
-    /// Returns a resumption secret for a given epoch. If no resumption secret is available `None` is returned.
+    /// Returns a resumption secret for a given epoch. If no resumption secret
+    /// is available `None` is returned.
     pub fn get_resumption_secret(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
         self.resumption_secret_store.get(epoch)
     }
