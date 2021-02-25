@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tls-codec-derive = { version = "0.1", path = "../tls-codec-derive", optional = true }
-hpke-rs = { version = "0.0.4", package = "hpke-rs", features = ["hazmat", "serialization"], optional = true }
+hpke-rs = { version = "0.0.5", package = "hpke-rs", features = ["hazmat", "serialization"], optional = true }
 
 [features]
 derive = [ "tls-codec-derive" ]
