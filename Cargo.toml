@@ -37,7 +37,7 @@ tls-codec = { version = "0.1", path = "tls-codec", features = ["derive", "hpke"]
 log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 hpke = { version = "0.0.4", package = "hpke-rs", features = ["hazmat", "serialization"] }
-evercrypt = { version = "0.0.6", features = ["serialization"] }
+evercrypt = { version = "0.0.7", features = ["serialization"] }
 
 [features]
 default = ["rust-crypto"]
