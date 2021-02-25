@@ -57,8 +57,8 @@
 //! .unwrap();
 //! ```
 use std::{
-    cell::{Ref, RefCell},
     collections::HashMap,
+    sync::{RwLock, RwLockReadGuard},
 };
 
 use crate::{
@@ -81,8 +81,29 @@ pub use errors::KeyStoreError;
 /// `KeyPackage` instances.
 pub struct KeyStore {
     // Map from signature public keys to credential bundles
-    credential_bundles: RefCell<HashMap<SignaturePublicKey, RefCell<CredentialBundle>>>,
-    init_key_package_bundles: RefCell<HashMap<Vec<u8>, KeyPackageBundle>>,
+    credential_bundles: RwLock<HashMap<SignaturePublicKey, RwLock<CredentialBundle>>>,
+    init_key_package_bundles: RwLock<HashMap<Vec<u8>, KeyPackageBundle>>,
+}
+
+/// This guard struct for a `CredentialBundle` implements `Deref`, such that the
+/// underlying `RwLock<CredentialBundle>` can be obtained for read or write
+/// access to the credential.
+pub struct CBGuard<'a> {
+    cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, RwLock<CredentialBundle>>>,
+    index: &'a SignaturePublicKey,
+}
+
+use std::ops::Deref;
+
+impl<'b> Deref for CBGuard<'b> {
+    type Target = RwLock<CredentialBundle>;
+
+    fn deref(&self) -> &RwLock<CredentialBundle> {
+        // We can unwrap here, as we checked if the entry is present before
+        // creating the guard. Also, since we hold a read lock on the `HashMap`,
+        // the entry can't have been removed in the meantime.
+        &self.cbs.get(self.index).unwrap()
+    }
 }
 
 impl KeyStore {
@@ -91,25 +112,30 @@ impl KeyStore {
     /// store. Returns an error if no `KeyPackageBundle` can be found
     /// corresponding to the given `KeyPackage` hash.
     pub fn take_key_package_bundle(&self, kp_hash: &[u8]) -> Option<KeyPackageBundle> {
-        let mut kpbs = self.init_key_package_bundles.borrow_mut();
+        // We unwrap here, because the two functions claiming write locks (this
+        // one and `generate_key_package`) only hold the lock very briefly and
+        // should not panic during that period.
+        let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.remove(kp_hash)
     }
 
-    /// Retrieve a `CredentialBundle` reference from the key store given the
-    /// `SignaturePublicKey` of the corresponding `Credential`. Returns an error
+    /// Retrieve a `CBGuard` from the key store given the `SignaturePublicKey`
+    /// of the corresponding `Credential`. The `CBGuard` can be dereferenced to
+    /// obtain an `RwLock` on the desired `CredentialBundle`. Returns an error
     /// if no `CredentialBundle` can be found corresponding to the given
     /// `SignaturePublicKey`.
     pub(crate) fn get_credential_bundle<'key_store>(
         &'key_store self,
         signature_public_key: &'key_store SignaturePublicKey,
-    ) -> Option<Ref<'_, RefCell<CredentialBundle>>> {
-        let cbs_ref = self.credential_bundles.borrow();
-        if !cbs_ref.contains_key(signature_public_key) {
+    ) -> Option<CBGuard> {
+        let cbs = self.credential_bundles.read().unwrap();
+        if !cbs.contains_key(signature_public_key) {
             return None;
         }
-        Some(Ref::map(self.credential_bundles.borrow(), |cbs| {
-            cbs.get(&signature_public_key).unwrap()
-        }))
+        Some(CBGuard {
+            cbs,
+            index: signature_public_key,
+        })
     }
 
     /// Generate a fresh `KeyPackageBundle` with the given parameters, store it
@@ -126,9 +152,13 @@ impl KeyStore {
         let credential_bundle = self
             .get_credential_bundle(credential.signature_key())
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
-        let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle.borrow(), extensions)?;
+        let kpb =
+            KeyPackageBundle::new(ciphersuites, &credential_bundle.read().unwrap(), extensions)?;
         let kp_hash = kpb.key_package().hash();
-        let mut kpbs = self.init_key_package_bundles.borrow_mut();
+        // We unwrap here, because the two functions claiming write locks (this
+        // one and `take_key_package_bundle`) only hold the lock very briefly
+        // and should not panic during that period.
+        let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.insert(kp_hash.clone(), kpb);
         let kp = kpbs.get(&kp_hash).unwrap().key_package().clone();
         Ok(kp)
@@ -145,9 +175,9 @@ impl KeyStore {
     ) -> Result<Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
         let signature_key = cb.credential().signature_key().clone();
-        let mut cbs = self.credential_bundles.borrow_mut();
-        cbs.insert(signature_key.clone(), RefCell::new(cb));
-        let cb_ref = cbs.get(&signature_key).unwrap().borrow();
+        let mut cbs = self.credential_bundles.write().unwrap();
+        cbs.insert(signature_key.clone(), RwLock::new(cb));
+        let cb_ref = cbs.get(&signature_key).unwrap().read().unwrap();
         let credential = cb_ref.credential().clone();
         Ok(credential)
     }

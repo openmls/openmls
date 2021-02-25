@@ -198,16 +198,19 @@ impl<'a> ManagedGroup<'a> {
             .collect::<Vec<&MLSPlaintext>>();
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &credential_bundle.borrow(),
+            &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
             false,
@@ -278,16 +281,19 @@ impl<'a> ManagedGroup<'a> {
             .collect::<Vec<&MLSPlaintext>>();
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &credential_bundle.borrow(),
+            &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
             false,
@@ -323,17 +329,20 @@ impl<'a> ManagedGroup<'a> {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for key_package in key_packages.iter() {
                 let add_proposal = self.group.create_add_proposal(
                     &self.aad,
-                    &credential_bundle.borrow(),
+                    &credential_bundle,
                     key_package.clone(),
                 )?;
                 messages.push(add_proposal);
@@ -359,17 +368,20 @@ impl<'a> ManagedGroup<'a> {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for member in members.iter() {
                 let remove_proposal = self.group.create_remove_proposal(
                     &self.aad,
-                    &credential_bundle.borrow(),
+                    &credential_bundle,
                     LeafIndex::from(*member),
                 )?;
                 messages.push(remove_proposal);
@@ -392,14 +404,17 @@ impl<'a> ManagedGroup<'a> {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
-            &credential_bundle.borrow(),
+            &credential_bundle,
             self.group.tree().own_node_index(),
         )?;
 
@@ -592,15 +607,18 @@ impl<'a> ManagedGroup<'a> {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         let ciphertext = self.group.create_application_message(
             &self.aad,
             message,
-            &credential_bundle.borrow(),
+            &credential_bundle,
             self.configuration().padding_size(),
         )?;
 
@@ -621,16 +639,19 @@ impl<'a> ManagedGroup<'a> {
         let messages_to_commit: Vec<&MLSPlaintext> = self.pending_proposals.iter().collect();
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         // Create Commit over all pending proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &credential_bundle.borrow(),
+            &credential_bundle,
             &messages_to_commit,
             &[],
             true,
@@ -754,16 +775,19 @@ impl<'a> ManagedGroup<'a> {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         // If a KeyPackageBundle was provided, create an UpdateProposal
         let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
             let update_proposal = self.group.create_update_proposal(
                 &self.aad,
-                &credential_bundle.borrow(),
+                &credential_bundle,
                 key_package_bundle.key_package().clone(),
             )?;
             self.own_kpbs.push(key_package_bundle);
@@ -783,7 +807,7 @@ impl<'a> ManagedGroup<'a> {
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &credential_bundle.borrow(),
+            &credential_bundle,
             &messages_to_commit,
             &[],
             true, /* force_self_update */
@@ -824,10 +848,13 @@ impl<'a> ManagedGroup<'a> {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = self
+        let credential_bundle_guard = self
             .key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle = credential_bundle_guard
+            .read()
+            .map_err(|_| ManagedGroupError::PoisonedCredentialBundle)?;
 
         let tree = self.group.tree();
         let existing_key_package = tree.own_key_package();
@@ -836,14 +863,14 @@ impl<'a> ManagedGroup<'a> {
             None => {
                 let mut key_package_bundle =
                     KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
-                key_package_bundle.sign(&credential_bundle.borrow());
+                key_package_bundle.sign(&credential_bundle);
                 key_package_bundle
             }
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
-            &credential_bundle.borrow(),
+            &credential_bundle,
             key_package_bundle.key_package().clone(),
         )?];
         drop(tree);
