@@ -1,6 +1,7 @@
 use super::*;
 
-/// Resumption secrets store. This is where the resumption secrets are kept in a rollover list.
+/// Resumption secrets store. This is where the resumption secrets are kept in a
+/// rollover list.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct ResumptionSecretStore {
@@ -35,7 +36,8 @@ impl ResumptionSecretStore {
         }
     }
 
-    /// Find an entry for a give epoch number and optionally return the corresponding secret.
+    /// Find an entry for a give epoch number and optionally return the
+    /// corresponding secret.
     pub(crate) fn get(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
         self.resumption_secrets
             .iter()
