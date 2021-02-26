@@ -7,11 +7,20 @@
 //!
 //! The current key store enables the storage of `CredentialBundle` instances,
 //! and grants access to `CredentialBundle` references via the
-//! `SignaturePublicKey` of the corresponding `Credential`.
+//! `SignaturePublicKey` of the corresponding `Credential`. The
+//! `CredentialBundle` instances are only accessible via reference, so that if a
+//! `KeyStore` is used in multiple groups, those groups can also share a
+//! `CredentialBundle`.
 //!
-//! A `KeyStore` is meant to be used across multiple `ManagedGroup` instances to
-//! allow sharing the same `CredentialBundle`. If this is not desired, multiple
-//! `KeyStore` instances can be used across groups.
+//! The `KeyStore` also stores "init" `KeyPackageBundle` instances, i.e. the
+//! counterparts to the `KeyPackage` instances that are published so other
+//! parties can use them to add this party to groups. These `KeyPackageBundle`
+//! instances are removed from the `KeyStore` when they are requested via
+//! `take_key_package_bundle`. This is because each `ManagedGroup` owns the
+//! `KeyPackageBundle` in its leaf, so upon creation of the group, it needs to
+//! consume a `KeyPackageBundle` instance. Note, that in contrast to
+//! `CredentialBundle` instances, `KeyPackageBundle` instances should not be
+//! used across groups.
 //!
 //! # Example
 //!
