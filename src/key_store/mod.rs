@@ -1,31 +1,51 @@
-//! A storage solution for cryptographic key material.
+//! A storage solution for cryptographic key material used in OpenMLS groups.
 //!
 //! This module provides access to the `KeyStore` struct, which manages the
-//! storage of `CredentialBundle` and `KeyPackageBundle` instances. The
-//! development of this module is tracked in #337, which also includes a
-//! roadmap.
+//! storage of `CredentialBundle` and `KeyPackageBundle` instances for use in
+//! one or more `ManagedGroup` instances. The development of this module is
+//! tracked in #337, which also includes a roadmap.
 //!
-//! The current key store enables the storage of `CredentialBundle` instances,
-//! and grants access to `CredentialBundle` references via the
-//! `SignaturePublicKey` of the corresponding `Credential`. The
-//! `CredentialBundle` instances are only accessible via reference, so that if a
-//! `KeyStore` is used in multiple groups, those groups can also share a
-//! `CredentialBundle`.
+//! # Key Store API
 //!
-//! The `KeyStore` also stores "init" `KeyPackageBundle` instances, i.e. the
-//! counterparts to the `KeyPackage` instances that are published so other
-//! parties can use them to add this party to groups. These `KeyPackageBundle`
-//! instances are removed from the `KeyStore` when they are requested via
-//! `take_key_package_bundle`. This is because each `ManagedGroup` owns the
-//! `KeyPackageBundle` in its leaf, so upon creation of the group, it needs to
-//! consume a `KeyPackageBundle` instance. Note, that in contrast to
+//! All functions accessible via the `KeyStore` API are thread safe, allowing
+//! multiple concurrent read locks, on any category of stored key material (e.g.
+//! `CredentialBundle` instances, "init" `KeyPackageBundle` instance).
+//!
+//! ## `CredentialBundle` Instances
+//!
+//! The API of the `KeyStore` allows the generation of `Credential` instances
+//! via `generate_credential`, such that it stores the corresponding
+//! `CredentialBundle`. After storing them, references to `CredentialBundle`
+//! instances can be retrieved via `get_credential_bundle` using the
+//! `SignaturePublicKey` of the corresponding `Credential` as index.
+//!
+//! ## Init `KeyPackageBundle` Instances
+//!
+//! Similarly, the `KeyStore` can generage "init" `KeyPackage` instances via
+//! `generate_key_package` and store the corresponding `KeyPackageBundle`. Init
+//! `KeyPackage` instances are meant to be published so other parties can use
+//! them to add the publishing party to groups.
+//!
+//! ### `KeyPackageBundle` Ownership
+//!
+//! In contrast to the functions providing access to `CredentialBundle`
+//! instances, the function to retrieve `KeyPackageBundle` instances deletes
+//! them from the `KeyStore`. This is because each `ManagedGroup` currently owns
+//! the `KeyPackageBundle` in its leaf, so upon creation of the group, it needs
+//! to consume a `KeyPackageBundle` instance. Note, that in contrast to
 //! `CredentialBundle` instances, `KeyPackageBundle` instances should not be
 //! used across groups.
+//!
+//! This design is temporary and only until the `ManagedGroup` is refactored to
+//! access its `KeyPackageBundle` via the `KeyStore`. Once this is the case, the
+//! `take_key_package_bundle` will be deprecated in favor of a
+//! `get_key_package_bundle`, which only returns a reference to the
+//! `KeyPackageBundle`.
 //!
 //! # Example
 //!
 //! A simple example for the generation and the retrieval of a
-//! `CredentialBundle`.
+//! `CredentialBundle` and a `KeyPackageBundle`.
 //!
 //! ```
 //! use openmls::prelude::*;
