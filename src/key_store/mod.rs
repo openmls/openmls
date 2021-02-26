@@ -81,7 +81,7 @@ pub use errors::KeyStoreError;
 /// `KeyPackage` instances.
 pub struct KeyStore {
     // Map from signature public keys to credential bundles
-    credential_bundles: RwLock<HashMap<SignaturePublicKey, RwLock<CredentialBundle>>>,
+    credential_bundles: RwLock<HashMap<SignaturePublicKey, CredentialBundle>>,
     init_key_package_bundles: RwLock<HashMap<Vec<u8>, KeyPackageBundle>>,
 }
 
@@ -89,20 +89,20 @@ pub struct KeyStore {
 /// underlying `RwLock<CredentialBundle>` can be obtained for read or write
 /// access to the credential.
 pub struct CBGuard<'a> {
-    cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, RwLock<CredentialBundle>>>,
+    cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, CredentialBundle>>,
     index: &'a SignaturePublicKey,
 }
 
 use std::ops::Deref;
 
 impl<'b> Deref for CBGuard<'b> {
-    type Target = RwLock<CredentialBundle>;
+    type Target = CredentialBundle;
 
-    fn deref(&self) -> &RwLock<CredentialBundle> {
+    fn deref(&self) -> &CredentialBundle {
         // We can unwrap here, as we checked if the entry is present before
         // creating the guard. Also, since we hold a read lock on the `HashMap`,
         // the entry can't have been removed in the meantime.
-        &self.cbs.get(self.index).unwrap()
+        self.cbs.get(self.index).unwrap()
     }
 }
 
@@ -152,8 +152,7 @@ impl KeyStore {
         let credential_bundle = self
             .get_credential_bundle(credential.signature_key())
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
-        let kpb =
-            KeyPackageBundle::new(ciphersuites, &credential_bundle.read().unwrap(), extensions)?;
+        let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, extensions)?;
         let kp_hash = kpb.key_package().hash();
         // We unwrap here, because the two functions claiming write locks (this
         // one and `take_key_package_bundle`) only hold the lock very briefly
@@ -176,8 +175,8 @@ impl KeyStore {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
         let signature_key = cb.credential().signature_key().clone();
         let mut cbs = self.credential_bundles.write().unwrap();
-        cbs.insert(signature_key.clone(), RwLock::new(cb));
-        let cb_ref = cbs.get(&signature_key).unwrap().read().unwrap();
+        cbs.insert(signature_key.clone(), cb);
+        let cb_ref = cbs.get(&signature_key).unwrap();
         let credential = cb_ref.credential().clone();
         Ok(credential)
     }
