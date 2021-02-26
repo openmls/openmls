@@ -151,9 +151,9 @@ impl KeyStore {
     /// store. Returns an error if no `KeyPackageBundle` can be found
     /// corresponding to the given `KeyPackage` hash.
     pub fn take_key_package_bundle(&self, kp_hash: &[u8]) -> Option<KeyPackageBundle> {
-        // We unwrap here, because the two functions claiming write locks (this
-        // one and `generate_key_package`) only hold the lock very briefly and
-        // should not panic during that period.
+        // We unwrap here, because the two functions claiming a write lock on
+        // `init_key_package_bundles` (this one and `generate_key_package`) only
+        // hold the lock very briefly and should not panic during that period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.remove(kp_hash)
     }
@@ -193,9 +193,10 @@ impl KeyStore {
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
         let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, extensions)?;
         let kp_hash = kpb.key_package().hash();
-        // We unwrap here, because the two functions claiming write locks (this
-        // one and `take_key_package_bundle`) only hold the lock very briefly
-        // and should not panic during that period.
+        // We unwrap here, because the two functions claiming write locks on
+        // `init_key_package_bundles` (this one and `take_key_package_bundle`)
+        // only hold the lock very briefly and should not panic during that
+        // period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.insert(kp_hash.clone(), kpb);
         let kp = kpbs.get(&kp_hash).unwrap().key_package().clone();
@@ -213,6 +214,9 @@ impl KeyStore {
     ) -> Result<Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
         let signature_key = cb.credential().signature_key().clone();
+        // We unwrap here, because this is the only function claiming a write
+        // lock on `credential_bundles`. It only holds the lock very briefly and
+        // should not panic during that period.
         let mut cbs = self.credential_bundles.write().unwrap();
         cbs.insert(signature_key.clone(), cb);
         let cb_ref = cbs.get(&signature_key).unwrap();
