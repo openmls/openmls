@@ -213,14 +213,12 @@ impl KeyStore {
         signature_scheme: SignatureScheme,
     ) -> Result<Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
-        let signature_key = cb.credential().signature_key().clone();
+        let credential = cb.credential().clone();
         // We unwrap here, because this is the only function claiming a write
         // lock on `credential_bundles`. It only holds the lock very briefly and
         // should not panic during that period.
         let mut cbs = self.credential_bundles.write().unwrap();
-        cbs.insert(signature_key.clone(), cb);
-        let cb_ref = cbs.get(&signature_key).unwrap();
-        let credential = cb_ref.credential().clone();
+        cbs.insert(credential.signature_key().clone(), cb);
         Ok(credential)
     }
 }
