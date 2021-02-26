@@ -85,6 +85,16 @@
 //! )
 //! .unwrap();
 //! ```
+//!
+//! # Future Work
+//!
+//! A more detailed roadmap can be found in issue #337, but generally the plan is to
+//! * move ownership of all `KeyPackageBundle` instances into the `KeyStore` and
+//!   change the API from `take_` to `get_`
+//! * keep track of which key material is (still) in use and where, as well as if it expires and when
+//! * extend the API to allow for deletion of unused key material, expired or otherwise
+//! * add a persistence layer
+
 use std::{
     collections::HashMap,
     sync::{RwLock, RwLockReadGuard},
