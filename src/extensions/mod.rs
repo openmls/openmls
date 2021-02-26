@@ -187,7 +187,7 @@ pub(crate) fn extensions_vec_from_cursor(
 ///
 /// This trait defines functions to interact with an extension.
 #[typetag::serde(tag = "type")]
-pub trait Extension: Debug + ExtensionHelper + Send {
+pub trait Extension: Debug + ExtensionHelper + Send + Sync {
     /// Build a new extension from a byte slice.
     ///
     /// Note that all implementations of this trait are not public such that

@@ -5,12 +5,7 @@
 
 use clap::Clap;
 use openmls::prelude::*;
-use std::{
-    collections::HashMap,
-    convert::TryFrom,
-    sync::{Arc, Mutex},
-};
-use tokio::{runtime::Runtime, task::*};
+use std::{collections::HashMap, convert::TryFrom, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 use utils::read;
 
@@ -24,7 +19,6 @@ pub mod mls_client {
 }
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
-const SUPPORTED_CIPHERSUITES: [u32; 2] = Config::supported_ciphersuite_names();
 const TEST_VECTOR: [u8; 4] = [0, 1, 2, 3];
 
 impl TryFrom<i32> for TestVectorType {
@@ -43,23 +37,39 @@ impl TryFrom<i32> for TestVectorType {
     }
 }
 
-struct Client<'client> {
-    key_store: Arc<Mutex<KeyStore>>,
-    groups: Arc<Mutex<Groups<'client>>>,
+struct Client<'groups> {
+    key_store: KeyStore,
+    groups: Groups<'groups>,
     credentials: HashMap<SignatureScheme, Credential>,
 }
 
 #[derive(Default)]
 struct Groups<'group_states> {
-    group_states: Arc<Mutex<HashMap<GroupId, ManagedGroup<'group_states>>>>,
+    group_states: Mutex<HashMap<GroupId, ManagedGroup<'group_states>>>,
 }
 
-pub struct MlsClientImpl<'client> {
-    client: Arc<Mutex<Client<'client>>>,
+pub struct MlsClientImpl {
+    client: Client<'static>,
+}
+
+impl MlsClientImpl {
+    fn new() -> Self {
+        let key_store = KeyStore::default();
+        let groups = Groups {
+            group_states: Mutex::new(HashMap::new()),
+        };
+        let credentials = HashMap::new();
+        let client = Client {
+            key_store,
+            groups,
+            credentials,
+        };
+        MlsClientImpl { client }
+    }
 }
 
 #[tonic::async_trait]
-impl<'client> MlsClient for MlsClientImpl<'client> {
+impl MlsClient for MlsClientImpl {
     async fn name(&self, _request: Request<NameRequest>) -> Result<Response<NameResponse>, Status> {
         println!("Got Name request");
 
@@ -76,7 +86,10 @@ impl<'client> MlsClient for MlsClientImpl<'client> {
         println!("Got SupportedCiphersuites request");
 
         let response = SupportedCiphersuitesResponse {
-            ciphersuites: SUPPORTED_CIPHERSUITES.to_vec(),
+            ciphersuites: Config::supported_ciphersuite_names()
+                .iter()
+                .map(|cs| *cs as u32)
+                .collect(),
         };
 
         Ok(Response::new(response))
@@ -92,7 +105,7 @@ impl<'client> MlsClient for MlsClientImpl<'client> {
         // TODO: Generate the test vector here instead of reading it from file.
         let (type_msg, test_vector) = match TestVectorType::try_from(obj.test_vector_type) {
             Ok(TestVectorType::TreeMath) => {
-                let kat_treemath = read("test_vectors/kat_treemath_openmls.json");
+                let kat_treemath: Vec<u8> = read("test_vectors/kat_treemath_openmls.json");
                 ("Tree math", kat_treemath)
             }
             Ok(TestVectorType::Encryption) => {
@@ -319,23 +332,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Listening on {}", addr);
 
-    use tokio::task;
-
-    let mut runtime = Runtime::new().unwrap();
-    let local = task::LocalSet::new();
-    let server = Server::builder();
-
-    // Run the local task group.
-    local.block_on(&mut runtime, async move {
-        task::spawn_local(async move {
-            let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-            let incoming = listener.incoming;
-            Server::builder()
-                .add_service(MlsClientServer::new(mls_client_impl))
-                .serve_with_incoming(incoming)
-                .await
-        });
-    });
+    Server::builder()
+        .add_service(MlsClientServer::new(mls_client_impl))
+        .serve(addr)
+        .await?;
 
     Ok(())
 }
