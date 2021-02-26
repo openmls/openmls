@@ -32,18 +32,18 @@
 //!
 //! let key_store = KeyStore::default();
 //!
-//! // Generate a credential bundle.
+//! let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//!
+//! // Generate a credential bundle with the matching signature scheme.
 //! let alice_credential = key_store
 //!     .generate_credential(
 //!         "Alice".into(),
 //!         CredentialType::Basic,
-//!         SignatureScheme::ED25519,
+//!         SignatureScheme::from(ciphersuite_name),
 //!     )
 //!     .unwrap();
 //!
-//! // Generate a key package bundle with a matching ciphersuite.
-//! let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-//!
+//! // Generate a key package bundle.
 //! let alice_key_package = key_store
 //!     .generate_key_package(&[ciphersuite_name], &alice_credential, vec![])
 //!     .unwrap();
