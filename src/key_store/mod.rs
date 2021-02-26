@@ -21,7 +21,7 @@
 //!
 //! ## Init `KeyPackageBundle` Instances
 //!
-//! Similarly, the `KeyStore` can generage "init" `KeyPackage` instances via
+//! Similarly, the `KeyStore` can generate "init" `KeyPackage` instances via
 //! `generate_key_package` and store the corresponding `KeyPackageBundle`. Init
 //! `KeyPackage` instances are meant to be published so other parties can use
 //! them to add the publishing party to groups.
