@@ -75,12 +75,10 @@ pub enum ActionType {
 /// groups. Note, that the `ManagedTestSetup` can only be initialized with a
 /// fixed number of clients and that `create_clients` has to be called before it
 /// can be otherwise used.
-pub struct ManagedTestSetup<'client_lifetime> {
-    pub number_of_clients: usize,
+pub struct ManagedTestSetup {
     // The clients identity is its position in the vector in be_bytes.
-    pub clients: RefCell<HashMap<Vec<u8>, RefCell<Client<'client_lifetime>>>>,
+    pub clients: RefCell<HashMap<Vec<u8>, RefCell<Client>>>,
     pub groups: RefCell<HashMap<GroupId, Group>>,
-    pub key_stores: HashMap<Vec<u8>, (HashMap<CiphersuiteName, Credential>, KeyStore)>,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RefCell<HashMap<Vec<u8>, Vec<u8>>>,
     pub default_mgc: ManagedGroupConfig,
@@ -106,7 +104,7 @@ pub struct ManagedTestSetup<'client_lifetime> {
 // context that the `ManagedTestSetup` lives in, because otherwise the
 // references don't live long enough.
 
-impl<'ks> ManagedTestSetup<'ks> {
+impl ManagedTestSetup {
     /// Create a new `ManagedTestSetup` with the given default
     /// `ManagedGroupConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
@@ -114,53 +112,17 @@ impl<'ks> ManagedTestSetup<'ks> {
     pub fn new(default_mgc: ManagedGroupConfig, number_of_clients: usize) -> Self {
         let mut key_stores = HashMap::new();
         // Create credentials first to avoid borrowing issues.
-        for i in 0..number_of_clients {
-            let identity = i.to_be_bytes().to_vec();
-            let key_store = KeyStore::default();
-            // For now, everyone supports all ciphersuites.
-            let mut credentials = HashMap::new();
-            for ciphersuite in Config::supported_ciphersuite_names() {
-                let credential = key_store
-                    .generate_credential(
-                        identity.clone(),
-                        CredentialType::Basic,
-                        SignatureScheme::from(*ciphersuite),
-                    )
-                    .unwrap()
-                    .clone();
-                credentials.insert(*ciphersuite, credential);
-            }
-            key_stores.insert(identity, (credentials, key_store));
-        }
-        let clients = RefCell::new(HashMap::new());
+        let mut clients = RefCell::new(HashMap::new());
         let groups = RefCell::new(HashMap::new());
         let waiting_for_welcome = RefCell::new(HashMap::new());
-        ManagedTestSetup {
-            number_of_clients,
-            clients,
-            groups,
-            key_stores,
-            waiting_for_welcome,
-            default_mgc,
-        }
-    }
-
-    /// Initialize the `TestSetup` by creating all clients.
-    pub fn create_clients(&'ks self) {
-        let mut clients = self.clients.borrow_mut();
-        for i in 0..self.number_of_clients {
+        for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
             // For now, everyone supports all ciphersuites.
             let _ciphersuites = Config::supported_ciphersuite_names();
-            let mut credential_bundles = Vec::new();
-            let (credentials, key_store) = self.key_stores.get(&identity).unwrap();
-            let client = Client {
-                identity: identity.clone(),
-                credentials,
-                key_store,
-                groups: RefCell::new(HashMap::new()),
-            };
+            let key_store = KeyStore::default();
+            let credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
+                key_store.generate_credential(identity.clone(), credential_type, signature_scheme)
                 let credential_bundle = CredentialBundle::new(
                     identity.clone(),
                     CredentialType::Basic,
@@ -169,8 +131,21 @@ impl<'ks> ManagedTestSetup<'ks> {
                 .unwrap();
                 credential_bundles.push((*ciphersuite, credential_bundle));
             }
+            let client = Client {
+                identity: identity.clone(),
+                credentials,
+                key_store,
+                groups: RefCell::new(HashMap::new()),
+            };
             clients.insert(identity, RefCell::new(client));
         }
+        let managed_test_setup = ManagedTestSetup {
+            number_of_clients,
+            clients,
+            groups,
+            waiting_for_welcome,
+            default_mgc,
+        };
     }
 
     /// Create a fresh `KeyPackage` for client `client` for use when adding it
