@@ -37,39 +37,34 @@ impl TryFrom<i32> for TestVectorType {
     }
 }
 
-struct Client<'groups> {
-    key_store: KeyStore,
-    groups: Groups<'groups>,
-    credentials: HashMap<SignatureScheme, Credential>,
-}
-
 #[derive(Default)]
 struct Groups<'group_states> {
     group_states: Mutex<HashMap<GroupId, ManagedGroup<'group_states>>>,
 }
 
-pub struct MlsClientImpl {
-    client: Client<'static>,
+pub struct MlsClientImpl<'a> {
+    key_store: KeyStore,
+    groups: Groups<'a>,
+    credentials: HashMap<SignatureScheme, Credential>,
 }
 
-impl MlsClientImpl {
+impl<'a> MlsClientImpl<'a> {
     fn new() -> Self {
         let key_store = KeyStore::default();
         let groups = Groups {
             group_states: Mutex::new(HashMap::new()),
         };
         let credentials = HashMap::new();
-        let client = Client {
+        MlsClientImpl {
             key_store,
             groups,
             credentials,
-        };
-        MlsClientImpl { client }
+        }
     }
 }
 
 #[tonic::async_trait]
-impl MlsClient for MlsClientImpl {
+impl<'a> MlsClient for MlsClientImpl<'a> {
     async fn name(&self, _request: Request<NameRequest>) -> Result<Response<NameResponse>, Status> {
         println!("Got Name request");
 
@@ -187,8 +182,54 @@ impl MlsClient for MlsClientImpl {
 
     async fn create_group(
         &self,
-        _request: tonic::Request<CreateGroupRequest>,
+        request: tonic::Request<CreateGroupRequest>,
     ) -> Result<tonic::Response<CreateGroupResponse>, tonic::Status> {
+        let create_group_request = request.get_ref();
+
+        let handshake_message_format = if create_group_request.encrypt_handshake {
+            HandshakeMessageFormat::Ciphertext
+        } else {
+            HandshakeMessageFormat::Plaintext
+        };
+        let update_policy = UpdatePolicy::default();
+        // No specific padding size required for interop. Defaulting to 10.
+        let padding_size = 10;
+        // There's currently no need to keep around resumption secrets for
+        // interop, although this could change later.
+        let number_of_resumption_secrets = 0;
+        let callbacks = ManagedGroupCallbacks::default();
+        let managed_group_config = ManagedGroupConfig::new(
+            handshake_message_format,
+            update_policy,
+            padding_size,
+            number_of_resumption_secrets,
+            callbacks,
+        );
+        let ciphersuite =
+            CiphersuiteName::try_from((create_group_request.cipher_suite as u16)).unwrap();
+        let credential = self
+            .key_store
+            .generate_credential(
+                IMPLEMENTATION_NAME.as_bytes().to_vec(),
+                CredentialType::Basic,
+                SignatureScheme::from(ciphersuite),
+            )
+            .unwrap();
+        let key_package = self
+            .key_store
+            .generate_key_package(&[ciphersuite], &credential, Vec::new())
+            .unwrap();
+        let group_id = GroupId::from_slice(&create_group_request.group_id);
+        let new_group = ManagedGroup::new(
+            &self.key_store,
+            &managed_group_config,
+            group_id.clone(),
+            &key_package.hash(),
+        )
+        .unwrap();
+        let groups = self.groups.group_states.get_mut();
+        groups.insert(group_id, new_group);
+
         Ok(Response::new(CreateGroupResponse::default())) // TODO
     }
 
