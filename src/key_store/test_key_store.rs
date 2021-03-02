@@ -52,7 +52,7 @@ ctest!(key_storage {
         .get_credential_bundle(credential.signature_key())
         .expect("Error while getting CredentialBundle from the store.");
 
-    assert_eq!(cb.read().unwrap().credential(), &credential);
+    assert_eq!(cb.credential(), &credential);
 
     let kpb = ks
         .take_key_package_bundle(&key_package.hash())

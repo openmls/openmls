@@ -12,16 +12,16 @@ use super::{errors::ClientError, ActionType};
 /// It contains the group states, as well as a reference to a `KeyStore`
 /// containing its `CredentialBundle`s. The `key_package_bundles` field contains
 /// generated `KeyPackageBundle`s that are waiting to be used for new groups.
-pub struct Client<'key_store_lifetime> {
+pub struct Client {
     /// Name of the client.
     pub(crate) identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub(crate) credentials: &'key_store_lifetime HashMap<CiphersuiteName, Credential>,
-    pub(crate) key_store: &'key_store_lifetime KeyStore,
-    pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup<'key_store_lifetime>>>,
+    pub(crate) credentials: HashMap<CiphersuiteName, Credential>,
+    pub(crate) key_store: KeyStore,
+    pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup>>,
 }
 
-impl<'key_store_lifetime> Client<'key_store_lifetime> {
+impl Client {
     /// Generate a fresh key package bundle and store it in
     /// `self.key_package_bundles`. The first ciphersuite determines the
     /// credential used to generate the `KeyPackageBundle`. Returns the
@@ -83,12 +83,8 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
-        let new_group: ManagedGroup<'key_store_lifetime> = ManagedGroup::new_from_welcome(
-            self.key_store,
-            &managed_group_config,
-            welcome,
-            ratchet_tree,
-        )?;
+        let new_group: ManagedGroup =
+            ManagedGroup::new_from_welcome(&managed_group_config, welcome, ratchet_tree)?;
         self.groups
             .borrow_mut()
             .insert(new_group.group_id().to_owned(), new_group);

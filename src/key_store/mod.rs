@@ -1,40 +1,69 @@
-//! A storage solution for cryptographic key material.
+//! A storage solution for cryptographic key material used in OpenMLS groups.
 //!
 //! This module provides access to the `KeyStore` struct, which manages the
-//! storage of `CredentialBundle` and `KeyPackageBundle` instances. The
-//! development of this module is tracked in #337, which also includes a
-//! roadmap.
+//! storage of `CredentialBundle` and `KeyPackageBundle` instances for use in
+//! one or more `ManagedGroup` instances. The development of this module is
+//! tracked in #337, which also includes a roadmap.
 //!
-//! The current key store enables the storage of `CredentialBundle` instances,
-//! and grants access to `CredentialBundle` references via the
-//! `SignaturePublicKey` of the corresponding `Credential`.
+//! # Key Store API
 //!
-//! A `KeyStore` is meant to be used across multiple `ManagedGroup` instances to
-//! allow sharing the same `CredentialBundle`. If this is not desired, multiple
-//! `KeyStore` instances can be used across groups.
+//! All functions accessible via the `KeyStore` API are thread safe, allowing
+//! multiple concurrent read locks, on any category of stored key material (e.g.
+//! `CredentialBundle` instances, "init" `KeyPackageBundle` instance).
+//!
+//! ## `CredentialBundle` Instances
+//!
+//! The API of the `KeyStore` allows the generation of `Credential` instances
+//! via `generate_credential`, such that it stores the corresponding
+//! `CredentialBundle`. After storing them, references to `CredentialBundle`
+//! instances can be retrieved via `get_credential_bundle` using the
+//! `SignaturePublicKey` of the corresponding `Credential` as index.
+//!
+//! ## Init `KeyPackageBundle` Instances
+//!
+//! Similarly, the `KeyStore` can generate "init" `KeyPackage` instances via
+//! `generate_key_package` and store the corresponding `KeyPackageBundle`. Init
+//! `KeyPackage` instances are meant to be published so other parties can use
+//! them to add the publishing party to groups.
+//!
+//! ### `KeyPackageBundle` Ownership
+//!
+//! In contrast to the functions providing access to `CredentialBundle`
+//! instances, the function to retrieve `KeyPackageBundle` instances deletes
+//! them from the `KeyStore`. This is because each `ManagedGroup` currently owns
+//! the `KeyPackageBundle` in its leaf, so upon creation of the group, it needs
+//! to consume a `KeyPackageBundle` instance. Note, that in contrast to
+//! `CredentialBundle` instances, `KeyPackageBundle` instances should not be
+//! used across groups.
+//!
+//! This design is temporary and only until the `ManagedGroup` is refactored to
+//! access its `KeyPackageBundle` via the `KeyStore`. Once this is the case, the
+//! `take_key_package_bundle` will be deprecated in favor of a
+//! `get_key_package_bundle`, which only returns a reference to the
+//! `KeyPackageBundle`.
 //!
 //! # Example
 //!
 //! A simple example for the generation and the retrieval of a
-//! `CredentialBundle`.
+//! `CredentialBundle` and a `KeyPackageBundle`.
 //!
 //! ```
 //! use openmls::prelude::*;
 //!
 //! let key_store = KeyStore::default();
 //!
-//! // Generate a credential bundle.
+//! let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//!
+//! // Generate a credential bundle with the matching signature scheme.
 //! let alice_credential = key_store
 //!     .generate_credential(
 //!         "Alice".into(),
 //!         CredentialType::Basic,
-//!         SignatureScheme::ED25519,
+//!         SignatureScheme::from(ciphersuite_name),
 //!     )
 //!     .unwrap();
 //!
-//! // Generate a key package bundle with a matching ciphersuite.
-//! let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-//!
+//! // Generate a key package bundle.
 //! let alice_key_package = key_store
 //!     .generate_key_package(&[ciphersuite_name], &alice_credential, vec![])
 //!     .unwrap();
@@ -56,6 +85,16 @@
 //! )
 //! .unwrap();
 //! ```
+//!
+//! # Future Work
+//!
+//! A more detailed roadmap can be found in issue #337, but generally the plan is to
+//! * move ownership of all `KeyPackageBundle` instances into the `KeyStore` and
+//!   change the API from `take_` to `get_`
+//! * keep track of which key material is (still) in use and where, as well as if it expires and when
+//! * extend the API to allow for deletion of unused key material, expired or otherwise
+//! * add a persistence layer
+
 use std::{
     collections::HashMap,
     sync::{RwLock, RwLockReadGuard},
@@ -81,7 +120,7 @@ pub use errors::KeyStoreError;
 /// `KeyPackage` instances.
 pub struct KeyStore {
     // Map from signature public keys to credential bundles
-    credential_bundles: RwLock<HashMap<SignaturePublicKey, RwLock<CredentialBundle>>>,
+    credential_bundles: RwLock<HashMap<SignaturePublicKey, CredentialBundle>>,
     init_key_package_bundles: RwLock<HashMap<Vec<u8>, KeyPackageBundle>>,
 }
 
@@ -89,20 +128,20 @@ pub struct KeyStore {
 /// underlying `RwLock<CredentialBundle>` can be obtained for read or write
 /// access to the credential.
 pub struct CBGuard<'a> {
-    cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, RwLock<CredentialBundle>>>,
+    cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, CredentialBundle>>,
     index: &'a SignaturePublicKey,
 }
 
 use std::ops::Deref;
 
 impl<'b> Deref for CBGuard<'b> {
-    type Target = RwLock<CredentialBundle>;
+    type Target = CredentialBundle;
 
-    fn deref(&self) -> &RwLock<CredentialBundle> {
+    fn deref(&self) -> &CredentialBundle {
         // We can unwrap here, as we checked if the entry is present before
         // creating the guard. Also, since we hold a read lock on the `HashMap`,
         // the entry can't have been removed in the meantime.
-        &self.cbs.get(self.index).unwrap()
+        self.cbs.get(self.index).unwrap()
     }
 }
 
@@ -112,9 +151,9 @@ impl KeyStore {
     /// store. Returns an error if no `KeyPackageBundle` can be found
     /// corresponding to the given `KeyPackage` hash.
     pub fn take_key_package_bundle(&self, kp_hash: &[u8]) -> Option<KeyPackageBundle> {
-        // We unwrap here, because the two functions claiming write locks (this
-        // one and `generate_key_package`) only hold the lock very briefly and
-        // should not panic during that period.
+        // We unwrap here, because the two functions claiming a write lock on
+        // `init_key_package_bundles` (this one and `generate_key_package`) only
+        // hold the lock very briefly and should not panic during that period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.remove(kp_hash)
     }
@@ -152,12 +191,12 @@ impl KeyStore {
         let credential_bundle = self
             .get_credential_bundle(credential.signature_key())
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
-        let kpb =
-            KeyPackageBundle::new(ciphersuites, &credential_bundle.read().unwrap(), extensions)?;
+        let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, extensions)?;
         let kp_hash = kpb.key_package().hash();
-        // We unwrap here, because the two functions claiming write locks (this
-        // one and `take_key_package_bundle`) only hold the lock very briefly
-        // and should not panic during that period.
+        // We unwrap here, because the two functions claiming write locks on
+        // `init_key_package_bundles` (this one and `take_key_package_bundle`)
+        // only hold the lock very briefly and should not panic during that
+        // period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.insert(kp_hash.clone(), kpb);
         let kp = kpbs.get(&kp_hash).unwrap().key_package().clone();
@@ -174,11 +213,12 @@ impl KeyStore {
         signature_scheme: SignatureScheme,
     ) -> Result<Credential, KeyStoreError> {
         let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
-        let signature_key = cb.credential().signature_key().clone();
+        let credential = cb.credential().clone();
+        // We unwrap here, because this is the only function claiming a write
+        // lock on `credential_bundles`. It only holds the lock very briefly and
+        // should not panic during that period.
         let mut cbs = self.credential_bundles.write().unwrap();
-        cbs.insert(signature_key.clone(), RwLock::new(cb));
-        let cb_ref = cbs.get(&signature_key).unwrap().read().unwrap();
-        let credential = cb_ref.credential().clone();
+        cbs.insert(credential.signature_key().clone(), cb);
         Ok(credential)
     }
 }

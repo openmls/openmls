@@ -52,9 +52,8 @@ fn test_managed_group_persistence() {
 
     let in_file = File::open(&path).expect("Could not open file");
 
-    let alice_group_deserialized =
-        ManagedGroup::load(in_file, &key_store, &ManagedGroupCallbacks::default())
-            .expect("Could not deserialize managed group");
+    let alice_group_deserialized = ManagedGroup::load(in_file, &ManagedGroupCallbacks::default())
+        .expect("Could not deserialize managed group");
 
     assert_eq!(
         (
@@ -150,7 +149,7 @@ fn remover() {
     .unwrap();
 
     // === Alice adds Bob ===
-    let (queued_messages, welcome) = match alice_group.add_members(&[bob_key_package]) {
+    let (queued_messages, welcome) = match alice_group.add_members(&key_store, &[bob_key_package]) {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
@@ -168,7 +167,8 @@ fn remover() {
     .expect("Error creating group from Welcome");
 
     // === Bob adds Charlie ===
-    let (queued_messages, welcome) = match bob_group.add_members(&[charlie_key_package]) {
+    let (queued_messages, welcome) = match bob_group.add_members(&key_store, &[charlie_key_package])
+    {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
@@ -193,7 +193,7 @@ fn remover() {
     // === Alice removes Bob & Charlie commits ===
 
     let queued_messages = alice_group
-        .propose_remove_members(&[1])
+        .propose_remove_members(&key_store, &[1])
         .expect("Could not propose removal");
 
     charlie_group
@@ -201,7 +201,7 @@ fn remover() {
         .expect("Could not process messages");
 
     let (queued_messages, _welcome) = charlie_group
-        .process_pending_proposals()
+        .process_pending_proposals(&key_store)
         .expect("Could not commit proposal");
 
     charlie_group

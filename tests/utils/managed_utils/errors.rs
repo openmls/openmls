@@ -8,19 +8,19 @@ pub enum SetupError {
     ClientAlreadyInGroup,
     ClientNotInGroup,
     NoFreshKeyPackage,
-    ClientError(ClientError),
+    ClientError(ManagedClientError),
     Unknown,
 }
 
-impl From<ClientError> for SetupError {
-    fn from(e: ClientError) -> Self {
+impl From<ManagedClientError> for SetupError {
+    fn from(e: ManagedClientError) -> Self {
         SetupError::ClientError(e)
     }
 }
 
 impl From<ManagedGroupError> for SetupError {
     fn from(e: ManagedGroupError) -> Self {
-        SetupError::ClientError(ClientError::ManagedGroupError(e))
+        SetupError::ClientError(ManagedClientError::ManagedGroupError(e))
     }
 }
 
