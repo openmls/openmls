@@ -5,7 +5,7 @@
 
 use clap::Clap;
 use openmls::prelude::*;
-use std::{collections::HashMap, convert::TryFrom, sync::Mutex};
+use std::{convert::TryFrom, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 use utils::read;
 
@@ -37,34 +37,23 @@ impl TryFrom<i32> for TestVectorType {
     }
 }
 
-#[derive(Default)]
-struct Groups<'group_states> {
-    group_states: Mutex<HashMap<GroupId, ManagedGroup<'group_states>>>,
+pub struct MlsClientImpl {
+    client: Mutex<ManagedClient>,
 }
 
-pub struct MlsClientImpl<'a> {
-    key_store: KeyStore,
-    groups: Groups<'a>,
-    credentials: HashMap<SignatureScheme, Credential>,
-}
-
-impl<'a> MlsClientImpl<'a> {
+impl MlsClientImpl {
     fn new() -> Self {
-        let key_store = KeyStore::default();
-        let groups = Groups {
-            group_states: Mutex::new(HashMap::new()),
-        };
-        let credentials = HashMap::new();
         MlsClientImpl {
-            key_store,
-            groups,
-            credentials,
+            client: Mutex::new(ManagedClient::new(
+                "OpenMLS Client".as_bytes().to_vec(),
+                ManagedClientConfig::default_tests(),
+            )),
         }
     }
 }
 
 #[tonic::async_trait]
-impl<'a> MlsClient for MlsClientImpl<'a> {
+impl MlsClient for MlsClientImpl {
     async fn name(&self, _request: Request<NameRequest>) -> Result<Response<NameResponse>, Status> {
         println!("Got Name request");
 
@@ -191,44 +180,22 @@ impl<'a> MlsClient for MlsClientImpl<'a> {
         } else {
             HandshakeMessageFormat::Plaintext
         };
-        let update_policy = UpdatePolicy::default();
-        // No specific padding size required for interop. Defaulting to 10.
-        let padding_size = 10;
-        // There's currently no need to keep around resumption secrets for
-        // interop, although this could change later.
-        let number_of_resumption_secrets = 0;
-        let callbacks = ManagedGroupCallbacks::default();
         let managed_group_config = ManagedGroupConfig::new(
             handshake_message_format,
-            update_policy,
-            padding_size,
-            number_of_resumption_secrets,
-            callbacks,
+            UpdatePolicy::default(),
+            10,
+            0,
+            ManagedGroupCallbacks::default(),
         );
-        let ciphersuite =
-            CiphersuiteName::try_from((create_group_request.cipher_suite as u16)).unwrap();
-        let credential = self
-            .key_store
-            .generate_credential(
-                IMPLEMENTATION_NAME.as_bytes().to_vec(),
-                CredentialType::Basic,
-                SignatureScheme::from(ciphersuite),
+        self.client
+            .lock()
+            .unwrap()
+            .create_group(
+                GroupId::from_slice(&create_group_request.group_id),
+                Some(&managed_group_config),
+                Some(CiphersuiteName::try_from(create_group_request.cipher_suite as u16).unwrap()),
             )
             .unwrap();
-        let key_package = self
-            .key_store
-            .generate_key_package(&[ciphersuite], &credential, Vec::new())
-            .unwrap();
-        let group_id = GroupId::from_slice(&create_group_request.group_id);
-        let new_group = ManagedGroup::new(
-            &self.key_store,
-            &managed_group_config,
-            group_id.clone(),
-            &key_package.hash(),
-        )
-        .unwrap();
-        let groups = self.groups.group_states.get_mut();
-        groups.insert(group_id, new_group);
 
         Ok(Response::new(CreateGroupResponse::default())) // TODO
     }
