@@ -16,6 +16,9 @@ pub use crate::tree::index::LeafIndex;
 // PSKs
 pub use crate::schedule::psk::ExternalPskBundle;
 
+// ManagedClient
+pub use crate::managed_client::{ManagedClient, ManagedClientConfig, ManagedClientError};
+
 pub use crate::ciphersuite::*;
 pub use crate::codec::*;
 pub use crate::config::*;

@@ -36,6 +36,7 @@ pub mod framing;
 pub mod group;
 mod key_packages;
 pub mod key_store;
+pub mod managed_client;
 pub mod messages;
 mod schedule;
 pub mod tree;

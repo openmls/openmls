@@ -234,10 +234,11 @@ fn managed_group_operations() {
             .unwrap();
 
             // === Alice adds Bob ===
-            let (queued_messages, welcome) = match alice_group.add_members(&[bob_key_package]) {
-                Ok((qm, welcome)) => (qm, welcome),
-                Err(e) => panic!("Could not add member to group: {:?}", e),
-            };
+            let (queued_messages, welcome) =
+                match alice_group.add_members(&key_store, &[bob_key_package]) {
+                    Ok((qm, welcome)) => (qm, welcome),
+                    Err(e) => panic!("Could not add member to group: {:?}", e),
+                };
 
             alice_group
                 .process_messages(queued_messages.clone())
@@ -271,14 +272,14 @@ fn managed_group_operations() {
             // === Alice sends a message to Bob ===
             let message_alice = b"Hi, I'm Alice!";
             let queued_message = alice_group
-                .create_message(message_alice)
+                .create_message(&key_store, message_alice)
                 .expect("Error creating application message");
             bob_group
                 .process_messages(vec![queued_message])
                 .expect("The group is no longer active");
 
             // === Bob updates and commits ===
-            let (queued_messages, welcome_option) = match bob_group.self_update(None) {
+            let (queued_messages, welcome_option) = match bob_group.self_update(&key_store, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
@@ -305,7 +306,7 @@ fn managed_group_operations() {
             );
 
             // === Alice updates and commits ===
-            let queued_messages = match alice_group.propose_self_update(None) {
+            let queued_messages = match alice_group.propose_self_update(&key_store, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
@@ -316,10 +317,11 @@ fn managed_group_operations() {
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
 
-            let (queued_messages, _welcome_option) = match alice_group.process_pending_proposals() {
-                Ok(qm) => qm,
-                Err(e) => panic!("Error performing self-update: {:?}", e),
-            };
+            let (queued_messages, _welcome_option) =
+                match alice_group.process_pending_proposals(&key_store) {
+                    Ok(qm) => qm,
+                    Err(e) => panic!("Error performing self-update: {:?}", e),
+                };
             alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
@@ -344,10 +346,11 @@ fn managed_group_operations() {
                 .generate_key_package(&[ciphersuite.name()], &charlie_credential, vec![])
                 .unwrap();
 
-            let (queued_messages, welcome) = match bob_group.add_members(&[charlie_key_package]) {
-                Ok((qm, welcome)) => (qm, welcome),
-                Err(e) => panic!("Could not add member to group: {:?}", e),
-            };
+            let (queued_messages, welcome) =
+                match bob_group.add_members(&key_store, &[charlie_key_package]) {
+                    Ok((qm, welcome)) => (qm, welcome),
+                    Err(e) => panic!("Could not add member to group: {:?}", e),
+                };
 
             alice_group
                 .process_messages(queued_messages.clone())
@@ -383,7 +386,7 @@ fn managed_group_operations() {
             // === Charlie sends a message to the group ===
             let message_charlie = b"Hi, I'm Charlie!";
             let queued_message = charlie_group
-                .create_message(message_charlie)
+                .create_message(&key_store, message_charlie)
                 .expect("Error creating application message");
             alice_group
                 .process_messages(vec![queued_message.clone()])
@@ -393,10 +396,11 @@ fn managed_group_operations() {
                 .expect("The group is no longer active");
 
             // === Charlie updates and commits ===
-            let (queued_messages, welcome_option) = match charlie_group.self_update(None) {
-                Ok(qm) => qm,
-                Err(e) => panic!("Error performing self-update: {:?}", e),
-            };
+            let (queued_messages, welcome_option) =
+                match charlie_group.self_update(&key_store, None) {
+                    Ok(qm) => qm,
+                    Err(e) => panic!("Error performing self-update: {:?}", e),
+                };
             alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
@@ -431,10 +435,11 @@ fn managed_group_operations() {
             );
 
             // === Charlie removes Bob ===
-            let (queued_messages, welcome_option) = match charlie_group.remove_members(&[1]) {
-                Ok(qm) => qm,
-                Err(e) => panic!("Could not remove member from group: {:?}", e),
-            };
+            let (queued_messages, welcome_option) =
+                match charlie_group.remove_members(&key_store, &[1]) {
+                    Ok(qm) => qm,
+                    Err(e) => panic!("Could not remove member from group: {:?}", e),
+                };
 
             // Check that Bob's group is still active
             assert!(bob_group.is_active());
@@ -470,7 +475,9 @@ fn managed_group_operations() {
             assert_eq!(members[1].identity(), b"Charlie");
 
             // Check that Bob can no longer send messages
-            assert!(bob_group.create_message(b"Should not go through").is_err());
+            assert!(bob_group
+                .create_message(&key_store, b"Should not go through")
+                .is_err());
 
             // === Alice removes Charlie and re-adds Bob ===
 
@@ -481,7 +488,7 @@ fn managed_group_operations() {
 
             // Create RemoveProposal and process it
             let queued_messages = alice_group
-                .propose_remove_members(&[2])
+                .propose_remove_members(&key_store, &[2])
                 .expect("Could not create proposal to remove Charlie");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -492,7 +499,7 @@ fn managed_group_operations() {
 
             // Create AddProposal and process it
             let queued_messages = alice_group
-                .propose_add_members(&[bob_key_package.clone()])
+                .propose_add_members(&key_store, &[bob_key_package.clone()])
                 .expect("Could not create proposal to add Bob");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -503,7 +510,7 @@ fn managed_group_operations() {
 
             // Commit to the proposals and process it
             let (queued_messages, welcome_option) = alice_group
-                .process_pending_proposals()
+                .process_pending_proposals(&key_store)
                 .expect("Could not flush proposals");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -548,7 +555,7 @@ fn managed_group_operations() {
             // === lice sends a message to the group ===
             let message_alice = b"Hi, I'm Alice!";
             let queued_message = alice_group
-                .create_message(message_alice)
+                .create_message(&key_store, message_alice)
                 .expect("Error creating application message");
             bob_group
                 .process_messages(vec![queued_message.clone()])
@@ -556,7 +563,9 @@ fn managed_group_operations() {
 
             // === Bob leaves the group ===
 
-            let queued_messages = bob_group.leave_group().expect("Could not leave group");
+            let queued_messages = bob_group
+                .leave_group(&key_store)
+                .expect("Could not leave group");
 
             alice_group
                 .process_messages(queued_messages.clone())
@@ -567,14 +576,14 @@ fn managed_group_operations() {
 
             // Should fail because you cannot remove yourself from a group
             assert_eq!(
-                bob_group.process_pending_proposals(),
+                bob_group.process_pending_proposals(&key_store,),
                 Err(ManagedGroupError::Group(GroupError::CreateCommitError(
                     CreateCommitError::CannotRemoveSelf
                 )))
             );
 
             let (queued_messages, _welcome_option) = alice_group
-                .process_pending_proposals()
+                .process_pending_proposals(&key_store)
                 .expect("Could not commit to proposals");
 
             // Check that Bob's group is still active
@@ -606,7 +615,7 @@ fn managed_group_operations() {
 
             // Add Bob to the group
             let (queued_messages, welcome) = alice_group
-                .add_members(&[bob_key_package])
+                .add_members(&key_store, &[bob_key_package])
                 .expect("Could not add Bob");
 
             alice_group
@@ -629,7 +638,7 @@ fn managed_group_operations() {
             // Re-load Bob's state from file
             let path = Path::new("target/test_managed_group_bob.json");
             let file = File::open(&path).expect("Could not open file");
-            let bob_group = ManagedGroup::load(file, &key_store, managed_group_config.callbacks())
+            let bob_group = ManagedGroup::load(file, managed_group_config.callbacks())
                 .expect("Could not load group from file");
 
             // Make sure the state is still the same
@@ -684,12 +693,12 @@ fn test_empty_input_errors() {
 
     assert_eq!(
         alice_group
-            .add_members(&[])
+            .add_members(&key_store, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
         ManagedGroupError::EmptyInput(EmptyInputError::AddMembers)
     );
     assert_eq!(
-        alice_group.remove_members(&[]).expect_err(
+        alice_group.remove_members(&key_store, &[]).expect_err(
             "No EmptyInputError when trying to pass an empty slice to `remove_members`."
         ),
         ManagedGroupError::EmptyInput(EmptyInputError::RemoveMembers)
