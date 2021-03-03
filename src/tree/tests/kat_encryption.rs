@@ -336,9 +336,11 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub fn run_test_vector(test_vector: EncryptionTestVector) {
+pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     let n_leaves = test_vector.n_leaves;
-    assert_eq!(n_leaves, test_vector.leaves.len() as u32);
+    if n_leaves != test_vector.leaves.len() as u32 {
+        return Err(EncTestVectorError::LeafNumberMismatch);
+    }
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
@@ -348,7 +350,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) {
                 "Unsupported ciphersuite {} in test vector. Skipping ...",
                 ciphersuite
             );
-            return;
+            return Ok(());
         }
     };
 
@@ -369,18 +371,20 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) {
         &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
         &sender_data_secret,
     );
-    assert_eq!(
-        hex_to_bytes(&test_vector.sender_data_info.key),
-        sender_data_key.as_slice()
-    );
-    assert_eq!(
-        hex_to_bytes(&test_vector.sender_data_info.nonce),
-        sender_data_nonce.as_slice()
-    );
+    if hex_to_bytes(&test_vector.sender_data_info.key) != sender_data_key.as_slice() {
+        return Err(EncTestVectorError::SenderDataKeyMismatch);
+    }
+    if hex_to_bytes(&test_vector.sender_data_info.nonce) != sender_data_nonce.as_slice() {
+        return Err(EncTestVectorError::SenderDataNonceMismatch);
+    }
 
     for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
-        assert_eq!(leaf.generations, leaf.application.len() as u32);
-        assert_eq!(leaf.generations, leaf.handshake.len() as u32);
+        if leaf.generations != leaf.application.len() as u32 {
+            return Err(EncTestVectorError::InvalidLeafSequenceApplication);
+        }
+        if leaf.generations != leaf.handshake.len() as u32 {
+            return Err(EncTestVectorError::InvalidLeafSequenceHandshake);
+        }
         let leaf_index = LeafIndex::from(leaf_index);
 
         for (generation, application, handshake) in
@@ -395,14 +399,12 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) {
                     generation,
                 )
                 .expect("Error getting decryption secret");
-            assert_eq!(
-                hex_to_bytes(&application.0),
-                application_secret_key.as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&application.1),
-                application_secret_nonce.as_slice()
-            );
+            if hex_to_bytes(&application.0) != application_secret_key.as_slice() {
+                return Err(EncTestVectorError::ApplicationSecretKeyMismatch);
+            }
+            if hex_to_bytes(&application.1) != application_secret_nonce.as_slice() {
+                return Err(EncTestVectorError::ApplicationSecretNonceMismatch);
+            }
 
             // Setup group
             let mls_ciphertext_application =
@@ -416,12 +418,13 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) {
             let mls_plaintext_application = mls_ciphertext_application
                 .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
                 .expect("Error decrypting MLSCiphertext");
-            assert_eq!(
-                hex_to_bytes(&application.2),
-                mls_plaintext_application
+            if hex_to_bytes(&application.2)
+                != mls_plaintext_application
                     .encode_detached()
                     .expect("Error encoding MLSPlaintext")
-            );
+            {
+                return Err(EncTestVectorError::DecryptedApplicationMessageMismatch);
+            }
 
             // Check handshake keys
             let (handshake_secret_key, handshake_secret_nonce) = secret_tree
@@ -432,11 +435,12 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) {
                     generation,
                 )
                 .expect("Error getting decryption secret");
-            assert_eq!(hex_to_bytes(&handshake.0), handshake_secret_key.as_slice());
-            assert_eq!(
-                hex_to_bytes(&handshake.1),
-                handshake_secret_nonce.as_slice()
-            );
+            if hex_to_bytes(&handshake.0) != handshake_secret_key.as_slice() {
+                return Err(EncTestVectorError::HandshakeSecretKeyMismatch);
+            }
+            if hex_to_bytes(&handshake.1) != handshake_secret_nonce.as_slice() {
+                return Err(EncTestVectorError::HandshakeSecretNonceMismatch);
+            }
 
             // Setup group
             let mls_ciphertext_handshake =
@@ -450,14 +454,16 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) {
             let mls_plaintext_handshake = mls_ciphertext_handshake
                 .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
                 .expect("Error decrypting MLSCiphertext");
-            assert_eq!(
-                hex_to_bytes(&handshake.2),
-                mls_plaintext_handshake
+            if hex_to_bytes(&handshake.2)
+                != mls_plaintext_handshake
                     .encode_detached()
                     .expect("Error encoding MLSPlaintext")
-            );
+            {
+                return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
+            }
         }
     }
+    Ok(())
 }
 
 #[test]
@@ -465,6 +471,26 @@ fn read_test_vectors() {
     let tests: Vec<EncryptionTestVector> = read("test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
-        run_test_vector(test_vector);
+        match run_test_vector(test_vector) {
+            Ok(_) => {}
+            Err(e) => panic!("Error while checking encryption test vector.\n{:?}", e),
+        }
+    }
+}
+
+#[cfg(any(feature = "expose-test-vectors", test))]
+implement_error! {
+    pub enum EncTestVectorError {
+        LeafNumberMismatch = "The test vector does not contain as many leaves as advertised.",
+        SenderDataKeyMismatch = "The computed sender data key doesn't match the one in the test vector.",
+        SenderDataNonceMismatch = "The computed sender data nonce doesn't match the one in the test vector.",
+        InvalidLeafSequenceApplication = "The number of generations in leaf sequence doesn't match the number of application messages.",
+        InvalidLeafSequenceHandshake = "The number of generations in leaf sequence doesn't match the number of handshake messages.",
+        ApplicationSecretKeyMismatch = "The computed application secret key doesn't match the one in the test vector.",
+        ApplicationSecretNonceMismatch = "The computed application secret nonce doesn't match the one in the test vector.",
+        DecryptedApplicationMessageMismatch = "The decrypted application message doesn't match the one in the test vector.",
+        HandshakeSecretKeyMismatch = "The computed handshake secret key doesn't match the one in the test vector.",
+        HandshakeSecretNonceMismatch = "The computed handshake secret nonce doesn't match the one in the test vector.",
+        DecryptedHandshakeMessageMismatch = "The decrypted handshake message doesn't match the one in the test vector.",
     }
 }

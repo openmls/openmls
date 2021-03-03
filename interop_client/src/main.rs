@@ -4,22 +4,21 @@
 //! It is based on the Mock client written by Richard Barnes.
 
 use clap::Clap;
-use openmls::prelude::*;
-use std::{convert::TryFrom, sync::Mutex};
+use openmls::{group::tests::kat_transcripts, prelude::*, schedule::kat_key_schedule, tree};
+use serde::{self, Serialize};
+use std::{collections::HashMap, convert::TryFrom, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
-use utils::read;
+use tree::tests::{kat_encryption, kat_treemath};
 
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
 // TODO(RLB) Convert this back to more specific `use` directives
 use mls_client::*;
 
-mod utils;
 pub mod mls_client {
     tonic::include_proto!("mls_client");
 }
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
-const TEST_VECTOR: [u8; 4] = [0, 1, 2, 3];
 
 impl TryFrom<i32> for TestVectorType {
     type Error = ();
@@ -39,6 +38,8 @@ impl TryFrom<i32> for TestVectorType {
 
 pub struct MlsClientImpl {
     client: Mutex<ManagedClient>,
+    state_id_map: Mutex<HashMap<u32, GroupId>>,
+    transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>,
 }
 
 impl MlsClientImpl {
@@ -48,8 +49,41 @@ impl MlsClientImpl {
                 "OpenMLS Client".as_bytes().to_vec(),
                 ManagedClientConfig::default_tests(),
             )),
+            state_id_map: Mutex::new(HashMap::new()),
+            transaction_id_map: Mutex::new(HashMap::new()),
         }
     }
+}
+
+fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
+    let cs_name = match CiphersuiteName::try_from(cs as u16) {
+        Ok(cs_name) => cs_name,
+        Err(_) => {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "ciphersuite not supported by OpenMLS",
+            ));
+        }
+    };
+    match Config::supported_ciphersuites()
+        .iter()
+        .find(|cs| cs.name() == cs_name)
+    {
+        Some(ciphersuite) => Ok(ciphersuite),
+        None => {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "ciphersuite not supported by this configuration of OpenMLS",
+            ));
+        }
+    }
+}
+
+fn to_bytes(obj: impl Serialize) -> Vec<u8> {
+    serde_json::to_string_pretty(&obj)
+        .expect("Error serializing test vectors")
+        .as_bytes()
+        .to_vec()
 }
 
 #[tonic::async_trait]
@@ -86,38 +120,44 @@ impl MlsClient for MlsClientImpl {
         println!("Got GenerateTestVector request");
 
         let obj = request.get_ref();
-        // TODO: Generate the test vector here instead of reading it from file.
+        let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
         let (type_msg, test_vector) = match TestVectorType::try_from(obj.test_vector_type) {
             Ok(TestVectorType::TreeMath) => {
-                let kat_treemath: Vec<u8> = read("test_vectors/kat_treemath_openmls.json");
-                ("Tree math", kat_treemath)
+                let kat_treemath = kat_treemath::generate_test_vector(obj.n_leaves);
+                let kat_bytes = to_bytes(kat_treemath);
+                ("Tree math", kat_bytes)
             }
             Ok(TestVectorType::Encryption) => {
-                let kat_encryption = read("test_vectors/kat_encryption_openmls.json");
-                ("Encryption", kat_encryption)
+                let kat_encryption = kat_encryption::generate_test_vector(
+                    obj.n_generations,
+                    obj.n_leaves,
+                    ciphersuite,
+                );
+                let kat_bytes = to_bytes(kat_encryption);
+                ("Encryption", kat_bytes)
             }
             Ok(TestVectorType::KeySchedule) => {
-                let kat_key_schedule = read("test_vectors/kat_key_schedule_openmls.json");
-                ("Key Schedule", kat_key_schedule)
+                let kat_key_schedule =
+                    kat_key_schedule::generate_test_vector(obj.n_epochs as u64, ciphersuite);
+                let kat_bytes = to_bytes(kat_key_schedule);
+                ("Key Schedule", kat_bytes)
             }
             Ok(TestVectorType::Transcript) => {
-                let kat_transcript = read("test_vectors/kat_transcripts_openmls.json");
-                ("Key Schedule", kat_transcript)
+                let kat_transcript = kat_transcripts::generate_test_vector(ciphersuite);
+                let kat_bytes = to_bytes(kat_transcript);
+                ("Key Schedule", kat_bytes)
             }
-            //Ok(TestVectorType::Treekem) => ("TreeKEM", vec![]),
             Ok(TestVectorType::Treekem) => {
-                ("TreeKEM", Vec::new())
-                //return Err(tonic::Status::new(
-                //    tonic::Code::InvalidArgument,
-                //    "TreeKEM test vector generation not supported yet.",
-                //));
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "TreeKEM test vector generation not supported yet.",
+                ));
             }
             Ok(TestVectorType::Messages) => {
-                ("Messages", Vec::new())
-                //return Err(tonic::Status::new(
-                //    tonic::Code::InvalidArgument,
-                //    "Messages test vector generation not supported yet.",
-                //));
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "Messages test vector generation not supported yet.",
+                ));
             }
             Err(_) => {
                 return Err(tonic::Status::new(
@@ -128,9 +168,7 @@ impl MlsClient for MlsClientImpl {
         };
         println!("{} test vector request", type_msg);
 
-        let response = GenerateTestVectorResponse {
-            test_vector: TEST_VECTOR.to_vec(),
-        };
+        let response = GenerateTestVectorResponse { test_vector };
 
         Ok(Response::new(response))
     }
@@ -142,13 +180,95 @@ impl MlsClient for MlsClientImpl {
         println!("Got VerifyTestVector request");
 
         let obj = request.get_ref();
-        let type_msg = match TestVectorType::try_from(obj.test_vector_type) {
-            Ok(TestVectorType::TreeMath) => ("Tree math"),
-            Ok(TestVectorType::Encryption) => "Encryption",
-            Ok(TestVectorType::KeySchedule) => "Key Schedule",
-            Ok(TestVectorType::Transcript) => "Transcript",
-            Ok(TestVectorType::Treekem) => "TreeKEM",
-            Ok(TestVectorType::Messages) => "Messages",
+        let (type_msg, _result) = match TestVectorType::try_from(obj.test_vector_type) {
+            Ok(TestVectorType::TreeMath) => {
+                let kat_treemath = match serde_json::from_slice(&obj.test_vector) {
+                    Ok(test_vector) => test_vector,
+                    Err(_) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::InvalidArgument,
+                            "Couldn't decode treemath test vector.",
+                        ));
+                    }
+                };
+                match kat_treemath::run_test_vector(kat_treemath) {
+                    Ok(result) => ("Tree math", result),
+                    Err(e) => {
+                        let message = "Error while running treemath test vector: ".to_string()
+                            + &e.to_string();
+                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                    }
+                }
+            }
+            Ok(TestVectorType::Encryption) => {
+                let kat_encryption = match serde_json::from_slice(&obj.test_vector) {
+                    Ok(test_vector) => test_vector,
+                    Err(_) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::InvalidArgument,
+                            "Couldn't decode encryption test vector.",
+                        ));
+                    }
+                };
+                match kat_encryption::run_test_vector(kat_encryption) {
+                    Ok(result) => ("Encryption", result),
+                    Err(e) => {
+                        let message = "Error while running encryption test vector: ".to_string()
+                            + &e.to_string();
+                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                    }
+                }
+            }
+            Ok(TestVectorType::KeySchedule) => {
+                let kat_key_schedule = match serde_json::from_slice(&obj.test_vector) {
+                    Ok(test_vector) => test_vector,
+                    Err(_) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::InvalidArgument,
+                            "Couldn't decode key schedule test vector.",
+                        ));
+                    }
+                };
+                match kat_key_schedule::run_test_vector(kat_key_schedule) {
+                    Ok(result) => ("Key Schedule", result),
+                    Err(e) => {
+                        let message = "Error while running key schedule test vector: ".to_string()
+                            + &e.to_string();
+                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                    }
+                }
+            }
+            Ok(TestVectorType::Transcript) => {
+                let kat_transcript = match serde_json::from_slice(&obj.test_vector) {
+                    Ok(test_vector) => test_vector,
+                    Err(_) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::InvalidArgument,
+                            "Couldn't decode transcript test vector.",
+                        ));
+                    }
+                };
+                match kat_transcripts::run_test_vector(kat_transcript) {
+                    Ok(result) => ("Transcript", result),
+                    Err(e) => {
+                        let message = "Error while running transcript test vector: ".to_string()
+                            + &e.to_string();
+                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                    }
+                }
+            }
+            Ok(TestVectorType::Treekem) => {
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "TreeKEM test vector verification not supported yet.",
+                ));
+            }
+            Ok(TestVectorType::Messages) => {
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "Messages test vector verification not supported yet.",
+                ));
+            }
             Err(_) => {
                 return Err(tonic::Status::new(
                     tonic::Code::InvalidArgument,
@@ -157,14 +277,6 @@ impl MlsClient for MlsClientImpl {
             }
         };
         println!("{} test vector request", type_msg);
-
-        // TODO: Extract "run test vector" from tests and run it here.
-        if (obj.test_vector != TEST_VECTOR) {
-            return Err(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "Invalid test vector",
-            ));
-        }
 
         Ok(Response::new(VerifyTestVectorResponse::default()))
     }
@@ -187,24 +299,44 @@ impl MlsClient for MlsClientImpl {
             0,
             ManagedGroupCallbacks::default(),
         );
+        let group_id = GroupId::from_slice(&create_group_request.group_id);
         self.client
             .lock()
             .unwrap()
             .create_group(
-                GroupId::from_slice(&create_group_request.group_id),
+                group_id.clone(),
                 Some(&managed_group_config),
                 Some(CiphersuiteName::try_from(create_group_request.cipher_suite as u16).unwrap()),
             )
             .unwrap();
-
-        Ok(Response::new(CreateGroupResponse::default())) // TODO
+        let mut state_id_map = self.state_id_map.lock().unwrap();
+        let state_id = state_id_map.len() as u32;
+        state_id_map.insert(state_id, group_id);
+        Ok(Response::new(CreateGroupResponse { state_id })) // TODO
     }
 
     async fn create_key_package(
         &self,
-        _request: tonic::Request<CreateKeyPackageRequest>,
+        request: tonic::Request<CreateKeyPackageRequest>,
     ) -> Result<tonic::Response<CreateKeyPackageResponse>, tonic::Status> {
-        Ok(Response::new(CreateKeyPackageResponse::default())) // TODO
+        let create_kp_request = request.get_ref();
+
+        let ciphersuite = to_ciphersuite(create_kp_request.cipher_suite)?;
+        let key_package = self
+            .client
+            .lock()
+            .unwrap()
+            .generate_key_package(&[ciphersuite.name()])
+            // TODO: Proper error propagation.
+            .unwrap();
+        let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
+        let transaction_id = transaction_id_map.len() as u32;
+        transaction_id_map.insert(transaction_id, key_package.hash());
+
+        Ok(Response::new(CreateKeyPackageResponse {
+            transaction_id,
+            key_package: key_package.encode_detached().unwrap(),
+        }))
     }
 
     async fn join_group(

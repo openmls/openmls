@@ -39,11 +39,12 @@ log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 hpke = { version = "0.0.5", package = "hpke-rs", features = ["hazmat", "serialization"] }
 evercrypt = { version = "0.0.7", features = ["serialization"] }
+itertools = {version = "0.10", optional = true}
 
 [features]
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
-expose-test-vectors = []
+expose-test-vectors = ["itertools"]
 
 [dev-dependencies]
 criterion = "^0.3"

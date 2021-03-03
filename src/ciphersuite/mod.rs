@@ -369,7 +369,7 @@ impl PartialEq for Ciphersuite {
 
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
-    pub(crate) fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
+    pub fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
         if !Config::supported_ciphersuite_names().contains(&name) {
             return Err(ConfigError::UnsupportedCiphersuite);
         }
@@ -576,7 +576,7 @@ impl AeadKey {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
@@ -677,7 +677,7 @@ impl AeadNonce {
     }
 
     /// Get a slice to the nonce value.
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }

@@ -14,7 +14,7 @@ pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }
@@ -24,7 +24,6 @@ pub(crate) fn random_u8() -> u8 {
     get_random_vec(1)[0]
 }
 
-#[inline]
 pub(crate) fn zero(length: usize) -> Vec<u8> {
     vec![0u8; length]
 }

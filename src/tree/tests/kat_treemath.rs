@@ -33,15 +33,15 @@
 //! * `sibling[i]` is the node index of the sibling of the node with index `i`
 //!   in a tree with `n_leaves` leaves
 
-use crate::{
-    test_util::*,
-    tree::{index::*, treemath::*},
-};
+#[cfg(test)]
+use crate::test_util::*;
+
+use crate::tree::{index::*, treemath::*};
 
 use serde::{self, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct TreeMathTestVector {
+pub struct TreeMathTestVector {
     n_leaves: u32,
     n_nodes: u32,
     root: Vec<u32>,
@@ -61,7 +61,7 @@ macro_rules! convert {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
+pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let leaves = LeafIndex::from(n_leaves);
     let n_nodes = node_width(leaves.as_usize()) as u32;
     let mut test_vector = TreeMathTestVector {
@@ -104,7 +104,7 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TMTestVectorError> {
+pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TMTestVectorError> {
     let n_leaves = test_vector.n_leaves;
     let leaves = LeafIndex::from(n_leaves);
     if test_vector.n_nodes != node_width(leaves.as_usize()) as u32 {

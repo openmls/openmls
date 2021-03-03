@@ -5,6 +5,9 @@
 
 use std::convert::TryFrom;
 
+#[cfg(test)]
+use crate::test_util::{read, write};
+
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName, Secret, Signature},
     codec::Codec,
@@ -20,7 +23,7 @@ use crate::{
         MLSPlaintextContentType, Sender,
     },
     schedule::{ConfirmationKey, MembershipKey},
-    test_util::{bytes_to_hex, hex_to_bytes, read, write},
+    test_util::{bytes_to_hex, hex_to_bytes},
 };
 
 use serde::{self, Deserialize, Serialize};
@@ -42,7 +45,7 @@ pub struct TranscriptTestVector {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn generate_test_vector(ciphersuite: &Ciphersuite) -> TranscriptTestVector {
+pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> TranscriptTestVector {
     // Generate random values.
     let group_id = GroupId::random();
     let epoch = random_u64();
@@ -135,7 +138,7 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub fn run_test_vectors(test_vector: TranscriptTestVector) {
+pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), TranscriptTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
@@ -145,7 +148,7 @@ pub fn run_test_vectors(test_vector: TranscriptTestVector) {
                 "Unsupported ciphersuite {} in test vector. Skipping ...",
                 ciphersuite
             );
-            return;
+            return Ok(());
         }
     };
     println!("Testing test vector for ciphersuite {:?}", ciphersuite);
@@ -175,22 +178,26 @@ pub fn run_test_vectors(test_vector: TranscriptTestVector) {
         &[], // extensions
     )
     .expect("Error creating group context");
-    assert!(commit
+    if !commit
         .verify_membership_tag(ciphersuite, context.serialized(), &membership_key)
-        .is_ok());
+        .is_ok()
+    {
+        return Err(TranscriptTestVectorError::MembershipTagVerificationError);
+    }
 
     let my_confirmation_tag = ConfirmationTag::new(
         &ciphersuite,
         &confirmation_key,
         &confirmed_transcript_hash_before,
     );
-    assert_eq!(
-        &my_confirmation_tag,
-        commit
+    if &my_confirmation_tag
+        != commit
             .confirmation_tag
             .as_ref()
             .expect("Confirmation tag is missing")
-    );
+    {
+        return Err(TranscriptTestVectorError::ConfirmationTagMismatch);
+    }
 
     // Compute new transcript hashes.
     let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
@@ -199,10 +206,11 @@ pub fn run_test_vectors(test_vector: TranscriptTestVector) {
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
-    assert_eq!(
-        &my_confirmed_transcript_hash_after,
-        &hex_to_bytes(&test_vector.confirmed_transcript_hash_after)
-    );
+    if &my_confirmed_transcript_hash_after
+        != &hex_to_bytes(&test_vector.confirmed_transcript_hash_after)
+    {
+        return Err(TranscriptTestVectorError::ConfirmedTranscriptHashMismatch);
+    }
 
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
@@ -210,10 +218,12 @@ pub fn run_test_vectors(test_vector: TranscriptTestVector) {
         &my_confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
-    assert_eq!(
-        &my_interim_transcript_hash_after,
-        &hex_to_bytes(&test_vector.interim_transcript_hash_after)
-    );
+    if &my_interim_transcript_hash_after
+        != &hex_to_bytes(&test_vector.interim_transcript_hash_after)
+    {
+        return Err(TranscriptTestVectorError::InterimTranscriptHashMismatch);
+    }
+    Ok(())
 }
 
 #[test]
@@ -221,6 +231,19 @@ fn read_test_vectors() {
     let tests: Vec<TranscriptTestVector> = read("test_vectors/kat_transcripts.json");
 
     for test_vector in tests {
-        run_test_vectors(test_vector)
+        match run_test_vector(test_vector) {
+            Ok(_) => {}
+            Err(e) => panic!("Error while checking transcript test vector.\n{:?}", e),
+        }
+    }
+}
+
+#[cfg(any(feature = "expose-test-vectors", test))]
+implement_error! {
+    pub enum TranscriptTestVectorError {
+        MembershipTagVerificationError = "Membership tag could not be verified.",
+        ConfirmationTagMismatch = "The computed confirmation tag doesn't match the one in the test vector.",
+        ConfirmedTranscriptHashMismatch = "The computed transcript hash doesn't match the one in the test vector.",
+        InterimTranscriptHashMismatch = "The computed interim transcript hash doesn't match the one in the test vector.",
     }
 }

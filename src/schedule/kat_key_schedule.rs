@@ -13,9 +13,12 @@ use crate::{
     config::Config,
     group::{GroupContext, GroupEpoch, GroupId},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
-    test_util::{bytes_to_hex, hex_to_bytes, read, write},
+    test_util::{bytes_to_hex, hex_to_bytes},
     utils::randombytes,
 };
+
+#[cfg(test)]
+use crate::test_util::{read, write};
 
 use hpke::HPKEKeyPair;
 use serde::{self, Deserialize, Serialize};
@@ -110,7 +113,10 @@ fn generate(
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn generate_test_vector(n_epochs: u64, ciphersuite: &'static Ciphersuite) -> KeyScheduleTestVector {
+pub fn generate_test_vector(
+    n_epochs: u64,
+    ciphersuite: &'static Ciphersuite,
+) -> KeyScheduleTestVector {
     // Set up setting.
     let mut init_secret = InitSecret::random(ciphersuite.hash_length());
     let initial_init_secret = init_secret.clone();
@@ -176,14 +182,14 @@ fn write_test_vectors() {
 #[test]
 fn read_test_vectors() {
     let tests: Vec<KeyScheduleTestVector> = read("test_vectors/kat_key_schedule_openmls.json");
-    match run_test_vectors(tests) {
+    match run_test_vector(tests) {
         Ok(_) => {}
         Err(e) => panic!("Error while checking key schedule test vector.\n{:?}", e),
     }
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn run_test_vectors(tests: Vec<KeyScheduleTestVector>) -> Result<(), KSTestVectorError> {
+pub fn run_test_vector(tests: Vec<KeyScheduleTestVector>) -> Result<(), KSTestVectorError> {
     for test_vector in tests {
         let ciphersuite =
             CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");

@@ -458,12 +458,12 @@ impl MlsGroup {
         &self.interim_transcript_hash
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
         &mut self.epoch_secrets
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }

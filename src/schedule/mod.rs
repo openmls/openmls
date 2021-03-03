@@ -128,8 +128,8 @@ pub mod codec;
 pub mod errors;
 pub(crate) mod psk;
 
-#[cfg(test)]
-mod kat_key_schedule;
+#[cfg(any(feature = "expose-test-vectors", test))]
+pub mod kat_key_schedule;
 
 pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
 pub use psk::{PreSharedKeyID, PreSharedKeys, PskSecret};
@@ -168,19 +168,19 @@ impl CommitSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn random(length: usize) -> Self {
         Self {
             secret: Secret::random(length),
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }
@@ -208,19 +208,19 @@ impl InitSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }
@@ -251,14 +251,14 @@ impl JoinerSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -406,7 +406,7 @@ impl WelcomeSecret {
         (welcome_key, welcome_nonce)
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -471,13 +471,13 @@ impl EncryptionSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 #[doc(hidden)]
 impl From<&[u8]> for EncryptionSecret {
     fn from(bytes: &[u8]) -> Self {
@@ -506,7 +506,7 @@ impl ExporterSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -534,7 +534,7 @@ impl AuthenticationSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -559,7 +559,7 @@ impl ExternalSecret {
         ciphersuite.derive_hpke_keypair(&self.secret)
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -586,12 +586,12 @@ impl ConfirmationKey {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -616,12 +616,12 @@ impl MembershipKey {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -646,7 +646,7 @@ impl ResumptionSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -673,7 +673,7 @@ impl SenderDataSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     #[doc(hidden)]
     pub fn from_random(length: usize) -> Self {
         Self {
@@ -681,13 +681,13 @@ impl SenderDataSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 #[doc(hidden)]
 impl From<&[u8]> for SenderDataSecret {
     fn from(bytes: &[u8]) -> Self {
@@ -836,7 +836,7 @@ impl EpochSecrets {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     #[doc(hidden)]
     pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret

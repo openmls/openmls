@@ -33,8 +33,8 @@ pub(crate) use serde::{
 use std::collections::HashSet;
 use std::convert::TryInto;
 
-#[cfg(test)]
-mod tests;
+#[cfg(any(feature = "expose-test-vectors", test))]
+pub mod tests;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]

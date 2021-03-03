@@ -20,6 +20,8 @@ implement_error! {
     }
 }
 
+// TODO: Shouldn't need to allow dead code in here.
+#[allow(dead_code)]
 #[cfg(any(feature = "expose-test-vectors", test))]
 implement_error! {
     pub enum KSTestVectorError {
