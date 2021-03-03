@@ -796,12 +796,9 @@ impl EpochSecrets {
     /// Encryption secret
     /// Note that this consumes the encryption secret.
     pub(crate) fn encryption_secret(&self) -> EncryptionSecret {
-        // XXX: `take` will be stabilized in 1.50 (release date 11.2.2021)
-        // We need to do this until then.
-        // https://github.com/rust-lang/rust/issues/71395
         // Note that we need to use a `RefCell` and not a `Cell` here because
         // we don't want to implement `Copy` for secrets.
-        self.encryption_secret.replace(EncryptionSecret::default())
+        self.encryption_secret.take()
     }
 
     /// Derive `EpochSecrets` from an `EpochSecret`.
