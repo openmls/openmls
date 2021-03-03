@@ -349,12 +349,6 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
         let join_group_request = request.get_ref();
 
-        let kp_hash = self
-            .transaction_id_map
-            .lock()
-            .unwrap()
-            .get(&join_group_request.transaction_id);
-
         let handshake_message_format = if join_group_request.encrypt_handshake {
             HandshakeMessageFormat::Ciphertext
         } else {
@@ -368,11 +362,12 @@ impl MlsClient for MlsClientImpl {
             ManagedGroupCallbacks::default(),
         );
 
-        self.client
+        let group_id = self
+            .client
             .lock()
             .unwrap()
             .process_welcome(
-                None,
+                Some(&managed_group_config),
                 Welcome::decode_detached(&join_group_request.welcome).unwrap(),
                 None,
             )
