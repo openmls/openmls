@@ -55,6 +55,11 @@ impl MlsClientImpl {
     }
 }
 
+fn to_status(e: ManagedClientError) -> Status {
+    let message = "client error ".to_string() + &e.to_string();
+    tonic::Status::new(tonic::Code::Aborted, message)
+}
+
 fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
     let cs_name = match CiphersuiteName::try_from(cs as u16) {
         Ok(cs_name) => cs_name,
@@ -308,11 +313,11 @@ impl MlsClient for MlsClientImpl {
                 Some(&managed_group_config),
                 Some(CiphersuiteName::try_from(create_group_request.cipher_suite as u16).unwrap()),
             )
-            .unwrap();
+            .map_err(|e| to_status(e))?;
         let mut state_id_map = self.state_id_map.lock().unwrap();
         let state_id = state_id_map.len() as u32;
         state_id_map.insert(state_id, group_id);
-        Ok(Response::new(CreateGroupResponse { state_id })) // TODO
+        Ok(Response::new(CreateGroupResponse { state_id }))
     }
 
     async fn create_key_package(
@@ -327,8 +332,7 @@ impl MlsClient for MlsClientImpl {
             .lock()
             .unwrap()
             .generate_key_package(&[ciphersuite.name()])
-            // TODO: Proper error propagation.
-            .unwrap();
+            .map_err(|e| to_status(e))?;
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
         transaction_id_map.insert(transaction_id, key_package.hash());
@@ -341,8 +345,43 @@ impl MlsClient for MlsClientImpl {
 
     async fn join_group(
         &self,
-        _request: tonic::Request<JoinGroupRequest>,
+        request: tonic::Request<JoinGroupRequest>,
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
+        let join_group_request = request.get_ref();
+
+        let kp_hash = self
+            .transaction_id_map
+            .lock()
+            .unwrap()
+            .get(&join_group_request.transaction_id);
+
+        let handshake_message_format = if join_group_request.encrypt_handshake {
+            HandshakeMessageFormat::Ciphertext
+        } else {
+            HandshakeMessageFormat::Plaintext
+        };
+        let managed_group_config = ManagedGroupConfig::new(
+            handshake_message_format,
+            UpdatePolicy::default(),
+            10,
+            0,
+            ManagedGroupCallbacks::default(),
+        );
+
+        self.client
+            .lock()
+            .unwrap()
+            .process_welcome(
+                None,
+                Welcome::decode_detached(&join_group_request.welcome).unwrap(),
+                None,
+            )
+            .map_err(|e| to_status(e))?;
+
+        let mut state_id_map = self.state_id_map.lock().unwrap();
+        let state_id = state_id_map.len() as u32;
+        state_id_map.insert(state_id, group_id);
+
         Ok(Response::new(JoinGroupResponse::default())) // TODO
     }
 
