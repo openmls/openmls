@@ -204,7 +204,7 @@ impl ManagedClient {
         managed_group_config_option: Option<&ManagedGroupConfig>,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
-    ) -> Result<(), ManagedClientError> {
+    ) -> Result<GroupId, ManagedClientError> {
         // Take the input managed_group_config or else use the default.
         let managed_group_config = managed_group_config_option
             .unwrap_or(&self.managed_client_config.default_managed_group_config);
@@ -214,8 +214,9 @@ impl ManagedClient {
             welcome,
             ratchet_tree,
         )?;
+        let group_id = group.group_id().clone();
         self.groups.insert(group.group_id().clone(), group)?;
-        Ok(())
+        Ok(group_id)
     }
 
     // === Membership management ===
