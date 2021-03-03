@@ -20,6 +20,7 @@ use crate::{
 use hpke::HPKEKeyPair;
 use serde::{self, Deserialize, Serialize};
 
+use super::errors::KSTestVectorError;
 use super::CommitSecret;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -49,7 +50,7 @@ struct Epoch {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct KeyScheduleTestVector {
+pub struct KeyScheduleTestVector {
     cipher_suite: u16,
     group_id: String,
     initial_init_secret: String,
@@ -108,76 +109,81 @@ fn generate(
     )
 }
 
-#[test]
-fn generate_test_vectors() {
-    let mut tests = Vec::new();
-    const NUM_EPOCHS: u64 = 200;
+#[cfg(any(feature = "expose-test-vectors", test))]
+fn generate_test_vector(n_epochs: u64, ciphersuite: &'static Ciphersuite) -> KeyScheduleTestVector {
+    // Set up setting.
+    let mut init_secret = InitSecret::random(ciphersuite.hash_length());
+    let initial_init_secret = init_secret.clone();
+    let group_id = randombytes(16);
 
-    for ciphersuite in Config::supported_ciphersuites() {
-        // Set up setting.
-        let mut init_secret = InitSecret::random(ciphersuite.hash_length());
-        let initial_init_secret = init_secret.clone();
-        let group_id = randombytes(16);
+    let mut epochs = Vec::new();
 
-        let mut epochs = Vec::new();
+    // Generate info for all epochs
+    for epoch in 0..n_epochs {
+        println!("Generating epoch: {:?}", epoch);
+        let (
+            confirmed_transcript_hash,
+            commit_secret,
+            joiner_secret,
+            welcome_secret,
+            epoch_secrets,
+            tree_hash,
+            group_context,
+            external_key_pair,
+        ) = generate(ciphersuite, &init_secret, &group_id, epoch);
 
-        // Generate info for all epochs
-        for epoch in 0..NUM_EPOCHS {
-            println!("Generating epoch: {:?}", epoch);
-            let (
-                confirmed_transcript_hash,
-                commit_secret,
-                joiner_secret,
-                welcome_secret,
-                epoch_secrets,
-                tree_hash,
-                group_context,
-                external_key_pair,
-            ) = generate(ciphersuite, &init_secret, &group_id, epoch);
-
-            let epoch_info = Epoch {
-                tree_hash: bytes_to_hex(&tree_hash),
-                commit_secret: bytes_to_hex(commit_secret.as_slice()),
-                psk_secret: bytes_to_hex(&[]), // XXX: not implemented yet.
-                confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
-                group_context: bytes_to_hex(group_context.serialized()),
-                joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
-                welcome_secret: bytes_to_hex(welcome_secret.as_slice()),
-                init_secret: bytes_to_hex(epoch_secrets.init_secret().unwrap().as_slice()),
-                sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
-                encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
-                exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
-                authentication_secret: bytes_to_hex(
-                    epoch_secrets.authentication_secret().as_slice(),
-                ),
-                external_secret: bytes_to_hex(epoch_secrets.external_secret().as_slice()),
-                confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
-                membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
-                resumption_secret: bytes_to_hex(epoch_secrets.resumption_secret().as_slice()),
-                external_pub: bytes_to_hex(
-                    &external_key_pair.public_key().encode_detached().unwrap(),
-                ),
-            };
-            epochs.push(epoch_info);
-            init_secret = epoch_secrets.init_secret().unwrap().clone();
-        }
-
-        let test = KeyScheduleTestVector {
-            cipher_suite: ciphersuite.name() as u16,
-            group_id: bytes_to_hex(&group_id),
-            initial_init_secret: bytes_to_hex(initial_init_secret.as_slice()),
-            epochs,
+        let epoch_info = Epoch {
+            tree_hash: bytes_to_hex(&tree_hash),
+            commit_secret: bytes_to_hex(commit_secret.as_slice()),
+            psk_secret: bytes_to_hex(&[]), // XXX: not implemented yet.
+            confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
+            group_context: bytes_to_hex(group_context.serialized()),
+            joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
+            welcome_secret: bytes_to_hex(welcome_secret.as_slice()),
+            init_secret: bytes_to_hex(epoch_secrets.init_secret().unwrap().as_slice()),
+            sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
+            encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
+            exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
+            authentication_secret: bytes_to_hex(epoch_secrets.authentication_secret().as_slice()),
+            external_secret: bytes_to_hex(epoch_secrets.external_secret().as_slice()),
+            confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
+            membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
+            resumption_secret: bytes_to_hex(epoch_secrets.resumption_secret().as_slice()),
+            external_pub: bytes_to_hex(&external_key_pair.public_key().encode_detached().unwrap()),
         };
-        tests.push(test);
+        epochs.push(epoch_info);
+        init_secret = epoch_secrets.init_secret().unwrap().clone();
     }
 
+    KeyScheduleTestVector {
+        cipher_suite: ciphersuite.name() as u16,
+        group_id: bytes_to_hex(&group_id),
+        initial_init_secret: bytes_to_hex(initial_init_secret.as_slice()),
+        epochs,
+    }
+}
+
+#[test]
+fn write_test_vectors() {
+    const NUM_EPOCHS: u64 = 200;
+    let mut tests = Vec::new();
+    for ciphersuite in Config::supported_ciphersuites() {
+        tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite));
+    }
     write("test_vectors/kat_key_schedule_openmls-new.json", &tests);
 }
 
 #[test]
-fn run_test_vectors() {
+fn read_test_vectors() {
     let tests: Vec<KeyScheduleTestVector> = read("test_vectors/kat_key_schedule_openmls.json");
+    match run_test_vectors(tests) {
+        Ok(_) => {}
+        Err(e) => panic!("Error while checking key schedule test vector.\n{:?}", e),
+    }
+}
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+fn run_test_vectors(tests: Vec<KeyScheduleTestVector>) -> Result<(), KSTestVectorError> {
     for test_vector in tests {
         let ciphersuite =
             CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
@@ -209,14 +215,16 @@ fn run_test_vectors() {
             }
 
             let joiner_secret = JoinerSecret::new(ciphersuite, &commit_secret, &init_secret);
-            assert_eq!(hex_to_bytes(&epoch.joiner_secret), joiner_secret.as_slice());
+            if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
+                return Err(KSTestVectorError::JoinerSecretMismatch);
+            }
 
             let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret.clone(), None);
             let welcome_secret = key_schedule.welcome().unwrap();
-            assert_eq!(
-                hex_to_bytes(&epoch.welcome_secret),
-                welcome_secret.as_slice()
-            );
+
+            if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
+                return Err(KSTestVectorError::WelcomeSecretMismatch);
+            }
 
             let confirmed_transcript_hash = hex_to_bytes(&epoch.confirmed_transcript_hash);
 
@@ -234,49 +242,53 @@ fn run_test_vectors() {
             let epoch_secrets = key_schedule.epoch_secrets(true).unwrap();
 
             init_secret = epoch_secrets.init_secret().unwrap().clone();
-            assert_eq!(hex_to_bytes(&epoch.init_secret), init_secret.as_slice());
-
-            assert_eq!(
-                hex_to_bytes(&epoch.sender_data_secret),
-                epoch_secrets.sender_data_secret().as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&epoch.encryption_secret),
-                epoch_secrets.encryption_secret().as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&epoch.exporter_secret),
-                epoch_secrets.exporter_secret().as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&epoch.authentication_secret),
-                epoch_secrets.authentication_secret().as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&epoch.external_secret),
-                epoch_secrets.external_secret().as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&epoch.confirmation_key),
-                epoch_secrets.confirmation_key().as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&epoch.membership_key),
-                epoch_secrets.membership_key().as_slice()
-            );
-            assert_eq!(
-                hex_to_bytes(&epoch.resumption_secret),
-                epoch_secrets.resumption_secret().as_slice()
-            );
+            if hex_to_bytes(&epoch.init_secret) != init_secret.as_slice() {
+                return Err(KSTestVectorError::InitSecretMismatch);
+            }
+            if hex_to_bytes(&epoch.sender_data_secret)
+                != epoch_secrets.sender_data_secret().as_slice()
+            {
+                return Err(KSTestVectorError::SenderDataSecretMismatch);
+            }
+            if hex_to_bytes(&epoch.encryption_secret)
+                != epoch_secrets.encryption_secret().as_slice()
+            {
+                return Err(KSTestVectorError::EncryptionSecretMismatch);
+            }
+            if hex_to_bytes(&epoch.exporter_secret) != epoch_secrets.exporter_secret().as_slice() {
+                return Err(KSTestVectorError::ExporterSecretMismatch);
+            }
+            if hex_to_bytes(&epoch.authentication_secret)
+                != epoch_secrets.authentication_secret().as_slice()
+            {
+                return Err(KSTestVectorError::AuthenticationSecretMismatch);
+            }
+            if hex_to_bytes(&epoch.external_secret) != epoch_secrets.external_secret().as_slice() {
+                return Err(KSTestVectorError::ExternalSecretMismatch);
+            }
+            if hex_to_bytes(&epoch.confirmation_key) != epoch_secrets.confirmation_key().as_slice()
+            {
+                return Err(KSTestVectorError::ConfirmationKeyMismatch);
+            }
+            if hex_to_bytes(&epoch.membership_key) != epoch_secrets.membership_key().as_slice() {
+                return Err(KSTestVectorError::MembershipKeyMismatch);
+            }
+            if hex_to_bytes(&epoch.resumption_secret)
+                != epoch_secrets.resumption_secret().as_slice()
+            {
+                return Err(KSTestVectorError::ResumptionSecretMismatch);
+            }
 
             // Calculate external HPKE key pair
             let external_key_pair = epoch_secrets
                 .external_secret()
                 .derive_external_keypair(ciphersuite);
-            assert_eq!(
-                hex_to_bytes(&epoch.external_pub),
-                external_key_pair.public_key().encode_detached().unwrap()
-            );
+            if hex_to_bytes(&epoch.external_pub)
+                != external_key_pair.public_key().encode_detached().unwrap()
+            {
+                return Err(KSTestVectorError::ExternalPubMismatch);
+            }
         }
     }
+    Ok(())
 }
