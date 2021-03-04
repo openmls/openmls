@@ -206,7 +206,7 @@ impl ManagedTestSetup {
             println!("Index: {:?}, Id: {:?}", index, member_id);
         }
         group.public_tree = sender.export_ratchet_tree(&group.group_id)?;
-        group.exporter_secret = sender.export_secret(&group.group_id, "test", 32)?;
+        group.exporter_secret = sender.export_secret(&group.group_id, "test", &[], 32)?;
         Ok(())
     }
 
@@ -227,7 +227,7 @@ impl ManagedTestSetup {
                     group.public_tree
                 );
                 assert_eq!(
-                    m.export_secret(&group.group_id, "test", 32).unwrap(),
+                    m.export_secret(&group.group_id, "test", &[], 32).unwrap(),
                     group.exporter_secret
                 );
                 let message = m
@@ -306,7 +306,7 @@ impl ManagedTestSetup {
             Some(ciphersuite.name()),
         )?;
         let public_tree = group_creator.export_ratchet_tree(&group_id)?;
-        let exporter_secret = group_creator.export_secret(&group_id, "test", 32)?;
+        let exporter_secret = group_creator.export_secret(&group_id, "test", &[], 32)?;
         let mut member_ids = Vec::new();
         member_ids.push((0, group_creator_id));
         let group = Group {

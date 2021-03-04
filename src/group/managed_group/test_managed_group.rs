@@ -58,11 +58,11 @@ fn test_managed_group_persistence() {
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret("test", 32)
+            alice_group.export_secret("test", &[], 32)
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret("test", 32)
+            alice_group_deserialized.export_secret("test", &[], 32)
         )
     );
 }
