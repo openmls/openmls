@@ -47,9 +47,9 @@ use crate::{
 
 #[derive(Clone)]
 pub struct ManagedClientConfig {
-    default_managed_group_config: ManagedGroupConfig,
-    supported_ciphersuites: Vec<CiphersuiteName>,
-    default_credential_type: CredentialType,
+    pub default_managed_group_config: ManagedGroupConfig,
+    pub supported_ciphersuites: Vec<CiphersuiteName>,
+    pub default_credential_type: CredentialType,
 }
 
 impl Default for ManagedClientConfig {

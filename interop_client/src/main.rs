@@ -10,6 +10,8 @@ use std::{collections::HashMap, convert::TryFrom, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 use tree::tests::{kat_encryption, kat_treemath};
 
+use tls_codec::Serialize as TLSSerialize;
+
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
 // TODO(RLB) Convert this back to more specific `use` directives
 use mls_client::*;
@@ -486,34 +488,42 @@ impl MlsClient for MlsClientImpl {
             .unwrap()
             .create_message(&group_id, &protect_request.application_data)
             .map_err(|e| to_status(e))?
-            .serialize_detached();
+            .tls_serialize_detached()
+            .map_err(|_| Status::aborted("failed to serialize ciphertext"))?;
         Ok(Response::new(ProtectResponse { ciphertext }))
     }
 
     async fn unprotect(
         &self,
-        request: tonic::Request<UnprotectRequest>,
+        _request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
-        let unprotect_request = request.get_ref();
+        //    let unprotect_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&state_auth_request.state_id)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
-        let application_data = self
-            .client
-            .lock()
-            .unwrap()
-            .create_message(group_id, unprotect_request.ciphertext)
-            .map_err(|e| to_status(e))?;
-        Ok(Response::new(UnprotectResponse { application_data })) // TODO
+        //    let group_id = self
+        //        .state_id_map
+        //        .lock()
+        //        .unwrap()
+        //        .get(&unprotect_request.state_id)
+        //        .ok_or(tonic::Status::new(
+        //            tonic::Code::InvalidArgument,
+        //            "unknown state_id",
+        //        ))?
+        //        // Cloning here to avoid potential poisoning of the state_id_map.
+        //        .clone();
+        //    let application_data = match self
+        //        .client
+        //        .lock()
+        //        .unwrap()
+        //        .process_messages(group_id, messages)
+        //        .map_err(|e| to_status(e))?
+        //    {
+        //        MLSMessage::Plaintext(plaintext) => {}
+        //        MLSMessage::Ciphertext(_) => p,
+        //    }
+        //    .tls_serialize_detached()
+        //    .map_err(|_| Status::aborted("failed to serialize application_data"))?;
+        //    Ok(Response::new(UnprotectResponse { application_data }))
+        Ok(Response::new(UnprotectResponse::default()))
     }
 
     async fn store_psk(

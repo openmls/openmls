@@ -1144,3 +1144,16 @@ impl MLSMessage {
         }
     }
 }
+
+impl tls_codec::Serialize for MLSMessage {
+    fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), tls_codec::Error> {
+        match self {
+            MLSMessage::Plaintext(plaintext) => plaintext
+                .encode(buffer)
+                .map_err(|_| tls_codec::Error::EncodingError),
+            MLSMessage::Ciphertext(ciphertext) => ciphertext
+                .encode(buffer)
+                .map_err(|_| tls_codec::Error::EncodingError),
+        }
+    }
+}
