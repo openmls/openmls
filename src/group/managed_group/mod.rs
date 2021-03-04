@@ -50,7 +50,7 @@ use ser::*;
 /// epoch).
 ///
 /// If incoming messages or applied operations are semantically or syntactically
-/// incorrect, a callback function will be called with a corresponding error
+/// incorrect, an error event will be returned with a corresponding error
 /// message and the state of the group will remain unchanged.
 ///
 /// The application policy for the group can be enforced by implementing the
@@ -386,7 +386,9 @@ impl<'a> ManagedGroup<'a> {
     // === Process messages ===
 
     /// Processes any incoming messages from the DS (MLSPlaintext &
-    /// MLSCiphertext) and triggers the corresponding callback functions
+    /// MLSCiphertext) and triggers the corresponding callback functions.
+    /// Return a list of `GroupEvent` that contain the individual events that
+    /// occured whil processing messages.
     pub fn process_messages(
         &mut self,
         messages: Vec<MLSMessage>,
@@ -926,7 +928,7 @@ impl<'a> ManagedGroup<'a> {
         true
     }
 
-    /// Send out the corresponding events for the proposals covered by the
+    /// Prepare the corresponding events for the proposals covered by the
     /// Commit
     fn prepare_events(
         &self,
@@ -936,7 +938,7 @@ impl<'a> ManagedGroup<'a> {
         indexed_members: &HashMap<LeafIndex, Credential>,
     ) -> Vec<GroupEvent> {
         let mut events = Vec::new();
-        // We want to send the events in the order specified by the committer.
+        // We want to collect the events in the order specified by the committer.
         // We convert the pending proposals to a list of references
         let pending_proposals_list = self
             .pending_proposals
@@ -964,7 +966,7 @@ impl<'a> ManagedGroup<'a> {
         events
     }
 
-    /// Send out the corresponding events for the pending proposal list.
+    /// Prepare the corresponding events for the pending proposal list.
     fn prepare_proposal_event(
         &self,
         proposal: &Proposal,
