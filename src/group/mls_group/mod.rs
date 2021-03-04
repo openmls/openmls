@@ -362,7 +362,12 @@ impl MlsGroup {
     }
 
     /// Exporter
-    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, GroupError> {
+    pub fn export_secret(
+        &self,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, GroupError> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if key_length > u16::MAX.into() {
@@ -371,7 +376,7 @@ impl MlsGroup {
         Ok(self.epoch_secrets.exporter_secret().derive_exported_secret(
             self.ciphersuite(),
             label,
-            &self.context(),
+            context,
             key_length,
         ))
     }

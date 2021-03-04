@@ -271,10 +271,9 @@ impl ExporterSecret {
         &self,
         ciphersuite: &Ciphersuite,
         label: &str,
-        group_context: &GroupContext,
+        context: &[u8],
         key_length: usize,
     ) -> Vec<u8> {
-        let context = &group_context.serialized();
         let context_hash = &ciphersuite.hash(context);
         self.secret()
             .derive_secret(ciphersuite, label)
