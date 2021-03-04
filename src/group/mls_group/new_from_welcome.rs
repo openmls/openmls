@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::debug;
 
 use crate::extensions::ExtensionType;
 use crate::group::{mls_group::*, *};
@@ -63,39 +63,38 @@ impl MlsGroup {
         let group_info_bytes = welcome_key
             .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let mut group_info = GroupInfo::decode_detached(&group_info_bytes)?;
+        let group_info = GroupInfo::decode_detached(&group_info_bytes)?;
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
         // First check the extensions to see if the tree is in there.
-        let ratchet_tree_ext_index = group_info
+        let mut ratchet_tree_extensions = group_info
             .extensions()
             .iter()
-            .position(|e| e.extension_type() == ExtensionType::RatchetTree);
-        let ratchet_tree_extension = if let Some(i) = ratchet_tree_ext_index {
-            // Throw an error if we there is another ratchet tree extension.
+            .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
+            .collect::<Vec<&Box<dyn Extension>>>();
+
+        let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
+            None
+        } else if ratchet_tree_extensions.len() == 1 {
+            let extension = ratchet_tree_extensions
+                .pop()
+                // Unwrappig here is safe because we know we only have one element
+                .unwrap()
+                .as_ratchet_tree_extension()
+                // Unwrapping here is safe, because we know the extension type already
+                .unwrap()
+                // We clone the nodes here upon extraction, so that we don't have to clone
+                // them later when we build the tree
+                .clone();
+            Some(extension)
+        } else {
+            // Throw an error if we there is more than one ratchet tree extension.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
-            if group_info
-                .extensions()
-                .iter()
-                .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-                .count()
-                > 1
-            {
-                return Err(WelcomeError::DuplicateRatchetTreeExtension);
-            }
-            let extension = group_info.extensions_mut().get(i).unwrap();
-            match extension.as_ratchet_tree_extension() {
-                Ok(e) => Some(e.clone()),
-                Err(e) => {
-                    error!("Library error retrieving ratchet tree extension ({:?}", e);
-                    None
-                }
-            }
-        } else {
-            None
+            return Err(WelcomeError::DuplicateRatchetTreeExtension);
         };
+
         // Set nodes either from the extension or from the `nodes_option`.
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's

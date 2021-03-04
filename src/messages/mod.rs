@@ -241,11 +241,6 @@ impl GroupInfo {
     pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
         &self.extensions
     }
-
-    /// Get the extensions as mutable reference.
-    pub(crate) fn extensions_mut(&mut self) -> &mut Vec<Box<dyn Extension>> {
-        &mut self.extensions
-    }
 }
 
 impl Signable for GroupInfo {
