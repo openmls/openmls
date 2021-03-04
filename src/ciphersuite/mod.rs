@@ -25,7 +25,6 @@ mod ser;
 
 use crate::codec::*;
 use crate::config::{Config, ConfigError};
-use crate::group::GroupContext;
 use crate::schedule::ExporterSecret;
 use crate::schedule::SenderDataSecret;
 use crate::schedule::WelcomeSecret;
