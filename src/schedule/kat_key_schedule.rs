@@ -146,7 +146,7 @@ pub fn generate_test_vector(
         let epoch_info = Epoch {
             tree_hash: bytes_to_hex(&tree_hash),
             commit_secret: bytes_to_hex(commit_secret.as_slice()),
-            psk_secret: bytes_to_hex(&psk_secret.as_slice()),
+            psk_secret: bytes_to_hex(psk_secret.as_slice()),
             confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
             group_context: bytes_to_hex(group_context.serialized()),
             joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
@@ -221,10 +221,10 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
         let commit_secret = hex_to_bytes(&epoch.commit_secret);
         let commit_secret = CommitSecret::from_slice(&commit_secret);
         let psk = hex_to_bytes(&epoch.psk_secret);
-        if !psk.is_empty() {
-            println!("PSK is not supported by OpenMLS yet. See #141");
-            continue;
-        }
+        //if !psk.is_empty() {
+        //    println!("PSK is not supported by OpenMLS yet. See #141");
+        //    continue;
+        //}
 
         let joiner_secret = JoinerSecret::new(ciphersuite, &commit_secret, &init_secret);
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
