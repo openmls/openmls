@@ -61,19 +61,6 @@ fn test_managed_group_persistence() {
 // issues a RemoveProposal and another members issues the next Commit.
 #[test]
 fn remover() {
-    // Callback
-    fn member_removed(_managed_group: &ManagedGroup, _aad: &[u8], removal: &Removal) {
-        match removal {
-            Removal::TheyWereRemovedBy(leaver, remover) => {
-                assert_eq!(remover.identity(), b"Alice");
-                assert_eq!(leaver.identity(), b"Bob");
-            }
-            _ => {
-                unreachable!("We should not be here")
-            }
-        }
-    }
-
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -162,7 +149,7 @@ fn remover() {
         .process_messages(queued_messages)
         .expect("The group is no longer active");
 
-    let charlie_callbacks = ManagedGroupCallbacks::new().with_member_removed(member_removed);
+    let charlie_callbacks = ManagedGroupCallbacks::default();
     managed_group_config.set_callbacks(&charlie_callbacks);
     let mut charlie_group = ManagedGroup::new_from_welcome(
         &charlie_credential_bundle,
@@ -187,7 +174,20 @@ fn remover() {
         .process_pending_proposals()
         .expect("Could not commit proposal");
 
-    charlie_group
+    let events = charlie_group
         .process_messages(queued_messages)
         .expect("Could not process messages");
+
+    match events.first().expect("Expected an event to be returned") {
+        GroupEvent::MemberRemoved(member_removed_event) => match member_removed_event.removal() {
+            Removal::TheyWereRemovedBy(leaver, remover) => {
+                assert_eq!(remover.identity(), b"Alice");
+                assert_eq!(leaver.identity(), b"Bob");
+            }
+            _ => {
+                unreachable!("We should not be here")
+            }
+        },
+        _ => unreachable!("Expected a MemberRemoved event"),
+    }
 }
