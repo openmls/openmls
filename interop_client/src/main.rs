@@ -377,35 +377,80 @@ impl MlsClient for MlsClientImpl {
         let state_id = state_id_map.len() as u32;
         state_id_map.insert(state_id, group_id);
 
-        Ok(Response::new(JoinGroupResponse::default())) // TODO
+        Ok(Response::new(JoinGroupResponse { state_id }))
     }
 
     async fn external_join(
         &self,
         _request: tonic::Request<ExternalJoinRequest>,
     ) -> Result<tonic::Response<ExternalJoinResponse>, tonic::Status> {
-        Ok(Response::new(ExternalJoinResponse::default())) // TODO
+        Err(tonic::Status::new(
+            tonic::Code::InvalidArgument,
+            "external join is not yet supported by OpenMLS",
+        ))
+        //Ok(Response::new(ExternalJoinResponse::default())) // TODO
     }
 
     async fn public_group_state(
         &self,
         _request: tonic::Request<PublicGroupStateRequest>,
     ) -> Result<tonic::Response<PublicGroupStateResponse>, tonic::Status> {
-        Ok(Response::new(PublicGroupStateResponse::default())) // TODO
+        Err(tonic::Status::new(
+            tonic::Code::InvalidArgument,
+            "exporting public group state is not yet supported by OpenMLS",
+        ))
+        //Ok(Response::new(PublicGroupStateResponse::default())) // TODO
     }
 
     async fn state_auth(
         &self,
-        _request: tonic::Request<StateAuthRequest>,
+        request: tonic::Request<StateAuthRequest>,
     ) -> Result<tonic::Response<StateAuthResponse>, tonic::Status> {
-        Ok(Response::new(StateAuthResponse::default())) // TODO
+        let state_auth_request = request.get_ref();
+
+        let state_id_map = self.state_id_map.lock().unwrap();
+        let group_id = state_id_map
+            .get(&state_auth_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?;
+        let state_auth_secret = self
+            .client
+            .lock()
+            .unwrap()
+            .authentication_secret(group_id)
+            .map_err(|e| to_status(e))?;
+
+        Ok(Response::new(StateAuthResponse { state_auth_secret }))
     }
 
     async fn export(
         &self,
-        _request: tonic::Request<ExportRequest>,
+        request: tonic::Request<ExportRequest>,
     ) -> Result<tonic::Response<ExportResponse>, tonic::Status> {
-        Ok(Response::new(ExportResponse::default())) // TODO
+        let export_request = request.get_ref();
+
+        let state_id_map = self.state_id_map.lock().unwrap();
+        let group_id = state_id_map
+            .get(&export_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?;
+        // TODO: Include the context as well.
+        let exported_secret = self
+            .client
+            .lock()
+            .unwrap()
+            .export_secret(
+                group_id,
+                &export_request.label,
+                export_request.key_length as usize,
+            )
+            .map_err(|e| to_status(e))?;
+
+        Ok(Response::new(ExportResponse { exported_secret }))
     }
 
     async fn protect(
