@@ -279,8 +279,8 @@ fn managed_group_operations() {
 
             // Check that both groups have the same state
             assert_eq!(
-                alice_group.export_secret("", 32),
-                bob_group.export_secret("", 32)
+                alice_group.export_secret("", &[], 32),
+                bob_group.export_secret("", &[], 32)
             );
 
             // Make sure that both groups have the same public tree
@@ -314,8 +314,8 @@ fn managed_group_operations() {
 
             // Check that both groups have the same state
             assert_eq!(
-                alice_group.export_secret("", 32),
-                bob_group.export_secret("", 32)
+                alice_group.export_secret("", &[], 32),
+                bob_group.export_secret("", &[], 32)
             );
 
             // Make sure that both groups have the same public tree
@@ -406,12 +406,12 @@ fn managed_group_operations() {
 
             // Check that all groups have the same state
             assert_eq!(
-                alice_group.export_secret("", 32),
-                bob_group.export_secret("", 32)
+                alice_group.export_secret("", &[], 32),
+                bob_group.export_secret("", &[], 32)
             );
             assert_eq!(
-                alice_group.export_secret("", 32),
-                charlie_group.export_secret("", 32)
+                alice_group.export_secret("", &[], 32),
+                charlie_group.export_secret("", &[], 32)
             );
 
             // Make sure that all groups have the same public tree
@@ -620,8 +620,8 @@ fn managed_group_operations() {
             .expect("Could not create group from Welcome");
 
             assert_eq!(
-                alice_group.export_secret("before load", 32),
-                bob_group.export_secret("before load", 32)
+                alice_group.export_secret("before load", &[], 32),
+                bob_group.export_secret("before load", &[], 32)
             );
 
             // Re-load Bob's state from file
@@ -636,8 +636,8 @@ fn managed_group_operations() {
 
             // Make sure the state is still the same
             assert_eq!(
-                alice_group.export_secret("after load", 32),
-                bob_group.export_secret("after load", 32)
+                alice_group.export_secret("after load", &[], 32),
+                bob_group.export_secret("after load", &[], 32)
             );
         }
     }

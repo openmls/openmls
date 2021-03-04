@@ -275,7 +275,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             println!("Index: {:?}, Id: {:?}", index, member_id);
         }
         group.public_tree = sender_group.export_ratchet_tree();
-        group.exporter_secret = sender_group.export_secret("test", 32)?;
+        group.exporter_secret = sender_group.export_secret("test", &[], 32)?;
         Ok(())
     }
 
@@ -294,7 +294,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             if let Some(group_state) = group_states.get_mut(&group.group_id) {
                 assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
                 assert_eq!(
-                    group_state.export_secret("test", 32).unwrap(),
+                    group_state.export_secret("test", &[], 32).unwrap(),
                     group.exporter_secret
                 );
                 let message = group_state
@@ -371,7 +371,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         let creator_groups = group_creator.groups.borrow();
         let group = creator_groups.get(&group_id).unwrap();
         let public_tree = group.export_ratchet_tree();
-        let exporter_secret = group.export_secret("test", 32)?;
+        let exporter_secret = group.export_secret("test", &[], 32)?;
         let mut member_ids = Vec::new();
         member_ids.push((0, group_creator_id));
         let group = Group {
