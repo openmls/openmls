@@ -408,18 +408,22 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<StateAuthResponse>, tonic::Status> {
         let state_auth_request = request.get_ref();
 
-        let state_id_map = self.state_id_map.lock().unwrap();
-        let group_id = state_id_map
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
             .get(&state_auth_request.state_id)
             .ok_or(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 "unknown state_id",
-            ))?;
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
         let state_auth_secret = self
             .client
             .lock()
             .unwrap()
-            .authentication_secret(group_id)
+            .authentication_secret(&group_id)
             .map_err(|e| to_status(e))?;
 
         Ok(Response::new(StateAuthResponse { state_auth_secret }))
@@ -431,21 +435,25 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<ExportResponse>, tonic::Status> {
         let export_request = request.get_ref();
 
-        let state_id_map = self.state_id_map.lock().unwrap();
-        let group_id = state_id_map
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
             .get(&export_request.state_id)
             .ok_or(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 "unknown state_id",
-            ))?;
-        // TODO: Include the context as well.
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
         let exported_secret = self
             .client
             .lock()
             .unwrap()
             .export_secret(
-                group_id,
+                &group_id,
                 &export_request.label,
+                &export_request.context,
                 export_request.key_length as usize,
             )
             .map_err(|e| to_status(e))?;
@@ -455,16 +463,55 @@ impl MlsClient for MlsClientImpl {
 
     async fn protect(
         &self,
-        _request: tonic::Request<ProtectRequest>,
+        request: tonic::Request<ProtectRequest>,
     ) -> Result<tonic::Response<ProtectResponse>, tonic::Status> {
-        Ok(Response::new(ProtectResponse::default())) // TODO
+        let protect_request = request.get_ref();
+
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&protect_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+        let ciphertext = self
+            .client
+            .lock()
+            .unwrap()
+            .create_message(&group_id, &protect_request.application_data)
+            .map_err(|e| to_status(e))?
+            .serialize_detached();
+        Ok(Response::new(ProtectResponse { ciphertext }))
     }
 
     async fn unprotect(
         &self,
-        _request: tonic::Request<UnprotectRequest>,
+        request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
-        Ok(Response::new(UnprotectResponse::default())) // TODO
+        let unprotect_request = request.get_ref();
+
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&state_auth_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+        let application_data = self
+            .client
+            .lock()
+            .unwrap()
+            .create_message(group_id, unprotect_request.ciphertext)
+            .map_err(|e| to_status(e))?;
+        Ok(Response::new(UnprotectResponse { application_data })) // TODO
     }
 
     async fn store_psk(

@@ -332,10 +332,11 @@ impl ManagedClient {
         &self,
         group_id: &GroupId,
         label: &str,
+        context: &[u8],
         key_length: usize,
     ) -> Result<Vec<u8>, ManagedClientError> {
         let group = self.groups.get(group_id)?;
-        Ok(group.export_secret(label, key_length)?)
+        Ok(group.export_secret(label, context, key_length)?)
     }
 
     /// Returns the authentication secret
