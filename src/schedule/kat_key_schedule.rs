@@ -23,8 +23,8 @@ use crate::test_util::{read, write};
 use hpke::HPKEKeyPair;
 use serde::{self, Deserialize, Serialize};
 
-use super::errors::KSTestVectorError;
 use super::CommitSecret;
+use super::{errors::KSTestVectorError, PskSecret};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Epoch {
@@ -69,6 +69,7 @@ fn generate(
     Vec<u8>,
     CommitSecret,
     JoinerSecret,
+    PskSecret,
     WelcomeSecret,
     EpochSecrets,
     Vec<u8>,
@@ -77,8 +78,10 @@ fn generate(
 ) {
     let tree_hash = randombytes(ciphersuite.hash_length());
     let commit_secret = CommitSecret::random(ciphersuite.hash_length());
+    let psk_secret = PskSecret::random(ciphersuite.hash_length());
     let joiner_secret = JoinerSecret::new(ciphersuite, &commit_secret, init_secret);
-    let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret.clone(), None);
+    let mut key_schedule =
+        KeySchedule::init(ciphersuite, joiner_secret.clone(), Some(psk_secret.clone()));
     let welcome_secret = key_schedule.welcome().unwrap();
 
     let confirmed_transcript_hash = randombytes(ciphersuite.hash_length());
@@ -104,6 +107,7 @@ fn generate(
         confirmed_transcript_hash,
         commit_secret,
         joiner_secret,
+        psk_secret,
         welcome_secret,
         epoch_secrets,
         tree_hash,
@@ -131,6 +135,7 @@ pub fn generate_test_vector(
             confirmed_transcript_hash,
             commit_secret,
             joiner_secret,
+            psk_secret,
             welcome_secret,
             epoch_secrets,
             tree_hash,
@@ -141,7 +146,7 @@ pub fn generate_test_vector(
         let epoch_info = Epoch {
             tree_hash: bytes_to_hex(&tree_hash),
             commit_secret: bytes_to_hex(commit_secret.as_slice()),
-            psk_secret: bytes_to_hex(&[]), // XXX: not implemented yet.
+            psk_secret: bytes_to_hex(&psk_secret.as_slice()),
             confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
             group_context: bytes_to_hex(group_context.serialized()),
             joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
@@ -225,7 +230,11 @@ pub fn run_test_vector(tests: Vec<KeyScheduleTestVector>) -> Result<(), KSTestVe
                 return Err(KSTestVectorError::JoinerSecretMismatch);
             }
 
-            let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret.clone(), None);
+            let mut key_schedule = KeySchedule::init(
+                ciphersuite,
+                joiner_secret.clone(),
+                Some(PskSecret::from_slice(&psk)),
+            );
             let welcome_secret = key_schedule.welcome().unwrap();
 
             if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {

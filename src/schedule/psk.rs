@@ -7,24 +7,24 @@
 //!     branch(3),
 //!     (255)
 //!   } PSKType;
-//!   
+//!
 //!   struct {
 //!     PSKType psktype;
 //!     select (PreSharedKeyID.psktype) {
 //!       case external:
 //!         opaque psk_id<0..255>;
-//!   
+//!
 //!       case reinit:
 //!         opaque psk_group_id<0..255>;
 //!         uint64 psk_epoch;
-//!   
+//!
 //!       case branch:
 //!         opaque psk_group_id<0..255>;
 //!         uint64 psk_epoch;
 //!     }
 //!     opaque psk_nonce<0..255>;
 //!   } PreSharedKeyID;
-//!   
+//!
 //!   struct {
 //!       PreSharedKeyID psks<0..2^16-1>;
 //!   } PreSharedKeys;
@@ -284,5 +284,29 @@ impl PskSecret {
     /// Return the inner secret
     pub fn secret(&self) -> &Secret {
         &self.secret
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub(crate) fn random(length: usize) -> Self {
+        Self {
+            secret: Secret::random(length),
+        }
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.to_bytes()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub(crate) fn clone(&self) -> Self {
+        Self {
+            secret: self.secret.clone(),
+        }
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub(crate) fn from_slice(b: &[u8]) -> Self {
+        Self { secret: b.into() }
     }
 }
