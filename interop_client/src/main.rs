@@ -125,7 +125,6 @@ impl MlsClient for MlsClientImpl {
         println!("Got GenerateTestVector request");
 
         let obj = request.get_ref();
-        let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
         let (type_msg, test_vector) = match TestVectorType::try_from(obj.test_vector_type) {
             Ok(TestVectorType::TreeMath) => {
                 let kat_treemath = kat_treemath::generate_test_vector(obj.n_leaves);
@@ -133,6 +132,7 @@ impl MlsClient for MlsClientImpl {
                 ("Tree math", kat_bytes)
             }
             Ok(TestVectorType::Encryption) => {
+                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_encryption = kat_encryption::generate_test_vector(
                     obj.n_generations,
                     obj.n_leaves,
@@ -142,12 +142,14 @@ impl MlsClient for MlsClientImpl {
                 ("Encryption", kat_bytes)
             }
             Ok(TestVectorType::KeySchedule) => {
+                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_key_schedule =
                     kat_key_schedule::generate_test_vector(obj.n_epochs as u64, ciphersuite);
                 let kat_bytes = to_bytes(kat_key_schedule);
                 ("Key Schedule", kat_bytes)
             }
             Ok(TestVectorType::Transcript) => {
+                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_transcript = kat_transcripts::generate_test_vector(ciphersuite);
                 let kat_bytes = to_bytes(kat_transcript);
                 ("Key Schedule", kat_bytes)
@@ -264,19 +266,19 @@ impl MlsClient for MlsClientImpl {
             }
             Ok(TestVectorType::Treekem) => {
                 return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
+                    tonic::Code::Unimplemented,
                     "TreeKEM test vector verification not supported yet.",
                 ));
             }
             Ok(TestVectorType::Messages) => {
                 return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
+                    tonic::Code::Unimplemented,
                     "Messages test vector verification not supported yet.",
                 ));
             }
             Err(_) => {
                 return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
+                    tonic::Code::Unimplemented,
                     "Invalid test vector type",
                 ));
             }
@@ -385,7 +387,7 @@ impl MlsClient for MlsClientImpl {
         _request: tonic::Request<ExternalJoinRequest>,
     ) -> Result<tonic::Response<ExternalJoinResponse>, tonic::Status> {
         Err(tonic::Status::new(
-            tonic::Code::InvalidArgument,
+            tonic::Code::Unimplemented,
             "external join is not yet supported by OpenMLS",
         ))
         //Ok(Response::new(ExternalJoinResponse::default())) // TODO
@@ -396,7 +398,7 @@ impl MlsClient for MlsClientImpl {
         _request: tonic::Request<PublicGroupStateRequest>,
     ) -> Result<tonic::Response<PublicGroupStateResponse>, tonic::Status> {
         Err(tonic::Status::new(
-            tonic::Code::InvalidArgument,
+            tonic::Code::Unimplemented,
             "exporting public group state is not yet supported by OpenMLS",
         ))
         //Ok(Response::new(PublicGroupStateResponse::default())) // TODO
