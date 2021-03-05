@@ -34,7 +34,7 @@ use crate::{
     config::Config,
     credentials::{Credential, CredentialType},
     group::{
-        GroupEpoch, GroupId, HandshakeMessageFormat, MLSMessage, ManagedGroup,
+        GroupEpoch, GroupEvent, GroupId, HandshakeMessageFormat, MLSMessage, ManagedGroup,
         ManagedGroupCallbacks, ManagedGroupConfig, UpdatePolicy,
     },
     key_packages::KeyPackage,
@@ -294,7 +294,7 @@ impl ManagedClient {
         &self,
         group_id: &GroupId,
         messages: Vec<MLSMessage>,
-    ) -> Result<(), ManagedClientError> {
+    ) -> Result<Vec<GroupEvent>, ManagedClientError> {
         let mut group = self.groups.get_mut(group_id)?;
         Ok(group.process_messages(messages)?)
     }

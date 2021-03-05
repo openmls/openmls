@@ -29,8 +29,6 @@ use openmls::{node::Node, prelude::*};
 use rand::{rngs::OsRng, RngCore};
 use std::{cell::RefCell, collections::HashMap};
 
-//pub mod client;
-pub mod default_callbacks;
 pub mod errors;
 
 use self::errors::*;

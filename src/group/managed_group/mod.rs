@@ -1,6 +1,7 @@
 pub mod callbacks;
 pub mod config;
 pub mod errors;
+pub mod events;
 mod resumption;
 mod ser;
 #[cfg(test)]
@@ -23,6 +24,7 @@ pub use errors::{
     EmptyInputError, InvalidMessageError, ManagedGroupError, PendingProposalsError,
     UseAfterEviction,
 };
+pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
@@ -45,7 +47,7 @@ use ser::*;
 /// epoch).
 ///
 /// If incoming messages or applied operations are semantically or syntactically
-/// incorrect, a callback function will be called with a corresponding error
+/// incorrect, an error event will be returned with a corresponding error
 /// message and the state of the group will remain unchanged.
 ///
 /// The application policy for the group can be enforced by implementing the
@@ -421,11 +423,17 @@ impl ManagedGroup {
     // === Process messages ===
 
     /// Processes any incoming messages from the DS (MLSPlaintext &
-    /// MLSCiphertext) and triggers the corresponding callback functions
-    pub fn process_messages(&mut self, messages: Vec<MLSMessage>) -> Result<(), ManagedGroupError> {
+    /// MLSCiphertext) and triggers the corresponding callback functions.
+    /// Return a list of `GroupEvent` that contain the individual events that
+    /// occured whil processing messages.
+    pub fn process_messages(
+        &mut self,
+        messages: Vec<MLSMessage>,
+    ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
+        let mut events = Vec::new();
         // Iterate over all incoming messages
         for message in messages {
             // Check the type of message we received
@@ -436,10 +444,9 @@ impl ManagedGroup {
                     match self.group.decrypt(&ciphertext) {
                         Ok(plaintext) => (plaintext, Some(aad)),
                         Err(_) => {
-                            // If there is a callback for that event we should call it
-                            self.invalid_message_event(InvalidMessageError::InvalidCiphertext(
-                                aad.into(),
-                            ));
+                            events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
+                                InvalidMessageError::InvalidCiphertext(aad.into()),
+                            )));
                             // Since we cannot decrypt the MLSCiphertext to a MLSPlaintext we move
                             // to the next message
                             continue;
@@ -454,8 +461,9 @@ impl ManagedGroup {
                         && plaintext.sender.is_member()
                         && self.group.verify_membership_tag(&plaintext).is_err()
                     {
-                        // If there is a callback for that event we should call it
-                        self.invalid_message_event(InvalidMessageError::MembershipTagMismatch);
+                        events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
+                            InvalidMessageError::MembershipTagMismatch,
+                        )));
                         // Since the membership tag verification failed, we skip the message
                         // and go to the next one
                         continue;
@@ -478,9 +486,12 @@ impl ManagedGroup {
                     ) {
                         self.pending_proposals.push(plaintext);
                     } else {
-                        self.invalid_message_event(
-                            InvalidMessageError::CommitWithInvalidProposals("".into()),
-                        );
+                        // The proposal was invalid
+                        events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
+                            InvalidMessageError::CommitWithInvalidProposals(
+                                "Invalid proposal".into(),
+                            ),
+                        )));
                     }
                 }
                 MLSPlaintextContentType::Commit(ref commit) => {
@@ -490,12 +501,12 @@ impl ManagedGroup {
                         &plaintext.sender.sender,
                         &indexed_members,
                     ) {
-                        // If not all of them are valid, call error function callback
-                        self.invalid_message_event(
+                        // If not all proposals are valid we issue an error event
+                        events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
                             InvalidMessageError::CommitWithInvalidProposals(
-                                "Not all of them are valid".into(),
+                                "Not all proposals are valid".into(),
                             ),
-                        );
+                        )));
                         // And move on to the next message
                         continue;
                     }
@@ -511,14 +522,24 @@ impl ManagedGroup {
                         .apply_commit(&plaintext, proposals, &self.own_kpbs, None)
                     {
                         Ok(()) => {
-                            // Since the Commit was applied without errors, we can call all
-                            // corresponding callback functions for the whole proposal list
-                            self.send_events(
+                            // Since the Commit was applied without errors, we can collect
+                            // all proposals from the Commit and generate events
+                            events.append(&mut self.prepare_events(
                                 self.ciphersuite(),
                                 &commit.proposals,
                                 plaintext.sender.sender,
                                 &indexed_members,
-                            );
+                            ));
+
+                            // If a Commit has an update path, it is additionally to be treated
+                            // like a commited UpdateProposal.
+                            if commit.has_path() {
+                                events.push(GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
+                                    aad_option.unwrap_or_default(),
+                                    indexed_members[&plaintext.sender.sender].clone(),
+                                )));
+                            }
+
                             // Extract and store the resumption secret for the current epoch
                             let resumption_secret = self.group.epoch_secrets().resumption_secret();
                             self.resumption_secret_store
@@ -530,18 +551,20 @@ impl ManagedGroup {
                         }
                         Err(apply_commit_error) => match apply_commit_error {
                             GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
-                                // Send out events
-                                self.send_events(
+                                // Prepare events
+                                events.append(&mut self.prepare_events(
                                     self.ciphersuite(),
                                     &commit.proposals,
                                     plaintext.sender.sender,
                                     &indexed_members,
-                                );
+                                ));
                                 // The group is no longer active
                                 self.active = false;
                             }
                             GroupError::ApplyCommitError(e) => {
-                                self.invalid_message_event(InvalidMessageError::CommitError(e));
+                                events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
+                                    InvalidMessageError::CommitError(e),
+                                )));
                             }
                             _ => {
                                 panic!("apply_commit_error did not return an ApplyCommitError.");
@@ -550,17 +573,14 @@ impl ManagedGroup {
                     }
                 }
                 MLSPlaintextContentType::Application(ref app_message) => {
-                    // If there is a callback for that event we should call it
-                    if let Some(app_message_received) =
-                        self.managed_group_config.callbacks.app_message_received
-                    {
-                        app_message_received(
-                            &self,
-                            &aad_option.unwrap(),
-                            &indexed_members[&plaintext.sender()],
-                            app_message,
-                        );
-                    }
+                    // Save the application message as an event
+                    events.push(GroupEvent::ApplicationMessage(
+                        ApplicationMessageEvent::new(
+                            aad_option.unwrap(),
+                            indexed_members[&plaintext.sender()].clone(),
+                            app_message.to_vec(),
+                        ),
+                    ));
                 }
             }
         }
@@ -568,7 +588,7 @@ impl ManagedGroup {
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(())
+        Ok(events)
     }
 
     // === Application messages ===
@@ -974,16 +994,17 @@ impl ManagedGroup {
         true
     }
 
-    /// Send out the corresponding events for the proposals covered by the
+    /// Prepare the corresponding events for the proposals covered by the
     /// Commit
-    fn send_events(
+    fn prepare_events(
         &self,
         ciphersuite: &Ciphersuite,
         proposals: &[ProposalOrRef],
         sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,
-    ) {
-        // We want to send the events in the order specified by the committer.
+    ) -> Vec<GroupEvent> {
+        let mut events = Vec::new();
+        // We want to collect the events in the order specified by the committer.
         // We convert the pending proposals to a list of references
         let pending_proposals_list = self
             .pending_proposals
@@ -995,82 +1016,64 @@ impl ManagedGroup {
         for proposal_or_ref in proposals {
             match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
-                    self.send_proposal_event(proposal, sender, indexed_members);
+                    events.push(self.prepare_proposal_event(proposal, sender, indexed_members));
                 }
                 ProposalOrRef::Reference(proposal_reference) => {
                     if let Some(queued_proposal) = pending_proposals_queue.get(proposal_reference) {
-                        self.send_proposal_event(
+                        events.push(self.prepare_proposal_event(
                             queued_proposal.proposal(),
                             queued_proposal.sender().to_leaf_index(),
                             indexed_members,
-                        );
+                        ));
                     }
                 }
             }
         }
+        events
     }
 
-    /// Send out the corresponding events for the pending proposal list.
-    fn send_proposal_event(
+    /// Prepare the corresponding events for the pending proposal list.
+    fn prepare_proposal_event(
         &self,
         proposal: &Proposal,
         sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,
-    ) {
+    ) -> GroupEvent {
         let sender_credential = &indexed_members[&sender];
         match proposal {
             // Add proposals
-            Proposal::Add(add_proposal) => {
-                if let Some(member_added) = self.managed_group_config.callbacks.member_added {
-                    member_added(
-                        &self,
-                        &self.aad,
-                        sender_credential,
-                        add_proposal.key_package.credential(),
-                    )
-                }
-            }
+            Proposal::Add(add_proposal) => GroupEvent::MemberAdded(MemberAddedEvent::new(
+                self.aad.to_vec(),
+                sender_credential.clone(),
+                add_proposal.key_package.credential().clone(),
+            )),
             // Update proposals
             Proposal::Update(update_proposal) => {
-                if let Some(member_updated) = self.managed_group_config.callbacks.member_updated {
-                    member_updated(&self, &self.aad, update_proposal.key_package.credential())
-                }
+                GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
+                    self.aad.to_vec(),
+                    update_proposal.key_package.credential().clone(),
+                ))
             }
             // Remove proposals
             Proposal::Remove(remove_proposal) => {
                 let removal = Removal::new(
-                    &indexed_members[&self.group.tree().own_node_index()],
-                    sender_credential,
-                    &indexed_members[&LeafIndex::from(remove_proposal.removed)],
+                    indexed_members[&self.group.tree().own_node_index()].clone(),
+                    sender_credential.clone(),
+                    indexed_members[&LeafIndex::from(remove_proposal.removed)].clone(),
                 );
 
-                if let Some(member_removed) = self.managed_group_config.callbacks.member_removed {
-                    member_removed(&self, &self.aad, &removal)
-                }
+                GroupEvent::MemberRemoved(MemberRemovedEvent::new(self.aad.to_vec(), removal))
             }
             // PSK proposals
             Proposal::PreSharedKey(psk_proposal) => {
-                let psk_id = &psk_proposal.psk;
+                let psk_id = psk_proposal.psk.clone();
 
-                if let Some(psk_received) = self.managed_group_config.callbacks.psk_received {
-                    psk_received(&self, &self.aad, psk_id)
-                }
+                GroupEvent::PskReceived(PskReceivedEvent::new(self.aad.to_vec(), psk_id))
             }
             // ReInit proposals
             Proposal::ReInit(reinit_proposal) => {
-                if let Some(reinit_received) = self.managed_group_config.callbacks.reinit_received {
-                    reinit_received(&self, &self.aad, &reinit_proposal)
-                }
+                GroupEvent::ReInit(ReInitEvent::new(self.aad.to_vec(), reinit_proposal.clone()))
             }
-        }
-    }
-
-    /// Send an event when an invalid message was received
-    fn invalid_message_event(&self, error: InvalidMessageError) {
-        if let Some(invalid_message_received) =
-            self.managed_group_config.callbacks.invalid_message_received
-        {
-            invalid_message_received(&self, error);
         }
     }
 

@@ -2,7 +2,6 @@ use openmls::{group::EmptyInputError, prelude::*};
 
 use std::fs::File;
 use std::path::Path;
-use std::str;
 
 /// Validator function for AddProposals
 /// `(managed_group: &ManagedGroup, sender: &Credential, added_member:
@@ -44,107 +43,6 @@ fn auto_save(managed_group: &ManagedGroup) {
     managed_group
         .save(out_file)
         .expect("Could not write group state to file");
-}
-
-/// Event listener function for AddProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential,
-/// added_member: &Credential)`
-fn member_added(
-    managed_group: &ManagedGroup,
-    _aad: &[u8],
-    sender: &Credential,
-    added_member: &Credential,
-) {
-    println!(
-        "AddProposal received in group '{}' by us: '{}' added '{}'",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(sender.identity()).unwrap(),
-        str::from_utf8(added_member.identity()).unwrap(),
-    );
-}
-/// Event listener function for RemoveProposals when a member was removed
-/// `(managed_group: &ManagedGroup, aad: &[u8], removal: &Removal)`
-fn member_removed(managed_group: &ManagedGroup, _aad: &[u8], removal: &Removal) {
-    print!(
-        "RemoveProposal received in group '{}' by us: ",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-    );
-    match removal {
-        Removal::WeLeft => {
-            println!("We left");
-        }
-        Removal::WeWereRemovedBy(remover) => {
-            println!(
-                "'{}' removed us",
-                str::from_utf8(remover.identity()).unwrap(),
-            );
-        }
-        Removal::TheyLeft(leaver) => {
-            println!("'{}' left", str::from_utf8(leaver.identity()).unwrap(),);
-        }
-        Removal::TheyWereRemovedBy(leaver, remover) => {
-            println!(
-                "'{}' removed '{}'",
-                str::from_utf8(remover.identity()).unwrap(),
-                str::from_utf8(leaver.identity()).unwrap(),
-            );
-        }
-    }
-}
-/// Event listener function for UpdateProposals
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential,
-/// update_proposal: &UpdateProposal)`
-fn member_updated(managed_group: &ManagedGroup, _aad: &[u8], updated_member: &Credential) {
-    println!(
-        "UpdateProposal received in group '{}' by '{}': '{}'",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&own_identity(managed_group)).unwrap(),
-        str::from_utf8(updated_member.identity()).unwrap(),
-    );
-}
-/// Event listener function for application messages
-/// `(managed_group: &ManagedGroup, aad: &[u8], sender: &Credential, message:
-/// &[u8])`
-fn app_message_received(
-    managed_group: &ManagedGroup,
-    _aad: &[u8],
-    sender: &Credential,
-    message: &[u8],
-) {
-    println!(
-        "Message received in group '{}' by '{}' from '{}': {}",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        str::from_utf8(&own_identity(managed_group)).unwrap(),
-        str::from_utf8(sender.identity()).unwrap(),
-        str::from_utf8(message).unwrap()
-    );
-}
-/// Event listener function for invalid messages
-/// `(managed_group: &ManagedGroup, aad_option: Option<&[u8]>, sender_option:
-/// Option<&Sender>, error: InvalidMessageError)`
-fn invalid_message_received(managed_group: &ManagedGroup, error: InvalidMessageError) {
-    match error {
-        InvalidMessageError::InvalidCiphertext(aad) => {
-            println!(
-                "Invalid ciphertext message received in group '{}' by '{}' with AAD {:?}",
-                str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-                str::from_utf8(&own_identity(managed_group)).unwrap(),
-                aad
-            );
-        }
-        _ => {
-            println!("{:?}", error);
-        }
-    }
-}
-/// Event listener function for errors that occur
-/// `(managed_group: &ManagedGroup, error: ManagedGroupError)`
-fn error_occured(managed_group: &ManagedGroup, error: ManagedGroupError) {
-    println!(
-        "Error occured in group {}: {:?}",
-        str::from_utf8(&managed_group.group_id().as_slice()).unwrap(),
-        error
-    );
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -214,13 +112,7 @@ fn managed_group_operations() {
             let callbacks = ManagedGroupCallbacks::new()
                 .with_validate_add(validate_add)
                 .with_validate_remove(validate_remove)
-                .with_auto_save(auto_save)
-                .with_member_added(member_added)
-                .with_member_removed(member_removed)
-                .with_member_updated(member_updated)
-                .with_app_message_received(app_message_received)
-                .with_invalid_message_received(invalid_message_received)
-                .with_error_occurred(error_occured);
+                .with_auto_save(auto_save);
             let managed_group_config =
                 ManagedGroupConfig::new(handshake_message_format, update_policy, 0, 0, callbacks);
 
@@ -240,9 +132,18 @@ fn managed_group_operations() {
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
 
-            alice_group
+            let events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check that we received the correct event
+            match events.last().expect("Expected an event to be returned") {
+                GroupEvent::MemberAdded(member_added_event) => {
+                    assert_eq!(member_added_event.sender(), &alice_credential);
+                    assert_eq!(member_added_event.added_member(), &bob_credential);
+                }
+                _ => unreachable!("Expected a MemberAdded event"),
+            }
 
             // Check that the group now has two members
             assert_eq!(alice_group.members().len(), 2);
@@ -274,21 +175,44 @@ fn managed_group_operations() {
             let queued_message = alice_group
                 .create_message(&key_store, message_alice)
                 .expect("Error creating application message");
-            bob_group
+            let events = bob_group
                 .process_messages(vec![queued_message])
                 .expect("The group is no longer active");
+
+            // Check that we received the correct event
+            match events.last().expect("Expected an event to be returned") {
+                GroupEvent::ApplicationMessage(application_message_event) => {
+                    assert_eq!(application_message_event.sender(), &alice_credential);
+                    assert_eq!(application_message_event.message(), message_alice);
+                }
+                _ => unreachable!("Expected an ApplicationMessage event"),
+            }
 
             // === Bob updates and commits ===
             let (queued_messages, welcome_option) = match bob_group.self_update(&key_store, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
-            alice_group
+            let alice_events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
-            bob_group
+            let bob_events = bob_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check that the events are equal
+            assert_eq!(alice_events, bob_events);
+
+            // Check that we received the correct event
+            match alice_events
+                .last()
+                .expect("Expected an event to be returned")
+            {
+                GroupEvent::MemberUpdated(member_updated_event) => {
+                    assert_eq!(member_updated_event.updated_member(), &bob_credential);
+                }
+                _ => unreachable!("Expected an ApplicationMessage event"),
+            }
 
             // Check we didn't receive a Welcome message
             assert!(welcome_option.is_none());
@@ -322,12 +246,26 @@ fn managed_group_operations() {
                     Ok(qm) => qm,
                     Err(e) => panic!("Error performing self-update: {:?}", e),
                 };
-            alice_group
+            let alice_events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
-            bob_group
+            let bob_events = bob_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check that the events are equel
+            assert_eq!(alice_events, bob_events);
+
+            // Check that we received the correct event
+            match alice_events
+                .last()
+                .expect("Expected an event to be returned")
+            {
+                GroupEvent::MemberUpdated(member_updated_event) => {
+                    assert_eq!(member_updated_event.updated_member(), &alice_credential);
+                }
+                _ => unreachable!("Expected a MemberUpdated event"),
+            }
 
             // Check that both groups have the same state
             assert_eq!(
@@ -444,15 +382,52 @@ fn managed_group_operations() {
             // Check that Bob's group is still active
             assert!(bob_group.is_active());
 
-            alice_group
+            let alice_events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
-            bob_group
+            let bob_events = bob_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
             charlie_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check that we receive the correct event for Alice
+            match alice_events
+                .first()
+                .expect("Expected an event to be returned")
+            {
+                GroupEvent::MemberRemoved(member_removed_event) => {
+                    match member_removed_event.removal() {
+                        Removal::TheyWereRemovedBy(leaver, remover) => {
+                            assert_eq!(remover, &charlie_credential);
+                            assert_eq!(leaver, &bob_credential);
+                        }
+                        _ => {
+                            unreachable!("We should not be here")
+                        }
+                    }
+                }
+                _ => unreachable!("Expected a MemberRemoved event"),
+            }
+
+            // Check that we receive the correct event for Bob
+            match bob_events
+                .first()
+                .expect("Expected an event to be returned")
+            {
+                GroupEvent::MemberRemoved(member_removed_event) => {
+                    match member_removed_event.removal() {
+                        Removal::WeWereRemovedBy(remover) => {
+                            assert_eq!(remover, &charlie_credential);
+                        }
+                        _ => {
+                            unreachable!("We should not be here")
+                        }
+                    }
+                }
+                _ => unreachable!("Expected a MemberRemoved event"),
+            }
 
             // Check we didn't receive a Welcome message
             assert!(welcome_option.is_none());
@@ -589,12 +564,46 @@ fn managed_group_operations() {
             // Check that Bob's group is still active
             assert!(bob_group.is_active());
 
-            alice_group
+            let alice_events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
-            bob_group
+            let bob_events = bob_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
+
+            // Check that we receive the correct event for Bob
+            match alice_events
+                .first()
+                .expect("Expected an event to be returned")
+            {
+                GroupEvent::MemberRemoved(member_removed_event) => {
+                    match member_removed_event.removal() {
+                        Removal::TheyLeft(leaver) => {
+                            assert_eq!(leaver, &bob_credential);
+                        }
+                        _ => {
+                            unreachable!("We should not be here")
+                        }
+                    }
+                }
+                _ => unreachable!("Expected a MemberRemoved event"),
+            }
+
+            // Check that we receive the correct event for Bob
+            match bob_events
+                .first()
+                .expect("Expected an event to be returned")
+            {
+                GroupEvent::MemberRemoved(member_removed_event) => {
+                    match member_removed_event.removal() {
+                        Removal::WeLeft => {}
+                        _ => {
+                            unreachable!("We should not be here")
+                        }
+                    }
+                }
+                _ => unreachable!("Expected a MemberRemoved event"),
+            }
 
             // Check that Bob's group is no longer active
             assert!(!bob_group.is_active());
