@@ -495,35 +495,41 @@ impl MlsClient for MlsClientImpl {
 
     async fn unprotect(
         &self,
-        _request: tonic::Request<UnprotectRequest>,
+        request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
-        //    let unprotect_request = request.get_ref();
+        let unprotect_request = request.get_ref();
 
-        //    let group_id = self
-        //        .state_id_map
-        //        .lock()
-        //        .unwrap()
-        //        .get(&unprotect_request.state_id)
-        //        .ok_or(tonic::Status::new(
-        //            tonic::Code::InvalidArgument,
-        //            "unknown state_id",
-        //        ))?
-        //        // Cloning here to avoid potential poisoning of the state_id_map.
-        //        .clone();
-        //    let application_data = match self
-        //        .client
-        //        .lock()
-        //        .unwrap()
-        //        .process_messages(group_id, messages)
-        //        .map_err(|e| to_status(e))?
-        //    {
-        //        MLSMessage::Plaintext(plaintext) => {}
-        //        MLSMessage::Ciphertext(_) => p,
-        //    }
-        //    .tls_serialize_detached()
-        //    .map_err(|_| Status::aborted("failed to serialize application_data"))?;
-        //    Ok(Response::new(UnprotectResponse { application_data }))
-        Ok(Response::new(UnprotectResponse::default()))
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&unprotect_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+        let message = MLSCiphertext::decode_detached(&unprotect_request.ciphertext)
+            .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+        let events = self
+            .client
+            .lock()
+            .unwrap()
+            .process_messages(&group_id, vec![message.into()])
+            .map_err(|e| to_status(e))?;
+        let application_data = match events.last().unwrap() {
+            GroupEvent::ApplicationMessage(application_message) => application_message.message(),
+            _ => {
+                return Err(Status::aborted(
+                    "the given ciphertext did not contain an applicatio message",
+                ))
+            }
+        }
+        .to_vec();
+
+        Ok(Response::new(UnprotectResponse { application_data }))
+        //Ok(Response::new(UnprotectResponse::default()))
     }
 
     async fn store_psk(
@@ -535,23 +541,100 @@ impl MlsClient for MlsClientImpl {
 
     async fn add_proposal(
         &self,
-        _request: tonic::Request<AddProposalRequest>,
+        request: tonic::Request<AddProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default())) // TODO
+        let add_proposal_request = request.get_ref();
+
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&add_proposal_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+
+        let key_package = KeyPackage::decode_detached(&add_proposal_request.key_package)
+            .map_err(|_| Status::aborted("failed to deserialize key package"))?;
+        let proposal = self
+            .client
+            .lock()
+            .unwrap()
+            .propose_add_members(&group_id, &[key_package])
+            .map_err(|e| to_status(e))?
+            .first()
+            .unwrap()
+            .tls_serialize_detached()
+            .map_err(|_| Status::aborted("failed to serialize proposal"))?;
+
+        Ok(Response::new(ProposalResponse { proposal }))
     }
 
     async fn update_proposal(
         &self,
-        _request: tonic::Request<UpdateProposalRequest>,
+        request: tonic::Request<UpdateProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default())) // TODO
+        let update_proposal_request = request.get_ref();
+
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&update_proposal_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+
+        let proposal = self
+            .client
+            .lock()
+            .unwrap()
+            .propose_self_update(&group_id, None)
+            .map_err(|e| to_status(e))?
+            .first()
+            .unwrap()
+            .tls_serialize_detached()
+            .map_err(|_| Status::aborted("failed to serialize proposal"))?;
+
+        Ok(Response::new(ProposalResponse { proposal }))
     }
 
     async fn remove_proposal(
         &self,
-        _request: tonic::Request<RemoveProposalRequest>,
+        request: tonic::Request<RemoveProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default())) // TODO
+        let remove_proposal_request = request.get_ref();
+
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&remove_proposal_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+
+        let proposal = self
+            .client
+            .lock()
+            .unwrap()
+            .propose_remove_members(&group_id, &[remove_proposal_request.removed as usize])
+            .map_err(|e| to_status(e))?
+            .first()
+            .unwrap()
+            .tls_serialize_detached()
+            .map_err(|_| Status::aborted("failed to serialize proposal"))?;
+
+        Ok(Response::new(ProposalResponse { proposal }))
     }
 
     async fn psk_proposal(
