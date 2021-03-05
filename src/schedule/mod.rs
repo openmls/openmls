@@ -245,7 +245,7 @@ impl JoinerSecret {
             .into()
             .map(|commit_secret| commit_secret.secret());
         let intermediate_secret =
-            ciphersuite.hkdf_extract(commit_secret_value, &init_secret.secret);
+            ciphersuite.hkdf_extract(Some(&init_secret.secret), commit_secret_value);
         JoinerSecret {
             secret: intermediate_secret.derive_secret(ciphersuite, "joiner"),
         }
