@@ -213,7 +213,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
 
     let group_id = hex_to_bytes(&test_vector.group_id);
     let init_secret = hex_to_bytes(&test_vector.initial_init_secret);
-    println!("InitSecret {:?}", init_secret);
+    println!("InitSecret from tve: {:?}", test_vector.initial_init_secret);
     let mut init_secret = InitSecret::from_slice(&init_secret);
 
     for (i, epoch) in test_vector.epochs.iter().enumerate() {
@@ -221,7 +221,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
         let commit_secret = hex_to_bytes(&epoch.commit_secret);
         let commit_secret = CommitSecret::from_slice(&commit_secret);
-        println!("CommitSecret {:?}", commit_secret);
+        println!("CommitSecret from tve {:?}", epoch.commit_secret);
         let psk = hex_to_bytes(&epoch.psk_secret);
         //if !psk.is_empty() {
         //    println!("PSK is not supported by OpenMLS yet. See #141");
