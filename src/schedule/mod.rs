@@ -241,13 +241,11 @@ impl JoinerSecret {
         commit_secret_option: impl Into<Option<&'a CommitSecret>>,
         init_secret: &InitSecret,
     ) -> Self {
-        let zero_secret = Secret::from(zero(ciphersuite.hash_length()));
         let commit_secret_value = commit_secret_option
             .into()
-            .map(|commit_secret| commit_secret.secret())
-            .unwrap_or(&zero_secret);
+            .map(|commit_secret| commit_secret.secret());
         let intermediate_secret =
-            ciphersuite.hkdf_extract(Some(&init_secret.secret), commit_secret_value);
+            ciphersuite.hkdf_extract(&init_secret.secret, commit_secret_value);
         JoinerSecret {
             secret: intermediate_secret.derive_secret(ciphersuite, "joiner"),
         }
@@ -369,7 +367,7 @@ impl IntermediateSecret {
     ) -> Self {
         Self {
             secret: ciphersuite
-                .hkdf_extract(psk.as_ref().map(|p| p.secret()), &joiner_secret.secret),
+                .hkdf_extract(&joiner_secret.secret, psk.as_ref().map(|p| p.secret())),
         }
     }
 }

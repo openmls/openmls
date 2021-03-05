@@ -426,9 +426,9 @@ impl Ciphersuite {
     }
 
     /// HKDF extract.
-    pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
+    pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm_option: Option<&Secret>) -> Secret {
         let zero_secret = Secret::from(zero(self.hash_length()));
-        let salt = salt_option.unwrap_or(&zero_secret);
+        let ikm = ikm_option.unwrap_or(&zero_secret);
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
         }

@@ -262,7 +262,8 @@ impl PskSecret {
         }
         let mut secret = vec![];
         for (index, psk) in psks.iter().enumerate() {
-            let psk_input = ciphersuite.hkdf_extract(None, psk);
+            let zero_secret = Secret::from(zero(ciphersuite.hash_length()));
+            let psk_input = ciphersuite.hkdf_extract(&zero_secret, Some(psk));
             let psk_label = PskLabel::new(&psk_ids[index], index as u16, psks.len() as u16)
                 .encode_detached()
                 // It is safe to unwrap here, because the struct contains no vectors
