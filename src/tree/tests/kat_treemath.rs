@@ -79,6 +79,9 @@ fn generate_test_vectors() {
 
         for i in 0..n_leaves {
             test_vector.root.push(root(LeafIndex::from(i + 1)).as_u32());
+        }
+
+        for i in 0..n_nodes {
             test_vector.left.push(convert!(left(NodeIndex::from(i))));
             test_vector
                 .right
@@ -107,12 +110,16 @@ fn run_test_vectors() {
     let tests: Vec<TreeMathTestVector> = read("test_vectors/kat_treemath_openmls.json");
 
     for test_vector in tests {
-        let n_leaves = test_vector.n_leaves;
+        let n_leaves = test_vector.n_leaves as usize;
+        let n_nodes = node_width(n_leaves) as u32;
         let leaves = LeafIndex::from(n_leaves);
         assert_eq!(test_vector.n_nodes, node_width(leaves.as_usize()) as u32);
 
-        for i in 0..(n_leaves as usize) {
+        for i in 0..(n_leaves) {
             assert_eq!(test_vector.root[i], root(LeafIndex::from(i + 1)).as_u32());
+        }
+
+        for i in 0..n_nodes {
             assert_eq!(test_vector.left[i], convert!(left(NodeIndex::from(i))));
             assert_eq!(
                 test_vector.right[i],
