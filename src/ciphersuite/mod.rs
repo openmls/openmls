@@ -30,6 +30,7 @@ use crate::schedule::ExporterSecret;
 use crate::schedule::SenderDataSecret;
 use crate::schedule::WelcomeSecret;
 use crate::utils::random_u32;
+use crate::utils::zero;
 use ciphersuites::*;
 pub(crate) use errors::*;
 
@@ -426,7 +427,8 @@ impl Ciphersuite {
 
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
-        let salt = salt_option.unwrap_or_default();
+        let zero_secret = Secret::from(zero(self.hash_length()));
+        let salt = salt_option.unwrap_or(&zero_secret);
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
         }
