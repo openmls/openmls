@@ -111,11 +111,11 @@ fn run_test_vectors() {
 
     for test_vector in tests {
         let n_leaves = test_vector.n_leaves as usize;
-        let n_nodes = node_width(n_leaves) as u32;
+        let n_nodes = node_width(n_leaves);
         let leaves = LeafIndex::from(n_leaves);
         assert_eq!(test_vector.n_nodes, node_width(leaves.as_usize()) as u32);
 
-        for i in 0..(n_leaves) {
+        for i in 0..n_leaves {
             assert_eq!(test_vector.root[i], root(LeafIndex::from(i + 1)).as_u32());
         }
 
