@@ -388,7 +388,10 @@ impl RatchetTree {
         self.set_parent_hashes(sender);
 
         // TODO: Do we really want to return the commit secret here?
-        Ok(self.private_tree.commit_secret())
+
+        // We can unwrap here, because we know the commit secret was set via
+        // ´continue_path_secrets´.
+        Ok(self.private_tree.commit_secret().unwrap())
     }
 
     /// Update the private tree with the new `KeyPackageBundle`.
@@ -396,7 +399,7 @@ impl RatchetTree {
         &mut self,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
-    ) -> &CommitSecret {
+    ) -> Option<&CommitSecret> {
         let _path_option = self.replace_private_tree_(
             key_package_bundle,
             group_context,
@@ -759,7 +762,7 @@ impl RatchetTree {
     }
 
     /// Get a reference to the commit secret.
-    pub(crate) fn commit_secret(&self) -> &CommitSecret {
+    pub(crate) fn commit_secret(&self) -> Option<&CommitSecret> {
         self.private_tree.commit_secret()
     }
 
