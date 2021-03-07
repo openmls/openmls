@@ -57,7 +57,7 @@ pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> TranscriptTestVector {
 
     // Build plaintext commit message.
     let mut commit = MLSPlaintext {
-        group_id: GroupId::random(),
+        group_id: group_id.clone(),
         epoch: GroupEpoch(epoch),
         sender: Sender {
             sender_type: SenderType::Member,
