@@ -76,6 +76,8 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
 
     for i in 0..n_leaves {
         test_vector.root.push(root(LeafIndex::from(i + 1)).as_u32());
+    }
+    for i in 0..n_nodes {
         test_vector.left.push(convert!(left(NodeIndex::from(i))));
         test_vector
             .right
@@ -105,16 +107,19 @@ fn write_test_vectors() {
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TMTestVectorError> {
-    let n_leaves = test_vector.n_leaves;
+    let n_leaves = test_vector.n_leaves as usize;
+    let n_nodes = node_width(n_leaves);
     let leaves = LeafIndex::from(n_leaves);
     if test_vector.n_nodes != node_width(leaves.as_usize()) as u32 {
         return Err(TMTestVectorError::TreeSizeMismatch);
     }
-
-    for i in 0..(n_leaves as usize) {
+    for i in 0..n_leaves {
         if test_vector.root[i] != root(LeafIndex::from(i + 1)).as_u32() {
             return Err(TMTestVectorError::RootIndexMismatch);
         }
+    }
+
+    for i in 0..n_nodes {
         if test_vector.left[i] != convert!(left(NodeIndex::from(i))) {
             return Err(TMTestVectorError::LeftIndexMismatch);
         }
