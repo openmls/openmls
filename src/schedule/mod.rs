@@ -380,12 +380,9 @@ impl WelcomeSecret {
     /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
     fn new(ciphersuite: &Ciphersuite, intermediate_secret: &IntermediateSecret) -> Self {
         // Unwrapping here is safe, because we know the key is not empty
-        let secret = ciphersuite
-            .hkdf_expand(
-                &intermediate_secret.secret,
-                b"welcome",
-                ciphersuite.hash_length(),
-            )
+        let secret = intermediate_secret
+            .secret
+            .derive_secret(ciphersuite, "welcome")
             .unwrap();
         WelcomeSecret { secret }
     }
