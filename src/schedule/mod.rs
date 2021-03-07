@@ -382,8 +382,7 @@ impl WelcomeSecret {
         // Unwrapping here is safe, because we know the key is not empty
         let secret = intermediate_secret
             .secret
-            .derive_secret(ciphersuite, "welcome")
-            .unwrap();
+            .derive_secret(ciphersuite, "welcome");
         WelcomeSecret { secret }
     }
 
