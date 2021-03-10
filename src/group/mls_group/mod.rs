@@ -73,13 +73,8 @@ impl MlsGroup {
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(ciphersuite, key_package_bundle);
-        let extensions: Vec<Box<dyn Extension>> = if config.add_ratchet_tree_extension {
-            vec![Box::new(RatchetTreeExtension::new(
-                tree.public_key_tree_copy(),
-            ))]
-        } else {
-            Vec::new()
-        };
+        // TODO #186: Implement extensions
+        let extensions: Vec<Box<dyn Extension>> = Vec::new();
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,

@@ -119,13 +119,8 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         )?;
 
-        let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
-            vec![Box::new(RatchetTreeExtension::new(
-                provisional_tree.public_key_tree_copy(),
-            ))]
-        } else {
-            Vec::new()
-        };
+        // TODO #186: Implement extensions
+        let extensions: Vec<Box<dyn Extension>> = Vec::new();
 
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),

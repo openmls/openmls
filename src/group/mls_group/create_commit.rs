@@ -97,14 +97,8 @@ impl MlsGroup {
         // Calculate tree hash
         let tree_hash = provisional_tree.tree_hash();
 
-        // Check for group extensions and include them
-        let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
-            vec![Box::new(RatchetTreeExtension::new(
-                provisional_tree.public_key_tree_copy(),
-            ))]
-        } else {
-            Vec::new()
-        };
+        // TODO #186: Implement extensions
+        let extensions: Vec<Box<dyn Extension>> = Vec::new();
 
         // Calculate group context
         let provisional_group_context = GroupContext::new(
@@ -166,6 +160,14 @@ impl MlsGroup {
 
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
+            // Create the ratchet tree extension if necessary
+            let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
+                vec![Box::new(RatchetTreeExtension::new(
+                    provisional_tree.public_key_tree_copy(),
+                ))]
+            } else {
+                Vec::new()
+            };
             // Create GroupInfo object
             let mut group_info = GroupInfo::new(
                 provisional_group_context.group_id.clone(),

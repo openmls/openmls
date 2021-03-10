@@ -167,7 +167,8 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
-            group_info.extensions(),
+            // TODO #186: Implement extensions
+            &[],
         )?;
         // TODO #141: Implement PSK
         key_schedule.add_context(&group_context)?;
