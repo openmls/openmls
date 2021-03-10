@@ -7,15 +7,15 @@ mod ser;
 #[cfg(test)]
 mod test_managed_group;
 
-use crate::framing::*;
-use crate::group::*;
-use crate::key_packages::{KeyPackage, KeyPackageBundle};
-use crate::messages::{proposals::*, Welcome};
-use crate::tree::index::LeafIndex;
-use crate::tree::node::Node;
 use crate::{
     credentials::{Credential, CredentialBundle},
+    error::ErrorString,
+    framing::*,
+    group::*,
+    key_packages::{KeyPackage, KeyPackageBundle},
+    messages::{proposals::*, Welcome},
     schedule::ResumptionSecret,
+    tree::{index::LeafIndex, node::Node},
 };
 
 use std::collections::HashMap;
@@ -530,7 +530,15 @@ impl<'a> ManagedGroup<'a> {
                                 )));
                             }
                             _ => {
-                                panic!("apply_commit_error did not return an ApplyCommitError.");
+                                let error_string =
+                                    "apply_commit() did not return an ApplyCommitError."
+                                        .to_string();
+                                events.push(GroupEvent::Error(ErrorEvent::new(
+                                    ManagedGroupError::LibraryError(ErrorString::from(
+                                        error_string,
+                                    )),
+                                )));
+                                panic!();
                             }
                         },
                     }

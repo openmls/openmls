@@ -219,7 +219,7 @@ pub struct ErrorEvent {
 }
 
 impl ErrorEvent {
-    pub(crate) fn _new(error: ManagedGroupError) -> Self {
+    pub(crate) fn new(error: ManagedGroupError) -> Self {
         Self { error }
     }
 
