@@ -243,7 +243,7 @@ pub enum Removal {
     /// Another member issued a RemoveProposal for ourselves that was now
     /// committed
     WeWereRemovedBy(Credential),
-    /// Member A issued a RemoveProposal for member B that was now commited
+    /// Member A issued a RemoveProposal for member B that was now committed
     TheyWereRemovedBy(Credential, Credential),
 }
 
