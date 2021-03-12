@@ -388,7 +388,7 @@ impl<'a> ManagedGroup<'a> {
     /// Processes any incoming messages from the DS (MLSPlaintext &
     /// MLSCiphertext) and triggers the corresponding callback functions.
     /// Return a list of `GroupEvent` that contain the individual events that
-    /// occured whil processing messages.
+    /// occurred while processing messages.
     pub fn process_messages(
         &mut self,
         messages: Vec<MLSMessage>,
