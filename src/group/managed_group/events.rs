@@ -236,7 +236,7 @@ impl ErrorEvent {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Removal {
     ///  We previously issued a RemoveProposal for ourselves and this was now
-    /// commited by someone else
+    /// committed by someone else
     WeLeft,
     /// Another member issued a RemoveProposal for itself that was now committed
     TheyLeft(Credential),
