@@ -89,7 +89,7 @@ impl MlsGroup {
                 .clone();
             Some(extension)
         } else {
-            // Throw an error if we there is more than one ratchet tree extension.
+            // Throw an error if there is more than one ratchet tree extension.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
             return Err(WelcomeError::DuplicateRatchetTreeExtension);
