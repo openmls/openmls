@@ -35,17 +35,17 @@ impl MemberAddedEvent {
         }
     }
 
-    /// Get a reference to the member added event's aad.
+    /// Get a reference to the event's aad.
     pub fn aad(&self) -> &[u8] {
         &self.aad
     }
 
-    /// Get a reference to the member added event's sender.
+    /// Get a reference to the event's sender.
     pub fn sender(&self) -> &Credential {
         &self.sender
     }
 
-    /// Get a reference to the member added event's added member.
+    /// Get a reference to the event's added member credential.
     pub fn added_member(&self) -> &Credential {
         &self.added_member
     }
@@ -64,12 +64,12 @@ impl MemberRemovedEvent {
         Self { aad, removal }
     }
 
-    /// Get a reference to the member removed event's aad.
+    /// Get a reference to the event's aad.
     pub fn aad(&self) -> &[u8] {
         &self.aad
     }
 
-    /// Get a reference to the member removed event's removal.
+    /// Get a reference to the event's removal.
     pub fn removal(&self) -> &Removal {
         &self.removal
     }
@@ -91,12 +91,12 @@ impl MemberUpdatedEvent {
         }
     }
 
-    /// Get a reference to the member updated event's aad.
+    /// Get a reference to the event's aad.
     pub fn aad(&self) -> &[u8] {
         &self.aad
     }
 
-    /// Get a reference to the member updated event's updated member.
+    /// Get a reference to the event's updated member.
     pub fn updated_member(&self) -> &Credential {
         &self.updated_member
     }
@@ -116,12 +116,12 @@ impl PskReceivedEvent {
         Self { aad, psk_id }
     }
 
-    /// Get a reference to the psk received event's aad.
+    /// Get a reference to the event's aad.
     pub fn aad(&self) -> &[u8] {
         &self.aad
     }
 
-    /// Get a reference to the psk received event's psk id.
+    /// Get a reference to the event's psk id.
     pub fn psk_id(&self) -> &PreSharedKeyID {
         &self.psk_id
     }
@@ -143,12 +143,12 @@ impl ReInitEvent {
         }
     }
 
-    /// Get a reference to the re init event's aad.
+    /// Get a reference to the event's aad.
     pub fn aad(&self) -> &[u8] {
         &self.aad
     }
 
-    /// Get a reference to the re init event's psk id.
+    /// Get a reference to the event's psk id.
     pub fn psk_id(&self) -> &ReInitProposal {
         &self.re_init_proposal
     }
@@ -175,17 +175,17 @@ impl ApplicationMessageEvent {
         }
     }
 
-    /// Get a reference to the application message event's aad.
+    /// Get a reference to the event's aad.
     pub fn aad(&self) -> &[u8] {
         &self.aad
     }
 
-    /// Get a reference to the application message event's sender.
+    /// Get a reference to the event's sender.
     pub fn sender(&self) -> &Credential {
         &self.sender
     }
 
-    /// Get a reference to the application message event's message.
+    /// Get a reference to the event's message.
     pub fn message(&self) -> &[u8] {
         &self.message
     }
@@ -205,7 +205,7 @@ impl InvalidMessageEvent {
         Self { error }
     }
 
-    /// Get a reference to the invalid message event's error.
+    /// Get a reference to the event's error.
     pub fn error(&self) -> &InvalidMessageError {
         &self.error
     }
@@ -223,7 +223,7 @@ impl ErrorEvent {
         Self { error }
     }
 
-    /// Get a reference to the error event's error.
+    /// Get a reference to the event's error.
     pub fn error(&self) -> &ManagedGroupError {
         &self.error
     }
