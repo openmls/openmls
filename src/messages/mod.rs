@@ -91,6 +91,12 @@ impl Welcome {
     pub(crate) fn encrypted_group_info(&self) -> &[u8] {
         &self.encrypted_group_info
     }
+
+    /// Set the welcome's encrypted group info.
+    #[cfg(test)]
+    pub fn set_encrypted_group_info(&mut self, encrypted_group_info: Vec<u8>) {
+        self.encrypted_group_info = encrypted_group_info;
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -240,6 +246,12 @@ impl GroupInfo {
     /// Get the extensions.
     pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
         &self.extensions
+    }
+
+    /// Set the group info's extensions.
+    #[cfg(test)]
+    pub(crate) fn set_extensions(&mut self, extensions: Vec<Box<dyn Extension>>) {
+        self.extensions = extensions;
     }
 }
 

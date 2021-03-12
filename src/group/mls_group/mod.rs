@@ -5,6 +5,8 @@ mod apply_commit;
 mod create_commit;
 mod new_from_welcome;
 #[cfg(test)]
+mod test_duplicate_extension;
+#[cfg(test)]
 mod test_mls_group;
 
 use crate::ciphersuite::*;

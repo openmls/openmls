@@ -90,6 +90,8 @@ impl MlsGroup {
             Some(extension)
         } else {
             // Throw an error if there is more than one ratchet tree extension.
+            // This shouldn't be the case anyway, because extensions are checked
+            // for uniqueness anyway when decoding them.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
             return Err(WelcomeError::DuplicateRatchetTreeExtension);
@@ -207,7 +209,7 @@ impl MlsGroup {
 
     // Helper functions
 
-    fn find_key_package_from_welcome_secrets(
+    pub(crate) fn find_key_package_from_welcome_secrets(
         key_package: &KeyPackage,
         welcome_secrets: &[EncryptedGroupSecrets],
     ) -> Option<EncryptedGroupSecrets> {
