@@ -538,7 +538,6 @@ impl<'a> ManagedGroup<'a> {
                                         error_string,
                                     )),
                                 )));
-                                panic!();
                             }
                         },
                     }
