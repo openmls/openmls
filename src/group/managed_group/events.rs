@@ -157,7 +157,7 @@ impl ReInitEvent {
 // Application messages
 
 /// Event that occurs when an application message is received.
-/// `sender` contains the mesagge's sender and `message` contains
+/// `sender` contains the message's sender and `message` contains
 /// the application message.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ApplicationMessageEvent {
