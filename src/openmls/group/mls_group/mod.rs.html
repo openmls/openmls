@@ -525,6 +525,16 @@
 <span id="522">522</span>
 <span id="523">523</span>
 <span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
@@ -532,6 +542,8 @@
 <span class="kw">mod</span> <span class="ident">apply_commit</span>;
 <span class="kw">mod</span> <span class="ident">create_commit</span>;
 <span class="kw">mod</span> <span class="ident">new_from_welcome</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">test_duplicate_extension</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_mls_group</span>;
 
@@ -574,7 +586,7 @@
     <span class="comment">// Group config.</span>
     <span class="comment">// Set to true if the ratchet tree extension is added to the `GroupInfo`.</span>
     <span class="comment">// Defaults to `false`.</span>
-    <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">bool</span>,
+    <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>,
 }
 
 <span class="macro">implement_persistence</span><span class="macro">!</span>(
@@ -584,7 +596,7 @@
     <span class="ident">secret_tree</span>,
     <span class="ident">tree</span>,
     <span class="ident">interim_transcript_hash</span>,
-    <span class="ident">add_ratchet_tree_extension</span>
+    <span class="ident">use_ratchet_tree_extension</span>
 );
 
 <span class="doccomment">/// Public `MlsGroup` functions.</span>
@@ -602,11 +614,13 @@
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite_name</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">RatchetTree</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">key_package_bundle</span>);
         <span class="comment">// TODO #186: Implement extensions</span>
+        <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+
         <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span>::<span class="ident">create_initial_group_context</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">group_id</span>,
             <span class="ident">tree</span>.<span class="ident">tree_hash</span>(),
-            <span class="kw-2">&amp;</span>[],
+            <span class="kw-2">&amp;</span><span class="ident">extensions</span>,
         )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">private_tree</span>().<span class="ident">commit_secret</span>();
         <span class="comment">// Derive an initial joiner secret based on the commit secret.</span>
@@ -633,7 +647,7 @@
             <span class="ident">secret_tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">secret_tree</span>),
             <span class="ident">tree</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">tree</span>),
             <span class="ident">interim_transcript_hash</span>,
-            <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">config</span>.<span class="ident">add_ratchet_tree_extension</span>,
+            <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">config</span>.<span class="ident">add_ratchet_tree_extension</span>,
         })
     }
 
@@ -948,7 +962,7 @@
     <span class="doccomment">/// Right now this is limited to the ratchet tree extension which is built</span>
     <span class="doccomment">/// on the fly when calling this function.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">add_ratchet_tree_extension</span> {
+        <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">use_ratchet_tree_extension</span> {
             <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RatchetTreeExtension</span>::<span class="ident">new</span>(
                 <span class="self">self</span>.<span class="ident">tree</span>().<span class="ident">public_key_tree_copy</span>(),
             ))]
@@ -964,6 +978,12 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicGroupState</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span> {
         <span class="ident">PublicGroupState</span>::<span class="ident">new</span>(<span class="self">self</span>, <span class="ident">credential_bundle</span>)
+    }
+
+    <span class="doccomment">/// Returns `true` if the group uses the ratchet tree extension anf `false</span>
+    <span class="doccomment">/// otherwise</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">use_ratchet_tree_extension</span>
     }
 }
 
