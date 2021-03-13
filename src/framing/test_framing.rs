@@ -26,7 +26,7 @@ fn codec() {
             confirmation_tag: None,
             membership_tag: None,
         };
-        // TODO #186: Implement extensions
+
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
         let serialized_context = group_context.serialized();
@@ -66,7 +66,7 @@ fn membership_tag() {
             confirmation_tag: None,
             membership_tag: None,
         };
-        // TODO #186: Implement extensions
+
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
         let serialized_context = group_context.serialized();
