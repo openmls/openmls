@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::debug;
 
 use crate::extensions::ExtensionType;
 use crate::group::{mls_group::*, *};
@@ -63,43 +63,40 @@ impl MlsGroup {
         let group_info_bytes = welcome_key
             .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let mut group_info = GroupInfo::decode_detached(&group_info_bytes)?;
+        let group_info = GroupInfo::decode_detached(&group_info_bytes)?;
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
         // First check the extensions to see if the tree is in there.
-        let ratchet_tree_ext_index = group_info
+        let mut ratchet_tree_extensions = group_info
             .extensions()
             .iter()
-            .position(|e| e.extension_type() == ExtensionType::RatchetTree);
-        let ratchet_tree_extension = if let Some(i) = ratchet_tree_ext_index {
-            let extension = group_info.extensions_mut().remove(i);
-            // Throw an error if we there is another ratchet tree extension.
+            .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
+            .collect::<Vec<&Box<dyn Extension>>>();
+
+        let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
+            None
+        } else if ratchet_tree_extensions.len() == 1 {
+            let extension = ratchet_tree_extensions
+                .pop()
+                // Unwrappig here is safe because we know we only have one element
+                .unwrap()
+                .as_ratchet_tree_extension()
+                // Unwrapping here is safe, because we know the extension type already
+                .unwrap()
+                // We clone the nodes here upon extraction, so that we don't have to clone
+                // them later when we build the tree
+                .clone();
+            Some(extension)
+        } else {
+            // Throw an error if there is more than one ratchet tree extension.
+            // This shouldn't be the case anyway, because extensions are checked
+            // for uniqueness anyway when decoding them.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
-            if group_info
-                .extensions()
-                .iter()
-                .any(|e| e.extension_type() == ExtensionType::RatchetTree)
-            {
-                return Err(WelcomeError::DuplicateRatchetTreeExtension);
-            }
-            match extension.as_ratchet_tree_extension() {
-                Ok(e) => {
-                    let ext = Some(e.clone());
-                    // Put the extension back into the GroupInfo, so the
-                    // signature verifies.
-                    group_info.extensions_mut().insert(i, extension);
-                    ext
-                }
-                Err(e) => {
-                    error!("Library error retrieving ratchet tree extension ({:?}", e);
-                    None
-                }
-            }
-        } else {
-            None
+            return Err(WelcomeError::DuplicateRatchetTreeExtension);
         };
+
         // Set nodes either from the extension or from the `nodes_option`.
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
@@ -172,7 +169,8 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
-            group_info.extensions(),
+            // TODO #186: Implement extensions
+            &[],
         )?;
         // TODO #141: Implement PSK
         key_schedule.add_context(&group_context)?;
@@ -204,14 +202,14 @@ impl MlsGroup {
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
-                add_ratchet_tree_extension: enable_ratchet_tree_extension,
+                use_ratchet_tree_extension: enable_ratchet_tree_extension,
             })
         }
     }
 
     // Helper functions
 
-    fn find_key_package_from_welcome_secrets(
+    pub(crate) fn find_key_package_from_welcome_secrets(
         key_package: &KeyPackage,
         welcome_secrets: &[EncryptedGroupSecrets],
     ) -> Option<EncryptedGroupSecrets> {
