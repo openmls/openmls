@@ -9,7 +9,7 @@ fn test_managed_api() {
     // Some basic setup functions for the managed group.
     let handshake_message_format = HandshakeMessageFormat::Plaintext;
     let update_policy = UpdatePolicy::default();
-    let callbacks = default_callbacks::default_callbacks();
+    let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config =
         ManagedGroupConfig::new(handshake_message_format, update_policy, 0, 0, callbacks);
     let number_of_clients = 20;
