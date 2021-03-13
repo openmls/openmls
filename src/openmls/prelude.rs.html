@@ -41,6 +41,7 @@
 <span id="38">38</span>
 <span id="39">39</span>
 <span id="40">40</span>
+<span id="41">41</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
@@ -48,10 +49,11 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">MlsGroup</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{
-    <span class="ident">HandshakeMessageFormat</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">MLSMessage</span>, <span class="ident">ManagedGroup</span>, <span class="ident">ManagedGroupCallbacks</span>,
-    <span class="ident">ManagedGroupConfig</span>, <span class="ident">ManagedGroupError</span>, <span class="ident">Removal</span>, <span class="ident">UpdatePolicy</span>,
+    <span class="ident">GroupEvent</span>, <span class="ident">HandshakeMessageFormat</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">MLSMessage</span>, <span class="ident">ManagedGroup</span>,
+    <span class="ident">ManagedGroupCallbacks</span>, <span class="ident">ManagedGroupConfig</span>, <span class="ident">ManagedGroupError</span>, <span class="ident">Removal</span>, <span class="ident">UpdatePolicy</span>,
 };
 <span class="comment">// Errors</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">error</span>::<span class="ident">ErrorString</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">errors</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">GroupError</span>, <span class="ident">WelcomeError</span>};
 
 <span class="comment">// Indexes</span>
