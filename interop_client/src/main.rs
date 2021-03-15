@@ -685,6 +685,7 @@ struct Opts {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = Opts::parse();
+    pretty_env_logger::init();
 
     // XXX(RLB): There's probably a more direct way to do this than building a string and then
     // parsing it.

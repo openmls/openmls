@@ -184,6 +184,12 @@ impl KdfLabel {
             panic!("Library error: Trying to derive a key with a too large length field!")
         }
         let full_label = "mls10 ".to_owned() + label;
+        log::debug!(
+            "KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}",
+            length as u16,
+            full_label,
+            context
+        );
         let kdf_label = KdfLabel {
             length: length as u16,
             label: full_label,
@@ -534,10 +540,15 @@ impl AeadKey {
         ciphertext: &[u8],
         sender_data_secret: &SenderDataSecret,
     ) -> Self {
+        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
+        log::debug!(
+            "AeadKey::from_sender_data_secret ciphertext sample: {:x?}",
+            ciphertext_sample
+        );
         let key = sender_data_secret.secret().kdf_expand_label(
             ciphersuite,
             "key",
-            &ciphertext,
+            &ciphertext_sample,
             ciphersuite.aead_key_length(),
         );
         AeadKey {
@@ -627,6 +638,16 @@ impl AeadKey {
     }
 }
 
+fn ciphertext_sample<'a>(ciphersuite: &Ciphersuite, ciphertext: &'a [u8]) -> &'a [u8] {
+    let sample_length = ciphersuite.hash_length();
+    log::debug!("Getting ciphertext sample of length {:?}", sample_length);
+    if ciphertext.len() <= sample_length {
+        ciphertext
+    } else {
+        &ciphertext[0..sample_length]
+    }
+}
+
 impl AeadNonce {
     /// Create an `AeadNonce` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
@@ -641,10 +662,15 @@ impl AeadNonce {
         ciphertext: &[u8],
         sender_data_secret: &SenderDataSecret,
     ) -> Self {
+        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
+        log::debug!(
+            "AeadNonce::from_sender_data_secret ciphertext sample: {:x?}",
+            ciphertext_sample
+        );
         let nonce_secret = sender_data_secret.secret().kdf_expand_label(
             ciphersuite,
             "nonce",
-            &ciphertext,
+            &ciphertext_sample,
             ciphersuite.aead_nonce_length(),
         );
         let mut nonce = [0u8; NONCE_BYTES];

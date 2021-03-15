@@ -55,23 +55,16 @@ impl MLSCiphertext {
                 &ratchet_nonce,
             )
             .map_err(|_| MLSCiphertextError::EncryptionError)?;
-        // Extract ciphertext sample for key/nonce derivation
-        let sample_length = ciphersuite.hash_length();
-        let ciphertext_sample = if ciphertext.len() <= sample_length {
-            &ciphertext
-        } else {
-            &ciphertext[0..sample_length]
-        };
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = AeadKey::from_sender_data_secret(
             ciphersuite,
-            ciphertext_sample,
+            &ciphertext,
             epoch_secrets.sender_data_secret(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_sender_data_secret(
             ciphersuite,
-            ciphertext_sample,
+            &ciphertext,
             epoch_secrets.sender_data_secret(),
         );
         // Compute sender data nonce by xoring reuse guard and key schedule
