@@ -106,12 +106,18 @@ struct SenderDataInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+struct RatchetStep {
+    key: String,
+    nonce: String,
+    plaintext: String,
+    ciphertext: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct LeafSequence {
     generations: u32,
-    // (key, nonce, plaintext, ciphertext)
-    handshake: Vec<(String, String, String, String)>,
-    // (key, nonce, plaintext, ciphertext)
-    application: Vec<(String, String, String, String)>,
+    handshake: Vec<RatchetStep>,
+    application: Vec<RatchetStep>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -280,12 +286,12 @@ pub fn generate_test_vector(
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
                 build_application_messages(leaf, &mut group);
-            application.push((
-                application_key_string,
-                application_nonce_string,
-                bytes_to_hex(&application_plaintext),
-                bytes_to_hex(&application_ciphertext),
-            ));
+            application.push(RatchetStep {
+                key: application_key_string,
+                nonce: application_nonce_string,
+                plaintext: bytes_to_hex(&application_plaintext),
+                ciphertext: bytes_to_hex(&application_ciphertext),
+            });
 
             // Handshake
             let (handshake_secret_key, handshake_secret_nonce) = secret_tree
@@ -296,12 +302,12 @@ pub fn generate_test_vector(
 
             let (handshake_plaintext, handshake_ciphertext) =
                 build_handshake_messages(leaf, &mut group);
-            handshake.push((
-                handshake_key_string,
-                handshake_nonce_string,
-                bytes_to_hex(&handshake_plaintext),
-                bytes_to_hex(&handshake_ciphertext),
-            ));
+            handshake.push(RatchetStep {
+                key: handshake_key_string,
+                nonce: handshake_nonce_string,
+                plaintext: bytes_to_hex(&handshake_plaintext),
+                ciphertext: bytes_to_hex(&handshake_ciphertext),
+            });
         }
         leaves.push(LeafSequence {
             generations: n_generations,
@@ -399,16 +405,16 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                     generation,
                 )
                 .expect("Error getting decryption secret");
-            if hex_to_bytes(&application.0) != application_secret_key.as_slice() {
+            if hex_to_bytes(&application.key) != application_secret_key.as_slice() {
                 return Err(EncTestVectorError::ApplicationSecretKeyMismatch);
             }
-            if hex_to_bytes(&application.1) != application_secret_nonce.as_slice() {
+            if hex_to_bytes(&application.nonce) != application_secret_nonce.as_slice() {
                 return Err(EncTestVectorError::ApplicationSecretNonceMismatch);
             }
 
             // Setup group
             let mls_ciphertext_application =
-                MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.3)))
+                MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.ciphertext)))
                     .expect("Error parsing MLSCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_application.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() =
@@ -418,7 +424,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let mls_plaintext_application = mls_ciphertext_application
                 .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
                 .expect("Error decrypting MLSCiphertext");
-            if hex_to_bytes(&application.2)
+            if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
                     .encode_detached()
                     .expect("Error encoding MLSPlaintext")
@@ -435,16 +441,16 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                     generation,
                 )
                 .expect("Error getting decryption secret");
-            if hex_to_bytes(&handshake.0) != handshake_secret_key.as_slice() {
+            if hex_to_bytes(&handshake.key) != handshake_secret_key.as_slice() {
                 return Err(EncTestVectorError::HandshakeSecretKeyMismatch);
             }
-            if hex_to_bytes(&handshake.1) != handshake_secret_nonce.as_slice() {
+            if hex_to_bytes(&handshake.nonce) != handshake_secret_nonce.as_slice() {
                 return Err(EncTestVectorError::HandshakeSecretNonceMismatch);
             }
 
             // Setup group
             let mls_ciphertext_handshake =
-                MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.3)))
+                MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
                     .expect("Error parsing MLSCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() =
@@ -454,7 +460,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let mls_plaintext_handshake = mls_ciphertext_handshake
                 .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
                 .expect("Error decrypting MLSCiphertext");
-            if hex_to_bytes(&handshake.2)
+            if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .encode_detached()
                     .expect("Error encoding MLSPlaintext")
