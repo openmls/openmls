@@ -575,9 +575,7 @@ pub struct ConfirmationKey {
 impl ConfirmationKey {
     /// Derive an `ConfirmationKey` from an `EpochSecret`.
     fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret
-            .secret
-            .derive_secret(ciphersuite, "confirmation");
+        let secret = epoch_secret.secret.derive_secret(ciphersuite, "confirm");
         Self { secret }
     }
 
