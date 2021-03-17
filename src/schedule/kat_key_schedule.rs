@@ -202,26 +202,27 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
         Ok(cs) => cs,
         Err(_) => {
-            println!(
+            log::info!(
                 "Unsupported ciphersuite {} in test vector. Skipping ...",
                 ciphersuite
             );
             return Ok(());
         }
     };
-    println!("Testing test vector for ciphersuite {:?}", ciphersuite);
+    log::debug!("Testing test vector for ciphersuite {:?}", ciphersuite);
+    log::trace!("  {:?}", test_vector);
 
     let group_id = hex_to_bytes(&test_vector.group_id);
     let init_secret = hex_to_bytes(&test_vector.initial_init_secret);
-    println!("InitSecret from tve: {:?}", test_vector.initial_init_secret);
+    log::trace!("  InitSecret from tve: {:?}", test_vector.initial_init_secret);
     let mut init_secret = InitSecret::from_slice(&init_secret);
 
     for (i, epoch) in test_vector.epochs.iter().enumerate() {
-        println!("Epoch {:?}", i);
+        log::debug!("  Epoch {:?}", i);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
         let commit_secret = hex_to_bytes(&epoch.commit_secret);
         let commit_secret = CommitSecret::from_slice(&commit_secret);
-        println!("CommitSecret from tve {:?}", epoch.commit_secret);
+        log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
         let psk = hex_to_bytes(&epoch.psk_secret);
         //if !psk.is_empty() {
         //    println!("PSK is not supported by OpenMLS yet. See #141");
@@ -261,6 +262,12 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
 
         init_secret = epoch_secrets.init_secret().unwrap().clone();
         if hex_to_bytes(&epoch.init_secret) != init_secret.as_slice() {
+            log_crypto!(
+                debug,
+                "    Epoch secret mismatch: {:x?} != {:x?}",
+                hex_to_bytes(&epoch.init_secret),
+                init_secret.as_slice()
+            );
             return Err(KSTestVectorError::InitSecretMismatch);
         }
         if hex_to_bytes(&epoch.sender_data_secret) != epoch_secrets.sender_data_secret().as_slice()

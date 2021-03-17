@@ -177,7 +177,7 @@ struct KdfLabel {
 }
 
 impl KdfLabel {
-    pub fn serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
+    fn serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if length > u16::MAX.into() {
@@ -227,12 +227,27 @@ impl Secret {
         length: usize,
     ) -> Secret {
         let info = KdfLabel::serialized_label(context, label, length);
+        log::trace!(
+            "KDF expand with label \"{}\" and {:?} with context {:x?}",
+            label,
+            ciphersuite.name(),
+            context
+        );
+        log::trace!("  serialized context: {:x?}", info);
+        log_crypto!(trace, "  secret: {:x?}", self.value);
         ciphersuite.hkdf_expand(self, &info, length).unwrap()
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
     pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
+        log_crypto!(
+            trace,
+            "derive secret from {:x?} with label {} and {:?}",
+            self.value,
+            label,
+            ciphersuite.name()
+        );
         self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
     }
 
@@ -433,8 +448,11 @@ impl Ciphersuite {
 
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm_option: Option<&Secret>) -> Secret {
+        log::trace!("HKDF extract with {:?}", self.name);
+        log_crypto!(trace, "  salt: {:x?}", salt.value);
         let zero_secret = Secret::from(zero(self.hash_length()));
         let ikm = ikm_option.unwrap_or(&zero_secret);
+        log_crypto!(trace, "  ikm:  {:x?}", ikm.value);
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
         }

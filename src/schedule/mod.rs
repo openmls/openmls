@@ -285,6 +285,17 @@ impl KeySchedule {
         joiner_secret: JoinerSecret,
         psk: impl Into<Option<PskSecret>>,
     ) -> Self {
+        log::debug!(
+            "Initializing the key schedule with {:?} ...",
+            ciphersuite.name()
+        );
+        log_crypto!(
+            trace,
+            "  joiner_secret: {:x?}",
+            joiner_secret.secret.to_bytes()
+        );
+        let psk = psk.into();
+        log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
         let intermediate_secret = IntermediateSecret::new(ciphersuite, &joiner_secret, psk.into());
         Self {
             ciphersuite,
@@ -313,6 +324,7 @@ impl KeySchedule {
         &mut self,
         group_context: &GroupContext,
     ) -> Result<(), KeyScheduleError> {
+        log::trace!("Adding context to key schedule. {:?}", group_context);
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!(
                 "Trying to add context to the key schedule while not in the initial state."
@@ -320,6 +332,11 @@ impl KeySchedule {
             return Err(KeyScheduleError::InvalidState(ErrorState::NotInit));
         }
         self.state = State::Context;
+        log_crypto!(
+            trace,
+            "  intermediate_secret: {:x?}",
+            self.intermediate_secret.as_ref().unwrap().secret.to_bytes()
+        );
 
         self.epoch_secret = Some(EpochSecret::new(
             self.ciphersuite,
@@ -801,6 +818,15 @@ impl EpochSecrets {
     /// If the `init_secret` argument is `true`, the init secret is derived and
     /// part of the `EpochSecrets`. Otherwise not.
     fn new(ciphersuite: &Ciphersuite, epoch_secret: EpochSecret, init_secret: bool) -> Self {
+        log::debug!(
+            "Computing EpochSecrets from epoch secret with {:?}",
+            ciphersuite.name()
+        );
+        log_crypto!(
+            trace,
+            "  epoch_secret: {:x?}",
+            epoch_secret.secret.to_bytes()
+        );
         let sender_data_secret = SenderDataSecret::new(ciphersuite, &epoch_secret);
         let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);
         let exporter_secret = ExporterSecret::new(ciphersuite, &epoch_secret);
@@ -811,6 +837,7 @@ impl EpochSecrets {
         let resumption_secret = ResumptionSecret::new(ciphersuite, &epoch_secret);
 
         let init_secret = if init_secret {
+            log::trace!("  Computing init secret.");
             Some(InitSecret::new(ciphersuite, epoch_secret))
         } else {
             None
