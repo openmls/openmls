@@ -364,6 +364,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
         EncryptionSecret::from(hex_to_bytes(&test_vector.encryption_secret).as_slice()),
         LeafIndex::from(n_leaves),
     );
+    log::debug!("Secret tree: {:?}", secret_tree);
     let sender_data_secret =
         SenderDataSecret::from(hex_to_bytes(&test_vector.sender_data_secret).as_slice());
 
@@ -385,6 +386,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
     }
 
     for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
+        log::trace!("Running test vector for leaf {:?}", leaf_index);
         if leaf.generations != leaf.application.len() as u32 {
             return Err(EncTestVectorError::InvalidLeafSequenceApplication);
         }
@@ -405,6 +407,11 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                     generation,
                 )
                 .expect("Error getting decryption secret");
+            log::debug!(
+                "Secret tree after deriving application keys for leaf {:?}",
+                leaf_index
+            );
+            log::debug!("{:?}", secret_tree);
             if hex_to_bytes(&application.key) != application_secret_key.as_slice() {
                 return Err(EncTestVectorError::ApplicationSecretKeyMismatch);
             }
@@ -468,7 +475,9 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }
         }
+        log::trace!("Finished test vector for leaf {:?}", leaf_index);
     }
+    log::trace!("Finished test vector verification");
     Ok(())
 }
 

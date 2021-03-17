@@ -6,6 +6,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::convert::*;
 
+#[derive(Debug)]
 pub enum VecSize {
     VecU8,
     VecU16,
@@ -47,6 +48,11 @@ impl<'a> Cursor {
 
     pub fn has_more(&self) -> bool {
         !self.is_empty()
+    }
+
+    /// Get a slice of the underlying raw buffer.
+    pub(crate) fn raw(&self) -> &[u8] {
+        &self.buffer[self.position..]
     }
 }
 
@@ -285,6 +291,11 @@ pub fn encode_vec<T: Codec>(
 }
 
 pub fn decode_vec<T: Codec>(vec_size: VecSize, cursor: &mut Cursor) -> Result<Vec<T>, CodecError> {
+    log::trace!(
+        "Decoding vector with size {:?}: {:X?}",
+        vec_size,
+        cursor.raw()
+    );
     let mut result: Vec<T> = Vec::new();
     let len;
     match vec_size {

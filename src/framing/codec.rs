@@ -51,12 +51,22 @@ impl Codec for MLSCiphertext {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        log::debug!("Decoding MLSCiphertext {:x?}", cursor.raw());
         let group_id = GroupId::decode(cursor)?;
+        log::trace!("Decoded group ID: {:x?}", group_id.value);
         let epoch = GroupEpoch::decode(cursor)?;
+        log::trace!("Decoded epoch: {:?}", epoch);
         let content_type = ContentType::decode(cursor)?;
+        log::trace!("Decoded content_type: {:?}", content_type);
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
+        log::trace!("Decoded authenticated_data: {:x?}", authenticated_data);
         let encrypted_sender_data = decode_vec(VecSize::VecU8, cursor)?;
+        log::trace!(
+            "Decoded encrypted_sender_data: {:x?}",
+            encrypted_sender_data
+        );
         let ciphertext = decode_vec(VecSize::VecU32, cursor)?;
+        log::trace!("Decoded ciphertext: {:x?}", ciphertext);
         Ok(MLSCiphertext {
             group_id,
             epoch,

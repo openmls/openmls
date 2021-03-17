@@ -45,11 +45,21 @@ pub(crate) fn derive_tree_secret(
     generation: u32,
     length: usize,
 ) -> Secret {
+    log::debug!(
+        "Derive tree secret with label \"{}\" for node {} in generation {} of length {}",
+        label,
+        node,
+        generation,
+        length
+    );
     let tree_context = TreeContext { node, generation };
+    log_crypto!(trace, "Input secret {:x?}", secret.to_bytes());
+    log_crypto!(trace, "Tree context {:?}", tree_context);
     let serialized_tree_context = tree_context.encode_detached().unwrap();
     secret.kdf_expand_label(ciphersuite, label, &serialized_tree_context, length)
 }
 
+#[derive(Debug)]
 pub struct TreeContext {
     pub(crate) node: u32,
     pub(crate) generation: u32,
@@ -104,13 +114,19 @@ impl SecretTree {
     }
 
     /// Initializes a specific SenderRatchet pair for a given index by
-    /// calculating and deleteing the appropriate values in the SecretTree
+    /// calculating and deleting the appropriate values in the SecretTree
     fn initialize_sender_ratchets(
         &mut self,
         ciphersuite: &Ciphersuite,
         index: LeafIndex,
     ) -> Result<(), SecretTreeError> {
+        log::trace!(
+            "Initializing sender ratchets for {:?} with {}",
+            index,
+            ciphersuite
+        );
         if index >= self.size {
+            log::error!("Index is larger than the tree size.");
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         // Check if SenderRatchets are already initialized
@@ -123,6 +139,7 @@ impl SecretTree {
                 .expect("Index out of bounds.")
                 .is_some()
         {
+            log::trace!("The sender ratchets are initialized already.");
             return Ok(());
         }
         // Calculate direct path
@@ -132,6 +149,7 @@ impl SecretTree {
             leaf_direct_path(index, self.size)
                 .expect("initialize_sender_ratchets: Error while computing direct path."),
         );
+        log::trace!("Direct path for leaf {:?}: {:?}", index, dir_path);
         let mut empty_nodes: Vec<NodeIndex> = vec![];
         for n in dir_path {
             empty_nodes.push(n);
@@ -177,8 +195,8 @@ impl SecretTree {
     }
 
     /// Return RatchetSecrets for a given index and generation. This should be
-    /// called when decrypting an MLSCiphertext received fromanother member.
-    /// Returns an error if index or genartion are out of bound.
+    /// called when decrypting an MLSCiphertext received from another member.
+    /// Returns an error if index or generation are out of bound.
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
@@ -186,6 +204,13 @@ impl SecretTree {
         secret_type: SecretType,
         generation: u32,
     ) -> Result<RatchetSecrets, SecretTreeError> {
+        log::debug!(
+            "Generating {:?} decryption secret for {:?} in generation {} with {}",
+            secret_type,
+            index,
+            generation,
+            ciphersuite,
+        );
         // Check tree bounds
         if index >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
@@ -246,11 +271,17 @@ impl SecretTree {
     /// Derives the secrets for the child leaves in a SecretTree and blanks the
     /// parent leaf.
     fn derive_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
+        log::debug!(
+            "Deriving tree secret for node {} with {}",
+            index_in_tree.as_u32(),
+            ciphersuite
+        );
         let hash_len = ciphersuite.hash_length();
         let node_secret = &self.nodes[index_in_tree.as_usize()]
             .as_ref()
             .unwrap()
             .secret;
+        log_crypto!(trace, "Node secret: {:x?}", node_secret.to_bytes());
         let left_index =
             left(index_in_tree).expect("derive_down: Error while computing left child.");
         let right_index = right(index_in_tree, self.size)
@@ -270,6 +301,18 @@ impl SecretTree {
             right_index.as_u32(),
             0,
             hash_len,
+        );
+        log_crypto!(
+            trace,
+            "Left node ({}) secret: {:x?}",
+            left_index.as_u32(),
+            left_secret.to_bytes()
+        );
+        log_crypto!(
+            trace,
+            "Right node ({}) secret: {:x?}",
+            right_index.as_u32(),
+            right_secret.to_bytes()
         );
         self.nodes[left_index.as_usize()] = Some(SecretTreeNode {
             secret: left_secret,

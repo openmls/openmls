@@ -36,6 +36,23 @@ fn _bytes_to_hex(bytes: &[u8]) -> String {
     hex
 }
 
+// With the crypto-debug feature enabled sensitive crypto parts can be logged.
+#[cfg(feature = "crypto-debug")]
+macro_rules! log_crypto {
+    (debug, $($arg:tt)*) => ({
+        log::debug!($($arg)*);
+    });
+    (trace, $($arg:tt)*) => ({
+        log::trace!($($arg)*);
+    })
+}
+
+#[cfg(not(feature = "crypto-debug"))]
+macro_rules! log_crypto {
+    (debug, $($arg:tt)*) => {{}};
+    (trace, $($arg:tt)*) => {{}};
+}
+
 // Pretty ugly helper to count the number of arguments.
 macro_rules! count {
     () => (0usize);

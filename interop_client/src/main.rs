@@ -285,7 +285,7 @@ impl MlsClient for MlsClientImpl {
                 ));
             }
         };
-        println!("{} test vector request", type_msg);
+        println!("{} test vector request successful", type_msg);
 
         Ok(Response::new(VerifyTestVectorResponse::default()))
     }
