@@ -47,8 +47,25 @@ macro_rules! log_crypto {
     })
 }
 
+// With the content-debug feature enabled sensitive message content parts can be logged.
+#[cfg(feature = "content-debug")]
+macro_rules! log_content {
+    (debug, $($arg:tt)*) => ({
+        log::debug!($($arg)*);
+    });
+    (trace, $($arg:tt)*) => ({
+        log::trace!($($arg)*);
+    })
+}
+
 #[cfg(not(feature = "crypto-debug"))]
 macro_rules! log_crypto {
+    (debug, $($arg:tt)*) => {{}};
+    (trace, $($arg:tt)*) => {{}};
+}
+
+#[cfg(not(feature = "content-debug"))]
+macro_rules! log_content {
     (debug, $($arg:tt)*) => {{}};
     (trace, $($arg:tt)*) => {{}};
 }

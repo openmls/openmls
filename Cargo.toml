@@ -46,6 +46,7 @@ default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
 expose-test-vectors = ["itertools"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
+content-debug = [] # ☣️ Enable logging of sensitive message content
 
 [dev-dependencies]
 criterion = "^0.3"

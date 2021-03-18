@@ -728,9 +728,16 @@ impl AeadNonce {
 
     /// Xor the first bytes of the nonce with the reuse_guard.
     pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: &ReuseGuard) {
+        log_crypto!(
+            trace,
+            "  XOR re-use guard {:x?}^{:x?}",
+            self.value,
+            reuse_guard.value
+        );
         for i in 0..REUSE_GUARD_BYTES {
             self.value[i] ^= reuse_guard.value[i]
         }
+        log_crypto!(trace, "    = {:x?}", self.value);
     }
 }
 

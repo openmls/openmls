@@ -590,7 +590,7 @@ impl ConfirmationKey {
     fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         let secret = epoch_secret
             .secret
-            .derive_secret(ciphersuite, "confirmation");
+            .derive_secret(ciphersuite, "confirm");
         Self { secret }
     }
 

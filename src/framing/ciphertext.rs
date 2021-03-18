@@ -129,7 +129,7 @@ impl MLSCiphertext {
                 log::error!("Sender data decryption error");
                 MLSCiphertextError::DecryptionError
             })?;
-        log::trace!("Successfully decrypted sender data.");
+        log::trace!("  Successfully decrypted sender data.");
         let sender_data = MLSSenderData::decode_detached(&sender_data_bytes)?;
         let secret_type = SecretType::try_from(&self.content_type)
             .map_err(|_| MLSCiphertextError::InvalidContentType)?;
@@ -142,7 +142,7 @@ impl MLSCiphertext {
                 sender_data.generation,
             )
             .map_err(|_| {
-                log::error!("Ciphertext generation out of bounds");
+                log::error!("  Ciphertext generation out of bounds");
                 MLSCiphertextError::GenerationOutOfBound
             })?;
         // Prepare the nonce by xoring with the reuse guard.
@@ -163,9 +163,13 @@ impl MLSCiphertext {
                 &ratchet_nonce,
             )
             .map_err(|_| {
-                log::error!("Ciphertext decryption error");
+                log::error!("  Ciphertext decryption error");
                 MLSCiphertextError::DecryptionError
             })?;
+        log::trace!(
+            "  Successfully decrypted MLSPlaintext bytes: {:x?}",
+            mls_ciphertext_content_bytes
+        );
         let mls_ciphertext_content =
             MLSCiphertextContent::decode_detached(&mls_ciphertext_content_bytes)?;
         // Extract sender. The sender type is always of type Member for MLSCiphertext.
@@ -174,7 +178,7 @@ impl MLSCiphertext {
             sender: sender_data.sender,
         };
         log::trace!(
-            "Successfully decrypted MLSPlaintext with: {:x?}",
+            "  Successfully decoded MLSPlaintext with: {:x?}",
             mls_ciphertext_content.content
         );
         // Return the MLSPlaintext
