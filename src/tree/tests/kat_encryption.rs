@@ -359,6 +359,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             return Ok(());
         }
     };
+    log::debug!("Running test vector with {:?}", ciphersuite.name());
 
     let mut secret_tree = SecretTree::new(
         EncryptionSecret::from(hex_to_bytes(&test_vector.encryption_secret).as_slice()),

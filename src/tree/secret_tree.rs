@@ -173,7 +173,7 @@ impl SecretTree {
             ciphersuite,
             node_secret,
             "handshake",
-            index.as_u32(),
+            index_in_tree.as_u32(),
             0,
             ciphersuite.hash_length(),
         );
@@ -183,7 +183,7 @@ impl SecretTree {
             ciphersuite,
             node_secret,
             "application",
-            index.as_u32(),
+            index_in_tree.as_u32(),
             0,
             ciphersuite.hash_length(),
         );
