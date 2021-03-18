@@ -408,14 +408,21 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 )
                 .expect("Error getting decryption secret");
             log::debug!(
-                "Secret tree after deriving application keys for leaf {:?}",
-                leaf_index
+                "  Secret tree after deriving application keys for leaf {:?} in generation {:?}",
+                leaf_index,
+                generation
             );
-            log::debug!("{:?}", secret_tree);
+            log::debug!("  {:?}", secret_tree);
             if hex_to_bytes(&application.key) != application_secret_key.as_slice() {
+                log::error!("  Application key mismatch:");
+                log::debug!("    Calculated: {:x?}", application_secret_key.as_slice());
+                log::debug!("    Expected: {:x?}", hex_to_bytes(&application.key));
                 return Err(EncTestVectorError::ApplicationSecretKeyMismatch);
             }
             if hex_to_bytes(&application.nonce) != application_secret_nonce.as_slice() {
+                log::error!("  Application nonce mismatch");
+                log::debug!("    Calculated: {:x?}", application_secret_nonce.as_slice());
+                log::debug!("    Expected: {:x?}", hex_to_bytes(&application.nonce));
                 return Err(EncTestVectorError::ApplicationSecretNonceMismatch);
             }
 

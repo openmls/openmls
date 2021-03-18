@@ -30,7 +30,7 @@ impl Codec for MLSPlaintext {
         );
         let content_type = ContentType::decode(cursor)?;
         log_content!(trace, "  Decoded content_type: {:?}", content_type);
-        let content = MLSPlaintextContentType::decode(cursor)?;
+        let content = MLSPlaintextContentType::decode(content_type, cursor)?;
         log_content!(trace, "  Decoded content: {:x?}", content);
         let signature = Signature::decode(cursor)?;
         log_content!(trace, "  Decoded signature: {:?}", signature);
@@ -106,40 +106,36 @@ impl Codec for MLSPlaintextContentType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
             MLSPlaintextContentType::Application(application_data) => {
-                ContentType::Application.encode(buffer)?;
                 encode_vec(VecSize::VecU32, buffer, application_data)?;
             }
             MLSPlaintextContentType::Proposal(proposal) => {
-                ContentType::Proposal.encode(buffer)?;
                 proposal.encode(buffer)?;
             }
             MLSPlaintextContentType::Commit(commit) => {
-                ContentType::Commit.encode(buffer)?;
                 commit.encode(buffer)?;
             }
         }
         Ok(())
     }
-    // fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-    //     // let content_type = match ContentType::try_from(u8::decode(cursor)?) {
-    //     //     Ok(content_type) => content_type,
-    //     //     Err(_) => return Err(CodecError::DecodingError),
-    //     // };
-    //     match content_type {
-    //         ContentType::Application => {
-    //             let application_data = decode_vec(VecSize::VecU32, cursor)?;
-    //             Ok(MLSPlaintextContentType::Application(application_data))
-    //         }
-    //         ContentType::Proposal => {
-    //             let proposal = Proposal::decode(cursor)?;
-    //             Ok(MLSPlaintextContentType::Proposal(proposal))
-    //         }
-    //         ContentType::Commit => {
-    //             let commit = Commit::decode(cursor)?;
-    //             Ok(MLSPlaintextContentType::Commit(commit))
-    //         }
-    //     }
-    // }
+}
+
+impl MLSPlaintextContentType {
+    fn decode(content_type: ContentType, cursor: &mut Cursor) -> Result<Self, CodecError> {
+        match content_type {
+            ContentType::Application => {
+                let application_data = decode_vec(VecSize::VecU32, cursor)?;
+                Ok(MLSPlaintextContentType::Application(application_data))
+            }
+            ContentType::Proposal => {
+                let proposal = Proposal::decode(cursor)?;
+                Ok(MLSPlaintextContentType::Proposal(proposal))
+            }
+            ContentType::Commit => {
+                let commit = Commit::decode(cursor)?;
+                Ok(MLSPlaintextContentType::Commit(commit))
+            }
+        }
+    }
 }
 
 impl Codec for Mac {
@@ -222,10 +218,26 @@ impl Codec for MLSSenderDataAAD {
     }
 }
 
-impl Codec for MLSCiphertextContent {
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+impl MLSCiphertextContent {
+    pub(crate) fn decode(
+        content_type: ContentType,
+        cursor: &mut Cursor,
+    ) -> Result<Self, CodecError> {
         log_content!(debug, "Decoding MLSCiphertextContent {:x?}", cursor.raw());
-        // let content = MLSPlaintextContentType::decode(cursor)?;
+        let content = match content_type {
+            ContentType::Application => {
+                let application_data = decode_vec(VecSize::VecU32, cursor)?;
+                MLSPlaintextContentType::Application(application_data)
+            }
+            ContentType::Proposal => {
+                let proposal = Proposal::decode(cursor)?;
+                MLSPlaintextContentType::Proposal(proposal)
+            }
+            ContentType::Commit => {
+                let commit = Commit::decode(cursor)?;
+                MLSPlaintextContentType::Commit(commit)
+            }
+        };
         log_content!(trace, "  Decoded content {:?}", content);
         let signature = Signature::decode(cursor)?;
         log_content!(trace, "  Decoded signature {:?}", signature);

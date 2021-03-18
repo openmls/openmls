@@ -170,8 +170,10 @@ impl MLSCiphertext {
             "  Successfully decrypted MLSPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        let mls_ciphertext_content =
-            MLSCiphertextContent::decode_detached(&mls_ciphertext_content_bytes)?;
+        let mls_ciphertext_content = MLSCiphertextContent::decode(
+            self.content_type,
+            &mut Cursor::new(&mls_ciphertext_content_bytes),
+        )?;
         // Extract sender. The sender type is always of type Member for MLSCiphertext.
         let sender = Sender {
             sender_type: SenderType::Member,
