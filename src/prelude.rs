@@ -8,6 +8,7 @@ pub use crate::group::{
     ManagedGroupCallbacks, ManagedGroupConfig, ManagedGroupError, Removal, UpdatePolicy,
 };
 // Errors
+pub use crate::error::ErrorString;
 pub use crate::group::errors::{ApplyCommitError, CreateCommitError, GroupError, WelcomeError};
 
 // Indexes

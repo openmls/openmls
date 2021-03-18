@@ -7,13 +7,17 @@ mod ser;
 #[cfg(test)]
 mod test_managed_group;
 
-use crate::group::*;
-use crate::key_packages::{KeyPackage, KeyPackageBundle};
-use crate::messages::{proposals::*, Welcome};
-use crate::tree::index::LeafIndex;
-use crate::tree::node::Node;
-use crate::{credentials::Credential, key_store::KeyStore};
-use crate::{framing::*, schedule::ResumptionSecret};
+use crate::{
+    credentials::Credential,
+    error::ErrorString,
+    framing::*,
+    group::*,
+    key_packages::{KeyPackage, KeyPackageBundle},
+    key_store::KeyStore,
+    messages::{proposals::*, Welcome},
+    schedule::ResumptionSecret,
+    tree::{index::LeafIndex, node::Node},
+};
 
 use std::collections::HashMap;
 use std::io::{Error, Read, Write};
@@ -425,7 +429,7 @@ impl ManagedGroup {
     /// Processes any incoming messages from the DS (MLSPlaintext &
     /// MLSCiphertext) and triggers the corresponding callback functions.
     /// Return a list of `GroupEvent` that contain the individual events that
-    /// occured whil processing messages.
+    /// occurred while processing messages.
     pub fn process_messages(
         &mut self,
         messages: Vec<MLSMessage>,
@@ -567,7 +571,14 @@ impl ManagedGroup {
                                 )));
                             }
                             _ => {
-                                panic!("apply_commit_error did not return an ApplyCommitError.");
+                                let error_string =
+                                    "apply_commit() did not return an ApplyCommitError."
+                                        .to_string();
+                                events.push(GroupEvent::Error(ErrorEvent::new(
+                                    ManagedGroupError::LibraryError(ErrorString::from(
+                                        error_string,
+                                    )),
+                                )));
                             }
                         },
                     }
