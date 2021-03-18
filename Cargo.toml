@@ -37,8 +37,8 @@ serde_json = "^1.0"
 tls-codec = { version = "0.1", path = "tls-codec", features = ["derive", "hpke"] }
 log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
-hpke = { version = "0.0.5", package = "hpke-rs", features = ["hazmat", "serialization"] }
-evercrypt = { version = "0.0.7", features = ["serialization"] }
+hpke = { version = "0.0.6", package = "hpke-rs", features = ["hazmat", "serialization"] }
+evercrypt = { version = "0.0.8", features = ["serialization"] }
 itertools = {version = "0.10", optional = true}
 
 [features]

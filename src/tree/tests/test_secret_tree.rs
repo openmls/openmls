@@ -156,5 +156,4 @@ fn secret_tree() {
         application_secret_nonce.as_slice()
     );
     println!("Secret tree: {:?}", secret_tree);
-    panic!();
 }
