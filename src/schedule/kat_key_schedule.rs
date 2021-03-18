@@ -214,7 +214,10 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
 
     let group_id = hex_to_bytes(&test_vector.group_id);
     let init_secret = hex_to_bytes(&test_vector.initial_init_secret);
-    log::trace!("  InitSecret from tve: {:?}", test_vector.initial_init_secret);
+    log::trace!(
+        "  InitSecret from tve: {:?}",
+        test_vector.initial_init_secret
+    );
     let mut init_secret = InitSecret::from_slice(&init_secret);
 
     for (i, epoch) in test_vector.epochs.iter().enumerate() {
