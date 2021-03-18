@@ -259,6 +259,14 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
         )
         .expect("Error creating group context");
 
+        let expected_group_context = hex_to_bytes(&epoch.group_context);
+        if group_context.serialized() != expected_group_context {
+            log::error!("  Group context mismatch");
+            log::debug!("    Computed: {:x?}", group_context.serialized());
+            log::debug!("    Expected: {:x?}", expected_group_context);
+            return Err(KSTestVectorError::GroupContextMismatch);
+        }
+
         key_schedule.add_context(&group_context).unwrap();
 
         let epoch_secrets = key_schedule.epoch_secrets(true).unwrap();
@@ -308,6 +316,9 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
         if hex_to_bytes(&epoch.external_pub)
             != external_key_pair.public_key().encode_detached().unwrap()
         {
+            log::error!("  External public key mismatch");
+            log::debug!("    Computed: {:x?}", external_key_pair.public_key().encode_detached().unwrap());
+            log::debug!("    Expected: {:x?}", hex_to_bytes(&epoch.external_pub));
             return Err(KSTestVectorError::ExternalPubMismatch);
         }
     }

@@ -28,6 +28,7 @@ implement_error! {
         JoinerSecretMismatch = "The computed joiner secret doesn't match the one in the test vector.",
         WelcomeSecretMismatch = "The computed welcome secret doesn't match the one in the test vector.",
         InitSecretMismatch = "The computed init secret doesn't match the one in the test vector.",
+        GroupContextMismatch = "The group context doesn't match the one in the test vector.",
         SenderDataSecretMismatch = "The computed sender data secret doesn't match the one in the test vector.",
         EncryptionSecretMismatch = "The computed encryption secret doesn't match the one in the test vector.",
         ExporterSecretMismatch = "The computed exporter secret doesn't match the one in the test vector.",
