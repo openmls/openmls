@@ -27,6 +27,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Tests
         run: cargo test --verbose
+      - name: Test Xcode11
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_11.7.app
+          cargo clean
+          cargo test --verbose
   checks:
     runs-on: ubuntu-latest
     steps:
