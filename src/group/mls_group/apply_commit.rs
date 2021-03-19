@@ -82,7 +82,11 @@ impl MlsGroup {
                     Some(kpb) => kpb,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 };
-                provisional_tree.replace_private_tree(own_kpb, &serialized_context)
+                // We can unwrap here, because we know there was a path and thus
+                // a new commit secret must have been set.
+                provisional_tree
+                    .replace_private_tree(own_kpb, &serialized_context)
+                    .unwrap()
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
                 // later.

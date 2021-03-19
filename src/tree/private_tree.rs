@@ -21,7 +21,7 @@ pub(crate) struct PrivateTree {
     path_keys: PathKeys,
 
     // Commit secret.
-    commit_secret: CommitSecret,
+    commit_secret: Option<CommitSecret>,
 
     // Leaf secret.
     // Path secrets and node secret are derived from this secret.
@@ -39,7 +39,7 @@ impl PrivateTree {
             leaf_index,
             hpke_private_key: None,
             path_keys: PathKeys::default(),
-            commit_secret: CommitSecret::default(),
+            commit_secret: None,
             path_secrets: PathSecrets::default(),
         }
     }
@@ -62,7 +62,7 @@ impl PrivateTree {
             leaf_index,
             hpke_private_key: Some(private_key),
             path_keys: PathKeys::default(),
-            commit_secret: CommitSecret::default(),
+            commit_secret: None,
             path_secrets: Vec::default(),
         }
     }
@@ -99,8 +99,8 @@ impl PrivateTree {
     pub(crate) fn path_keys(&self) -> &PathKeys {
         &self.path_keys
     }
-    pub(crate) fn commit_secret(&self) -> &CommitSecret {
-        &self.commit_secret
+    pub(crate) fn commit_secret(&self) -> Option<&CommitSecret> {
+        self.commit_secret.as_ref()
     }
     pub(crate) fn path_secrets(&self) -> &[Secret] {
         &self.path_secrets
@@ -187,7 +187,7 @@ impl PrivateTree {
     /// Returns a path secret that's a `CommitSecret`.
     fn generate_commit_secret(&mut self, ciphersuite: &Ciphersuite) {
         let path_secret = self.path_secrets.last().unwrap();
-        self.commit_secret = CommitSecret::new(ciphersuite, path_secret);
+        self.commit_secret = Some(CommitSecret::new(ciphersuite, path_secret));
     }
 
     /// Generate HPKE key pairs for all path secrets in `path_secrets`.

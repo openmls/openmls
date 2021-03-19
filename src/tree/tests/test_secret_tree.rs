@@ -1,11 +1,12 @@
 use crate::schedule::EncryptionSecret;
 
+use crate::config::Config;
+use crate::tree::{secret_tree::*, *};
+use std::collections::HashMap;
+
 // This tests the boundaries of the generations from a SecretTree
 #[test]
 fn test_boundaries() {
-    use crate::config::*;
-    use crate::tree::{index::*, secret_tree::*};
-
     for ciphersuite in Config::supported_ciphersuites() {
         let encryption_secret = EncryptionSecret::from_random(32);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
@@ -74,10 +75,6 @@ fn test_boundaries() {
 // values are unique.
 #[test]
 fn increment_generation() {
-    use crate::config::Config;
-    use crate::tree::{secret_tree::*, *};
-    use std::collections::HashMap;
-
     const SIZE: usize = 100;
     const MAX_GENERATIONS: usize = 10;
 
@@ -128,4 +125,35 @@ fn increment_generation() {
             }
         }
     }
+}
+
+#[test]
+fn secret_tree() {
+    pretty_env_logger::init();
+    let ciphersuite = &Config::supported_ciphersuites()[0];
+    let leaf_index = 0u32;
+    let generation = 0;
+    let n_leaves = 10u32;
+    let mut secret_tree = SecretTree::new(
+        EncryptionSecret::from(&crate::utils::randombytes(ciphersuite.hash_length())[..]),
+        LeafIndex::from(n_leaves),
+    );
+    println!("Secret tree: {:?}", secret_tree);
+    let (application_secret_key, application_secret_nonce) = secret_tree
+        .secret_for_decryption(
+            ciphersuite,
+            LeafIndex::from(leaf_index),
+            SecretType::ApplicationSecret,
+            generation,
+        )
+        .expect("Error getting decryption secret");
+    println!(
+        "application_secret_key: {:x?}",
+        application_secret_key.as_slice()
+    );
+    println!(
+        "application_secret_nonce: {:x?}",
+        application_secret_nonce.as_slice()
+    );
+    println!("Secret tree: {:?}", secret_tree);
 }

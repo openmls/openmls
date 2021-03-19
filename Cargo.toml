@@ -38,10 +38,14 @@ log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 hpke = { version = "0.0.6", package = "hpke-rs", features = ["hazmat", "serialization"] }
 evercrypt = { version = "0.0.8", features = ["serialization"] }
+itertools = {version = "0.10", optional = true}
 
 [features]
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
+expose-test-vectors = ["itertools"]
+crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
+content-debug = [] # ☣️ Enable logging of sensitive message content
 
 [dev-dependencies]
 criterion = "^0.3"

@@ -366,16 +366,20 @@ impl MlsGroup {
     }
 
     /// Exporter
-    pub fn export_secret(&self, label: &str, key_length: usize) -> Result<Vec<u8>, GroupError> {
-        // TODO: This should throw an error. Generally, keys length should be
-        // checked. (see #228).
+    pub fn export_secret(
+        &self,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, GroupError> {
         if key_length > u16::MAX.into() {
+            log::error!("Got a key that is larger than u16::MAX");
             return Err(ExporterError::KeyLengthTooLong.into());
         }
         Ok(self.epoch_secrets.exporter_secret().derive_exported_secret(
             self.ciphersuite(),
             label,
-            &self.context(),
+            context,
             key_length,
         ))
     }
@@ -468,12 +472,12 @@ impl MlsGroup {
         &self.interim_transcript_hash
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
         &mut self.epoch_secrets
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
