@@ -11,8 +11,8 @@ mod group_context;
 mod managed_group;
 mod mls_group;
 
-#[cfg(test)]
-mod tests;
+#[cfg(any(feature = "expose-test-vectors", test))]
+pub mod tests;
 
 use crate::ciphersuite::*;
 use crate::codec::*;
@@ -68,7 +68,7 @@ pub struct GroupContext {
     serialized: Vec<u8>,
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 impl GroupContext {
     pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;

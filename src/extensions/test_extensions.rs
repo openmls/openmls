@@ -14,7 +14,7 @@ use test_macros::ctest;
 #[test]
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
-    let extension_bytes = [0, 1, 0, 16, 1, 1, 6, 0, 1, 0, 3, 0, 2, 6, 0, 1, 0, 2, 0, 3];
+    let extension_bytes = [0, 1, 0, 16, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3];
 
     let ext = CapabilitiesExtension::default();
     let ext_struct = ext.to_extension_struct();

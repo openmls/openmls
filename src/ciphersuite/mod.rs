@@ -12,6 +12,7 @@ pub(crate) use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
+use std::hash::Hash;
 
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
@@ -25,11 +26,11 @@ mod ser;
 
 use crate::codec::*;
 use crate::config::{Config, ConfigError};
-use crate::group::GroupContext;
 use crate::schedule::ExporterSecret;
 use crate::schedule::SenderDataSecret;
 use crate::schedule::WelcomeSecret;
 use crate::utils::random_u32;
+use crate::utils::zero;
 use ciphersuites::*;
 pub(crate) use errors::*;
 
@@ -54,7 +55,7 @@ pub enum CiphersuiteName {
 implement_enum_display!(CiphersuiteName);
 
 /// SignatureScheme according to IANA TLS parameters
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum SignatureScheme {
@@ -176,13 +177,19 @@ struct KdfLabel {
 }
 
 impl KdfLabel {
-    pub fn serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
+    fn serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if length > u16::MAX.into() {
             panic!("Library error: Trying to derive a key with a too large length field!")
         }
         let full_label = "mls10 ".to_owned() + label;
+        log::debug!(
+            "KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}",
+            length as u16,
+            full_label,
+            context
+        );
         let kdf_label = KdfLabel {
             length: length as u16,
             label: full_label,
@@ -220,12 +227,27 @@ impl Secret {
         length: usize,
     ) -> Secret {
         let info = KdfLabel::serialized_label(context, label, length);
+        log::trace!(
+            "KDF expand with label \"{}\" and {:?} with context {:x?}",
+            label,
+            ciphersuite.name(),
+            context
+        );
+        log::trace!("  serialized context: {:x?}", info);
+        log_crypto!(trace, "  secret: {:x?}", self.value);
         ciphersuite.hkdf_expand(self, &info, length).unwrap()
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
     pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
+        log_crypto!(
+            trace,
+            "derive secret from {:x?} with label {} and {:?}",
+            self.value,
+            label,
+            ciphersuite.name()
+        );
         self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
     }
 
@@ -271,10 +293,9 @@ impl ExporterSecret {
         &self,
         ciphersuite: &Ciphersuite,
         label: &str,
-        group_context: &GroupContext,
+        context: &[u8],
         key_length: usize,
     ) -> Vec<u8> {
-        let context = &group_context.serialized();
         let context_hash = &ciphersuite.hash(context);
         self.secret()
             .derive_secret(ciphersuite, label)
@@ -322,7 +343,7 @@ pub struct SignaturePrivateKey {
     value: Vec<u8>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
 pub struct SignaturePublicKey {
     signature_scheme: SignatureScheme,
     value: Vec<u8>,
@@ -368,7 +389,7 @@ impl PartialEq for Ciphersuite {
 
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
-    pub(crate) fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
+    pub fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
         if !Config::supported_ciphersuite_names().contains(&name) {
             return Err(ConfigError::UnsupportedCiphersuite);
         }
@@ -426,8 +447,12 @@ impl Ciphersuite {
     }
 
     /// HKDF extract.
-    pub(crate) fn hkdf_extract(&self, salt_option: Option<&Secret>, ikm: &Secret) -> Secret {
-        let salt = salt_option.unwrap_or_default();
+    pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm_option: Option<&Secret>) -> Secret {
+        log::trace!("HKDF extract with {:?}", self.name);
+        log_crypto!(trace, "  salt: {:x?}", salt.value);
+        let zero_secret = Secret::from(zero(self.hash_length()));
+        let ikm = ikm_option.unwrap_or(&zero_secret);
+        log_crypto!(trace, "  ikm:  {:x?}", ikm.value);
         Secret {
             value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
         }
@@ -533,10 +558,15 @@ impl AeadKey {
         ciphertext: &[u8],
         sender_data_secret: &SenderDataSecret,
     ) -> Self {
+        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
+        log::debug!(
+            "AeadKey::from_sender_data_secret ciphertext sample: {:x?}",
+            ciphertext_sample
+        );
         let key = sender_data_secret.secret().kdf_expand_label(
             ciphersuite,
             "key",
-            &ciphertext,
+            &ciphertext_sample,
             ciphersuite.aead_key_length(),
         );
         AeadKey {
@@ -575,7 +605,7 @@ impl AeadKey {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
@@ -626,6 +656,17 @@ impl AeadKey {
     }
 }
 
+// Get a ciphertext sample of `hash_length` from the ciphertext.
+fn ciphertext_sample<'a>(ciphersuite: &Ciphersuite, ciphertext: &'a [u8]) -> &'a [u8] {
+    let sample_length = ciphersuite.hash_length();
+    log::debug!("Getting ciphertext sample of length {:?}", sample_length);
+    if ciphertext.len() <= sample_length {
+        ciphertext
+    } else {
+        &ciphertext[0..sample_length]
+    }
+}
+
 impl AeadNonce {
     /// Create an `AeadNonce` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
@@ -640,10 +681,15 @@ impl AeadNonce {
         ciphertext: &[u8],
         sender_data_secret: &SenderDataSecret,
     ) -> Self {
+        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
+        log::debug!(
+            "AeadNonce::from_sender_data_secret ciphertext sample: {:x?}",
+            ciphertext_sample
+        );
         let nonce_secret = sender_data_secret.secret().kdf_expand_label(
             ciphersuite,
             "nonce",
-            &ciphertext,
+            &ciphertext_sample,
             ciphersuite.aead_nonce_length(),
         );
         let mut nonce = [0u8; NONCE_BYTES];
@@ -676,16 +722,23 @@ impl AeadNonce {
     }
 
     /// Get a slice to the nonce value.
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }
 
     /// Xor the first bytes of the nonce with the reuse_guard.
     pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: &ReuseGuard) {
+        log_crypto!(
+            trace,
+            "  XOR re-use guard {:x?}^{:x?}",
+            self.value,
+            reuse_guard.value
+        );
         for i in 0..REUSE_GUARD_BYTES {
             self.value[i] ^= reuse_guard.value[i]
         }
+        log_crypto!(trace, "    = {:x?}", self.value);
     }
 }
 
@@ -711,12 +764,6 @@ impl SignatureKeypair {
     /// Get the private and public key objects
     pub fn into_tuple(self) -> (SignaturePrivateKey, SignaturePublicKey) {
         (self.private_key, self.public_key)
-    }
-}
-
-impl PartialEq for SignaturePublicKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
     }
 }
 

@@ -44,5 +44,5 @@ pub use crate::tree::node;
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 mod test_util;

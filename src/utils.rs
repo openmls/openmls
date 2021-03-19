@@ -14,7 +14,7 @@ pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }
@@ -24,7 +24,6 @@ pub(crate) fn random_u8() -> u8 {
     get_random_vec(1)[0]
 }
 
-#[inline]
 pub(crate) fn zero(length: usize) -> Vec<u8> {
     vec![0u8; length]
 }
@@ -35,6 +34,40 @@ fn _bytes_to_hex(bytes: &[u8]) -> String {
         hex += &format!("{:02X}", *b);
     }
     hex
+}
+
+// With the crypto-debug feature enabled sensitive crypto parts can be logged.
+#[cfg(feature = "crypto-debug")]
+macro_rules! log_crypto {
+    (debug, $($arg:tt)*) => ({
+        log::debug!($($arg)*);
+    });
+    (trace, $($arg:tt)*) => ({
+        log::trace!($($arg)*);
+    })
+}
+
+// With the content-debug feature enabled sensitive message content parts can be logged.
+#[cfg(feature = "content-debug")]
+macro_rules! log_content {
+    (debug, $($arg:tt)*) => ({
+        log::debug!($($arg)*);
+    });
+    (trace, $($arg:tt)*) => ({
+        log::trace!($($arg)*);
+    })
+}
+
+#[cfg(not(feature = "crypto-debug"))]
+macro_rules! log_crypto {
+    (debug, $($arg:tt)*) => {{}};
+    (trace, $($arg:tt)*) => {{}};
+}
+
+#[cfg(not(feature = "content-debug"))]
+macro_rules! log_content {
+    (debug, $($arg:tt)*) => {{}};
+    (trace, $($arg:tt)*) => {{}};
 }
 
 // Pretty ugly helper to count the number of arguments.
