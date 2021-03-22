@@ -131,6 +131,9 @@ impl ConfirmationTag {
         confirmation_key: &ConfirmationKey,
         confirmed_transcript_hash: &[u8],
     ) -> Self {
+        log_crypto!(trace, "Compute confirmation tag with:");
+        log_crypto!(trace, "  key:  {:x?}", confirmation_key.secret().to_bytes());
+        log_crypto!(trace, "  hash: {:x?}", confirmed_transcript_hash);
         ConfirmationTag(
             ciphersuite
                 .mac(

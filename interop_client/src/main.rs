@@ -154,7 +154,7 @@ impl MlsClient for MlsClientImpl {
                 let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_transcript = kat_transcripts::generate_test_vector(ciphersuite);
                 let kat_bytes = to_bytes(kat_transcript);
-                ("Key Schedule", kat_bytes)
+                ("Transcript", kat_bytes)
             }
             Ok(TestVectorType::Treekem) => {
                 return Err(tonic::Status::new(

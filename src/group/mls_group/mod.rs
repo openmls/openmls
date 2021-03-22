@@ -499,6 +499,10 @@ pub(crate) fn update_confirmed_transcript_hash(
     interim_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, CodecError> {
     let commit_content_bytes = mls_plaintext_commit_content.encode_detached()?;
+    log::trace!(
+        "Update confirmed transcript hash with\n interim transcript hash: {:x?}\n commit content: {:x?}",
+        interim_transcript_hash, &commit_content_bytes
+    );
     Ok(ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat()))
 }
 
@@ -508,6 +512,10 @@ pub(crate) fn update_interim_transcript_hash(
     confirmed_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, CodecError> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached()?;
+    log::trace!(
+        "Update interim transcript hash with\n confirmed transcript hash: {:x?}\n MLSPlaintextCommitAuthData: {:x?}",
+        confirmed_transcript_hash, &commit_auth_data_bytes
+    );
     Ok(ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat()))
 }
 
