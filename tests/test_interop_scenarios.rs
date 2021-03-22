@@ -28,8 +28,7 @@ ctest!(one_to_one_join {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
+    let setup = ManagedTestSetup::new(default_managed_group_config(), ManagedClientConfig::default_tests(), number_of_clients);
 
     // Create a group with a random creator.
     let group_id = setup
@@ -65,8 +64,7 @@ ctest!(three_party_join {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
+    let setup = ManagedTestSetup::new(default_managed_group_config(), ManagedClientConfig::default_tests(), number_of_clients);
 
     // Create a group with a random creator.
     let group_id = setup
@@ -109,8 +107,7 @@ ctest!(multiple_joins {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
+    let setup = ManagedTestSetup::new(default_managed_group_config(), ManagedClientConfig::default_tests(), number_of_clients);
 
     // Create a group with a random creator.
     let group_id = setup
@@ -147,8 +144,7 @@ ctest!(update {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
+    let setup = ManagedTestSetup::new(default_managed_group_config(), ManagedClientConfig::default_tests(), number_of_clients);
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
@@ -182,8 +178,7 @@ ctest!(remove {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
+    let setup = ManagedTestSetup::new(default_managed_group_config(), ManagedClientConfig::default_tests(), number_of_clients);
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
@@ -222,8 +217,7 @@ ctest!(large_group_lifecycle {
 
     // "Large" is 20 for now.
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
+    let setup = ManagedTestSetup::new(default_managed_group_config(), ManagedClientConfig::default_tests(), number_of_clients);
 
     // Create a group with all available clients. The process includes creating
     // a one-person group and then adding new members in bunches of up to 5,

@@ -29,36 +29,9 @@ use openmls::{node::Node, prelude::*};
 use rand::{rngs::OsRng, RngCore};
 use std::{cell::RefCell, collections::HashMap};
 
-pub mod client;
 pub mod errors;
 
-use self::client::*;
 use self::errors::*;
-
-pub type KeyStoreId = (Vec<u8>, CiphersuiteName);
-
-#[derive(Debug)]
-/// A storage struct for `CredentialBundles`.
-pub struct KeyStore {
-    // Maps a client Id and a ciphersuite to a CredentialBundle.
-    credential_bundles: HashMap<KeyStoreId, CredentialBundle>,
-}
-
-impl<'ks> KeyStore {
-    pub(crate) fn store_credentials(
-        &mut self,
-        client_id: &[u8],
-        credential_bundles: Vec<(CiphersuiteName, CredentialBundle)>,
-    ) {
-        for (cn, cb) in credential_bundles {
-            self.credential_bundles.insert((client_id.to_vec(), cn), cb);
-        }
-    }
-
-    pub(crate) fn get_credential(&self, key_store_id: &KeyStoreId) -> Option<&CredentialBundle> {
-        self.credential_bundles.get(key_store_id)
-    }
-}
 
 #[derive(Clone)]
 /// The `Group` struct represents the "global" shared state of the group. Note,
@@ -99,12 +72,10 @@ pub enum ActionType {
 /// groups. Note, that the `ManagedTestSetup` can only be initialized with a
 /// fixed number of clients and that `create_clients` has to be called before it
 /// can be otherwise used.
-pub struct ManagedTestSetup<'client_lifetime> {
-    pub number_of_clients: usize,
+pub struct ManagedTestSetup {
     // The clients identity is its position in the vector in be_bytes.
-    pub clients: RefCell<HashMap<Vec<u8>, RefCell<Client<'client_lifetime>>>>,
+    pub clients: RefCell<HashMap<Vec<u8>, RefCell<ManagedClient>>>,
     pub groups: RefCell<HashMap<GroupId, Group>>,
-    pub key_store: KeyStore,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RefCell<HashMap<Vec<u8>, Vec<u8>>>,
     pub default_mgc: ManagedGroupConfig,
@@ -130,69 +101,31 @@ pub struct ManagedTestSetup<'client_lifetime> {
 // context that the `ManagedTestSetup` lives in, because otherwise the
 // references don't live long enough.
 
-impl<'ks> ManagedTestSetup<'ks> {
+impl ManagedTestSetup {
     /// Create a new `ManagedTestSetup` with the given default
     /// `ManagedGroupConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
-    pub fn new(default_mgc: ManagedGroupConfig, number_of_clients: usize) -> Self {
-        let mut key_store = KeyStore {
-            credential_bundles: HashMap::new(),
-        };
-        // Create credentials first to avoid borrowing issues.
+    pub fn new(
+        default_mgc: ManagedGroupConfig,
+        default_mcc: ManagedClientConfig,
+        number_of_clients: usize,
+    ) -> Self {
+        let mut clients = HashMap::new();
+        let groups = RefCell::new(HashMap::new());
+        let waiting_for_welcome = RefCell::new(HashMap::new());
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
             // For now, everyone supports all ciphersuites.
-            let mut credential_bundles = Vec::new();
-            for ciphersuite in Config::supported_ciphersuite_names() {
-                let credential_bundle = CredentialBundle::new(
-                    identity.clone(),
-                    CredentialType::Basic,
-                    SignatureScheme::from(*ciphersuite),
-                )
-                .unwrap();
-                credential_bundles.push((*ciphersuite, credential_bundle));
-            }
-            key_store.store_credentials(&identity, credential_bundles);
+            let _ciphersuites = Config::supported_ciphersuite_names();
+            let client = ManagedClient::new(identity.clone(), default_mcc.clone());
+            clients.insert(identity, RefCell::new(client));
         }
-        let clients = RefCell::new(HashMap::new());
-        let groups = RefCell::new(HashMap::new());
-        let waiting_for_welcome = RefCell::new(HashMap::new());
         ManagedTestSetup {
-            number_of_clients,
-            clients,
+            clients: RefCell::new(clients),
             groups,
-            key_store,
             waiting_for_welcome,
             default_mgc,
-        }
-    }
-
-    /// Initialize the `TestSetup` by creating all clients.
-    pub fn create_clients(&'ks self) {
-        let mut clients = self.clients.borrow_mut();
-        for i in 0..self.number_of_clients {
-            let identity = i.to_be_bytes().to_vec();
-            // For now, everyone supports all ciphersuites.
-            let _ciphersuites = Config::supported_ciphersuite_names();
-            let mut credential_bundles = Vec::new();
-            let key_package_bundles = RefCell::new(HashMap::new());
-            let client = Client {
-                identity: identity.clone(),
-                key_store: &self.key_store,
-                key_package_bundles,
-                groups: RefCell::new(HashMap::new()),
-            };
-            for ciphersuite in Config::supported_ciphersuite_names() {
-                let credential_bundle = CredentialBundle::new(
-                    identity.clone(),
-                    CredentialType::Basic,
-                    SignatureScheme::from(*ciphersuite),
-                )
-                .unwrap();
-                credential_bundles.push((*ciphersuite, credential_bundle));
-            }
-            clients.insert(identity, RefCell::new(client));
         }
     }
 
@@ -202,14 +135,14 @@ impl<'ks> ManagedTestSetup<'ks> {
     /// error if the client does not support the given ciphersuite.
     pub fn get_fresh_key_package(
         &self,
-        client: &Client,
+        client: &ManagedClient,
         ciphersuite: &Ciphersuite,
     ) -> Result<KeyPackage, SetupError> {
-        let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
+        let key_package = client.generate_key_package(&[ciphersuite.name()])?;
         println!("Storing key package with hash: {:?}", key_package.hash());
         self.waiting_for_welcome
             .borrow_mut()
-            .insert(key_package.hash(), client.identity.clone());
+            .insert(key_package.hash(), client.identity().to_vec());
         Ok(key_package)
     }
 
@@ -232,8 +165,8 @@ impl<'ks> ManagedTestSetup<'ks> {
                 .remove(&egs.key_package_hash)
                 .ok_or(SetupError::NoFreshKeyPackage)?;
             let client = clients.get(&client_id).unwrap().borrow();
-            client.join_group(
-                group.group_config.clone(),
+            client.process_welcome(
+                Some(&group.group_config),
                 welcome.clone(),
                 Some(group.public_tree.clone()),
             )?;
@@ -251,21 +184,18 @@ impl<'ks> ManagedTestSetup<'ks> {
         sender_id: &[u8],
         group: &mut Group,
         messages: &[MLSMessage],
-    ) -> Result<(), ClientError> {
+    ) -> Result<(), ManagedClientError> {
         let clients = self.clients.borrow();
         println!("Distributing and processing messages...");
         // Distribute message to all members.
         for (index, member_id) in &group.members {
             println!("Index: {:?}, Id: {:?}", index, member_id);
             let member = clients.get(member_id).unwrap().borrow();
-            member.receive_messages_for_group(messages)?;
+            member.process_messages(&group.group_id, messages.to_vec())?;
         }
         // Get the current tree and figure out who's still in the group.
         let sender = clients.get(sender_id).unwrap().borrow();
-        let sender_groups = sender.groups.borrow();
-        let sender_group = sender_groups.get(&group.group_id).unwrap();
-        group.members = sender
-            .get_members_of_group(&group.group_id)?
+        group.members = get_members_of_group(&sender, &group.group_id)?
             .iter()
             .map(|(index, cred)| (*index, cred.identity().clone()))
             .collect();
@@ -273,8 +203,8 @@ impl<'ks> ManagedTestSetup<'ks> {
         for (index, member_id) in &group.members {
             println!("Index: {:?}, Id: {:?}", index, member_id);
         }
-        group.public_tree = sender_group.export_ratchet_tree();
-        group.exporter_secret = sender_group.export_secret("test", &[], 32)?;
+        group.public_tree = sender.export_ratchet_tree(&group.group_id)?;
+        group.exporter_secret = sender.export_secret(&group.group_id, "test", &[], 32)?;
         Ok(())
     }
 
@@ -288,16 +218,18 @@ impl<'ks> ManagedTestSetup<'ks> {
         let mut messages = Vec::new();
         for (_, m_id) in &group.members {
             let m = clients.get(m_id).unwrap().borrow();
-            let mut group_states = m.groups.borrow_mut();
             // Some group members may not have received their welcome messages yet.
-            if let Some(group_state) = group_states.get_mut(&group.group_id) {
-                assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
+            if m.group_exists(&group.group_id).unwrap() {
                 assert_eq!(
-                    group_state.export_secret("test", &[], 32).unwrap(),
+                    m.export_ratchet_tree(&group.group_id).unwrap(),
+                    group.public_tree
+                );
+                assert_eq!(
+                    m.export_secret(&group.group_id, "test", &[], 32).unwrap(),
                     group.exporter_secret
                 );
-                let message = group_state
-                    .create_message("Hello World!".as_bytes())
+                let message = m
+                    .create_message(&group.group_id, "Hello World!".as_bytes())
                     .expect("Error composing message while checking group states.");
                 messages.push((m_id.clone(), message));
             };
@@ -366,11 +298,13 @@ impl<'ks> ManagedTestSetup<'ks> {
             value: groups.len().to_string().into_bytes(),
         };
 
-        group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite)?;
-        let creator_groups = group_creator.groups.borrow();
-        let group = creator_groups.get(&group_id).unwrap();
-        let public_tree = group.export_ratchet_tree();
-        let exporter_secret = group.export_secret("test", &[], 32)?;
+        group_creator.create_group(
+            group_id.clone(),
+            Some(&self.default_mgc.clone()),
+            Some(ciphersuite.name()),
+        )?;
+        let public_tree = group_creator.export_ratchet_tree(&group_id)?;
+        let exporter_secret = group_creator.export_secret(&group_id, "test", &[], 32)?;
         let mut member_ids = Vec::new();
         member_ids.push((0, group_creator_id));
         let group = Group {
@@ -428,9 +362,13 @@ impl<'ks> ManagedTestSetup<'ks> {
             .get(client_id)
             .ok_or(SetupError::UnknownClientId)?
             .borrow();
-        let (messages, welcome_option) =
-            client.self_update(action_type, &group.group_id, key_package_bundle_option)?;
-        self.distribute_to_members(&client.identity, group, &messages)?;
+        let (messages, welcome_option) = self_update(
+            &client,
+            action_type,
+            &group.group_id,
+            key_package_bundle_option,
+        )?;
+        self.distribute_to_members(&client.identity(), group, &messages)?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
         }
@@ -472,7 +410,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             key_packages.push(key_package);
         }
         let (messages, welcome_option) =
-            adder.add_members(action_type, &group.group_id, &key_packages)?;
+            add_members(&adder, action_type, &group.group_id, &key_packages)?;
         self.distribute_to_members(&adder_id, group, &messages)?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -505,7 +443,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             return Err(SetupError::ClientNotInGroup);
         }
         let (messages, welcome_option) =
-            remover.remove_members(action_type, &group.group_id, &target_indices)?;
+            remove_members(&remover, action_type, &group.group_id, &target_indices)?;
         self.distribute_to_members(remover_id, group, &messages)?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -606,7 +544,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             }
             2 => {
                 // First, figure out if there are clients left to add.
-                let clients_left = self.number_of_clients - group.members.len();
+                let clients_left = self.clients.borrow().len() - group.members.len();
                 if clients_left > 0 {
                     let number_of_adds = (((OsRng.next_u32() as usize) % clients_left) % 5) + 1;
                     let new_member_ids = self
@@ -624,4 +562,86 @@ impl<'ks> ManagedTestSetup<'ks> {
         };
         Ok(())
     }
+}
+
+// Functions that were in "Client", but didn't make it into `ManagedClient`.
+
+fn get_members_of_group(
+    client: &ManagedClient,
+    group_id: &GroupId,
+) -> Result<Vec<(usize, Credential)>, ManagedClientError> {
+    let mut members = vec![];
+    let tree = client.export_ratchet_tree(group_id)?;
+    for (index, leaf) in tree.iter().enumerate() {
+        if index % 2 == 0 {
+            if let Some(leaf_node) = leaf {
+                let key_package = leaf_node.key_package().unwrap();
+                members.push((index / 2, key_package.credential().clone()));
+            }
+        }
+    }
+    Ok(members)
+}
+
+/// Have the client either propose or commit (depending on the
+/// `action_type`) a self update in the group with the given group id.
+/// Optionally, a `KeyPackageBundle` can be provided, which the client will
+/// update their leaf with. Returns an error if no group with the given
+/// group id can be found or if an error occurs while creating the update.
+pub fn self_update(
+    client: &ManagedClient,
+    action_type: ActionType,
+    group_id: &GroupId,
+    key_package_bundle_option: Option<KeyPackageBundle>,
+) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedClientError> {
+    let action_results = match action_type {
+        ActionType::Commit => client.self_update(group_id, key_package_bundle_option)?,
+        ActionType::Proposal => (
+            client.propose_self_update(group_id, key_package_bundle_option)?,
+            None,
+        ),
+    };
+    Ok(action_results)
+}
+
+/// Have the client either propose or commit (depending on the
+/// `action_type`) adding the clients with the given `KeyPackage`s to the
+/// group with the given group id. Returns an error if no group with the
+/// given group id can be found or if an error occurs while performing the
+/// add operation.
+pub fn add_members(
+    client: &ManagedClient,
+    action_type: ActionType,
+    group_id: &GroupId,
+    key_packages: &[KeyPackage],
+) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedClientError> {
+    let action_results = match action_type {
+        ActionType::Commit => {
+            let (messages, welcome) = client.add_members(group_id, key_packages)?;
+            (messages, Some(welcome))
+        }
+        ActionType::Proposal => (client.propose_add_members(group_id, key_packages)?, None),
+    };
+    Ok(action_results)
+}
+
+/// Have the client either propose or commit (depending on the
+/// `action_type`) removing the clients with the given indices from the
+/// group with the given group id. Returns an error if no group with the
+/// given group id can be found or if an error occurs while performing the
+/// remove operation.
+pub fn remove_members(
+    client: &ManagedClient,
+    action_type: ActionType,
+    group_id: &GroupId,
+    target_indices: &[usize],
+) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedClientError> {
+    let action_results = match action_type {
+        ActionType::Commit => client.remove_members(group_id, target_indices)?,
+        ActionType::Proposal => (
+            client.propose_remove_members(group_id, target_indices)?,
+            None,
+        ),
+    };
+    Ok(action_results)
 }

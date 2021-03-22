@@ -13,8 +13,11 @@ fn test_managed_api() {
     let managed_group_config =
         ManagedGroupConfig::new(handshake_message_format, update_policy, 0, 0, callbacks);
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
-    setup.create_clients();
+    let setup = ManagedTestSetup::new(
+        managed_group_config,
+        ManagedClientConfig::default_tests(),
+        number_of_clients,
+    );
 
     for ciphersuite in Config::supported_ciphersuites() {
         let group_id = setup.create_random_group(3, ciphersuite).unwrap();

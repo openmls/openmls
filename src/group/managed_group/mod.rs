@@ -8,11 +8,12 @@ mod ser;
 mod test_managed_group;
 
 use crate::{
-    credentials::{Credential, CredentialBundle},
+    credentials::Credential,
     error::ErrorString,
     framing::*,
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
+    key_store::KeyStore,
     messages::{proposals::*, Welcome},
     schedule::ResumptionSecret,
     tree::{index::LeafIndex, node::Node},
@@ -60,10 +61,7 @@ use ser::*;
 /// Changes to the group state are dispatched as events through callback
 /// functions (see [`ManagedGroupCallbacks`]).
 #[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct ManagedGroup<'a> {
-    // CredentialBundle used to sign messages
-    credential_bundle: &'a CredentialBundle,
+pub struct ManagedGroup {
     // The group configuration. See `ManagedGroupCongig` for more information.
     managed_group_config: ManagedGroupConfig,
     // the internal `MlsGroup` used for lower level operations. See `MlsGroup` for more
@@ -86,17 +84,23 @@ pub struct ManagedGroup<'a> {
     active: bool,
 }
 
-impl<'a> ManagedGroup<'a> {
+impl ManagedGroup {
     // === Group creation ===
 
-    /// Creates a new group from scratch with only the creator as a member.
+    /// Creates a new group from scratch with only the creator as a member. This
+    /// function removes the `KeyPackageBundle` corresponding to the
+    /// `key_package_hash` from the `key_store`. Throws an error if no
+    /// `KeyPackageBundle` can be found.
     pub fn new(
-        credential_bundle: &'a CredentialBundle,
+        key_store: &KeyStore,
         managed_group_config: &ManagedGroupConfig,
         group_id: GroupId,
-        key_package_bundle: KeyPackageBundle,
+        key_package_hash: &[u8],
     ) -> Result<Self, ManagedGroupError> {
         // TODO #141
+        let key_package_bundle = key_store
+            .take_key_package_bundle(key_package_hash)
+            .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         let group = MlsGroup::new(
             &group_id.as_slice(),
             key_package_bundle.key_package().ciphersuite_name(),
@@ -109,7 +113,6 @@ impl<'a> ManagedGroup<'a> {
             ResumptionSecretStore::new(managed_group_config.number_of_resumption_secrets);
 
         let managed_group = ManagedGroup {
-            credential_bundle,
             managed_group_config: managed_group_config.clone(),
             group,
             pending_proposals: vec![],
@@ -127,20 +130,22 @@ impl<'a> ManagedGroup<'a> {
 
     /// Creates a new group from a `Welcome` message
     pub fn new_from_welcome(
-        credential_bundle: &'a CredentialBundle,
+        key_store: &KeyStore,
         managed_group_config: &ManagedGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
-        key_package_bundle: KeyPackageBundle,
-    ) -> Result<Self, GroupError> {
+    ) -> Result<Self, ManagedGroupError> {
+        let resumption_secret_store =
+            ResumptionSecretStore::new(managed_group_config.number_of_resumption_secrets);
+        let key_package_bundle = welcome
+            .secrets()
+            .iter()
+            .find_map(|egs| key_store.take_key_package_bundle(&egs.key_package_hash))
+            .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141
         let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None)?;
 
-        let resumption_secret_store =
-            ResumptionSecretStore::new(managed_group_config.number_of_resumption_secrets);
-
         let managed_group = ManagedGroup {
-            credential_bundle,
             managed_group_config: managed_group_config.clone(),
             group,
             pending_proposals: vec![],
@@ -167,6 +172,7 @@ impl<'a> ManagedGroup<'a> {
     /// [`Welcome`](crate::prelude::Welcome) message.
     pub fn add_members(
         &mut self,
+        key_store: &KeyStore,
         key_packages: &[KeyPackage],
     ) -> Result<(Vec<MLSMessage>, Welcome), ManagedGroupError> {
         if !self.active {
@@ -194,16 +200,22 @@ impl<'a> ManagedGroup<'a> {
             .iter()
             .collect::<Vec<&MLSPlaintext>>();
 
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &self.credential_bundle,
+            &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
             false,
             None,
         )?;
+
         let welcome = match welcome_option {
             Some(welcome) => welcome,
             None => {
@@ -238,6 +250,7 @@ impl<'a> ManagedGroup<'a> {
     /// in the queue of pending proposals.
     pub fn remove_members(
         &mut self,
+        key_store: &KeyStore,
         members: &[usize],
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
@@ -267,11 +280,16 @@ impl<'a> ManagedGroup<'a> {
             .iter()
             .collect::<Vec<&MLSPlaintext>>();
 
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &self.credential_bundle,
+            &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
             false,
@@ -300,17 +318,24 @@ impl<'a> ManagedGroup<'a> {
     /// Creates proposals to add members to the group
     pub fn propose_add_members(
         &mut self,
+        key_store: &KeyStore,
         key_packages: &[KeyPackage],
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
+
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for key_package in key_packages.iter() {
                 let add_proposal = self.group.create_add_proposal(
                     &self.aad,
-                    &self.credential_bundle,
+                    &credential_bundle,
                     key_package.clone(),
                 )?;
                 messages.push(add_proposal);
@@ -329,17 +354,24 @@ impl<'a> ManagedGroup<'a> {
     /// Creates proposals to remove members from the group
     pub fn propose_remove_members(
         &mut self,
+        key_store: &KeyStore,
         members: &[usize],
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
+
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         let plaintext_messages: Vec<MLSPlaintext> = {
             let mut messages = vec![];
             for member in members.iter() {
                 let remove_proposal = self.group.create_remove_proposal(
                     &self.aad,
-                    &self.credential_bundle,
+                    &credential_bundle,
                     LeafIndex::from(*member),
                 )?;
                 messages.push(remove_proposal);
@@ -356,13 +388,22 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Leave the group
-    pub fn leave_group(&mut self) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+    pub fn leave_group(
+        &mut self,
+        key_store: &KeyStore,
+    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
+
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
-            &self.credential_bundle,
+            &credential_bundle,
             self.group.tree().own_node_index(),
         )?;
 
@@ -569,7 +610,11 @@ impl<'a> ManagedGroup<'a> {
     /// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
-    pub fn create_message(&mut self, message: &[u8]) -> Result<MLSMessage, ManagedGroupError> {
+    pub fn create_message(
+        &mut self,
+        key_store: &KeyStore,
+        message: &[u8],
+    ) -> Result<MLSMessage, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -578,10 +623,16 @@ impl<'a> ManagedGroup<'a> {
                 PendingProposalsError::Exists,
             ));
         }
+
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         let ciphertext = self.group.create_application_message(
             &self.aad,
             message,
-            &self.credential_bundle,
+            &credential_bundle,
             self.configuration().padding_size(),
         )?;
 
@@ -594,6 +645,7 @@ impl<'a> ManagedGroup<'a> {
     /// Process pending proposals
     pub fn process_pending_proposals(
         &mut self,
+        key_store: &KeyStore,
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -601,11 +653,16 @@ impl<'a> ManagedGroup<'a> {
         // Include pending proposals into Commit
         let messages_to_commit: Vec<&MLSPlaintext> = self.pending_proposals.iter().collect();
 
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         // Create Commit over all pending proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &self.credential_bundle,
+            &credential_bundle,
             &messages_to_commit,
             &[],
             true,
@@ -698,14 +755,14 @@ impl<'a> ManagedGroup<'a> {
         self.active
     }
 
-    /// Sets a different `CredentialBundle`
-    pub fn set_credential_bundle(&mut self, credential_bundle: &'a CredentialBundle) {
-        self.credential_bundle = credential_bundle;
-    }
-
-    /// Returns own credential
-    pub fn credential(&self) -> &Credential {
-        &self.credential_bundle.credential()
+    /// Returns own credential. If the group is inactive, it returns a
+    /// `UseAfterEviction` error.
+    pub fn credential(&self) -> Result<Credential, ManagedGroupError> {
+        if !self.is_active() {
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+        let tree = self.group.tree();
+        Ok(tree.own_key_package().credential().clone())
     }
 
     /// Get group ID
@@ -724,17 +781,23 @@ impl<'a> ManagedGroup<'a> {
     /// in the queue of pending proposals.
     pub fn self_update(
         &mut self,
+        key_store: &KeyStore,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         // If a KeyPackageBundle was provided, create an UpdateProposal
         let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
             let update_proposal = self.group.create_update_proposal(
                 &self.aad,
-                &self.credential_bundle,
+                &credential_bundle,
                 key_package_bundle.key_package().clone(),
             )?;
             self.own_kpbs.push(key_package_bundle);
@@ -754,7 +817,7 @@ impl<'a> ManagedGroup<'a> {
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &self.credential_bundle,
+            &credential_bundle,
             &messages_to_commit,
             &[],
             true, /* force_self_update */
@@ -788,11 +851,18 @@ impl<'a> ManagedGroup<'a> {
     /// Creates a proposal to update the own leaf node
     pub fn propose_self_update(
         &mut self,
+        key_store: &KeyStore,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
+
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
         let tree = self.group.tree();
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
@@ -800,14 +870,14 @@ impl<'a> ManagedGroup<'a> {
             None => {
                 let mut key_package_bundle =
                     KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
-                key_package_bundle.sign(self.credential_bundle);
+                key_package_bundle.sign(&credential_bundle);
                 key_package_bundle
             }
         };
 
         let plaintext_messages = vec![self.group.create_update_proposal(
             &self.aad,
-            &self.credential_bundle,
+            &credential_bundle,
             key_package_bundle.key_package().clone(),
         )?];
         drop(tree);
@@ -832,11 +902,10 @@ impl<'a> ManagedGroup<'a> {
     /// Loads the state from persisted state
     pub fn load<R: Read>(
         reader: R,
-        credential_bundle: &'a CredentialBundle,
         callbacks: &ManagedGroupCallbacks,
-    ) -> Result<ManagedGroup<'a>, Error> {
+    ) -> Result<ManagedGroup, Error> {
         let serialized_managed_group: SerializedManagedGroup = serde_json::from_reader(reader)?;
-        Ok(serialized_managed_group.into_managed_group(credential_bundle, callbacks))
+        Ok(serialized_managed_group.into_managed_group(callbacks))
     }
 
     /// Persists the state
@@ -854,7 +923,7 @@ impl<'a> ManagedGroup<'a> {
 }
 
 // Private methods of ManagedGroup
-impl<'a> ManagedGroup<'a> {
+impl ManagedGroup {
     /// Converts MLSPlaintext to MLSMessage. Depending on whether handshake
     /// message should be encrypted, MLSPlaintext messages are encrypted to
     /// MLSCiphertext first.
@@ -999,7 +1068,7 @@ impl<'a> ManagedGroup<'a> {
             // Remove proposals
             Proposal::Remove(remove_proposal) => {
                 let removal = Removal::new(
-                    self.credential_bundle.credential().clone(),
+                    indexed_members[&self.group.tree().own_node_index()].clone(),
                     sender_credential.clone(),
                     indexed_members[&LeafIndex::from(remove_proposal.removed)].clone(),
                 );
@@ -1086,6 +1155,19 @@ impl MLSMessage {
         match self {
             MLSMessage::Ciphertext(m) => m.is_handshake_message(),
             MLSMessage::Plaintext(m) => m.is_handshake_message(),
+        }
+    }
+}
+
+impl tls_codec::Serialize for MLSMessage {
+    fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), tls_codec::Error> {
+        match self {
+            MLSMessage::Plaintext(plaintext) => plaintext
+                .encode(buffer)
+                .map_err(|_| tls_codec::Error::EncodingError),
+            MLSMessage::Ciphertext(ciphertext) => ciphertext
+                .encode(buffer)
+                .map_err(|_| tls_codec::Error::EncodingError),
         }
     }
 }

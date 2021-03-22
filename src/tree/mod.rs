@@ -34,7 +34,7 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-mod tests;
+pub mod tests;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]

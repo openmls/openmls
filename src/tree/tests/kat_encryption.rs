@@ -512,6 +512,42 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 }
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }
+
+            // Check handshake keys
+            let (handshake_secret_key, handshake_secret_nonce) = secret_tree
+                .secret_for_decryption(
+                    ciphersuite,
+                    leaf_index,
+                    SecretType::HandshakeSecret,
+                    generation,
+                )
+                .expect("Error getting decryption secret");
+            if hex_to_bytes(&handshake.key) != handshake_secret_key.as_slice() {
+                return Err(EncTestVectorError::HandshakeSecretKeyMismatch);
+            }
+            if hex_to_bytes(&handshake.nonce) != handshake_secret_nonce.as_slice() {
+                return Err(EncTestVectorError::HandshakeSecretNonceMismatch);
+            }
+
+            // Setup group
+            let mls_ciphertext_handshake =
+                MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
+                    .expect("Error parsing MLSCiphertext");
+            let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
+            *group.epoch_secrets_mut().sender_data_secret_mut() =
+                SenderDataSecret::from(hex_to_bytes(&test_vector.sender_data_secret).as_slice());
+
+            // Decrypt and check message
+            let mls_plaintext_handshake = mls_ciphertext_handshake
+                .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
+                .expect("Error decrypting MLSCiphertext");
+            if hex_to_bytes(&handshake.plaintext)
+                != mls_plaintext_handshake
+                    .encode_detached()
+                    .expect("Error encoding MLSPlaintext")
+            {
+                return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
+            }
         }
         log::trace!("Finished test vector for leaf {:?}", leaf_index);
     }
@@ -529,6 +565,7 @@ fn read_test_vectors() {
             Err(e) => panic!("Error while checking encryption test vector.\n{:?}", e),
         }
     }
+    log::trace!("Finished test vector verification");
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]

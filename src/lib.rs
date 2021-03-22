@@ -35,8 +35,11 @@ mod extensions;
 pub mod framing;
 pub mod group;
 mod key_packages;
+pub mod key_store;
+pub mod managed_client;
 pub mod messages;
-mod schedule;
+// TODO: This should not be public. This is just temporary to export test vectors for interop.
+pub mod schedule;
 pub mod tree;
 
 pub use crate::tree::node;

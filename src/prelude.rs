@@ -17,6 +17,9 @@ pub use crate::tree::index::LeafIndex;
 // PSKs
 pub use crate::schedule::psk::ExternalPskBundle;
 
+// ManagedClient
+pub use crate::managed_client::{ManagedClient, ManagedClientConfig, ManagedClientError};
+
 pub use crate::ciphersuite::*;
 pub use crate::codec::*;
 pub use crate::config::*;
@@ -25,6 +28,7 @@ pub use crate::extensions::*;
 pub use crate::framing::{errors::*, sender::Sender, *};
 pub use crate::group::GroupId;
 pub use crate::key_packages::*;
+pub use crate::key_store::*;
 pub use crate::messages::{
     proposals::{
         AddProposal, PreSharedKeyProposal, ReInitProposal, RemoveProposal, UpdateProposal,

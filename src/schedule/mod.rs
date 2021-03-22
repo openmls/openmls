@@ -129,7 +129,7 @@ pub mod errors;
 pub(crate) mod psk;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-mod kat_key_schedule;
+pub mod kat_key_schedule;
 
 pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
 pub use psk::{PreSharedKeyID, PreSharedKeys, PskSecret};
