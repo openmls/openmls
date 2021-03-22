@@ -165,13 +165,7 @@ impl RatchetTree {
     /// Get a vector with a copy of all nodes in the tree, containing `None` for
     /// blank nodes.
     pub fn public_key_tree_copy(&self) -> Vec<Option<Node>> {
-        self.public_key_tree()
-            .iter()
-            .map(|&n| match n {
-                Some(v) => Some(v.clone()),
-                None => None,
-            })
-            .collect()
+        self.public_key_tree().iter().map(|&n| n.cloned()).collect()
     }
 
     /// Returns the number of leaves in a tree

@@ -70,20 +70,11 @@ impl Node {
     /// Returns the public HPKE key of either node type.
     pub fn public_hpke_key(&self) -> Option<&HPKEPublicKey> {
         match self.node_type {
-            NodeType::Leaf => {
-                if let Some(ref kp) = self.key_package {
-                    Some(kp.hpke_init_key())
-                } else {
-                    None
-                }
-            }
-            NodeType::Parent => {
-                if let Some(ref parent_node) = self.node {
-                    Some(&parent_node.public_key)
-                } else {
-                    None
-                }
-            }
+            NodeType::Leaf => self.key_package.as_ref().map(|kp| kp.hpke_init_key()),
+            NodeType::Parent => self
+                .node
+                .as_ref()
+                .map(|parent_node| &parent_node.public_key),
         }
     }
 
@@ -113,13 +104,7 @@ impl Node {
             return None;
         }
         match self.node_type {
-            NodeType::Parent => {
-                if let Some(node) = &self.node {
-                    Some(&node.parent_hash)
-                } else {
-                    None
-                }
-            }
+            NodeType::Parent => self.node.as_ref().map(|n| n.parent_hash.as_slice()),
             NodeType::Leaf => {
                 if let Some(key_package) = &self.key_package {
                     let parent_hash_extension =
