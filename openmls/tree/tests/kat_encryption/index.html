@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `kat_encryption` mod in crate `openmls`."><meta name="keywords" content="rust, rustlang, rust-lang, kat_encryption"><title>openmls::tree::tests::kat_encryption - Rust</title><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg">
+<link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png">
+<link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../../rust-logo.png' alt='logo'></div></a><p class="location">Module kat_encryption</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class="location"><a href="../../../index.html">openmls</a>::<wbr><a href="../../index.html">tree</a>::<wbr><a href="../index.html">tests</a></p><script>window.sidebarCurrent = {name: "kat_encryption", ty: "mod", relpath: "../"};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+                <a id="settings-menu" href="../../../../settings.html"><img src="../../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../../../src/openmls/tree/tests/kat_encryption.rs.html#1-549" title="goto source code">[src]</a></span><span class="in-band">Module <a href="../../../index.html">openmls</a>::<wbr><a href="../../index.html">tree</a>::<wbr><a href="../index.html">tests</a>::<wbr><a class="mod" href="">kat_encryption</a></span></h1><div class="docblock"><h1 id="known-answer-tests-for-encrypting-to-tree-nodes" class="section-header"><a href="#known-answer-tests-for-encrypting-to-tree-nodes">Known Answer Tests for encrypting to tree nodes</a></h1>
+<p>See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+for more description on the test vectors.</p>
+<h2 id="parameters" class="section-header"><a href="#parameters">Parameters:</a></h2>
+<ul>
+<li>Ciphersuite</li>
+<li>Number of leaves</li>
+<li>Number of generations</li>
+</ul>
+<h2 id="format" class="section-header"><a href="#format">Format:</a></h2>
+<pre><code class="language-text">{
+  &quot;cipher_suite&quot;: /* uint16 */,
+  &quot;n_leaves&quot;: /* uint32 */,
+  &quot;encryption_secret&quot;: /* hex-encoded binary data */,
+  &quot;sender_data_secret&quot;: /* hex-encoded binary data */,
+  &quot;sender_data_info&quot;: {
+    &quot;ciphertext&quot;: /* hex-encoded binary data */,
+    &quot;key&quot;: /* hex-encoded binary data */,
+    &quot;nonce&quot;: /* hex-encoded binary data */,
+  },
+  &quot;leaves&quot;: [
+    {
+      &quot;generations&quot;: /* uint32 */,
+      &quot;handshake&quot;: [ /* array with `generations` handshake keys and nonces */
+        {
+          &quot;key&quot;: /* hex-encoded binary data */,
+          &quot;nonce&quot;: /* hex-encoded binary data */,
+          &quot;plaintext&quot;: /* hex-encoded binary data */
+          &quot;ciphertext&quot;: /* hex-encoded binary data */
+        },
+        ...
+      ],
+      &quot;application&quot;: [ /* array with `generations` application keys and nonces */
+        {
+          &quot;key&quot;: /* hex-encoded binary data */,
+          &quot;nonce&quot;: /* hex-encoded binary data */,
+          &quot;plaintext&quot;: /* hex-encoded binary data */
+          &quot;ciphertext&quot;: /* hex-encoded binary data */
+        },
+        ...
+      ]
+    }
+  ]
+}
+</code></pre>
+<h2 id="verification" class="section-header"><a href="#verification">Verification:</a></h2>
+<p>For all <code>N</code> entries in the <code>leaves</code> and all generations <code>j</code></p>
+<ul>
+<li><code>leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]</code></li>
+<li><code>leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]</code></li>
+<li><code>leaves[N].handshake[j].plaintext</code> represents an MLSPlaintext containing a
+handshake message (Proposal or Commit) from leaf <code>N</code></li>
+<li><code>leaves[N].handshake[j].ciphertext</code> represents an MLSCiphertext object
+that successfully decrypts to an MLSPlaintext equivalent to
+<code>leaves[N].handshake[j].plaintext</code> using the keys for leaf <code>N</code> and
+generation <code>j</code>.</li>
+<li><code>leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]</code></li>
+<li><code>leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]</code></li>
+<li><code>leaves[N].application[j].plaintext</code> represents an MLSPlaintext containing
+application data from leaf <code>N</code></li>
+<li><code>leaves[N].application[j].ciphertext</code> represents an MLSCiphertext object
+that successfully decrypts to an MLSPlaintext equivalent to
+<code>leaves[N].handshake[j].plaintext</code> using the keys for leaf <code>N</code> and
+generation <code>j</code>.</li>
+<li><code>sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)</code></li>
+<li><code>sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)</code></li>
+</ul>
+<p>The extra factor of 2 in <code>2*N</code> ensures that only chains rooted at leaf nodes
+are tested.  The definitions of <code>ratchet_key</code> and <code>ratchet_nonce</code> are in the
+<a href="https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys">Encryption
+Keys</a>
+section of the specification.</p>
+</div><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2>
+<table><tr class="module-item"><td><a class="struct" href="struct.EncryptionTestVector.html" title="openmls::tree::tests::kat_encryption::EncryptionTestVector struct">EncryptionTestVector</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.LeafSequence.html" title="openmls::tree::tests::kat_encryption::LeafSequence struct">LeafSequence</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.RatchetStep.html" title="openmls::tree::tests::kat_encryption::RatchetStep struct">RatchetStep</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="struct" href="struct.SenderDataInfo.html" title="openmls::tree::tests::kat_encryption::SenderDataInfo struct">SenderDataInfo</a></td><td class="docblock-short"></td></tr></table><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2>
+<table><tr class="module-item"><td><a class="enum" href="enum.EncTestVectorError.html" title="openmls::tree::tests::kat_encryption::EncTestVectorError enum">EncTestVectorError</a></td><td class="docblock-short"></td></tr></table><h2 id="functions" class="section-header"><a href="#functions">Functions</a></h2>
+<table><tr class="module-item"><td><a class="fn" href="fn.build_application_messages.html" title="openmls::tree::tests::kat_encryption::build_application_messages fn">build_application_messages</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="fn" href="fn.build_handshake_messages.html" title="openmls::tree::tests::kat_encryption::build_handshake_messages fn">build_handshake_messages</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="fn" href="fn.generate_test_vector.html" title="openmls::tree::tests::kat_encryption::generate_test_vector fn">generate_test_vector</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="fn" href="fn.group.html" title="openmls::tree::tests::kat_encryption::group fn">group</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="fn" href="fn.receiver_group.html" title="openmls::tree::tests::kat_encryption::receiver_group fn">receiver_group</a></td><td class="docblock-short"></td></tr><tr class="module-item"><td><a class="fn" href="fn.run_test_vector.html" title="openmls::tree::tests::kat_encryption::run_test_vector fn">run_test_vector</a></td><td class="docblock-short"></td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../../";window.currentCrate = "openmls";</script><script src="../../../../main.js"></script><script defer src="../../../../search-index.js"></script></body></html>

@@ -289,6 +289,31 @@
 <span id="286">286</span>
 <span id="287">287</span>
 <span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
@@ -299,24 +324,24 @@
 <span class="doccomment">//!     branch(3),</span>
 <span class="doccomment">//!     (255)</span>
 <span class="doccomment">//!   } PSKType;</span>
-<span class="doccomment">//!   </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//!   struct {</span>
 <span class="doccomment">//!     PSKType psktype;</span>
 <span class="doccomment">//!     select (PreSharedKeyID.psktype) {</span>
 <span class="doccomment">//!       case external:</span>
 <span class="doccomment">//!         opaque psk_id&lt;0..255&gt;;</span>
-<span class="doccomment">//!   </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//!       case reinit:</span>
 <span class="doccomment">//!         opaque psk_group_id&lt;0..255&gt;;</span>
 <span class="doccomment">//!         uint64 psk_epoch;</span>
-<span class="doccomment">//!   </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//!       case branch:</span>
 <span class="doccomment">//!         opaque psk_group_id&lt;0..255&gt;;</span>
 <span class="doccomment">//!         uint64 psk_epoch;</span>
 <span class="doccomment">//!     }</span>
 <span class="doccomment">//!     opaque psk_nonce&lt;0..255&gt;;</span>
 <span class="doccomment">//!   } PreSharedKeyID;</span>
-<span class="doccomment">//!   </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//!   struct {</span>
 <span class="doccomment">//!       PreSharedKeyID psks&lt;0..2^16-1&gt;;</span>
 <span class="doccomment">//!   } PreSharedKeys;</span>
@@ -554,7 +579,8 @@
         }
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
         <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">psk</span>) <span class="kw">in</span> <span class="ident">psks</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">psk_input</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="prelude-val">None</span>, <span class="ident">psk</span>);
+            <span class="kw">let</span> <span class="ident">zero_secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">from</span>(<span class="ident">zero</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()));
+            <span class="kw">let</span> <span class="ident">psk_input</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="ident">zero_secret</span>, <span class="prelude-val">Some</span>(<span class="ident">psk</span>));
             <span class="kw">let</span> <span class="ident">psk_label</span> <span class="op">=</span> <span class="ident">PskLabel</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">psk_ids</span>[<span class="ident">index</span>], <span class="ident">index</span> <span class="kw">as</span> <span class="ident">u16</span>, <span class="ident">psks</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u16</span>)
                 .<span class="ident">encode_detached</span>()
                 <span class="comment">// It is safe to unwrap here, because the struct contains no vectors</span>
@@ -576,6 +602,30 @@
     <span class="doccomment">/// Return the inner secret</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">length</span>),
+        }
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">secret</span>: <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">clone</span>(),
+        }
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_slice</span>(<span class="ident">b</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> { <span class="ident">secret</span>: <span class="ident">b</span>.<span class="ident">into</span>() }
     }
 }
 </pre></div>

@@ -840,6 +840,29 @@
 <span id="837">837</span>
 <span id="838">838</span>
 <span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
@@ -971,7 +994,7 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">psk</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">mod</span> <span class="ident">kat_key_schedule</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::{<span class="ident">ErrorState</span>, <span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
@@ -1011,19 +1034,19 @@
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">length</span>),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_slice</span>(<span class="ident">b</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">secret</span>: <span class="ident">b</span>.<span class="ident">into</span>() }
     }
@@ -1051,19 +1074,19 @@
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>: <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">clone</span>(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_slice</span>(<span class="ident">b</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">secret</span>: <span class="ident">b</span>.<span class="ident">into</span>() }
     }
@@ -1088,20 +1111,20 @@
             .<span class="ident">into</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">commit_secret</span><span class="op">|</span> <span class="ident">commit_secret</span>.<span class="ident">secret</span>());
         <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span>
-            <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="ident">commit_secret_value</span>, <span class="kw-2">&amp;</span><span class="ident">init_secret</span>.<span class="ident">secret</span>);
+            <span class="ident">ciphersuite</span>.<span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="ident">init_secret</span>.<span class="ident">secret</span>, <span class="ident">commit_secret_value</span>);
         <span class="ident">JoinerSecret</span> {
             <span class="ident">secret</span>: <span class="ident">intermediate_secret</span>.<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;joiner&quot;</span>),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>: <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">clone</span>(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1128,6 +1151,17 @@
         <span class="ident">joiner_secret</span>: <span class="ident">JoinerSecret</span>,
         <span class="ident">psk</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+            <span class="string">&quot;Initializing the key schedule with {:?} ...&quot;</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">name</span>()
+        );
+        <span class="macro">log_crypto</span><span class="macro">!</span>(
+            <span class="ident">trace</span>,
+            <span class="string">&quot;  joiner_secret: {:x?}&quot;</span>,
+            <span class="ident">joiner_secret</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
+        );
+        <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="ident">psk</span>.<span class="ident">into</span>();
+        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  {}&quot;</span>, <span class="kw">if</span> <span class="ident">psk</span>.<span class="ident">is_some</span>() { <span class="string">&quot;with PSK&quot;</span> } <span class="kw">else</span> { <span class="string">&quot;&quot;</span> });
         <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>, <span class="ident">psk</span>.<span class="ident">into</span>());
         <span class="self">Self</span> {
             <span class="ident">ciphersuite</span>,
@@ -1156,6 +1190,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;Adding context to key schedule. {:?}&quot;</span>, <span class="ident">group_context</span>);
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State</span>::<span class="ident">Initial</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">is_none</span>() {
             <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(
                 <span class="string">&quot;Trying to add context to the key schedule while not in the initial state.&quot;</span>
@@ -1163,6 +1198,11 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError</span>::<span class="ident">InvalidState</span>(<span class="ident">ErrorState</span>::<span class="ident">NotInit</span>));
         }
         <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State</span>::<span class="ident">Context</span>;
+        <span class="macro">log_crypto</span><span class="macro">!</span>(
+            <span class="ident">trace</span>,
+            <span class="string">&quot;  intermediate_secret: {:x?}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
+        );
 
         <span class="self">self</span>.<span class="ident">epoch_secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">EpochSecret</span>::<span class="ident">new</span>(
             <span class="self">self</span>.<span class="ident">ciphersuite</span>,
@@ -1210,7 +1250,7 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>: <span class="ident">ciphersuite</span>
-                .<span class="ident">hkdf_extract</span>(<span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>()), <span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>.<span class="ident">secret</span>),
+                .<span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>.<span class="ident">secret</span>, <span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>())),
         }
     }
 }
@@ -1223,13 +1263,9 @@
     <span class="doccomment">/// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">intermediate_secret</span>: <span class="kw-2">&amp;</span><span class="ident">IntermediateSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="comment">// Unwrapping here is safe, because we know the key is not empty</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">ciphersuite</span>
-            .<span class="ident">hkdf_expand</span>(
-                <span class="kw-2">&amp;</span><span class="ident">intermediate_secret</span>.<span class="ident">secret</span>,
-                <span class="string">b&quot;welcome&quot;</span>,
-                <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
-            )
-            .<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>
+            .<span class="ident">secret</span>
+            .<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="string">&quot;welcome&quot;</span>);
         <span class="ident">WelcomeSecret</span> { <span class="ident">secret</span> }
     }
 
@@ -1249,7 +1285,7 @@
         (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>)
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1314,13 +1350,13 @@
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">EncryptionSecret</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
@@ -1349,7 +1385,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1377,7 +1413,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1402,7 +1438,7 @@
         <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>)
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1427,12 +1463,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">secret</span> }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1457,12 +1493,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">secret</span> }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1487,7 +1523,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
@@ -1514,7 +1550,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_random</span>(<span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
@@ -1522,13 +1558,13 @@
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SenderDataSecret</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
@@ -1646,6 +1682,15 @@
     <span class="doccomment">/// If the `init_secret` argument is `true`, the init secret is derived and</span>
     <span class="doccomment">/// part of the `EpochSecrets`. Otherwise not.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>, <span class="ident">init_secret</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+            <span class="string">&quot;Computing EpochSecrets from epoch secret with {:?}&quot;</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">name</span>()
+        );
+        <span class="macro">log_crypto</span><span class="macro">!</span>(
+            <span class="ident">trace</span>,
+            <span class="string">&quot;  epoch_secret: {:x?}&quot;</span>,
+            <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">to_bytes</span>()
+        );
         <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
         <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
         <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
@@ -1656,6 +1701,7 @@
         <span class="kw">let</span> <span class="ident">resumption_secret</span> <span class="op">=</span> <span class="ident">ResumptionSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
 
         <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">init_secret</span> {
+            <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
             <span class="prelude-val">Some</span>(<span class="ident">InitSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="ident">epoch_secret</span>))
         } <span class="kw">else</span> {
             <span class="prelude-val">None</span>
@@ -1674,7 +1720,7 @@
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_data_secret_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SenderDataSecret</span> {
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">sender_data_secret</span>

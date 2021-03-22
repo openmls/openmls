@@ -509,7 +509,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// This trait defines functions to interact with an extension.</span>
 <span class="attribute">#[<span class="ident">typetag</span>::<span class="ident">serde</span>(<span class="ident">tag</span> <span class="op">=</span> <span class="string">&quot;type&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Extension</span>: <span class="ident">Debug</span> <span class="op">+</span> <span class="ident">ExtensionHelper</span> <span class="op">+</span> <span class="ident">Send</span> {
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Extension</span>: <span class="ident">Debug</span> <span class="op">+</span> <span class="ident">ExtensionHelper</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
     <span class="doccomment">/// Build a new extension from a byte slice.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Note that all implementations of this trait are not public such that</span>

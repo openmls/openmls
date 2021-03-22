@@ -826,6 +826,53 @@
 <span id="823">823</span>
 <span id="824">824</span>
 <span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
@@ -841,6 +888,7 @@
     <span class="ident">ser</span>::{<span class="ident">SerializeStruct</span>, <span class="ident">Serializer</span>},
     <span class="ident">Deserialize</span>, <span class="ident">Deserializer</span>, <span class="ident">Serialize</span>,
 };
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">hash</span>::<span class="ident">Hash</span>;
 
 <span class="comment">// re-export for other parts of the library when we can use it</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::{<span class="ident">HPKEKeyPair</span>, <span class="ident">HPKEPrivateKey</span>, <span class="ident">HPKEPublicKey</span>};
@@ -854,11 +902,11 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupContext</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">ExporterSecret</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">SenderDataSecret</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">WelcomeSecret</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utils</span>::<span class="ident">random_u32</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utils</span>::<span class="ident">zero</span>;
 <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 
@@ -883,7 +931,7 @@
 <span class="macro">implement_enum_display</span><span class="macro">!</span>(<span class="ident">CiphersuiteName</span>);
 
 <span class="doccomment">/// SignatureScheme according to IANA TLS parameters</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SignatureScheme</span> {
@@ -1005,13 +1053,19 @@
 }
 
 <span class="kw">impl</span> <span class="ident">KdfLabel</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialized_label</span>(<span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">serialized_label</span>(<span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="comment">// TODO: This should throw an error. Generally, keys length should be</span>
         <span class="comment">// checked. (see #228).</span>
         <span class="kw">if</span> <span class="ident">length</span> <span class="op">&gt;</span> <span class="ident">u16</span>::<span class="ident">MAX</span>.<span class="ident">into</span>() {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Library error: Trying to derive a key with a too large length field!&quot;</span>)
         }
         <span class="kw">let</span> <span class="ident">full_label</span> <span class="op">=</span> <span class="string">&quot;mls10 &quot;</span>.<span class="ident">to_owned</span>() <span class="op">+</span> <span class="ident">label</span>;
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+            <span class="string">&quot;KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}&quot;</span>,
+            <span class="ident">length</span> <span class="kw">as</span> <span class="ident">u16</span>,
+            <span class="ident">full_label</span>,
+            <span class="ident">context</span>
+        );
         <span class="kw">let</span> <span class="ident">kdf_label</span> <span class="op">=</span> <span class="ident">KdfLabel</span> {
             <span class="ident">length</span>: <span class="ident">length</span> <span class="kw">as</span> <span class="ident">u16</span>,
             <span class="ident">label</span>: <span class="ident">full_label</span>,
@@ -1049,12 +1103,27 @@
         <span class="ident">length</span>: <span class="ident">usize</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
         <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">KdfLabel</span>::<span class="ident">serialized_label</span>(<span class="ident">context</span>, <span class="ident">label</span>, <span class="ident">length</span>);
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
+            <span class="string">&quot;KDF expand with label \&quot;{}\&quot; and {:?} with context {:x?}&quot;</span>,
+            <span class="ident">label</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
+            <span class="ident">context</span>
+        );
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;  serialized context: {:x?}&quot;</span>, <span class="ident">info</span>);
+        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  secret: {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">value</span>);
         <span class="ident">ciphersuite</span>.<span class="ident">hkdf_expand</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">length</span>).<span class="ident">unwrap</span>()
     }
 
     <span class="doccomment">/// Derive a new `Secret` from the this one by expanding it with the given</span>
     <span class="doccomment">/// `label` and an empty `context`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
+        <span class="macro">log_crypto</span><span class="macro">!</span>(
+            <span class="ident">trace</span>,
+            <span class="string">&quot;derive secret from {:x?} with label {} and {:?}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">value</span>,
+            <span class="ident">label</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">name</span>()
+        );
         <span class="self">self</span>.<span class="ident">kdf_expand_label</span>(<span class="ident">ciphersuite</span>, <span class="ident">label</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())
     }
 
@@ -1100,10 +1169,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">group_context</span>.<span class="ident">serialized</span>();
         <span class="kw">let</span> <span class="ident">context_hash</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="ident">context</span>);
         <span class="self">self</span>.<span class="ident">secret</span>()
             .<span class="ident">derive_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">label</span>)
@@ -1151,7 +1219,7 @@
     <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SignaturePublicKey</span> {
     <span class="ident">signature_scheme</span>: <span class="ident">SignatureScheme</span>,
     <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
@@ -1197,7 +1265,7 @@
 
 <span class="kw">impl</span> <span class="ident">Ciphersuite</span> {
     <span class="doccomment">/// Create a new ciphersuite from the given `name`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">CiphersuiteName</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">CiphersuiteName</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="ident">Config</span>::<span class="ident">supported_ciphersuite_names</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConfigError</span>::<span class="ident">UnsupportedCiphersuite</span>);
         }
@@ -1255,8 +1323,12 @@
     }
 
     <span class="doccomment">/// HKDF extract.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">salt_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Secret</span><span class="op">&gt;</span>, <span class="ident">ikm</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
-        <span class="kw">let</span> <span class="ident">salt</span> <span class="op">=</span> <span class="ident">salt_option</span>.<span class="ident">unwrap_or_default</span>();
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">salt</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>, <span class="ident">ikm_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Secret</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;HKDF extract with {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>);
+        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  salt: {:x?}&quot;</span>, <span class="ident">salt</span>.<span class="ident">value</span>);
+        <span class="kw">let</span> <span class="ident">zero_secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">from</span>(<span class="ident">zero</span>(<span class="self">self</span>.<span class="ident">hash_length</span>()));
+        <span class="kw">let</span> <span class="ident">ikm</span> <span class="op">=</span> <span class="ident">ikm_option</span>.<span class="ident">unwrap_or</span>(<span class="kw-2">&amp;</span><span class="ident">zero_secret</span>);
+        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  ikm:  {:x?}&quot;</span>, <span class="ident">ikm</span>.<span class="ident">value</span>);
         <span class="ident">Secret</span> {
             <span class="ident">value</span>: <span class="ident">hkdf_extract</span>(<span class="self">self</span>.<span class="ident">hmac</span>, <span class="ident">salt</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(), <span class="ident">ikm</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()),
         }
@@ -1362,10 +1434,15 @@
         <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">sender_data_secret</span>: <span class="kw-2">&amp;</span><span class="ident">SenderDataSecret</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">ciphertext_sample</span> <span class="op">=</span> <span class="ident">ciphertext_sample</span>(<span class="ident">ciphersuite</span>, <span class="ident">ciphertext</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+            <span class="string">&quot;AeadKey::from_sender_data_secret ciphertext sample: {:x?}&quot;</span>,
+            <span class="ident">ciphertext_sample</span>
+        );
         <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">sender_data_secret</span>.<span class="ident">secret</span>().<span class="ident">kdf_expand_label</span>(
             <span class="ident">ciphersuite</span>,
             <span class="string">&quot;key&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
+            <span class="kw-2">&amp;</span><span class="ident">ciphertext_sample</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
         );
         <span class="ident">AeadKey</span> {
@@ -1404,7 +1481,7 @@
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="doccomment">/// Get a slice to the key value.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
@@ -1455,6 +1532,17 @@
     }
 }
 
+<span class="comment">// Get a ciphertext sample of `hash_length` from the ciphertext.</span>
+<span class="kw">fn</span> <span class="ident">ciphertext_sample</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>] {
+    <span class="kw">let</span> <span class="ident">sample_length</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>();
+    <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Getting ciphertext sample of length {:?}&quot;</span>, <span class="ident">sample_length</span>);
+    <span class="kw">if</span> <span class="ident">ciphertext</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">sample_length</span> {
+        <span class="ident">ciphertext</span>
+    } <span class="kw">else</span> {
+        <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>[<span class="number">0</span>..<span class="ident">sample_length</span>]
+    }
+}
+
 <span class="kw">impl</span> <span class="ident">AeadNonce</span> {
     <span class="doccomment">/// Create an `AeadNonce` from a `Secret`. TODO: This function should</span>
     <span class="doccomment">/// disappear when tackling issue #103.</span>
@@ -1469,10 +1557,15 @@
         <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">sender_data_secret</span>: <span class="kw-2">&amp;</span><span class="ident">SenderDataSecret</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">ciphertext_sample</span> <span class="op">=</span> <span class="ident">ciphertext_sample</span>(<span class="ident">ciphersuite</span>, <span class="ident">ciphertext</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+            <span class="string">&quot;AeadNonce::from_sender_data_secret ciphertext sample: {:x?}&quot;</span>,
+            <span class="ident">ciphertext_sample</span>
+        );
         <span class="kw">let</span> <span class="ident">nonce_secret</span> <span class="op">=</span> <span class="ident">sender_data_secret</span>.<span class="ident">secret</span>().<span class="ident">kdf_expand_label</span>(
             <span class="ident">ciphersuite</span>,
             <span class="string">&quot;nonce&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
+            <span class="kw-2">&amp;</span><span class="ident">ciphertext_sample</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
         );
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">NONCE_BYTES</span>];
@@ -1505,16 +1598,23 @@
     }
 
     <span class="doccomment">/// Get a slice to the nonce value.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
     }
 
     <span class="doccomment">/// Xor the first bytes of the nonce with the reuse_guard.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">reuse_guard</span>: <span class="kw-2">&amp;</span><span class="ident">ReuseGuard</span>) {
+        <span class="macro">log_crypto</span><span class="macro">!</span>(
+            <span class="ident">trace</span>,
+            <span class="string">&quot;  XOR re-use guard {:x?}^{:x?}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">value</span>,
+            <span class="ident">reuse_guard</span>.<span class="ident">value</span>
+        );
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">REUSE_GUARD_BYTES</span> {
             <span class="self">self</span>.<span class="ident">value</span>[<span class="ident">i</span>] <span class="op">^</span><span class="op">=</span> <span class="ident">reuse_guard</span>.<span class="ident">value</span>[<span class="ident">i</span>]
         }
+        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;    = {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">value</span>);
     }
 }
 
@@ -1540,12 +1640,6 @@
     <span class="doccomment">/// Get the private and public key objects</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_tuple</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">SignaturePrivateKey</span>, <span class="ident">SignaturePublicKey</span>) {
         (<span class="self">self</span>.<span class="ident">private_key</span>, <span class="self">self</span>.<span class="ident">public_key</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">SignaturePublicKey</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">value</span> <span class="op">=</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">value</span>
     }
 }
 

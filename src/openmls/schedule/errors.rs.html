@@ -22,6 +22,25 @@
 <span id="19">19</span>
 <span id="20">20</span>
 <span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ErrorState</span> {
@@ -42,6 +61,25 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskSecretError</span> {
         <span class="ident">TooManyKeys</span> <span class="op">=</span> <span class="string">&quot;More than 2^16 PSKS were provided.&quot;</span>,
         <span class="ident">DifferentLength</span> <span class="op">=</span> <span class="string">&quot;The IDs and secrets vectors have different lengths.&quot;</span>,
+    }
+}
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="macro">implement_error</span><span class="macro">!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KSTestVectorError</span> {
+        <span class="ident">JoinerSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed joiner secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">WelcomeSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed welcome secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">InitSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed init secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">GroupContextMismatch</span> <span class="op">=</span> <span class="string">&quot;The group context doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">SenderDataSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed sender data secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">EncryptionSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed encryption secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">ExporterSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed exporter secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">AuthenticationSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed authentication secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">ExternalSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed external secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">ConfirmationKeyMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed confirmation key doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">MembershipKeyMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed membership key doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">ResumptionSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed resumption secret doesn&#39;t match the one in the test vector.&quot;</span>,
+        <span class="ident">ExternalPubMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed external public key doesn&#39;t match the one in the test vector.&quot;</span>,
     }
 }
 </pre></div>
