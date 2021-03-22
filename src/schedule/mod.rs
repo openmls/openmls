@@ -296,7 +296,7 @@ impl KeySchedule {
         );
         let psk = psk.into();
         log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
-        let intermediate_secret = IntermediateSecret::new(ciphersuite, &joiner_secret, psk.into());
+        let intermediate_secret = IntermediateSecret::new(ciphersuite, &joiner_secret, psk);
         Self {
             ciphersuite,
             intermediate_secret: Some(intermediate_secret),
