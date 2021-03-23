@@ -69,7 +69,7 @@ impl Codec for ExtensionType {
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let value = u16::decode(cursor)?;
-        Ok(Self::try_from(value)?)
+        Self::try_from(value)
     }
 }
 
