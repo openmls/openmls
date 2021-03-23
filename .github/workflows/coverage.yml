@@ -12,11 +12,14 @@ jobs:
         with:
           submodules: true
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           override: true
+
+      - name: Clean
+        run: cargo clean
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
