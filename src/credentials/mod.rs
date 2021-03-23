@@ -79,6 +79,13 @@ impl Credential {
             MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
+    /// Get the public key contained in the credential.
+    pub fn signature_key(&self) -> &SignaturePublicKey {
+        match &self.credential {
+            MLSCredentialType::Basic(basic_credential) => &basic_credential.public_key,
+            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+        }
+    }
 }
 
 impl From<MLSCredentialType> for Credential {

@@ -3,12 +3,18 @@
 //! Proper testing is done through the public APIs.
 
 use super::*;
-use crate::codec::{Codec, Cursor};
+
+use crate::{
+    codec::{Codec, Cursor},
+    prelude::*,
+};
+
+use test_macros::ctest;
 
 #[test]
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
-    let extension_bytes = [0, 1, 0, 16, 1, 1, 6, 0, 1, 0, 3, 0, 2, 6, 0, 1, 0, 2, 0, 3];
+    let extension_bytes = [0, 1, 0, 16, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3];
 
     let ext = CapabilitiesExtension::default();
     let ext_struct = ext.to_extension_struct();
@@ -51,3 +57,154 @@ fn lifetime() {
     std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(!ext.is_valid());
 }
+
+// This tests the ratchet tree extension to deliver the public ratcheting tree
+// in-band
+
+ctest!(ratchet_tree_extension {
+    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
+
+    // Generate KeyPackages
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+            .unwrap();
+
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+            .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    let config = GroupConfig {
+        add_ratchet_tree_extension: true,
+        ..GroupConfig::default()
+    };
+
+    // === Alice creates a group with the ratchet tree extension ===
+    let group_id = [1, 2, 3, 4];
+    let mut alice_group = MlsGroup::new(
+        &group_id,
+        ciphersuite.name(),
+        alice_key_package_bundle,
+        config,
+        None, /* Initial PSK */
+    )
+    .unwrap();
+
+    // === Alice adds Bob ===
+    let bob_add_proposal = alice_group
+        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .expect("Could not create proposal.");
+    let epoch_proposals = &[&bob_add_proposal];
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+        .create_commit(
+            group_aad,
+            &alice_credential_bundle,
+            epoch_proposals,
+            &[],
+            false,
+            None,
+        )
+        .expect("Error creating commit");
+
+    alice_group
+        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
+        .expect("error applying commit");
+
+    let bob_group = MlsGroup::new_from_welcome(
+        welcome_bundle_alice_bob_option.unwrap(),
+        None,
+        bob_key_package_bundle,
+        None,
+    )
+    .expect("Could not join group with ratchet tree extension");
+
+    // Make sure the group state is the same
+    assert_eq!(
+        alice_group.authentication_secret(),
+        bob_group.authentication_secret()
+    );
+
+    // Make sure both groups have set the flag correctly
+    assert!(alice_group.use_ratchet_tree_extension());
+    assert!(bob_group.use_ratchet_tree_extension());
+
+    // === Alice creates a group without the ratchet tree extension ===
+
+    // Generate KeyPackages
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+            .unwrap();
+
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+            .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    let config = GroupConfig {
+        add_ratchet_tree_extension: false,
+        ..GroupConfig::default()
+    };
+
+    let group_id = [5, 6, 7, 8];
+    let mut alice_group = MlsGroup::new(
+        &group_id,
+        ciphersuite.name(),
+        alice_key_package_bundle,
+        config,
+        None, /* Initial PSK */
+    )
+    .unwrap();
+
+    // === Alice adds Bob ===
+    let bob_add_proposal = alice_group
+        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .expect("Could not create proposal.");
+    let epoch_proposals = &[&bob_add_proposal];
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+        .create_commit(
+            group_aad,
+            &alice_credential_bundle,
+            epoch_proposals,
+            &[],
+            false,
+            None,
+        )
+        .expect("Error creating commit");
+
+    alice_group
+        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
+        .expect("error applying commit");
+
+    let error = MlsGroup::new_from_welcome(
+        welcome_bundle_alice_bob_option.unwrap(),
+        None,
+        bob_key_package_bundle,
+        None,
+    )
+    .err();
+
+    // We expect an error because the ratchet tree is missing
+    assert_eq!(
+        error.expect("We expected an error"),
+        GroupError::WelcomeError(WelcomeError::MissingRatchetTree)
+    );
+});

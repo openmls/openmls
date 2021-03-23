@@ -93,7 +93,7 @@ impl SenderRatchet {
             ciphersuite,
             secret,
             "secret",
-            self.index.into(),
+            NodeIndex::from(self.index).as_u32(),
             self.generation,
             ciphersuite.hash_length(),
         )
@@ -105,11 +105,12 @@ impl SenderRatchet {
         secret: &Secret,
         generation: u32,
     ) -> RatchetSecrets {
+        let tree_index = NodeIndex::from(self.index).as_u32();
         let nonce = derive_tree_secret(
             &ciphersuite,
             secret,
             "nonce",
-            self.index.into(),
+            tree_index,
             generation,
             ciphersuite.aead_nonce_length(),
         );
@@ -117,7 +118,7 @@ impl SenderRatchet {
             &ciphersuite,
             secret,
             "key",
-            self.index.into(),
+            tree_index,
             generation,
             ciphersuite.aead_key_length(),
         );

@@ -128,7 +128,7 @@ pub mod codec;
 pub mod errors;
 pub(crate) mod psk;
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 mod kat_key_schedule;
 
 pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
@@ -168,19 +168,19 @@ impl CommitSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn random(length: usize) -> Self {
         Self {
             secret: Secret::random(length),
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }
@@ -208,19 +208,19 @@ impl InitSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }
@@ -245,20 +245,20 @@ impl JoinerSecret {
             .into()
             .map(|commit_secret| commit_secret.secret());
         let intermediate_secret =
-            ciphersuite.hkdf_extract(commit_secret_value, &init_secret.secret);
+            ciphersuite.hkdf_extract(&init_secret.secret, commit_secret_value);
         JoinerSecret {
             secret: intermediate_secret.derive_secret(ciphersuite, "joiner"),
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -285,6 +285,17 @@ impl KeySchedule {
         joiner_secret: JoinerSecret,
         psk: impl Into<Option<PskSecret>>,
     ) -> Self {
+        log::debug!(
+            "Initializing the key schedule with {:?} ...",
+            ciphersuite.name()
+        );
+        log_crypto!(
+            trace,
+            "  joiner_secret: {:x?}",
+            joiner_secret.secret.to_bytes()
+        );
+        let psk = psk.into();
+        log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
         let intermediate_secret = IntermediateSecret::new(ciphersuite, &joiner_secret, psk.into());
         Self {
             ciphersuite,
@@ -313,6 +324,7 @@ impl KeySchedule {
         &mut self,
         group_context: &GroupContext,
     ) -> Result<(), KeyScheduleError> {
+        log::trace!("Adding context to key schedule. {:?}", group_context);
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!(
                 "Trying to add context to the key schedule while not in the initial state."
@@ -320,6 +332,11 @@ impl KeySchedule {
             return Err(KeyScheduleError::InvalidState(ErrorState::NotInit));
         }
         self.state = State::Context;
+        log_crypto!(
+            trace,
+            "  intermediate_secret: {:x?}",
+            self.intermediate_secret.as_ref().unwrap().secret.to_bytes()
+        );
 
         self.epoch_secret = Some(EpochSecret::new(
             self.ciphersuite,
@@ -367,7 +384,7 @@ impl IntermediateSecret {
     ) -> Self {
         Self {
             secret: ciphersuite
-                .hkdf_extract(psk.as_ref().map(|p| p.secret()), &joiner_secret.secret),
+                .hkdf_extract(&joiner_secret.secret, psk.as_ref().map(|p| p.secret())),
         }
     }
 }
@@ -380,13 +397,9 @@ impl WelcomeSecret {
     /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
     fn new(ciphersuite: &Ciphersuite, intermediate_secret: &IntermediateSecret) -> Self {
         // Unwrapping here is safe, because we know the key is not empty
-        let secret = ciphersuite
-            .hkdf_expand(
-                &intermediate_secret.secret,
-                b"welcome",
-                ciphersuite.hash_length(),
-            )
-            .unwrap();
+        let secret = intermediate_secret
+            .secret
+            .derive_secret(ciphersuite, "welcome");
         WelcomeSecret { secret }
     }
 
@@ -406,7 +419,7 @@ impl WelcomeSecret {
         (welcome_key, welcome_nonce)
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -471,13 +484,13 @@ impl EncryptionSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 #[doc(hidden)]
 impl From<&[u8]> for EncryptionSecret {
     fn from(bytes: &[u8]) -> Self {
@@ -506,7 +519,7 @@ impl ExporterSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -534,7 +547,7 @@ impl AuthenticationSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -559,7 +572,7 @@ impl ExternalSecret {
         ciphersuite.derive_hpke_keypair(&self.secret)
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -575,9 +588,7 @@ pub struct ConfirmationKey {
 impl ConfirmationKey {
     /// Derive an `ConfirmationKey` from an `EpochSecret`.
     fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret
-            .secret
-            .derive_secret(ciphersuite, "confirmation");
+        let secret = epoch_secret.secret.derive_secret(ciphersuite, "confirm");
         Self { secret }
     }
 
@@ -586,12 +597,12 @@ impl ConfirmationKey {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -616,12 +627,12 @@ impl MembershipKey {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -646,7 +657,7 @@ impl ResumptionSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
@@ -673,7 +684,7 @@ impl SenderDataSecret {
         &self.secret
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     #[doc(hidden)]
     pub fn from_random(length: usize) -> Self {
         Self {
@@ -681,13 +692,13 @@ impl SenderDataSecret {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 #[doc(hidden)]
 impl From<&[u8]> for SenderDataSecret {
     fn from(bytes: &[u8]) -> Self {
@@ -805,6 +816,15 @@ impl EpochSecrets {
     /// If the `init_secret` argument is `true`, the init secret is derived and
     /// part of the `EpochSecrets`. Otherwise not.
     fn new(ciphersuite: &Ciphersuite, epoch_secret: EpochSecret, init_secret: bool) -> Self {
+        log::debug!(
+            "Computing EpochSecrets from epoch secret with {:?}",
+            ciphersuite.name()
+        );
+        log_crypto!(
+            trace,
+            "  epoch_secret: {:x?}",
+            epoch_secret.secret.to_bytes()
+        );
         let sender_data_secret = SenderDataSecret::new(ciphersuite, &epoch_secret);
         let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);
         let exporter_secret = ExporterSecret::new(ciphersuite, &epoch_secret);
@@ -815,6 +835,7 @@ impl EpochSecrets {
         let resumption_secret = ResumptionSecret::new(ciphersuite, &epoch_secret);
 
         let init_secret = if init_secret {
+            log::trace!("  Computing init secret.");
             Some(InitSecret::new(ciphersuite, epoch_secret))
         } else {
             None
@@ -833,7 +854,7 @@ impl EpochSecrets {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     #[doc(hidden)]
     pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret

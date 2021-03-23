@@ -82,7 +82,11 @@ impl MlsGroup {
                     Some(kpb) => kpb,
                     None => return Err(ApplyCommitError::MissingOwnKeyPackage),
                 };
-                provisional_tree.replace_private_tree(own_kpb, &serialized_context)
+                // We can unwrap here, because we know there was a path and thus
+                // a new commit secret must have been set.
+                provisional_tree
+                    .replace_private_tree(own_kpb, &serialized_context)
+                    .unwrap()
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
                 // later.
@@ -120,13 +124,14 @@ impl MlsGroup {
         )?;
 
         // TODO #186: Implement extensions
+        let extensions: Vec<Box<dyn Extension>> = Vec::new();
 
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
             provisional_tree.tree_hash(),
             confirmed_transcript_hash.clone(),
-            &[],
+            &extensions,
         )?;
 
         // Create key schedule

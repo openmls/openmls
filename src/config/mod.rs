@@ -26,8 +26,8 @@ const DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN: u64 = 60 * 60; // in Seconds
 /// TODO #13: This should come from the crypto provider
 const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
     CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
 ];
 
 lazy_static! {

@@ -55,23 +55,16 @@ impl MLSCiphertext {
                 &ratchet_nonce,
             )
             .map_err(|_| MLSCiphertextError::EncryptionError)?;
-        // Extract ciphertext sample for key/nonce derivation
-        let sample_length = ciphersuite.hash_length();
-        let ciphertext_sample = if ciphertext.len() <= sample_length {
-            &ciphertext
-        } else {
-            &ciphertext[0..sample_length]
-        };
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = AeadKey::from_sender_data_secret(
             ciphersuite,
-            ciphertext_sample,
+            &ciphertext,
             epoch_secrets.sender_data_secret(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_sender_data_secret(
             ciphersuite,
-            ciphertext_sample,
+            &ciphertext,
             epoch_secrets.sender_data_secret(),
         );
         // Compute sender data nonce by xoring reuse guard and key schedule
@@ -108,23 +101,17 @@ impl MLSCiphertext {
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
-        // Extract ciphertext sample for key/nonce derivation
-        let sample_length = ciphersuite.hash_length();
-        let ciphertext_sample = if self.ciphertext.len() <= sample_length {
-            &self.ciphertext
-        } else {
-            &self.ciphertext[0..sample_length]
-        };
+        log::debug!("Decrypting MLSCiphertext");
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = AeadKey::from_sender_data_secret(
             ciphersuite,
-            ciphertext_sample,
+            &self.ciphertext,
             epoch_secrets.sender_data_secret(),
         );
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = AeadNonce::from_sender_data_secret(
             ciphersuite,
-            ciphertext_sample,
+            &self.ciphertext,
             epoch_secrets.sender_data_secret(),
         );
         // Serialize sender data AAD
@@ -138,7 +125,11 @@ impl MLSCiphertext {
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
-            .map_err(|_| MLSCiphertextError::DecryptionError)?;
+            .map_err(|_| {
+                log::error!("Sender data decryption error");
+                MLSCiphertextError::DecryptionError
+            })?;
+        log::trace!("  Successfully decrypted sender data.");
         let sender_data = MLSSenderData::decode_detached(&sender_data_bytes)?;
         let secret_type = SecretType::try_from(&self.content_type)
             .map_err(|_| MLSCiphertextError::InvalidContentType)?;
@@ -150,7 +141,10 @@ impl MLSCiphertext {
                 secret_type,
                 sender_data.generation,
             )
-            .map_err(|_| MLSCiphertextError::GenerationOutOfBound)?;
+            .map_err(|_| {
+                log::error!("  Ciphertext generation out of bounds");
+                MLSCiphertextError::GenerationOutOfBound
+            })?;
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         // Serialize content AAD
@@ -168,14 +162,27 @@ impl MLSCiphertext {
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_nonce,
             )
-            .map_err(|_| MLSCiphertextError::DecryptionError)?;
-        let mls_ciphertext_content =
-            MLSCiphertextContent::decode_detached(&mls_ciphertext_content_bytes)?;
+            .map_err(|_| {
+                log::error!("  Ciphertext decryption error");
+                MLSCiphertextError::DecryptionError
+            })?;
+        log::trace!(
+            "  Successfully decrypted MLSPlaintext bytes: {:x?}",
+            mls_ciphertext_content_bytes
+        );
+        let mls_ciphertext_content = MLSCiphertextContent::decode(
+            self.content_type,
+            &mut Cursor::new(&mls_ciphertext_content_bytes),
+        )?;
         // Extract sender. The sender type is always of type Member for MLSCiphertext.
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: sender_data.sender,
         };
+        log::trace!(
+            "  Successfully decoded MLSPlaintext with: {:x?}",
+            mls_ciphertext_content.content
+        );
         // Return the MLSPlaintext
         Ok(MLSPlaintext {
             group_id: self.group_id.clone(),
