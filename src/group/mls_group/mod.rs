@@ -386,11 +386,7 @@ impl MlsGroup {
 
     /// Returns the authentication secret
     pub fn authentication_secret(&self) -> Vec<u8> {
-        self.epoch_secrets()
-            .authentication_secret()
-            .secret()
-            .to_bytes()
-            .to_vec()
+        self.epoch_secrets().authentication_secret().export()
     }
 
     /// Loads the state from persisted state

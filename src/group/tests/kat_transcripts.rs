@@ -16,7 +16,7 @@ use crate::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
         GroupId,
     },
-    messages::{Commit, ConfirmationTag},
+    messages::Commit,
     prelude::{
         random_u32, random_u64, randombytes, sender::SenderType, ContentType, LeafIndex,
         MLSPlaintext, MLSPlaintextCommitAuthData, MLSPlaintextCommitContent,
@@ -81,11 +81,7 @@ pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> TranscriptTestVector {
         &[], // extensions
     )
     .expect("Error creating group context");
-    let confirmation_tag = ConfirmationTag::new(
-        ciphersuite,
-        &confirmation_key,
-        &confirmed_transcript_hash_before,
-    );
+    let confirmation_tag = confirmation_key.tag(ciphersuite, &confirmed_transcript_hash_before);
     commit.confirmation_tag = Some(confirmation_tag);
     commit
         .add_membership_tag(ciphersuite, context.serialized(), &membership_key)
@@ -188,11 +184,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
 
-    let my_confirmation_tag = ConfirmationTag::new(
-        &ciphersuite,
-        &confirmation_key,
-        &confirmed_transcript_hash_before,
-    );
+    let my_confirmation_tag = confirmation_key.tag(ciphersuite, &confirmed_transcript_hash_before);
     if &my_confirmation_tag
         != commit
             .confirmation_tag

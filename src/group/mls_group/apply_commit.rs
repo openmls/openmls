@@ -3,7 +3,6 @@ use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::*;
 use crate::schedule::CommitSecret;
 
 impl MlsGroup {
@@ -160,11 +159,9 @@ impl MlsGroup {
         )?;
 
         // Verify confirmation tag
-        let own_confirmation_tag = ConfirmationTag::new(
-            &ciphersuite,
-            &provisional_epoch_secrets.confirmation_key(),
-            &confirmed_transcript_hash,
-        );
+        let own_confirmation_tag = provisional_epoch_secrets
+            .confirmation_key()
+            .tag(&ciphersuite, &confirmed_transcript_hash);
         if &own_confirmation_tag != received_confirmation_tag {
             return Err(ApplyCommitError::ConfirmationTagMismatch);
         }

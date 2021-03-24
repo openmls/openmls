@@ -114,12 +114,15 @@
 //! | `resumption_secret`     | "resumption"    |
 //! ```
 
-use crate::ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HPKEKeyPair, Secret};
 use crate::codec::*;
 use crate::group::GroupContext;
 use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
 use crate::utils::zero;
+use crate::{
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HPKEKeyPair, Secret},
+    messages::ConfirmationTag,
+};
 
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -154,10 +157,6 @@ impl CommitSecret {
             path_secret.kdf_expand_label(ciphersuite, "path", &[], ciphersuite.hash_length());
 
         Self { secret }
-    }
-
-    fn secret(&self) -> &Secret {
-        &self.secret
     }
 
     /// Create a CommitSecret consisting of an all-zero string of length
@@ -241,11 +240,10 @@ impl JoinerSecret {
         commit_secret_option: impl Into<Option<&'a CommitSecret>>,
         init_secret: &InitSecret,
     ) -> Self {
-        let commit_secret_value = commit_secret_option
-            .into()
-            .map(|commit_secret| commit_secret.secret());
-        let intermediate_secret =
-            ciphersuite.hkdf_extract(&init_secret.secret, commit_secret_value);
+        let intermediate_secret = ciphersuite.hkdf_extract(
+            &init_secret.secret,
+            commit_secret_option.into().map(|cs| &cs.secret),
+        );
         JoinerSecret {
             secret: intermediate_secret.derive_secret(ciphersuite, "joiner"),
         }
@@ -566,9 +564,9 @@ impl AuthenticationSecret {
         Self { secret }
     }
 
-    /// Get the internal `Secret`.
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
+    /// ☣️ Get a copy of the secret bytes.
+    pub(crate) fn export(&self) -> Vec<u8> {
+        self.secret.to_bytes().to_vec()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -616,9 +614,27 @@ impl ConfirmationKey {
         Self { secret }
     }
 
-    /// Get the internal `Secret`.
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
+    /// Create a new confirmation tag.
+    ///
+    /// >  11.2. Commit
+    ///
+    /// ```text
+    /// MLSPlaintext.confirmation_tag =
+    ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
+    /// ```
+    pub fn tag(
+        &self,
+        ciphersuite: &Ciphersuite,
+        confirmed_transcript_hash: &[u8],
+    ) -> ConfirmationTag {
+        ConfirmationTag(
+            ciphersuite
+                .mac(
+                    &self.secret,
+                    &Secret::from(confirmed_transcript_hash.to_vec()),
+                )
+                .into(),
+        )
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -674,11 +690,6 @@ impl ResumptionSecret {
     fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
         let secret = epoch_secret.secret.derive_secret(ciphersuite, "resumption");
         Self { secret }
-    }
-
-    /// Get the internal `Secret`.
-    pub fn secret(&self) -> &Secret {
-        &self.secret
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
