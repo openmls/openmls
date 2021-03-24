@@ -229,7 +229,7 @@
 
 <span class="doccomment">/// Supported ciphersuites</span>
 <span class="doccomment">/// TODO #13: This should come from the crypto provider</span>
-<span class="kw">const</span> <span class="ident">SUPPORTED_CIPHERSUITE_NAMES</span>: <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">SUPPORTED_CIPHERSUITE_NAMES</span>: <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[
     <span class="ident">CiphersuiteName</span>::<span class="ident">MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span>,
     <span class="ident">CiphersuiteName</span>::<span class="ident">MLS10_128_DHKEMP256_AES128GCM_SHA256_P256</span>,
     <span class="ident">CiphersuiteName</span>::<span class="ident">MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</span>,
