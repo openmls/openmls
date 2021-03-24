@@ -142,11 +142,9 @@ impl MlsGroup {
         let provisional_epoch_secrets = key_schedule.epoch_secrets(false)?;
 
         // Calculate the confirmation tag
-        let confirmation_tag = ConfirmationTag::new(
-            &ciphersuite,
-            &provisional_epoch_secrets.confirmation_key(),
-            &confirmed_transcript_hash,
-        );
+        let confirmation_tag = provisional_epoch_secrets
+            .confirmation_key()
+            .tag(&ciphersuite, &confirmed_transcript_hash);
 
         // Set the confirmation tag
         mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
