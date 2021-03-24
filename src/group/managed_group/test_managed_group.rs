@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use std::convert::TryFrom;
-use test_macros::ctest;
 
 #[test]
 fn test_managed_group_persistence() {
@@ -194,8 +193,8 @@ fn remover() {
     }
 }
 
-ctest!(export_secret {
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+ctest_ciphersuites!(export_secret, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let group_id = GroupId::from_slice(b"Test Group");

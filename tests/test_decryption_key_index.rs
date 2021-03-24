@@ -1,14 +1,14 @@
 //! Test decryption key index computation in larger trees.
 use openmls::prelude::*;
 
+#[macro_use]
 mod utils;
 
 use std::convert::TryFrom;
-use test_macros::ctest;
 use utils::managed_utils::*;
 
-ctest!(decryption_key_index_computation {
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+ctest_ciphersuites!(decryption_key_index_computation, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

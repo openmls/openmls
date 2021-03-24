@@ -27,6 +27,10 @@ mod utils;
 #[macro_use]
 pub mod error;
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+#[macro_use]
+mod test_util;
+
 mod ciphersuite;
 mod codec;
 pub mod config;
@@ -43,6 +47,3 @@ pub use crate::tree::node;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
-
-#[cfg(any(feature = "expose-test-vectors", test))]
-mod test_util;
