@@ -4,9 +4,14 @@
 //! It is based on the Mock client written by Richard Barnes.
 
 use clap::Clap;
-use openmls::{group::tests::kat_transcripts, prelude::*, schedule::kat_key_schedule, tree};
+use openmls::{
+    group::tests::kat_transcripts::{self, TranscriptTestVector},
+    prelude::*,
+    schedule::kat_key_schedule::{self, KeyScheduleTestVector},
+    tree::{self, tests::kat_encryption::EncryptionTestVector},
+};
 use serde::{self, Serialize};
-use std::{collections::HashMap, convert::TryFrom, sync::Mutex};
+use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 use tree::tests::{kat_encryption, kat_treemath};
 
@@ -91,6 +96,15 @@ fn to_bytes(obj: impl Serialize) -> Vec<u8> {
         .expect("Error serializing test vectors")
         .as_bytes()
         .to_vec()
+}
+
+pub fn write(file_name: &str, payload: &[u8]) {
+    let mut file = match File::create(file_name) {
+        Ok(f) => f,
+        Err(_) => panic!("Couldn't open file {}.", file_name),
+    };
+    file.write_all(payload)
+        .expect("Error writing test vector file");
 }
 
 #[tonic::async_trait]
@@ -191,6 +205,7 @@ impl MlsClient for MlsClientImpl {
         let obj = request.get_ref();
         let (type_msg, _result) = match TestVectorType::try_from(obj.test_vector_type) {
             Ok(TestVectorType::TreeMath) => {
+                write(&format!("mlspp_treemath.json"), &obj.test_vector);
                 let kat_treemath = match serde_json::from_slice(&obj.test_vector) {
                     Ok(test_vector) => test_vector,
                     Err(_) => {
@@ -210,15 +225,23 @@ impl MlsClient for MlsClientImpl {
                 }
             }
             Ok(TestVectorType::Encryption) => {
-                let kat_encryption = match serde_json::from_slice(&obj.test_vector) {
-                    Ok(test_vector) => test_vector,
-                    Err(_) => {
-                        return Err(tonic::Status::new(
-                            tonic::Code::InvalidArgument,
-                            "Couldn't decode encryption test vector.",
-                        ));
-                    }
-                };
+                let kat_encryption: EncryptionTestVector =
+                    match serde_json::from_slice(&obj.test_vector) {
+                        Ok(test_vector) => test_vector,
+                        Err(_) => {
+                            return Err(tonic::Status::new(
+                                tonic::Code::InvalidArgument,
+                                "Couldn't decode encryption test vector.",
+                            ));
+                        }
+                    };
+                write(
+                    &format!(
+                        "mlspp_encryption_{}_{}.json",
+                        kat_encryption.cipher_suite, kat_encryption.n_leaves
+                    ),
+                    &obj.test_vector,
+                );
                 match kat_encryption::run_test_vector(kat_encryption) {
                     Ok(result) => ("Encryption", result),
                     Err(e) => {
@@ -229,15 +252,20 @@ impl MlsClient for MlsClientImpl {
                 }
             }
             Ok(TestVectorType::KeySchedule) => {
-                let kat_key_schedule = match serde_json::from_slice(&obj.test_vector) {
-                    Ok(test_vector) => test_vector,
-                    Err(_) => {
-                        return Err(tonic::Status::new(
-                            tonic::Code::InvalidArgument,
-                            "Couldn't decode key schedule test vector.",
-                        ));
-                    }
-                };
+                let kat_key_schedule: KeyScheduleTestVector =
+                    match serde_json::from_slice(&obj.test_vector) {
+                        Ok(test_vector) => test_vector,
+                        Err(_) => {
+                            return Err(tonic::Status::new(
+                                tonic::Code::InvalidArgument,
+                                "Couldn't decode key schedule test vector.",
+                            ));
+                        }
+                    };
+                write(
+                    &format!("mlspp_key_schedule_{}.json", kat_key_schedule.cipher_suite),
+                    &obj.test_vector,
+                );
                 match kat_key_schedule::run_test_vector(kat_key_schedule) {
                     Ok(result) => ("Key Schedule", result),
                     Err(e) => {
@@ -248,15 +276,20 @@ impl MlsClient for MlsClientImpl {
                 }
             }
             Ok(TestVectorType::Transcript) => {
-                let kat_transcript = match serde_json::from_slice(&obj.test_vector) {
-                    Ok(test_vector) => test_vector,
-                    Err(_) => {
-                        return Err(tonic::Status::new(
-                            tonic::Code::InvalidArgument,
-                            "Couldn't decode transcript test vector.",
-                        ));
-                    }
-                };
+                let kat_transcript: TranscriptTestVector =
+                    match serde_json::from_slice(&obj.test_vector) {
+                        Ok(test_vector) => test_vector,
+                        Err(_) => {
+                            return Err(tonic::Status::new(
+                                tonic::Code::InvalidArgument,
+                                "Couldn't decode transcript test vector.",
+                            ));
+                        }
+                    };
+                write(
+                    &format!("mlspp_transcript_{}.json", kat_transcript.cipher_suite),
+                    &obj.test_vector,
+                );
                 match kat_transcripts::run_test_vector(kat_transcript) {
                     Ok(result) => ("Transcript", result),
                     Err(e) => {

@@ -30,7 +30,7 @@ use serde::{self, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TranscriptTestVector {
-    cipher_suite: u16,
+    pub cipher_suite: u16,
     group_id: String,
     epoch: u64,
     tree_hash_before: String,
@@ -274,6 +274,17 @@ fn read_test_vectors() {
             Ok(_) => {}
             Err(e) => panic!("Error while checking transcript test vector.\n{:?}", e),
         }
+    }
+
+    // mlspp test vectors
+    let tv_files = [
+        "test_vectors/mlspp/mlspp_transcript_1.json",
+        "test_vectors/mlspp/mlspp_transcript_2.json",
+        "test_vectors/mlspp/mlspp_transcript_3.json",
+    ];
+    for &tv_file in tv_files.iter() {
+        let tv: TranscriptTestVector = read(tv_file);
+        run_test_vector(tv).expect("Error while checking key schedule test vector.");
     }
 }
 

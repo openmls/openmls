@@ -122,8 +122,8 @@ struct LeafSequence {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EncryptionTestVector {
-    cipher_suite: u16,
-    n_leaves: u32,
+    pub cipher_suite: u16,
+    pub n_leaves: u32,
     encryption_secret: String,
     sender_data_secret: String,
     sender_data_info: SenderDataInfo,
@@ -565,6 +565,18 @@ fn read_test_vectors() {
             Err(e) => panic!("Error while checking encryption test vector.\n{:?}", e),
         }
     }
+
+    // mlspp test vectors
+    let tv_files = [
+        "test_vectors/mlspp/mlspp_encryption_1_10.json",
+        "test_vectors/mlspp/mlspp_encryption_2_10.json",
+        "test_vectors/mlspp/mlspp_encryption_3_10.json",
+    ];
+    for &tv_file in tv_files.iter() {
+        let tv: EncryptionTestVector = read(tv_file);
+        run_test_vector(tv).expect("Error while checking key schedule test vector.");
+    }
+
     log::trace!("Finished test vector verification");
 }
 
