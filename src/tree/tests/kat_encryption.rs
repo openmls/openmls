@@ -78,7 +78,7 @@
 //! section of the specification.
 
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Signature},
+    ciphersuite::{Ciphersuite, Signature},
     codec::*,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
@@ -256,11 +256,9 @@ pub fn generate_test_vector(
 
     // Create sender_data_key/secret
     let ciphertext = randombytes(77);
-    let sender_data_key =
-        AeadKey::from_sender_data_secret(ciphersuite, &ciphertext, &sender_data_secret);
+    let sender_data_key = sender_data_secret.derive_aead_key(ciphersuite, &ciphertext);
     // Derive initial nonce from the key schedule using the ciphertext.
-    let sender_data_nonce =
-        AeadNonce::from_sender_data_secret(ciphersuite, &ciphertext, &sender_data_secret);
+    let sender_data_nonce = sender_data_secret.derive_aead_nonce(ciphersuite, &ciphertext);
     let sender_data_info = SenderDataInfo {
         ciphertext: bytes_to_hex(&ciphertext),
         key: bytes_to_hex(sender_data_key.as_slice()),
@@ -369,15 +367,13 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
     let sender_data_secret =
         SenderDataSecret::from(hex_to_bytes(&test_vector.sender_data_secret).as_slice());
 
-    let sender_data_key = AeadKey::from_sender_data_secret(
+    let sender_data_key = sender_data_secret.derive_aead_key(
         ciphersuite,
         &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
-        &sender_data_secret,
     );
-    let sender_data_nonce = AeadNonce::from_sender_data_secret(
+    let sender_data_nonce = sender_data_secret.derive_aead_nonce(
         ciphersuite,
         &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
-        &sender_data_secret,
     );
     if hex_to_bytes(&test_vector.sender_data_info.key) != sender_data_key.as_slice() {
         if cfg!(test) {

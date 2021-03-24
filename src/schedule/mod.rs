@@ -403,20 +403,31 @@ impl WelcomeSecret {
         WelcomeSecret { secret }
     }
 
-    /// Get the `Secret` of the `WelcomeSecret`.
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
-    }
-
     /// Derive an `AeadKey` and an `AeadNonce` from the `WelcomeSecret`,
     /// consuming it in the process.
     pub(crate) fn derive_welcome_key_nonce(
         self,
         ciphersuite: &Ciphersuite,
     ) -> (AeadKey, AeadNonce) {
-        let welcome_nonce = AeadNonce::from_welcome_secret(ciphersuite, &self);
-        let welcome_key = AeadKey::from_welcome_secret(ciphersuite, &self);
+        let welcome_nonce = self.derive_aead_nonce(ciphersuite);
+        let welcome_key = self.derive_aead_key(ciphersuite);
         (welcome_key, welcome_nonce)
+    }
+
+    /// Derive a new AEAD key from a `WelcomeSecret`.
+    fn derive_aead_key(&self, ciphersuite: &Ciphersuite) -> AeadKey {
+        let aead_secret = ciphersuite
+            .hkdf_expand(&self.secret, b"key", ciphersuite.aead_key_length())
+            .unwrap();
+        AeadKey::from_secret(ciphersuite, aead_secret)
+    }
+
+    /// Derive a new AEAD nonce from a `WelcomeSecret`.
+    fn derive_aead_nonce(&self, ciphersuite: &Ciphersuite) -> AeadNonce {
+        let nonce_secret = ciphersuite
+            .hkdf_expand(&self.secret, b"nonce", ciphersuite.aead_nonce_length())
+            .unwrap();
+        AeadNonce::from_secret(nonce_secret)
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -514,14 +525,27 @@ impl ExporterSecret {
         ExporterSecret { secret }
     }
 
-    /// Get the `Secret` of the `ExporterSecret`.
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
-    }
-
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
+    }
+
+    /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
+    /// it can be used outside of OpenMLS. This function is made available for
+    /// use from the outside through [`crate::group::mls_group::export_secret`].
+    pub(crate) fn derive_exported_secret(
+        &self,
+        ciphersuite: &Ciphersuite,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Vec<u8> {
+        let context_hash = &ciphersuite.hash(context);
+        self.secret
+            .derive_secret(ciphersuite, label)
+            .kdf_expand_label(ciphersuite, label, context_hash, key_length)
+            .to_bytes()
+            .to_vec()
     }
 }
 
@@ -663,6 +687,17 @@ impl ResumptionSecret {
     }
 }
 
+// Get a ciphertext sample of `hash_length` from the ciphertext.
+fn ciphertext_sample<'a>(ciphersuite: &Ciphersuite, ciphertext: &'a [u8]) -> &'a [u8] {
+    let sample_length = ciphersuite.hash_length();
+    log::debug!("Getting ciphertext sample of length {:?}", sample_length);
+    if ciphertext.len() <= sample_length {
+        ciphertext
+    } else {
+        &ciphertext[0..sample_length]
+    }
+}
+
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -679,9 +714,40 @@ impl SenderDataSecret {
         SenderDataSecret { secret }
     }
 
-    /// Get the `Secret` of the `ExporterSecret`.
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
+    /// Derive a new AEAD key from a `SenderDataSecret`.
+    pub(crate) fn derive_aead_key(&self, ciphersuite: &Ciphersuite, ciphertext: &[u8]) -> AeadKey {
+        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
+        log::debug!(
+            "SenderDataSecret::derive_aead_key ciphertext sample: {:x?}",
+            ciphertext_sample
+        );
+        let secret = self.secret.kdf_expand_label(
+            ciphersuite,
+            "key",
+            &ciphertext_sample,
+            ciphersuite.aead_key_length(),
+        );
+        AeadKey::from_secret(ciphersuite, secret)
+    }
+
+    /// Derive a new AEAD nonce from a `SenderDataSecret`.
+    pub(crate) fn derive_aead_nonce(
+        &self,
+        ciphersuite: &Ciphersuite,
+        ciphertext: &[u8],
+    ) -> AeadNonce {
+        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
+        log::debug!(
+            "SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}",
+            ciphertext_sample
+        );
+        let nonce_secret = self.secret.kdf_expand_label(
+            ciphersuite,
+            "nonce",
+            &ciphertext_sample,
+            ciphersuite.aead_nonce_length(),
+        );
+        AeadNonce::from_secret(nonce_secret)
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
