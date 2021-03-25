@@ -54,7 +54,7 @@ struct Epoch {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct KeyScheduleTestVector {
-    cipher_suite: u16,
+    pub cipher_suite: u16,
     group_id: String,
     initial_init_secret: String,
     epochs: Vec<Epoch>,
@@ -192,6 +192,17 @@ fn read_test_vectors() {
             Ok(_) => {}
             Err(e) => panic!("Error while checking key schedule test vector.\n{:?}", e),
         }
+    }
+
+    // mlspp test vectors
+    let tv_files = [
+        "test_vectors/mlspp/mlspp_key_schedule_1.json",
+        "test_vectors/mlspp/mlspp_key_schedule_2.json",
+        "test_vectors/mlspp/mlspp_key_schedule_3.json",
+    ];
+    for &tv_file in tv_files.iter() {
+        let tv: KeyScheduleTestVector = read(tv_file);
+        run_test_vector(tv).expect("Error while checking key schedule test vector.");
     }
 }
 

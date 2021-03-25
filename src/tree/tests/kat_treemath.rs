@@ -145,6 +145,10 @@ fn read_test_vectors() {
             Err(e) => panic!("Error while checking tree math test vector.\n{:?}", e),
         }
     }
+
+    // mlspp test vector
+    let tv: TreeMathTestVector = read("test_vectors/mlspp/mlspp_treemath.json");
+    run_test_vector(tv).expect("Error while checking key schedule test vector.");
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
