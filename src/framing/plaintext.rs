@@ -493,6 +493,7 @@ pub(crate) struct MLSPlaintextCommitContent<'a> {
     pub(crate) group_id: &'a GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) sender: &'a Sender,
+    pub(crate) authenticated_data: &'a [u8],
     pub(crate) content_type: ContentType,
     pub(crate) commit: &'a Commit,
     pub(crate) signature: &'a Signature,
@@ -510,6 +511,7 @@ impl<'a> TryFrom<&'a MLSPlaintext> for MLSPlaintextCommitContent<'a> {
             group_id: &mls_plaintext.group_id,
             epoch: mls_plaintext.epoch,
             sender: &mls_plaintext.sender,
+            authenticated_data: &mls_plaintext.authenticated_data,
             content_type: mls_plaintext.content_type,
             commit,
             signature: &mls_plaintext.signature,
@@ -518,23 +520,23 @@ impl<'a> TryFrom<&'a MLSPlaintext> for MLSPlaintextCommitContent<'a> {
 }
 
 pub(crate) struct MLSPlaintextCommitAuthData<'a> {
-    pub(crate) confirmation_tag: &'a ConfirmationTag,
+    pub(crate) confirmation_tag: Option<&'a ConfirmationTag>,
 }
 
 impl<'a> TryFrom<&'a MLSPlaintext> for MLSPlaintextCommitAuthData<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MLSPlaintext) -> Result<Self, Self::Error> {
-        let confirmation_tag = match &mls_plaintext.confirmation_tag {
-            Some(confirmation_tag) => confirmation_tag,
-            None => return Err("MLSPlaintext needs to contain a confirmation tag."),
-        };
-        Ok(MLSPlaintextCommitAuthData { confirmation_tag })
+        Ok(MLSPlaintextCommitAuthData {
+            confirmation_tag: mls_plaintext.confirmation_tag.as_ref(),
+        })
     }
 }
 
 impl<'a> From<&'a ConfirmationTag> for MLSPlaintextCommitAuthData<'a> {
     fn from(confirmation_tag: &'a ConfirmationTag) -> Self {
-        MLSPlaintextCommitAuthData { confirmation_tag }
+        MLSPlaintextCommitAuthData {
+            confirmation_tag: Some(confirmation_tag),
+        }
     }
 }
