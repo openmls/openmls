@@ -26,7 +26,11 @@ impl MlsGroup {
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
         let received_confirmation_tag = match &mls_plaintext.confirmation_tag {
-            Some(confirmation_tag) => confirmation_tag,
+            Some(confirmation_tag) => {
+                let mut confirmation_tag = confirmation_tag.clone();
+                confirmation_tag.config(self.ciphersuite, self.mls_version);
+                confirmation_tag
+            }
             None => return Err(ApplyCommitError::ConfirmationTagMissing),
         };
 
@@ -60,7 +64,7 @@ impl MlsGroup {
         let is_own_commit =
             mls_plaintext.sender.to_leaf_index() == provisional_tree.own_node_index();
 
-        let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
+        let zero_commit_secret = CommitSecret::zero_secret(ciphersuite, self.mls_version);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
             // Verify KeyPackage and MLSPlaintext signature & membership tag
@@ -104,7 +108,6 @@ impl MlsGroup {
         };
 
         let joiner_secret = JoinerSecret::new(
-            ciphersuite,
             commit_secret,
             self.epoch_secrets
                 .init_secret()
@@ -162,7 +165,10 @@ impl MlsGroup {
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
             .tag(&ciphersuite, &confirmed_transcript_hash);
-        if &own_confirmation_tag != received_confirmation_tag {
+        if own_confirmation_tag != received_confirmation_tag {
+            log::error!("Confirmation tag mismatch");
+            log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
+            log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
             return Err(ApplyCommitError::ConfirmationTagMismatch);
         }
 

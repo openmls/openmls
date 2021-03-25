@@ -1,7 +1,5 @@
 use log::error;
 
-use evercrypt::rand_util::*;
-
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
@@ -225,7 +223,7 @@ impl KeyPackage {
     }
 
     /// Get the `Ciphersuite`.
-    pub(crate) fn ciphersuite(&self) -> &Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
         self.ciphersuite
     }
 
@@ -246,10 +244,34 @@ pub struct KeyPackageBundle {
 /// Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     /// Create a new `KeyPackageBundle` with a fresh `HPKEKeyPair`.
+    /// See `new_with_keypair` and `new_with_version` for details.
+    /// This key package will have the default MLS version. Use `new_with_version`
+    /// to get a key package bundle for a specific MLS version.
+    ///
+    /// Returns a new `KeyPackageBundle` or a `KeyPackageError`.
+    pub fn new(
+        ciphersuites: &[CiphersuiteName],
+        credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
+    ) -> Result<Self, KeyPackageError> {
+        Self::new_with_version(
+            ProtocolVersion::default(),
+            ciphersuites,
+            credential_bundle,
+            extensions,
+        )
+    }
+
+    /// Create a new `KeyPackageBundle` with
+    /// * a fresh `HPKEKeyPair`
+    /// * the provided MLS version
+    /// * the first cipher suite in the `ciphersuites` slice
+    /// * the provided `extensions`
     /// See `new_with_keypair` for details.
     ///
-    /// Returns a new `KeyPackageBundle`.
-    pub fn new(
+    /// Returns a new `KeyPackageBundle` or a `KeyPackageError`.
+    pub fn new_with_version(
+        version: ProtocolVersion,
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
@@ -261,7 +283,7 @@ impl KeyPackageBundle {
         }
         debug_assert!(!ciphersuites.is_empty());
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_secret = Secret::from(get_random_vec(ciphersuite.hash_length()));
+        let leaf_secret = Secret::random(ciphersuite, version);
         Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
     }
 
@@ -270,8 +292,8 @@ impl KeyPackageBundle {
     pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
         // Generate a new leaf secret and derive the key pair
         let ciphersuite = key_package.ciphersuite();
-        let leaf_secret = Secret::random(ciphersuite.hash_length());
-        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let leaf_secret = Secret::random(ciphersuite, key_package.protocol_version);
+        let leaf_node_secret = Self::derive_leaf_node_secret(&leaf_secret);
         let (private_key, public_key) = ciphersuite
             .derive_hpke_keypair(&leaf_node_secret)
             .into_keys();
@@ -397,7 +419,7 @@ impl KeyPackageBundle {
         }
 
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_node_secret = Self::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let leaf_node_secret = Self::derive_leaf_node_secret(&leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
         Self::new_with_keypair(
             ciphersuites,
@@ -452,11 +474,8 @@ impl KeyPackageBundle {
 
     /// This function derives the leaf_node_secret from the leaf_secret as
     /// described in 5.4 Ratchet Tree Evolution
-    pub(crate) fn derive_leaf_node_secret(
-        ciphersuite: &Ciphersuite,
-        leaf_secret: &Secret,
-    ) -> Secret {
-        leaf_secret.derive_secret(ciphersuite, "node")
+    pub(crate) fn derive_leaf_node_secret(leaf_secret: &Secret) -> Secret {
+        leaf_secret.derive_secret("node")
     }
 
     /// Sign the KeyPackageBundle

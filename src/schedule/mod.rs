@@ -118,9 +118,9 @@ use crate::codec::*;
 use crate::group::GroupContext;
 use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
-use crate::utils::zero;
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HPKEKeyPair, Secret},
+    config::ProtocolVersion,
     messages::ConfirmationTag,
 };
 
@@ -153,24 +153,23 @@ impl Default for CommitSecret {
 
 impl CommitSecret {
     pub(crate) fn new(ciphersuite: &Ciphersuite, path_secret: &Secret) -> Self {
-        let secret =
-            path_secret.kdf_expand_label(ciphersuite, "path", &[], ciphersuite.hash_length());
+        let secret = path_secret.kdf_expand_label("path", &[], ciphersuite.hash_length());
 
         Self { secret }
     }
 
     /// Create a CommitSecret consisting of an all-zero string of length
     /// `hash_length`.
-    pub(crate) fn zero_secret(ciphersuite: &Ciphersuite) -> Self {
+    pub(crate) fn zero_secret(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
         CommitSecret {
-            secret: Secret::from(zero(ciphersuite.hash_length())),
+            secret: Secret::zero(ciphersuite, version),
         }
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn random(length: usize) -> Self {
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(length),
+            secret: Secret::random(ciphersuite, None /* MLS version */),
         }
     }
 
@@ -194,16 +193,16 @@ pub(crate) struct InitSecret {
 
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: EpochSecret) -> Self {
-        InitSecret {
-            secret: epoch_secret.secret.derive_secret(ciphersuite, "init"),
-        }
+    fn new(epoch_secret: EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret("init");
+        log_crypto!(trace, "Init secret: {:x?}", secret);
+        InitSecret { secret }
     }
 
     /// Sample a fresh, random `InitSecret` for the creation of a new group.
-    pub(crate) fn random(length: usize) -> Self {
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
         InitSecret {
-            secret: Secret::random(length),
+            secret: Secret::random(ciphersuite, version),
         }
     }
 
@@ -236,17 +235,24 @@ impl JoinerSecret {
     /// Add-only commit. TODO: For now, this takes a reference to a
     /// `CommitSecret` as input. This should change with #224.
     pub(crate) fn new<'a>(
-        ciphersuite: &Ciphersuite,
         commit_secret_option: impl Into<Option<&'a CommitSecret>>,
         init_secret: &InitSecret,
     ) -> Self {
-        let intermediate_secret = ciphersuite.hkdf_extract(
-            &init_secret.secret,
-            commit_secret_option.into().map(|cs| &cs.secret),
-        );
-        JoinerSecret {
-            secret: intermediate_secret.derive_secret(ciphersuite, "joiner"),
-        }
+        let intermediate_secret = init_secret
+            .secret
+            .hkdf_extract(commit_secret_option.into().map(|cs| &cs.secret));
+        let secret = intermediate_secret.derive_secret("joiner");
+        log_crypto!(trace, "Joiner secret: {:x?}", secret);
+        JoinerSecret { secret }
+    }
+
+    /// Set the config for the secret, i.e. cipher suite and MLS version.
+    pub(crate) fn config(
+        &mut self,
+        ciphersuite: &'static Ciphersuite,
+        mls_version: ProtocolVersion,
+    ) {
+        self.secret.config(ciphersuite, mls_version);
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -294,7 +300,7 @@ impl KeySchedule {
         );
         let psk = psk.into();
         log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
-        let intermediate_secret = IntermediateSecret::new(ciphersuite, &joiner_secret, psk);
+        let intermediate_secret = IntermediateSecret::new(&joiner_secret, psk);
         Self {
             ciphersuite,
             intermediate_secret: Some(intermediate_secret),
@@ -312,7 +318,6 @@ impl KeySchedule {
         }
 
         Ok(WelcomeSecret::new(
-            self.ciphersuite,
             self.intermediate_secret.as_ref().unwrap(),
         ))
     }
@@ -359,7 +364,6 @@ impl KeySchedule {
         self.state = State::Done;
 
         Ok(EpochSecrets::new(
-            self.ciphersuite,
             self.epoch_secret.take().unwrap(),
             init_secret,
         ))
@@ -375,15 +379,13 @@ struct IntermediateSecret {
 impl IntermediateSecret {
     /// Derive an `IntermediateSecret` from a `JoinerSecret` and an optional
     /// PSK.
-    fn new(
-        ciphersuite: &Ciphersuite,
-        joiner_secret: &JoinerSecret,
-        psk: Option<PskSecret>,
-    ) -> Self {
-        Self {
-            secret: ciphersuite
-                .hkdf_extract(&joiner_secret.secret, psk.as_ref().map(|p| p.secret())),
-        }
+    fn new(joiner_secret: &JoinerSecret, psk: Option<PskSecret>) -> Self {
+        log_crypto!(trace, "PSK input: {:x?}", psk.as_ref().map(|p| p.secret()));
+        let secret = joiner_secret
+            .secret
+            .hkdf_extract(psk.as_ref().map(|p| p.secret()));
+        log_crypto!(trace, "Intermediate secret: {:x?}", secret);
+        Self { secret }
     }
 }
 
@@ -393,37 +395,39 @@ pub(crate) struct WelcomeSecret {
 
 impl WelcomeSecret {
     /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
-    fn new(ciphersuite: &Ciphersuite, intermediate_secret: &IntermediateSecret) -> Self {
+    fn new(intermediate_secret: &IntermediateSecret) -> Self {
         // Unwrapping here is safe, because we know the key is not empty
-        let secret = intermediate_secret
-            .secret
-            .derive_secret(ciphersuite, "welcome");
+        let secret = intermediate_secret.secret.derive_secret("welcome");
+        log_crypto!(trace, "Welcome secret: {:x?}", secret);
         WelcomeSecret { secret }
     }
 
     /// Derive an `AeadKey` and an `AeadNonce` from the `WelcomeSecret`,
     /// consuming it in the process.
-    pub(crate) fn derive_welcome_key_nonce(
-        self,
-        ciphersuite: &Ciphersuite,
-    ) -> (AeadKey, AeadNonce) {
-        let welcome_nonce = self.derive_aead_nonce(ciphersuite);
-        let welcome_key = self.derive_aead_key(ciphersuite);
+    pub(crate) fn derive_welcome_key_nonce(self) -> (AeadKey, AeadNonce) {
+        let welcome_nonce = self.derive_aead_nonce();
+        let welcome_key = self.derive_aead_key();
         (welcome_key, welcome_nonce)
     }
 
     /// Derive a new AEAD key from a `WelcomeSecret`.
-    fn derive_aead_key(&self, ciphersuite: &Ciphersuite) -> AeadKey {
-        let aead_secret = ciphersuite
-            .hkdf_expand(&self.secret, b"key", ciphersuite.aead_key_length())
+    fn derive_aead_key(&self) -> AeadKey {
+        log::trace!(
+            "WelcomeSecret.derive_aead_key with {}",
+            self.secret.ciphersuite()
+        );
+        let aead_secret = self
+            .secret
+            .hkdf_expand(b"key", self.secret.ciphersuite().aead_key_length())
             .unwrap();
-        AeadKey::from_secret(ciphersuite, aead_secret)
+        AeadKey::from_secret(aead_secret)
     }
 
     /// Derive a new AEAD nonce from a `WelcomeSecret`.
-    fn derive_aead_nonce(&self, ciphersuite: &Ciphersuite) -> AeadNonce {
-        let nonce_secret = ciphersuite
-            .hkdf_expand(&self.secret, b"nonce", ciphersuite.aead_nonce_length())
+    fn derive_aead_nonce(&self) -> AeadNonce {
+        let nonce_secret = self
+            .secret
+            .hkdf_expand(b"nonce", self.secret.ciphersuite().aead_nonce_length())
             .unwrap();
         AeadNonce::from_secret(nonce_secret)
     }
@@ -448,14 +452,13 @@ impl EpochSecret {
         intermediate_secret: IntermediateSecret,
         group_context: &GroupContext,
     ) -> Self {
-        EpochSecret {
-            secret: intermediate_secret.secret.kdf_expand_label(
-                ciphersuite,
-                "epoch",
-                &group_context.serialized(),
-                ciphersuite.hash_length(),
-            ),
-        }
+        let secret = intermediate_secret.secret.kdf_expand_label(
+            "epoch",
+            &group_context.serialized(),
+            ciphersuite.hash_length(),
+        );
+        log_crypto!(trace, "Epoch secret: {:x?}", secret);
+        EpochSecret { secret }
     }
 }
 
@@ -467,9 +470,9 @@ pub(crate) struct EncryptionSecret {
 
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
+    fn new(epoch_secret: &EpochSecret) -> Self {
         EncryptionSecret {
-            secret: epoch_secret.secret.derive_secret(ciphersuite, "encryption"),
+            secret: epoch_secret.secret.derive_secret("encryption"),
         }
     }
 
@@ -487,9 +490,9 @@ impl EncryptionSecret {
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
     #[doc(hidden)]
-    pub(crate) fn from_random(length: usize) -> Self {
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite) -> Self {
         EncryptionSecret {
-            secret: Secret::random(length),
+            secret: Secret::random(ciphersuite, None /* MLS version */),
         }
     }
 
@@ -497,17 +500,30 @@ impl EncryptionSecret {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
-}
 
-#[cfg(any(feature = "expose-test-vectors", test))]
-#[doc(hidden)]
-impl From<&[u8]> for EncryptionSecret {
-    fn from(bytes: &[u8]) -> Self {
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[doc(hidden)]
+    /// Create a new secret from a byte vector.
+    pub(crate) fn from_slice(
+        bytes: &[u8],
+        mls_version: ProtocolVersion,
+        ciphersuite: &'static Ciphersuite,
+    ) -> Self {
         Self {
-            secret: Secret::from(bytes),
+            secret: Secret::from_slice(bytes, mls_version, ciphersuite),
         }
     }
 }
+
+// #[cfg(any(feature = "expose-test-vectors", test))]
+// #[doc(hidden)]
+// impl From<&[u8]> for EncryptionSecret {
+//     fn from(bytes: &[u8]) -> Self {
+//         Self {
+//             secret: Secret::from(bytes),
+//         }
+//     }
+// }
 
 /// A secret that we can derive secrets from, that are used outside of OpenMLS.
 #[derive(Debug, Serialize, Deserialize)]
@@ -518,8 +534,8 @@ pub(crate) struct ExporterSecret {
 
 impl ExporterSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret(ciphersuite, "exporter");
+    fn new(epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret("exporter");
         ExporterSecret { secret }
     }
 
@@ -540,8 +556,8 @@ impl ExporterSecret {
     ) -> Vec<u8> {
         let context_hash = &ciphersuite.hash(context);
         self.secret
-            .derive_secret(ciphersuite, label)
-            .kdf_expand_label(ciphersuite, label, context_hash, key_length)
+            .derive_secret(label)
+            .kdf_expand_label(label, context_hash, key_length)
             .to_bytes()
             .to_vec()
     }
@@ -557,10 +573,8 @@ pub(crate) struct AuthenticationSecret {
 
 impl AuthenticationSecret {
     /// Derive an `AuthenticationSecret` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret
-            .secret
-            .derive_secret(ciphersuite, "authentication");
+    fn new(epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret("authentication");
         Self { secret }
     }
 
@@ -584,8 +598,8 @@ pub(crate) struct ExternalSecret {
 
 impl ExternalSecret {
     /// Derive an `ExternalSecret` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret(ciphersuite, "external");
+    fn new(epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret("external");
         Self { secret }
     }
 
@@ -609,8 +623,14 @@ pub struct ConfirmationKey {
 
 impl ConfirmationKey {
     /// Derive an `ConfirmationKey` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret(ciphersuite, "confirm");
+    fn new(epoch_secret: &EpochSecret) -> Self {
+        log::debug!("Computing confirmation key.");
+        log_crypto!(
+            trace,
+            "  epoch_secret {:x?}",
+            epoch_secret.secret.to_bytes()
+        );
+        let secret = epoch_secret.secret.derive_secret("confirm");
         Self { secret }
     }
 
@@ -624,16 +644,24 @@ impl ConfirmationKey {
     /// ```
     pub fn tag(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         confirmed_transcript_hash: &[u8],
     ) -> ConfirmationTag {
+        log::debug!("Computing confirmation tag.");
+        log_crypto!(trace, "  confirmation key {:x?}", self.secret.to_bytes());
+        log_crypto!(trace, "  transcript hash  {:x?}", confirmed_transcript_hash);
         ConfirmationTag(
-            ciphersuite
-                .mac(
-                    &self.secret,
-                    &Secret::from(confirmed_transcript_hash.to_vec()),
-                )
-                .into(),
+            self.secret.mac(&Secret::from_slice(
+                confirmed_transcript_hash,
+                self.secret.version(),
+                ciphersuite,
+            )).into()
+            // ciphersuite
+            //     .mac(
+            //         &self.secret,
+            //         &Secret::from(confirmed_transcript_hash.to_vec()),
+            //     )
+            //     .into(),
         )
     }
 
@@ -657,8 +685,8 @@ pub struct MembershipKey {
 
 impl MembershipKey {
     /// Derive an `MembershipKey` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret(ciphersuite, "membership");
+    fn new(epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret("membership");
         Self { secret }
     }
 
@@ -687,8 +715,8 @@ pub struct ResumptionSecret {
 
 impl ResumptionSecret {
     /// Derive an `ResumptionSecret` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret(ciphersuite, "resumption");
+    fn new(epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret("resumption");
         Self { secret }
     }
 
@@ -718,27 +746,24 @@ pub(crate) struct SenderDataSecret {
 
 impl SenderDataSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret
-            .secret
-            .derive_secret(ciphersuite, "sender data");
+    fn new(epoch_secret: &EpochSecret) -> Self {
+        let secret = epoch_secret.secret.derive_secret("sender data");
         SenderDataSecret { secret }
     }
 
     /// Derive a new AEAD key from a `SenderDataSecret`.
-    pub(crate) fn derive_aead_key(&self, ciphersuite: &Ciphersuite, ciphertext: &[u8]) -> AeadKey {
-        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
+    pub(crate) fn derive_aead_key(&self, ciphertext: &[u8]) -> AeadKey {
+        let ciphertext_sample = ciphertext_sample(self.secret.ciphersuite(), ciphertext);
         log::debug!(
             "SenderDataSecret::derive_aead_key ciphertext sample: {:x?}",
             ciphertext_sample
         );
         let secret = self.secret.kdf_expand_label(
-            ciphersuite,
             "key",
             &ciphertext_sample,
-            ciphersuite.aead_key_length(),
+            self.secret.ciphersuite().aead_key_length(),
         );
-        AeadKey::from_secret(ciphersuite, secret)
+        AeadKey::from_secret(secret)
     }
 
     /// Derive a new AEAD nonce from a `SenderDataSecret`.
@@ -753,7 +778,6 @@ impl SenderDataSecret {
             ciphertext_sample
         );
         let nonce_secret = self.secret.kdf_expand_label(
-            ciphersuite,
             "nonce",
             &ciphertext_sample,
             ciphersuite.aead_nonce_length(),
@@ -763,9 +787,9 @@ impl SenderDataSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     #[doc(hidden)]
-    pub fn from_random(length: usize) -> Self {
+    pub fn random(ciphersuite: &'static Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(length),
+            secret: Secret::random(ciphersuite, None /* MLS version */),
         }
     }
 
@@ -773,14 +797,17 @@ impl SenderDataSecret {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }
-}
 
-#[cfg(any(feature = "expose-test-vectors", test))]
-#[doc(hidden)]
-impl From<&[u8]> for SenderDataSecret {
-    fn from(bytes: &[u8]) -> Self {
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[doc(hidden)]
+    /// Create a new secret from a byte vector.
+    pub(crate) fn from_slice(
+        bytes: &[u8],
+        mls_version: ProtocolVersion,
+        ciphersuite: &'static Ciphersuite,
+    ) -> Self {
         Self {
-            secret: Secret::from(bytes),
+            secret: Secret::from_slice(bytes, mls_version, ciphersuite),
         }
     }
 }
@@ -892,28 +919,28 @@ impl EpochSecrets {
     /// Derive `EpochSecrets` from an `EpochSecret`.
     /// If the `init_secret` argument is `true`, the init secret is derived and
     /// part of the `EpochSecrets`. Otherwise not.
-    fn new(ciphersuite: &Ciphersuite, epoch_secret: EpochSecret, init_secret: bool) -> Self {
+    fn new(epoch_secret: EpochSecret, init_secret: bool) -> Self {
         log::debug!(
-            "Computing EpochSecrets from epoch secret with {:?}",
-            ciphersuite.name()
+            "Computing EpochSecrets from epoch secret with {}",
+            epoch_secret.secret.ciphersuite()
         );
         log_crypto!(
             trace,
             "  epoch_secret: {:x?}",
             epoch_secret.secret.to_bytes()
         );
-        let sender_data_secret = SenderDataSecret::new(ciphersuite, &epoch_secret);
-        let encryption_secret = EncryptionSecret::new(ciphersuite, &epoch_secret);
-        let exporter_secret = ExporterSecret::new(ciphersuite, &epoch_secret);
-        let authentication_secret = AuthenticationSecret::new(ciphersuite, &epoch_secret);
-        let external_secret = ExternalSecret::new(ciphersuite, &epoch_secret);
-        let confirmation_key = ConfirmationKey::new(ciphersuite, &epoch_secret);
-        let membership_key = MembershipKey::new(ciphersuite, &epoch_secret);
-        let resumption_secret = ResumptionSecret::new(ciphersuite, &epoch_secret);
+        let sender_data_secret = SenderDataSecret::new(&epoch_secret);
+        let encryption_secret = EncryptionSecret::new(&epoch_secret);
+        let exporter_secret = ExporterSecret::new(&epoch_secret);
+        let authentication_secret = AuthenticationSecret::new(&epoch_secret);
+        let external_secret = ExternalSecret::new(&epoch_secret);
+        let confirmation_key = ConfirmationKey::new(&epoch_secret);
+        let membership_key = MembershipKey::new(&epoch_secret);
+        let resumption_secret = ResumptionSecret::new(&epoch_secret);
 
         let init_secret = if init_secret {
             log::trace!("  Computing init secret.");
-            Some(InitSecret::new(ciphersuite, epoch_secret))
+            Some(InitSecret::new(epoch_secret))
         } else {
             None
         };

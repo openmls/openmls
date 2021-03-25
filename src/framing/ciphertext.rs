@@ -26,6 +26,8 @@ impl MLSCiphertext {
         secret_tree: &mut SecretTree,
         padding_size: usize,
     ) -> Result<MLSCiphertext, MLSCiphertextError> {
+        log::debug!("MLSCiphertext::try_from_plaintext");
+        log::trace!("  ciphersuite: {}", ciphersuite);
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
             group_id: context.group_id().clone(),
@@ -54,11 +56,14 @@ impl MLSCiphertext {
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_nonce,
             )
-            .map_err(|_| MLSCiphertextError::EncryptionError)?;
+            .map_err(|e| {
+                log::error!("MLSCiphertext::try_from_plaintext encryption error {:?}", e);
+                MLSCiphertextError::EncryptionError
+            })?;
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(ciphersuite, &ciphertext);
+            .derive_aead_key(&ciphertext);
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = epoch_secrets
             .sender_data_secret()
@@ -80,7 +85,10 @@ impl MLSCiphertext {
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
-            .map_err(|_| MLSCiphertextError::EncryptionError)?;
+            .map_err(|e| {
+                log::error!("MLSCiphertext::try_from_plaintext encryption error {:?}", e);
+                MLSCiphertextError::EncryptionError
+            })?;
         Ok(MLSCiphertext {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
@@ -101,7 +109,7 @@ impl MLSCiphertext {
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(ciphersuite, &self.ciphertext);
+            .derive_aead_key(&self.ciphertext);
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = epoch_secrets
             .sender_data_secret()

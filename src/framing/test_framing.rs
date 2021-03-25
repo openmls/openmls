@@ -70,7 +70,8 @@ fn membership_tag() {
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
         let serialized_context = group_context.serialized();
-        let membership_key = MembershipKey::from_secret(Secret::random(ciphersuite.hash_length()));
+        let membership_key =
+            MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
         mls_plaintext
             .sign_from_member(&credential_bundle, serialized_context)
             .expect("Could not sign plaintext.");
@@ -169,6 +170,7 @@ fn unknown_sender() {
             alice_key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )
         .unwrap();
 
@@ -269,7 +271,7 @@ fn unknown_sender() {
             &[1, 2, 3],
             &alice_credential_bundle,
             &group_alice.context(),
-            &MembershipKey::from_secret(Secret::default()),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create new MLSPlaintext.");
 
@@ -300,12 +302,12 @@ fn unknown_sender() {
             &[1, 2, 3],
             &alice_credential_bundle,
             &group_alice.context(),
-            &MembershipKey::from_secret(Secret::default()),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create new MLSPlaintext.");
 
         let mut secret_tree = SecretTree::new(
-            EncryptionSecret::from_random(ciphersuite.hash_length()),
+            EncryptionSecret::random(ciphersuite),
             LeafIndex::from(100usize),
         );
 

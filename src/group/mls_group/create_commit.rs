@@ -110,7 +110,6 @@ impl MlsGroup {
         )?;
 
         let joiner_secret = JoinerSecret::new(
-            ciphersuite,
             provisional_tree.commit_secret(),
             self.epoch_secrets()
                 .init_secret()
@@ -179,7 +178,7 @@ impl MlsGroup {
             group_info.set_signature(group_info.sign(credential_bundle));
 
             // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
+            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce();
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();

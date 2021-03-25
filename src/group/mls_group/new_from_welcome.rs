@@ -15,6 +15,11 @@ impl MlsGroup {
         key_package_bundle: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<Self, WelcomeError> {
+        log::debug!("MlsGroup::new_from_welcome_internal");
+        let mls_version = *welcome.version();
+        if !Config::supported_versions().contains(&mls_version) {
+            return Err(WelcomeError::UnsupportedMlsVersion);
+        }
         let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
@@ -38,7 +43,8 @@ impl MlsGroup {
             &[],
             &[],
         )?;
-        let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes)?;
+        let group_secrets =
+            GroupSecrets::decode_detached(&group_secrets_bytes)?.config(ciphersuite, mls_version);
         let joiner_secret = group_secrets.joiner_secret;
 
         // Create key schedule
@@ -55,15 +61,16 @@ impl MlsGroup {
             psk_output(ciphersuite, psk_fetcher_option, &presharedkeys)?,
         );
 
-        // Derive welcome key & noce from the key schedule
-        let (welcome_key, welcome_nonce) = key_schedule
-            .welcome()?
-            .derive_welcome_key_nonce(ciphersuite);
+        // Derive welcome key & nonce from the key schedule
+        let (welcome_key, welcome_nonce) = key_schedule.welcome()?.derive_welcome_key_nonce();
 
         let group_info_bytes = welcome_key
             .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let group_info = GroupInfo::decode_detached(&group_info_bytes)?;
+        let mut group_info = GroupInfo::decode_detached(&group_info_bytes)?;
+        group_info
+            .confirmation_tag_mut()
+            .config(welcome.ciphersuite(), mls_version);
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
@@ -190,7 +197,10 @@ impl MlsGroup {
         )?;
 
         // Verify confirmation tag
-        if confirmation_tag != group_info.confirmation_tag() {
+        if &confirmation_tag != group_info.confirmation_tag() {
+            log::error!("Confirmation tag mismatch");
+            log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
+            log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
@@ -201,6 +211,7 @@ impl MlsGroup {
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
+                mls_version,
             })
         }
     }

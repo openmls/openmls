@@ -116,7 +116,11 @@ fn test_update_proposal_encoding() {
         let update_encoded = update
             .encode_detached()
             .expect("Could not encode proposal.");
-        let update_decoded = match MLSPlaintext::decode(&mut Cursor::new(&update_encoded)) {
+        let update_decoded = match MLSPlaintext::decode_with_context(
+            &update_encoded,
+            group_state.ciphersuite().name(),
+            ProtocolVersion::default(),
+        ) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
         };
@@ -163,7 +167,11 @@ fn test_add_proposal_encoding() {
             )
             .expect("Could not create proposal.");
         let add_encoded = add.encode_detached().expect("Could not encode proposal.");
-        let add_decoded = match MLSPlaintext::decode(&mut Cursor::new(&add_encoded)) {
+        let add_decoded = match MLSPlaintext::decode_with_context(
+            &add_encoded,
+            group_state.ciphersuite().name(),
+            ProtocolVersion::default(),
+        ) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
         };
@@ -191,7 +199,11 @@ fn test_remove_proposal_encoding() {
         let remove_encoded = remove
             .encode_detached()
             .expect("Could not encode proposal.");
-        let remove_decoded = match MLSPlaintext::decode(&mut Cursor::new(&remove_encoded)) {
+        let remove_decoded = match MLSPlaintext::decode_with_context(
+            &remove_encoded,
+            group_state.ciphersuite().name(),
+            ProtocolVersion::default(),
+        ) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
         };
@@ -262,7 +274,11 @@ fn test_commit_encoding() {
             .create_commit(&[], alice_credential_bundle, proposals, &[], true, None)
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
-        let commit_decoded = match MLSPlaintext::decode(&mut Cursor::new(&commit_encoded)) {
+        let commit_decoded = match MLSPlaintext::decode_with_context(
+            &commit_encoded,
+            group_state.ciphersuite().name(),
+            ProtocolVersion::default(),
+        ) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
         };

@@ -2,7 +2,7 @@
 
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{env, fs::File, io::BufReader};
+use std::{convert::TryFrom, env, fmt, fs::File, io::BufReader};
 
 use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
 use crate::codec::{Codec, CodecError, Cursor};
@@ -56,7 +56,7 @@ lazy_static! {
                 .map(|ciphersuite_name| Ciphersuite::new(*ciphersuite_name).unwrap())
                 .collect::<Vec<Ciphersuite>>();
             let config = PersistentConfig {
-                protocol_versions: vec![ProtocolVersion::Mls10],
+                protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft12],
                 ciphersuites,
                 extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
                 constants,
@@ -166,6 +166,7 @@ impl Config {
 pub enum ProtocolVersion {
     Reserved = 0,
     Mls10 = 1,
+    Mls10Draft12 = 255, // pre RFC version
 }
 
 /// There's only one version right now, which is the default.
@@ -175,14 +176,27 @@ impl Default for ProtocolVersion {
     }
 }
 
-impl ProtocolVersion {
+impl TryFrom<u8> for ProtocolVersion {
+    type Error = ConfigError;
+
     /// Convert an integer to the corresponding protocol version.
     ///
     /// Returns an error if the protocol version is not supported.
-    pub fn from(v: u8) -> Result<ProtocolVersion, ConfigError> {
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
         match v {
             1 => Ok(ProtocolVersion::Mls10),
+            255 => Ok(ProtocolVersion::Mls10Draft12),
             _ => Err(ConfigError::UnsupportedMlsVersion),
+        }
+    }
+}
+
+impl fmt::Display for ProtocolVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            ProtocolVersion::Reserved => Err(fmt::Error),
+            ProtocolVersion::Mls10 => write!(f, "mls10"),
+            ProtocolVersion::Mls10Draft12 => write!(f, "mls10-draft12"),
         }
     }
 }

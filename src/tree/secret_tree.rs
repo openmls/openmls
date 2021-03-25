@@ -38,7 +38,6 @@ impl From<&MLSPlaintext> for SecretType {
 
 /// Derives secrets for inner nodes of a SecretTree
 pub(crate) fn derive_tree_secret(
-    ciphersuite: &Ciphersuite,
     secret: &Secret,
     label: &str,
     node: u32,
@@ -56,7 +55,7 @@ pub(crate) fn derive_tree_secret(
     log_crypto!(trace, "Input secret {:x?}", secret.to_bytes());
     log_crypto!(trace, "Tree context {:?}", tree_context);
     let serialized_tree_context = tree_context.encode_detached().unwrap();
-    secret.kdf_expand_label(ciphersuite, label, &serialized_tree_context, length)
+    secret.kdf_expand_label(label, &serialized_tree_context, length)
 }
 
 #[derive(Debug)]
@@ -67,8 +66,8 @@ pub struct TreeContext {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct SecretTreeNode {
-    pub secret: Secret,
+pub(crate) struct SecretTreeNode {
+    pub(crate) secret: Secret,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -170,7 +169,6 @@ impl SecretTree {
             .unwrap()
             .secret;
         let handshake_ratchet_secret = derive_tree_secret(
-            ciphersuite,
             node_secret,
             "handshake",
             index_in_tree.as_u32(),
@@ -180,7 +178,6 @@ impl SecretTree {
         let handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
         self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
         let application_ratchet_secret = derive_tree_secret(
-            ciphersuite,
             node_secret,
             "application",
             index_in_tree.as_u32(),
@@ -286,22 +283,10 @@ impl SecretTree {
             left(index_in_tree).expect("derive_down: Error while computing left child.");
         let right_index = right(index_in_tree, self.size)
             .expect("derive_down: Error while computing right child.");
-        let left_secret = derive_tree_secret(
-            &ciphersuite,
-            &node_secret,
-            "tree",
-            left_index.as_u32(),
-            0,
-            hash_len,
-        );
-        let right_secret = derive_tree_secret(
-            &ciphersuite,
-            &node_secret,
-            "tree",
-            right_index.as_u32(),
-            0,
-            hash_len,
-        );
+        let left_secret =
+            derive_tree_secret(&node_secret, "tree", left_index.as_u32(), 0, hash_len);
+        let right_secret =
+            derive_tree_secret(&node_secret, "tree", right_index.as_u32(), 0, hash_len);
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",

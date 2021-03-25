@@ -158,6 +158,7 @@ async fn test_group() {
         key_package_bundles.remove(0),
         GroupConfig::default(),
         None, /* Initial PSK */
+        None, /* MLS version */
     )
     .unwrap();
 

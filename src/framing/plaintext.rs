@@ -1,3 +1,5 @@
+use crate::config::ProtocolVersion;
+
 use super::*;
 use std::convert::TryFrom;
 
@@ -75,7 +77,7 @@ impl MLSPlaintext {
     /// This constructor builds an `MLSPlaintext` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
     pub fn new_from_proposal_member(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         proposal: Proposal,
@@ -98,7 +100,7 @@ impl MLSPlaintext {
     /// This constructor builds an `MLSPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub fn new_from_application(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
@@ -160,7 +162,7 @@ impl MLSPlaintext {
     /// This should be used after signing messages from group members.
     pub fn add_membership_tag(
         &mut self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), CodecError> {
@@ -190,10 +192,13 @@ impl MLSPlaintext {
     // TODO #133: Include this in the validation
     pub fn verify_membership_tag(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), VerificationError> {
+        log::debug!("Verifying membership tag {}.", ciphersuite);
+        log_crypto!(trace, "  Membership key: {:x?}", membership_key);
+        log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
         let tbs_payload = MLSPlaintextTBS::new_from(&self, Some(serialized_context));
         let tbm_payload =
             MLSPlaintextTBMPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)
@@ -219,7 +224,7 @@ impl MLSPlaintext {
     // TODO #133: Include this in the validation
     pub fn verify_from_member(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         serialized_context: &[u8],
         credential: &Credential,
         membership_key: &MembershipKey,
@@ -342,9 +347,9 @@ impl MLSPlaintextContentType {
 /// struct {
 ///     opaque mac_value<0..255>;
 /// } MAC;
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Mac {
-    pub(crate) mac_value: Vec<u8>,
+    pub(crate) mac_value: Secret,
 }
 
 /// 9.1 Content Authentication
@@ -383,15 +388,9 @@ impl<'a> MLSPlaintextTBMPayload<'a> {
     }
 }
 
-impl From<Vec<u8>> for Mac {
-    fn from(mac_value: Vec<u8>) -> Self {
-        Self { mac_value }
-    }
-}
-
-impl From<Mac> for Vec<u8> {
-    fn from(mac: Mac) -> Self {
-        mac.mac_value
+impl From<Secret> for Mac {
+    fn from(s: Secret) -> Self {
+        Self { mac_value: s }
     }
 }
 
@@ -408,18 +407,35 @@ impl MembershipTag {
     /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
     /// ```
     pub(crate) fn new(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         membership_key: &MembershipKey,
         tbm_payload: MLSPlaintextTBMPayload,
     ) -> Result<Self, CodecError> {
+        log::trace!(
+            "Membership key cs: {:?}",
+            membership_key.secret().ciphersuite()
+        );
+        log::trace!("ciphersuite: {:?}", ciphersuite);
         Ok(MembershipTag(
-            ciphersuite
-                .mac(
-                    membership_key.secret(),
-                    &Secret::from(tbm_payload.into_bytes()?),
-                )
+            membership_key
+                .secret()
+                .mac(&Secret::from_slice(
+                    &tbm_payload.into_bytes()?,
+                    membership_key.secret().version(),
+                    ciphersuite,
+                ))
                 .into(),
         ))
+    }
+
+    /// Set the config for the tag, i.e. cipher suite and MLS version.
+    pub(crate) fn config(
+        &mut self,
+        ciphersuite: &'static Ciphersuite,
+        mls_version: ProtocolVersion,
+    ) {
+        self.0.mac_value.config(ciphersuite, mls_version);
+        // self
     }
 }
 

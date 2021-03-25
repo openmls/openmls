@@ -1,3 +1,5 @@
+use crate::config::{Config, ProtocolVersion};
+
 use super::*;
 use std::convert::TryFrom;
 
@@ -37,6 +39,28 @@ impl Codec for MLSPlaintext {
             confirmation_tag,
             membership_tag,
         })
+    }
+}
+
+impl MLSPlaintext {
+    /// Decode an `MLSPlaintext` with ciphersuite and protocol version information.
+    /// This should be used instead of the raw decoding function in order to
+    /// update the `MLSPlaintext` with the missing information.
+    pub fn decode_with_context(
+        bytes: &[u8],
+        ciphersuite_name: CiphersuiteName,
+        version: ProtocolVersion,
+    ) -> Result<Self, CodecError> {
+        let cursor = &mut Cursor::new(bytes);
+        let mut plaintext = Self::decode(cursor)?;
+        let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
+        if let Some(tag) = &mut plaintext.membership_tag {
+            tag.config(ciphersuite, version)
+        };
+        if let Some(tag) = &mut plaintext.confirmation_tag {
+            tag.config(ciphersuite, version);
+        };
+        Ok(plaintext)
     }
 }
 
@@ -118,13 +142,22 @@ impl MLSPlaintextContentType {
 
 impl Codec for Mac {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.mac_value)?;
+        encode_vec(VecSize::VecU8, buffer, self.mac_value.to_bytes())?;
         Ok(())
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let mac_value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Self { mac_value })
+        // The secret is instantiated with default values here because we don't
+        // know the correct values. They have to be set before use. Otherwise
+        // operations on the Mac will fail.
+        Ok(Self {
+            mac_value: Secret::from_slice(
+                &mac_value,
+                ProtocolVersion::default(),
+                Ciphersuite::default(),
+            ),
+        })
     }
 }
 

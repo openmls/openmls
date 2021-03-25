@@ -11,7 +11,7 @@ use crate::test_util::{read, write};
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName, Secret, Signature},
     codec::Codec,
-    config::Config,
+    config::{Config, ProtocolVersion},
     group::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
         GroupId,
@@ -45,15 +45,17 @@ pub struct TranscriptTestVector {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> TranscriptTestVector {
+pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTestVector {
     // Generate random values.
     let group_id = GroupId::random();
     let epoch = random_u64();
     let tree_hash_before = randombytes(ciphersuite.hash_length());
     let confirmed_transcript_hash_before = randombytes(ciphersuite.hash_length());
     let interim_transcript_hash_before = randombytes(ciphersuite.hash_length());
-    let membership_key = MembershipKey::from_secret(Secret::random(ciphersuite.hash_length()));
-    let confirmation_key = ConfirmationKey::from_secret(Secret::random(ciphersuite.hash_length()));
+    let membership_key =
+        MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
+    let confirmation_key =
+        ConfirmationKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
 
     // Build plaintext commit message.
     let mut commit = MLSPlaintext {
@@ -158,14 +160,24 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     let confirmed_transcript_hash_before =
         hex_to_bytes(&test_vector.confirmed_transcript_hash_before);
     let interim_transcript_hash_before = hex_to_bytes(&test_vector.interim_transcript_hash_before);
-    let membership_key =
-        MembershipKey::from_secret(Secret::from(hex_to_bytes(&test_vector.membership_key)));
-    let confirmation_key =
-        ConfirmationKey::from_secret(Secret::from(hex_to_bytes(&test_vector.confirmation_key)));
+    let membership_key = MembershipKey::from_secret(Secret::from_slice(
+        &hex_to_bytes(&test_vector.membership_key),
+        ProtocolVersion::default(),
+        ciphersuite,
+    ));
+    let confirmation_key = ConfirmationKey::from_secret(Secret::from_slice(
+        &hex_to_bytes(&test_vector.confirmation_key),
+        ProtocolVersion::default(),
+        ciphersuite,
+    ));
 
     // Check membership and confirmation tags.
-    let commit = MLSPlaintext::decode_detached(&hex_to_bytes(&test_vector.commit))
-        .expect("Error decoding commit");
+    let commit = MLSPlaintext::decode_with_context(
+        &hex_to_bytes(&test_vector.commit),
+        ciphersuite.name(),
+        ProtocolVersion::default(),
+    )
+    .expect("Error decoding commit");
     let context = GroupContext::new(
         group_id.clone(),
         GroupEpoch(epoch),

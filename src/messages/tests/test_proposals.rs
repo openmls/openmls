@@ -100,7 +100,7 @@ fn proposal_queue_functions() {
             proposal_add_alice1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::default()),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_alice2 = MLSPlaintext::new_from_proposal_member(
@@ -110,7 +110,7 @@ fn proposal_queue_functions() {
             proposal_add_alice2,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::default()),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create proposal.");
         let _mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
@@ -120,7 +120,7 @@ fn proposal_queue_functions() {
             proposal_add_bob1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::default()),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create proposal.");
 
@@ -205,7 +205,7 @@ fn proposal_queue_order() {
             proposal_add_alice1.clone(),
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */)),
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
@@ -215,7 +215,7 @@ fn proposal_queue_order() {
             proposal_add_bob1.clone(),
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */)),
         )
         .expect("Could not create proposal.");
 
