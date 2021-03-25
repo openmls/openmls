@@ -535,10 +535,6 @@
 <span id="532">532</span>
 <span id="533">533</span>
 <span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
@@ -928,11 +924,7 @@
 
     <span class="doccomment">/// Returns the authentication secret</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">authentication_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">epoch_secrets</span>()
-            .<span class="ident">authentication_secret</span>()
-            .<span class="ident">secret</span>()
-            .<span class="ident">to_bytes</span>()
-            .<span class="ident">to_vec</span>()
+        <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">authentication_secret</span>().<span class="ident">export</span>()
     }
 
     <span class="doccomment">/// Loads the state from persisted state</span>

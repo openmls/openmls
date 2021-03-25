@@ -293,14 +293,6 @@
 <span id="290">290</span>
 <span id="291">291</span>
 <span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -360,17 +352,13 @@
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MLSCiphertextError</span>::<span class="ident">EncryptionError</span>)<span class="question-mark">?</span>;
         <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_sender_data_secret</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
-            <span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>(),
-        );
+        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
+            .<span class="ident">sender_data_secret</span>()
+            .<span class="ident">derive_aead_key</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>);
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_sender_data_secret</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
-            <span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>(),
-        );
+        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
+            .<span class="ident">sender_data_secret</span>()
+            .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>);
         <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule</span>
         <span class="comment">// nonce as per spec.</span>
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span> <span class="ident">MLSSenderDataAAD</span>::<span class="ident">new</span>(
@@ -407,17 +395,13 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span>, <span class="ident">MLSCiphertextError</span><span class="op">&gt;</span> {
         <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Decrypting MLSCiphertext&quot;</span>);
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_sender_data_secret</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>,
-            <span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>(),
-        );
+        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
+            .<span class="ident">sender_data_secret</span>()
+            .<span class="ident">derive_aead_key</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>);
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_sender_data_secret</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>,
-            <span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>(),
-        );
+        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
+            .<span class="ident">sender_data_secret</span>()
+            .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>);
         <span class="comment">// Serialize sender data AAD</span>
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span>
             <span class="ident">MLSSenderDataAAD</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">epoch</span>, <span class="self">self</span>.<span class="ident">content_type</span>);

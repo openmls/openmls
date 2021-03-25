@@ -546,10 +546,6 @@
 <span id="543">543</span>
 <span id="544">544</span>
 <span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for encrypting to tree nodes</span>
 <span class="doccomment">//!</span>
@@ -631,7 +627,7 @@
 <span class="doccomment">//! section of the specification.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">Signature</span>},
+    <span class="ident">ciphersuite</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">Signature</span>},
     <span class="ident">codec</span>::<span class="kw-2">*</span>,
     <span class="ident">config</span>::<span class="ident">Config</span>,
     <span class="ident">credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialType</span>},
@@ -809,11 +805,9 @@
 
     <span class="comment">// Create sender_data_key/secret</span>
     <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">randombytes</span>(<span class="number">77</span>);
-    <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span>
-        <span class="ident">AeadKey</span>::<span class="ident">from_sender_data_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>, <span class="kw-2">&amp;</span><span class="ident">sender_data_secret</span>);
+    <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">sender_data_secret</span>.<span class="ident">derive_aead_key</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>);
     <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-    <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span>
-        <span class="ident">AeadNonce</span>::<span class="ident">from_sender_data_secret</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>, <span class="kw-2">&amp;</span><span class="ident">sender_data_secret</span>);
+    <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">sender_data_secret</span>.<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>);
     <span class="kw">let</span> <span class="ident">sender_data_info</span> <span class="op">=</span> <span class="ident">SenderDataInfo</span> {
         <span class="ident">ciphertext</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>),
         <span class="ident">key</span>: <span class="ident">bytes_to_hex</span>(<span class="ident">sender_data_key</span>.<span class="ident">as_slice</span>()),
@@ -922,15 +916,13 @@
     <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span>
         <span class="ident">SenderDataSecret</span>::<span class="ident">from</span>(<span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>).<span class="ident">as_slice</span>());
 
-    <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">AeadKey</span>::<span class="ident">from_sender_data_secret</span>(
+    <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">sender_data_secret</span>.<span class="ident">derive_aead_key</span>(
         <span class="ident">ciphersuite</span>,
         <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_info</span>.<span class="ident">ciphertext</span>),
-        <span class="kw-2">&amp;</span><span class="ident">sender_data_secret</span>,
     );
-    <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_sender_data_secret</span>(
+    <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">sender_data_secret</span>.<span class="ident">derive_aead_nonce</span>(
         <span class="ident">ciphersuite</span>,
         <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_info</span>.<span class="ident">ciphertext</span>),
-        <span class="kw-2">&amp;</span><span class="ident">sender_data_secret</span>,
     );
     <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_info</span>.<span class="ident">key</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">sender_data_key</span>.<span class="ident">as_slice</span>() {
         <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
