@@ -193,7 +193,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         return Err(TranscriptTestVectorError::GroupContextMismatch);
     }
 
-    if !commit
+    if commit
         .verify_membership_tag(ciphersuite, context.serialized(), &membership_key)
         .is_err()
     {
