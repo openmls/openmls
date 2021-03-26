@@ -660,11 +660,10 @@ impl RatchetTree {
             for d in dirpath.iter() {
                 if !self.nodes[d].is_blank() {
                     let node = &self.nodes[d];
-                    let index = d.as_u32();
                     // TODO handle error
                     let mut parent_node = node.node.clone().unwrap();
-                    if !parent_node.unmerged_leaves().contains(&index) {
-                        parent_node.add_unmerged_leaf(index);
+                    if !parent_node.unmerged_leaves().contains(&leaf_index.into()) {
+                        parent_node.add_unmerged_leaf(leaf_index.into());
                     }
                     self.nodes[d].node = Some(parent_node);
                 }
