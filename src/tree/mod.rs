@@ -655,6 +655,18 @@ impl RatchetTree {
         let free_leaves_len = free_leaves.len();
         for (&new_kp, leaf_index) in new_kps.iter().zip(free_leaves) {
             self.nodes[leaf_index] = Node::new_leaf(Some((new_kp).clone()));
+            added_members.push((NodeIndex::from(leaf_index), new_kp.credential().clone()));
+        }
+        // Add the remaining nodes.
+        for &key_package in new_kps.iter().skip(free_leaves_len) {
+            added_members.push(self.add_node(key_package));
+        }
+
+        // Add the newly added leaves to the unmerged leaves of all non-blank parent nodes in their direct path.
+        for (added_index, _) in &added_members {
+            // We can unwrap here, because we know that members are only added
+            // into leaf nodes.
+            let leaf_index = LeafIndex::try_from(*added_index).unwrap();
             let dirpath = treemath::leaf_direct_path(leaf_index, self.leaf_count())
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
@@ -668,12 +680,8 @@ impl RatchetTree {
                     self.nodes[d].node = Some(parent_node);
                 }
             }
-            added_members.push((NodeIndex::from(leaf_index), new_kp.credential().clone()));
         }
-        // Add the remaining nodes.
-        for &key_package in new_kps.iter().skip(free_leaves_len) {
-            added_members.push(self.add_node(key_package));
-        }
+
         self.trim_tree();
         added_members
     }
