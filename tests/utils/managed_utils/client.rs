@@ -133,6 +133,11 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             let group_state = group_states
                 .get_mut(&group_id)
                 .ok_or(ClientError::NoMatchingGroup)?;
+            // Prevent feeding further messages to client after it was removed
+            // by one of the messages.
+            if !group_state.is_active() {
+                return Ok(());
+            }
             group_state.process_messages(vec![message.clone()])?;
         }
         Ok(())
