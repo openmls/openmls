@@ -216,7 +216,7 @@ impl RatchetTree {
                 node.unwrap()
                     .unmerged_leaves()
                     .iter()
-                    .map(|n| NodeIndex::from(*n)),
+                    .map(|n| NodeIndex::from(LeafIndex::from(*n))),
             );
             unmerged_leaves
         } else {
