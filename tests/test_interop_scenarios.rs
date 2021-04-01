@@ -257,6 +257,7 @@ ctest!(large_group_lifecycle {
             .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .expect("Error while removing group member.");
         group_members = group.members.clone();
+        setup.check_group_states(group);
     }
 
     // Check that group members agree on a group state.

@@ -253,7 +253,7 @@ impl<'ks> ManagedTestSetup<'ks> {
         messages: &[MLSMessage],
     ) -> Result<(), ClientError> {
         let clients = self.clients.borrow();
-        println!("\n Distributing and processing messages...");
+        println!("\nDistributing and processing messages...");
         // Distribute message to all members.
         for (index, member_id) in &group.members {
             println!(
@@ -261,6 +261,13 @@ impl<'ks> ManagedTestSetup<'ks> {
                 index, member_id
             );
             let member = clients.get(member_id).unwrap().borrow();
+            //println!(
+            //    "Client {:?} has the following view of the group.",
+            //    member_id
+            //);
+            //for (index, member_id) in member.get_members_of_group(&group.group_id)?.iter() {
+            //    println!("Index: {:?}, Id: {:?}", index, member_id.identity());
+            //}
             member.receive_messages_for_group(messages)?;
         }
         // Get the current tree and figure out who's still in the group.
@@ -277,6 +284,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             println!("Index: {:?}, Id: {:?}", index, member_id);
         }
         group.public_tree = sender_group.export_ratchet_tree();
+        sender_group.print_tree("Tree after message distribution:");
         group.exporter_secret = sender_group.export_secret("test", &[], 32)?;
         Ok(())
     }
@@ -515,6 +523,7 @@ impl<'ks> ManagedTestSetup<'ks> {
             let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite)?;
             key_packages.push(key_package);
         }
+        println!("{:?} will now add {:?}", adder.identity, addees);
         let (messages, welcome_option) =
             adder.add_members(action_type, &group.group_id, &key_packages, include_path)?;
         self.distribute_to_members(&adder_id, group, &messages)?;
