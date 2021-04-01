@@ -66,19 +66,8 @@ impl RatchetTree {
         }
     }
 
-    /// Create a new `RatchetTree` with a given set of nodes.
-    #[cfg(test)]
-    pub(crate) fn init_from_nodes(
-        ciphersuite: &'static Ciphersuite,
-        nodes: &[Option<Node>],
-    ) -> Self {
-        let (nodes, _) = Self::tree_from_nodes(nodes, None);
-        Self {
-            ciphersuite,
-            nodes,
-            // XXX: This is technically wrong. But all this needs to be rewritten anyway.
-            private_tree: PrivateTree::new(0usize.into()),
-        }
+    pub fn ciphersuite(&self) -> &'static Ciphersuite {
+        self.ciphersuite
     }
 
     /// Create a new nodes vector for a `RatchetTree` from a slice of nodes.
@@ -164,7 +153,7 @@ impl RatchetTree {
         NodeIndex::from(self.nodes.len())
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn root(&self) -> NodeIndex {
         treemath::root(self.leaf_count())
     }
@@ -662,11 +651,12 @@ impl RatchetTree {
             added_members.push(self.add_node(key_package));
         }
 
-        // Add the newly added leaves to the unmerged leaves of all non-blank parent nodes in their direct path.
+        // Add the newly added leaves to the unmerged leaves of all non-blank
+        // parent nodes in their direct path.
         for (added_index, _) in &added_members {
             // We can unwrap here, because we know that members are only added
             // into leaf nodes.
-            let leaf_index = LeafIndex::try_from(*added_index).unwrap();
+            let leaf_index = LeafIndex::try_from(added_index.clone()).unwrap();
             let dirpath = treemath::leaf_direct_path(leaf_index, self.leaf_count())
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
@@ -806,9 +796,9 @@ impl RatchetTree {
     }
 
     /// Get the path secret of the root node.
-    #[cfg(test)]
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn root_secret(&self) -> Option<&PathSecret> {
-        self.path_secret(self.root())
+        self.private_tree().path_secrets().last()
     }
 
     /// Get the path secret for a given target node.

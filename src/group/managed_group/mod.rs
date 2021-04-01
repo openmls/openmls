@@ -18,6 +18,9 @@ use crate::{
     tree::{index::LeafIndex, node::Node},
 };
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+use crate::messages::PathSecret;
+
 use std::collections::HashMap;
 use std::io::{Error, Read, Write};
 
@@ -168,6 +171,7 @@ impl<'a> ManagedGroup<'a> {
     pub fn add_members(
         &mut self,
         key_packages: &[KeyPackage],
+        include_path: bool,
     ) -> Result<(Vec<MLSMessage>, Welcome), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -201,7 +205,7 @@ impl<'a> ManagedGroup<'a> {
             &self.credential_bundle,
             proposals_by_reference,
             proposals_by_value,
-            false,
+            include_path,
             None,
         )?;
         let welcome = match welcome_option {
@@ -850,6 +854,31 @@ impl<'a> ManagedGroup<'a> {
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
         self.group.tree().public_key_tree_copy()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_path_secrets(&self) -> Vec<PathSecret> {
+        self.group.tree().private_tree().path_secrets().to_vec()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_group_context(&self) -> &GroupContext {
+        self.group.context()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_root_secret(&self) -> PathSecret {
+        self.group.tree().root_secret().unwrap().clone()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn tree_hash(&self) -> Vec<u8> {
+        self.group.tree().tree_hash()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn print_tree(&self, message: &str) {
+        _print_tree(&self.group.tree(), message)
     }
 }
 

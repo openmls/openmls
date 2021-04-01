@@ -45,4 +45,4 @@ pub use crate::tree::node;
 pub mod prelude;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-mod test_util;
+pub mod test_util;

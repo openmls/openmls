@@ -3,7 +3,7 @@ use crate::tree::{index::*, node::*, *};
 
 use evercrypt::prelude::*;
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 use rand::{distributions::uniform::SampleRange, thread_rng, Rng};
 use rand::{rngs::OsRng, RngCore};
 
@@ -15,7 +15,7 @@ pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 pub(crate) fn u32_range<T: SampleRange<u32>>(range: T) -> u32 {
     thread_rng().gen_range(range)
 }
@@ -292,8 +292,10 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
             print!("◼︎");
         } else {
             if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
+                //print!("\tB(R)\t| ");
                 print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
             } else {
+                //print!("\tB\t| ");
                 print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
             }
             for _ in 0..level * factor {

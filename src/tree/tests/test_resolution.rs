@@ -89,7 +89,8 @@ fn test_original_child_resolution() {
         // Resolution for root left child
         const LEFT_CHILD_RESOLUTION: &[usize] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
         // Arbitrary unmerged leaves for root
-        const ROOT_UNMERGED_LEAVES: &[u32] = &[4, 6, 8];
+        // Indices are leaf indices, not node indices
+        const ROOT_UNMERGED_LEAVES: &[u32] = &[2, 3, 4];
         // Expected child resolution
         const EXPECTED_CHILD_RESOLUTION: &[usize] = &[0, 1, 2, 3, 5, 7, 9, 10, 11, 12, 13, 14];
 

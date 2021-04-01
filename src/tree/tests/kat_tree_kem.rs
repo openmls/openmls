@@ -15,13 +15,21 @@
 
 use crate::{
     ciphersuite::Ciphersuite,
+    ciphersuite::Secret,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
+    extensions::ExtensionType,
     extensions::{Extension, RatchetTreeExtension},
+    key_packages::KeyPackage,
     key_packages::KeyPackageBundle,
+    messages::PathSecret,
     prelude::u32_range,
     test_util::{bytes_to_hex, hex_to_bytes, read, write},
-    tree::{CiphersuiteName, Codec, HashSet, Node, NodeIndex, RatchetTree, SignatureScheme},
+    tree::treemath::*,
+    tree::{
+        CiphersuiteName, Codec, HashSet, LeafIndex, Node, NodeIndex, RatchetTree, SignatureScheme,
+        UpdatePath,
+    },
 };
 
 use serde::{self, Deserialize, Serialize};
@@ -35,11 +43,13 @@ struct TreeKemTestVector {
     ratchet_tree_before: String,
 
     add_sender: u32,
+    my_leaf_secret: String,
     my_key_package: String,
     my_path_secret: String,
 
     update_sender: u32,
     update_path: String,
+    update_group_context: String,
 
     // Computed values
     tree_hash_before: String,
@@ -134,7 +144,7 @@ fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> Tre
     let (my_node_index, _my_credential) = my_info.get(0).unwrap();
     let mut new_indices = HashSet::new();
     new_indices.insert(my_node_index);
-    let (_path, _key_package_bundle) = tree.refresh_private_tree(&cb, &[], new_indices);
+    let (_path, key_package_bundle) = tree.refresh_private_tree(&cb, &[], new_indices);
     let my_path_secret = tree.path_secret(*my_node_index).unwrap();
     let my_path_secret_bytes = my_path_secret.encode_detached().unwrap();
     let root_secret_after_add = tree.root_secret().unwrap();
@@ -172,23 +182,25 @@ fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> Tre
     let ratchet_tree_after_bytes = ratchet_tree_extension.extension_data();
     let tree_hash_after = update_sender_tree.tree_hash();
 
-    TreeKemTestVector {
-        cipher_suite: ciphersuite.name() as u16,
-        ratchet_tree_before: bytes_to_hex(&ratchet_tree_before_bytes),
-        add_sender,
-        my_key_package: bytes_to_hex(&my_key_package.encode_detached().unwrap()),
-        my_path_secret: bytes_to_hex(&my_path_secret_bytes),
-        update_sender,
-        update_path: bytes_to_hex(&update_path),
-        tree_hash_before: bytes_to_hex(&tree_hash_before),
-        root_secret_after_add: bytes_to_hex(&root_secret_after_add_bytes),
-        root_secret_after_update: bytes_to_hex(&root_secret_after_update_bytes),
-        ratchet_tree_after: bytes_to_hex(ratchet_tree_after_bytes),
-        tree_hash_after: bytes_to_hex(&tree_hash_after),
-    }
+    todo!()
+
+    //TreeKemTestVector {
+    //    cipher_suite: ciphersuite.name() as u16,
+    //    ratchet_tree_before: bytes_to_hex(&ratchet_tree_before_bytes),
+    //    add_sender,
+    //    my_path_secret: bytes_to_hex(&my_path_secret_bytes),
+    //    update_sender,
+    //    update_path: bytes_to_hex(&update_path),
+    //    tree_hash_before: bytes_to_hex(&tree_hash_before),
+    //    root_secret_after_add: bytes_to_hex(&root_secret_after_add_bytes),
+    //    root_secret_after_update: bytes_to_hex(&root_secret_after_update_bytes),
+    //    ratchet_tree_after: bytes_to_hex(ratchet_tree_after_bytes),
+    //    tree_hash_after: bytes_to_hex(&tree_hash_after),
+    //    my_leaf_secret: bytes_to_hex(&key_package_bundle.leaf_secret().encode_detached().unwrap()),
+    //}
 }
 
-#[test]
+//#[test]
 fn generate_test_vectors() {
     let mut tests = Vec::new();
     const NUM_LEAVES: u32 = 2;
@@ -205,6 +217,7 @@ fn generate_test_vectors() {
 }
 
 #[test]
+//#[cfg(test)]
 fn run_test_vectors() {
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
@@ -222,12 +235,23 @@ fn run_test_vectors() {
             }
         };
 
-        // Check tree hashes.
         let tree_extension_before =
             RatchetTreeExtension::new_from_bytes(&hex_to_bytes(&test_vector.ratchet_tree_before))
                 .expect("Error decoding ratchet tree");
         let ratchet_tree_before = tree_extension_before.into_vector();
-        let tree_before = RatchetTree::init_from_nodes(ciphersuite, &ratchet_tree_before);
+
+        let my_leaf_secret = Secret::decode_detached(&hex_to_bytes(&test_vector.my_leaf_secret))
+            .expect("failed to decote my_leaf_secret from test vector");
+        let my_key_package =
+            KeyPackage::decode_detached(&hex_to_bytes(&test_vector.my_key_package))
+                .expect("failed to decode my_key_package from test vector.");
+        let my_key_package_bundle =
+            KeyPackageBundle::from_key_package_and_leaf_secret(&my_leaf_secret, &my_key_package);
+
+        // Check tree hashes.
+        let mut tree_before =
+            RatchetTree::new_from_nodes(ciphersuite, my_key_package_bundle, &ratchet_tree_before)
+                .unwrap();
         crate::utils::_print_tree(&tree_before, "Tree before");
         assert_eq!(
             hex_to_bytes(&test_vector.tree_hash_before),
@@ -238,7 +262,12 @@ fn run_test_vectors() {
             RatchetTreeExtension::new_from_bytes(&hex_to_bytes(&test_vector.ratchet_tree_after))
                 .expect("Error decoding ratchet tree");
         let ratchet_tree_after = tree_extension_after.into_vector();
-        let tree_after = RatchetTree::init_from_nodes(ciphersuite, &ratchet_tree_after);
+
+        let my_key_package_bundle =
+            KeyPackageBundle::from_key_package_and_leaf_secret(&my_leaf_secret, &my_key_package);
+        let tree_after =
+            RatchetTree::new_from_nodes(ciphersuite, my_key_package_bundle, &ratchet_tree_after)
+                .unwrap();
         crate::utils::_print_tree(&tree_after, "Tree after");
         assert_eq!(
             hex_to_bytes(&test_vector.tree_hash_after),
@@ -249,6 +278,71 @@ fn run_test_vectors() {
         assert!(tree_before.verify_parent_hashes().is_ok());
         assert!(tree_after.verify_parent_hashes().is_ok());
 
-        // Get test node
+        // Initialize private portion of the RatchetTree
+        let add_sender = test_vector.add_sender;
+        println!(
+            "Add sender index: {:?}",
+            NodeIndex::from(LeafIndex::from(add_sender))
+        );
+        println!(
+            "Test client index: {:?}",
+            NodeIndex::from(tree_before.own_node_index())
+        );
+        println!(
+            "Updater index: {:?}",
+            NodeIndex::from(LeafIndex::from(test_vector.update_sender))
+        );
+        let common_ancestor = common_ancestor_index(
+            NodeIndex::from(LeafIndex::from(add_sender)),
+            NodeIndex::from(tree_before.own_node_index()),
+        );
+        println!("Common ancestor: {:?}", common_ancestor);
+        let path = parent_direct_path(common_ancestor, tree_before.leaf_count()).unwrap();
+        println!("path: {:?}", path);
+        let start_secret =
+            PathSecret::decode_detached(&hex_to_bytes(&test_vector.my_path_secret)).unwrap();
+        tree_before
+            .private_tree_mut()
+            .continue_path_secrets(ciphersuite, start_secret, &path);
+
+        // Check if the root secrets match up.
+        assert_eq!(
+            tree_before.root_secret().unwrap(),
+            &PathSecret::decode_detached(&hex_to_bytes(&test_vector.root_secret_after_add))
+                .unwrap()
+        );
+
+        // Apply the update path
+        let update_path =
+            UpdatePath::decode_detached(&hex_to_bytes(&test_vector.update_path)).unwrap();
+        println!("UpdatePath: {:?}", update_path);
+        let group_context = hex_to_bytes(&test_vector.update_group_context);
+        let _commit_secret = tree_before
+            .update_path(
+                LeafIndex::from(test_vector.update_sender),
+                &update_path,
+                &group_context,
+                HashSet::new(),
+            )
+            .unwrap();
+
+        // Rename to avoid confusion.
+        let tree_after = tree_before;
+        let root_secret_after = tree_after.root_secret().unwrap();
+
+        assert_eq!(
+            root_secret_after,
+            &PathSecret::decode_detached(&hex_to_bytes(&test_vector.root_secret_after_update))
+                .unwrap()
+        );
+
+        let tree_extension_after =
+            RatchetTreeExtension::new_from_bytes(&hex_to_bytes(&test_vector.ratchet_tree_after))
+                .expect("Error decoding ratchet tree");
+        let ratchet_tree_after = tree_extension_after.into_vector();
+
+        assert_eq!(tree_after.public_key_tree_copy(), ratchet_tree_after);
+
+        println!("\nDone running test\n");
     }
 }

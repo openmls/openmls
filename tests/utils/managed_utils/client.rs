@@ -197,6 +197,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
+        include_path: bool,
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
@@ -204,7 +205,7 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome) = group.add_members(key_packages)?;
+                let (messages, welcome) = group.add_members(key_packages, include_path)?;
                 (messages, Some(welcome))
             }
             ActionType::Proposal => (group.propose_add_members(key_packages)?, None),

@@ -251,8 +251,8 @@ impl RatchetTree {
         }
         let right = child;
 
-        // "If R is a leaf node, the check fails"
-        if right.is_leaf() {
+        // "If R is a blank leaf node, the check fails"
+        if self.nodes[child].is_blank() && right.is_leaf() {
             return Err(ParentHashError::EndedWithLeafNode);
         }
 

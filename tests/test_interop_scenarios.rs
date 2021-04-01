@@ -44,7 +44,7 @@ ctest!(one_to_one_join {
     let bob_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id, false)
         .expect("Error adding Bob");
 
     // Check that group members agree on a group state.
@@ -82,14 +82,14 @@ ctest!(three_party_join {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id, false)
         .expect("Error adding Bob");
 
     // A vector including Charly's id.
     let charly_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, charly_id)
+        .add_clients(ActionType::Commit, group, &alice_id, charly_id, false)
         .expect("Error adding Charly");
 
     // Check that group members agree on a group state.
@@ -126,7 +126,7 @@ ctest!(multiple_joins {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id, false)
         .expect("Error adding Bob and Charly");
 
     // Check that group members agree on a group state.
@@ -239,6 +239,7 @@ ctest!(large_group_lifecycle {
     // Have each member in turn update. In between each update, messages are
     // delivered to each member.
     for (_, member_id) in &group_members {
+        println!("{:?} updates themselves", member_id);
         setup
             .self_update(ActionType::Commit, group, member_id, None)
             .expect("Error while updating group.")
@@ -251,6 +252,7 @@ ctest!(large_group_lifecycle {
         while remover_id == target_id {
             target_id = group.random_group_member();
         }
+        println!("{:?} removes {:?}", remover_id, target_id);
         setup
             .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .expect("Error while removing group member.");

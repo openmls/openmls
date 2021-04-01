@@ -117,7 +117,7 @@ fn remover() {
 
     // === Alice adds Bob ===
     let (queued_messages, welcome) =
-        match alice_group.add_members(&[bob_key_package_bundle.key_package().clone()]) {
+        match alice_group.add_members(&[bob_key_package_bundle.key_package().clone()], false) {
             Ok((qm, welcome)) => (qm, welcome),
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };
@@ -137,7 +137,7 @@ fn remover() {
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome) =
-        match bob_group.add_members(&[charlie_key_package_bundle.key_package().clone()]) {
+        match bob_group.add_members(&[charlie_key_package_bundle.key_package().clone()], false) {
             Ok((qm, welcome)) => (qm, welcome),
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };

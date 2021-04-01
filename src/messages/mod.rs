@@ -110,6 +110,11 @@ impl Commit {
     pub fn has_path(&self) -> bool {
         self.path.is_some()
     }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn path(&self) -> &Option<UpdatePath> {
+        &self.path
+    }
 }
 
 /// Confirmation tag field of MLSPlaintext. For type saftey this is a wrapper
@@ -279,8 +284,8 @@ impl Signable for GroupInfo {
 /// } PathSecret;
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct PathSecret {
+#[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq, Clone))]
+pub struct PathSecret {
     pub(crate) path_secret: Secret,
 }
 

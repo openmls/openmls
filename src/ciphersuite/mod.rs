@@ -204,7 +204,7 @@ impl KdfLabel {
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq))]
 pub struct Secret {
     value: Vec<u8>,
 }
