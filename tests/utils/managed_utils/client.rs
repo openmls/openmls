@@ -138,7 +138,19 @@ impl<'key_store_lifetime> Client<'key_store_lifetime> {
             if !group_state.is_active() {
                 return Ok(());
             }
-            group_state.process_messages(vec![message.clone()])?;
+            let events = group_state.process_messages(vec![message.clone()])?;
+            // Check if an error occurred while processing messages.
+            for event in events {
+                match event {
+                    GroupEvent::InvalidMessage(e) => {
+                        return Err(ClientError::InvalidMessageEvent(e));
+                    }
+                    GroupEvent::Error(e) => {
+                        return Err(ClientError::ErrorEvent(e));
+                    }
+                    _ => {}
+                }
+            }
         }
         Ok(())
     }
