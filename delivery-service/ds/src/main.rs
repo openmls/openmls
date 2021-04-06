@@ -264,7 +264,7 @@ async fn msg_recv(
         .map(Message::Welcome)
         .collect();
     out.append(&mut welcomes);
-    let mut msgs: Vec<Message> = client.msgs.drain(..).map(Message::MLSMessage).collect();
+    let mut msgs: Vec<Message> = client.msgs.drain(..).map(Message::MlsMessage).collect();
     out.append(&mut msgs);
 
     let mut out_bytes = Vec::new();

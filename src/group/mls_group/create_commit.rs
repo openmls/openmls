@@ -12,7 +12,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[&MLSPlaintext],
+        proposals_by_reference: &[&MlsPlaintext],
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
@@ -67,9 +67,9 @@ impl MlsGroup {
         provisional_epoch.increment();
 
         // Build MLSPlaintext
-        let content = MLSPlaintextContentType::Commit(commit);
+        let content = MlsPlaintextContentType::Commit(commit);
         let sender = Sender::member(sender_index);
-        let mut mls_plaintext = MLSPlaintext {
+        let mut mls_plaintext = MlsPlaintext {
             group_id: self.context().group_id.clone(),
             epoch: self.context().epoch,
             sender,
@@ -90,7 +90,7 @@ impl MlsGroup {
             &ciphersuite,
             // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a
             // Commit
-            &MLSPlaintextCommitContent::try_from(&mls_plaintext).unwrap(),
+            &MlsPlaintextCommitContent::try_from(&mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
         )?;
 

@@ -8,7 +8,7 @@ use crate::credentials::CredentialError;
 use crate::tree::secret_tree::SecretTreeError;
 
 implement_error! {
-    pub enum MLSPlaintextError {
+    pub enum MlsPlaintextError {
         NotAnApplicationMessage = "The MLSPlaintext message is not an application message.",
         UnknownSender = "Sender is not part of the group",
         InvalidSignature = "The MLSPlaintext signature is invalid",
@@ -17,7 +17,7 @@ implement_error! {
 }
 
 implement_error! {
-    pub enum MLSCiphertextError {
+    pub enum MlsCiphertextError {
         Simple {
             InvalidContentType = "The MLSCiphertext has an invalid content type.",
             GenerationOutOfBound = "Couldn't find a ratcheting secret for the given sender and generation.",
@@ -25,7 +25,7 @@ implement_error! {
             DecryptionError = "An error occured while decrypting.",
         }
         Complex {
-            PlaintextError(MLSPlaintextError) = "MLSPlaintext error",
+            PlaintextError(MlsPlaintextError) = "MLSPlaintext error",
             SecretTreeError(SecretTreeError) = "SecretTree error",
             CodecError(CodecError) = "Codec error",
         }

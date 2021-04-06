@@ -108,11 +108,11 @@ impl MemberUpdatedEvent {
 #[derive(Debug, PartialEq, Clone)]
 pub struct PskReceivedEvent {
     aad: Vec<u8>,
-    psk_id: PreSharedKeyID,
+    psk_id: PreSharedKeyId,
 }
 
 impl PskReceivedEvent {
-    pub(crate) fn new(aad: Vec<u8>, psk_id: PreSharedKeyID) -> Self {
+    pub(crate) fn new(aad: Vec<u8>, psk_id: PreSharedKeyId) -> Self {
         Self { aad, psk_id }
     }
 
@@ -122,7 +122,7 @@ impl PskReceivedEvent {
     }
 
     /// Get a reference to the event's psk id.
-    pub fn psk_id(&self) -> &PreSharedKeyID {
+    pub fn psk_id(&self) -> &PreSharedKeyId {
         &self.psk_id
     }
 }

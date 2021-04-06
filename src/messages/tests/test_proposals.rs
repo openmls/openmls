@@ -4,7 +4,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, LifetimeExtension},
     framing::sender::{Sender, SenderType},
-    framing::MLSPlaintext,
+    framing::MlsPlaintext,
     group::{GroupContext, GroupEpoch, GroupId},
     key_packages::KeyPackageBundle,
     messages::proposals::{
@@ -93,7 +93,7 @@ fn proposal_queue_functions() {
         assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
         // Frame proposals in MLSPlaintext
-        let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_alice1 = MlsPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(0u32),
             &[],
@@ -103,7 +103,7 @@ fn proposal_queue_functions() {
             &MembershipKey::from_secret(Secret::default()),
         )
         .expect("Could not create proposal.");
-        let mls_plaintext_add_alice2 = MLSPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_alice2 = MlsPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(1u32),
             &[],
@@ -113,7 +113,7 @@ fn proposal_queue_functions() {
             &MembershipKey::from_secret(Secret::default()),
         )
         .expect("Could not create proposal.");
-        let _mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
+        let _mls_plaintext_add_bob1 = MlsPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(1u32),
             &[],
@@ -198,7 +198,7 @@ fn proposal_queue_order() {
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
         // Frame proposals in MLSPlaintext
-        let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_alice1 = MlsPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(0u32),
             &[],
@@ -208,7 +208,7 @@ fn proposal_queue_order() {
             &MembershipKey::from_secret(Secret::random(ciphersuite.hash_length())),
         )
         .expect("Could not create proposal.");
-        let mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_bob1 = MlsPlaintext::new_from_proposal_member(
             ciphersuite,
             LeafIndex::from(1u32),
             &[],

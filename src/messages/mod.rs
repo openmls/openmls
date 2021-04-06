@@ -338,7 +338,7 @@ impl PublicGroupState {
         let interim_transcript_hash = mls_group.interim_transcript_hash().to_vec();
         let extensions = mls_group.extensions();
 
-        let pgstbs = PublicGroupStateTBS {
+        let pgstbs = PublicGroupStateTbs {
             group_id: &group_id,
             epoch: &epoch,
             tree_hash: &tree_hash,
@@ -363,7 +363,7 @@ impl PublicGroupState {
     /// Verifies the signature of the `PublicGroupState`.
     /// Returns `Ok(())` in case of success and `CredentialError` otherwise.
     pub fn verify(&self, credential_bundle: &CredentialBundle) -> Result<(), CredentialError> {
-        let pgstbs = PublicGroupStateTBS {
+        let pgstbs = PublicGroupStateTbs {
             group_id: &self.group_id,
             epoch: &self.epoch,
             tree_hash: &self.tree_hash,
@@ -392,7 +392,7 @@ impl PublicGroupState {
 ///     HPKEPublicKey external_pub;
 /// } PublicGroupStateTBS;
 /// ```
-pub(crate) struct PublicGroupStateTBS<'a> {
+pub(crate) struct PublicGroupStateTbs<'a> {
     pub(crate) group_id: &'a GroupId,
     pub(crate) epoch: &'a GroupEpoch,
     pub(crate) tree_hash: &'a [u8],
@@ -401,7 +401,7 @@ pub(crate) struct PublicGroupStateTBS<'a> {
     pub(crate) external_pub: &'a HPKEPublicKey,
 }
 
-impl<'a> PublicGroupStateTBS<'a> {
+impl<'a> PublicGroupStateTbs<'a> {
     /// Signs the `PublicGroupStateTBS` with a `CredentialBundle`.
     fn sign(&self, credential_bundle: &CredentialBundle) -> Result<Signature, CredentialError> {
         let payload = self

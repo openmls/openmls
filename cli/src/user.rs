@@ -25,7 +25,7 @@ pub struct Group {
     members: Vec<Vec<u8>>,
     conversation: Conversation,
     mls_group: RefCell<MlsGroup>,
-    pending_proposals: Vec<MLSPlaintext>,
+    pending_proposals: Vec<MlsPlaintext>,
 }
 
 pub struct User {
@@ -97,7 +97,7 @@ impl User {
 
         // Send mls_ciphertext to the group
         let msg = GroupMessage::new(
-            MLSMessage::Ciphertext(mls_ciphertext),
+            MlsMessage::Ciphertext(mls_ciphertext),
             &self.recipients(group),
         );
         log::debug!(" >>> send: {:?}", msg);
@@ -122,9 +122,9 @@ impl User {
                     // approve first ...)
                     self.join_group(welcome)?;
                 }
-                Message::MLSMessage(message) => {
+                Message::MlsMessage(message) => {
                     let msg = match message {
-                        MLSMessage::Ciphertext(ctxt) => {
+                        MlsMessage::Ciphertext(ctxt) => {
                             let mut group = match self.groups.get(&ctxt.group_id.as_slice()) {
                                 Some(g) => g.mls_group.borrow_mut(),
                                 None => {
@@ -146,7 +146,7 @@ impl User {
                                 }
                             }
                         }
-                        MLSMessage::Plaintext(msg) => msg,
+                        MlsMessage::Plaintext(msg) => msg,
                     };
                     let group = match self.groups.get_mut(&msg.group_id().as_slice()) {
                         Some(g) => g,
@@ -159,7 +159,7 @@ impl User {
                         }
                     };
                     match msg.content() {
-                        MLSPlaintextContentType::Application(application_message) => {
+                        MlsPlaintextContentType::Application(application_message) => {
                             let application_message =
                                 String::from_utf8(application_message.to_vec()).unwrap();
                             if group_name.is_none()
@@ -169,18 +169,18 @@ impl User {
                             }
                             group.conversation.add(application_message);
                         }
-                        MLSPlaintextContentType::Proposal(_proposal) => {
+                        MlsPlaintextContentType::Proposal(_proposal) => {
                             // Store the proposal to use later when we got a
                             // corresponding commit.
                             group.pending_proposals.push(msg);
                         }
-                        MLSPlaintextContentType::Commit(_commit) => {
+                        MlsPlaintextContentType::Commit(_commit) => {
                             match group.mls_group.borrow_mut().apply_commit(
                                 &msg,
                                 &(group
                                     .pending_proposals
                                     .iter()
-                                    .collect::<Vec<&MLSPlaintext>>()),
+                                    .collect::<Vec<&MlsPlaintext>>()),
                                 &[], // TODO: store key packages.
                                 None,
                             ) {
@@ -303,12 +303,12 @@ impl User {
         log::trace!("Sending proposal");
         let group = self.groups.get(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        let msg = GroupMessage::new(MLSMessage::Plaintext(add_proposal), &group_recipients);
+        let msg = GroupMessage::new(MlsMessage::Plaintext(add_proposal), &group_recipients);
         self.backend.send_msg(&msg)?;
 
         // Send commit to the group.
         log::trace!("Sending commit");
-        let msg = GroupMessage::new(MLSMessage::Plaintext(commit), &group_recipients);
+        let msg = GroupMessage::new(MlsMessage::Plaintext(commit), &group_recipients);
         self.backend.send_msg(&msg)?;
 
         // Update the group state

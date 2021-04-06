@@ -187,7 +187,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .create_commit(
                     group_aad,
                     &initial_credential_bundle,
-                    &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
+                    &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                     &[],
                     true, /* Set this to true to populate the tree a little bit. */
                     None, /* PSKs are not supported here */
@@ -199,7 +199,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // the key package bundle returned by the create_commit earlier.
             match mls_group.apply_commit(
                 &commit_mls_plaintext,
-                &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
+                &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                 &[key_package_bundle],
                 None,
             ) {

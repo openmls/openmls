@@ -8,8 +8,8 @@ use crate::schedule::CommitSecret;
 impl MlsGroup {
     pub(crate) fn apply_commit_internal(
         &mut self,
-        mls_plaintext: &MLSPlaintext,
-        proposals_by_reference: &[&MLSPlaintext],
+        mls_plaintext: &MlsPlaintext,
+        proposals_by_reference: &[&MlsPlaintext],
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<(), ApplyCommitError> {
@@ -22,7 +22,7 @@ impl MlsGroup {
 
         // Extract Commit & Confirmation Tag from MLSPlaintext
         let commit = match &mls_plaintext.content {
-            MLSPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContentType::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
         let received_confirmation_tag = match &mls_plaintext.confirmation_tag {
@@ -118,7 +118,7 @@ impl MlsGroup {
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
             // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a Commit
-            &MLSPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
+            &MlsPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
         )?;
 
@@ -147,7 +147,7 @@ impl MlsGroup {
         let provisional_epoch_secrets = key_schedule.epoch_secrets(true)?;
 
         let mls_plaintext_commit_auth_data =
-            match MLSPlaintextCommitAuthData::try_from(mls_plaintext) {
+            match MlsPlaintextCommitAuthData::try_from(mls_plaintext) {
                 Ok(mpcad) => mpcad,
                 Err(_) => return Err(ApplyCommitError::ConfirmationTagMissing),
             };

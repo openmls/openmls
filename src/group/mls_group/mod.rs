@@ -34,7 +34,7 @@ use std::cell::RefMut;
 use super::errors::{ExporterError, PskError};
 
 pub type CreateCommitResult =
-    Result<(MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>), GroupError>;
+    Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), GroupError>;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -140,12 +140,12 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
-    ) -> Result<MLSPlaintext, GroupError> {
+    ) -> Result<MlsPlaintext, GroupError> {
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        MLSPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_from_proposal_member(
             self.ciphersuite,
             self.sender_index(),
             aad,
@@ -166,10 +166,10 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
-    ) -> Result<MLSPlaintext, GroupError> {
+    ) -> Result<MlsPlaintext, GroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        MLSPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_from_proposal_member(
             self.ciphersuite,
             self.sender_index(),
             aad,
@@ -190,12 +190,12 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
-    ) -> Result<MLSPlaintext, GroupError> {
+    ) -> Result<MlsPlaintext, GroupError> {
         let remove_proposal = RemoveProposal {
             removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
-        MLSPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_from_proposal_member(
             self.ciphersuite,
             self.sender_index(),
             aad,
@@ -215,11 +215,11 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        psk: PreSharedKeyID,
-    ) -> Result<MLSPlaintext, GroupError> {
+        psk: PreSharedKeyId,
+    ) -> Result<MlsPlaintext, GroupError> {
         let presharedkey_proposal = PreSharedKeyProposal { psk };
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
-        MLSPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_from_proposal_member(
             self.ciphersuite,
             self.sender_index(),
             aad,
@@ -244,7 +244,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[&MLSPlaintext],
+        proposals_by_reference: &[&MlsPlaintext],
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
@@ -262,8 +262,8 @@ impl MlsGroup {
     // Apply a Commit message
     pub fn apply_commit(
         &mut self,
-        mls_plaintext: &MLSPlaintext,
-        proposals: &[&MLSPlaintext],
+        mls_plaintext: &MlsPlaintext,
+        proposals: &[&MlsPlaintext],
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<(), GroupError> {
@@ -282,8 +282,8 @@ impl MlsGroup {
         msg: &[u8],
         credential_bundle: &CredentialBundle,
         padding_size: usize,
-    ) -> Result<MLSCiphertext, GroupError> {
-        let mls_plaintext = MLSPlaintext::new_from_application(
+    ) -> Result<MlsCiphertext, GroupError> {
+        let mls_plaintext = MlsPlaintext::new_from_application(
             self.ciphersuite,
             self.sender_index(),
             aad,
@@ -298,10 +298,10 @@ impl MlsGroup {
     // Encrypt an MLSPlaintext into an MLSCiphertext
     pub fn encrypt(
         &mut self,
-        mls_plaintext: MLSPlaintext,
+        mls_plaintext: MlsPlaintext,
         padding_size: usize,
-    ) -> Result<MLSCiphertext, GroupError> {
-        MLSCiphertext::try_from_plaintext(
+    ) -> Result<MlsCiphertext, GroupError> {
+        MlsCiphertext::try_from_plaintext(
             &mls_plaintext,
             &self.ciphersuite,
             self.context(),
@@ -310,14 +310,14 @@ impl MlsGroup {
             &mut self.secret_tree_mut(),
             padding_size,
         )
-        .map_err(GroupError::MLSCiphertextError)
+        .map_err(GroupError::MlsCiphertextError)
     }
 
     /// Decrypt an MLSCiphertext into an MLSPlaintext
     pub fn decrypt(
         &mut self,
-        mls_ciphertext: &MLSCiphertext,
-    ) -> Result<MLSPlaintext, MLSCiphertextError> {
+        mls_ciphertext: &MlsCiphertext,
+    ) -> Result<MlsPlaintext, MlsCiphertextError> {
         let mls_plaintext = mls_ciphertext.to_plaintext(
             self.ciphersuite(),
             &self.epoch_secrets,
@@ -332,28 +332,28 @@ impl MlsGroup {
     }
 
     /// Verify the signature of an MLSPlaintext
-    pub fn verify_signature(&self, mls_plaintext: &MLSPlaintext) -> Result<(), MLSPlaintextError> {
+    pub fn verify_signature(&self, mls_plaintext: &MlsPlaintext) -> Result<(), MlsPlaintextError> {
         let tree = self.tree();
 
         let node = &tree.nodes[mls_plaintext.sender()];
         let credential = if let Some(kp) = node.key_package.as_ref() {
             kp.credential()
         } else {
-            return Err(MLSPlaintextError::UnknownSender);
+            return Err(MlsPlaintextError::UnknownSender);
         };
 
         let serialized_context = self.context().serialized();
 
         mls_plaintext
             .verify_signature(serialized_context, credential)
-            .map_err(|_| MLSPlaintextError::InvalidSignature)
+            .map_err(|_| MlsPlaintextError::InvalidSignature)
     }
 
     /// Verify the membership tag an MLSPlaintext
     pub fn verify_membership_tag(
         &self,
-        mls_plaintext: &MLSPlaintext,
-    ) -> Result<(), MLSPlaintextError> {
+        mls_plaintext: &MlsPlaintext,
+    ) -> Result<(), MlsPlaintextError> {
         let serialized_context = self.context().serialized();
 
         mls_plaintext
@@ -362,7 +362,7 @@ impl MlsGroup {
                 serialized_context,
                 self.epoch_secrets().membership_key(),
             )
-            .map_err(|_| MLSPlaintextError::InvalidSignature)
+            .map_err(|_| MlsPlaintextError::InvalidSignature)
     }
 
     /// Exporter
@@ -469,11 +469,13 @@ impl MlsGroup {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
+    #[allow(dead_code)]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
         &mut self.epoch_secrets
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
+    #[allow(dead_code)]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
@@ -491,7 +493,7 @@ pub type PskFetcher = fn(psks: &PreSharedKeys) -> Option<Vec<Secret>>;
 
 pub(crate) fn update_confirmed_transcript_hash(
     ciphersuite: &Ciphersuite,
-    mls_plaintext_commit_content: &MLSPlaintextCommitContent,
+    mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, CodecError> {
     let commit_content_bytes = mls_plaintext_commit_content.encode_detached()?;
@@ -500,7 +502,7 @@ pub(crate) fn update_confirmed_transcript_hash(
 
 pub(crate) fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
-    mls_plaintext_commit_auth_data: &MLSPlaintextCommitAuthData,
+    mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, CodecError> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached()?;

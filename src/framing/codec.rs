@@ -1,7 +1,7 @@
 use super::*;
 use std::convert::TryFrom;
 
-impl Codec for MLSPlaintext {
+impl Codec for MlsPlaintext {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
@@ -21,12 +21,12 @@ impl Codec for MLSPlaintext {
         let sender = Sender::decode(cursor)?;
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
         let content_type = ContentType::decode(cursor)?;
-        let content = MLSPlaintextContentType::decode(content_type, cursor)?;
+        let content = MlsPlaintextContentType::decode(content_type, cursor)?;
         let signature = Signature::decode(cursor)?;
         let confirmation_tag = Option::<ConfirmationTag>::decode(cursor)?;
         let membership_tag = Option::<MembershipTag>::decode(cursor)?;
 
-        Ok(MLSPlaintext {
+        Ok(MlsPlaintext {
             group_id,
             epoch,
             sender,
@@ -40,7 +40,7 @@ impl Codec for MLSPlaintext {
     }
 }
 
-impl Codec for MLSCiphertext {
+impl Codec for MlsCiphertext {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
@@ -59,7 +59,7 @@ impl Codec for MLSCiphertext {
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
         let encrypted_sender_data = decode_vec(VecSize::VecU8, cursor)?;
         let ciphertext = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(MLSCiphertext {
+        Ok(MlsCiphertext {
             group_id,
             epoch,
             content_type,
@@ -80,16 +80,16 @@ impl Codec for ContentType {
     }
 }
 
-impl Codec for MLSPlaintextContentType {
+impl Codec for MlsPlaintextContentType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
-            MLSPlaintextContentType::Application(application_data) => {
+            MlsPlaintextContentType::Application(application_data) => {
                 encode_vec(VecSize::VecU32, buffer, application_data)?;
             }
-            MLSPlaintextContentType::Proposal(proposal) => {
+            MlsPlaintextContentType::Proposal(proposal) => {
                 proposal.encode(buffer)?;
             }
-            MLSPlaintextContentType::Commit(commit) => {
+            MlsPlaintextContentType::Commit(commit) => {
                 commit.encode(buffer)?;
             }
         }
@@ -97,20 +97,20 @@ impl Codec for MLSPlaintextContentType {
     }
 }
 
-impl MLSPlaintextContentType {
+impl MlsPlaintextContentType {
     fn decode(content_type: ContentType, cursor: &mut Cursor) -> Result<Self, CodecError> {
         match content_type {
             ContentType::Application => {
                 let application_data = decode_vec(VecSize::VecU32, cursor)?;
-                Ok(MLSPlaintextContentType::Application(application_data))
+                Ok(MlsPlaintextContentType::Application(application_data))
             }
             ContentType::Proposal => {
                 let proposal = Proposal::decode(cursor)?;
-                Ok(MLSPlaintextContentType::Proposal(proposal))
+                Ok(MlsPlaintextContentType::Proposal(proposal))
             }
             ContentType::Commit => {
                 let commit = Commit::decode(cursor)?;
-                Ok(MLSPlaintextContentType::Commit(commit))
+                Ok(MlsPlaintextContentType::Commit(commit))
             }
         }
     }
@@ -140,7 +140,7 @@ impl Codec for MembershipTag {
     }
 }
 
-impl<'a> Codec for MLSPlaintextTBS<'a> {
+impl<'a> Codec for MlsPlaintextTbs<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         if let Some(ref serialized_context) = self.serialized_context_option {
             buffer.extend_from_slice(serialized_context);
@@ -155,7 +155,7 @@ impl<'a> Codec for MLSPlaintextTBS<'a> {
     }
 }
 
-impl Codec for MLSSenderData {
+impl Codec for MlsSenderData {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.sender.encode(buffer)?;
         self.generation.encode(buffer)?;
@@ -168,7 +168,7 @@ impl Codec for MLSSenderData {
         let generation = u32::decode(cursor)?;
         let reuse_guard = ReuseGuard::decode(cursor)?;
 
-        Ok(MLSSenderData {
+        Ok(MlsSenderData {
             sender,
             generation,
             reuse_guard,
@@ -176,7 +176,7 @@ impl Codec for MLSSenderData {
     }
 }
 
-impl Codec for MLSSenderDataAAD {
+impl Codec for MlsSenderDataAad {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
@@ -196,7 +196,7 @@ impl Codec for MLSSenderDataAAD {
     }
 }
 
-impl MLSCiphertextContent {
+impl MlsCiphertextContent {
     pub(crate) fn decode(
         content_type: ContentType,
         cursor: &mut Cursor,
@@ -205,21 +205,21 @@ impl MLSCiphertextContent {
         let content = match content_type {
             ContentType::Application => {
                 let application_data = decode_vec(VecSize::VecU32, cursor)?;
-                MLSPlaintextContentType::Application(application_data)
+                MlsPlaintextContentType::Application(application_data)
             }
             ContentType::Proposal => {
                 let proposal = Proposal::decode(cursor)?;
-                MLSPlaintextContentType::Proposal(proposal)
+                MlsPlaintextContentType::Proposal(proposal)
             }
             ContentType::Commit => {
                 let commit = Commit::decode(cursor)?;
-                MLSPlaintextContentType::Commit(commit)
+                MlsPlaintextContentType::Commit(commit)
             }
         };
         let signature = Signature::decode(cursor)?;
         let confirmation_tag = Option::<ConfirmationTag>::decode(cursor)?;
         let padding = decode_vec(VecSize::VecU16, cursor)?;
-        Ok(MLSCiphertextContent {
+        Ok(MlsCiphertextContent {
             content,
             signature,
             confirmation_tag,
@@ -228,7 +228,7 @@ impl MLSCiphertextContent {
     }
 }
 
-impl Codec for MLSCiphertextContentAAD {
+impl Codec for MlsCiphertextContentAad {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
@@ -242,7 +242,7 @@ impl Codec for MLSCiphertextContentAAD {
         let epoch = GroupEpoch::decode(cursor)?;
         let content_type = ContentType::decode(cursor)?;
         let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(MLSCiphertextContentAAD {
+        Ok(MlsCiphertextContentAad {
             group_id,
             epoch,
             content_type,
@@ -251,7 +251,7 @@ impl Codec for MLSCiphertextContentAAD {
     }
 }
 
-impl<'a> Codec for MLSPlaintextCommitContent<'a> {
+impl<'a> Codec for MlsPlaintextCommitContent<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
@@ -263,7 +263,7 @@ impl<'a> Codec for MLSPlaintextCommitContent<'a> {
     }
 }
 
-impl<'a> Codec for MLSPlaintextCommitAuthData<'a> {
+impl<'a> Codec for MlsPlaintextCommitAuthData<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.confirmation_tag.encode(buffer)?;
         Ok(())

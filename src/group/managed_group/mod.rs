@@ -71,7 +71,7 @@ pub struct ManagedGroup<'a> {
     group: MlsGroup,
     // A queue of incoming proposals from the DS for a given epoch. New proposals are added to the
     // queue through `process_messages()`. The queue is emptied after every epoch change.
-    pending_proposals: Vec<MLSPlaintext>,
+    pending_proposals: Vec<MlsPlaintext>,
     // Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is
     // emptied after every epoch change.
     own_kpbs: Vec<KeyPackageBundle>,
@@ -168,7 +168,7 @@ impl<'a> ManagedGroup<'a> {
     pub fn add_members(
         &mut self,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MLSMessage>, Welcome), ManagedGroupError> {
+    ) -> Result<(Vec<MlsMessage>, Welcome), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -192,7 +192,7 @@ impl<'a> ManagedGroup<'a> {
         let proposals_by_reference = &self
             .pending_proposals
             .iter()
-            .collect::<Vec<&MLSPlaintext>>();
+            .collect::<Vec<&MlsPlaintext>>();
 
         // Create Commit over all proposals
         // TODO #141
@@ -239,7 +239,7 @@ impl<'a> ManagedGroup<'a> {
     pub fn remove_members(
         &mut self,
         members: &[usize],
-    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -265,7 +265,7 @@ impl<'a> ManagedGroup<'a> {
         let proposals_by_reference = &self
             .pending_proposals
             .iter()
-            .collect::<Vec<&MLSPlaintext>>();
+            .collect::<Vec<&MlsPlaintext>>();
 
         // Create Commit over all proposals
         // TODO #141
@@ -301,11 +301,11 @@ impl<'a> ManagedGroup<'a> {
     pub fn propose_add_members(
         &mut self,
         key_packages: &[KeyPackage],
-    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let plaintext_messages: Vec<MLSPlaintext> = {
+        let plaintext_messages: Vec<MlsPlaintext> = {
             let mut messages = vec![];
             for key_package in key_packages.iter() {
                 let add_proposal = self.group.create_add_proposal(
@@ -330,11 +330,11 @@ impl<'a> ManagedGroup<'a> {
     pub fn propose_remove_members(
         &mut self,
         members: &[usize],
-    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let plaintext_messages: Vec<MLSPlaintext> = {
+        let plaintext_messages: Vec<MlsPlaintext> = {
             let mut messages = vec![];
             for member in members.iter() {
                 let remove_proposal = self.group.create_remove_proposal(
@@ -356,7 +356,7 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Leave the group
-    pub fn leave_group(&mut self) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+    pub fn leave_group(&mut self) -> Result<Vec<MlsMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -391,7 +391,7 @@ impl<'a> ManagedGroup<'a> {
     /// occurred while processing messages.
     pub fn process_messages(
         &mut self,
-        messages: Vec<MLSMessage>,
+        messages: Vec<MlsMessage>,
     ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -402,7 +402,7 @@ impl<'a> ManagedGroup<'a> {
             // Check the type of message we received
             let (plaintext, aad_option) = match message {
                 // If it is a ciphertext we decrypt it and return the plaintext message
-                MLSMessage::Ciphertext(ciphertext) => {
+                MlsMessage::Ciphertext(ciphertext) => {
                     let aad = ciphertext.authenticated_data.clone();
                     match self.group.decrypt(&ciphertext) {
                         Ok(plaintext) => (plaintext, Some(aad)),
@@ -417,7 +417,7 @@ impl<'a> ManagedGroup<'a> {
                     }
                 }
                 // If it is a plaintext message we just return it
-                MLSMessage::Plaintext(plaintext) => {
+                MlsMessage::Plaintext(plaintext) => {
                     // Verify signature & membership tag
                     // TODO #106: Support external senders
                     if plaintext.is_proposal()
@@ -438,7 +438,7 @@ impl<'a> ManagedGroup<'a> {
             let indexed_members = self.indexed_members();
             // See what kind of message it is
             match plaintext.content {
-                MLSPlaintextContentType::Proposal(_) => {
+                MlsPlaintextContentType::Proposal(_) => {
                     // Incoming proposals are validated against the application validation
                     // policy and then appended to the internal `pending_proposal` list.
                     // TODO #133: Semantic validation of proposals
@@ -457,7 +457,7 @@ impl<'a> ManagedGroup<'a> {
                         )));
                     }
                 }
-                MLSPlaintextContentType::Commit(ref commit) => {
+                MlsPlaintextContentType::Commit(ref commit) => {
                     // Validate inline proposals
                     if !self.validate_inline_proposals(
                         &commit.proposals,
@@ -478,7 +478,7 @@ impl<'a> ManagedGroup<'a> {
                     let proposals = &self
                         .pending_proposals
                         .iter()
-                        .collect::<Vec<&MLSPlaintext>>();
+                        .collect::<Vec<&MlsPlaintext>>();
                     // TODO #141
                     match self
                         .group
@@ -542,7 +542,7 @@ impl<'a> ManagedGroup<'a> {
                         },
                     }
                 }
-                MLSPlaintextContentType::Application(ref app_message) => {
+                MlsPlaintextContentType::Application(ref app_message) => {
                     // Save the application message as an event
                     events.push(GroupEvent::ApplicationMessage(
                         ApplicationMessageEvent::new(
@@ -569,7 +569,7 @@ impl<'a> ManagedGroup<'a> {
     /// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
-    pub fn create_message(&mut self, message: &[u8]) -> Result<MLSMessage, ManagedGroupError> {
+    pub fn create_message(&mut self, message: &[u8]) -> Result<MlsMessage, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -588,18 +588,18 @@ impl<'a> ManagedGroup<'a> {
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(MLSMessage::Ciphertext(ciphertext))
+        Ok(MlsMessage::Ciphertext(ciphertext))
     }
 
     /// Process pending proposals
     pub fn process_pending_proposals(
         &mut self,
-    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MLSPlaintext> = self.pending_proposals.iter().collect();
+        let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
 
         // Create Commit over all pending proposals
         // TODO #141
@@ -725,7 +725,7 @@ impl<'a> ManagedGroup<'a> {
     pub fn self_update(
         &mut self,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -744,7 +744,7 @@ impl<'a> ManagedGroup<'a> {
         };
 
         // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MLSPlaintext> = self
+        let messages_to_commit: Vec<&MlsPlaintext> = self
             .pending_proposals
             .iter()
             .chain(plaintext_messages.iter())
@@ -789,7 +789,7 @@ impl<'a> ManagedGroup<'a> {
     pub fn propose_self_update(
         &mut self,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -823,7 +823,7 @@ impl<'a> ManagedGroup<'a> {
     }
 
     /// Returns a list of proposal
-    pub fn pending_proposals(&self) -> &[MLSPlaintext] {
+    pub fn pending_proposals(&self) -> &[MlsPlaintext] {
         &self.pending_proposals
     }
 
@@ -860,17 +860,17 @@ impl<'a> ManagedGroup<'a> {
     /// MLSCiphertext first.
     fn plaintext_to_mls_messages(
         &mut self,
-        mut plaintext_messages: Vec<MLSPlaintext>,
-    ) -> Result<Vec<MLSMessage>, ManagedGroupError> {
+        mut plaintext_messages: Vec<MlsPlaintext>,
+    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
         let mut out = Vec::with_capacity(plaintext_messages.len());
         for plaintext in plaintext_messages.drain(..) {
             let msg = match self.configuration().handshake_message_format {
-                HandshakeMessageFormat::Plaintext => MLSMessage::Plaintext(plaintext),
+                HandshakeMessageFormat::Plaintext => MlsMessage::Plaintext(plaintext),
                 HandshakeMessageFormat::Ciphertext => {
                     let ciphertext = self
                         .group
                         .encrypt(plaintext, self.configuration().padding_size())?;
-                    MLSMessage::Ciphertext(ciphertext)
+                    MlsMessage::Ciphertext(ciphertext)
                 }
             };
             out.push(msg);
@@ -951,7 +951,7 @@ impl<'a> ManagedGroup<'a> {
         let pending_proposals_list = self
             .pending_proposals
             .iter()
-            .collect::<Vec<&MLSPlaintext>>();
+            .collect::<Vec<&MlsPlaintext>>();
         // Build a proposal queue for easier searching
         let pending_proposals_queue =
             ProposalQueue::from_proposals_by_reference(ciphersuite, &pending_proposals_list);
@@ -1044,48 +1044,48 @@ impl<'a> ManagedGroup<'a> {
 
 /// Unified message type
 #[derive(PartialEq, Debug, Clone)]
-pub enum MLSMessage {
+pub enum MlsMessage {
     /// An OpenMLS `MLSPlaintext`.
-    Plaintext(MLSPlaintext),
+    Plaintext(MlsPlaintext),
 
     /// An OpenMLS `MLSCiphertext`.
-    Ciphertext(MLSCiphertext),
+    Ciphertext(MlsCiphertext),
 }
 
-impl From<MLSPlaintext> for MLSMessage {
-    fn from(mls_plaintext: MLSPlaintext) -> Self {
-        MLSMessage::Plaintext(mls_plaintext)
+impl From<MlsPlaintext> for MlsMessage {
+    fn from(mls_plaintext: MlsPlaintext) -> Self {
+        MlsMessage::Plaintext(mls_plaintext)
     }
 }
 
-impl From<MLSCiphertext> for MLSMessage {
-    fn from(mls_ciphertext: MLSCiphertext) -> Self {
-        MLSMessage::Ciphertext(mls_ciphertext)
+impl From<MlsCiphertext> for MlsMessage {
+    fn from(mls_ciphertext: MlsCiphertext) -> Self {
+        MlsMessage::Ciphertext(mls_ciphertext)
     }
 }
 
-impl MLSMessage {
+impl MlsMessage {
     /// Get the group ID as plain byte vector.
     pub fn group_id(&self) -> Vec<u8> {
         match self {
-            MLSMessage::Ciphertext(m) => m.group_id.as_slice(),
-            MLSMessage::Plaintext(m) => m.group_id().as_slice(),
+            MlsMessage::Ciphertext(m) => m.group_id.as_slice(),
+            MlsMessage::Plaintext(m) => m.group_id().as_slice(),
         }
     }
 
     /// Get the epoch as plain u64.
     pub fn epoch(&self) -> u64 {
         match self {
-            MLSMessage::Ciphertext(m) => m.epoch.0,
-            MLSMessage::Plaintext(m) => m.epoch().0,
+            MlsMessage::Ciphertext(m) => m.epoch.0,
+            MlsMessage::Plaintext(m) => m.epoch().0,
         }
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
         match self {
-            MLSMessage::Ciphertext(m) => m.is_handshake_message(),
-            MLSMessage::Plaintext(m) => m.is_handshake_message(),
+            MlsMessage::Ciphertext(m) => m.is_handshake_message(),
+            MlsMessage::Plaintext(m) => m.is_handshake_message(),
         }
     }
 }

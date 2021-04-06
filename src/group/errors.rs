@@ -6,7 +6,7 @@
 use crate::ciphersuite::CryptoError;
 use crate::codec::CodecError;
 use crate::config::ConfigError;
-use crate::framing::errors::{MLSCiphertextError, VerificationError};
+use crate::framing::errors::{MlsCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
@@ -18,7 +18,7 @@ implement_error! {
                 "Missing init secret when creating commit.",
         }
         Complex {
-            MLSCiphertextError(MLSCiphertextError) =
+            MlsCiphertextError(MlsCiphertextError) =
                 "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.",
             WelcomeError(WelcomeError) =
                 "See [`WelcomeError`](`WelcomeError`) for details.",

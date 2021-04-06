@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::codec::Codec;
-use crate::{key_packages::KeyPackage, schedule::psk::PreSharedKeyID};
+use crate::{key_packages::KeyPackage, schedule::psk::PreSharedKeyId};
 
 use std::convert::TryFrom;
 
@@ -252,7 +252,7 @@ impl Codec for PreSharedKeyProposal {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let psk = PreSharedKeyID::decode(cursor)?;
+        let psk = PreSharedKeyId::decode(cursor)?;
         Ok(Self { psk })
     }
 }
@@ -316,7 +316,7 @@ impl Codec for PublicGroupState {
     }
 }
 
-impl<'a> Codec for PublicGroupStateTBS<'a> {
+impl<'a> Codec for PublicGroupStateTbs<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;

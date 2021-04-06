@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
 #[derive(Debug, PartialEq, Clone)]
-pub struct MLSCiphertext {
+pub struct MlsCiphertext {
     pub group_id: GroupId,
     pub epoch: GroupEpoch,
     pub content_type: ContentType,
@@ -15,19 +15,19 @@ pub struct MLSCiphertext {
     pub ciphertext: Vec<u8>,
 }
 
-impl MLSCiphertext {
+impl MlsCiphertext {
     /// Try to create a new `MLSCiphertext` from an `MLSPlaintext`
     pub(crate) fn try_from_plaintext(
-        mls_plaintext: &MLSPlaintext,
+        mls_plaintext: &MlsPlaintext,
         ciphersuite: &Ciphersuite,
         context: &GroupContext,
         sender: LeafIndex,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
         padding_size: usize,
-    ) -> Result<MLSCiphertext, MLSCiphertextError> {
+    ) -> Result<MlsCiphertext, MlsCiphertextError> {
         // Serialize the content AAD
-        let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
+        let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
             content_type: mls_plaintext.content_type,
@@ -36,7 +36,7 @@ impl MLSCiphertext {
         let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad.encode_detached()?;
         // Extract generation and key material for encryption
         let secret_type = SecretType::try_from(mls_plaintext)
-            .map_err(|_| MLSCiphertextError::InvalidContentType)?;
+            .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         let (generation, (ratchet_key, mut ratchet_nonce)) =
             secret_tree.secret_for_encryption(ciphersuite, sender, secret_type)?;
         // Sample reuse guard uniformly at random.
@@ -54,7 +54,7 @@ impl MLSCiphertext {
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_nonce,
             )
-            .map_err(|_| MLSCiphertextError::EncryptionError)?;
+            .map_err(|_| MlsCiphertextError::EncryptionError)?;
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
@@ -65,14 +65,14 @@ impl MLSCiphertext {
             .derive_aead_nonce(ciphersuite, &ciphertext);
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
-        let mls_sender_data_aad = MLSSenderDataAAD::new(
+        let mls_sender_data_aad = MlsSenderDataAad::new(
             context.group_id().clone(),
             context.epoch(),
             mls_plaintext.content_type,
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad.encode_detached()?;
-        let sender_data = MLSSenderData::new(mls_plaintext.sender.sender, generation, reuse_guard);
+        let sender_data = MlsSenderData::new(mls_plaintext.sender.sender, generation, reuse_guard);
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
@@ -80,8 +80,8 @@ impl MLSCiphertext {
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
-            .map_err(|_| MLSCiphertextError::EncryptionError)?;
-        Ok(MLSCiphertext {
+            .map_err(|_| MlsCiphertextError::EncryptionError)?;
+        Ok(MlsCiphertext {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
             content_type: mls_plaintext.content_type,
@@ -96,7 +96,7 @@ impl MLSCiphertext {
         ciphersuite: &Ciphersuite,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
-    ) -> Result<MLSPlaintext, MLSCiphertextError> {
+    ) -> Result<MlsPlaintext, MlsCiphertextError> {
         log::debug!("Decrypting MLSCiphertext");
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
@@ -108,7 +108,7 @@ impl MLSCiphertext {
             .derive_aead_nonce(ciphersuite, &self.ciphertext);
         // Serialize sender data AAD
         let mls_sender_data_aad =
-            MLSSenderDataAAD::new(self.group_id.clone(), self.epoch, self.content_type);
+            MlsSenderDataAad::new(self.group_id.clone(), self.epoch, self.content_type);
         let mls_sender_data_aad_bytes = mls_sender_data_aad.encode_detached()?;
         // Decrypt sender data
         let sender_data_bytes = &sender_data_key
@@ -119,12 +119,12 @@ impl MLSCiphertext {
             )
             .map_err(|_| {
                 log::error!("Sender data decryption error");
-                MLSCiphertextError::DecryptionError
+                MlsCiphertextError::DecryptionError
             })?;
         log::trace!("  Successfully decrypted sender data.");
-        let sender_data = MLSSenderData::decode_detached(&sender_data_bytes)?;
+        let sender_data = MlsSenderData::decode_detached(&sender_data_bytes)?;
         let secret_type = SecretType::try_from(&self.content_type)
-            .map_err(|_| MLSCiphertextError::InvalidContentType)?;
+            .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         // Extract generation and key material for encryption
         let (ratchet_key, mut ratchet_nonce) = secret_tree
             .secret_for_decryption(
@@ -135,12 +135,12 @@ impl MLSCiphertext {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext generation out of bounds");
-                MLSCiphertextError::GenerationOutOfBound
+                MlsCiphertextError::GenerationOutOfBound
             })?;
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         // Serialize content AAD
-        let mls_ciphertext_content_aad = MLSCiphertextContentAAD {
+        let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             content_type: self.content_type,
@@ -156,13 +156,13 @@ impl MLSCiphertext {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext decryption error");
-                MLSCiphertextError::DecryptionError
+                MlsCiphertextError::DecryptionError
             })?;
         log::trace!(
             "  Successfully decrypted MLSPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        let mls_ciphertext_content = MLSCiphertextContent::decode(
+        let mls_ciphertext_content = MlsCiphertextContent::decode(
             self.content_type,
             &mut Cursor::new(&mls_ciphertext_content_bytes),
         )?;
@@ -176,7 +176,7 @@ impl MLSCiphertext {
             mls_ciphertext_content.content
         );
         // Return the MLSPlaintext
-        Ok(MLSPlaintext {
+        Ok(MlsPlaintext {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             sender,
@@ -214,7 +214,7 @@ impl MLSCiphertext {
     /// } MLSCiphertextContent;
     /// ```
     fn encode_padded_ciphertext_content_detached(
-        mls_plaintext: &MLSPlaintext,
+        mls_plaintext: &MlsPlaintext,
         padding_size: usize,
         mac_len: usize,
     ) -> Result<Vec<u8>, CodecError> {
@@ -242,15 +242,15 @@ impl MLSCiphertext {
 // === Helper structs ===
 
 #[derive(Clone)]
-pub(crate) struct MLSSenderData {
+pub(crate) struct MlsSenderData {
     pub(crate) sender: LeafIndex,
     pub(crate) generation: u32,
     pub(crate) reuse_guard: ReuseGuard,
 }
 
-impl MLSSenderData {
+impl MlsSenderData {
     pub fn new(sender: LeafIndex, generation: u32, reuse_guard: ReuseGuard) -> Self {
-        MLSSenderData {
+        MlsSenderData {
             sender,
             generation,
             reuse_guard,
@@ -259,13 +259,13 @@ impl MLSSenderData {
 }
 
 #[derive(Clone)]
-pub(crate) struct MLSSenderDataAAD {
+pub(crate) struct MlsSenderDataAad {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,
 }
 
-impl MLSSenderDataAAD {
+impl MlsSenderDataAad {
     fn new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -> Self {
         Self {
             group_id,
@@ -276,15 +276,15 @@ impl MLSSenderDataAAD {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct MLSCiphertextContent {
-    pub(crate) content: MLSPlaintextContentType,
+pub(crate) struct MlsCiphertextContent {
+    pub(crate) content: MlsPlaintextContentType,
     pub(crate) signature: Signature,
     pub(crate) confirmation_tag: Option<ConfirmationTag>,
     pub(crate) padding: Vec<u8>,
 }
 
 #[derive(Clone)]
-pub(crate) struct MLSCiphertextContentAAD {
+pub(crate) struct MlsCiphertextContentAad {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,

@@ -135,7 +135,7 @@ pub(crate) mod psk;
 mod kat_key_schedule;
 
 pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
-pub use psk::{PreSharedKeyID, PreSharedKeys, PskSecret};
+pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -762,6 +762,7 @@ impl SenderDataSecret {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
+    #[allow(dead_code)]
     #[doc(hidden)]
     pub fn from_random(length: usize) -> Self {
         Self {
@@ -932,6 +933,7 @@ impl EpochSecrets {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
+    #[allow(dead_code)]
     #[doc(hidden)]
     pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret

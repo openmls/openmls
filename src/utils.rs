@@ -11,11 +11,13 @@ pub(crate) fn randombytes(n: usize) -> Vec<u8> {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }
@@ -190,6 +192,7 @@ macro_rules! implement_persistence {
         }
 
         impl Serialize for $name {
+            #[allow(clippy::vec_init_then_push)]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer,

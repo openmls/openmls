@@ -61,6 +61,7 @@ macro_rules! convert {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let leaves = LeafIndex::from(n_leaves);
     let n_nodes = node_width(leaves.as_usize()) as u32;
@@ -106,31 +107,32 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TMTestVectorError> {
+#[allow(dead_code)]
+pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVectorError> {
     let n_leaves = test_vector.n_leaves as usize;
     let n_nodes = node_width(n_leaves);
     let leaves = LeafIndex::from(n_leaves);
     if test_vector.n_nodes != node_width(leaves.as_usize()) as u32 {
-        return Err(TMTestVectorError::TreeSizeMismatch);
+        return Err(TmTestVectorError::TreeSizeMismatch);
     }
     for i in 0..n_leaves {
         if test_vector.root[i] != root(LeafIndex::from(i + 1)).as_u32() {
-            return Err(TMTestVectorError::RootIndexMismatch);
+            return Err(TmTestVectorError::RootIndexMismatch);
         }
     }
 
     for i in 0..n_nodes {
         if test_vector.left[i] != convert!(left(NodeIndex::from(i))) {
-            return Err(TMTestVectorError::LeftIndexMismatch);
+            return Err(TmTestVectorError::LeftIndexMismatch);
         }
         if test_vector.right[i] != convert!(right(NodeIndex::from(i), leaves)) {
-            return Err(TMTestVectorError::RightIndexMismatch);
+            return Err(TmTestVectorError::RightIndexMismatch);
         }
         if test_vector.parent[i] != convert!(parent(NodeIndex::from(i), leaves)) {
-            return Err(TMTestVectorError::ParentIndexMismatch);
+            return Err(TmTestVectorError::ParentIndexMismatch);
         }
         if test_vector.sibling[i] != convert!(sibling(NodeIndex::from(i), leaves)) {
-            return Err(TMTestVectorError::SiblingIndexMismatch);
+            return Err(TmTestVectorError::SiblingIndexMismatch);
         }
     }
     Ok(())
@@ -149,7 +151,7 @@ fn read_test_vectors() {
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 implement_error! {
-    pub enum TMTestVectorError {
+    pub enum TmTestVectorError {
         TreeSizeMismatch = "The computed tree size doesn't match the one in the test vector.",
         RootIndexMismatch = "The computed root index doesn't match the one in the test vector.",
         LeftIndexMismatch = "A computed left child index doesn't match the one in the test vector.",

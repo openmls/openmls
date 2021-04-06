@@ -15,7 +15,7 @@ pub struct ClientInfo {
     pub client_name: String,
     pub key_packages: ClientKeyPackages,
     pub id: Vec<u8>,
-    pub msgs: Vec<MLSMessage>,
+    pub msgs: Vec<MlsMessage>,
     pub welcome_queue: Vec<Welcome>,
 }
 
@@ -52,7 +52,7 @@ impl ClientInfo {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
     /// An `MLSMessage` is either an OpenMLS `MLSCiphertext` or `MLSPlaintext`.
-    MLSMessage(MLSMessage),
+    MlsMessage(MlsMessage),
 
     /// An OpenMLS `Welcome` message.
     Welcome(Welcome),
@@ -63,10 +63,10 @@ pub enum Message {
 #[repr(u8)]
 pub enum MessageType {
     /// An MLSCiphertext message.
-    MLSCiphertext = 0,
+    MlsCiphertext = 0,
 
     /// An MLSPlaintext message.
-    MLSPlaintext = 1,
+    MlsPlaintext = 1,
 
     /// A Welcome message.
     Welcome = 2,
@@ -77,14 +77,14 @@ pub enum MessageType {
 /// names.
 #[derive(Debug)]
 pub struct GroupMessage {
-    pub msg: MLSMessage,
+    pub msg: MlsMessage,
     pub recipients: Vec<Vec<u8>>,
 }
 
 impl GroupMessage {
     /// Create a new `GroupMessage` taking an `MLSMessage` and slice of
     /// recipient names.
-    pub fn new(msg: MLSMessage, recipients: &[Vec<u8>]) -> Self {
+    pub fn new(msg: MlsMessage, recipients: &[Vec<u8>]) -> Self {
         Self {
             msg,
             recipients: recipients.to_vec(),
@@ -138,8 +138,8 @@ impl Codec for MessageType {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let value = u8::decode(cursor)?;
         match value {
-            0 => Ok(Self::MLSCiphertext),
-            1 => Ok(Self::MLSPlaintext),
+            0 => Ok(Self::MlsCiphertext),
+            1 => Ok(Self::MlsPlaintext),
             2 => Ok(Self::Welcome),
             _ => Err(CodecError::DecodingError),
         }
@@ -149,13 +149,13 @@ impl Codec for MessageType {
 impl Codec for Message {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
-            Message::MLSMessage(m) => match m {
-                MLSMessage::Ciphertext(m) => {
-                    MessageType::MLSCiphertext.encode(buffer)?;
+            Message::MlsMessage(m) => match m {
+                MlsMessage::Ciphertext(m) => {
+                    MessageType::MlsCiphertext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
-                MLSMessage::Plaintext(m) => {
-                    MessageType::MLSPlaintext.encode(buffer)?;
+                MlsMessage::Plaintext(m) => {
+                    MessageType::MlsPlaintext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
             },
@@ -170,11 +170,11 @@ impl Codec for Message {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let msg_type = MessageType::decode(cursor)?;
         let msg = match msg_type {
-            MessageType::MLSCiphertext => {
-                Message::MLSMessage(MLSMessage::Ciphertext(MLSCiphertext::decode(cursor)?))
+            MessageType::MlsCiphertext => {
+                Message::MlsMessage(MlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?))
             }
-            MessageType::MLSPlaintext => {
-                Message::MLSMessage(MLSMessage::Plaintext(MLSPlaintext::decode(cursor)?))
+            MessageType::MlsPlaintext => {
+                Message::MlsMessage(MlsMessage::Plaintext(MlsPlaintext::decode(cursor)?))
             }
             MessageType::Welcome => Message::Welcome(Welcome::decode(cursor)?),
         };
@@ -185,12 +185,12 @@ impl Codec for Message {
 impl Codec for GroupMessage {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match &self.msg {
-            MLSMessage::Ciphertext(m) => {
-                MessageType::MLSCiphertext.encode(buffer)?;
+            MlsMessage::Ciphertext(m) => {
+                MessageType::MlsCiphertext.encode(buffer)?;
                 m.encode(buffer)?;
             }
-            MLSMessage::Plaintext(m) => {
-                MessageType::MLSPlaintext.encode(buffer)?;
+            MlsMessage::Plaintext(m) => {
+                MessageType::MlsPlaintext.encode(buffer)?;
                 m.encode(buffer)?;
             }
         }
@@ -200,8 +200,8 @@ impl Codec for GroupMessage {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let msg_type = MessageType::decode(cursor)?;
         let msg = match msg_type {
-            MessageType::MLSCiphertext => MLSMessage::Ciphertext(MLSCiphertext::decode(cursor)?),
-            MessageType::MLSPlaintext => MLSMessage::Plaintext(MLSPlaintext::decode(cursor)?),
+            MessageType::MlsCiphertext => MlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?),
+            MessageType::MlsPlaintext => MlsMessage::Plaintext(MlsPlaintext::decode(cursor)?),
             _ => return Err(CodecError::DecodingError),
         };
 

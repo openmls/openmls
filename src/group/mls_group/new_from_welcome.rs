@@ -185,7 +185,7 @@ impl MlsGroup {
             .tag(&ciphersuite, &group_context.confirmed_transcript_hash);
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
-            &MLSPlaintextCommitAuthData::from(&confirmation_tag),
+            &MlsPlaintextCommitAuthData::from(&confirmation_tag),
             &group_context.confirmed_transcript_hash,
         )?;
 

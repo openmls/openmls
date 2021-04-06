@@ -130,6 +130,8 @@ pub struct EncryptionTestVector {
     leaves: Vec<LeafSequence>,
 }
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
@@ -150,6 +152,8 @@ fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
     .unwrap()
 }
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
@@ -170,6 +174,8 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
 }
 
 // XXX: we could be more creative in generating these messages.
+#[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 fn build_handshake_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, Vec<u8>) {
     let sender = Sender {
         sender_type: SenderType::Member,
@@ -177,52 +183,18 @@ fn build_handshake_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, 
     };
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
-    let plaintext = MLSPlaintext {
+    let plaintext = MlsPlaintext {
         group_id: group.group_id().clone(),
         epoch,
         sender,
         authenticated_data: vec![1, 2, 3, 4],
         content_type: ContentType::Proposal,
-        content: MLSPlaintextContentType::Proposal(Proposal::Remove(RemoveProposal { removed: 0 })),
+        content: MlsPlaintextContentType::Proposal(Proposal::Remove(RemoveProposal { removed: 0 })),
         signature: Signature::new_empty(),
         confirmation_tag: None,
         membership_tag: None,
     };
-    let ciphertext = MLSCiphertext::try_from_plaintext(
-        &plaintext,
-        group.ciphersuite(),
-        group.context(),
-        leaf,
-        group.epoch_secrets(),
-        &mut group.secret_tree_mut(),
-        0,
-    )
-    .expect("Could not create MLSCiphertext");
-    (
-        plaintext.encode_detached().unwrap(),
-        ciphertext.encode_detached().unwrap(),
-    )
-}
-
-fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, Vec<u8>) {
-    let sender = Sender {
-        sender_type: SenderType::Member,
-        sender: leaf,
-    };
-    let epoch = GroupEpoch(random_u64());
-    group.context_mut().set_epoch(epoch);
-    let plaintext = MLSPlaintext {
-        group_id: group.group_id().clone(),
-        epoch,
-        sender,
-        authenticated_data: vec![1, 2, 3],
-        content_type: ContentType::Application,
-        content: MLSPlaintextContentType::Application(vec![4, 5, 6]),
-        signature: Signature::new_empty(),
-        confirmation_tag: None,
-        membership_tag: None,
-    };
-    let ciphertext = MLSCiphertext::try_from_plaintext(
+    let ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         group.ciphersuite(),
         group.context(),
@@ -239,6 +211,43 @@ fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
+fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, Vec<u8>) {
+    let sender = Sender {
+        sender_type: SenderType::Member,
+        sender: leaf,
+    };
+    let epoch = GroupEpoch(random_u64());
+    group.context_mut().set_epoch(epoch);
+    let plaintext = MlsPlaintext {
+        group_id: group.group_id().clone(),
+        epoch,
+        sender,
+        authenticated_data: vec![1, 2, 3],
+        content_type: ContentType::Application,
+        content: MlsPlaintextContentType::Application(vec![4, 5, 6]),
+        signature: Signature::new_empty(),
+        confirmation_tag: None,
+        membership_tag: None,
+    };
+    let ciphertext = MlsCiphertext::try_from_plaintext(
+        &plaintext,
+        group.ciphersuite(),
+        group.context(),
+        leaf,
+        group.epoch_secrets(),
+        &mut group.secret_tree_mut(),
+        0,
+    )
+    .expect("Could not create MLSCiphertext");
+    (
+        plaintext.encode_detached().unwrap(),
+        ciphertext.encode_detached().unwrap(),
+    )
+}
+
+#[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 pub fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
@@ -340,6 +349,7 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
+#[allow(dead_code)]
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
@@ -443,7 +453,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
 
             // Setup group
             let mls_ciphertext_application =
-                MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.ciphertext)))
+                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.ciphertext)))
                     .expect("Error parsing MLSCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_application.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() =
@@ -488,7 +498,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
 
             // Setup group
             let mls_ciphertext_handshake =
-                MLSCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
+                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
                     .expect("Error parsing MLSCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() =

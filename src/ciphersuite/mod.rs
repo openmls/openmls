@@ -39,6 +39,7 @@ pub(crate) const NONCE_BYTES: usize = 12;
 pub(crate) const REUSE_GUARD_BYTES: usize = 4;
 
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum CiphersuiteName {
@@ -53,8 +54,9 @@ pub enum CiphersuiteName {
 implement_enum_display!(CiphersuiteName);
 
 /// SignatureScheme according to IANA TLS parameters
-#[derive(Copy, Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Copy, Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
@@ -443,10 +445,10 @@ impl Ciphersuite {
         prk: &Secret,
         info: &[u8],
         okm_len: usize,
-    ) -> Result<Secret, HKDFError> {
+    ) -> Result<Secret, HkdfError> {
         let key = hkdf_expand(self.hmac, &prk.value, info, okm_len);
         if key.is_empty() {
-            return Err(HKDFError::InvalidLength);
+            return Err(HkdfError::InvalidLength);
         }
         Ok(Secret { value: key })
     }
@@ -610,6 +612,7 @@ impl AeadNonce {
 
     /// Get a slice to the nonce value.
     #[cfg(any(feature = "expose-test-vectors", test))]
+    #[allow(dead_code)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }

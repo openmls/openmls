@@ -1,13 +1,11 @@
 //! # Key package tests
 
 use openmls::prelude::*;
-use std::convert::TryFrom;
 
 #[macro_use]
 mod utils;
 
-ctest_ciphersuites!(key_package_generation, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -58,7 +56,7 @@ ctest_ciphersuites!(key_package_generation, test(param: CiphersuiteName) {
     // Add and retrieve a key package ID.
     let key_id = [1, 2, 3, 4, 5, 6, 7];
     kpb.key_package_mut()
-        .add_extension(Box::new(KeyIDExtension::new(&key_id)));
+        .add_extension(Box::new(KeyIdExtension::new(&key_id)));
 
     // The key package is invalid because the signature is invalid now.
     assert!(kpb.key_package().verify().is_err());
@@ -71,7 +69,7 @@ ctest_ciphersuites!(key_package_generation, test(param: CiphersuiteName) {
     let extensions = kpb.key_package().extensions();
     let key_id_extension = extensions
         .iter()
-        .find(|e| e.extension_type() == ExtensionType::KeyID)
+        .find(|e| e.extension_type() == ExtensionType::KeyId)
         .expect("Key ID extension is missing in key package");
     let key_id_extension = key_id_extension.to_key_id_extension().unwrap();
     assert_eq!(&key_id, key_id_extension.as_slice());
