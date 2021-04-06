@@ -266,9 +266,6 @@ impl Secret {
             ciphersuite.name,
             mls_version
         );
-        // if ciphersuite.name == CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 {
-        //     log::trace!("{:?}", backtrace::Backtrace::new());
-        // }
         Secret {
             value: get_random_vec(ciphersuite.hash_length()),
             mls_version,

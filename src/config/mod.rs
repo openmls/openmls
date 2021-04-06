@@ -56,7 +56,7 @@ lazy_static! {
                 .map(|ciphersuite_name| Ciphersuite::new(*ciphersuite_name).unwrap())
                 .collect::<Vec<Ciphersuite>>();
             let config = PersistentConfig {
-                protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft12],
+                protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11],
                 ciphersuites,
                 extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
                 constants,
@@ -166,7 +166,7 @@ impl Config {
 pub enum ProtocolVersion {
     Reserved = 0,
     Mls10 = 1,
-    Mls10Draft12 = 255, // pre RFC version
+    Mls10Draft11 = 200, // pre RFC version
 }
 
 /// There's only one version right now, which is the default.
@@ -185,7 +185,7 @@ impl TryFrom<u8> for ProtocolVersion {
     fn try_from(v: u8) -> Result<Self, Self::Error> {
         match v {
             1 => Ok(ProtocolVersion::Mls10),
-            255 => Ok(ProtocolVersion::Mls10Draft12),
+            200 => Ok(ProtocolVersion::Mls10Draft11),
             _ => Err(ConfigError::UnsupportedMlsVersion),
         }
     }
@@ -196,7 +196,7 @@ impl fmt::Display for ProtocolVersion {
         match &self {
             ProtocolVersion::Reserved => Err(fmt::Error),
             ProtocolVersion::Mls10 => write!(f, "mls10"),
-            ProtocolVersion::Mls10Draft12 => write!(f, "mls10-draft12"),
+            ProtocolVersion::Mls10Draft11 => write!(f, "mls10-draft11"),
         }
     }
 }

@@ -10,7 +10,7 @@ fn secret_init() {
 
     // These two secrets must be incompatible
     let default_secret = Secret::random(csuite, None);
-    let draft_secret = Secret::random(csuite, ProtocolVersion::Mls10Draft12);
+    let draft_secret = Secret::random(csuite, ProtocolVersion::Mls10Draft11);
 
     let derived_default_secret = default_secret.derive_secret("my_test_label");
     let derived_draft_secret = draft_secret.derive_secret("my_test_label");
@@ -24,7 +24,7 @@ fn secret_incompatible() {
 
     // These two secrets must be incompatible
     let default_secret = Secret::random(csuite, None);
-    let draft_secret = Secret::random(csuite, ProtocolVersion::Mls10Draft12);
+    let draft_secret = Secret::random(csuite, ProtocolVersion::Mls10Draft11);
 
     // This must panic because the two secrets have incompatible MLS versions.
     let _default_extraced = default_secret.hkdf_extract(&draft_secret);

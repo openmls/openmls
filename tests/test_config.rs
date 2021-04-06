@@ -28,7 +28,7 @@ fn protocol_version() {
     // Make sure the supported protocol versions are what we expect them to be.
     let supported_versions = Config::supported_versions();
     assert_eq!(
-        vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft12],
+        vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11],
         supported_versions
     );
 }
