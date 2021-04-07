@@ -56,17 +56,13 @@ impl MLSCiphertext {
             )
             .map_err(|_| MLSCiphertextError::EncryptionError)?;
         // Derive the sender data key from the key schedule using the ciphertext.
-        let sender_data_key = AeadKey::from_sender_data_secret(
-            ciphersuite,
-            &ciphertext,
-            epoch_secrets.sender_data_secret(),
-        );
+        let sender_data_key = epoch_secrets
+            .sender_data_secret()
+            .derive_aead_key(ciphersuite, &ciphertext);
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = AeadNonce::from_sender_data_secret(
-            ciphersuite,
-            &ciphertext,
-            epoch_secrets.sender_data_secret(),
-        );
+        let sender_data_nonce = epoch_secrets
+            .sender_data_secret()
+            .derive_aead_nonce(ciphersuite, &ciphertext);
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MLSSenderDataAAD::new(
@@ -103,17 +99,13 @@ impl MLSCiphertext {
     ) -> Result<MLSPlaintext, MLSCiphertextError> {
         log::debug!("Decrypting MLSCiphertext");
         // Derive key from the key schedule using the ciphertext.
-        let sender_data_key = AeadKey::from_sender_data_secret(
-            ciphersuite,
-            &self.ciphertext,
-            epoch_secrets.sender_data_secret(),
-        );
+        let sender_data_key = epoch_secrets
+            .sender_data_secret()
+            .derive_aead_key(ciphersuite, &self.ciphertext);
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = AeadNonce::from_sender_data_secret(
-            ciphersuite,
-            &self.ciphertext,
-            epoch_secrets.sender_data_secret(),
-        );
+        let sender_data_nonce = epoch_secrets
+            .sender_data_secret()
+            .derive_aead_nonce(ciphersuite, &self.ciphertext);
         // Serialize sender data AAD
         let mls_sender_data_aad =
             MLSSenderDataAAD::new(self.group_id.clone(), self.epoch, self.content_type);

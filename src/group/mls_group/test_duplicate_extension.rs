@@ -10,11 +10,9 @@ use crate::{
     schedule::KeySchedule,
 };
 
-use test_macros::ctest;
-
 // This tests the ratchet tree extension to test if the duplicate detection works
-ctest!(duplicate_ratchet_tree_extension {
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

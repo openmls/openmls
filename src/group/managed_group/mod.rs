@@ -705,7 +705,7 @@ impl ManagedGroup {
 
     /// Returns the authentication secret
     pub fn authentication_secret(&self) -> Vec<u8> {
-        self.group.authentication_secret().to_vec()
+        self.group.authentication_secret()
     }
 
     /// Returns a resumption secret for a given epoch. If no resumption secret

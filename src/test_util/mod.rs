@@ -59,3 +59,21 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
         None => vec![],
     }
 }
+
+#[allow(unused_macros)]
+macro_rules! ctest_ciphersuites {
+    ($name:ident, test($param_name:ident: $t:ty) $body:block) => {
+        test_macros::ctest!(
+            $name
+            [
+                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+                CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            ]
+            {
+                fn test($param_name: $t) $body
+                test(param)
+            }
+        );
+    };
+}

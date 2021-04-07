@@ -1,15 +1,14 @@
 use crate::config::*;
 use crate::{ciphersuite::*, credentials::CredentialBundle};
 use std::convert::TryFrom;
-use test_macros::ctest;
 
 use crate::credentials::CredentialType::Basic;
 use crate::key_packages::KeyPackageBundle;
 
 use super::{KeyStore, KeyStoreError};
 
-ctest!(key_storage {
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+ctest_ciphersuites!(key_storage, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

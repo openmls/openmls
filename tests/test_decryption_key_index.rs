@@ -1,19 +1,16 @@
 //! Test decryption key index computation in larger trees.
 use openmls::prelude::*;
 
+#[macro_use]
 mod utils;
 
-//use std::convert::TryFrom;
-//use test_macros::ctest;
+use std::convert::TryFrom;
 use utils::managed_utils::*;
 
-//ctest!(decryption_key_index_computation {
-#[test]
-fn test_decryption_key_index_computation() {
-    for ciphersuite_name in Config::supported_ciphersuite_names() {
-        //let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
-        println!("Testing ciphersuite {:?}", ciphersuite_name);
-        let ciphersuite = Config::ciphersuite(*ciphersuite_name).unwrap();
+ctest_ciphersuites!(decryption_key_index_computation, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
         // Some basic setup functions for the managed group.
         let handshake_message_format = HandshakeMessageFormat::Plaintext;
@@ -70,4 +67,4 @@ fn test_decryption_key_index_computation() {
         setup.check_group_states(group);
         //});
     }
-}
+);

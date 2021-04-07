@@ -7,7 +7,7 @@ use crate::extensions::*;
 use crate::framing::Mac;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
-use crate::schedule::{ConfirmationKey, JoinerSecret};
+use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
 use serde::{Deserialize, Serialize};
@@ -116,34 +116,6 @@ impl Commit {
 /// around a `Mac`.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Mac);
-
-impl ConfirmationTag {
-    /// Create a new confirmation tag.
-    ///
-    /// >  11.2. Commit
-    ///
-    /// ```text
-    /// MLSPlaintext.confirmation_tag =
-    ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
-    /// ```
-    pub fn new(
-        ciphersuite: &Ciphersuite,
-        confirmation_key: &ConfirmationKey,
-        confirmed_transcript_hash: &[u8],
-    ) -> Self {
-        log_crypto!(trace, "Compute confirmation tag with:");
-        log_crypto!(trace, "  key:  {:x?}", confirmation_key.secret().to_bytes());
-        log_crypto!(trace, "  hash: {:x?}", confirmed_transcript_hash);
-        ConfirmationTag(
-            ciphersuite
-                .mac(
-                    confirmation_key.secret(),
-                    &Secret::from(confirmed_transcript_hash.to_vec()),
-                )
-                .into(),
-        )
-    }
-}
 
 impl From<ConfirmationTag> for Vec<u8> {
     fn from(confirmation_tag: ConfirmationTag) -> Self {

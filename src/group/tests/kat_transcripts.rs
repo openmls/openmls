@@ -16,7 +16,7 @@ use crate::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
         GroupId,
     },
-    messages::{Commit, ConfirmationTag},
+    messages::Commit,
     prelude::{
         random_u32, random_u64, randombytes, sender::SenderType, ContentType, LeafIndex,
         MLSPlaintext, MLSPlaintextCommitAuthData, MLSPlaintextCommitContent,
@@ -89,11 +89,7 @@ pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> TranscriptTestVector {
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
-    let confirmation_tag = ConfirmationTag::new(
-        ciphersuite,
-        &confirmation_key,
-        &confirmed_transcript_hash_after,
-    );
+    let confirmation_tag = confirmation_key.tag(ciphersuite, &confirmed_transcript_hash_after);
     commit.confirmation_tag = Some(confirmation_tag);
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
@@ -204,11 +200,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     let confirmed_transcript_hash_after =
         hex_to_bytes(&test_vector.confirmed_transcript_hash_after);
 
-    let my_confirmation_tag = ConfirmationTag::new(
-        &ciphersuite,
-        &confirmation_key,
-        &confirmed_transcript_hash_after,
-    );
+    let my_confirmation_tag = confirmation_key.tag(ciphersuite, &confirmed_transcript_hash_after);
     if &my_confirmation_tag
         != commit
             .confirmation_tag

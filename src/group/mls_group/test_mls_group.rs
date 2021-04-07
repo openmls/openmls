@@ -1,5 +1,3 @@
-use test_macros::ctest;
-
 use crate::{
     group::GroupEpoch,
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfo},
@@ -322,28 +320,28 @@ fn test_update_path() {
 }
 
 // Test several scenarios when PSKs are used in a group
-ctest!(test_psks {
-        fn psk_fetcher(psks: &PreSharedKeys) -> Option<Vec<Secret>> {
-            let psk_id = vec![1u8, 2, 3];
-            let secret = Secret::from(vec![4u8, 5, 6]);
+ctest_ciphersuites!(test_psks, test(param: CiphersuiteName) {
+    fn psk_fetcher(psks: &PreSharedKeys) -> Option<Vec<Secret>> {
+        let psk_id = vec![1u8, 2, 3];
+        let secret = Secret::from(vec![4u8, 5, 6]);
 
-            let psk = &psks.psks[0];
-            if psk.psk_type == PSKType::External {
-                if let Psk::External(external_psk) = &psk.psk {
-                    if external_psk.psk_id() == psk_id {
-                        Some(vec![secret])
-                    } else {
-                        None
-                    }
+        let psk = &psks.psks[0];
+        if psk.psk_type == PSKType::External {
+            if let Psk::External(external_psk) = &psk.psk {
+                if external_psk.psk_id() == psk_id {
+                    Some(vec![secret])
                 } else {
                     None
                 }
             } else {
                 None
             }
+        } else {
+            None
         }
+    }
 
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Basic group setup.

@@ -1,7 +1,4 @@
 name: test coverage
-ignore:
-  - "tests/utils/managed_utils/*"
-  - "tests/utils/mls_utils/*"
 
 on: [push]
 
@@ -15,14 +12,19 @@ jobs:
         with:
           submodules: true
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+
+      - name: Clean
+        run: cargo clean
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
+        with:
+          timeout: "300"
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1.0.2

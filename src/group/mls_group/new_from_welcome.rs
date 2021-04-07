@@ -180,11 +180,9 @@ impl MlsGroup {
             .encryption_secret()
             .create_secret_tree(tree.leaf_count());
 
-        let confirmation_tag = ConfirmationTag::new(
-            &ciphersuite,
-            &epoch_secrets.confirmation_key(),
-            &group_context.confirmed_transcript_hash,
-        );
+        let confirmation_tag = epoch_secrets
+            .confirmation_key()
+            .tag(&ciphersuite, &group_context.confirmed_transcript_hash);
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
             &MLSPlaintextCommitAuthData::from(&confirmation_tag),

@@ -24,13 +24,11 @@ pub(crate) mod signable;
 
 mod ser;
 
-use crate::codec::*;
-use crate::config::{Config, ConfigError};
-use crate::schedule::ExporterSecret;
-use crate::schedule::SenderDataSecret;
-use crate::schedule::WelcomeSecret;
-use crate::utils::random_u32;
-use crate::utils::zero;
+use crate::{
+    codec::*,
+    config::{Config, ConfigError},
+};
+
 use ciphersuites::*;
 pub(crate) use errors::*;
 
@@ -285,25 +283,6 @@ impl From<&[u8]> for Secret {
     }
 }
 
-impl ExporterSecret {
-    /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
-    /// it can be used outside of OpenMLS. This function is made available for
-    /// use from the outside through [`crate::group::mls_group::export_secret`].
-    pub(crate) fn derive_exported_secret(
-        &self,
-        ciphersuite: &Ciphersuite,
-        label: &str,
-        context: &[u8],
-        key_length: usize,
-    ) -> Vec<u8> {
-        let context_hash = &ciphersuite.hash(context);
-        self.secret()
-            .derive_secret(ciphersuite, label)
-            .kdf_expand_label(ciphersuite, label, context_hash, key_length)
-            .value
-    }
-}
-
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct AeadKey {
@@ -321,8 +300,9 @@ pub struct ReuseGuard {
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
     pub fn from_random() -> Self {
-        let reuse_guard: [u8; REUSE_GUARD_BYTES] = random_u32().to_be_bytes();
-        ReuseGuard { value: reuse_guard }
+        Self {
+            value: get_random_array(),
+        }
     }
 }
 
@@ -440,17 +420,16 @@ impl Ciphersuite {
         hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice())
     }
 
-    /// Get the length of the used mac algorithm.
+    /// Get the length of the AEAD tag.
     pub(crate) fn mac_length(&self) -> usize {
-        // TODO: don't hard-code tag bytes, but use the mac_size func (Issue #205)
-        16
+        aead_tag_size(&self.aead)
     }
 
     /// HKDF extract.
     pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm_option: Option<&Secret>) -> Secret {
         log::trace!("HKDF extract with {:?}", self.name);
         log_crypto!(trace, "  salt: {:x?}", salt.value);
-        let zero_secret = Secret::from(zero(self.hash_length()));
+        let zero_secret = Secret::from(vec![0u8; self.hash_length()]);
         let ikm = ikm_option.unwrap_or(&zero_secret);
         log_crypto!(trace, "  ikm:  {:x?}", ikm.value);
         Secret {
@@ -478,7 +457,7 @@ impl Ciphersuite {
     }
 
     /// Returns the length of the nonce in the AEAD.
-    pub(crate) fn aead_nonce_length(&self) -> usize {
+    pub(crate) const fn aead_nonce_length(&self) -> usize {
         NONCE_BYTES
     }
 
@@ -552,49 +531,6 @@ impl AeadKey {
         }
     }
 
-    /// Derive a new AEAD key from a `SenderDataSecret`.
-    pub(crate) fn from_sender_data_secret(
-        ciphersuite: &Ciphersuite,
-        ciphertext: &[u8],
-        sender_data_secret: &SenderDataSecret,
-    ) -> Self {
-        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
-        log::debug!(
-            "AeadKey::from_sender_data_secret ciphertext sample: {:x?}",
-            ciphertext_sample
-        );
-        let key = sender_data_secret.secret().kdf_expand_label(
-            ciphersuite,
-            "key",
-            &ciphertext_sample,
-            ciphersuite.aead_key_length(),
-        );
-        AeadKey {
-            aead_mode: ciphersuite.aead,
-            value: key.value,
-            mac_len: ciphersuite.mac_length(),
-        }
-    }
-
-    /// Derive a new AEAD key from a `WelcomeSecret`.
-    pub(crate) fn from_welcome_secret(
-        ciphersuite: &Ciphersuite,
-        welcome_secret: &WelcomeSecret,
-    ) -> AeadKey {
-        let aead_secret = ciphersuite
-            .hkdf_expand(
-                &welcome_secret.secret(),
-                b"key",
-                ciphersuite.aead_key_length(),
-            )
-            .unwrap();
-        AeadKey {
-            aead_mode: ciphersuite.aead,
-            value: aead_secret.value,
-            mac_len: ciphersuite.mac_length(),
-        }
-    }
-
     #[cfg(test)]
     /// Generate a random AEAD Key
     pub fn from_random(ciphersuite: &Ciphersuite) -> Self {
@@ -656,61 +592,12 @@ impl AeadKey {
     }
 }
 
-// Get a ciphertext sample of `hash_length` from the ciphertext.
-fn ciphertext_sample<'a>(ciphersuite: &Ciphersuite, ciphertext: &'a [u8]) -> &'a [u8] {
-    let sample_length = ciphersuite.hash_length();
-    log::debug!("Getting ciphertext sample of length {:?}", sample_length);
-    if ciphertext.len() <= sample_length {
-        ciphertext
-    } else {
-        &ciphertext[0..sample_length]
-    }
-}
-
 impl AeadNonce {
     /// Create an `AeadNonce` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
     pub fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(&secret.value);
-        AeadNonce { value: nonce }
-    }
-    /// Derive a new AEAD nonce from a `SenderDataSecret`.
-    pub(crate) fn from_sender_data_secret(
-        ciphersuite: &Ciphersuite,
-        ciphertext: &[u8],
-        sender_data_secret: &SenderDataSecret,
-    ) -> Self {
-        let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
-        log::debug!(
-            "AeadNonce::from_sender_data_secret ciphertext sample: {:x?}",
-            ciphertext_sample
-        );
-        let nonce_secret = sender_data_secret.secret().kdf_expand_label(
-            ciphersuite,
-            "nonce",
-            &ciphertext_sample,
-            ciphersuite.aead_nonce_length(),
-        );
-        let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(nonce_secret.value.as_slice());
-        AeadNonce { value: nonce }
-    }
-
-    /// Derive a new AEAD key from a `WelcomeSecret`.
-    pub(crate) fn from_welcome_secret(
-        ciphersuite: &Ciphersuite,
-        welcome_secret: &WelcomeSecret,
-    ) -> Self {
-        let nonce_secret = ciphersuite
-            .hkdf_expand(
-                &welcome_secret.secret(),
-                b"nonce",
-                ciphersuite.aead_nonce_length(),
-            )
-            .unwrap();
-        let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(nonce_secret.value.as_slice());
         AeadNonce { value: nonce }
     }
 
