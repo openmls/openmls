@@ -114,15 +114,15 @@
 //! | `resumption_secret`     | "resumption"    |
 //! ```
 
-use crate::codec::*;
-use crate::group::GroupContext;
 use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
+use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HPKEKeyPair, Secret},
     config::ProtocolVersion,
     messages::ConfirmationTag,
 };
+use crate::{codec::*, prelude::MLSPlaintextTBMPayload};
 
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -175,7 +175,7 @@ impl CommitSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -215,7 +215,7 @@ impl InitSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -264,7 +264,7 @@ impl JoinerSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 }
 
@@ -296,7 +296,7 @@ impl KeySchedule {
         log_crypto!(
             trace,
             "  joiner_secret: {:x?}",
-            joiner_secret.secret.to_bytes()
+            joiner_secret.secret.as_slice()
         );
         let psk = psk.into();
         log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
@@ -338,7 +338,7 @@ impl KeySchedule {
         log_crypto!(
             trace,
             "  intermediate_secret: {:x?}",
-            self.intermediate_secret.as_ref().unwrap().secret.to_bytes()
+            self.intermediate_secret.as_ref().unwrap().secret.as_slice()
         );
 
         self.epoch_secret = Some(EpochSecret::new(
@@ -434,7 +434,7 @@ impl WelcomeSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 }
 
@@ -498,7 +498,7 @@ impl EncryptionSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -531,7 +531,7 @@ impl ExporterSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 
     /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
@@ -548,7 +548,7 @@ impl ExporterSecret {
         self.secret
             .derive_secret(label)
             .kdf_expand_label(label, context_hash, key_length)
-            .to_bytes()
+            .as_slice()
             .to_vec()
     }
 }
@@ -570,12 +570,12 @@ impl AuthenticationSecret {
 
     /// ☣️ Get a copy of the secret bytes.
     pub(crate) fn export(&self) -> Vec<u8> {
-        self.secret.to_bytes().to_vec()
+        self.secret.as_slice().to_vec()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 }
 
@@ -600,7 +600,7 @@ impl ExternalSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 }
 
@@ -618,7 +618,7 @@ impl ConfirmationKey {
         log_crypto!(
             trace,
             "  epoch_secret {:x?}",
-            epoch_secret.secret.to_bytes()
+            epoch_secret.secret.as_slice()
         );
         let secret = epoch_secret.secret.derive_secret("confirm");
         Self { secret }
@@ -632,27 +632,11 @@ impl ConfirmationKey {
     /// MLSPlaintext.confirmation_tag =
     ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
     /// ```
-    pub fn tag(
-        &self,
-        ciphersuite: &'static Ciphersuite,
-        confirmed_transcript_hash: &[u8],
-    ) -> ConfirmationTag {
+    pub fn tag(&self, confirmed_transcript_hash: &[u8]) -> ConfirmationTag {
         log::debug!("Computing confirmation tag.");
-        log_crypto!(trace, "  confirmation key {:x?}", self.secret.to_bytes());
+        log_crypto!(trace, "  confirmation key {:x?}", self.secret.as_slice());
         log_crypto!(trace, "  transcript hash  {:x?}", confirmed_transcript_hash);
-        ConfirmationTag(
-            self.secret.mac(&Secret::from_slice(
-                confirmed_transcript_hash,
-                self.secret.version(),
-                ciphersuite,
-            )).into()
-            // ciphersuite
-            //     .mac(
-            //         &self.secret,
-            //         &Secret::from(confirmed_transcript_hash.to_vec()),
-            //     )
-            //     .into(),
-        )
+        ConfirmationTag(Mac::new(&self.secret, confirmed_transcript_hash))
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -662,7 +646,7 @@ impl ConfirmationKey {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 }
 
@@ -680,6 +664,23 @@ impl MembershipKey {
         Self { secret }
     }
 
+    /// Create a new membership tag.
+    ///
+    /// 9.1 Content Authentication
+    ///
+    /// ```text
+    /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
+    /// ```
+    pub(crate) fn tag(
+        &self,
+        tbm_payload: MLSPlaintextTBMPayload,
+    ) -> Result<MembershipTag, CodecError> {
+        Ok(MembershipTag(Mac::new(
+            &self.secret,
+            &tbm_payload.into_bytes()?,
+        )))
+    }
+
     /// Get the internal `Secret`.
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
@@ -692,7 +693,7 @@ impl MembershipKey {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 }
 
@@ -712,7 +713,7 @@ impl ResumptionSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 }
 
@@ -785,7 +786,7 @@ impl SenderDataSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
@@ -917,7 +918,7 @@ impl EpochSecrets {
         log_crypto!(
             trace,
             "  epoch_secret: {:x?}",
-            epoch_secret.secret.to_bytes()
+            epoch_secret.secret.as_slice()
         );
         let sender_data_secret = SenderDataSecret::new(&epoch_secret);
         let encryption_secret = EncryptionSecret::new(&epoch_secret);

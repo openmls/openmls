@@ -4,7 +4,6 @@ use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::credentials::*;
 use crate::extensions::*;
-use crate::framing::Mac;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
@@ -121,16 +120,6 @@ impl Commit {
 /// around a `Mac`.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Mac);
-
-impl ConfirmationTag {
-    pub(crate) fn config(
-        &mut self,
-        ciphersuite: &'static Ciphersuite,
-        mls_version: ProtocolVersion,
-    ) {
-        self.0.mac_value.config(ciphersuite, mls_version);
-    }
-}
 
 /// GroupInfo
 ///

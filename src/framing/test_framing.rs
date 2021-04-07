@@ -76,13 +76,12 @@ fn membership_tag() {
             .sign_from_member(&credential_bundle, serialized_context)
             .expect("Could not sign plaintext.");
         mls_plaintext
-            .add_membership_tag(ciphersuite, serialized_context, &membership_key)
+            .add_membership_tag(serialized_context, &membership_key)
             .expect("Could not mac plaintext.");
 
         println!(
             "Membership tag error: {:?}",
             mls_plaintext.verify_from_member(
-                ciphersuite,
                 serialized_context,
                 &credential_bundle.credential(),
                 &membership_key,
@@ -92,7 +91,6 @@ fn membership_tag() {
         // Verify signature & membership tag
         assert!(mls_plaintext
             .verify_from_member(
-                ciphersuite,
                 serialized_context,
                 &credential_bundle.credential(),
                 &membership_key,
@@ -105,7 +103,6 @@ fn membership_tag() {
         // Expect the signature & membership tag verification to fail
         assert!(mls_plaintext
             .verify_from_member(
-                ciphersuite,
                 serialized_context,
                 &credential_bundle.credential(),
                 &membership_key,
@@ -265,7 +262,6 @@ fn unknown_sender() {
 
         let bogus_sender = LeafIndex::from(1usize);
         let bogus_sender_message = MLSPlaintext::new_from_application(
-            ciphersuite,
             bogus_sender,
             &[],
             &[1, 2, 3],
@@ -296,7 +292,6 @@ fn unknown_sender() {
         // Expected result: MLSCiphertextError::GenerationOutOfBound
         let bogus_sender = LeafIndex::from(100usize);
         let bogus_sender_message = MLSPlaintext::new_from_application(
-            ciphersuite,
             bogus_sender,
             &[],
             &[1, 2, 3],

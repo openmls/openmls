@@ -25,14 +25,10 @@ impl MlsGroup {
             MLSPlaintextContentType::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
-        let received_confirmation_tag = match &mls_plaintext.confirmation_tag {
-            Some(confirmation_tag) => {
-                let mut confirmation_tag = confirmation_tag.clone();
-                confirmation_tag.config(self.ciphersuite, self.mls_version);
-                confirmation_tag
-            }
-            None => return Err(ApplyCommitError::ConfirmationTagMissing),
-        };
+        let received_confirmation_tag = mls_plaintext
+            .confirmation_tag
+            .as_ref()
+            .ok_or(ApplyCommitError::ConfirmationTagMissing)?;
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
@@ -164,8 +160,8 @@ impl MlsGroup {
         // Verify confirmation tag
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(&ciphersuite, &confirmed_transcript_hash);
-        if own_confirmation_tag != received_confirmation_tag {
+            .tag(&confirmed_transcript_hash);
+        if &own_confirmation_tag != received_confirmation_tag {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);

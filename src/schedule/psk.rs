@@ -272,7 +272,7 @@ impl PskSecret {
 
             let psk_secret =
                 psk_input.kdf_expand_label("derived psk", &psk_label, ciphersuite.hash_length());
-            secret.extend_from_slice(psk_secret.to_bytes());
+            secret.extend_from_slice(psk_secret.as_slice());
         }
         Ok(Self {
             secret: Secret::from_slice(&secret, mls_version, ciphersuite),
@@ -293,7 +293,7 @@ impl PskSecret {
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]

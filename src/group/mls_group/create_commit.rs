@@ -143,17 +143,14 @@ impl MlsGroup {
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(&ciphersuite, &confirmed_transcript_hash);
+            .tag(&confirmed_transcript_hash);
 
         // Set the confirmation tag
         mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
 
         // Add membership tag
-        mls_plaintext.add_membership_tag(
-            ciphersuite,
-            serialized_context,
-            self.epoch_secrets().membership_key(),
-        )?;
+        mls_plaintext
+            .add_membership_tag(serialized_context, self.epoch_secrets().membership_key())?;
 
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {

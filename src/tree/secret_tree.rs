@@ -52,7 +52,7 @@ pub(crate) fn derive_tree_secret(
         length
     );
     let tree_context = TreeContext { node, generation };
-    log_crypto!(trace, "Input secret {:x?}", secret.to_bytes());
+    log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
     log_crypto!(trace, "Tree context {:?}", tree_context);
     let serialized_tree_context = tree_context.encode_detached().unwrap();
     secret.kdf_expand_label(label, &serialized_tree_context, length)
@@ -278,7 +278,7 @@ impl SecretTree {
             .as_ref()
             .unwrap()
             .secret;
-        log_crypto!(trace, "Node secret: {:x?}", node_secret.to_bytes());
+        log_crypto!(trace, "Node secret: {:x?}", node_secret.as_slice());
         let left_index =
             left(index_in_tree).expect("derive_down: Error while computing left child.");
         let right_index = right(index_in_tree, self.size)
@@ -291,13 +291,13 @@ impl SecretTree {
             trace,
             "Left node ({}) secret: {:x?}",
             left_index.as_u32(),
-            left_secret.to_bytes()
+            left_secret.as_slice()
         );
         log_crypto!(
             trace,
             "Right node ({}) secret: {:x?}",
             right_index.as_u32(),
-            right_secret.to_bytes()
+            right_secret.as_slice()
         );
         self.nodes[left_index.as_usize()] = Some(SecretTreeNode {
             secret: left_secret,

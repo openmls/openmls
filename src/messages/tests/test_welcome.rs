@@ -1,10 +1,9 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Secret, Signature},
+    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Mac, Secret, Signature},
     codec::{Codec, Cursor},
     config::Config,
-    framing::plaintext::Mac,
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfo, Welcome},
     tree::index::LeafIndex,
@@ -22,7 +21,7 @@ macro_rules! test_welcome_msg {
                 confirmed_transcript_hash: vec![1, 1, 1],
                 extensions: Vec::new(),
                 confirmation_tag: ConfirmationTag(Mac {
-                    mac_value: Secret::random($ciphersuite, None),
+                    mac_value: vec![1, 2, 3, 4, 5],
                 }),
                 signer_index: LeafIndex::from(8u32),
                 signature: Signature::new_empty(),

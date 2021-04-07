@@ -62,7 +62,7 @@ fn test_failed_groupinfo_decryption() {
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
             let confirmation_tag = ConfirmationTag(Mac {
-                mac_value: Secret::random(ciphersuite, None),
+                mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             });
             let signer_index = LeafIndex::from(8u32);
             let group_info = GroupInfo::new(
@@ -305,11 +305,7 @@ fn test_update_path() {
             .sign_from_member(&bob_credential_bundle, serialized_context)
             .expect("Could not sign plaintext.");
         broken_plaintext
-            .add_membership_tag(
-                ciphersuite,
-                serialized_context,
-                group_bob.epoch_secrets.membership_key(),
-            )
+            .add_membership_tag(serialized_context, group_bob.epoch_secrets.membership_key())
             .expect("Could not add membership key");
 
         assert_eq!(

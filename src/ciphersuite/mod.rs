@@ -199,6 +199,16 @@ impl KdfLabel {
     }
 }
 
+/// Compare two byte slices in a way that's hopefully not optimised out by the
+/// compiler.
+fn equal_ct(a: &[u8], b: &[u8]) -> bool {
+    let mut diff = 0u8;
+    for (l, r) in a.iter().zip(b.iter()) {
+        diff |= l ^ r;
+    }
+    diff == 0
+}
+
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
@@ -245,11 +255,7 @@ impl PartialEq for Secret {
             );
             return false;
         }
-        let mut diff = 0u8;
-        for (l, r) in self.value.iter().zip(other.value.iter()) {
-            diff |= l ^ r;
-        }
-        diff == 0
+        equal_ct(&self.value, &other.value)
     }
 }
 
@@ -293,14 +299,6 @@ impl Secret {
             mls_version,
             ciphersuite,
         }
-    }
-
-    /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
-    /// HMAC that is also used in HKDF.
-    /// Compute the HMAC on `self` with key `ikm`.
-    pub(crate) fn mac(&self, ikm: &Secret) -> Self {
-        // FIXME: this should be on ikm and the other input shouldn't be a secret.
-        self.hkdf_extract(ikm)
     }
 
     /// HKDF extract where `self` is `salt`.
@@ -393,13 +391,8 @@ impl Secret {
     }
 
     /// Returns the inner bytes of a secret
-    pub(crate) fn to_bytes(&self) -> &[u8] {
+    pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
-    }
-
-    /// Returns the MLS version of the secret
-    pub(crate) fn version(&self) -> ProtocolVersion {
-        self.mls_version
     }
 
     /// Returns the ciphersuite of the secret
@@ -416,6 +409,36 @@ impl From<&[u8]> for Secret {
             value: bytes.to_vec(),
             mls_version: ProtocolVersion::default(),
             ciphersuite: Ciphersuite::default(),
+        }
+    }
+}
+
+/// 9.2 Message framing
+///
+/// struct {
+///     opaque mac_value<0..255>;
+/// } MAC;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Mac {
+    pub(crate) mac_value: Vec<u8>,
+}
+
+impl PartialEq for Mac {
+    // Constant time comparison.
+    fn eq(&self, other: &Mac) -> bool {
+        equal_ct(&self.mac_value, &other.mac_value)
+    }
+}
+
+impl Mac {
+    /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
+    /// HMAC that is also used in HKDF.
+    /// Compute the HMAC on `salt` with key `ikm`.
+    pub(crate) fn new(salt: &Secret, ikm: &[u8]) -> Self {
+        Mac {
+            mac_value: salt
+                .hkdf_extract(&Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite))
+                .value,
         }
     }
 }

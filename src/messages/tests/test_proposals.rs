@@ -94,7 +94,6 @@ fn proposal_queue_functions() {
 
         // Frame proposals in MLSPlaintext
         let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
-            ciphersuite,
             LeafIndex::from(0u32),
             &[],
             proposal_add_alice1,
@@ -104,7 +103,6 @@ fn proposal_queue_functions() {
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_alice2 = MLSPlaintext::new_from_proposal_member(
-            ciphersuite,
             LeafIndex::from(1u32),
             &[],
             proposal_add_alice2,
@@ -114,7 +112,6 @@ fn proposal_queue_functions() {
         )
         .expect("Could not create proposal.");
         let _mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
-            ciphersuite,
             LeafIndex::from(1u32),
             &[],
             proposal_add_bob1,
@@ -199,7 +196,6 @@ fn proposal_queue_order() {
 
         // Frame proposals in MLSPlaintext
         let mls_plaintext_add_alice1 = MLSPlaintext::new_from_proposal_member(
-            ciphersuite,
             LeafIndex::from(0u32),
             &[],
             proposal_add_alice1.clone(),
@@ -209,7 +205,6 @@ fn proposal_queue_order() {
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_bob1 = MLSPlaintext::new_from_proposal_member(
-            ciphersuite,
             LeafIndex::from(1u32),
             &[],
             proposal_add_bob1.clone(),

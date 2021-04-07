@@ -83,10 +83,10 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &[], // extensions
     )
     .expect("Error creating group context");
-    let confirmation_tag = confirmation_key.tag(ciphersuite, &confirmed_transcript_hash_before);
+    let confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
     commit.confirmation_tag = Some(confirmation_tag);
     commit
-        .add_membership_tag(ciphersuite, context.serialized(), &membership_key)
+        .add_membership_tag(context.serialized(), &membership_key)
         .expect("Error adding membership tag");
 
     // Compute new transcript hashes.
@@ -172,12 +172,8 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     ));
 
     // Check membership and confirmation tags.
-    let commit = MLSPlaintext::decode_with_context(
-        &hex_to_bytes(&test_vector.commit),
-        ciphersuite.name(),
-        ProtocolVersion::default(),
-    )
-    .expect("Error decoding commit");
+    let commit = MLSPlaintext::decode_detached(&hex_to_bytes(&test_vector.commit))
+        .expect("Error decoding commit");
     let context = GroupContext::new(
         group_id.clone(),
         GroupEpoch(epoch),
@@ -196,7 +192,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
 
-    let my_confirmation_tag = confirmation_key.tag(ciphersuite, &confirmed_transcript_hash_before);
+    let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
     if &my_confirmation_tag
         != commit
             .confirmation_tag

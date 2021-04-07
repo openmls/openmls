@@ -149,7 +149,6 @@ impl MlsGroup {
         };
         let proposal = Proposal::Add(add_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -173,7 +172,6 @@ impl MlsGroup {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -199,7 +197,6 @@ impl MlsGroup {
         };
         let proposal = Proposal::Remove(remove_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -223,7 +220,6 @@ impl MlsGroup {
         let presharedkey_proposal = PreSharedKeyProposal { psk };
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -287,7 +283,6 @@ impl MlsGroup {
         padding_size: usize,
     ) -> Result<MLSCiphertext, GroupError> {
         let mls_plaintext = MLSPlaintext::new_from_application(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             msg,

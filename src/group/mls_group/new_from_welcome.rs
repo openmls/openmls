@@ -67,10 +67,7 @@ impl MlsGroup {
         let group_info_bytes = welcome_key
             .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let mut group_info = GroupInfo::decode_detached(&group_info_bytes)?;
-        group_info
-            .confirmation_tag_mut()
-            .config(welcome.ciphersuite(), mls_version);
+        let group_info = GroupInfo::decode_detached(&group_info_bytes)?;
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
@@ -189,7 +186,7 @@ impl MlsGroup {
 
         let confirmation_tag = epoch_secrets
             .confirmation_key()
-            .tag(&ciphersuite, &group_context.confirmed_transcript_hash);
+            .tag(&group_context.confirmed_transcript_hash);
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
             &MLSPlaintextCommitAuthData::from(&confirmation_tag),
