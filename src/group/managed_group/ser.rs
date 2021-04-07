@@ -16,13 +16,8 @@ pub struct SerializedManagedGroup {
 }
 
 impl<'a> SerializedManagedGroup {
-    pub(crate) fn into_managed_group(
-        self,
-        credential_bundle: &'a CredentialBundle,
-        callbacks: &ManagedGroupCallbacks,
-    ) -> ManagedGroup<'a> {
+    pub(crate) fn into_managed_group(self, callbacks: &ManagedGroupCallbacks) -> ManagedGroup {
         let mut managed_group = ManagedGroup {
-            credential_bundle,
             managed_group_config: self.managed_group_config,
             group: self.group,
             pending_proposals: self.pending_proposals,
@@ -36,7 +31,7 @@ impl<'a> SerializedManagedGroup {
     }
 }
 
-impl<'a> Serialize for ManagedGroup<'a> {
+impl<'a> Serialize for ManagedGroup {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

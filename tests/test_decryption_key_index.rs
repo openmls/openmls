@@ -20,7 +20,6 @@ ctest_ciphersuites!(decryption_key_index_computation, test(param: CiphersuiteNam
         ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, callbacks);
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
-    setup.create_clients();
         // Create a basic group with more than 4 members to create a tree with intermediate nodes.
         let group_id = setup.create_random_group(10, ciphersuite).unwrap();
         let mut groups = setup.groups.borrow_mut();

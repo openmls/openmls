@@ -24,10 +24,17 @@ fn validate_remove(
     true
 }
 
+fn own_identity(managed_group: &ManagedGroup) -> Vec<u8> {
+    match managed_group.credential() {
+        Ok(credential) => credential.identity().clone(),
+        Err(_) => "us".as_bytes().to_vec(),
+    }
+}
+
 /// Auto-save
 /// `(managed_group: &ManagedGroup)`
 fn auto_save(managed_group: &ManagedGroup) {
-    let name = String::from_utf8(managed_group.credential().identity().to_vec())
+    let name = String::from_utf8(own_identity(managed_group))
         .expect("Could not create name from identity")
         .to_lowercase();
     let filename = format!("target/test_managed_group_{}.json", &name);
@@ -63,29 +70,41 @@ fn managed_group_operations() {
         {
             let group_id = GroupId::from_slice(b"Test Group");
 
-            // Define credential bundles
-            let alice_credential_bundle = CredentialBundle::new(
-                "Alice".into(),
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
-            let bob_credential_bundle = CredentialBundle::new(
-                "Bob".into(),
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
+            let key_store = KeyStore::default();
+
+            // Generate credential bundles
+            let alice_credential = key_store
+                .generate_credential(
+                    "Alice".into(),
+                    CredentialType::Basic,
+                    ciphersuite.signature_scheme(),
+                )
+                .unwrap();
+
+            let bob_credential = key_store
+                .generate_credential(
+                    "Bob".into(),
+                    CredentialType::Basic,
+                    ciphersuite.signature_scheme(),
+                )
+                .unwrap();
+
+            let charlie_credential = key_store
+                .generate_credential(
+                    "Charlie".into(),
+                    CredentialType::Basic,
+                    ciphersuite.signature_scheme(),
+                )
+                .unwrap();
 
             // Generate KeyPackages
-            let alice_key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![])
-                    .unwrap();
+            let alice_key_package = key_store
+                .generate_key_package(&[ciphersuite.name()], &alice_credential, vec![])
+                .unwrap();
 
-            let bob_key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, vec![])
-                    .unwrap();
-            let bob_key_package = bob_key_package_bundle.key_package().clone();
+            let bob_key_package = key_store
+                .generate_key_package(&[ciphersuite.name()], &bob_credential, vec![])
+                .unwrap();
 
             // Define the managed group configuration
 
@@ -99,16 +118,16 @@ fn managed_group_operations() {
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
-                &alice_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 group_id,
-                alice_key_package_bundle,
+                &alice_key_package.hash(),
             )
             .unwrap();
 
             // === Alice adds Bob ===
             let (queued_messages, welcome) =
-                match alice_group.add_members(&[bob_key_package.clone()]) {
+                match alice_group.add_members(&key_store, &[bob_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
@@ -120,14 +139,8 @@ fn managed_group_operations() {
             // Check that we received the correct event
             match events.last().expect("Expected an event to be returned") {
                 GroupEvent::MemberAdded(member_added_event) => {
-                    assert_eq!(
-                        member_added_event.sender(),
-                        alice_credential_bundle.credential()
-                    );
-                    assert_eq!(
-                        member_added_event.added_member(),
-                        bob_credential_bundle.credential()
-                    );
+                    assert_eq!(member_added_event.sender(), &alice_credential);
+                    assert_eq!(member_added_event.added_member(), &bob_credential);
                 }
                 _ => unreachable!("Expected a MemberAdded event"),
             }
@@ -141,11 +154,10 @@ fn managed_group_operations() {
             assert_eq!(members[1].identity(), b"Bob");
 
             let mut bob_group = ManagedGroup::new_from_welcome(
-                &bob_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome,
                 Some(alice_group.export_ratchet_tree()),
-                bob_key_package_bundle,
             )
             .expect("Error creating group from Welcome");
 
@@ -161,7 +173,7 @@ fn managed_group_operations() {
             // === Alice sends a message to Bob ===
             let message_alice = b"Hi, I'm Alice!";
             let queued_message = alice_group
-                .create_message(message_alice)
+                .create_message(&key_store, message_alice)
                 .expect("Error creating application message");
             let events = bob_group
                 .process_messages(vec![queued_message])
@@ -170,17 +182,14 @@ fn managed_group_operations() {
             // Check that we received the correct event
             match events.last().expect("Expected an event to be returned") {
                 GroupEvent::ApplicationMessage(application_message_event) => {
-                    assert_eq!(
-                        application_message_event.sender(),
-                        alice_credential_bundle.credential()
-                    );
+                    assert_eq!(application_message_event.sender(), &alice_credential);
                     assert_eq!(application_message_event.message(), message_alice);
                 }
                 _ => unreachable!("Expected an ApplicationMessage event"),
             }
 
             // === Bob updates and commits ===
-            let (queued_messages, welcome_option) = match bob_group.self_update(None) {
+            let (queued_messages, welcome_option) = match bob_group.self_update(&key_store, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
@@ -200,10 +209,7 @@ fn managed_group_operations() {
                 .expect("Expected an event to be returned")
             {
                 GroupEvent::MemberUpdated(member_updated_event) => {
-                    assert_eq!(
-                        member_updated_event.updated_member(),
-                        bob_credential_bundle.credential()
-                    );
+                    assert_eq!(member_updated_event.updated_member(), &bob_credential);
                 }
                 _ => unreachable!("Expected an ApplicationMessage event"),
             }
@@ -224,7 +230,7 @@ fn managed_group_operations() {
             );
 
             // === Alice updates and commits ===
-            let queued_messages = match alice_group.propose_self_update(None) {
+            let queued_messages = match alice_group.propose_self_update(&key_store, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
@@ -235,10 +241,11 @@ fn managed_group_operations() {
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
 
-            let (queued_messages, _welcome_option) = match alice_group.process_pending_proposals() {
-                Ok(qm) => qm,
-                Err(e) => panic!("Error performing self-update: {:?}", e),
-            };
+            let (queued_messages, _welcome_option) =
+                match alice_group.process_pending_proposals(&key_store) {
+                    Ok(qm) => qm,
+                    Err(e) => panic!("Error performing self-update: {:?}", e),
+                };
             let alice_events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
@@ -255,10 +262,7 @@ fn managed_group_operations() {
                 .expect("Expected an event to be returned")
             {
                 GroupEvent::MemberUpdated(member_updated_event) => {
-                    assert_eq!(
-                        member_updated_event.updated_member(),
-                        alice_credential_bundle.credential()
-                    );
+                    assert_eq!(member_updated_event.updated_member(), &alice_credential);
                 }
                 _ => unreachable!("Expected a MemberUpdated event"),
             }
@@ -276,22 +280,15 @@ fn managed_group_operations() {
             );
 
             // === Bob adds Charlie ===
-            let charlie_credential_bundle = CredentialBundle::new(
-                "Charlie".into(),
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
+            let charlie_key_package = key_store
+                .generate_key_package(&[ciphersuite.name()], &charlie_credential, vec![])
+                .unwrap();
 
-            let charlie_key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &charlie_credential_bundle, vec![])
-                    .unwrap();
-            let charlie_key_package = charlie_key_package_bundle.key_package().clone();
-
-            let (queued_messages, welcome) = match bob_group.add_members(&[charlie_key_package]) {
-                Ok((qm, welcome)) => (qm, welcome),
-                Err(e) => panic!("Could not add member to group: {:?}", e),
-            };
+            let (queued_messages, welcome) =
+                match bob_group.add_members(&key_store, &[charlie_key_package]) {
+                    Ok((qm, welcome)) => (qm, welcome),
+                    Err(e) => panic!("Could not add member to group: {:?}", e),
+                };
 
             alice_group
                 .process_messages(queued_messages.clone())
@@ -301,11 +298,10 @@ fn managed_group_operations() {
                 .expect("The group is no longer active");
 
             let mut charlie_group = ManagedGroup::new_from_welcome(
-                &charlie_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome,
                 Some(bob_group.export_ratchet_tree()),
-                charlie_key_package_bundle,
             )
             .expect("Error creating group from Welcome");
 
@@ -328,7 +324,7 @@ fn managed_group_operations() {
             // === Charlie sends a message to the group ===
             let message_charlie = b"Hi, I'm Charlie!";
             let queued_message = charlie_group
-                .create_message(message_charlie)
+                .create_message(&key_store, message_charlie)
                 .expect("Error creating application message");
             alice_group
                 .process_messages(vec![queued_message.clone()])
@@ -338,10 +334,11 @@ fn managed_group_operations() {
                 .expect("The group is no longer active");
 
             // === Charlie updates and commits ===
-            let (queued_messages, welcome_option) = match charlie_group.self_update(None) {
-                Ok(qm) => qm,
-                Err(e) => panic!("Error performing self-update: {:?}", e),
-            };
+            let (queued_messages, welcome_option) =
+                match charlie_group.self_update(&key_store, None) {
+                    Ok(qm) => qm,
+                    Err(e) => panic!("Error performing self-update: {:?}", e),
+                };
             alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
@@ -376,10 +373,11 @@ fn managed_group_operations() {
             );
 
             // === Charlie removes Bob ===
-            let (queued_messages, welcome_option) = match charlie_group.remove_members(&[1]) {
-                Ok(qm) => qm,
-                Err(e) => panic!("Could not remove member from group: {:?}", e),
-            };
+            let (queued_messages, welcome_option) =
+                match charlie_group.remove_members(&key_store, &[1]) {
+                    Ok(qm) => qm,
+                    Err(e) => panic!("Could not remove member from group: {:?}", e),
+                };
 
             // Check that Bob's group is still active
             assert!(bob_group.is_active());
@@ -402,8 +400,8 @@ fn managed_group_operations() {
                 GroupEvent::MemberRemoved(member_removed_event) => {
                     match member_removed_event.removal() {
                         Removal::TheyWereRemovedBy(leaver, remover) => {
-                            assert_eq!(remover, charlie_credential_bundle.credential());
-                            assert_eq!(leaver, bob_credential_bundle.credential());
+                            assert_eq!(remover, &charlie_credential);
+                            assert_eq!(leaver, &bob_credential);
                         }
                         _ => {
                             unreachable!("We should not be here")
@@ -421,7 +419,7 @@ fn managed_group_operations() {
                 GroupEvent::MemberRemoved(member_removed_event) => {
                     match member_removed_event.removal() {
                         Removal::WeWereRemovedBy(remover) => {
-                            assert_eq!(remover, charlie_credential_bundle.credential());
+                            assert_eq!(remover, &charlie_credential);
                         }
                         _ => {
                             unreachable!("We should not be here")
@@ -452,19 +450,20 @@ fn managed_group_operations() {
             assert_eq!(members[1].identity(), b"Charlie");
 
             // Check that Bob can no longer send messages
-            assert!(bob_group.create_message(b"Should not go through").is_err());
+            assert!(bob_group
+                .create_message(&key_store, b"Should not go through")
+                .is_err());
 
             // === Alice removes Charlie and re-adds Bob ===
 
             // Create a new KeyPackageBundle for Bob
-            let bob_key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, vec![])
-                    .unwrap();
-            let bob_key_package = bob_key_package_bundle.key_package().clone();
+            let bob_key_package = key_store
+                .generate_key_package(&[ciphersuite.name()], &bob_credential, vec![])
+                .unwrap();
 
             // Create RemoveProposal and process it
             let queued_messages = alice_group
-                .propose_remove_members(&[2])
+                .propose_remove_members(&key_store, &[2])
                 .expect("Could not create proposal to remove Charlie");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -475,7 +474,7 @@ fn managed_group_operations() {
 
             // Create AddProposal and process it
             let queued_messages = alice_group
-                .propose_add_members(&[bob_key_package.clone()])
+                .propose_add_members(&key_store, &[bob_key_package.clone()])
                 .expect("Could not create proposal to add Bob");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -486,7 +485,7 @@ fn managed_group_operations() {
 
             // Commit to the proposals and process it
             let (queued_messages, welcome_option) = alice_group
-                .process_pending_proposals()
+                .process_pending_proposals(&key_store)
                 .expect("Could not flush proposals");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -505,11 +504,10 @@ fn managed_group_operations() {
 
             // Bob creates a new group
             let mut bob_group = ManagedGroup::new_from_welcome(
-                &bob_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome_option.expect("Welcome was not returned"),
                 Some(alice_group.export_ratchet_tree()),
-                bob_key_package_bundle,
             )
             .expect("Error creating group from Welcome");
 
@@ -532,7 +530,7 @@ fn managed_group_operations() {
             // === lice sends a message to the group ===
             let message_alice = b"Hi, I'm Alice!";
             let queued_message = alice_group
-                .create_message(message_alice)
+                .create_message(&key_store, message_alice)
                 .expect("Error creating application message");
             bob_group
                 .process_messages(vec![queued_message.clone()])
@@ -540,7 +538,9 @@ fn managed_group_operations() {
 
             // === Bob leaves the group ===
 
-            let queued_messages = bob_group.leave_group().expect("Could not leave group");
+            let queued_messages = bob_group
+                .leave_group(&key_store)
+                .expect("Could not leave group");
 
             alice_group
                 .process_messages(queued_messages.clone())
@@ -551,14 +551,14 @@ fn managed_group_operations() {
 
             // Should fail because you cannot remove yourself from a group
             assert_eq!(
-                bob_group.process_pending_proposals(),
+                bob_group.process_pending_proposals(&key_store,),
                 Err(ManagedGroupError::Group(GroupError::CreateCommitError(
                     CreateCommitError::CannotRemoveSelf
                 )))
             );
 
             let (queued_messages, _welcome_option) = alice_group
-                .process_pending_proposals()
+                .process_pending_proposals(&key_store)
                 .expect("Could not commit to proposals");
 
             // Check that Bob's group is still active
@@ -579,7 +579,7 @@ fn managed_group_operations() {
                 GroupEvent::MemberRemoved(member_removed_event) => {
                     match member_removed_event.removal() {
                         Removal::TheyLeft(leaver) => {
-                            assert_eq!(leaver, bob_credential_bundle.credential());
+                            assert_eq!(leaver, &bob_credential);
                         }
                         _ => {
                             unreachable!("We should not be here")
@@ -618,14 +618,13 @@ fn managed_group_operations() {
             // === Auto-save ===
 
             // Create a new KeyPackageBundle for Bob
-            let bob_key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, vec![])
-                    .unwrap();
-            let bob_key_package = bob_key_package_bundle.key_package().clone();
+            let bob_key_package = key_store
+                .generate_key_package(&[ciphersuite.name()], &bob_credential, vec![])
+                .unwrap();
 
             // Add Bob to the group
             let (queued_messages, welcome) = alice_group
-                .add_members(&[bob_key_package])
+                .add_members(&key_store, &[bob_key_package])
                 .expect("Could not add Bob");
 
             alice_group
@@ -633,11 +632,10 @@ fn managed_group_operations() {
                 .expect("Could not process messages");
 
             let bob_group = ManagedGroup::new_from_welcome(
-                &bob_credential_bundle,
+                &key_store,
                 &managed_group_config,
                 welcome,
                 Some(alice_group.export_ratchet_tree()),
-                bob_key_package_bundle,
             )
             .expect("Could not create group from Welcome");
 
@@ -649,12 +647,8 @@ fn managed_group_operations() {
             // Re-load Bob's state from file
             let path = Path::new("target/test_managed_group_bob.json");
             let file = File::open(&path).expect("Could not open file");
-            let bob_group = ManagedGroup::load(
-                file,
-                &bob_credential_bundle,
-                managed_group_config.callbacks(),
-            )
-            .expect("Could not load group from file");
+            let bob_group = ManagedGroup::load(file, managed_group_config.callbacks())
+                .expect("Could not load group from file");
 
             // Make sure the state is still the same
             assert_eq!(
@@ -670,17 +664,21 @@ fn test_empty_input_errors() {
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .unwrap();
+    let key_store = KeyStore::default();
+
+    // Generate credential bundles
+    let alice_credential = key_store
+        .generate_credential(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![]).unwrap();
+    let alice_key_package = key_store
+        .generate_key_package(&[ciphersuite.name()], &alice_credential, vec![])
+        .unwrap();
 
     // Define the managed group configuration
     let update_policy = UpdatePolicy::default();
@@ -695,21 +693,21 @@ fn test_empty_input_errors() {
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
-        &alice_credential_bundle,
+        &key_store,
         &managed_group_config,
         group_id,
-        alice_key_package_bundle,
+        &alice_key_package.hash(),
     )
     .unwrap();
 
     assert_eq!(
         alice_group
-            .add_members(&[])
+            .add_members(&key_store, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
         ManagedGroupError::EmptyInput(EmptyInputError::AddMembers)
     );
     assert_eq!(
-        alice_group.remove_members(&[]).expect_err(
+        alice_group.remove_members(&key_store, &[]).expect_err(
             "No EmptyInputError when trying to pass an empty slice to `remove_members`."
         ),
         ManagedGroupError::EmptyInput(EmptyInputError::RemoveMembers)
