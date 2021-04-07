@@ -515,16 +515,6 @@ impl EncryptionSecret {
     }
 }
 
-// #[cfg(any(feature = "expose-test-vectors", test))]
-// #[doc(hidden)]
-// impl From<&[u8]> for EncryptionSecret {
-//     fn from(bytes: &[u8]) -> Self {
-//         Self {
-//             secret: Secret::from(bytes),
-//         }
-//     }
-// }
-
 /// A secret that we can derive secrets from, that are used outside of OpenMLS.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]

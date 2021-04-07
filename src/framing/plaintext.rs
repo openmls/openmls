@@ -435,7 +435,6 @@ impl MembershipTag {
         mls_version: ProtocolVersion,
     ) {
         self.0.mac_value.config(ciphersuite, mls_version);
-        // self
     }
 }
 
