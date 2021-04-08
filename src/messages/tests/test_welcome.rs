@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Secret, Signature},
+    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Mac, Secret, Signature},
     codec::{Codec, Cursor},
     config::Config,
     group::{GroupEpoch, GroupId},
-    messages::{EncryptedGroupSecrets, GroupInfo, Welcome},
+    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfo, Welcome},
     tree::index::LeafIndex,
 };
 
@@ -20,18 +20,20 @@ macro_rules! test_welcome_msg {
                 tree_hash: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 confirmed_transcript_hash: vec![1, 1, 1],
                 extensions: Vec::new(),
-                confirmation_tag: vec![6, 6, 6],
+                confirmation_tag: ConfirmationTag(Mac {
+                    mac_value: vec![1, 2, 3, 4, 5],
+                }),
                 signer_index: LeafIndex::from(8u32),
                 signature: Signature::new_empty(),
             };
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_random($ciphersuite);
-            let welcome_nonce = AeadNonce::from_random();
+            let welcome_key = AeadKey::random($ciphersuite);
+            let welcome_nonce = AeadNonce::random();
 
             // Generate receiver key pair.
             let receiver_key_pair =
-                $ciphersuite.derive_hpke_keypair(&Secret::from([1u8, 2u8, 3u8, 4u8].to_vec()));
+                $ciphersuite.derive_hpke_keypair(&Secret::random($ciphersuite, None));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";

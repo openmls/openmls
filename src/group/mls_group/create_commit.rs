@@ -110,7 +110,6 @@ impl MlsGroup {
         )?;
 
         let joiner_secret = JoinerSecret::new(
-            ciphersuite,
             provisional_tree.commit_secret(),
             self.epoch_secrets()
                 .init_secret()
@@ -144,17 +143,14 @@ impl MlsGroup {
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(&ciphersuite, &confirmed_transcript_hash);
+            .tag(&confirmed_transcript_hash);
 
         // Set the confirmation tag
         mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
 
         // Add membership tag
-        mls_plaintext.add_membership_tag(
-            ciphersuite,
-            serialized_context,
-            self.epoch_secrets().membership_key(),
-        )?;
+        mls_plaintext
+            .add_membership_tag(serialized_context, self.epoch_secrets().membership_key())?;
 
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
@@ -179,7 +175,7 @@ impl MlsGroup {
             group_info.set_signature(group_info.sign(credential_bundle));
 
             // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
+            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce();
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();

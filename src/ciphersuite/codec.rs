@@ -95,7 +95,11 @@ impl Codec for Secret {
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Secret { value })
+        Ok(Secret {
+            value,
+            mls_version: ProtocolVersion::default(),
+            ciphersuite: Ciphersuite::default(),
+        })
     }
 }
 

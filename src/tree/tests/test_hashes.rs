@@ -47,7 +47,7 @@ fn test_parent_hash() {
             // Filter out leaf nodes
             if NodeIndex::from(index).is_parent() {
                 let (_private_key, public_key) = ciphersuite
-                    .derive_hpke_keypair(&Secret::random(ciphersuite.hash_length()))
+                    .derive_hpke_keypair(&Secret::random(ciphersuite, None /* MLS version */))
                     .into_keys();
                 let parent_node = ParentNode::new(public_key, &[], &[]);
                 let node = Node {
