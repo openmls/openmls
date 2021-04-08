@@ -17,6 +17,7 @@ use crate::{
     ciphersuite::Ciphersuite,
     ciphersuite::Secret,
     config::Config,
+    config::ProtocolVersion,
     credentials::{CredentialBundle, CredentialType},
     extensions::ExtensionType,
     extensions::{Extension, RatchetTreeExtension},
@@ -72,7 +73,7 @@ fn create_identity(
     )
 }
 
-// #[test]
+#[test]
 //#[cfg(test)]
 fn run_test_vectors() {
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
@@ -96,8 +97,12 @@ fn run_test_vectors() {
                 .expect("Error decoding ratchet tree");
         let ratchet_tree_before = tree_extension_before.into_vector();
 
-        let my_leaf_secret = Secret::decode_detached(&hex_to_bytes(&test_vector.my_leaf_secret))
-            .expect("failed to decote my_leaf_secret from test vector");
+        let my_leaf_secret = Secret::from_slice(
+            &hex_to_bytes(&test_vector.my_leaf_secret),
+            ProtocolVersion::default(),
+            ciphersuite,
+        );
+
         let my_key_package =
             KeyPackage::decode_detached(&hex_to_bytes(&test_vector.my_key_package))
                 .expect("failed to decode my_key_package from test vector.");
@@ -153,8 +158,12 @@ fn run_test_vectors() {
         println!("Common ancestor: {:?}", common_ancestor);
         let path = parent_direct_path(common_ancestor, tree_before.leaf_count()).unwrap();
         println!("path: {:?}", path);
-        let start_secret =
-            PathSecret::decode_detached(&hex_to_bytes(&test_vector.my_path_secret)).unwrap();
+        let start_secret = Secret::from_slice(
+            &hex_to_bytes(&test_vector.my_path_secret),
+            ProtocolVersion::default(),
+            ciphersuite,
+        )
+        .into();
         tree_before
             .private_tree_mut()
             .continue_path_secrets(ciphersuite, start_secret, &path);
@@ -162,8 +171,12 @@ fn run_test_vectors() {
         // Check if the root secrets match up.
         assert_eq!(
             tree_before.root_secret().unwrap(),
-            &PathSecret::decode_detached(&hex_to_bytes(&test_vector.root_secret_after_add))
-                .unwrap()
+            &Secret::from_slice(
+                &hex_to_bytes(&test_vector.root_secret_after_add),
+                ProtocolVersion::default(),
+                ciphersuite
+            )
+            .into()
         );
 
         // Apply the update path
@@ -186,8 +199,12 @@ fn run_test_vectors() {
 
         assert_eq!(
             root_secret_after,
-            &PathSecret::decode_detached(&hex_to_bytes(&test_vector.root_secret_after_update))
-                .unwrap()
+            &Secret::from_slice(
+                &hex_to_bytes(&test_vector.root_secret_after_update),
+                ProtocolVersion::default(),
+                ciphersuite
+            )
+            .into()
         );
 
         let tree_extension_after =

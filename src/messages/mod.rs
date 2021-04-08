@@ -258,7 +258,7 @@ impl Signable for GroupInfo {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq, Clone))]
 pub struct PathSecret {
-    pub(crate) path_secret: Secret,
+    pub path_secret: Secret,
 }
 
 impl From<Secret> for PathSecret {

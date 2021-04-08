@@ -248,20 +248,18 @@ fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> Tre
         ratchet_tree_before: bytes_to_hex(&ratchet_tree_before),
 
         add_sender: adder_index,
-        my_leaf_secret: bytes_to_hex(&my_leaf_secret.encode_detached().unwrap()),
+        my_leaf_secret: bytes_to_hex(&my_leaf_secret.as_slice()),
 
         my_key_package: bytes_to_hex(&my_key_package.encode_detached().unwrap()),
-        my_path_secret: bytes_to_hex(&my_path_secret.encode_detached().unwrap()),
+        my_path_secret: bytes_to_hex(&my_path_secret.path_secret.as_slice()),
 
         // Computed values
         update_sender: updater_index as u32,
         update_path: bytes_to_hex(&update_path.encode_detached().unwrap()),
         update_group_context: bytes_to_hex(&group_context),
         tree_hash_before: bytes_to_hex(&tree_hash_before),
-        root_secret_after_add: bytes_to_hex(&root_secret_after_add.encode_detached().unwrap()),
-        root_secret_after_update: bytes_to_hex(
-            &root_secret_after_update.encode_detached().unwrap(),
-        ),
+        root_secret_after_add: bytes_to_hex(&root_secret_after_add.path_secret.as_slice()),
+        root_secret_after_update: bytes_to_hex(&root_secret_after_update.path_secret.as_slice()),
         ratchet_tree_after: bytes_to_hex(&ratchet_tree_after),
         tree_hash_after: bytes_to_hex(&tree_hash_after),
     }

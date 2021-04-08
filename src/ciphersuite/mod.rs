@@ -391,7 +391,7 @@ impl Secret {
     }
 
     /// Returns the inner bytes of a secret
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub fn as_slice(&self) -> &[u8] {
         &self.value
     }
 
