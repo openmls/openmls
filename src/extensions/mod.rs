@@ -15,7 +15,7 @@ pub use errors::*;
 pub use key_package_id_extension::KeyIDExtension;
 pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
-pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
+pub use ratchet_tree_extension::RatchetTreeExtension;
 
 #[cfg(test)]
 mod test_extensions;

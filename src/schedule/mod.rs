@@ -257,6 +257,13 @@ impl JoinerSecret {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
+    pub(crate) fn random(len: usize) -> Self {
+        Self {
+            secret: Secret::random(len),
+        }
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.to_bytes()
     }

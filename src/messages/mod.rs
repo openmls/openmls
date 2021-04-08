@@ -1,4 +1,3 @@
-use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
 use crate::config::ProtocolVersion;
@@ -6,10 +5,19 @@ use crate::credentials::*;
 use crate::extensions::*;
 use crate::framing::Mac;
 use crate::group::*;
+use crate::schedule::psk::ExternalPsk;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
+use crate::{
+    ciphersuite::{signable::*, *},
+    schedule::{
+        psk::{PSKType::External, Psk},
+        PreSharedKeyID,
+    },
+};
 
+use evercrypt::prelude::get_random_vec;
 use serde::{Deserialize, Serialize};
 
 mod codec;
@@ -145,7 +153,7 @@ impl From<Vec<u8>> for ConfirmationTag {
 ///   opaque signature<0..2^16-1>;
 /// } GroupInfo;
 /// ```
-pub(crate) struct GroupInfo {
+pub struct GroupInfo {
     group_id: GroupId,
     epoch: GroupEpoch,
     tree_hash: Vec<u8>,
@@ -157,7 +165,7 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    pub(crate) fn new(
+    pub fn new(
         group_id: GroupId,
         epoch: GroupEpoch,
         tree_hash: Vec<u8>,
@@ -269,7 +277,7 @@ pub(crate) struct PathSecret {
 /// } GroupSecrets;
 /// ```
 
-pub(crate) struct GroupSecrets {
+pub struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
     pub(crate) psks: Option<PreSharedKeys>,
@@ -287,6 +295,23 @@ impl GroupSecrets {
         path_secret.encode(buffer)?;
         psks_option.encode(buffer)?;
         Ok(buffer.to_vec())
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn random(len: usize) -> Self {
+        let psk_id = PreSharedKeyID::new(
+            External,
+            Psk::External(ExternalPsk::new(get_random_vec(len))),
+            get_random_vec(len),
+        );
+        let psks = PreSharedKeys { psks: vec![psk_id] };
+        GroupSecrets {
+            joiner_secret: JoinerSecret::random(len),
+            path_secret: Some(PathSecret {
+                path_secret: Secret::random(len),
+            }),
+            psks: Some(psks),
+        }
     }
 }
 

@@ -6,6 +6,7 @@
 use crate::ciphersuite::CryptoError;
 use crate::codec::CodecError;
 use crate::config::ConfigError;
+use crate::credentials::CredentialError;
 use crate::framing::errors::{MLSCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
@@ -40,6 +41,8 @@ implement_error! {
                 "An error occurred during a tree math operation.",
             PskError(PskError) =
                 "A PSK error occured.",
+            CredentialError(CredentialError) =
+                "An error occurred while using a Credential occured.",
         }
     }
 }

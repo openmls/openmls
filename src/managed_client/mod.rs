@@ -39,7 +39,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     key_store::KeyStore,
-    messages::Welcome,
+    messages::{PublicGroupState, Welcome},
     node::Node,
     prelude::{KeyPackageBundle, MLSPlaintext},
     schedule::ResumptionSecret,
@@ -486,5 +486,14 @@ impl ManagedClient {
     ) -> Result<Vec<Option<Node>>, ManagedClientError> {
         let group = self.groups.get(group_id)?;
         Ok(group.export_ratchet_tree())
+    }
+
+    /// Export the Public Group State
+    pub fn export_public_group_state(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<PublicGroupState, ManagedClientError> {
+        let group = self.groups.get(group_id)?;
+        Ok(group.export_public_group_state(&self.key_store)?)
     }
 }

@@ -14,7 +14,7 @@ use crate::{
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     key_store::KeyStore,
-    messages::{proposals::*, Welcome},
+    messages::{proposals::*, PublicGroupState, Welcome},
     schedule::ResumptionSecret,
     tree::{index::LeafIndex, node::Node},
 };
@@ -919,6 +919,21 @@ impl ManagedGroup {
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
         self.group.tree().public_key_tree_copy()
+    }
+
+    /// Export the Ratchet Tree
+    pub fn export_public_group_state(
+        &self,
+        key_store: &KeyStore,
+    ) -> Result<PublicGroupState, ManagedGroupError> {
+        if !self.active {
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+        let credential = self.credential()?;
+        let cb = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+        Ok(self.group.export_public_group_state(&cb)?)
     }
 }
 

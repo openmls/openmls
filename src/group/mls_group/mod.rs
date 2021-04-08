@@ -438,8 +438,8 @@ impl MlsGroup {
     pub fn export_public_group_state(
         &self,
         credential_bundle: &CredentialBundle,
-    ) -> Result<PublicGroupState, CredentialError> {
-        PublicGroupState::new(self, credential_bundle)
+    ) -> Result<PublicGroupState, GroupError> {
+        Ok(PublicGroupState::new(self, credential_bundle)?)
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false

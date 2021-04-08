@@ -410,7 +410,7 @@ impl Ciphersuite {
     }
 
     /// Get the length of the used hash algorithm.
-    pub(crate) fn hash_length(&self) -> usize {
+    pub fn hash_length(&self) -> usize {
         get_digest_size(self.hash)
     }
 
