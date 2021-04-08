@@ -47,7 +47,7 @@ fn test_exclusion_list() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let tree = RatchetTree::new_from_nodes(&ciphersuite, key_package_bundle, &nodes).unwrap();
+        let tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
 
         let root = treemath::root(LeafIndex::from(NODES / 2));
 
@@ -128,8 +128,7 @@ fn test_original_child_resolution() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree =
-            RatchetTree::new_from_nodes(&ciphersuite, key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
 
         // Left child index
         let left_child_index = treemath::left(root_index).unwrap();

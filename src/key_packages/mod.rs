@@ -405,8 +405,7 @@ impl KeyPackageBundle {
         leaf_secret: &Secret,
         key_package: &KeyPackage,
     ) -> Self {
-        let leaf_node_secret =
-            Self::derive_leaf_node_secret(key_package.ciphersuite(), leaf_secret);
+        let leaf_node_secret = Self::derive_leaf_node_secret(leaf_secret);
         let (private_key, _public_key) = key_package
             .ciphersuite()
             .derive_hpke_keypair(&leaf_node_secret)
