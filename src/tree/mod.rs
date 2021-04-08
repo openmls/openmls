@@ -1,5 +1,5 @@
 use crate::codec::*;
-use crate::config::Config;
+use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
@@ -348,12 +348,11 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret = Secret::from(self.ciphersuite.hpke_open(
-            hpke_ciphertext,
-            &private_key,
-            group_context,
-            &[],
-        )?);
+        let secret_bytes =
+            self.ciphersuite
+                .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?;
+        let secret =
+            Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite);
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree

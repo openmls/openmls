@@ -54,6 +54,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         alice_key_package_bundle,
         config,
         None, /* Initial PSK */
+        None, /* MLS version */
     )
     .unwrap();
 
@@ -93,7 +94,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         &[],
         &[],
     ).expect("Could not decrypt group secrets");
-    let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes).expect("Could not decode GroupSecrets");
+    let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes).expect("Could not decode GroupSecrets").config(ciphersuite, ProtocolVersion::default());
     let joiner_secret = group_secrets.joiner_secret;
 
     // Create key schedule
@@ -113,7 +114,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     // Derive welcome key & noce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
         .welcome().expect("Expected a WelcomeSecret")
-        .derive_welcome_key_nonce(ciphersuite);
+        .derive_welcome_key_nonce();
 
     let group_info_bytes = welcome_key
         .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)

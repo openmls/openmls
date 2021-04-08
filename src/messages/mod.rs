@@ -4,7 +4,6 @@ use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::credentials::*;
 use crate::extensions::*;
-use crate::framing::Mac;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
@@ -92,6 +91,11 @@ impl Welcome {
         &self.encrypted_group_info
     }
 
+    /// Get a reference to the protocol version in the `Welcome`.
+    pub(crate) fn version(&self) -> &ProtocolVersion {
+        &self.version
+    }
+
     /// Set the welcome's encrypted group info.
     #[cfg(test)]
     pub fn set_encrypted_group_info(&mut self, encrypted_group_info: Vec<u8>) {
@@ -117,18 +121,6 @@ impl Commit {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Mac);
 
-impl From<ConfirmationTag> for Vec<u8> {
-    fn from(confirmation_tag: ConfirmationTag) -> Self {
-        confirmation_tag.0.into()
-    }
-}
-
-impl From<Vec<u8>> for ConfirmationTag {
-    fn from(bytes: Vec<u8>) -> Self {
-        ConfirmationTag(bytes.into())
-    }
-}
-
 /// GroupInfo
 ///
 /// > 11.2.2. Welcoming New Members
@@ -151,7 +143,7 @@ pub(crate) struct GroupInfo {
     tree_hash: Vec<u8>,
     confirmed_transcript_hash: Vec<u8>,
     extensions: Vec<Box<dyn Extension>>,
-    confirmation_tag: Vec<u8>,
+    confirmation_tag: ConfirmationTag,
     signer_index: LeafIndex,
     signature: Signature,
 }
@@ -172,7 +164,7 @@ impl GroupInfo {
             tree_hash,
             confirmed_transcript_hash,
             extensions,
-            confirmation_tag: confirmation_tag.into(),
+            confirmation_tag,
             signer_index,
             signature: Signature::new_empty(),
         }
@@ -214,8 +206,8 @@ impl GroupInfo {
     }
 
     /// Get the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> ConfirmationTag {
-        ConfirmationTag::from(self.confirmation_tag.clone())
+    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
+        &self.confirmation_tag
     }
 
     /// Get the extensions.
@@ -238,7 +230,7 @@ impl Signable for GroupInfo {
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
         encode_extensions(&self.extensions, buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
+        self.confirmation_tag.encode(buffer)?;
         self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())
     }
@@ -254,7 +246,7 @@ impl Signable for GroupInfo {
 /// } PathSecret;
 /// ```
 pub(crate) struct PathSecret {
-    pub path_secret: Secret,
+    pub(crate) path_secret: Secret,
 }
 
 /// GroupSecrets
@@ -287,6 +279,19 @@ impl GroupSecrets {
         path_secret.encode(buffer)?;
         psks_option.encode(buffer)?;
         Ok(buffer.to_vec())
+    }
+
+    /// Set the config for the secrets, i.e. cipher suite and MLS version.
+    pub(crate) fn config(
+        mut self,
+        ciphersuite: &'static Ciphersuite,
+        mls_version: ProtocolVersion,
+    ) -> GroupSecrets {
+        self.joiner_secret.config(ciphersuite, mls_version);
+        if let Some(s) = &mut self.path_secret {
+            s.path_secret.config(ciphersuite, mls_version);
+        }
+        self
     }
 }
 

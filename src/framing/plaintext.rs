@@ -75,7 +75,6 @@ impl MlsPlaintext {
     /// This constructor builds an `MLSPlaintext` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
     pub fn new_from_proposal_member(
-        ciphersuite: &Ciphersuite,
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         proposal: Proposal,
@@ -91,14 +90,13 @@ impl MlsPlaintext {
             credential_bundle,
             context,
         )?;
-        mls_plaintext.add_membership_tag(ciphersuite, context.serialized(), membership_key)?;
+        mls_plaintext.add_membership_tag(context.serialized(), membership_key)?;
         Ok(mls_plaintext)
     }
 
     /// This constructor builds an `MLSPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub fn new_from_application(
-        ciphersuite: &Ciphersuite,
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
@@ -114,7 +112,7 @@ impl MlsPlaintext {
             credential_bundle,
             context,
         )?;
-        mls_plaintext.add_membership_tag(ciphersuite, context.serialized(), membership_key)?;
+        mls_plaintext.add_membership_tag(context.serialized(), membership_key)?;
         Ok(mls_plaintext)
     }
 
@@ -160,7 +158,6 @@ impl MlsPlaintext {
     /// This should be used after signing messages from group members.
     pub fn add_membership_tag(
         &mut self,
-        ciphersuite: &Ciphersuite,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), CodecError> {
@@ -168,7 +165,7 @@ impl MlsPlaintext {
 
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
-        let membership_tag = MembershipTag::new(ciphersuite, membership_key, tbm_payload)?;
+        let membership_tag = membership_key.tag(tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())
@@ -190,16 +187,18 @@ impl MlsPlaintext {
     // TODO #133: Include this in the validation
     pub fn verify_membership_tag(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), VerificationError> {
+        log::debug!("Verifying membership tag {}.", ciphersuite);
+        log_crypto!(trace, "  Membership key: {:x?}", membership_key);
+        log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)
                 .map_err(VerificationError::CodecError)?;
-        let expected_membership_tag =
-            &MembershipTag::new(ciphersuite, membership_key, tbm_payload)?;
+        let expected_membership_tag = &membership_key.tag(tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
@@ -219,7 +218,6 @@ impl MlsPlaintext {
     // TODO #133: Include this in the validation
     pub fn verify_from_member(
         &self,
-        ciphersuite: &Ciphersuite,
         serialized_context: &[u8],
         credential: &Credential,
         membership_key: &MembershipKey,
@@ -231,8 +229,7 @@ impl MlsPlaintext {
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)
                 .map_err(VerificationError::CodecError)?;
-        let expected_membership_tag =
-            &MembershipTag::new(ciphersuite, membership_key, tbm_payload)?;
+        let expected_membership_tag = &membership_key.tag(tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
@@ -337,16 +334,6 @@ impl MlsPlaintextContentType {
     }
 }
 
-/// 9.2 Message framing
-///
-/// struct {
-///     opaque mac_value<0..255>;
-/// } MAC;
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) struct Mac {
-    pub(crate) mac_value: Vec<u8>,
-}
-
 /// 9.1 Content Authentication
 ///
 /// ```c
@@ -375,7 +362,7 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
             confirmation_tag,
         })
     }
-    fn into_bytes(self) -> Result<Vec<u8>, CodecError> {
+    pub(crate) fn into_bytes(self) -> Result<Vec<u8>, CodecError> {
         let mut buffer = self.tbs_payload;
         buffer.extend(self.signature.encode_detached()?.iter());
         buffer.extend(self.confirmation_tag.encode_detached()?.iter());
@@ -383,45 +370,9 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
     }
 }
 
-impl From<Vec<u8>> for Mac {
-    fn from(mac_value: Vec<u8>) -> Self {
-        Self { mac_value }
-    }
-}
-
-impl From<Mac> for Vec<u8> {
-    fn from(mac: Mac) -> Self {
-        mac.mac_value
-    }
-}
-
 /// Wrapper around a `Mac` used for type safety.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct MembershipTag(pub(crate) Mac);
-
-impl MembershipTag {
-    /// Create a new membership tag.
-    ///
-    /// 9.1 Content Authentication
-    ///
-    /// ```text
-    /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
-    /// ```
-    pub(crate) fn new(
-        ciphersuite: &Ciphersuite,
-        membership_key: &MembershipKey,
-        tbm_payload: MlsPlaintextTbmPayload,
-    ) -> Result<Self, CodecError> {
-        Ok(MembershipTag(
-            ciphersuite
-                .mac(
-                    membership_key.secret(),
-                    &Secret::from(tbm_payload.into_bytes()?),
-                )
-                .into(),
-        ))
-    }
-}
 
 #[derive(Debug)]
 pub struct MlsPlaintextTbs<'a> {

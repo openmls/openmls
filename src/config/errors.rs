@@ -10,5 +10,7 @@ implement_error! {
         UnsupportedMlsVersion = "MLS version is not supported by this configuration.",
         UnsupportedCiphersuite = "Ciphersuite is not supported by this configuration.",
         UnsupportedSignatureScheme = "Signature scheme is not supported by this configuration.",
+        IncompatibleMlsVersion = "Operation on incompatible MLS versions.",
+        IncompatibleCiphersuite = "Operation on incompatible cipher suites.",
     }
 }

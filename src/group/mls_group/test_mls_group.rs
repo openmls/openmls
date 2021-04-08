@@ -32,6 +32,7 @@ fn test_mls_group_persistence() {
         alice_key_package_bundle,
         GroupConfig::default(),
         None, /* Initial PSK */
+        None, /* MLS version */
     )
     .unwrap();
 
@@ -58,7 +59,9 @@ fn test_failed_groupinfo_decryption() {
             let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
-            let confirmation_tag = ConfirmationTag::from(vec![6, 6, 6]);
+            let confirmation_tag = ConfirmationTag(Mac {
+                mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+            });
             let signer_index = LeafIndex::from(8u32);
             let group_info = GroupInfo::new(
                 group_id,
@@ -71,12 +74,12 @@ fn test_failed_groupinfo_decryption() {
             );
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::from_random(ciphersuite);
-            let welcome_nonce = AeadNonce::from_random();
+            let welcome_key = AeadKey::random(ciphersuite);
+            let welcome_nonce = AeadNonce::random();
 
             // Generate receiver key pair.
             let receiver_key_pair =
-                ciphersuite.derive_hpke_keypair(&Secret::from([1u8, 2u8, 3u8, 4u8].to_vec()));
+                ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, None));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
@@ -171,6 +174,7 @@ fn test_update_path() {
             alice_key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )
         .unwrap();
 
@@ -299,11 +303,7 @@ fn test_update_path() {
             .sign_from_member(&bob_credential_bundle, serialized_context)
             .expect("Could not sign plaintext.");
         broken_plaintext
-            .add_membership_tag(
-                ciphersuite,
-                serialized_context,
-                group_bob.epoch_secrets.membership_key(),
-            )
+            .add_membership_tag(serialized_context, group_bob.epoch_secrets.membership_key())
             .expect("Could not add membership key");
 
         assert_eq!(
@@ -319,9 +319,9 @@ fn test_update_path() {
 
 // Test several scenarios when PSKs are used in a group
 ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
-    fn psk_fetcher(psks: &PreSharedKeys) -> Option<Vec<Secret>> {
+    fn psk_fetcher(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>> {
         let psk_id = vec![1u8, 2, 3];
-        let secret = Secret::from(vec![4u8, 5, 6]);
+        let secret = Secret::from_slice(&[6, 6, 6], ProtocolVersion::Mls10, ciphersuite);
 
         let psk = &psks.psks[0];
         if psk.psk_type == PskType::External {
@@ -374,7 +374,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
 
     let external_psk_bundle = ExternalPskBundle::new(
         ciphersuite,
-        Secret::random(ciphersuite.hash_length()),
+        Secret::random(ciphersuite, None /* MLS version */),
         psk_id,
     );
     let preshared_key_id = external_psk_bundle.to_presharedkey_id();
@@ -389,10 +389,12 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         alice_key_package_bundle,
         GroupConfig::default(),
         Some(initial_psk),
+        None, /* MLS version */
     )
     .unwrap();
 
     // === Alice creates a PSK proposal ===
+    log::info!(" >>> Creating psk proposal ...");
     let psk_proposal = alice_group
         .create_presharedkey_proposal(group_aad, &alice_credential_bundle, preshared_key_id)
         .expect("Could not create PSK proposal");
@@ -402,6 +404,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
         .expect("Could not create proposal");
     let epoch_proposals = &[&bob_add_proposal, &psk_proposal];
+    log::info!(" >>> Creating commit ...");
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
             group_aad,
@@ -413,6 +416,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         )
         .expect("Error creating commit");
 
+    log::info!(" >>> Applying commit ...");
     alice_group
         .apply_commit(
             &mls_plaintext_commit,

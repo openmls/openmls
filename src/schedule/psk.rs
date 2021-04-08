@@ -250,7 +250,7 @@ pub struct PskSecret {
 impl PskSecret {
     /// Create a new `PskSecret` from PSK IDs and PSKs
     pub fn new(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: &'static Ciphersuite,
         psk_ids: &[PreSharedKeyId],
         psks: &[Secret],
     ) -> Result<Self, PskSecretError> {
@@ -261,24 +261,21 @@ impl PskSecret {
             return Err(PskSecretError::TooManyKeys);
         }
         let mut secret = vec![];
+        let mls_version = ProtocolVersion::default();
         for (index, psk) in psks.iter().enumerate() {
-            let zero_secret = Secret::from(zero(ciphersuite.hash_length()));
-            let psk_input = ciphersuite.hkdf_extract(&zero_secret, Some(psk));
+            let zero_secret = Secret::zero(ciphersuite, mls_version);
+            let psk_input = zero_secret.hkdf_extract(psk);
             let psk_label = PskLabel::new(&psk_ids[index], index as u16, psks.len() as u16)
                 .encode_detached()
                 // It is safe to unwrap here, because the struct contains no vectors
                 .unwrap();
 
-            let psk_secret = psk_input.kdf_expand_label(
-                ciphersuite,
-                "derived psk",
-                &psk_label,
-                ciphersuite.hash_length(),
-            );
-            secret.extend_from_slice(psk_secret.to_bytes());
+            let psk_secret =
+                psk_input.kdf_expand_label("derived psk", &psk_label, ciphersuite.hash_length());
+            secret.extend_from_slice(psk_secret.as_slice());
         }
         Ok(Self {
-            secret: Secret::from(secret),
+            secret: Secret::from_slice(&secret, mls_version, ciphersuite),
         })
     }
 
@@ -288,15 +285,15 @@ impl PskSecret {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn random(length: usize) -> Self {
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(length),
+            secret: Secret::random(ciphersuite, None /* MLS version */),
         }
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.to_bytes()
+        self.secret.as_slice()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]

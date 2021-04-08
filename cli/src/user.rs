@@ -236,6 +236,7 @@ impl User {
             kpb,
             config,
             None, /* Initial PSK */
+            None, /* MLS version */
         )
         .unwrap();
         let group = Group {

@@ -14,6 +14,8 @@
 //! } Capabilities;
 //! ```
 
+use std::convert::TryFrom;
+
 use super::{
     CapabilitiesExtensionError, Deserialize, Extension, ExtensionError, ExtensionStruct,
     ExtensionType, Serialize,
@@ -95,7 +97,7 @@ impl Extension for CapabilitiesExtension {
         let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor)?;
         let mut versions = Vec::new();
         for &version_number in version_numbers.iter() {
-            versions.push(ProtocolVersion::from(version_number)?)
+            versions.push(ProtocolVersion::try_from(version_number)?)
         }
         // There must be at least one version we support.
         if versions.is_empty() {
