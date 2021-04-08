@@ -139,7 +139,7 @@ impl User {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     log::error!(
-                                        "Error decrypting MLSCiphertext: {:?} -  Dropping message.",
+                                        "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
                                         e
                                     );
                                     continue;

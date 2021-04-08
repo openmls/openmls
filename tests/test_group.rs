@@ -369,7 +369,7 @@ fn group_operations() {
             .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
-            Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
+            Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(
             message_alice,
@@ -621,11 +621,11 @@ fn group_operations() {
             .unwrap();
         let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,
-            Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
+            Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie) {
             Ok(mls_plaintext) => mls_plaintext,
-            Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
+            Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(
             message_charlie,

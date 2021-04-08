@@ -15,7 +15,7 @@ impl Codec for MlsPlaintext {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        log_content!(debug, "Decoding MLSPlaintext {:x?}", cursor.raw());
+        log_content!(debug, "Decoding MlsPlaintext {:x?}", cursor.raw());
         let group_id = GroupId::decode(cursor)?;
         let epoch = GroupEpoch::decode(cursor)?;
         let sender = Sender::decode(cursor)?;
@@ -52,7 +52,7 @@ impl Codec for MlsCiphertext {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        log::debug!("Decoding MLSCiphertext {:x?}", cursor.raw());
+        log::debug!("Decoding MlsCiphertext {:x?}", cursor.raw());
         let group_id = GroupId::decode(cursor)?;
         let epoch = GroupEpoch::decode(cursor)?;
         let content_type = ContentType::decode(cursor)?;
@@ -201,7 +201,7 @@ impl MlsCiphertextContent {
         content_type: ContentType,
         cursor: &mut Cursor,
     ) -> Result<Self, CodecError> {
-        log_content!(debug, "Decoding MLSCiphertextContent {:x?}", cursor.raw());
+        log_content!(debug, "Decoding MlsCiphertextContent {:x?}", cursor.raw());
         let content = match content_type {
             ContentType::Application => {
                 let application_data = decode_vec(VecSize::VecU32, cursor)?;

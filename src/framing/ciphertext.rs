@@ -2,7 +2,7 @@ use super::*;
 
 use std::convert::TryFrom;
 
-/// `MLSCiphertext` is the framing struct for an encrypted `MLSPlaintext`.
+/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
 #[derive(Debug, PartialEq, Clone)]
@@ -16,7 +16,7 @@ pub struct MlsCiphertext {
 }
 
 impl MlsCiphertext {
-    /// Try to create a new `MLSCiphertext` from an `MLSPlaintext`
+    /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
         ciphersuite: &Ciphersuite,
@@ -26,7 +26,7 @@ impl MlsCiphertext {
         secret_tree: &mut SecretTree,
         padding_size: usize,
     ) -> Result<MlsCiphertext, MlsCiphertextError> {
-        log::debug!("MLSCiphertext::try_from_plaintext");
+        log::debug!("MlsCiphertext::try_from_plaintext");
         log::trace!("  ciphersuite: {}", ciphersuite);
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
@@ -57,7 +57,7 @@ impl MlsCiphertext {
                 &ratchet_nonce,
             )
             .map_err(|e| {
-                log::error!("MLSCiphertext::try_from_plaintext encryption error {:?}", e);
+                log::error!("MlsCiphertext::try_from_plaintext encryption error {:?}", e);
                 MlsCiphertextError::EncryptionError
             })?;
         // Derive the sender data key from the key schedule using the ciphertext.
@@ -86,7 +86,7 @@ impl MlsCiphertext {
                 &sender_data_nonce,
             )
             .map_err(|e| {
-                log::error!("MLSCiphertext::try_from_plaintext encryption error {:?}", e);
+                log::error!("MlsCiphertext::try_from_plaintext encryption error {:?}", e);
                 MlsCiphertextError::EncryptionError
             })?;
         Ok(MlsCiphertext {
@@ -105,7 +105,7 @@ impl MlsCiphertext {
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
     ) -> Result<MlsPlaintext, MlsCiphertextError> {
-        log::debug!("Decrypting MLSCiphertext");
+        log::debug!("Decrypting MlsCiphertext");
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
@@ -167,23 +167,23 @@ impl MlsCiphertext {
                 MlsCiphertextError::DecryptionError
             })?;
         log::trace!(
-            "  Successfully decrypted MLSPlaintext bytes: {:x?}",
+            "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
         let mls_ciphertext_content = MlsCiphertextContent::decode(
             self.content_type,
             &mut Cursor::new(&mls_ciphertext_content_bytes),
         )?;
-        // Extract sender. The sender type is always of type Member for MLSCiphertext.
+        // Extract sender. The sender type is always of type Member for MlsCiphertext.
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: sender_data.sender,
         };
         log::trace!(
-            "  Successfully decoded MLSPlaintext with: {:x?}",
+            "  Successfully decoded MlsPlaintext with: {:x?}",
             mls_ciphertext_content.content
         );
-        // Return the MLSPlaintext
+        // Return the MlsPlaintext
         Ok(MlsPlaintext {
             group_id: self.group_id.clone(),
             epoch: self.epoch,

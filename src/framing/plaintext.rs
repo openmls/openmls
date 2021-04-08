@@ -44,7 +44,7 @@ pub struct MlsPlaintext {
 }
 
 impl MlsPlaintext {
-    /// This constructor builds a new `MLSPlaintext` from the parameters
+    /// This constructor builds a new `MlsPlaintext` from the parameters
     /// provided. It is only used internally.
     pub(crate) fn new_from_member(
         sender_index: LeafIndex,
@@ -72,7 +72,7 @@ impl MlsPlaintext {
         Ok(mls_plaintext)
     }
 
-    /// This constructor builds an `MLSPlaintext` containing a Proposal.
+    /// This constructor builds an `MlsPlaintext` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
     pub fn new_from_proposal_member(
         sender_index: LeafIndex,
@@ -94,7 +94,7 @@ impl MlsPlaintext {
         Ok(mls_plaintext)
     }
 
-    /// This constructor builds an `MLSPlaintext` containing an application
+    /// This constructor builds an `MlsPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub fn new_from_application(
         sender_index: LeafIndex,
@@ -126,7 +126,7 @@ impl MlsPlaintext {
         self.sender.to_leaf_index()
     }
 
-    /// Sign this `MLSPlaintext`. This populates the
+    /// Sign this `MlsPlaintext`. This populates the
     /// `signature` field. The signature is produced from
     /// the private key conatined in the credential bundle.
     ///
@@ -136,7 +136,7 @@ impl MlsPlaintext {
         self.signature = tbs_payload.sign(credential_bundle);
     }
 
-    /// Sign this `MLSPlaintext` and add a membership tag. This populates the
+    /// Sign this `MlsPlaintext` and add a membership tag. This populates the
     /// `signature` and `membership_tag` fields. The signature is produced from
     /// the private key conatined in the credential bundle, and the
     /// membership_tag is produced using the the membership secret.
@@ -152,7 +152,7 @@ impl MlsPlaintext {
         Ok(())
     }
 
-    /// Adds a membership tag to this `MLSPlaintext`. The membership_tag is
+    /// Adds a membership tag to this `MlsPlaintext`. The membership_tag is
     /// produced using the the membership secret.
     ///
     /// This should be used after signing messages from group members.
@@ -171,7 +171,7 @@ impl MlsPlaintext {
         Ok(())
     }
 
-    /// Verify the signature of an `MLSPlaintext` sent from an external party.
+    /// Verify the signature of an `MlsPlaintext` sent from an external party.
     /// Returns `Ok(())` if successful or `VerificationError` otherwise.
     pub fn verify_signature(
         &self,
@@ -182,7 +182,7 @@ impl MlsPlaintext {
         tbs_payload.verify(credential, &self.signature)
     }
 
-    /// Verify the membership tag of an `MLSPlaintext` sent from member.
+    /// Verify the membership tag of an `MlsPlaintext` sent from member.
     /// Returns `Ok(())` if successful or `VerificationError` otherwise.
     // TODO #133: Include this in the validation
     pub fn verify_membership_tag(
@@ -212,7 +212,7 @@ impl MlsPlaintext {
         }
     }
 
-    /// Verify the signature and the membership tag of an `MLSPlaintext` sent
+    /// Verify the signature and the membership tag of an `MlsPlaintext` sent
     /// from a group member. Returns `Ok(())` if successful or
     /// `VerificationError` otherwise.
     // TODO #133: Include this in the validation
@@ -245,8 +245,8 @@ impl MlsPlaintext {
         }
     }
 
-    /// Tries to extract an application messages from an `MLSPlaintext`. Returns
-    /// `MLSPlaintextError::NotAnApplicationMessage` if the `MLSPlaintext`
+    /// Tries to extract an application messages from an `MlsPlaintext`. Returns
+    /// `MlsPlaintextError::NotAnApplicationMessage` if the `MlsPlaintext`
     /// contained something other than an application message.
     pub fn as_application_message(&self) -> Result<&[u8], MlsPlaintextError> {
         match &self.content {
@@ -329,7 +329,7 @@ impl MlsPlaintextContentType {
     pub(crate) fn to_proposal(&self) -> &Proposal {
         match self {
             MlsPlaintextContentType::Proposal(proposal) => proposal,
-            _ => panic!("Library error. Expected Proposal in MLSPlaintextContentType"),
+            _ => panic!("Library error. Expected Proposal in MlsPlaintextContentType"),
         }
     }
 }
@@ -455,7 +455,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         let commit = match &mls_plaintext.content {
             MlsPlaintextContentType::Commit(commit) => commit,
-            _ => return Err("MLSPlaintext needs to contain a Commit."),
+            _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
         Ok(MlsPlaintextCommitContent {
             group_id: &mls_plaintext.group_id,
@@ -478,7 +478,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitAuthData<'a> {
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         let confirmation_tag = match &mls_plaintext.confirmation_tag {
             Some(confirmation_tag) => confirmation_tag,
-            None => return Err("MLSPlaintext needs to contain a confirmation tag."),
+            None => return Err("MlsPlaintext needs to contain a confirmation tag."),
         };
         Ok(MlsPlaintextCommitAuthData { confirmation_tag })
     }

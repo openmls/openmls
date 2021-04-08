@@ -157,7 +157,7 @@ impl ProposalReference {
 }
 
 /// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating MLSPlaintext and the ProposalReference is attached.
+/// the encapsulating MlsPlaintext and the ProposalReference is attached.
 #[derive(Clone)]
 pub(crate) struct QueuedProposal<'a> {
     proposal: &'a Proposal,
@@ -167,7 +167,7 @@ pub(crate) struct QueuedProposal<'a> {
 }
 
 impl<'a> QueuedProposal<'a> {
-    /// Creates a new `QueuedProposal` from an `MLSPlaintext`
+    /// Creates a new `QueuedProposal` from an `MlsPlaintext`
     pub(crate) fn from_mls_plaintext(
         ciphersuite: &Ciphersuite,
         mls_plaintext: &'a MlsPlaintext,

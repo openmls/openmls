@@ -219,7 +219,7 @@ impl<'a> ManagedGroup<'a> {
             self.own_kpbs.push(kpb);
         }
 
-        // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
+        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
 
@@ -288,7 +288,7 @@ impl<'a> ManagedGroup<'a> {
             ));
         }
 
-        // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
+        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
 
@@ -386,8 +386,8 @@ impl<'a> ManagedGroup<'a> {
 
     // === Process messages ===
 
-    /// Processes any incoming messages from the DS (MLSPlaintext &
-    /// MLSCiphertext) and triggers the corresponding callback functions.
+    /// Processes any incoming messages from the DS (MlsPlaintext &
+    /// MlsCiphertext) and triggers the corresponding callback functions.
     /// Return a list of `GroupEvent` that contain the individual events that
     /// occurred while processing messages.
     pub fn process_messages(
@@ -411,7 +411,7 @@ impl<'a> ManagedGroup<'a> {
                             events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
                                 InvalidMessageError::InvalidCiphertext(aad.into()),
                             )));
-                            // Since we cannot decrypt the MLSCiphertext to a MLSPlaintext we move
+                            // Since we cannot decrypt the MlsCiphertext to a MlsPlaintext we move
                             // to the next message
                             continue;
                         }
@@ -621,7 +621,7 @@ impl<'a> ManagedGroup<'a> {
             self.own_kpbs.push(kpb);
         }
 
-        // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
+        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
@@ -776,7 +776,7 @@ impl<'a> ManagedGroup<'a> {
         };
         self.own_kpbs.push(kpb);
 
-        // Convert MLSPlaintext messages to MLSMessage and encrypt them if required by
+        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
 
@@ -856,9 +856,9 @@ impl<'a> ManagedGroup<'a> {
 
 // Private methods of ManagedGroup
 impl<'a> ManagedGroup<'a> {
-    /// Converts MLSPlaintext to MLSMessage. Depending on whether handshake
-    /// message should be encrypted, MLSPlaintext messages are encrypted to
-    /// MLSCiphertext first.
+    /// Converts MlsPlaintext to MLSMessage. Depending on whether handshake
+    /// message should be encrypted, MlsPlaintext messages are encrypted to
+    /// MlsCiphertext first.
     fn plaintext_to_mls_messages(
         &mut self,
         mut plaintext_messages: Vec<MlsPlaintext>,
@@ -1046,10 +1046,10 @@ impl<'a> ManagedGroup<'a> {
 /// Unified message type
 #[derive(PartialEq, Debug, Clone)]
 pub enum MlsMessage {
-    /// An OpenMLS `MLSPlaintext`.
+    /// An OpenMLS `MlsPlaintext`.
     Plaintext(MlsPlaintext),
 
-    /// An OpenMLS `MLSCiphertext`.
+    /// An OpenMLS `MlsCiphertext`.
     Ciphertext(MlsCiphertext),
 }
 

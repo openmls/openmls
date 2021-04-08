@@ -1,7 +1,7 @@
 use crate::config::*;
 use crate::framing::*;
 
-/// This tests serializing/deserializing MLSPlaintext
+/// This tests serializing/deserializing MlsPlaintext
 #[test]
 fn codec() {
     for ciphersuite in Config::supported_ciphersuites() {
@@ -258,7 +258,7 @@ fn unknown_sender() {
         _print_tree(&group_charlie.tree(), "Charlie tree");
 
         // Alice sends a message with a sender that points to a blank leaf
-        // Expected result: MLSCiphertextError::UnknownSender
+        // Expected result: MlsCiphertextError::UnknownSender
 
         let bogus_sender = LeafIndex::from(1usize);
         let bogus_sender_message = MlsPlaintext::new_from_application(
@@ -269,7 +269,7 @@ fn unknown_sender() {
             &group_alice.context(),
             &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
-        .expect("Could not create new MLSPlaintext.");
+        .expect("Could not create new MlsPlaintext.");
 
         let enc_message = MlsCiphertext::try_from_plaintext(
             &bogus_sender_message,
@@ -289,7 +289,7 @@ fn unknown_sender() {
         );
 
         // Alice sends a message with a sender that is outside of the group
-        // Expected result: MLSCiphertextError::GenerationOutOfBound
+        // Expected result: MlsCiphertextError::GenerationOutOfBound
         let bogus_sender = LeafIndex::from(100usize);
         let bogus_sender_message = MlsPlaintext::new_from_application(
             bogus_sender,
@@ -299,7 +299,7 @@ fn unknown_sender() {
             &group_alice.context(),
             &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
-        .expect("Could not create new MLSPlaintext.");
+        .expect("Could not create new MlsPlaintext.");
 
         let mut secret_tree = SecretTree::new(
             EncryptionSecret::random(ciphersuite),

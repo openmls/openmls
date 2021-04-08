@@ -70,7 +70,7 @@ fn test_application_message_encoding() {
             let encrypted_message_decoded =
                 match MlsCiphertext::decode(&mut Cursor::new(&encrypted_message_bytes)) {
                     Ok(a) => a,
-                    Err(err) => panic!("Error decoding MLSCiphertext: {:?}", err),
+                    Err(err) => panic!("Error decoding MlsCiphertext: {:?}", err),
                 };
             assert_eq!(encrypted_message, encrypted_message_decoded);
         }

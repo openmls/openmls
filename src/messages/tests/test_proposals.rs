@@ -92,7 +92,7 @@ fn proposal_queue_functions() {
         assert!(!proposal_add_alice1.is_type(ProposalType::Update));
         assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
-        // Frame proposals in MLSPlaintext
+        // Frame proposals in MlsPlaintext
         let mls_plaintext_add_alice1 = MlsPlaintext::new_from_proposal_member(
             LeafIndex::from(0u32),
             &[],
@@ -194,7 +194,7 @@ fn proposal_queue_order() {
             ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
-        // Frame proposals in MLSPlaintext
+        // Frame proposals in MlsPlaintext
         let mls_plaintext_add_alice1 = MlsPlaintext::new_from_proposal_member(
             LeafIndex::from(0u32),
             &[],

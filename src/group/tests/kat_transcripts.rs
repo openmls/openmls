@@ -38,7 +38,7 @@ pub struct TranscriptTestVector {
     interim_transcript_hash_before: String,
     membership_key: String,
     confirmation_key: String,
-    commit: String, // TLS serialized MLSPlaintext(Commit)
+    commit: String, // TLS serialized MlsPlaintext(Commit)
 
     confirmed_transcript_hash_after: String,
     interim_transcript_hash_after: String,

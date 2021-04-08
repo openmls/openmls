@@ -192,7 +192,7 @@ impl SecretTree {
     }
 
     /// Return RatchetSecrets for a given index and generation. This should be
-    /// called when decrypting an MLSCiphertext received from another member.
+    /// called when decrypting an MlsCiphertext received from another member.
     /// Returns an error if index or generation are out of bound.
     pub(crate) fn secret_for_decryption(
         &mut self,

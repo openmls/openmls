@@ -66,7 +66,7 @@ impl MlsGroup {
         let mut provisional_epoch = self.group_context.epoch;
         provisional_epoch.increment();
 
-        // Build MLSPlaintext
+        // Build MlsPlaintext
         let content = MlsPlaintextContentType::Commit(commit);
         let sender = Sender::member(sender_index);
         let mut mls_plaintext = MlsPlaintext {
@@ -81,14 +81,14 @@ impl MlsGroup {
             membership_tag: None,
         };
 
-        // Add signature and membership tag to the MLSPlaintext
+        // Add signature and membership tag to the MlsPlaintext
         let serialized_context = self.group_context.serialized();
         mls_plaintext.sign_from_member(credential_bundle, serialized_context)?;
 
         // Calculate the confirmed transcript hash
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             &ciphersuite,
-            // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a
+            // It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a
             // Commit
             &MlsPlaintextCommitContent::try_from(&mls_plaintext).unwrap(),
             &self.interim_transcript_hash,

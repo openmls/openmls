@@ -52,18 +52,18 @@
 //! For all `N` entries in the `leaves` and all generations `j`
 //! * `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`
 //! * `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
-//! * `leaves[N].handshake[j].plaintext` represents an MLSPlaintext containing a
+//! * `leaves[N].handshake[j].plaintext` represents an MlsPlaintext containing a
 //!   handshake message (Proposal or Commit) from leaf `N`
-//! * `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object
-//!   that successfully decrypts to an MLSPlaintext equivalent to
+//! * `leaves[N].handshake[j].ciphertext` represents an MlsCiphertext object
+//!   that successfully decrypts to an MlsPlaintext equivalent to
 //!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
 //!   generation `j`.
 //! * `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`
 //! * `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
-//! * `leaves[N].application[j].plaintext` represents an MLSPlaintext containing
+//! * `leaves[N].application[j].plaintext` represents an MlsPlaintext containing
 //!   application data from leaf `N`
-//! * `leaves[N].application[j].ciphertext` represents an MLSCiphertext object
-//!   that successfully decrypts to an MLSPlaintext equivalent to
+//! * `leaves[N].application[j].ciphertext` represents an MlsCiphertext object
+//!   that successfully decrypts to an MlsPlaintext equivalent to
 //!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
 //!   generation `j`.
 //! * `sender_data_info.secret.key = sender_data_key(sender_data_secret,
@@ -202,7 +202,7 @@ fn build_handshake_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, 
         &mut group.secret_tree_mut(),
         0,
     )
-    .expect("Could not create MLSCiphertext");
+    .expect("Could not create MlsCiphertext");
     (
         plaintext.encode_detached().unwrap(),
         ciphertext.encode_detached().unwrap(),
@@ -238,7 +238,7 @@ fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>
         0,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Could not create MLSCiphertext {}", e),
+        Err(e) => panic!("Could not create MlsCiphertext {}", e),
     };
     (
         plaintext.encode_detached().unwrap(),
@@ -462,7 +462,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             // Setup group
             let mls_ciphertext_application =
                 MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.ciphertext)))
-                    .expect("Error parsing MLSCiphertext");
+                    .expect("Error parsing MlsCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_application.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -473,11 +473,11 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             // Decrypt and check application message
             let mls_plaintext_application = mls_ciphertext_application
                 .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
-                .expect("Error decrypting MLSCiphertext");
+                .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
                     .encode_detached()
-                    .expect("Error encoding MLSPlaintext")
+                    .expect("Error encoding MlsPlaintext")
             {
                 if cfg!(test) {
                     panic!("Decrypted application message mismatch");
@@ -510,7 +510,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             // Setup group
             let mls_ciphertext_handshake =
                 MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
-                    .expect("Error parsing MLSCiphertext");
+                    .expect("Error parsing MlsCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -521,11 +521,11 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             // Decrypt and check message
             let mls_plaintext_handshake = mls_ciphertext_handshake
                 .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
-                .expect("Error decrypting MLSCiphertext");
+                .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .encode_detached()
-                    .expect("Error encoding MLSPlaintext")
+                    .expect("Error encoding MlsPlaintext")
             {
                 if cfg!(test) {
                     panic!("Decrypted handshake message mismatch");

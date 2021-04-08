@@ -20,7 +20,7 @@ impl MlsGroup {
             return Err(ApplyCommitError::EpochMismatch);
         }
 
-        // Extract Commit & Confirmation Tag from MLSPlaintext
+        // Extract Commit & Confirmation Tag from MlsPlaintext
         let commit = match &mls_plaintext.content {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
@@ -63,7 +63,7 @@ impl MlsGroup {
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite, self.mls_version);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
-            // Verify KeyPackage and MLSPlaintext signature & membership tag
+            // Verify KeyPackage and MlsPlaintext signature & membership tag
             // TODO #106: Support external members
             let kp = &path.leaf_key_package;
             if kp.verify().is_err() {
@@ -116,7 +116,7 @@ impl MlsGroup {
 
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
-            // It is ok to use `unwrap()` here, because we know the MLSPlaintext contains a Commit
+            // It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a Commit
             &MlsPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
         )?;

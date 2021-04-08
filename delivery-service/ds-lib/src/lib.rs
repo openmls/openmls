@@ -51,7 +51,7 @@ impl ClientInfo {
 /// (see OpenMLS) for details.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
-    /// An `MLSMessage` is either an OpenMLS `MLSCiphertext` or `MLSPlaintext`.
+    /// An `MLSMessage` is either an OpenMLS `MlsCiphertext` or `MlsPlaintext`.
     MlsMessage(MlsMessage),
 
     /// An OpenMLS `Welcome` message.
@@ -62,10 +62,10 @@ pub enum Message {
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum MessageType {
-    /// An MLSCiphertext message.
+    /// An MlsCiphertext message.
     MlsCiphertext = 0,
 
-    /// An MLSPlaintext message.
+    /// An MlsPlaintext message.
     MlsPlaintext = 1,
 
     /// A Welcome message.

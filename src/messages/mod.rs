@@ -116,7 +116,7 @@ impl Commit {
     }
 }
 
-/// Confirmation tag field of MLSPlaintext. For type saftey this is a wrapper
+/// Confirmation tag field of MlsPlaintext. For type saftey this is a wrapper
 /// around a `Mac`.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Mac);
