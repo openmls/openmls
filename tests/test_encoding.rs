@@ -1,5 +1,5 @@
 use openmls::prelude::*;
-mod utils;
+pub mod utils;
 use utils::mls_utils::*;
 
 /// Creates a simple test setup for various encoding tests.

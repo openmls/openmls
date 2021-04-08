@@ -61,7 +61,6 @@ macro_rules! convert {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let leaves = LeafIndex::from(n_leaves);
     let n_nodes = node_width(leaves.as_usize()) as u32;
@@ -107,7 +106,6 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVectorError> {
     let n_leaves = test_vector.n_leaves as usize;
     let n_nodes = node_width(n_leaves);

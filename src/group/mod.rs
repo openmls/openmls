@@ -69,7 +69,6 @@ pub struct GroupContext {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 impl GroupContext {
     pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;

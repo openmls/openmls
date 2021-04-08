@@ -117,7 +117,6 @@ fn generate(
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn generate_test_vector(
     n_epochs: u64,
     ciphersuite: &'static Ciphersuite,
@@ -197,7 +196,6 @@ fn read_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");

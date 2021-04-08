@@ -11,13 +11,11 @@ pub(crate) fn randombytes(n: usize) -> Vec<u8> {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }

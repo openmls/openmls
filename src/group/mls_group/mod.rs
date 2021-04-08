@@ -469,13 +469,11 @@ impl MlsGroup {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    #[allow(dead_code)]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
         &mut self.epoch_secrets
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    #[allow(dead_code)]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }

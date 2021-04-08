@@ -612,7 +612,6 @@ impl AeadNonce {
 
     /// Get a slice to the nonce value.
     #[cfg(any(feature = "expose-test-vectors", test))]
-    #[allow(dead_code)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }

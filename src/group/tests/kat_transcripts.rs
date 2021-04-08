@@ -45,7 +45,6 @@ pub struct TranscriptTestVector {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> TranscriptTestVector {
     // Generate random values.
     let group_id = GroupId::random();
@@ -135,7 +134,6 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), TranscriptTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");

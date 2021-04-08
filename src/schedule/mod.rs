@@ -132,7 +132,7 @@ pub mod errors;
 pub(crate) mod psk;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-mod kat_key_schedule;
+pub mod kat_key_schedule;
 
 pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
 pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
@@ -762,7 +762,6 @@ impl SenderDataSecret {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    #[allow(dead_code)]
     #[doc(hidden)]
     pub fn from_random(length: usize) -> Self {
         Self {
@@ -933,7 +932,6 @@ impl EpochSecrets {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    #[allow(dead_code)]
     #[doc(hidden)]
     pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret

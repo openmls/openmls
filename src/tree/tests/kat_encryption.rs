@@ -131,7 +131,6 @@ pub struct EncryptionTestVector {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
@@ -153,7 +152,6 @@ fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
@@ -175,7 +173,6 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
 
 // XXX: we could be more creative in generating these messages.
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 fn build_handshake_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, Vec<u8>) {
     let sender = Sender {
         sender_type: SenderType::Member,
@@ -211,7 +208,6 @@ fn build_handshake_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, 
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, Vec<u8>) {
     let sender = Sender {
         sender_type: SenderType::Member,
@@ -247,7 +243,6 @@ fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
@@ -349,7 +344,6 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-#[allow(dead_code)]
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {

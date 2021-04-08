@@ -1,3 +1,3 @@
 //! Unit tests for the MLS group
 
-mod kat_transcripts;
+pub mod kat_transcripts;

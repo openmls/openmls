@@ -260,25 +260,19 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
     }
 }
 
-#[allow(dead_code)]
 pub fn random_usize() -> usize {
     OsRng.next_u64() as usize
 }
 
-#[allow(dead_code)]
 pub fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
 }
 
-// Not currently used.
-//pub(crate) fn hex_to_bytes(hex: &str) -> Vec<u8> {
-//    let mut bytes = Vec::new();
-//    for i in 0..(hex.len() / 2) {
-//        let b = u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap();
-//        bytes.push(b);
-//    }
-//    bytes
-//}
+#[test]
+fn test_random() {
+    random_usize();
+    randombytes(0);
+}
 
 #[test]
 fn test_setup() {

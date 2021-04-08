@@ -2,7 +2,6 @@ use tls_codec::{Serialize, TlsVecU16};
 use tls_codec_derive::TlsSerialize;
 
 #[derive(TlsSerialize, Debug)]
-#[allow(dead_code)]
 #[repr(u16)]
 pub enum ExtensionType {
     Reserved = 0,
