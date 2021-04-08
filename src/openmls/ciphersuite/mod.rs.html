@@ -760,6 +760,141 @@
 <span id="757">757</span>
 <span id="758">758</span>
 <span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
@@ -789,7 +924,7 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">codec</span>::<span class="kw-2">*</span>,
-    <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>},
+    <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>, <span class="ident">ProtocolVersion</span>},
 };
 
 <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
@@ -797,6 +932,8 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_ciphersuite</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">test_secrets</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">NONCE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">12</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">REUSE_GUARD_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
@@ -938,22 +1075,21 @@
 }
 
 <span class="kw">impl</span> <span class="ident">KdfLabel</span> {
-    <span class="kw">fn</span> <span class="ident">serialized_label</span>(<span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">serialized_label</span>(<span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">label</span>: <span class="ident">String</span>, <span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="comment">// TODO: This should throw an error. Generally, keys length should be</span>
         <span class="comment">// checked. (see #228).</span>
         <span class="kw">if</span> <span class="ident">length</span> <span class="op">&gt;</span> <span class="ident">u16</span>::<span class="ident">MAX</span>.<span class="ident">into</span>() {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Library error: Trying to derive a key with a too large length field!&quot;</span>)
         }
-        <span class="kw">let</span> <span class="ident">full_label</span> <span class="op">=</span> <span class="string">&quot;mls10 &quot;</span>.<span class="ident">to_owned</span>() <span class="op">+</span> <span class="ident">label</span>;
         <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
             <span class="string">&quot;KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}&quot;</span>,
             <span class="ident">length</span> <span class="kw">as</span> <span class="ident">u16</span>,
-            <span class="ident">full_label</span>,
+            <span class="ident">label</span>,
             <span class="ident">context</span>
         );
         <span class="kw">let</span> <span class="ident">kdf_label</span> <span class="op">=</span> <span class="ident">KdfLabel</span> {
             <span class="ident">length</span>: <span class="ident">length</span> <span class="kw">as</span> <span class="ident">u16</span>,
-            <span class="ident">label</span>: <span class="ident">full_label</span>,
+            <span class="ident">label</span>,
             <span class="ident">context</span>: <span class="ident">context</span>.<span class="ident">to_vec</span>(),
         };
         <span class="comment">// It is ok to use unwrap() here, because the context is already serialized</span>
@@ -961,87 +1097,246 @@
     }
 }
 
+<span class="doccomment">/// Compare two byte slices in a way that&#39;s hopefully not optimised out by the</span>
+<span class="doccomment">/// compiler.</span>
+<span class="kw">fn</span> <span class="ident">equal_ct</span>(<span class="ident">a</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">b</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="number">0u8</span>;
+    <span class="kw">for</span> (<span class="ident">l</span>, <span class="ident">r</span>) <span class="kw">in</span> <span class="ident">a</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">b</span>.<span class="ident">iter</span>()) {
+        <span class="ident">diff</span> <span class="op">|</span><span class="op">=</span> <span class="ident">l</span> <span class="op">^</span> <span class="ident">r</span>;
+    }
+    <span class="ident">diff</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span>
+}
+
 <span class="doccomment">/// A struct to contain secrets. This is to provide better visibility into where</span>
 <span class="doccomment">/// and how secrets are used and to avoid passing secrets in their raw</span>
 <span class="doccomment">/// representation.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Secret</span> {
+    <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
     <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">mls_version</span>: <span class="ident">ProtocolVersion</span>,
+}
+
+<span class="macro">implement_persistence</span><span class="macro">!</span>(<span class="ident">Secret</span>, <span class="ident">value</span>, <span class="ident">mls_version</span>);
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Secret</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>::<span class="ident">default</span>(),
+            <span class="ident">value</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
+            <span class="ident">mls_version</span>: <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Secret</span> {
+    <span class="comment">// Constant time comparison.</span>
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="comment">// These values can be considered public and checked before the actual</span>
+        <span class="comment">// comparison.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">ciphersuite</span> <span class="op">!</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">ciphersuite</span>
+            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">mls_version</span> <span class="op">!</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">mls_version</span>
+            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">value</span>.<span class="ident">len</span>()
+        {
+            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Incompatible secrets&quot;</span>);
+            <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
+                <span class="string">&quot;  {} {} {}&quot;</span>,
+                <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>,
+                <span class="self">self</span>.<span class="ident">mls_version</span>,
+                <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">len</span>()
+            );
+            <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
+                <span class="string">&quot;  {} {} {}&quot;</span>,
+                <span class="ident">other</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>,
+                <span class="ident">other</span>.<span class="ident">mls_version</span>,
+                <span class="ident">other</span>.<span class="ident">value</span>.<span class="ident">len</span>()
+            );
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+        <span class="ident">equal_ct</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>, <span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">value</span>)
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">Secret</span> {
     <span class="doccomment">/// Randomly sample a fresh `Secret`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="doccomment">/// This default random initialiser uses the default Secret length of `hash_length`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+        <span class="ident">version</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">mls_version</span> <span class="op">=</span> <span class="ident">version</span>.<span class="ident">into</span>().<span class="ident">unwrap_or_default</span>();
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
+            <span class="string">&quot;Creating a new random secret for {:?} and {:?}&quot;</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">name</span>,
+            <span class="ident">mls_version</span>
+        );
         <span class="ident">Secret</span> {
-            <span class="ident">value</span>: <span class="ident">get_random_vec</span>(<span class="ident">length</span>),
+            <span class="ident">value</span>: <span class="ident">get_random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+            <span class="ident">mls_version</span>,
+            <span class="ident">ciphersuite</span>,
         }
+    }
+
+    <span class="doccomment">/// Create an all zero secret.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">mls_version</span>: <span class="ident">ProtocolVersion</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">value</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="number">0u8</span>; <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()],
+            <span class="ident">mls_version</span>,
+            <span class="ident">ciphersuite</span>,
+        }
+    }
+
+    <span class="doccomment">/// Create a new secret from a byte vector.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_slice</span>(
+        <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">mls_version</span>: <span class="ident">ProtocolVersion</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Secret</span> {
+            <span class="ident">value</span>: <span class="ident">bytes</span>.<span class="ident">to_vec</span>(),
+            <span class="ident">mls_version</span>,
+            <span class="ident">ciphersuite</span>,
+        }
+    }
+
+    <span class="doccomment">/// HKDF extract where `self` is `salt`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hkdf_extract</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ikm_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Secret</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;HKDF extract with {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>);
+        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  salt: {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">value</span>);
+        <span class="kw">let</span> <span class="ident">zero_secret</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">zero</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">mls_version</span>);
+        <span class="kw">let</span> <span class="ident">ikm</span> <span class="op">=</span> <span class="ident">ikm_option</span>.<span class="ident">into</span>().<span class="ident">unwrap_or</span>(<span class="kw-2">&amp;</span><span class="ident">zero_secret</span>);
+        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  ikm:  {:x?}&quot;</span>, <span class="ident">ikm</span>.<span class="ident">value</span>);
+
+        <span class="comment">// We don&#39;t return an error here to keep the error propagation from</span>
+        <span class="comment">// blowing up. If this fails, something in the library is really wrong</span>
+        <span class="comment">// and we can&#39;t recover from it.</span>
+        <span class="macro">assert</span><span class="macro">!</span>(
+            <span class="self">self</span>.<span class="ident">mls_version</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ikm</span>.<span class="ident">mls_version</span>,
+            <span class="string">&quot;{} != {}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">mls_version</span>,
+            <span class="ident">ikm</span>.<span class="ident">mls_version</span>
+        );
+        <span class="macro">assert</span><span class="macro">!</span>(
+            <span class="self">self</span>.<span class="ident">ciphersuite</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ikm</span>.<span class="ident">ciphersuite</span>,
+            <span class="string">&quot;{} != {}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">ciphersuite</span>,
+            <span class="ident">ikm</span>.<span class="ident">ciphersuite</span>
+        );
+
+        <span class="self">Self</span> {
+            <span class="ident">value</span>: <span class="ident">hkdf_extract</span>(
+                <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">hmac</span>,
+                <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
+                <span class="ident">ikm</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
+            ),
+            <span class="ident">mls_version</span>: <span class="self">self</span>.<span class="ident">mls_version</span>,
+            <span class="ident">ciphersuite</span>: <span class="self">self</span>.<span class="ident">ciphersuite</span>,
+        }
+    }
+
+    <span class="doccomment">/// HKDF expand where `self` is `prk`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hkdf_expand</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">info</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">okm_len</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">HKDFError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">hkdf_expand</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">hmac</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>, <span class="ident">info</span>, <span class="ident">okm_len</span>);
+        <span class="kw">if</span> <span class="ident">key</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">HKDFError</span>::<span class="ident">InvalidLength</span>);
+        }
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
+            <span class="ident">value</span>: <span class="ident">key</span>,
+            <span class="ident">mls_version</span>: <span class="self">self</span>.<span class="ident">mls_version</span>,
+            <span class="ident">ciphersuite</span>: <span class="self">self</span>.<span class="ident">ciphersuite</span>,
+        })
     }
 
     <span class="doccomment">/// Expand a `Secret` to a new `Secret` of length `length` including a</span>
     <span class="doccomment">/// `label` and a `context`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kdf_expand_label</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">length</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
-        <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">KdfLabel</span>::<span class="ident">serialized_label</span>(<span class="ident">context</span>, <span class="ident">label</span>, <span class="ident">length</span>);
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">kdf_expand_label</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
+        <span class="kw">let</span> <span class="ident">full_label</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{} {}&quot;</span>, <span class="self">self</span>.<span class="ident">mls_version</span>, <span class="ident">label</span>);
         <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
             <span class="string">&quot;KDF expand with label \&quot;{}\&quot; and {:?} with context {:x?}&quot;</span>,
-            <span class="ident">label</span>,
-            <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
+            <span class="kw-2">&amp;</span><span class="ident">full_label</span>,
+            <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
             <span class="ident">context</span>
         );
+        <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">KdfLabel</span>::<span class="ident">serialized_label</span>(<span class="ident">context</span>, <span class="ident">full_label</span>, <span class="ident">length</span>);
         <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;  serialized context: {:x?}&quot;</span>, <span class="ident">info</span>);
         <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  secret: {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">value</span>);
-        <span class="ident">ciphersuite</span>.<span class="ident">hkdf_expand</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">length</span>).<span class="ident">unwrap</span>()
+        <span class="self">self</span>.<span class="ident">hkdf_expand</span>(<span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">length</span>).<span class="ident">unwrap</span>()
     }
 
     <span class="doccomment">/// Derive a new `Secret` from the this one by expanding it with the given</span>
     <span class="doccomment">/// `label` and an empty `context`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
         <span class="macro">log_crypto</span><span class="macro">!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;derive secret from {:x?} with label {} and {:?}&quot;</span>,
             <span class="self">self</span>.<span class="ident">value</span>,
             <span class="ident">label</span>,
-            <span class="ident">ciphersuite</span>.<span class="ident">name</span>()
+            <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>()
         );
-        <span class="self">self</span>.<span class="ident">kdf_expand_label</span>(<span class="ident">ciphersuite</span>, <span class="ident">label</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())
+        <span class="self">self</span>.<span class="ident">kdf_expand_label</span>(<span class="ident">label</span>, <span class="kw-2">&amp;</span>[], <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())
+    }
+
+    <span class="doccomment">/// Update the ciphersuite and MLS version of this secret.</span>
+    <span class="doccomment">/// Ideally we wouldn&#39;t need this function but the way decoding works right</span>
+    <span class="doccomment">/// now this is the easiest for now.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">config</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+        <span class="ident">mls_version</span>: <span class="ident">ProtocolVersion</span>,
+    ) {
+        <span class="self">self</span>.<span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">ciphersuite</span>;
+        <span class="self">self</span>.<span class="ident">mls_version</span> <span class="op">=</span> <span class="ident">mls_version</span>;
     }
 
     <span class="doccomment">/// Returns the inner bytes of a secret</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
     }
-}
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Secret</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Secret</span> { <span class="ident">value</span>: <span class="macro">vec</span><span class="macro">!</span>[] }
+    <span class="doccomment">/// Returns the ciphersuite of the secret</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span> {
+        <span class="self">self</span>.<span class="ident">ciphersuite</span>
     }
 }
 
-<span class="kw">static</span> <span class="ident">EMPTY_SECRET</span>: <span class="ident">Secret</span> <span class="op">=</span> <span class="ident">Secret</span> { <span class="ident">value</span>: <span class="macro">vec</span><span class="macro">!</span>[] };
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw-2">&amp;</span><span class="ident">EMPTY_SECRET</span>
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Secret</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Secret</span> { <span class="ident">value</span>: <span class="ident">bytes</span> }
-    }
-}
-
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Secret</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;Secret from slice&quot;</span>);
         <span class="ident">Secret</span> {
             <span class="ident">value</span>: <span class="ident">bytes</span>.<span class="ident">to_vec</span>(),
+            <span class="ident">mls_version</span>: <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+            <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>::<span class="ident">default</span>(),
+        }
+    }
+}
+
+<span class="doccomment">/// 9.2 Message framing</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///     opaque mac_value&lt;0..255&gt;;</span>
+<span class="doccomment">/// } MAC;</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Mac</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">mac_value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Mac</span> {
+    <span class="comment">// Constant time comparison.</span>
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Mac</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="ident">equal_ct</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">mac_value</span>, <span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">mac_value</span>)
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Mac</span> {
+    <span class="doccomment">/// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same</span>
+    <span class="doccomment">/// HMAC that is also used in HKDF.</span>
+    <span class="doccomment">/// Compute the HMAC on `salt` with key `ikm`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">salt</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>, <span class="ident">ikm</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Mac</span> {
+            <span class="ident">mac_value</span>: <span class="ident">salt</span>
+                .<span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="ident">Secret</span>::<span class="ident">from_slice</span>(<span class="ident">ikm</span>, <span class="ident">salt</span>.<span class="ident">mls_version</span>, <span class="ident">salt</span>.<span class="ident">ciphersuite</span>))
+                .<span class="ident">value</span>,
         }
     }
 }
@@ -1151,6 +1446,12 @@
         })
     }
 
+    <span class="doccomment">/// Get the default ciphersuite.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
+        <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">CiphersuiteName</span>::<span class="ident">MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span>)
+            .<span class="ident">unwrap</span>()
+    }
+
     <span class="doccomment">/// Get the signature scheme of this ciphersuite.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature_scheme</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SignatureScheme</span> {
         <span class="self">self</span>.<span class="ident">signature_scheme</span>
@@ -1177,41 +1478,9 @@
         <span class="ident">get_digest_size</span>(<span class="self">self</span>.<span class="ident">hash</span>)
     }
 
-    <span class="doccomment">/// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same</span>
-    <span class="doccomment">/// HMAC that is also used in HKDF.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">mac</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">salt</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>, <span class="ident">ikm</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="ident">hkdf_extract</span>(<span class="self">self</span>.<span class="ident">hmac</span>, <span class="ident">salt</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(), <span class="ident">ikm</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>())
-    }
-
     <span class="doccomment">/// Get the length of the AEAD tag.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">mac_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
         <span class="ident">aead_tag_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aead</span>)
-    }
-
-    <span class="doccomment">/// HKDF extract.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">salt</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>, <span class="ident">ikm_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Secret</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;HKDF extract with {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>);
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  salt: {:x?}&quot;</span>, <span class="ident">salt</span>.<span class="ident">value</span>);
-        <span class="kw">let</span> <span class="ident">zero_secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">from</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="number">0u8</span>; <span class="self">self</span>.<span class="ident">hash_length</span>()]);
-        <span class="kw">let</span> <span class="ident">ikm</span> <span class="op">=</span> <span class="ident">ikm_option</span>.<span class="ident">unwrap_or</span>(<span class="kw-2">&amp;</span><span class="ident">zero_secret</span>);
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  ikm:  {:x?}&quot;</span>, <span class="ident">ikm</span>.<span class="ident">value</span>);
-        <span class="ident">Secret</span> {
-            <span class="ident">value</span>: <span class="ident">hkdf_extract</span>(<span class="self">self</span>.<span class="ident">hmac</span>, <span class="ident">salt</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(), <span class="ident">ikm</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()),
-        }
-    }
-
-    <span class="doccomment">/// HKDF expand</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hkdf_expand</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">prk</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
-        <span class="ident">info</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">okm_len</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Secret</span>, <span class="ident">HKDFError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">hkdf_expand</span>(<span class="self">self</span>.<span class="ident">hmac</span>, <span class="kw-2">&amp;</span><span class="ident">prk</span>.<span class="ident">value</span>, <span class="ident">info</span>, <span class="ident">okm_len</span>);
-        <span class="kw">if</span> <span class="ident">key</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">HKDFError</span>::<span class="ident">InvalidLength</span>);
-        }
-        <span class="prelude-val">Ok</span>(<span class="ident">Secret</span> { <span class="ident">value</span>: <span class="ident">key</span> })
     }
 
     <span class="doccomment">/// Returns the key size of the used AEAD.</span>
@@ -1286,17 +1555,18 @@
 <span class="kw">impl</span> <span class="ident">AeadKey</span> {
     <span class="doccomment">/// Create an `AeadKey` from a `Secret`. TODO: This function should</span>
     <span class="doccomment">/// disappear when tackling issue #103.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">secret</span>: <span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;AeadKey::from_secret with {}&quot;</span>, <span class="ident">secret</span>.<span class="ident">ciphersuite</span>);
         <span class="ident">AeadKey</span> {
-            <span class="ident">aead_mode</span>: <span class="ident">ciphersuite</span>.<span class="ident">aead</span>,
+            <span class="ident">aead_mode</span>: <span class="ident">secret</span>.<span class="ident">ciphersuite</span>.<span class="ident">aead</span>,
             <span class="ident">value</span>: <span class="ident">secret</span>.<span class="ident">value</span>,
-            <span class="ident">mac_len</span>: <span class="ident">ciphersuite</span>.<span class="ident">mac_length</span>(),
+            <span class="ident">mac_len</span>: <span class="ident">secret</span>.<span class="ident">ciphersuite</span>.<span class="ident">mac_length</span>(),
         }
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="doccomment">/// Generate a random AEAD Key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">AeadKey</span> {
             <span class="ident">aead_mode</span>: <span class="ident">ciphersuite</span>.<span class="ident">aead</span>(),
             <span class="ident">value</span>: <span class="ident">aead_key_gen</span>(<span class="ident">ciphersuite</span>.<span class="ident">aead</span>()),
@@ -1365,7 +1635,7 @@
     }
 
     <span class="doccomment">/// Generate a new random nonce.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_random</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">NONCE_BYTES</span>];
         <span class="ident">nonce</span>.<span class="ident">clone_from_slice</span>(<span class="ident">get_random_vec</span>(<span class="ident">NONCE_BYTES</span>).<span class="ident">as_slice</span>());
         <span class="ident">AeadNonce</span> { <span class="ident">value</span>: <span class="ident">nonce</span> }
@@ -1507,7 +1777,7 @@
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">test_xor</span>() {
     <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard</span>::<span class="ident">from_random</span>();
-    <span class="kw">let</span> <span class="ident">original_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">from_random</span>();
+    <span class="kw">let</span> <span class="ident">original_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce</span>::<span class="ident">random</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">original_nonce</span>.<span class="ident">clone</span>();
     <span class="ident">nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
     <span class="macro">assert_ne</span><span class="macro">!</span>(
@@ -1521,4 +1791,5 @@
     );
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "openmls";</script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls"></div>
+    <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>

@@ -378,7 +378,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">CiphersuiteName</span>},
     <span class="ident">codec</span>::<span class="ident">Codec</span>,
-    <span class="ident">config</span>::<span class="ident">Config</span>,
+    <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>},
     <span class="ident">group</span>::{<span class="ident">GroupContext</span>, <span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>},
     <span class="ident">schedule</span>::{<span class="ident">EpochSecrets</span>, <span class="ident">InitSecret</span>, <span class="ident">JoinerSecret</span>, <span class="ident">KeySchedule</span>, <span class="ident">WelcomeSecret</span>},
     <span class="ident">test_util</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
@@ -445,9 +445,9 @@
     <span class="ident">HPKEKeyPair</span>,
 ) {
     <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
-    <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">CommitSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
-    <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
-    <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">commit_secret</span>, <span class="ident">init_secret</span>);
+    <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">CommitSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>);
+    <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>);
+    <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">commit_secret</span>, <span class="ident">init_secret</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span>
         <span class="ident">KeySchedule</span>::<span class="ident">init</span>(<span class="ident">ciphersuite</span>, <span class="ident">joiner_secret</span>.<span class="ident">clone</span>(), <span class="prelude-val">Some</span>(<span class="ident">psk_secret</span>.<span class="ident">clone</span>()));
     <span class="kw">let</span> <span class="ident">welcome_secret</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">welcome</span>().<span class="ident">unwrap</span>();
@@ -490,7 +490,7 @@
     <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">KeyScheduleTestVector</span> {
     <span class="comment">// Set up setting.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="ident">InitSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="ident">InitSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>());
     <span class="kw">let</span> <span class="ident">initial_init_secret</span> <span class="op">=</span> <span class="ident">init_secret</span>.<span class="ident">clone</span>();
     <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">randombytes</span>(<span class="number">16</span>);
 
@@ -596,7 +596,7 @@
         <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;    CommitSecret from tve {:?}&quot;</span>, <span class="ident">epoch</span>.<span class="ident">commit_secret</span>);
         <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">psk_secret</span>);
 
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">new</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">commit_secret</span>, <span class="kw-2">&amp;</span><span class="ident">init_secret</span>);
+        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">commit_secret</span>, <span class="kw-2">&amp;</span><span class="ident">init_secret</span>);
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">joiner_secret</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">joiner_secret</span>.<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Joiner secret mismatch&quot;</span>);
@@ -731,4 +731,5 @@
     <span class="prelude-val">Ok</span>(())
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "openmls";</script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls"></div>
+    <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>
