@@ -3,7 +3,6 @@ use crate::framing::*;
 use crate::group::mls_group::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::*;
 use crate::schedule::CommitSecret;
 
 impl MlsGroup {
@@ -26,10 +25,10 @@ impl MlsGroup {
             MLSPlaintextContentType::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
-        let received_confirmation_tag = match &mls_plaintext.confirmation_tag {
-            Some(confirmation_tag) => confirmation_tag,
-            None => return Err(ApplyCommitError::ConfirmationTagMissing),
-        };
+        let received_confirmation_tag = mls_plaintext
+            .confirmation_tag
+            .as_ref()
+            .ok_or(ApplyCommitError::ConfirmationTagMissing)?;
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
@@ -61,7 +60,7 @@ impl MlsGroup {
         let is_own_commit =
             mls_plaintext.sender.to_leaf_index() == provisional_tree.own_node_index();
 
-        let zero_commit_secret = CommitSecret::zero_secret(ciphersuite);
+        let zero_commit_secret = CommitSecret::zero_secret(ciphersuite, self.mls_version);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = &commit.path {
             // Verify KeyPackage and MLSPlaintext signature & membership tag
@@ -105,7 +104,6 @@ impl MlsGroup {
         };
 
         let joiner_secret = JoinerSecret::new(
-            ciphersuite,
             commit_secret,
             self.epoch_secrets
                 .init_secret()
@@ -160,12 +158,13 @@ impl MlsGroup {
         )?;
 
         // Verify confirmation tag
-        let own_confirmation_tag = ConfirmationTag::new(
-            &ciphersuite,
-            &provisional_epoch_secrets.confirmation_key(),
-            &confirmed_transcript_hash,
-        );
+        let own_confirmation_tag = provisional_epoch_secrets
+            .confirmation_key()
+            .tag(&confirmed_transcript_hash);
         if &own_confirmation_tag != received_confirmation_tag {
+            log::error!("Confirmation tag mismatch");
+            log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
+            log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
             return Err(ApplyCommitError::ConfirmationTagMismatch);
         }
 

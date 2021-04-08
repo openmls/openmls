@@ -149,7 +149,7 @@ fn test_original_child_resolution() {
 
         // Add unmerged leaves to root node
         let (_private_key, public_key) = ciphersuite
-            .derive_hpke_keypair(&Secret::random(ciphersuite.hash_length()))
+            .derive_hpke_keypair(&Secret::random(ciphersuite, None /* MLS version */))
             .into_keys();
         let new_root_node = Node {
             node_type: NodeType::Parent,

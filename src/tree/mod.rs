@@ -1,5 +1,5 @@
 use crate::codec::*;
-use crate::config::Config;
+use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
@@ -43,6 +43,9 @@ pub struct RatchetTree {
     /// The ciphersuite used in this tree.
     ciphersuite: &'static Ciphersuite,
 
+    /// The MLS protocol version used in this tree.
+    mls_version: ProtocolVersion,
+
     /// All nodes in the tree.
     /// Note that these only hold public values.
     /// Private values are stored in the `private_tree`.
@@ -53,13 +56,14 @@ pub struct RatchetTree {
     private_tree: PrivateTree,
 }
 
-implement_persistence!(RatchetTree, nodes, private_tree);
+implement_persistence!(RatchetTree, mls_version, nodes, private_tree);
 
 impl RatchetTree {
     /// Create a new empty `RatchetTree`.
-    pub(crate) fn init(ciphersuite: &'static Ciphersuite) -> Self {
+    pub(crate) fn init(ciphersuite: &'static Ciphersuite, mls_version: ProtocolVersion) -> Self {
         Self {
             ciphersuite,
+            mls_version,
             nodes: Vec::new(),
             // XXX: This is technically wrong. But all this needs to be rewritten anyway.
             private_tree: PrivateTree::new(0usize.into()),
@@ -104,8 +108,8 @@ impl RatchetTree {
     }
 
     /// Create a new `RatchetTree` with only the "self" member as first node.
-    pub(crate) fn new(ciphersuite: &'static Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
-        let mut tree = Self::init(ciphersuite);
+    pub(crate) fn new(kpb: KeyPackageBundle) -> RatchetTree {
+        let mut tree = Self::init(kpb.leaf_secret().ciphersuite(), kpb.leaf_secret().version());
         tree.add_own_node(&kpb);
         tree
     }
@@ -115,6 +119,7 @@ impl RatchetTree {
     pub(crate) fn new_from_public_tree(ratchet_tree: &RatchetTree) -> Self {
         RatchetTree {
             ciphersuite: ratchet_tree.ciphersuite,
+            mls_version: ratchet_tree.mls_version,
             nodes: ratchet_tree.nodes.clone(),
             private_tree: PrivateTree::new(ratchet_tree.private_tree.leaf_index()),
         }
@@ -124,7 +129,6 @@ impl RatchetTree {
     /// bundle `kpb`. The client's node must be in the list of nodes and the list
     /// of nodes must contain all nodes of the tree, including intermediates.
     pub(crate) fn new_from_nodes(
-        ciphersuite: &'static Ciphersuite,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
     ) -> Result<RatchetTree, TreeError> {
@@ -133,7 +137,8 @@ impl RatchetTree {
         let private_tree = PrivateTree::from_key_package_bundle(own_node_index, &kpb);
 
         Ok(Self {
-            ciphersuite,
+            ciphersuite: kpb.leaf_secret().ciphersuite(),
+            mls_version: kpb.leaf_secret().version(),
             nodes,
             private_tree,
         })
@@ -366,12 +371,14 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret = PathSecret::from(Secret::from(self.ciphersuite.hpke_open(
-            hpke_ciphertext,
-            &private_key,
-            group_context,
-            &[],
-        )?));
+        let secret = Secret::from_slice(
+            &self
+                .ciphersuite
+                .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?,
+            self.mls_version,
+            &self.ciphersuite,
+        )
+        .into();
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree

@@ -23,7 +23,6 @@ default-members = [
     ".",
     "test_macros",
     "tls-codec",
-    "tls-codec-derive",
 ]
 
 [dependencies]
@@ -54,7 +53,6 @@ pretty_env_logger = "0.4.0"
 itertools = "0.10"
 test_macros = { path = "test_macros" }
 openmls = { path = ".", features = ["expose-test-vectors"] }
-
 
 [[bench]]
 name = "benchmark"

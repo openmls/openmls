@@ -11,6 +11,7 @@ pub(crate) fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
 }
 
+#[cfg(any(feature = "expose-test-vectors", test))]
 pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }

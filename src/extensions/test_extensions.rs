@@ -9,12 +9,12 @@ use crate::{
     prelude::*,
 };
 
-use test_macros::ctest;
-
 #[test]
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
-    let extension_bytes = [0, 1, 0, 16, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3];
+    let extension_bytes = [
+        0, 1, 0, 17, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3,
+    ];
 
     let ext = CapabilitiesExtension::default();
     let ext_struct = ext.to_extension_struct();
@@ -60,9 +60,8 @@ fn lifetime() {
 
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
-
-ctest!(ratchet_tree_extension {
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+ctest_ciphersuites!(ratchet_tree_extension, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -106,6 +105,7 @@ ctest!(ratchet_tree_extension {
         alice_key_package_bundle,
         config,
         None, /* Initial PSK */
+        None, /* MLS version */
     )
     .unwrap();
 
@@ -129,13 +129,15 @@ ctest!(ratchet_tree_extension {
         .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
         .expect("error applying commit");
 
-    let bob_group = MlsGroup::new_from_welcome(
+    let bob_group = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         None,
         bob_key_package_bundle,
         None,
-    )
-    .expect("Could not join group with ratchet tree extension");
+    ) {
+        Ok(g) => g,
+        Err(e) => panic!("Could not join group with ratchet tree extension {}", e),
+    };
 
     // Make sure the group state is the same
     assert_eq!(
@@ -171,6 +173,7 @@ ctest!(ratchet_tree_extension {
         alice_key_package_bundle,
         config,
         None, /* Initial PSK */
+        None, /* MLS version */
     )
     .unwrap();
 

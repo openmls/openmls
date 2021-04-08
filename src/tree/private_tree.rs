@@ -57,7 +57,7 @@ impl PrivateTree {
     ) -> Self {
         let leaf_secret = key_package_bundle.leaf_secret();
         let ciphersuite = key_package_bundle.key_package.ciphersuite();
-        let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(ciphersuite, &leaf_secret);
+        let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(&leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
         let (private_key, _) = keypair.into_keys();
 
@@ -128,12 +128,7 @@ impl PrivateTree {
             vec![]
         } else {
             vec![PathSecret {
-                path_secret: leaf_secret.kdf_expand_label(
-                    ciphersuite,
-                    "path",
-                    &[],
-                    ciphersuite.hash_length(),
-                ),
+                path_secret: leaf_secret.kdf_expand_label("path", &[], ciphersuite.hash_length()),
             }]
         };
 
@@ -172,12 +167,10 @@ impl PrivateTree {
         let mut path_secrets = path_secrets;
 
         for i in 1..path.len() {
-            let path_secret = path_secrets[i - 1].path_secret.kdf_expand_label(
-                ciphersuite,
-                "path",
-                &[],
-                hash_len,
-            );
+            let path_secret =
+                path_secrets[i - 1]
+                    .path_secret
+                    .kdf_expand_label("path", &[], hash_len);
             path_secrets.push(PathSecret { path_secret });
         }
         self.path_secrets = path_secrets;
@@ -226,10 +219,9 @@ impl PrivateTree {
 
         // Derive key pairs for all nodes in the direct path.
         for path_secret in self.path_secrets.iter() {
-            let node_secret =
-                path_secret
-                    .path_secret
-                    .kdf_expand_label(ciphersuite, "node", &[], hash_len);
+            let node_secret = path_secret
+                .path_secret
+                .kdf_expand_label("node", &[], hash_len);
             let keypair = ciphersuite.derive_hpke_keypair(&node_secret);
             let (private_key, public_key) = keypair.into_keys();
             public_keys.push(public_key);

@@ -2,10 +2,12 @@
 
 use openmls::prelude::*;
 use std::convert::TryFrom;
-use test_macros::ctest;
 
-ctest!(key_package_generation {
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+#[macro_use]
+mod utils;
+
+ctest_ciphersuites!(key_package_generation, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

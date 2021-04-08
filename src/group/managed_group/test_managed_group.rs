@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::convert::TryFrom;
 
 #[test]
 fn test_managed_group_persistence() {
@@ -191,3 +192,59 @@ fn remover() {
         _ => unreachable!("Expected a MemberRemoved event"),
     }
 }
+
+ctest_ciphersuites!(export_secret, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .expect("Could not create credential bundle");
+
+    // Generate KeyPackages
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![]).unwrap();
+
+    // Define the managed group configuration
+    let update_policy = UpdatePolicy::default();
+    let callbacks = ManagedGroupCallbacks::default();
+    let managed_group_config = ManagedGroupConfig::new(
+        HandshakeMessageFormat::Plaintext,
+        update_policy,
+        0, // padding_size
+        0, // number_of_resumption_secrets
+        callbacks,
+    );
+
+    // === Alice creates a group ===
+    let alice_group = ManagedGroup::new(
+        &alice_credential_bundle,
+        &managed_group_config,
+        group_id,
+        alice_key_package_bundle,
+    )
+    .unwrap();
+
+    assert!(
+        alice_group
+            .export_secret("test1", &[], ciphersuite.hash_length())
+            .unwrap()
+            != alice_group
+            .export_secret("test2", &[], ciphersuite.hash_length())
+            .unwrap()
+    );
+    assert!(
+        alice_group
+            .export_secret("test", &[0u8], ciphersuite.hash_length())
+            .unwrap()
+            != alice_group
+                .export_secret("test", &[1u8], ciphersuite.hash_length())
+                .unwrap()
+    )
+});

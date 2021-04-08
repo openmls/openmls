@@ -13,7 +13,7 @@ fn test_hpke_seal_open() {
         println!("Test {:?}", ciphersuite.name());
         println!("Ciphersuite {:?}", ciphersuite);
         let plaintext = &[1, 2, 3];
-        let kp = ciphersuite.derive_hpke_keypair(&Secret::from(vec![1, 2, 3]));
+        let kp = ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, None));
         let ciphertext = ciphersuite.hpke_seal(kp.public_key(), &[], &[], plaintext);
         let decrypted_payload = ciphersuite
             .hpke_open(&ciphertext, kp.private_key(), &[], &[])

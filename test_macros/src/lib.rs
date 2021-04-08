@@ -4,11 +4,13 @@ use quote::quote;
 use syn::{
     parse::Result,
     parse::{Parse, ParseStream},
-    parse_macro_input, Block,
+    parse_macro_input, Block, Expr, ExprArray, Member,
 };
 
 struct TestInput {
     test_name: Ident,
+    // An array to iterate over.
+    parameters: ExprArray,
     body: Block,
 }
 
@@ -16,6 +18,7 @@ impl Parse for TestInput {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Self {
             test_name: input.parse()?,
+            parameters: input.parse()?,
             body: input.parse()?,
         })
     }
@@ -42,25 +45,32 @@ fn impl_ciphersuite_tests(
     input: TestInput,
     test_attribute: proc_macro2::TokenStream,
 ) -> TokenStream {
-    let ast = input.body;
-    let test_name = input.test_name;
-    let tests = openmls::config::Config::supported_ciphersuite_names()
-        .iter()
-        .map(|&ciphersuite_name| {
-            let ciphersuite_code = ciphersuite_name as u16;
-            let test_name = Ident::new(
-                &format!("{}_{}", test_name.to_string(), ciphersuite_name),
-                Span::call_site(),
-            );
-            quote! {
-                #[test]
-                #test_attribute
-                fn #test_name () {
-                    let _ciphersuite_code = #ciphersuite_code;
-                    #ast
-                }
+    let ast = input.body.clone();
+    let test_name = input.test_name.clone();
+    let num_parameters = input.parameters.elems.len();
+    let params = input.parameters.clone();
+    let tests = (0..num_parameters).map(|i| {
+        let param_name = match &input.parameters.elems[i] {
+            Expr::Field(f) => match &f.member {
+                Member::Named(n) => n.to_string(),
+                _ => panic!("Unsupported enum with unnamed members"),
+            },
+            Expr::Path(p) => p.path.segments.last().unwrap().ident.to_string(),
+            _ => panic!("Unexpected input"),
+        };
+        let test_name = Ident::new(
+            &format!("{}_{}", test_name.to_string(), param_name),
+            Span::call_site(),
+        );
+        quote! {
+            #[test]
+            #test_attribute
+            fn #test_name () {
+                let param = #params[#i].clone();
+                #ast
             }
-        });
+        }
+    });
     let gen = quote! {
         #(#tests)*
     };

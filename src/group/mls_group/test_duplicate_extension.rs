@@ -10,11 +10,9 @@ use crate::{
     schedule::KeySchedule,
 };
 
-use test_macros::ctest;
-
 // This tests the ratchet tree extension to test if the duplicate detection works
-ctest!(duplicate_ratchet_tree_extension {
-    let ciphersuite_name = CiphersuiteName::try_from(_ciphersuite_code).unwrap();
+ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -57,6 +55,7 @@ ctest!(duplicate_ratchet_tree_extension {
         alice_key_package_bundle,
         config,
         None, /* Initial PSK */
+        None, /* MLS version */
     )
     .unwrap();
 
@@ -96,7 +95,7 @@ ctest!(duplicate_ratchet_tree_extension {
         &[],
         &[],
     ).expect("Could not decrypt group secrets");
-    let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes).expect("Could not decode GroupSecrets");
+    let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes).expect("Could not decode GroupSecrets").config(ciphersuite, ProtocolVersion::default());
     let joiner_secret = group_secrets.joiner_secret;
 
     // Create key schedule
@@ -116,7 +115,7 @@ ctest!(duplicate_ratchet_tree_extension {
     // Derive welcome key & noce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
         .welcome().expect("Expected a WelcomeSecret")
-        .derive_welcome_key_nonce(ciphersuite);
+        .derive_welcome_key_nonce();
 
     let group_info_bytes = welcome_key
         .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
