@@ -158,8 +158,8 @@ impl KeyStore {
         kpbs.remove(kp_hash)
     }
 
-    /// Retrieve a `CBGuard` from the key store given the `SignaturePublicKey`
-    /// of the corresponding `Credential`. The `CBGuard` can be dereferenced to
+    /// Retrieve a `CbGuard` from the key store given the `SignaturePublicKey`
+    /// of the corresponding `Credential`. The `CbGuard` can be dereferenced to
     /// obtain an `RwLock` on the desired `CredentialBundle`. Returns an error
     /// if no `CredentialBundle` can be found corresponding to the given
     /// `SignaturePublicKey`.
