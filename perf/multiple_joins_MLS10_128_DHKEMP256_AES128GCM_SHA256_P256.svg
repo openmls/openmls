@@ -1,0 +1,419 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" width="1200" height="470" onload="init(evt)" viewBox="0 0 1200 470" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><!--Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples.--><!--NOTES: --><defs><linearGradient id="background" y1="0" y2="1" x1="0" x2="0"><stop stop-color="#eeeeee" offset="5%"/><stop stop-color="#eeeeb0" offset="95%"/></linearGradient></defs><style type="text/css">
+text { font-family:"Verdana"; font-size:12px; fill:rgb(0,0,0); }
+#title { text-anchor:middle; font-size:17px; }
+#search { opacity:0.1; cursor:pointer; }
+#search:hover, #search.show { opacity:1; }
+#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style><script type="text/ecmascript"><![CDATA[var nametype = 'Function:';
+var fontsize = 12;
+var fontwidth = 0.59;
+var xpad = 10;
+var inverted = false;
+var searchcolor = 'rgb(230,0,230)';
+var fluiddrawing = true;
+var truncate_text_right = false;]]><![CDATA["use strict";
+var details, searchbtn, unzoombtn, matchedtxt, svg, searching, frames;
+function init(evt) {
+    details = document.getElementById("details").firstChild;
+    searchbtn = document.getElementById("search");
+    unzoombtn = document.getElementById("unzoom");
+    matchedtxt = document.getElementById("matched");
+    svg = document.getElementsByTagName("svg")[0];
+    frames = document.getElementById("frames");
+    searching = 0;
+
+    // Use GET parameters to restore a flamegraph's state.
+    var restore_state = function() {
+        var params = get_params();
+        if (params.x && params.y)
+            zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+        if (params.s)
+            search(params.s);
+    };
+
+    if (fluiddrawing) {
+        // Make width dynamic so the SVG fits its parent's width.
+        svg.removeAttribute("width");
+        // Edge requires us to have a viewBox that gets updated with size changes.
+        var isEdge = /Edge\/\d./i.test(navigator.userAgent);
+        if (!isEdge) {
+          svg.removeAttribute("viewBox");
+        }
+        var update_for_width_change = function() {
+            if (isEdge) {
+                svg.attributes.viewBox.value = "0 0 " + svg.width.baseVal.value + " " + svg.height.baseVal.value;
+            }
+
+            // Keep consistent padding on left and right of frames container.
+            frames.attributes.width.value = svg.width.baseVal.value - xpad * 2;
+
+            // Text truncation needs to be adjusted for the current width.
+            var el = frames.children;
+            for(var i = 0; i < el.length; i++) {
+                update_text(el[i]);
+            }
+
+            // Keep search elements at a fixed distance from right edge.
+            var svgWidth = svg.width.baseVal.value;
+            searchbtn.attributes.x.value = svgWidth - xpad - 100;
+            matchedtxt.attributes.x.value = svgWidth - xpad - 100;
+        };
+        window.addEventListener('resize', function() {
+            update_for_width_change();
+        });
+        // This needs to be done asynchronously for Safari to work.
+        setTimeout(function() {
+            unzoom();
+            update_for_width_change();
+            restore_state();
+        }, 0);
+    } else {
+        restore_state();
+    }
+}
+// event listeners
+window.addEventListener("click", function(e) {
+    var target = find_group(e.target);
+    if (target) {
+        if (target.nodeName == "a") {
+            if (e.ctrlKey === false) return;
+            e.preventDefault();
+        }
+        if (target.classList.contains("parent")) unzoom();
+        zoom(target);
+
+        // set parameters for zoom state
+        var el = target.querySelector("rect");
+        if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+            var params = get_params()
+            params.x = el.attributes._orig_x.value;
+            params.y = el.attributes.y.value;
+            history.replaceState(null, null, parse_params(params));
+        }
+    }
+    else if (e.target.id == "unzoom") {
+        unzoom();
+
+        // remove zoom state
+        var params = get_params();
+        if (params.x) delete params.x;
+        if (params.y) delete params.y;
+        history.replaceState(null, null, parse_params(params));
+    }
+    else if (e.target.id == "search") search_prompt();
+}, false)
+// mouse-over for info
+// show
+window.addEventListener("mouseover", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = nametype + " " + g_to_text(target);
+}, false)
+// clear
+window.addEventListener("mouseout", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = ' ';
+}, false)
+// ctrl-F for search
+window.addEventListener("keydown",function (e) {
+    if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+        e.preventDefault();
+        search_prompt();
+    }
+}, false)
+// functions
+function get_params() {
+    var params = {};
+    var paramsarr = window.location.search.substr(1).split('&');
+    for (var i = 0; i < paramsarr.length; ++i) {
+        var tmp = paramsarr[i].split("=");
+        if (!tmp[0] || !tmp[1]) continue;
+        params[tmp[0]]  = decodeURIComponent(tmp[1]);
+    }
+    return params;
+}
+function parse_params(params) {
+    var uri = "?";
+    for (var key in params) {
+        uri += key + '=' + encodeURIComponent(params[key]) + '&';
+    }
+    if (uri.slice(-1) == "&")
+        uri = uri.substring(0, uri.length - 1);
+    if (uri == '?')
+        uri = window.location.href.split('?')[0];
+    return uri;
+}
+function find_child(node, selector) {
+    var children = node.querySelectorAll(selector);
+    if (children.length) return children[0];
+    return;
+}
+function find_group(node) {
+    var parent = node.parentElement;
+    if (!parent) return;
+    if (parent.id == "frames") return node;
+    return find_group(parent);
+}
+function orig_save(e, attr, val) {
+    if (e.attributes["_orig_" + attr] != undefined) return;
+    if (e.attributes[attr] == undefined) return;
+    if (val == undefined) val = e.attributes[attr].value;
+    e.setAttribute("_orig_" + attr, val);
+}
+function orig_load(e, attr) {
+    if (e.attributes["_orig_"+attr] == undefined) return;
+    e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+    e.removeAttribute("_orig_" + attr);
+}
+function g_to_text(e) {
+    var text = find_child(e, "title").firstChild.nodeValue;
+    return (text)
+}
+function g_to_func(e) {
+    var func = g_to_text(e);
+    // if there's any manipulation we want to do to the function
+    // name before it's searched, do it here before returning.
+    return (func);
+}
+function update_text(e) {
+    var r = find_child(e, "rect");
+    var t = find_child(e, "text");
+    var w = parseFloat(r.attributes.width.value) * frames.attributes.width.value / 100 - 3;
+    var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+    t.attributes.x.value = format_percent((parseFloat(r.attributes.x.value) + (100 * 3 / frames.attributes.width.value)));
+    // Smaller than this size won't fit anything
+    if (w < 2 * fontsize * fontwidth) {
+        t.textContent = "";
+        return;
+    }
+    t.textContent = txt;
+    // Fit in full text width
+    if (/^ *\$/.test(txt) || t.getComputedTextLength() < w)
+        return;
+    if (truncate_text_right) {
+        // Truncate the right side of the text.
+        for (var x = txt.length - 2; x > 0; x--) {
+            if (t.getSubStringLength(0, x + 2) <= w) {
+                t.textContent = txt.substring(0, x) + "..";
+                return;
+            }
+        }
+    } else {
+        // Truncate the left side of the text.
+        for (var x = 2; x < txt.length; x++) {
+            if (t.getSubStringLength(x - 2, txt.length) <= w) {
+                t.textContent = ".." + txt.substring(x, txt.length);
+                return;
+            }
+        }
+    }
+    t.textContent = "";
+}
+// zoom
+function zoom_reset(e) {
+    if (e.attributes != undefined) {
+        orig_load(e, "x");
+        orig_load(e, "width");
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_reset(c[i]);
+    }
+}
+function zoom_child(e, x, ratio) {
+    if (e.attributes != undefined) {
+        if (e.attributes.x != undefined) {
+            orig_save(e, "x");
+            e.attributes.x.value = format_percent((parseFloat(e.attributes.x.value) - x) * ratio);
+            if (e.tagName == "text") {
+                e.attributes.x.value = format_percent(parseFloat(find_child(e.parentNode, "rect[x]").attributes.x.value) + (100 * 3 / frames.attributes.width.value));
+            }
+        }
+        if (e.attributes.width != undefined) {
+            orig_save(e, "width");
+            e.attributes.width.value = format_percent(parseFloat(e.attributes.width.value) * ratio);
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_child(c[i], x, ratio);
+    }
+}
+function zoom_parent(e) {
+    if (e.attributes) {
+        if (e.attributes.x != undefined) {
+            orig_save(e, "x");
+            e.attributes.x.value = "0.0%";
+        }
+        if (e.attributes.width != undefined) {
+            orig_save(e, "width");
+            e.attributes.width.value = "100.0%";
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_parent(c[i]);
+    }
+}
+function zoom(node) {
+    var attr = find_child(node, "rect").attributes;
+    var width = parseFloat(attr.width.value);
+    var xmin = parseFloat(attr.x.value);
+    var xmax = xmin + width;
+    var ymin = parseFloat(attr.y.value);
+    var ratio = 100 / width;
+    // XXX: Workaround for JavaScript float issues (fix me)
+    var fudge = 0.001;
+    unzoombtn.classList.remove("hide");
+    var el = frames.children;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        var a = find_child(e, "rect").attributes;
+        var ex = parseFloat(a.x.value);
+        var ew = parseFloat(a.width.value);
+        // Is it an ancestor
+        if (!inverted) {
+            var upstack = parseFloat(a.y.value) > ymin;
+        } else {
+            var upstack = parseFloat(a.y.value) < ymin;
+        }
+        if (upstack) {
+            // Direct ancestor
+            if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+                e.classList.add("parent");
+                zoom_parent(e);
+                update_text(e);
+            }
+            // not in current path
+            else
+                e.classList.add("hide");
+        }
+        // Children maybe
+        else {
+            // no common path
+            if (ex < xmin || ex + fudge >= xmax) {
+                e.classList.add("hide");
+            }
+            else {
+                zoom_child(e, xmin, ratio);
+                update_text(e);
+            }
+        }
+    }
+}
+function unzoom() {
+    unzoombtn.classList.add("hide");
+    var el = frames.children;
+    for(var i = 0; i < el.length; i++) {
+        el[i].classList.remove("parent");
+        el[i].classList.remove("hide");
+        zoom_reset(el[i]);
+        update_text(el[i]);
+    }
+}
+// search
+function reset_search() {
+    var el = document.querySelectorAll("#frames rect");
+    for (var i = 0; i < el.length; i++) {
+        orig_load(el[i], "fill")
+    }
+    var params = get_params();
+    delete params.s;
+    history.replaceState(null, null, parse_params(params));
+}
+function search_prompt() {
+    if (!searching) {
+        var term = prompt("Enter a search term (regexp " +
+            "allowed, eg: ^ext4_)", "");
+        if (term != null) {
+            search(term)
+        }
+    } else {
+        reset_search();
+        searching = 0;
+        searchbtn.classList.remove("show");
+        searchbtn.firstChild.nodeValue = "Search"
+        matchedtxt.classList.add("hide");
+        matchedtxt.firstChild.nodeValue = ""
+    }
+}
+function search(term) {
+    var re = new RegExp(term);
+    var el = frames.children;
+    var matches = new Object();
+    var maxwidth = 0;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        var func = g_to_func(e);
+        var rect = find_child(e, "rect");
+        if (func == null || rect == null)
+            continue;
+        // Save max width. Only works as we have a root frame
+        var w = parseFloat(rect.attributes.width.value);
+        if (w > maxwidth)
+            maxwidth = w;
+        if (func.match(re)) {
+            // highlight
+            var x = parseFloat(rect.attributes.x.value);
+            orig_save(rect, "fill");
+            rect.attributes.fill.value = searchcolor;
+            // remember matches
+            if (matches[x] == undefined) {
+                matches[x] = w;
+            } else {
+                if (w > matches[x]) {
+                    // overwrite with parent
+                    matches[x] = w;
+                }
+            }
+            searching = 1;
+        }
+    }
+    if (!searching)
+        return;
+    var params = get_params();
+    params.s = term;
+    history.replaceState(null, null, parse_params(params));
+
+    searchbtn.classList.add("show");
+    searchbtn.firstChild.nodeValue = "Reset Search";
+    // calculate percent matched, excluding vertical overlap
+    var count = 0;
+    var lastx = -1;
+    var lastw = 0;
+    var keys = Array();
+    for (k in matches) {
+        if (matches.hasOwnProperty(k))
+            keys.push(k);
+    }
+    // sort the matched frames by their x location
+    // ascending, then width descending
+    keys.sort(function(a, b){
+        return a - b;
+    });
+    // Step through frames saving only the biggest bottom-up frames
+    // thanks to the sort order. This relies on the tree property
+    // where children are always smaller than their parents.
+    var fudge = 0.0001;    // JavaScript floating point
+    for (var k in keys) {
+        var x = parseFloat(keys[k]);
+        var w = matches[keys[k]];
+        if (x >= lastx + lastw - fudge) {
+            count += w;
+            lastx = x;
+            lastw = w;
+        }
+    }
+    // display matched percent
+    matchedtxt.classList.remove("hide");
+    var pct = 100 * count / maxwidth;
+    if (pct != 100) pct = pct.toFixed(1);
+    matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+}
+function format_percent(n) {
+    return n.toFixed(4) + "%";
+}
+]]></script><rect x="0" y="0" width="100%" height="470" fill="url(#background)"/><text id="title" x="50.0000%" y="24.00">Flame Graph</text><text id="details" x="10" y="453.00"> </text><text id="unzoom" class="hide" x="10" y="24.00">Reset Zoom</text><text id="search" x="1090" y="24.00">Search</text><text id="matched" x="1090" y="453.00"> </text><svg id="frames" x="10" width="1180"><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::Hpke::open (1 samples, 4.35%)</title><rect x="0.0000%" y="197" width="4.3478%" height="15" fill="rgb(227,0,7)"/><text x="0.2500%" y="207.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::Hpke::setup_receiver (1 samples, 4.35%)</title><rect x="0.0000%" y="181" width="4.3478%" height="15" fill="rgb(217,0,24)"/><text x="0.2500%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::decaps (1 samples, 4.35%)</title><rect x="0.0000%" y="165" width="4.3478%" height="15" fill="rgb(221,193,54)"/><text x="0.2500%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::dh_kem::DhKem::dh (1 samples, 4.35%)</title><rect x="0.0000%" y="149" width="4.3478%" height="15" fill="rgb(248,212,6)"/><text x="0.2500%" y="159.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::ecdh::derive (1 samples, 4.35%)</title><rect x="0.0000%" y="133" width="4.3478%" height="15" fill="rgb(208,68,35)"/><text x="0.2500%" y="143.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::p256::dh (1 samples, 4.35%)</title><rect x="0.0000%" y="117" width="4.3478%" height="15" fill="rgb(232,128,0)"/><text x="0.2500%" y="127.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecp256dh_r (1 samples, 4.35%)</title><rect x="0.0000%" y="101" width="4.3478%" height="15" fill="rgb(207,160,47)"/><text x="0.2500%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_Impl_P256_DH__ecp256dh_r (1 samples, 4.35%)</title><rect x="0.0000%" y="85" width="4.3478%" height="15" fill="rgb(228,23,34)"/><text x="0.2500%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`verifyQValidCurvePoint (1 samples, 4.35%)</title><rect x="0.0000%" y="69" width="4.3478%" height="15" fill="rgb(218,30,26)"/><text x="0.2500%" y="79.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="0.0000%" y="53" width="4.3478%" height="15" fill="rgb(220,122,19)"/><text x="0.2500%" y="63.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="0.0000%" y="37" width="4.3478%" height="15" fill="rgb(250,228,42)"/><text x="0.2500%" y="47.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`norm (1 samples, 4.35%)</title><rect x="4.3478%" y="117" width="4.3478%" height="15" fill="rgb(240,193,28)"/><text x="4.5978%" y="127.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`exponent (1 samples, 4.35%)</title><rect x="4.3478%" y="101" width="4.3478%" height="15" fill="rgb(216,20,37)"/><text x="4.5978%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_square_buffer (1 samples, 4.35%)</title><rect x="4.3478%" y="85" width="4.3478%" height="15" fill="rgb(206,188,39)"/><text x="4.5978%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::ciphersuite::SignaturePublicKey::verify (2 samples, 8.70%)</title><rect x="4.3478%" y="197" width="8.6957%" height="15" fill="rgb(217,207,13)"/><text x="4.5978%" y="207.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::signature::verify (2 samples, 8.70%)</title><rect x="4.3478%" y="181" width="8.6957%" height="15" fill="rgb(231,73,38)"/><text x="4.5978%" y="191.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::p256::ecdsa_verify (2 samples, 8.70%)</title><rect x="4.3478%" y="165" width="8.6957%" height="15" fill="rgb(225,20,46)"/><text x="4.5978%" y="175.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecdsa_verif_p256_sha2 (2 samples, 8.70%)</title><rect x="4.3478%" y="149" width="8.6957%" height="15" fill="rgb(210,31,41)"/><text x="4.5978%" y="159.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`ecdsa_verification_ (2 samples, 8.70%)</title><rect x="4.3478%" y="133" width="8.6957%" height="15" fill="rgb(221,200,47)"/><text x="4.5978%" y="143.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_double (1 samples, 4.35%)</title><rect x="8.6957%" y="117" width="4.3478%" height="15" fill="rgb(226,26,5)"/><text x="8.9457%" y="127.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_square_buffer (1 samples, 4.35%)</title><rect x="8.6957%" y="101" width="4.3478%" height="15" fill="rgb(249,33,26)"/><text x="8.9457%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`core::cmp::impls::_&lt;impl core::cmp::PartialEq&lt;&amp;B&gt; for &amp;A&gt;::eq (1 samples, 4.35%)</title><rect x="13.0435%" y="181" width="4.3478%" height="15" fill="rgb(235,183,28)"/><text x="13.2935%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`&lt;dyn openmls::extensions::Extension as core::cmp::PartialEq&gt;::eq (1 samples, 4.35%)</title><rect x="13.0435%" y="165" width="4.3478%" height="15" fill="rgb(221,5,38)"/><text x="13.2935%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`&lt;openmls::extensions::capabilities_extension::CapabilitiesExtension as openmls::extensions::Extension&gt;::to_extension_struct (1 samples, 4.35%)</title><rect x="13.0435%" y="149" width="4.3478%" height="15" fill="rgb(247,18,42)"/><text x="13.2935%" y="159.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::codec::encode_vec (1 samples, 4.35%)</title><rect x="13.0435%" y="133" width="4.3478%" height="15" fill="rgb(241,131,45)"/><text x="13.2935%" y="143.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::ManagedTestSetup::deliver_welcome (5 samples, 21.74%)</title><rect x="0.0000%" y="261" width="21.7391%" height="15" fill="rgb(249,31,29)"/><text x="0.2500%" y="271.50">test_interop_scenarios-dea755feb5e..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::client::Client::join_group (5 samples, 21.74%)</title><rect x="0.0000%" y="245" width="21.7391%" height="15" fill="rgb(225,111,53)"/><text x="0.2500%" y="255.50">test_interop_scenarios-dea755feb5e..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::managed_group::ManagedGroup::new_from_welcome (5 samples, 21.74%)</title><rect x="0.0000%" y="229" width="21.7391%" height="15" fill="rgb(238,160,17)"/><text x="0.2500%" y="239.50">test_interop_scenarios-dea755feb5e..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::mls_group::MlsGroup::new_from_welcome (5 samples, 21.74%)</title><rect x="0.0000%" y="213" width="21.7391%" height="15" fill="rgb(214,148,48)"/><text x="0.2500%" y="223.50">test_interop_scenarios-dea755feb5e..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::tree::RatchetTree::new_from_nodes (2 samples, 8.70%)</title><rect x="13.0435%" y="197" width="8.6957%" height="15" fill="rgb(232,36,49)"/><text x="13.2935%" y="207.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::tree::private_tree::PrivateTree::from_key_package_bundle (1 samples, 4.35%)</title><rect x="17.3913%" y="181" width="4.3478%" height="15" fill="rgb(209,103,24)"/><text x="17.6413%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::Hpke::derive_key_pair (1 samples, 4.35%)</title><rect x="17.3913%" y="165" width="4.3478%" height="15" fill="rgb(229,88,8)"/><text x="17.6413%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::derive_key_pair (1 samples, 4.35%)</title><rect x="17.3913%" y="149" width="4.3478%" height="15" fill="rgb(213,181,19)"/><text x="17.6413%" y="159.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::dh_kem::DhKem::dh_base (1 samples, 4.35%)</title><rect x="17.3913%" y="133" width="4.3478%" height="15" fill="rgb(254,191,54)"/><text x="17.6413%" y="143.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::ecdh::derive_base (1 samples, 4.35%)</title><rect x="17.3913%" y="117" width="4.3478%" height="15" fill="rgb(241,83,37)"/><text x="17.6413%" y="127.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecp256dh_i (1 samples, 4.35%)</title><rect x="17.3913%" y="101" width="4.3478%" height="15" fill="rgb(233,36,39)"/><text x="17.6413%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_Impl_P256_Core_secretToPublic (1 samples, 4.35%)</title><rect x="17.3913%" y="85" width="4.3478%" height="15" fill="rgb(226,3,54)"/><text x="17.6413%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`norm (1 samples, 4.35%)</title><rect x="17.3913%" y="69" width="4.3478%" height="15" fill="rgb(245,192,40)"/><text x="17.6413%" y="79.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`exponent (1 samples, 4.35%)</title><rect x="17.3913%" y="53" width="4.3478%" height="15" fill="rgb(238,167,29)"/><text x="17.6413%" y="63.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_square_buffer (1 samples, 4.35%)</title><rect x="17.3913%" y="37" width="4.3478%" height="15" fill="rgb(232,182,51)"/><text x="17.6413%" y="47.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecp256dh_r (1 samples, 4.35%)</title><rect x="21.7391%" y="101" width="4.3478%" height="15" fill="rgb(231,60,39)"/><text x="21.9891%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_Impl_P256_DH__ecp256dh_r (1 samples, 4.35%)</title><rect x="21.7391%" y="85" width="4.3478%" height="15" fill="rgb(208,69,12)"/><text x="21.9891%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`verifyQValidCurvePoint (1 samples, 4.35%)</title><rect x="21.7391%" y="69" width="4.3478%" height="15" fill="rgb(235,93,37)"/><text x="21.9891%" y="79.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`&lt;core::iter::adapters::map::Map&lt;I,F&gt; as core::iter::traits::iterator::Iterator&gt;::fold (2 samples, 8.70%)</title><rect x="21.7391%" y="213" width="8.6957%" height="15" fill="rgb(213,116,39)"/><text x="21.9891%" y="223.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::Hpke::seal (2 samples, 8.70%)</title><rect x="21.7391%" y="197" width="8.6957%" height="15" fill="rgb(222,207,29)"/><text x="21.9891%" y="207.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::Hpke::setup_sender (2 samples, 8.70%)</title><rect x="21.7391%" y="181" width="8.6957%" height="15" fill="rgb(206,96,30)"/><text x="21.9891%" y="191.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::encaps (2 samples, 8.70%)</title><rect x="21.7391%" y="165" width="8.6957%" height="15" fill="rgb(218,138,4)"/><text x="21.9891%" y="175.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::dh_kem::DhKem::dh (2 samples, 8.70%)</title><rect x="21.7391%" y="149" width="8.6957%" height="15" fill="rgb(250,191,14)"/><text x="21.9891%" y="159.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::ecdh::derive (2 samples, 8.70%)</title><rect x="21.7391%" y="133" width="8.6957%" height="15" fill="rgb(239,60,40)"/><text x="21.9891%" y="143.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::p256::dh (2 samples, 8.70%)</title><rect x="21.7391%" y="117" width="8.6957%" height="15" fill="rgb(206,27,48)"/><text x="21.9891%" y="127.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_verify_q (1 samples, 4.35%)</title><rect x="26.0870%" y="101" width="4.3478%" height="15" fill="rgb(225,35,8)"/><text x="26.3370%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`verifyQValidCurvePoint (1 samples, 4.35%)</title><rect x="26.0870%" y="85" width="4.3478%" height="15" fill="rgb(250,213,24)"/><text x="26.3370%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="26.0870%" y="69" width="4.3478%" height="15" fill="rgb(247,123,22)"/><text x="26.3370%" y="79.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="26.0870%" y="53" width="4.3478%" height="15" fill="rgb(231,138,38)"/><text x="26.3370%" y="63.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::client::Client::add_members (3 samples, 13.04%)</title><rect x="21.7391%" y="261" width="13.0435%" height="15" fill="rgb(231,145,46)"/><text x="21.9891%" y="271.50">test_interop_scenari..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::managed_group::ManagedGroup::add_members (3 samples, 13.04%)</title><rect x="21.7391%" y="245" width="13.0435%" height="15" fill="rgb(251,118,11)"/><text x="21.9891%" y="255.50">test_interop_scenari..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::mls_group::MlsGroup::create_commit (3 samples, 13.04%)</title><rect x="21.7391%" y="229" width="13.0435%" height="15" fill="rgb(217,147,25)"/><text x="21.9891%" y="239.50">test_interop_scenari..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::framing::plaintext::MLSPlaintext::sign_from_member (1 samples, 4.35%)</title><rect x="30.4348%" y="213" width="4.3478%" height="15" fill="rgb(247,81,37)"/><text x="30.6848%" y="223.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::ciphersuite::SignaturePrivateKey::sign (1 samples, 4.35%)</title><rect x="30.4348%" y="197" width="4.3478%" height="15" fill="rgb(209,12,38)"/><text x="30.6848%" y="207.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::signature::sign (1 samples, 4.35%)</title><rect x="30.4348%" y="181" width="4.3478%" height="15" fill="rgb(227,1,9)"/><text x="30.6848%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::p256::ecdsa_sign (1 samples, 4.35%)</title><rect x="30.4348%" y="165" width="4.3478%" height="15" fill="rgb(248,47,43)"/><text x="30.6848%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecdsa_sign_p256_sha2 (1 samples, 4.35%)</title><rect x="30.4348%" y="149" width="4.3478%" height="15" fill="rgb(221,10,30)"/><text x="30.6848%" y="159.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`ecdsa_signature_core (1 samples, 4.35%)</title><rect x="30.4348%" y="133" width="4.3478%" height="15" fill="rgb(210,229,1)"/><text x="30.6848%" y="143.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`secretToPublicWithoutNorm (1 samples, 4.35%)</title><rect x="30.4348%" y="117" width="4.3478%" height="15" fill="rgb(222,148,37)"/><text x="30.6848%" y="127.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_double (1 samples, 4.35%)</title><rect x="30.4348%" y="101" width="4.3478%" height="15" fill="rgb(234,67,33)"/><text x="30.6848%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::ManagedTestSetup::add_clients (9 samples, 39.13%)</title><rect x="0.0000%" y="277" width="39.1304%" height="15" fill="rgb(247,98,35)"/><text x="0.2500%" y="287.50">test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::client::Client::get_fresh_key_package (1 samples, 4.35%)</title><rect x="34.7826%" y="261" width="4.3478%" height="15" fill="rgb(247,138,52)"/><text x="35.0326%" y="271.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::key_packages::KeyPackageBundle::new (1 samples, 4.35%)</title><rect x="34.7826%" y="245" width="4.3478%" height="15" fill="rgb(213,79,30)"/><text x="35.0326%" y="255.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::key_packages::KeyPackageBundle::new_with_version (1 samples, 4.35%)</title><rect x="34.7826%" y="229" width="4.3478%" height="15" fill="rgb(246,177,23)"/><text x="35.0326%" y="239.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::Hpke::derive_key_pair (1 samples, 4.35%)</title><rect x="34.7826%" y="213" width="4.3478%" height="15" fill="rgb(230,62,27)"/><text x="35.0326%" y="223.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::derive_key_pair (1 samples, 4.35%)</title><rect x="34.7826%" y="197" width="4.3478%" height="15" fill="rgb(216,154,8)"/><text x="35.0326%" y="207.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`hpke_rs::dh_kem::DhKem::dh_base (1 samples, 4.35%)</title><rect x="34.7826%" y="181" width="4.3478%" height="15" fill="rgb(244,35,45)"/><text x="35.0326%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::ecdh::derive_base (1 samples, 4.35%)</title><rect x="34.7826%" y="165" width="4.3478%" height="15" fill="rgb(251,115,12)"/><text x="35.0326%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecp256dh_i (1 samples, 4.35%)</title><rect x="34.7826%" y="149" width="4.3478%" height="15" fill="rgb(240,54,50)"/><text x="35.0326%" y="159.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_Impl_P256_Core_secretToPublic (1 samples, 4.35%)</title><rect x="34.7826%" y="133" width="4.3478%" height="15" fill="rgb(233,84,52)"/><text x="35.0326%" y="143.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`norm (1 samples, 4.35%)</title><rect x="34.7826%" y="117" width="4.3478%" height="15" fill="rgb(207,117,47)"/><text x="35.0326%" y="127.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`exponent (1 samples, 4.35%)</title><rect x="34.7826%" y="101" width="4.3478%" height="15" fill="rgb(249,43,39)"/><text x="35.0326%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_square_buffer (1 samples, 4.35%)</title><rect x="34.7826%" y="85" width="4.3478%" height="15" fill="rgb(209,38,44)"/><text x="35.0326%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::managed_group::ManagedGroup::create_message (1 samples, 4.35%)</title><rect x="39.1304%" y="261" width="4.3478%" height="15" fill="rgb(236,212,23)"/><text x="39.3804%" y="271.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::framing::plaintext::MLSPlaintext::new_from_application (1 samples, 4.35%)</title><rect x="39.1304%" y="245" width="4.3478%" height="15" fill="rgb(242,79,21)"/><text x="39.3804%" y="255.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::framing::plaintext::MLSPlaintext::new_from_member (1 samples, 4.35%)</title><rect x="39.1304%" y="229" width="4.3478%" height="15" fill="rgb(211,96,35)"/><text x="39.3804%" y="239.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::framing::plaintext::MLSPlaintext::sign_from_member (1 samples, 4.35%)</title><rect x="39.1304%" y="213" width="4.3478%" height="15" fill="rgb(253,215,40)"/><text x="39.3804%" y="223.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::ciphersuite::SignaturePrivateKey::sign (1 samples, 4.35%)</title><rect x="39.1304%" y="197" width="4.3478%" height="15" fill="rgb(211,81,21)"/><text x="39.3804%" y="207.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::signature::sign (1 samples, 4.35%)</title><rect x="39.1304%" y="181" width="4.3478%" height="15" fill="rgb(208,190,38)"/><text x="39.3804%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::p256::ecdsa_sign (1 samples, 4.35%)</title><rect x="39.1304%" y="165" width="4.3478%" height="15" fill="rgb(235,213,38)"/><text x="39.3804%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecdsa_sign_p256_sha2 (1 samples, 4.35%)</title><rect x="39.1304%" y="149" width="4.3478%" height="15" fill="rgb(237,122,38)"/><text x="39.3804%" y="159.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`ecdsa_signature_core (1 samples, 4.35%)</title><rect x="39.1304%" y="133" width="4.3478%" height="15" fill="rgb(244,218,35)"/><text x="39.3804%" y="143.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`secretToPublicWithoutNorm (1 samples, 4.35%)</title><rect x="39.1304%" y="117" width="4.3478%" height="15" fill="rgb(240,68,47)"/><text x="39.3804%" y="127.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="39.1304%" y="101" width="4.3478%" height="15" fill="rgb(210,16,53)"/><text x="39.3804%" y="111.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="39.1304%" y="85" width="4.3478%" height="15" fill="rgb(235,124,12)"/><text x="39.3804%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::client::Client::get_members_of_group (1 samples, 4.35%)</title><rect x="43.4783%" y="245" width="4.3478%" height="15" fill="rgb(224,169,11)"/><text x="43.7283%" y="255.50">test_..</text></g><g><title>libsystem_malloc.dylib`default_zone_malloc (1 samples, 4.35%)</title><rect x="43.4783%" y="229" width="4.3478%" height="15" fill="rgb(250,166,2)"/><text x="43.7283%" y="239.50">libsy..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::framing::ciphertext::MLSCiphertext::to_plaintext (1 samples, 4.35%)</title><rect x="47.8261%" y="197" width="4.3478%" height="15" fill="rgb(242,216,29)"/><text x="48.0761%" y="207.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::aead::decrypt (1 samples, 4.35%)</title><rect x="47.8261%" y="181" width="4.3478%" height="15" fill="rgb(230,116,27)"/><text x="48.0761%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::aead::Aead::new (1 samples, 4.35%)</title><rect x="47.8261%" y="165" width="4.3478%" height="15" fill="rgb(228,99,48)"/><text x="48.0761%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`check_avx (1 samples, 4.35%)</title><rect x="47.8261%" y="149" width="4.3478%" height="15" fill="rgb(253,11,6)"/><text x="48.0761%" y="159.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`norm (2 samples, 8.70%)</title><rect x="52.1739%" y="85" width="8.6957%" height="15" fill="rgb(247,143,39)"/><text x="52.4239%" y="95.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`exponent (2 samples, 8.70%)</title><rect x="52.1739%" y="69" width="8.6957%" height="15" fill="rgb(236,97,10)"/><text x="52.4239%" y="79.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_square_buffer (2 samples, 8.70%)</title><rect x="52.1739%" y="53" width="8.6957%" height="15" fill="rgb(233,208,19)"/><text x="52.4239%" y="63.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="60.8696%" y="85" width="4.3478%" height="15" fill="rgb(216,164,2)"/><text x="61.1196%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="60.8696%" y="69" width="4.3478%" height="15" fill="rgb(220,129,5)"/><text x="61.1196%" y="79.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecdsa_verif_p256_sha2 (4 samples, 17.39%)</title><rect x="52.1739%" y="117" width="17.3913%" height="15" fill="rgb(242,17,10)"/><text x="52.4239%" y="127.50">test_interop_scenarios-dea7..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`ecdsa_verification_ (4 samples, 17.39%)</title><rect x="52.1739%" y="101" width="17.3913%" height="15" fill="rgb(242,107,0)"/><text x="52.4239%" y="111.50">test_interop_scenarios-dea7..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`verifyQValidCurvePoint (1 samples, 4.35%)</title><rect x="65.2174%" y="85" width="4.3478%" height="15" fill="rgb(251,28,31)"/><text x="65.4674%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="65.2174%" y="69" width="4.3478%" height="15" fill="rgb(233,223,10)"/><text x="65.4674%" y="79.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="65.2174%" y="53" width="4.3478%" height="15" fill="rgb(215,21,27)"/><text x="65.4674%" y="63.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="69.5652%" y="85" width="4.3478%" height="15" fill="rgb(232,23,21)"/><text x="69.8152%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="69.5652%" y="69" width="4.3478%" height="15" fill="rgb(244,5,23)"/><text x="69.8152%" y="79.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::ManagedTestSetup::check_group_states (9 samples, 39.13%)</title><rect x="39.1304%" y="277" width="39.1304%" height="15" fill="rgb(226,81,46)"/><text x="39.3804%" y="287.50">test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::ManagedTestSetup::distribute_to_members (8 samples, 34.78%)</title><rect x="43.4783%" y="261" width="34.7826%" height="15" fill="rgb(247,70,30)"/><text x="43.7283%" y="271.50">test_interop_scenarios-dea755feb5ee1739`test_interop_sce..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::client::Client::receive_messages_for_group (7 samples, 30.43%)</title><rect x="47.8261%" y="245" width="30.4348%" height="15" fill="rgb(212,68,19)"/><text x="48.0761%" y="255.50">test_interop_scenarios-dea755feb5ee1739`test_inte..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::managed_group::ManagedGroup::process_messages (7 samples, 30.43%)</title><rect x="47.8261%" y="229" width="30.4348%" height="15" fill="rgb(240,187,13)"/><text x="48.0761%" y="239.50">test_interop_scenarios-dea755feb5ee1739`openmls::..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::mls_group::MlsGroup::decrypt (7 samples, 30.43%)</title><rect x="47.8261%" y="213" width="30.4348%" height="15" fill="rgb(223,113,26)"/><text x="48.0761%" y="223.50">test_interop_scenarios-dea755feb5ee1739`openmls::..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::group::mls_group::MlsGroup::verify_signature (6 samples, 26.09%)</title><rect x="52.1739%" y="197" width="26.0870%" height="15" fill="rgb(206,192,2)"/><text x="52.4239%" y="207.50">test_interop_scenarios-dea755feb5ee1739`op..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::framing::plaintext::MLSPlaintextTBS::verify (6 samples, 26.09%)</title><rect x="52.1739%" y="181" width="26.0870%" height="15" fill="rgb(241,108,4)"/><text x="52.4239%" y="191.50">test_interop_scenarios-dea755feb5ee1739`op..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::ciphersuite::SignaturePublicKey::verify (6 samples, 26.09%)</title><rect x="52.1739%" y="165" width="26.0870%" height="15" fill="rgb(247,173,49)"/><text x="52.4239%" y="175.50">test_interop_scenarios-dea755feb5ee1739`op..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::signature::verify (6 samples, 26.09%)</title><rect x="52.1739%" y="149" width="26.0870%" height="15" fill="rgb(224,114,35)"/><text x="52.4239%" y="159.50">test_interop_scenarios-dea755feb5ee1739`ev..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::p256::ecdsa_verify (6 samples, 26.09%)</title><rect x="52.1739%" y="133" width="26.0870%" height="15" fill="rgb(245,159,27)"/><text x="52.4239%" y="143.50">test_interop_scenarios-dea755feb5ee1739`ev..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_verify_q (2 samples, 8.70%)</title><rect x="69.5652%" y="117" width="8.6957%" height="15" fill="rgb(245,172,44)"/><text x="69.8152%" y="127.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`verifyQValidCurvePoint (2 samples, 8.70%)</title><rect x="69.5652%" y="101" width="8.6957%" height="15" fill="rgb(236,23,11)"/><text x="69.8152%" y="111.50">test_interop..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_double (1 samples, 4.35%)</title><rect x="73.9130%" y="85" width="4.3478%" height="15" fill="rgb(205,117,38)"/><text x="74.1630%" y="95.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::ManagedTestSetup::create_clients (1 samples, 4.35%)</title><rect x="78.2609%" y="277" width="4.3478%" height="15" fill="rgb(237,72,25)"/><text x="78.5109%" y="287.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::credentials::CredentialBundle::new (1 samples, 4.35%)</title><rect x="78.2609%" y="261" width="4.3478%" height="15" fill="rgb(244,70,9)"/><text x="78.5109%" y="271.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::ciphersuite::SignatureScheme::new_keypair (1 samples, 4.35%)</title><rect x="78.2609%" y="245" width="4.3478%" height="15" fill="rgb(217,125,39)"/><text x="78.5109%" y="255.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::signature::key_gen (1 samples, 4.35%)</title><rect x="78.2609%" y="229" width="4.3478%" height="15" fill="rgb(235,36,10)"/><text x="78.5109%" y="239.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecp256dh_i (1 samples, 4.35%)</title><rect x="78.2609%" y="213" width="4.3478%" height="15" fill="rgb(251,123,47)"/><text x="78.5109%" y="223.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_Impl_P256_Core_secretToPublic (1 samples, 4.35%)</title><rect x="78.2609%" y="197" width="4.3478%" height="15" fill="rgb(221,13,13)"/><text x="78.5109%" y="207.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="78.2609%" y="181" width="4.3478%" height="15" fill="rgb(238,131,9)"/><text x="78.5109%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="78.2609%" y="165" width="4.3478%" height="15" fill="rgb(211,50,8)"/><text x="78.5109%" y="175.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::ManagedTestSetup::create_group (1 samples, 4.35%)</title><rect x="82.6087%" y="277" width="4.3478%" height="15" fill="rgb(245,182,24)"/><text x="82.8587%" y="287.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::client::Client::create_group (1 samples, 4.35%)</title><rect x="82.6087%" y="261" width="4.3478%" height="15" fill="rgb(242,14,37)"/><text x="82.8587%" y="271.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::key_packages::KeyPackageBundle::new (1 samples, 4.35%)</title><rect x="82.6087%" y="245" width="4.3478%" height="15" fill="rgb(246,228,12)"/><text x="82.8587%" y="255.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::key_packages::KeyPackageBundle::new_with_version (1 samples, 4.35%)</title><rect x="82.6087%" y="229" width="4.3478%" height="15" fill="rgb(213,55,15)"/><text x="82.8587%" y="239.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::ciphersuite::Secret::kdf_expand_label (1 samples, 4.35%)</title><rect x="82.6087%" y="213" width="4.3478%" height="15" fill="rgb(209,9,3)"/><text x="82.8587%" y="223.50">test_..</text></g><g><title>libsystem_pthread.dylib`thread_start (21 samples, 91.30%)</title><rect x="0.0000%" y="405" width="91.3043%" height="15" fill="rgb(230,59,30)"/><text x="0.2500%" y="415.50">libsystem_pthread.dylib`thread_start</text></g><g><title>libsystem_pthread.dylib`_pthread_start (21 samples, 91.30%)</title><rect x="0.0000%" y="389" width="91.3043%" height="15" fill="rgb(209,121,21)"/><text x="0.2500%" y="399.50">libsystem_pthread.dylib`_pthread_start</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`std::sys::unix::thread::Thread::new::thread_start (21 samples, 91.30%)</title><rect x="0.0000%" y="373" width="91.3043%" height="15" fill="rgb(220,109,13)"/><text x="0.2500%" y="383.50">test_interop_scenarios-dea755feb5ee1739`std::sys::unix::thread::Thread::new::thread_start</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`core::ops::function::FnOnce::call_once{{vtable.shim}} (21 samples, 91.30%)</title><rect x="0.0000%" y="357" width="91.3043%" height="15" fill="rgb(232,18,1)"/><text x="0.2500%" y="367.50">test_interop_scenarios-dea755feb5ee1739`core::ops::function::FnOnce::call_once{{vtable.shim}}</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`std::sys_common::backtrace::__rust_begin_short_backtrace (21 samples, 91.30%)</title><rect x="0.0000%" y="341" width="91.3043%" height="15" fill="rgb(215,41,42)"/><text x="0.2500%" y="351.50">test_interop_scenarios-dea755feb5ee1739`std::sys_common::backtrace::__rust_begin_short_backtrace</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::run_test::run_test_inner::_{{closure}} (21 samples, 91.30%)</title><rect x="0.0000%" y="325" width="91.3043%" height="15" fill="rgb(224,123,36)"/><text x="0.2500%" y="335.50">test_interop_scenarios-dea755feb5ee1739`test::run_test::run_test_inner::_{{closure}}</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::__rust_begin_short_backtrace (21 samples, 91.30%)</title><rect x="0.0000%" y="309" width="91.3043%" height="15" fill="rgb(240,125,3)"/><text x="0.2500%" y="319.50">test_interop_scenarios-dea755feb5ee1739`test::__rust_begin_short_backtrace</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`core::ops::function::FnOnce::call_once (21 samples, 91.30%)</title><rect x="0.0000%" y="293" width="91.3043%" height="15" fill="rgb(205,98,50)"/><text x="0.2500%" y="303.50">test_interop_scenarios-dea755feb5ee1739`core::ops::function::FnOnce::call_once</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test_interop_scenarios::utils::managed_utils::ManagedTestSetup::new (1 samples, 4.35%)</title><rect x="86.9565%" y="277" width="4.3478%" height="15" fill="rgb(205,185,37)"/><text x="87.2065%" y="287.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::credentials::CredentialBundle::new (1 samples, 4.35%)</title><rect x="86.9565%" y="261" width="4.3478%" height="15" fill="rgb(238,207,15)"/><text x="87.2065%" y="271.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`openmls::ciphersuite::SignatureScheme::new_keypair (1 samples, 4.35%)</title><rect x="86.9565%" y="245" width="4.3478%" height="15" fill="rgb(213,199,42)"/><text x="87.2065%" y="255.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`evercrypt::signature::key_gen (1 samples, 4.35%)</title><rect x="86.9565%" y="229" width="4.3478%" height="15" fill="rgb(235,201,11)"/><text x="87.2065%" y="239.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_P256_ecp256dh_i (1 samples, 4.35%)</title><rect x="86.9565%" y="213" width="4.3478%" height="15" fill="rgb(207,46,11)"/><text x="87.2065%" y="223.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`Hacl_Impl_P256_Core_secretToPublic (1 samples, 4.35%)</title><rect x="86.9565%" y="197" width="4.3478%" height="15" fill="rgb(241,35,35)"/><text x="87.2065%" y="207.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`point_add (1 samples, 4.35%)</title><rect x="86.9565%" y="181" width="4.3478%" height="15" fill="rgb(243,32,47)"/><text x="87.2065%" y="191.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`montgomery_multiplication_buffer (1 samples, 4.35%)</title><rect x="86.9565%" y="165" width="4.3478%" height="15" fill="rgb(247,202,23)"/><text x="87.2065%" y="175.50">test_..</text></g><g><title>libsystem_c.dylib`exit (1 samples, 4.35%)</title><rect x="91.3043%" y="373" width="4.3478%" height="15" fill="rgb(219,102,11)"/><text x="91.5543%" y="383.50">libsy..</text></g><g><title>libsystem_c.dylib`__cxa_finalize_ranges (1 samples, 4.35%)</title><rect x="91.3043%" y="357" width="4.3478%" height="15" fill="rgb(243,110,44)"/><text x="91.5543%" y="367.50">libsy..</text></g><g><title>libc++.1.dylib`std::__1::DoIOSInit::~DoIOSInit (1 samples, 4.35%)</title><rect x="91.3043%" y="341" width="4.3478%" height="15" fill="rgb(222,74,54)"/><text x="91.5543%" y="351.50">libc+..</text></g><g><title>libc++.1.dylib`std::__1::basic_ostream&lt;wchar_t, std::__1::char_traits&lt;wchar_t&gt; &gt;::flush (1 samples, 4.35%)</title><rect x="91.3043%" y="325" width="4.3478%" height="15" fill="rgb(216,99,12)"/><text x="91.5543%" y="335.50">libc+..</text></g><g><title>libc++.1.dylib`std::__1::__stdoutbuf&lt;wchar_t&gt;::sync (1 samples, 4.35%)</title><rect x="91.3043%" y="309" width="4.3478%" height="15" fill="rgb(226,22,26)"/><text x="91.5543%" y="319.50">libc+..</text></g><g><title>libc++.1.dylib`std::__1::codecvt&lt;wchar_t, char, __mbstate_t&gt;::do_unshift (1 samples, 4.35%)</title><rect x="91.3043%" y="293" width="4.3478%" height="15" fill="rgb(217,163,10)"/><text x="91.5543%" y="303.50">libc+..</text></g><g><title>libsystem_c.dylib`wcrtomb_l (1 samples, 4.35%)</title><rect x="91.3043%" y="277" width="4.3478%" height="15" fill="rgb(213,25,53)"/><text x="91.5543%" y="287.50">libsy..</text></g><g><title>all (23 samples, 100%)</title><rect x="0.0000%" y="421" width="100.0000%" height="15" fill="rgb(252,105,26)"/><text x="0.2500%" y="431.50"></text></g><g><title>test_interop_scenarios-dea755feb5ee1739`0x2 (2 samples, 8.70%)</title><rect x="91.3043%" y="405" width="8.6957%" height="15" fill="rgb(220,39,43)"/><text x="91.5543%" y="415.50">test_interop..</text></g><g><title>libdyld.dylib`start (2 samples, 8.70%)</title><rect x="91.3043%" y="389" width="8.6957%" height="15" fill="rgb(229,68,48)"/><text x="91.5543%" y="399.50">libdyld.dyli..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`main (1 samples, 4.35%)</title><rect x="95.6522%" y="373" width="4.3478%" height="15" fill="rgb(252,8,32)"/><text x="95.9022%" y="383.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`std::rt::lang_start_internal (1 samples, 4.35%)</title><rect x="95.6522%" y="357" width="4.3478%" height="15" fill="rgb(223,20,43)"/><text x="95.9022%" y="367.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`std::rt::lang_start::_{{closure}} (1 samples, 4.35%)</title><rect x="95.6522%" y="341" width="4.3478%" height="15" fill="rgb(229,81,49)"/><text x="95.9022%" y="351.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`std::sys_common::backtrace::__rust_begin_short_backtrace (1 samples, 4.35%)</title><rect x="95.6522%" y="325" width="4.3478%" height="15" fill="rgb(236,28,36)"/><text x="95.9022%" y="335.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::test_main_static (1 samples, 4.35%)</title><rect x="95.6522%" y="309" width="4.3478%" height="15" fill="rgb(249,185,26)"/><text x="95.9022%" y="319.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::test_main (1 samples, 4.35%)</title><rect x="95.6522%" y="293" width="4.3478%" height="15" fill="rgb(249,174,33)"/><text x="95.9022%" y="303.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::console::run_tests_console (1 samples, 4.35%)</title><rect x="95.6522%" y="277" width="4.3478%" height="15" fill="rgb(233,201,37)"/><text x="95.9022%" y="287.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::run_tests (1 samples, 4.35%)</title><rect x="95.6522%" y="261" width="4.3478%" height="15" fill="rgb(221,78,26)"/><text x="95.9022%" y="271.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::run_test (1 samples, 4.35%)</title><rect x="95.6522%" y="245" width="4.3478%" height="15" fill="rgb(250,127,30)"/><text x="95.9022%" y="255.50">test_..</text></g><g><title>test_interop_scenarios-dea755feb5ee1739`test::run_test::run_test_inner (1 samples, 4.35%)</title><rect x="95.6522%" y="229" width="4.3478%" height="15" fill="rgb(230,49,44)"/><text x="95.9022%" y="239.50">test_..</text></g></svg></svg>

@@ -445,6 +445,11 @@ impl MlsGroup {
     pub fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
+
+    /// Get the index of this participant in the tree.
+    pub fn node_index(&self) -> u32 {
+        NodeIndex::from(self.tree.borrow().own_node_index()).as_u32()
+    }
 }
 
 // Private and crate functions

@@ -126,6 +126,45 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
     setup.check_group_states(group);
 });
 
+// # Multiple joins at once
+// P1:       Create group
+// P2->P1:   KeyPackage
+// ...
+// P100->P1: KeyPackage
+// P1->P2:   Welcome
+// ...
+// P1->P100: Welcome
+// ***:  Verify group state
+ctest_ciphersuites!(bulk_joins, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+
+    let number_of_clients = 100;
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
+    setup.create_clients();
+
+    // Create a group with a random creator.
+    let group_id = setup
+        .create_group(ciphersuite)
+        .expect("Error while trying to create group.");
+    let mut groups = setup.groups.borrow_mut();
+    let group = groups.get_mut(&group_id).unwrap();
+
+    let (_, p1) = group.members.first().unwrap().clone();
+
+    // A vector including all other ids.
+    let participant_ids = setup.random_new_members_for_group(group, number_of_clients-1).unwrap();
+
+    // Create the add commit and deliver the welcome.
+    setup
+        .add_clients(ActionType::Commit, group, &p1, participant_ids)
+        .expect("Error adding other participants");
+
+    // Check that group members agree on a group state.
+    setup.check_group_states(group);
+});
+
 // TODO #192, #286, #289: The external join test should go here.
 
 // # Update
@@ -153,6 +192,45 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
     // Let Alice create an update with a self-generated KeyPackageBundle.
     setup
         .self_update(ActionType::Commit, group, &alice_id, None)
+        .expect("Error self-updating.");
+
+    // Check that group members agree on a group state.
+    setup.check_group_states(group);
+});
+
+// # Update large group
+// P1:       Create group
+// P2->P1:   KeyPackage
+// ...
+// P100->P1: KeyPackage
+// P1->P2:   Welcome
+// ...
+// P1->P100: Welcome
+// P1->P2:   Update, Commit
+// ...
+// P1->P100: Update, Commit
+// ***:  Verify group state
+ctest_ciphersuites!(update_large_group, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+
+    let number_of_clients = 100;
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
+    setup.create_clients();
+
+    // Create a group with two members. Includes the process of adding Bob.
+    let group_id = setup
+        .create_random_group(number_of_clients, ciphersuite)
+        .expect("Error while trying to create group.");
+    let mut groups = setup.groups.borrow_mut();
+    let group = groups.get_mut(&group_id).unwrap();
+
+    let (_, p1) = group.members.first().unwrap().clone();
+
+    // Let Alice create an update with a self-generated KeyPackageBundle.
+    setup
+        .self_update(ActionType::Commit, group, &p1, None)
         .expect("Error self-updating.");
 
     // Check that group members agree on a group state.
@@ -193,6 +271,86 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
     setup.check_group_states(group);
 });
 
+// # Remove large group
+// P1:       Create group
+// P2->P1:   KeyPackage
+// ...
+// P100->P1: KeyPackage
+// P1->P2:   Welcome
+// ...
+// P1->P100: Welcome
+// P1->P2:   Remove(P2), Commit
+// ...
+// P1->P100: Remove(P2), Commit
+// ***:  Verify group state
+ctest_ciphersuites!(remove_large_group, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+
+    let number_of_clients = 100;
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
+    setup.create_clients();
+
+    // Create a group with two members. Includes the process of adding Bob.
+    let group_id = setup
+        .create_random_group(number_of_clients, ciphersuite)
+        .expect("Error while trying to create group.");
+    let mut groups = setup.groups.borrow_mut();
+    let group = groups.get_mut(&group_id).unwrap();
+
+    let (_, p1) = group.members.first().unwrap().clone();
+    let (_, p2) = group.members.get(1).unwrap().clone();
+
+    // Have alice remove Bob.
+    setup
+        .remove_clients(ActionType::Commit, group, &p1, vec![p2])
+        .expect("Error removing p2 from the group.");
+
+    // Check that group members agree on a group state.
+    setup.check_group_states(group);
+});
+
+// # Bulk remove
+// P1:       Create group
+// P2->P1:   KeyPackage
+// ...
+// P200->P1: KeyPackage
+// P1->P2:   Welcome
+// ...
+// P1->P200: Welcome
+// P1->P2:   Remove(P50...P150), Commit
+// ...
+// P1->P200: Remove(P50...P150), Commit
+// ***:  Verify group state
+ctest_ciphersuites!(bulk_remove, test(param: CiphersuiteName) {
+    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+
+    let number_of_clients = 200;
+    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
+    setup.create_clients();
+
+    // Create a group with two members. Includes the process of adding Bob.
+    let group_id = setup
+        .create_random_group(number_of_clients, ciphersuite)
+        .expect("Error while trying to create group.");
+    let mut groups = setup.groups.borrow_mut();
+    let group = groups.get_mut(&group_id).unwrap();
+
+    let (_, p1) = group.members.first().unwrap().clone();
+    let p50_p150 = group.members[49..149].iter().map(|(_, p)| p.clone()).collect();
+
+    // Have alice remove Bob.
+    setup
+        .remove_clients(ActionType::Commit, group, &p1, p50_p150)
+        .expect("Error removing P50...P150 from the group.");
+
+    // Check that group members agree on a group state.
+    setup.check_group_states(group);
+});
+
 // TODO #141, #284: The external PSK, resumption and re-init tests should go
 // here.
 
@@ -208,8 +366,7 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
-    // "Large" is 20 for now.
-    let number_of_clients = 20;
+    let number_of_clients = 50;
     let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
 
     // Create a group with all available clients. The process includes creating
