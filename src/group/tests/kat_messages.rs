@@ -41,8 +41,8 @@ pub struct MessagesTestVector {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub fn generate_test_vector(ciphersuite_name: CiphersuiteName) -> MessagesTestVector {
-    let ciphersuite = Ciphersuite::new(ciphersuite_name).unwrap();
+pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> MessagesTestVector {
+    let ciphersuite_name = ciphersuite.name();
     let credential_bundle = CredentialBundle::new(
         b"OpenMLS rocks".to_vec(),
         CredentialType::Basic,
@@ -186,7 +186,7 @@ fn write_test_vectors() {
 
     for ciphersuite in Config::supported_ciphersuites() {
         for _ in 0..NUM_TESTS {
-            let test = generate_test_vector(ciphersuite.name());
+            let test = generate_test_vector(ciphersuite);
             tests.push(test);
         }
     }

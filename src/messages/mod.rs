@@ -5,19 +5,21 @@ use crate::credentials::*;
 use crate::extensions::*;
 use crate::framing::Mac;
 use crate::group::*;
-use crate::schedule::psk::ExternalPsk;
+
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
-use crate::tree::{index::*, *};
-use crate::{
-    ciphersuite::{signable::*, *},
-    schedule::{
-        psk::{PSKType::External, Psk},
-        PreSharedKeyID,
-    },
-};
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+use crate::schedule::{
+    psk::{ExternalPsk, PSKType::External, Psk},
+    PreSharedKeyID,
+};
+#[cfg(any(feature = "expose-test-vectors", test))]
 use evercrypt::prelude::get_random_vec;
+
+use crate::ciphersuite::{signable::*, *};
+use crate::tree::{index::*, *};
+
 use serde::{Deserialize, Serialize};
 
 mod codec;

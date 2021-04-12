@@ -5,6 +5,7 @@
 
 use clap::Clap;
 use openmls::{
+    group::tests::kat_messages,
     group::tests::kat_transcripts::{self, TranscriptTestVector},
     prelude::*,
     schedule::kat_key_schedule::{self, KeyScheduleTestVector},
@@ -177,10 +178,10 @@ impl MlsClient for MlsClientImpl {
                 ));
             }
             Ok(TestVectorType::Messages) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "Messages test vector generation not supported yet.",
-                ));
+                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
+                let kat_messages = kat_messages::generate_test_vector(ciphersuite);
+                let kat_bytes = to_bytes(kat_messages);
+                ("Messages", kat_bytes)
             }
             Err(_) => {
                 return Err(tonic::Status::new(
