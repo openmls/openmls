@@ -105,3 +105,20 @@ impl Extension for LifetimeExtension {
         self
     }
 }
+
+impl Codec for LifetimeExtension {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), crate::codec::CodecError> {
+        self.not_before.encode(buffer).unwrap();
+        self.not_after.encode(buffer).unwrap();
+        Ok(())
+    }
+
+    fn decode(mut cursor: &mut Cursor) -> Result<Self, crate::codec::CodecError> {
+        let not_before = u64::decode(&mut cursor)?;
+        let not_after = u64::decode(&mut cursor)?;
+        Ok(Self {
+            not_before,
+            not_after,
+        })
+    }
+}

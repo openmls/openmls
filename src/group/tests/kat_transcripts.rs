@@ -276,7 +276,7 @@ fn read_test_vectors() {
     ];
     for &tv_file in tv_files.iter() {
         let tv: TranscriptTestVector = read(tv_file);
-        run_test_vector(tv).expect("Error while checking key schedule test vector.");
+        run_test_vector(tv).expect("Error while checking transcript test vector.");
     }
 }
 

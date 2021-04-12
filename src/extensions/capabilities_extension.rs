@@ -18,9 +18,9 @@ use super::{
     CapabilitiesExtensionError, Deserialize, Extension, ExtensionError, ExtensionStruct,
     ExtensionType, Serialize,
 };
-use crate::ciphersuite::CiphersuiteName;
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 use crate::config::{Config, ProtocolVersion};
+use crate::{ciphersuite::CiphersuiteName, codec::Codec};
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilitiesExtension {
@@ -139,5 +139,29 @@ impl Extension for CapabilitiesExtension {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+impl Codec for CapabilitiesExtension {
+    fn encode(&self, mut buffer: &mut Vec<u8>) -> Result<(), crate::codec::CodecError> {
+        encode_vec(VecSize::VecU8, &mut buffer, &self.versions)?;
+        encode_vec(VecSize::VecU8, &mut buffer, &self.ciphersuites)?;
+        encode_vec(VecSize::VecU8, &mut buffer, &self.extensions)?;
+        Ok(())
+    }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, crate::codec::CodecError> {
+        let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor)?;
+        let mut versions = Vec::new();
+        for &version_number in version_numbers.iter() {
+            versions.push(ProtocolVersion::from(version_number)?)
+        }
+        let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor)?;
+        let extensions = decode_vec(VecSize::VecU8, cursor)?;
+        Ok(CapabilitiesExtension {
+            versions,
+            ciphersuites,
+            extensions,
+        })
     }
 }

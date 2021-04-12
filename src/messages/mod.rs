@@ -298,20 +298,21 @@ impl GroupSecrets {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn random(len: usize) -> Self {
+    pub fn random_encoded(len: usize) -> Result<Vec<u8>, CodecError> {
         let psk_id = PreSharedKeyID::new(
             External,
             Psk::External(ExternalPsk::new(get_random_vec(len))),
             get_random_vec(len),
         );
         let psks = PreSharedKeys { psks: vec![psk_id] };
-        GroupSecrets {
-            joiner_secret: JoinerSecret::random(len),
-            path_secret: Some(PathSecret {
+
+        GroupSecrets::new_encoded(
+            &JoinerSecret::random(len),
+            Some(PathSecret {
                 path_secret: Secret::random(len),
             }),
-            psks: Some(psks),
-        }
+            Some(&psks),
+        )
     }
 }
 
