@@ -198,7 +198,7 @@ impl KeyStore {
         // only hold the lock very briefly and should not panic during that
         // period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
-        kpbs.insert(kp.hash().clone(), kpb);
+        kpbs.insert(kp.hash(), kpb);
         Ok(kp)
     }
 
