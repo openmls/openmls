@@ -192,14 +192,13 @@ impl KeyStore {
             .get_credential_bundle(credential.signature_key())
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
         let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, extensions)?;
-        let kp_hash = kpb.key_package().hash();
+        let kp = kpb.key_package().clone();
         // We unwrap here, because the two functions claiming write locks on
         // `init_key_package_bundles` (this one and `take_key_package_bundle`)
         // only hold the lock very briefly and should not panic during that
         // period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
-        kpbs.insert(kp_hash.clone(), kpb);
-        let kp = kpbs.get(&kp_hash).unwrap().key_package().clone();
+        kpbs.insert(kp.hash().clone(), kpb);
         Ok(kp)
     }
 
