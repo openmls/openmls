@@ -127,14 +127,14 @@ pub struct KeyStore {
 /// This guard struct for a `CredentialBundle` implements `Deref`, such that the
 /// underlying `RwLock<CredentialBundle>` can be obtained for read or write
 /// access to the credential.
-pub struct CBGuard<'a> {
+pub struct CbGuard<'a> {
     cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, CredentialBundle>>,
     index: &'a SignaturePublicKey,
 }
 
 use std::ops::Deref;
 
-impl<'b> Deref for CBGuard<'b> {
+impl<'b> Deref for CbGuard<'b> {
     type Target = CredentialBundle;
 
     fn deref(&self) -> &CredentialBundle {
@@ -166,12 +166,12 @@ impl KeyStore {
     pub(crate) fn get_credential_bundle<'key_store>(
         &'key_store self,
         signature_public_key: &'key_store SignaturePublicKey,
-    ) -> Option<CBGuard> {
+    ) -> Option<CbGuard> {
         let cbs = self.credential_bundles.read().unwrap();
         if !cbs.contains_key(signature_public_key) {
             return None;
         }
-        Some(CBGuard {
+        Some(CbGuard {
             cbs,
             index: signature_public_key,
         })
