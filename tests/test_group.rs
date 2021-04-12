@@ -62,6 +62,7 @@ fn create_commit_optional_path() {
             alice_key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )
         .unwrap();
 
@@ -217,6 +218,7 @@ fn basic_group_setup() {
             alice_key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )
         .expect("Could not create group.");
 
@@ -303,6 +305,7 @@ fn group_operations() {
             alice_key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )
         .expect("Could not create group.");
 

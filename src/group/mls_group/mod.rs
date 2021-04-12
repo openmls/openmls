@@ -9,7 +9,6 @@ mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
 
-use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
@@ -19,6 +18,7 @@ use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
+use crate::{ciphersuite::*, config::ProtocolVersion};
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -49,6 +49,8 @@ pub struct MlsGroup {
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
     // Defaults to `false`.
     use_ratchet_tree_extension: bool,
+    // The MLS protocol version used in this group.
+    mls_version: ProtocolVersion,
 }
 
 implement_persistence!(
@@ -58,7 +60,8 @@ implement_persistence!(
     secret_tree,
     tree,
     interim_transcript_hash,
-    use_ratchet_tree_extension
+    use_ratchet_tree_extension,
+    mls_version
 );
 
 /// Public `MlsGroup` functions.
@@ -69,6 +72,7 @@ impl MlsGroup {
         key_package_bundle: KeyPackageBundle,
         config: GroupConfig,
         psk_option: impl Into<Option<PskSecret>>,
+        version: impl Into<Option<ProtocolVersion>>,
     ) -> Result<Self, GroupError> {
         debug!("Created group {:x?}", id);
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
@@ -88,11 +92,9 @@ impl MlsGroup {
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
-        let joiner_secret = JoinerSecret::new(
-            ciphersuite,
-            commit_secret,
-            &InitSecret::random(ciphersuite.hash_length()),
-        );
+        let version = version.into().unwrap_or_default();
+        let joiner_secret =
+            JoinerSecret::new(commit_secret, &InitSecret::random(ciphersuite, version));
 
         let mut key_schedule = KeySchedule::init(ciphersuite, joiner_secret, psk_option);
         key_schedule.add_context(&group_context)?;
@@ -110,6 +112,7 @@ impl MlsGroup {
             tree: RefCell::new(tree),
             interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
+            mls_version: version,
         })
     }
 
@@ -146,7 +149,6 @@ impl MlsGroup {
         };
         let proposal = Proposal::Add(add_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -170,7 +172,6 @@ impl MlsGroup {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -196,7 +197,6 @@ impl MlsGroup {
         };
         let proposal = Proposal::Remove(remove_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -220,7 +220,6 @@ impl MlsGroup {
         let presharedkey_proposal = PreSharedKeyProposal { psk };
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MLSPlaintext::new_from_proposal_member(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             proposal,
@@ -284,7 +283,6 @@ impl MlsGroup {
         padding_size: usize,
     ) -> Result<MLSCiphertext, GroupError> {
         let mls_plaintext = MLSPlaintext::new_from_application(
-            self.ciphersuite,
             self.sender_index(),
             aad,
             msg,
@@ -485,7 +483,8 @@ impl MlsGroup {
 /// It gets called whenever the key schedule is advanced and references to PSKs
 /// are encountered. Since the PSKs are to be trandmitted out-of-band, they need
 /// to be fetched from wherever they are stored.
-pub type PskFetcher = fn(psks: &PreSharedKeys) -> Option<Vec<Secret>>;
+pub type PskFetcher =
+    fn(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>>;
 
 // Helper functions
 
@@ -508,7 +507,7 @@ pub(crate) fn update_interim_transcript_hash(
 }
 
 fn psk_output(
-    ciphersuite: &Ciphersuite,
+    ciphersuite: &'static Ciphersuite,
     psk_fetcher_option: Option<PskFetcher>,
     presharedkeys: &PreSharedKeys,
 ) -> Result<Option<PskSecret>, PskError> {
@@ -517,7 +516,7 @@ fn psk_output(
         match psk_fetcher_option {
             Some(psk_fetcher) => {
                 // Try to fetch the PSKs with the IDs
-                match psk_fetcher(&presharedkeys) {
+                match psk_fetcher(&presharedkeys, ciphersuite) {
                     Some(psks) => {
                         // Combine the PSKs in to a PskSecret
                         let psk_secret = PskSecret::new(ciphersuite, &presharedkeys.psks, &psks)?;

@@ -26,7 +26,7 @@ mod ser;
 
 use crate::{
     codec::*,
-    config::{Config, ConfigError},
+    config::{Config, ConfigError, ProtocolVersion},
 };
 
 use ciphersuites::*;
@@ -34,6 +34,8 @@ pub(crate) use errors::*;
 
 #[cfg(test)]
 mod test_ciphersuite;
+#[cfg(test)]
+mod test_secrets;
 
 pub(crate) const NONCE_BYTES: usize = 12;
 pub(crate) const REUSE_GUARD_BYTES: usize = 4;
@@ -175,22 +177,21 @@ struct KdfLabel {
 }
 
 impl KdfLabel {
-    fn serialized_label(context: &[u8], label: &str, length: usize) -> Vec<u8> {
+    fn serialized_label(context: &[u8], label: String, length: usize) -> Vec<u8> {
         // TODO: This should throw an error. Generally, keys length should be
         // checked. (see #228).
         if length > u16::MAX.into() {
             panic!("Library error: Trying to derive a key with a too large length field!")
         }
-        let full_label = "mls10 ".to_owned() + label;
         log::debug!(
             "KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}",
             length as u16,
-            full_label,
+            label,
             context
         );
         let kdf_label = KdfLabel {
             length: length as u16,
-            label: full_label,
+            label,
             context: context.to_vec(),
         };
         // It is ok to use unwrap() here, because the context is already serialized
@@ -198,87 +199,246 @@ impl KdfLabel {
     }
 }
 
+/// Compare two byte slices in a way that's hopefully not optimised out by the
+/// compiler.
+fn equal_ct(a: &[u8], b: &[u8]) -> bool {
+    let mut diff = 0u8;
+    for (l, r) in a.iter().zip(b.iter()) {
+        diff |= l ^ r;
+    }
+    diff == 0
+}
+
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[derive(Clone, Debug)]
 pub struct Secret {
+    ciphersuite: &'static Ciphersuite,
     value: Vec<u8>,
+    mls_version: ProtocolVersion,
+}
+
+implement_persistence!(Secret, value, mls_version);
+
+impl Default for Secret {
+    fn default() -> Self {
+        Self {
+            ciphersuite: Ciphersuite::default(),
+            value: Vec::new(),
+            mls_version: ProtocolVersion::default(),
+        }
+    }
+}
+
+impl PartialEq for Secret {
+    // Constant time comparison.
+    fn eq(&self, other: &Secret) -> bool {
+        // These values can be considered public and checked before the actual
+        // comparison.
+        if self.ciphersuite != other.ciphersuite
+            || self.mls_version != other.mls_version
+            || self.value.len() != other.value.len()
+        {
+            log::error!("Incompatible secrets");
+            log::trace!(
+                "  {} {} {}",
+                self.ciphersuite.name,
+                self.mls_version,
+                self.value.len()
+            );
+            log::trace!(
+                "  {} {} {}",
+                other.ciphersuite.name,
+                other.mls_version,
+                other.value.len()
+            );
+            return false;
+        }
+        equal_ct(&self.value, &other.value)
+    }
 }
 
 impl Secret {
     /// Randomly sample a fresh `Secret`.
-    pub(crate) fn random(length: usize) -> Self {
+    /// This default random initialiser uses the default Secret length of `hash_length`.
+    pub(crate) fn random(
+        ciphersuite: &'static Ciphersuite,
+        version: impl Into<Option<ProtocolVersion>>,
+    ) -> Self {
+        let mls_version = version.into().unwrap_or_default();
+        log::trace!(
+            "Creating a new random secret for {:?} and {:?}",
+            ciphersuite.name,
+            mls_version
+        );
         Secret {
-            value: get_random_vec(length),
+            value: get_random_vec(ciphersuite.hash_length()),
+            mls_version,
+            ciphersuite,
         }
+    }
+
+    /// Create an all zero secret.
+    pub(crate) fn zero(ciphersuite: &'static Ciphersuite, mls_version: ProtocolVersion) -> Self {
+        Self {
+            value: vec![0u8; ciphersuite.hash_length()],
+            mls_version,
+            ciphersuite,
+        }
+    }
+
+    /// Create a new secret from a byte vector.
+    pub(crate) fn from_slice(
+        bytes: &[u8],
+        mls_version: ProtocolVersion,
+        ciphersuite: &'static Ciphersuite,
+    ) -> Self {
+        Secret {
+            value: bytes.to_vec(),
+            mls_version,
+            ciphersuite,
+        }
+    }
+
+    /// HKDF extract where `self` is `salt`.
+    pub(crate) fn hkdf_extract<'a>(&self, ikm_option: impl Into<Option<&'a Secret>>) -> Self {
+        log::trace!("HKDF extract with {:?}", self.ciphersuite.name);
+        log_crypto!(trace, "  salt: {:x?}", self.value);
+        let zero_secret = Self::zero(self.ciphersuite, self.mls_version);
+        let ikm = ikm_option.into().unwrap_or(&zero_secret);
+        log_crypto!(trace, "  ikm:  {:x?}", ikm.value);
+
+        // We don't return an error here to keep the error propagation from
+        // blowing up. If this fails, something in the library is really wrong
+        // and we can't recover from it.
+        assert!(
+            self.mls_version == ikm.mls_version,
+            "{} != {}",
+            self.mls_version,
+            ikm.mls_version
+        );
+        assert!(
+            self.ciphersuite == ikm.ciphersuite,
+            "{} != {}",
+            self.ciphersuite,
+            ikm.ciphersuite
+        );
+
+        Self {
+            value: hkdf_extract(
+                self.ciphersuite.hmac,
+                self.value.as_slice(),
+                ikm.value.as_slice(),
+            ),
+            mls_version: self.mls_version,
+            ciphersuite: self.ciphersuite,
+        }
+    }
+
+    /// HKDF expand where `self` is `prk`.
+    pub(crate) fn hkdf_expand(&self, info: &[u8], okm_len: usize) -> Result<Self, HKDFError> {
+        let key = hkdf_expand(self.ciphersuite.hmac, &self.value, info, okm_len);
+        if key.is_empty() {
+            return Err(HKDFError::InvalidLength);
+        }
+        Ok(Self {
+            value: key,
+            mls_version: self.mls_version,
+            ciphersuite: self.ciphersuite,
+        })
     }
 
     /// Expand a `Secret` to a new `Secret` of length `length` including a
     /// `label` and a `context`.
-    pub fn kdf_expand_label(
-        &self,
-        ciphersuite: &Ciphersuite,
-        label: &str,
-        context: &[u8],
-        length: usize,
-    ) -> Secret {
-        let info = KdfLabel::serialized_label(context, label, length);
+    pub(crate) fn kdf_expand_label(&self, label: &str, context: &[u8], length: usize) -> Secret {
+        let full_label = format!("{} {}", self.mls_version, label);
         log::trace!(
             "KDF expand with label \"{}\" and {:?} with context {:x?}",
-            label,
-            ciphersuite.name(),
+            &full_label,
+            self.ciphersuite.name(),
             context
         );
+        let info = KdfLabel::serialized_label(context, full_label, length);
         log::trace!("  serialized context: {:x?}", info);
         log_crypto!(trace, "  secret: {:x?}", self.value);
-        ciphersuite.hkdf_expand(self, &info, length).unwrap()
+        self.hkdf_expand(&info, length).unwrap()
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
-    pub fn derive_secret(&self, ciphersuite: &Ciphersuite, label: &str) -> Secret {
+    pub(crate) fn derive_secret(&self, label: &str) -> Secret {
         log_crypto!(
             trace,
             "derive secret from {:x?} with label {} and {:?}",
             self.value,
             label,
-            ciphersuite.name()
+            self.ciphersuite.name()
         );
-        self.kdf_expand_label(ciphersuite, label, &[], ciphersuite.hash_length())
+        self.kdf_expand_label(label, &[], self.ciphersuite.hash_length())
+    }
+
+    /// Update the ciphersuite and MLS version of this secret.
+    /// Ideally we wouldn't need this function but the way decoding works right
+    /// now this is the easiest for now.
+    pub(crate) fn config(
+        &mut self,
+        ciphersuite: &'static Ciphersuite,
+        mls_version: ProtocolVersion,
+    ) {
+        self.ciphersuite = ciphersuite;
+        self.mls_version = mls_version;
     }
 
     /// Returns the inner bytes of a secret
-    pub(crate) fn to_bytes(&self) -> &[u8] {
+    pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }
-}
 
-impl Default for Secret {
-    fn default() -> Self {
-        Secret { value: vec![] }
+    /// Returns the ciphersuite of the secret
+    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+        self.ciphersuite
     }
 }
 
-static EMPTY_SECRET: Secret = Secret { value: vec![] };
-
-impl Default for &Secret {
-    fn default() -> Self {
-        &EMPTY_SECRET
-    }
-}
-
-impl From<Vec<u8>> for Secret {
-    fn from(bytes: Vec<u8>) -> Self {
-        Secret { value: bytes }
-    }
-}
-
+#[cfg(any(feature = "expose-test-vectors", test))]
 impl From<&[u8]> for Secret {
     fn from(bytes: &[u8]) -> Self {
+        log::trace!("Secret from slice");
         Secret {
             value: bytes.to_vec(),
+            mls_version: ProtocolVersion::default(),
+            ciphersuite: Ciphersuite::default(),
+        }
+    }
+}
+
+/// 9.2 Message framing
+///
+/// struct {
+///     opaque mac_value<0..255>;
+/// } MAC;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Mac {
+    pub(crate) mac_value: Vec<u8>,
+}
+
+impl PartialEq for Mac {
+    // Constant time comparison.
+    fn eq(&self, other: &Mac) -> bool {
+        equal_ct(&self.mac_value, &other.mac_value)
+    }
+}
+
+impl Mac {
+    /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
+    /// HMAC that is also used in HKDF.
+    /// Compute the HMAC on `salt` with key `ikm`.
+    pub(crate) fn new(salt: &Secret, ikm: &[u8]) -> Self {
+        Mac {
+            mac_value: salt
+                .hkdf_extract(&Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite))
+                .value,
         }
     }
 }
@@ -388,6 +548,12 @@ impl Ciphersuite {
         })
     }
 
+    /// Get the default ciphersuite.
+    pub(crate) fn default() -> &'static Self {
+        Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
+            .unwrap()
+    }
+
     /// Get the signature scheme of this ciphersuite.
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
@@ -414,41 +580,9 @@ impl Ciphersuite {
         get_digest_size(self.hash)
     }
 
-    /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
-    /// HMAC that is also used in HKDF.
-    pub(crate) fn mac(&self, salt: &Secret, ikm: &Secret) -> Vec<u8> {
-        hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice())
-    }
-
     /// Get the length of the AEAD tag.
     pub(crate) fn mac_length(&self) -> usize {
         aead_tag_size(&self.aead)
-    }
-
-    /// HKDF extract.
-    pub(crate) fn hkdf_extract(&self, salt: &Secret, ikm_option: Option<&Secret>) -> Secret {
-        log::trace!("HKDF extract with {:?}", self.name);
-        log_crypto!(trace, "  salt: {:x?}", salt.value);
-        let zero_secret = Secret::from(vec![0u8; self.hash_length()]);
-        let ikm = ikm_option.unwrap_or(&zero_secret);
-        log_crypto!(trace, "  ikm:  {:x?}", ikm.value);
-        Secret {
-            value: hkdf_extract(self.hmac, salt.value.as_slice(), ikm.value.as_slice()),
-        }
-    }
-
-    /// HKDF expand
-    pub(crate) fn hkdf_expand(
-        &self,
-        prk: &Secret,
-        info: &[u8],
-        okm_len: usize,
-    ) -> Result<Secret, HKDFError> {
-        let key = hkdf_expand(self.hmac, &prk.value, info, okm_len);
-        if key.is_empty() {
-            return Err(HKDFError::InvalidLength);
-        }
-        Ok(Secret { value: key })
     }
 
     /// Returns the key size of the used AEAD.
@@ -523,17 +657,18 @@ impl Ciphersuite {
 impl AeadKey {
     /// Create an `AeadKey` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
-    pub(crate) fn from_secret(ciphersuite: &Ciphersuite, secret: Secret) -> Self {
+    pub(crate) fn from_secret(secret: Secret) -> Self {
+        log::trace!("AeadKey::from_secret with {}", secret.ciphersuite);
         AeadKey {
-            aead_mode: ciphersuite.aead,
+            aead_mode: secret.ciphersuite.aead,
             value: secret.value,
-            mac_len: ciphersuite.mac_length(),
+            mac_len: secret.ciphersuite.mac_length(),
         }
     }
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn from_random(ciphersuite: &Ciphersuite) -> Self {
+    pub fn random(ciphersuite: &Ciphersuite) -> Self {
         AeadKey {
             aead_mode: ciphersuite.aead(),
             value: aead_key_gen(ciphersuite.aead()),
@@ -602,7 +737,7 @@ impl AeadNonce {
     }
 
     /// Generate a new random nonce.
-    pub fn from_random() -> Self {
+    pub fn random() -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(get_random_vec(NONCE_BYTES).as_slice());
         AeadNonce { value: nonce }
@@ -744,7 +879,7 @@ impl SignaturePrivateKey {
 #[test]
 fn test_xor() {
     let reuse_guard: ReuseGuard = ReuseGuard::from_random();
-    let original_nonce = AeadNonce::from_random();
+    let original_nonce = AeadNonce::random();
     let mut nonce = original_nonce.clone();
     nonce.xor_with_reuse_guard(&reuse_guard);
     assert_ne!(

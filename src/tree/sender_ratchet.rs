@@ -90,7 +90,6 @@ impl SenderRatchet {
     /// Computes the new secret
     fn ratchet_secret(&self, ciphersuite: &Ciphersuite, secret: &Secret) -> Secret {
         derive_tree_secret(
-            ciphersuite,
             secret,
             "secret",
             NodeIndex::from(self.index).as_u32(),
@@ -107,7 +106,6 @@ impl SenderRatchet {
     ) -> RatchetSecrets {
         let tree_index = NodeIndex::from(self.index).as_u32();
         let nonce = derive_tree_secret(
-            &ciphersuite,
             secret,
             "nonce",
             tree_index,
@@ -115,17 +113,13 @@ impl SenderRatchet {
             ciphersuite.aead_nonce_length(),
         );
         let key = derive_tree_secret(
-            &ciphersuite,
             secret,
             "key",
             tree_index,
             generation,
             ciphersuite.aead_key_length(),
         );
-        (
-            AeadKey::from_secret(ciphersuite, key),
-            AeadNonce::from_secret(nonce),
-        )
+        (AeadKey::from_secret(key), AeadNonce::from_secret(nonce))
     }
     /// Gets the current generation
     #[cfg(test)]

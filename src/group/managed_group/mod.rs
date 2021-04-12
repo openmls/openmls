@@ -107,6 +107,7 @@ impl ManagedGroup {
             key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )?;
 
         let resumption_secret_store =

@@ -21,8 +21,8 @@ implement_error! {
         Simple {
             InvalidContentType = "The MLSCiphertext has an invalid content type.",
             GenerationOutOfBound = "Couldn't find a ratcheting secret for the given sender and generation.",
-            EncryptionError = "An error occured while encrypting.",
-            DecryptionError = "An error occured while decrypting.",
+            EncryptionError = "An error occurred while encrypting.",
+            DecryptionError = "An error occurred while decrypting.",
         }
         Complex {
             PlaintextError(MLSPlaintextError) = "MLSPlaintext error",

@@ -7,6 +7,6 @@ impl Codec for ProtocolVersion {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        Ok(Self::from(u8::decode(cursor)?)?)
+        Ok(Self::try_from(u8::decode(cursor)?)?)
     }
 }
