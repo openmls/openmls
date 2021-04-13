@@ -10,7 +10,7 @@ use std::convert::TryFrom;
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName},
     codec::Codec,
-    config::Config,
+    config::{Config, ProtocolVersion},
     group::{GroupContext, GroupEpoch, GroupId},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
     test_util::{bytes_to_hex, hex_to_bytes},
@@ -77,9 +77,9 @@ fn generate(
     HPKEKeyPair,
 ) {
     let tree_hash = randombytes(ciphersuite.hash_length());
-    let commit_secret = CommitSecret::random(ciphersuite.hash_length());
-    let psk_secret = PskSecret::random(ciphersuite.hash_length());
-    let joiner_secret = JoinerSecret::new(ciphersuite, &commit_secret, init_secret);
+    let commit_secret = CommitSecret::random(ciphersuite);
+    let psk_secret = PskSecret::random(ciphersuite);
+    let joiner_secret = JoinerSecret::new(&commit_secret, init_secret);
     let mut key_schedule =
         KeySchedule::init(ciphersuite, joiner_secret.clone(), Some(psk_secret.clone()));
     let welcome_secret = key_schedule.welcome().unwrap();
@@ -122,7 +122,7 @@ pub fn generate_test_vector(
     ciphersuite: &'static Ciphersuite,
 ) -> KeyScheduleTestVector {
     // Set up setting.
-    let mut init_secret = InitSecret::random(ciphersuite.hash_length());
+    let mut init_secret = InitSecret::random(ciphersuite, ProtocolVersion::default());
     let initial_init_secret = init_secret.clone();
     let group_id = randombytes(16);
 
@@ -239,7 +239,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
         let psk = hex_to_bytes(&epoch.psk_secret);
 
-        let joiner_secret = JoinerSecret::new(ciphersuite, &commit_secret, &init_secret);
+        let joiner_secret = JoinerSecret::new(&commit_secret, &init_secret);
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
             if cfg!(test) {
                 panic!("Joiner secret mismatch");

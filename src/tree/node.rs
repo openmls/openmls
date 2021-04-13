@@ -50,10 +50,10 @@ pub struct Node {
 impl Node {
     /// Creates a new leaf node. It can either be blank or contain a
     /// `KeyPackage`.
-    pub fn new_leaf(kp_option: Option<KeyPackage>) -> Self {
+    pub fn new_leaf(kp_option: impl Into<Option<KeyPackage>>) -> Self {
         Node {
             node_type: NodeType::Leaf,
-            key_package: kp_option,
+            key_package: kp_option.into(),
             node: None,
         }
     }

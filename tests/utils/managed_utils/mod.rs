@@ -186,10 +186,13 @@ impl ManagedTestSetup {
         messages: &[MLSMessage],
     ) -> Result<(), ManagedClientError> {
         let clients = self.clients.borrow();
-        println!("Distributing and processing messages...");
+        println!("\nDistributing and processing messages...");
         // Distribute message to all members.
         for (index, member_id) in &group.members {
-            println!("Index: {:?}, Id: {:?}", index, member_id);
+            println!(
+                "Distributing message to Index: {:?}, Id: {:?}",
+                index, member_id
+            );
             let member = clients.get(member_id).unwrap().borrow();
             member.process_messages(&group.group_id, messages.to_vec())?;
         }
@@ -342,7 +345,47 @@ impl ManagedTestSetup {
             // Add between 1 and 5 new members.
             let number_of_adds = ((OsRng.next_u32() as usize) % 5 % new_members.len()) + 1;
             let members_to_add = new_members.drain(0..number_of_adds).collect();
-            self.add_clients(ActionType::Commit, group, &adder_id, members_to_add)?;
+            println!("{:?} adds {:?}", adder_id, members_to_add);
+            self.add_clients(ActionType::Commit, group, &adder_id, members_to_add, true)?;
+        }
+        Ok(group_id)
+    }
+
+    /// Create a random group of size `group_size` and return the `GroupId`. In
+    /// contrast to `create_random_group`, this function additionally has every
+    /// group member issue an update after it was added.
+    pub fn create_populated_random_group(
+        &self,
+        target_group_size: usize,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<GroupId, SetupError> {
+        // Create the initial group.
+        let group_id = self.create_group(ciphersuite)?;
+
+        let mut groups = self.groups.borrow_mut();
+        let group = groups.get_mut(&group_id).unwrap();
+
+        // Get new members to add to the group.
+        let mut new_members = self.random_new_members_for_group(group, target_group_size - 1)?;
+        println!("Number of random new members: {:?}", new_members.len());
+
+        // Add new members bit by bit.
+        while !new_members.is_empty() {
+            // Pick a random adder.
+            let adder_id = group.random_group_member();
+            // Add between 1 and 5 new members.
+            let number_of_adds = ((OsRng.next_u32() as usize) % 5 % new_members.len()) + 1;
+            let members_to_add: Vec<Vec<u8>> = new_members.drain(0..number_of_adds).collect();
+            self.add_clients(
+                ActionType::Commit,
+                group,
+                &adder_id,
+                members_to_add.clone(),
+                true,
+            )?;
+            for member in &members_to_add {
+                self.self_update(ActionType::Commit, group, member, None)?;
+            }
         }
         Ok(group_id)
     }
@@ -387,6 +430,7 @@ impl ManagedTestSetup {
         group: &mut Group,
         adder_id: &[u8],
         addees: Vec<Vec<u8>>,
+        include_path: bool,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let adder = clients
@@ -409,8 +453,14 @@ impl ManagedTestSetup {
             let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite)?;
             key_packages.push(key_package);
         }
-        let (messages, welcome_option) =
-            add_members(&adder, action_type, &group.group_id, &key_packages)?;
+        println!("{:?} will now add {:?}", adder.identity(), addees);
+        let (messages, welcome_option) = add_members(
+            &adder,
+            action_type,
+            &group.group_id,
+            &key_packages,
+            include_path,
+        )?;
         self.distribute_to_members(&adder_id, group, &messages)?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -471,6 +521,7 @@ impl ManagedTestSetup {
                 .ok_or(SetupError::ClientNotInGroup)?;
             target_indices.push(*index);
         }
+        println!("removing members with indices: {:?}", target_indices);
         self.remove_clients_by_index(action_type, group, remover_id, &target_indices)?;
         Ok(())
     }
@@ -555,7 +606,8 @@ impl ManagedTestSetup {
                         action_type, new_member_ids
                     );
                     // Have the adder add them to the group.
-                    self.add_clients(action_type, group, &member_id, new_member_ids)?;
+                    // Always include a path
+                    self.add_clients(action_type, group, &member_id, new_member_ids, true)?;
                 }
             }
             _ => return Err(SetupError::Unknown),
@@ -614,10 +666,11 @@ pub fn add_members(
     action_type: ActionType,
     group_id: &GroupId,
     key_packages: &[KeyPackage],
+    include_path: bool,
 ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedClientError> {
     let action_results = match action_type {
         ActionType::Commit => {
-            let (messages, welcome) = client.add_members(group_id, key_packages)?;
+            let (messages, welcome) = client.add_members(group_id, key_packages, include_path)?;
             (messages, Some(welcome))
         }
         ActionType::Proposal => (client.propose_add_members(group_id, key_packages)?, None),

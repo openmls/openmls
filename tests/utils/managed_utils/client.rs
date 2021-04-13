@@ -101,7 +101,24 @@ impl Client {
             let group_state = group_states
                 .get_mut(&group_id)
                 .ok_or(ClientError::NoMatchingGroup)?;
-            group_state.process_messages(vec![message.clone()])?;
+            // Prevent feeding further messages to client after it was removed
+            // by one of the messages.
+            if !group_state.is_active() {
+                return Ok(());
+            }
+            let events = group_state.process_messages(vec![message.clone()])?;
+            // Check if an error occurred while processing messages.
+            for event in events {
+                match event {
+                    GroupEvent::InvalidMessage(e) => {
+                        return Err(ClientError::InvalidMessageEvent(e));
+                    }
+                    GroupEvent::Error(e) => {
+                        return Err(ClientError::ErrorEvent(e));
+                    }
+                    _ => {}
+                }
+            }
         }
         Ok(())
     }
@@ -160,6 +177,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
+        include_path: bool,
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
@@ -167,7 +185,7 @@ impl Client {
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome) = group.add_members(key_packages)?;
+                let (messages, welcome) = group.add_members(key_packages, include_path)?;
                 (messages, Some(welcome))
             }
             ActionType::Proposal => (group.propose_add_members(key_packages)?, None),

@@ -7,6 +7,9 @@
 //! TODO:
 //! - Move parts of `Config` into the `ManagedClientConfig`, such as default `KeyPackage` lifetime.
 //! - Implement `Copy` trait for GroupId?
+//! - Figure out how to deal with duplicate group ids in cases where the old
+//!   group is inactive. Currently, (for simplicity) the old group state is
+//!   overridden if the group is inactive.
 //! - Move RwLocked fields into their own structs to better control locking.
 //! - Move key package generation into ManagedGroup::new()
 //! - Refactor `self_update` to use the KeyStore.
@@ -30,16 +33,16 @@ pub use errors::ManagedClientError;
 use groups::Groups;
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName, SignatureScheme},
+    ciphersuite::{Ciphersuite, CiphersuiteName, Secret, SignatureScheme},
     config::Config,
     credentials::{Credential, CredentialType},
     group::{
-        GroupEpoch, GroupEvent, GroupId, HandshakeMessageFormat, MLSMessage, ManagedGroup,
-        ManagedGroupCallbacks, ManagedGroupConfig, UpdatePolicy,
+        GroupContext, GroupEpoch, GroupEvent, GroupId, HandshakeMessageFormat, MLSMessage,
+        ManagedGroup, ManagedGroupCallbacks, ManagedGroupConfig, UpdatePolicy,
     },
     key_packages::KeyPackage,
     key_store::KeyStore,
-    messages::{PublicGroupState, Welcome},
+    messages::{PathSecret, PublicGroupState, Welcome},
     node::Node,
     prelude::{KeyPackageBundle, MLSPlaintext},
     schedule::ResumptionSecret,
@@ -215,6 +218,9 @@ impl ManagedClient {
             ratchet_tree,
         )?;
         let group_id = group.group_id().clone();
+        // We allow Welcome messages to override existing group states, but only
+        // if the group is inactive.
+
         self.groups.insert(group.group_id().clone(), group)?;
         Ok(group_id)
     }
@@ -232,9 +238,10 @@ impl ManagedClient {
         &self,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
+        include_path: bool,
     ) -> Result<(Vec<MLSMessage>, Welcome), ManagedClientError> {
         let mut group = self.groups.get_mut(group_id)?;
-        Ok(group.add_members(&self.key_store, key_packages)?)
+        Ok(group.add_members(&self.key_store, key_packages, include_path)?)
     }
 
     /// Removes members from the group
@@ -495,5 +502,34 @@ impl ManagedClient {
     ) -> Result<PublicGroupState, ManagedClientError> {
         let group = self.groups.get(group_id)?;
         Ok(group.export_public_group_state(&self.key_store)?)
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_path_secrets(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<PathSecret>, ManagedClientError> {
+        let group = self.groups.get(group_id)?;
+        Ok(group.export_path_secrets())
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn get_leaf_secret_from_store(&self, kp_hash: &[u8]) -> Secret {
+        self.key_store.get_leaf_secret(kp_hash)
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn tree_hash(&self, group_id: &GroupId) -> Result<Vec<u8>, ManagedClientError> {
+        let group = self.groups.get(group_id)?;
+        Ok(group.tree_hash())
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_group_context(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupContext, ManagedClientError> {
+        let group = self.groups.get(group_id)?;
+        Ok(group.export_group_context().clone())
     }
 }

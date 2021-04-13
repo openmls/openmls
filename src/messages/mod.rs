@@ -3,7 +3,6 @@ use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::credentials::*;
 use crate::extensions::*;
-use crate::framing::Mac;
 use crate::group::*;
 
 use crate::schedule::psk::PreSharedKeys;
@@ -102,6 +101,11 @@ impl Welcome {
         &self.encrypted_group_info
     }
 
+    /// Get a reference to the protocol version in the `Welcome`.
+    pub(crate) fn version(&self) -> &ProtocolVersion {
+        &self.version
+    }
+
     /// Set the welcome's encrypted group info.
     #[cfg(test)]
     pub fn set_encrypted_group_info(&mut self, encrypted_group_info: Vec<u8>) {
@@ -120,24 +124,17 @@ impl Commit {
     pub fn has_path(&self) -> bool {
         self.path.is_some()
     }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn path(&self) -> &Option<UpdatePath> {
+        &self.path
+    }
 }
 
 /// Confirmation tag field of MLSPlaintext. For type saftey this is a wrapper
 /// around a `Mac`.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Mac);
-
-impl From<ConfirmationTag> for Vec<u8> {
-    fn from(confirmation_tag: ConfirmationTag) -> Self {
-        confirmation_tag.0.into()
-    }
-}
-
-impl From<Vec<u8>> for ConfirmationTag {
-    fn from(bytes: Vec<u8>) -> Self {
-        ConfirmationTag(bytes.into())
-    }
-}
 
 /// GroupInfo
 ///
@@ -161,7 +158,7 @@ pub struct GroupInfo {
     tree_hash: Vec<u8>,
     confirmed_transcript_hash: Vec<u8>,
     extensions: Vec<Box<dyn Extension>>,
-    confirmation_tag: Vec<u8>,
+    confirmation_tag: ConfirmationTag,
     signer_index: LeafIndex,
     signature: Signature,
 }
@@ -182,7 +179,7 @@ impl GroupInfo {
             tree_hash,
             confirmed_transcript_hash,
             extensions,
-            confirmation_tag: confirmation_tag.into(),
+            confirmation_tag,
             signer_index,
             signature: Signature::new_empty(),
         }
@@ -224,8 +221,13 @@ impl GroupInfo {
     }
 
     /// Get the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> ConfirmationTag {
-        ConfirmationTag::from(self.confirmation_tag.clone())
+    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
+        &self.confirmation_tag
+    }
+
+    /// Get the confirmed tag.
+    pub(crate) fn confirmation_tag_mut(&mut self) -> &mut ConfirmationTag {
+        &mut self.confirmation_tag
     }
 
     /// Get the extensions.
@@ -248,7 +250,7 @@ impl Signable for GroupInfo {
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
         encode_extensions(&self.extensions, buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.confirmation_tag)?;
+        self.confirmation_tag.encode(buffer)?;
         self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())
     }
@@ -263,8 +265,16 @@ impl Signable for GroupInfo {
 ///   opaque path_secret<1..255>;
 /// } PathSecret;
 /// ```
-pub(crate) struct PathSecret {
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq, Clone))]
+pub struct PathSecret {
     pub path_secret: Secret,
+}
+
+impl From<Secret> for PathSecret {
+    fn from(path_secret: Secret) -> Self {
+        Self { path_secret }
+    }
 }
 
 /// GroupSecrets
@@ -289,7 +299,7 @@ impl GroupSecrets {
     /// Create new encoded group secrets.
     pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
-        path_secret: Option<PathSecret>,
+        path_secret: Option<&'a PathSecret>,
         psks_option: impl Into<Option<&'a PreSharedKeys>> + crate::codec::Codec,
     ) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
@@ -300,21 +310,37 @@ impl GroupSecrets {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn random_encoded(len: usize) -> Result<Vec<u8>, CodecError> {
+    pub fn random_encoded(
+        ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
+    ) -> Result<Vec<u8>, CodecError> {
         let psk_id = PreSharedKeyID::new(
             External,
-            Psk::External(ExternalPsk::new(get_random_vec(len))),
-            get_random_vec(len),
+            Psk::External(ExternalPsk::new(get_random_vec(ciphersuite.hash_length()))),
+            get_random_vec(ciphersuite.hash_length()),
         );
         let psks = PreSharedKeys { psks: vec![psk_id] };
 
         GroupSecrets::new_encoded(
-            &JoinerSecret::random(len),
-            Some(PathSecret {
-                path_secret: Secret::random(len),
+            &JoinerSecret::random(ciphersuite, version),
+            Some(&PathSecret {
+                path_secret: Secret::random(ciphersuite, version),
             }),
             Some(&psks),
         )
+    }
+
+    /// Set the config for the secrets, i.e. cipher suite and MLS version.
+    pub(crate) fn config(
+        mut self,
+        ciphersuite: &'static Ciphersuite,
+        mls_version: ProtocolVersion,
+    ) -> GroupSecrets {
+        self.joiner_secret.config(ciphersuite, mls_version);
+        if let Some(s) = &mut self.path_secret {
+            s.path_secret.config(ciphersuite, mls_version);
+        }
+        self
     }
 }
 

@@ -47,7 +47,7 @@ fn test_exclusion_list() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let tree = RatchetTree::new_from_nodes(&ciphersuite, key_package_bundle, &nodes).unwrap();
+        let tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
 
         let root = treemath::root(LeafIndex::from(NODES / 2));
 
@@ -89,7 +89,8 @@ fn test_original_child_resolution() {
         // Resolution for root left child
         const LEFT_CHILD_RESOLUTION: &[usize] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
         // Arbitrary unmerged leaves for root
-        const ROOT_UNMERGED_LEAVES: &[u32] = &[4, 6, 8];
+        // Indices are leaf indices, not node indices
+        const ROOT_UNMERGED_LEAVES: &[u32] = &[2, 3, 4];
         // Expected child resolution
         const EXPECTED_CHILD_RESOLUTION: &[usize] = &[0, 1, 2, 3, 5, 7, 9, 10, 11, 12, 13, 14];
 
@@ -127,8 +128,7 @@ fn test_original_child_resolution() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree =
-            RatchetTree::new_from_nodes(&ciphersuite, key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
 
         // Left child index
         let left_child_index = treemath::left(root_index).unwrap();
@@ -148,7 +148,7 @@ fn test_original_child_resolution() {
 
         // Add unmerged leaves to root node
         let (_private_key, public_key) = ciphersuite
-            .derive_hpke_keypair(&Secret::random(ciphersuite.hash_length()))
+            .derive_hpke_keypair(&Secret::random(ciphersuite, None /* MLS version */))
             .into_keys();
         let new_root_node = Node {
             node_type: NodeType::Parent,

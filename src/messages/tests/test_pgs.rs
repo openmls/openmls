@@ -45,6 +45,7 @@ fn test_pgs() {
             alice_key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )
         .expect("Could not create group.");
 

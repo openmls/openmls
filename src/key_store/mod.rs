@@ -101,7 +101,7 @@ use std::{
 };
 
 use crate::{
-    ciphersuite::{CiphersuiteName, SignaturePublicKey, SignatureScheme},
+    ciphersuite::{CiphersuiteName, Secret, SignaturePublicKey, SignatureScheme},
     credentials::{Credential, CredentialBundle, CredentialType},
     extensions::Extension,
     key_packages::{KeyPackage, KeyPackageBundle},
@@ -156,6 +156,14 @@ impl KeyStore {
         // hold the lock very briefly and should not panic during that period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.remove(kp_hash)
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    /// This exists so we can get hold of the next `leaf_secret` in the TreeKEM
+    /// test vector.
+    pub fn get_leaf_secret(&self, kp_hash: &[u8]) -> Secret {
+        let kpbs = self.init_key_package_bundles.read().unwrap();
+        kpbs.get(kp_hash).unwrap().leaf_secret().clone()
     }
 
     /// Retrieve a `CBGuard` from the key store given the `SignaturePublicKey`

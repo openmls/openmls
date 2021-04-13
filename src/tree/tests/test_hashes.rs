@@ -37,8 +37,7 @@ fn test_parent_hash() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree =
-            RatchetTree::new_from_nodes(&ciphersuite, key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
 
         assert!(tree.verify_parent_hashes().is_ok());
 
@@ -47,7 +46,7 @@ fn test_parent_hash() {
             // Filter out leaf nodes
             if NodeIndex::from(index).is_parent() {
                 let (_private_key, public_key) = ciphersuite
-                    .derive_hpke_keypair(&Secret::random(ciphersuite.hash_length()))
+                    .derive_hpke_keypair(&Secret::random(ciphersuite, None /* MLS version */))
                     .into_keys();
                 let parent_node = ParentNode::new(public_key, &[], &[]);
                 let node = Node {

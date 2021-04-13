@@ -41,7 +41,7 @@ pub struct MessagesTestVector {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> MessagesTestVector {
+pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
     let ciphersuite_name = ciphersuite.name();
     let credential_bundle = CredentialBundle::new(
         b"OpenMLS rocks".to_vec(),
@@ -63,6 +63,7 @@ pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> MessagesTestVector {
         key_package_bundle,
         config,
         None,
+        ProtocolVersion::default(),
     )
     .unwrap();
 
@@ -75,10 +76,12 @@ pub fn generate_test_vector(ciphersuite: &Ciphersuite) -> MessagesTestVector {
         get_random_vec(ciphersuite.hash_length()),
         get_random_vec(ciphersuite.hash_length()),
         vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
-        ConfirmationTag::from(get_random_vec(ciphersuite.hash_length())),
+        ConfirmationTag(Mac {
+            mac_value: get_random_vec(ciphersuite.hash_length()),
+        }),
         LeafIndex::from(0u32),
     );
-    let group_secrets = GroupSecrets::random_encoded(ciphersuite.hash_length());
+    let group_secrets = GroupSecrets::random_encoded(ciphersuite, ProtocolVersion::default());
     let public_group_state = group.export_public_group_state(&credential_bundle).unwrap();
 
     // Create some proposals
@@ -281,7 +284,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // implement Codec.
     let gs = GroupSecrets::decode_detached(&tv_group_secrets).unwrap();
     let my_group_secrets =
-        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret, gs.psks.as_ref()).unwrap();
+        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), gs.psks.as_ref())
+            .unwrap();
     if tv_group_secrets != &my_group_secrets {
         log::error!("  GroupSecrets encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_group_secrets);

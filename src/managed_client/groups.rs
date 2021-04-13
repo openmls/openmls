@@ -103,13 +103,15 @@ impl Groups {
         managed_group: ManagedGroup,
     ) -> Result<(), ManagedClientError> {
         // Check if the GroupId is already taken.
-        if self
+        if let Some(group_state) = self
             .group_states
             .read()
             .map_err(|_| ManagedClientError::PoisonError)?
-            .contains_key(&group_id)
+            .get(&group_id)
         {
-            return Err(ManagedClientError::DuplicateGroupId);
+            if group_state.is_active() {
+                return Err(ManagedClientError::DuplicateGroupId);
+            }
         }
         let mut gs = self
             .group_states

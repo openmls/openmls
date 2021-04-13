@@ -110,7 +110,6 @@ impl MlsGroup {
         )?;
 
         let joiner_secret = JoinerSecret::new(
-            ciphersuite,
             provisional_tree.commit_secret(),
             self.epoch_secrets()
                 .init_secret()
@@ -144,17 +143,14 @@ impl MlsGroup {
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(&ciphersuite, &confirmed_transcript_hash);
+            .tag(&confirmed_transcript_hash);
 
         // Set the confirmation tag
         mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
 
         // Add membership tag
-        mls_plaintext.add_membership_tag(
-            ciphersuite,
-            serialized_context,
-            self.epoch_secrets().membership_key(),
-        )?;
+        mls_plaintext
+            .add_membership_tag(serialized_context, self.epoch_secrets().membership_key())?;
 
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
@@ -179,7 +175,7 @@ impl MlsGroup {
             group_info.set_signature(group_info.sign(credential_bundle));
 
             // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(ciphersuite);
+            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce();
             let encrypted_group_info = welcome_key
                 .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
                 .unwrap();
@@ -235,40 +231,12 @@ impl PlaintextSecret {
         provisional_tree: &RatchetTree,
         presharedkeys: &PreSharedKeys,
     ) -> Result<Vec<Self>, GroupError> {
-        // Get a Vector containing the node indices of the direct path to the
-        // root from our own leaf.
-        let dirpath = treemath::leaf_direct_path(
-            provisional_tree.own_node_index(),
-            provisional_tree.leaf_count(),
-        )?;
-
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
             let key_package_hash = key_package.hash();
 
-            let path_secrets = provisional_tree.path_secrets();
-            let path_secret = if !path_secrets.is_empty() {
-                // Compute the index of the common ancestor lowest in the
-                // tree of our own leaf and the given index.
-                let common_ancestor_index = treemath::common_ancestor_index(
-                    index,
-                    provisional_tree.own_node_index().into(),
-                );
-                // Get the position of the node index that represents the
-                // common ancestor in the direct path. We can unwrap here,
-                // because the direct path must contain the shared ancestor.
-                let position = dirpath
-                    .iter()
-                    .position(|&x| x == common_ancestor_index)
-                    .unwrap();
-                // We have to clone the element of the vector here to
-                // preserve its order.
-                let path_secret = path_secrets[position].clone();
-                Some(PathSecret { path_secret })
-            } else {
-                None
-            };
+            let path_secret = provisional_tree.path_secret(index);
 
             // Create the GroupSecrets object for the respective member.
             let psks_option = if presharedkeys.psks.is_empty() {

@@ -43,7 +43,7 @@ ctest_ciphersuites!(one_to_one_join, test(param: CiphersuiteName) {
     let bob_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id, false)
         .expect("Error adding Bob");
 
     // Check that group members agree on a group state.
@@ -80,14 +80,14 @@ ctest_ciphersuites!(three_party_join, test(param: CiphersuiteName) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id, false)
         .expect("Error adding Bob");
 
     // A vector including Charly's id.
     let charly_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, charly_id)
+        .add_clients(ActionType::Commit, group, &alice_id, charly_id, false)
         .expect("Error adding Charly");
 
     // Check that group members agree on a group state.
@@ -123,7 +123,7 @@ ctest_ciphersuites!(multiple_joins, test(param: CiphersuiteName) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id, false)
         .expect("Error adding Bob and Charly");
 
     // Check that group members agree on a group state.
@@ -233,6 +233,7 @@ ctest_ciphersuites!(large_group_lifecycle, test(param: CiphersuiteName) {
     // Have each member in turn update. In between each update, messages are
     // delivered to each member.
     for (_, member_id) in &group_members {
+        println!("{:?} updates themselves", member_id);
         setup
             .self_update(ActionType::Commit, group, member_id, None)
             .expect("Error while updating group.")
@@ -245,10 +246,12 @@ ctest_ciphersuites!(large_group_lifecycle, test(param: CiphersuiteName) {
         while remover_id == target_id {
             target_id = group.random_group_member();
         }
+        println!("{:?} removes {:?}", remover_id, target_id);
         setup
             .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .expect("Error while removing group member.");
         group_members = group.members.clone();
+        setup.check_group_states(group);
     }
 
     // Check that group members agree on a group state.

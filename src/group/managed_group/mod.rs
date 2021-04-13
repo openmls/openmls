@@ -19,6 +19,9 @@ use crate::{
     tree::{index::LeafIndex, node::Node},
 };
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+use crate::messages::PathSecret;
+
 use std::collections::HashMap;
 use std::io::{Error, Read, Write};
 
@@ -107,6 +110,7 @@ impl ManagedGroup {
             key_package_bundle,
             GroupConfig::default(),
             None, /* Initial PSK */
+            None, /* MLS version */
         )?;
 
         let resumption_secret_store =
@@ -174,6 +178,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_packages: &[KeyPackage],
+        include_path: bool,
     ) -> Result<(Vec<MLSMessage>, Welcome), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -212,7 +217,7 @@ impl ManagedGroup {
             &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
-            false,
+            include_path,
             None,
         )?;
 
@@ -934,6 +939,31 @@ impl ManagedGroup {
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
         Ok(self.group.export_public_group_state(&cb)?)
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_path_secrets(&self) -> Vec<PathSecret> {
+        self.group.tree().private_tree().path_secrets().to_vec()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_group_context(&self) -> &GroupContext {
+        self.group.context()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_root_secret(&self) -> PathSecret {
+        self.group.tree().root_secret().unwrap().clone()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn tree_hash(&self) -> Vec<u8> {
+        self.group.tree().tree_hash()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn print_tree(&self, message: &str) {
+        _print_tree(&self.group.tree(), message)
     }
 }
 

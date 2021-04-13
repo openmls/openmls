@@ -15,6 +15,11 @@ impl MlsGroup {
         key_package_bundle: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
     ) -> Result<Self, WelcomeError> {
+        log::debug!("MlsGroup::new_from_welcome_internal");
+        let mls_version = *welcome.version();
+        if !Config::supported_versions().contains(&mls_version) {
+            return Err(WelcomeError::UnsupportedMlsVersion);
+        }
         let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
@@ -38,7 +43,8 @@ impl MlsGroup {
             &[],
             &[],
         )?;
-        let group_secrets = GroupSecrets::decode_detached(&group_secrets_bytes)?;
+        let group_secrets =
+            GroupSecrets::decode_detached(&group_secrets_bytes)?.config(ciphersuite, mls_version);
         let joiner_secret = group_secrets.joiner_secret;
 
         // Create key schedule
@@ -55,10 +61,8 @@ impl MlsGroup {
             psk_output(ciphersuite, psk_fetcher_option, &presharedkeys)?,
         );
 
-        // Derive welcome key & noce from the key schedule
-        let (welcome_key, welcome_nonce) = key_schedule
-            .welcome()?
-            .derive_welcome_key_nonce(ciphersuite);
+        // Derive welcome key & nonce from the key schedule
+        let (welcome_key, welcome_nonce) = key_schedule.welcome()?.derive_welcome_key_nonce();
 
         let group_info_bytes = welcome_key
             .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
@@ -112,7 +116,7 @@ impl MlsGroup {
             }
         };
 
-        let mut tree = RatchetTree::new_from_nodes(ciphersuite, key_package_bundle, &nodes)?;
+        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes)?;
 
         // Verify tree hash
         let tree_hash = tree.tree_hash();
@@ -148,11 +152,8 @@ impl MlsGroup {
             // Update the private tree.
             let private_tree = tree.private_tree_mut();
             // Derive path secrets and generate keypairs
-            let new_public_keys = private_tree.continue_path_secrets(
-                &ciphersuite,
-                path_secret.path_secret,
-                &common_path,
-            );
+            let new_public_keys =
+                private_tree.continue_path_secrets(&ciphersuite, path_secret, &common_path);
 
             // Validate public keys
             if tree
@@ -182,7 +183,7 @@ impl MlsGroup {
 
         let confirmation_tag = epoch_secrets
             .confirmation_key()
-            .tag(&ciphersuite, &group_context.confirmed_transcript_hash);
+            .tag(&group_context.confirmed_transcript_hash);
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
             &MLSPlaintextCommitAuthData::from(&confirmation_tag),
@@ -190,7 +191,10 @@ impl MlsGroup {
         )?;
 
         // Verify confirmation tag
-        if confirmation_tag != group_info.confirmation_tag() {
+        if &confirmation_tag != group_info.confirmation_tag() {
+            log::error!("Confirmation tag mismatch");
+            log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
+            log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
@@ -201,6 +205,7 @@ impl MlsGroup {
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
+                mls_version,
             })
         }
     }
