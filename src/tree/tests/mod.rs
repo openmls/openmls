@@ -6,6 +6,8 @@ pub mod kat_encryption;
 pub mod kat_tree_kem;
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub mod kat_treemath;
+#[cfg(any(feature = "expose-test-vectors", test))]
+pub mod managed_utils;
 
 #[cfg(test)]
 mod test_hashes;

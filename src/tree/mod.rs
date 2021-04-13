@@ -158,11 +158,6 @@ impl RatchetTree {
         NodeIndex::from(self.nodes.len())
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn root(&self) -> NodeIndex {
-        treemath::root(self.leaf_count())
-    }
-
     /// Get a vector with all nodes in the tree, containing `None` for blank
     /// nodes.
     pub fn public_key_tree(&self) -> Vec<Option<&Node>> {

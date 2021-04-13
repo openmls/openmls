@@ -206,18 +206,6 @@ impl RatchetTree {
         node_parent_hash(self, index.into(), index.into())
     }
 
-    /// Computes the parent hashes for all leaf nodes and returns the parent hashes
-    /// for the parent hash extensions.
-    #[cfg(test)]
-    pub(crate) fn all_parent_hashes(&mut self) -> Vec<Vec<u8>> {
-        (0..self.nodes.len())
-            .step_by(2)
-            .map(|index| {
-                self.set_parent_hashes(LeafIndex::try_from(NodeIndex::from(index)).unwrap())
-            })
-            .collect()
-    }
-
     /// Verify the parent hash of a tree node. Returns `Ok(())` if the parent
     /// hash has successfully been verified and `false` otherwise.
     pub fn verify_parent_hash(&self, index: NodeIndex, node: &Node) -> Result<(), ParentHashError> {

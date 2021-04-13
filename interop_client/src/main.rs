@@ -5,11 +5,15 @@
 
 use clap::Clap;
 use openmls::{
-    group::tests::kat_messages,
+    group::tests::kat_messages::{self, MessagesTestVector},
     group::tests::kat_transcripts::{self, TranscriptTestVector},
     prelude::*,
     schedule::kat_key_schedule::{self, KeyScheduleTestVector},
-    tree::{self, tests::kat_encryption::EncryptionTestVector},
+    tree::{
+        self,
+        tests::kat_encryption::EncryptionTestVector,
+        tests::kat_tree_kem::{self, TreeKemTestVector},
+    },
 };
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
@@ -172,10 +176,11 @@ impl MlsClient for MlsClientImpl {
                 ("Transcript", kat_bytes)
             }
             Ok(TestVectorType::Treekem) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "TreeKEM test vector generation not supported yet.",
-                ));
+                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
+                let kat_tree_kem =
+                    kat_tree_kem::generate_test_vector(obj.n_leaves as u32, ciphersuite);
+                let kat_bytes = to_bytes(kat_tree_kem);
+                ("TreeKEM", kat_bytes)
             }
             Ok(TestVectorType::Messages) => {
                 let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
@@ -301,16 +306,49 @@ impl MlsClient for MlsClientImpl {
                 }
             }
             Ok(TestVectorType::Treekem) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::Unimplemented,
-                    "TreeKEM test vector verification not supported yet.",
-                ));
+                let kat_tree_kem: TreeKemTestVector = match serde_json::from_slice(&obj.test_vector)
+                {
+                    Ok(test_vector) => test_vector,
+                    Err(_) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::InvalidArgument,
+                            "Couldn't decode TreeKEM test vector.",
+                        ));
+                    }
+                };
+                write(
+                    &format!("mlspp_tree_kem_{}.json", kat_tree_kem.cipher_suite),
+                    &obj.test_vector,
+                );
+                match kat_tree_kem::run_test_vector(kat_tree_kem) {
+                    Ok(result) => ("TreeKEM", result),
+                    Err(e) => {
+                        let message = "Error while running TreeKEM test vector: ".to_string()
+                            + &e.to_string();
+                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                    }
+                }
             }
             Ok(TestVectorType::Messages) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::Unimplemented,
-                    "Messages test vector verification not supported yet.",
-                ));
+                let kat_messages: MessagesTestVector =
+                    match serde_json::from_slice(&obj.test_vector) {
+                        Ok(test_vector) => test_vector,
+                        Err(_) => {
+                            return Err(tonic::Status::new(
+                                tonic::Code::InvalidArgument,
+                                "Couldn't decode messages test vector.",
+                            ));
+                        }
+                    };
+                write("mlspp_messages_{}.json", &obj.test_vector);
+                match kat_messages::run_test_vector(kat_messages) {
+                    Ok(result) => ("Messages", result),
+                    Err(e) => {
+                        let message = "Error while running messages test vector: ".to_string()
+                            + &e.to_string();
+                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                    }
+                }
             }
             Err(_) => {
                 return Err(tonic::Status::new(
