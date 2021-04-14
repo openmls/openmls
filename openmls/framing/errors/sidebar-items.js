@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["MLSCiphertextError",""],["MLSPlaintextError",""],["VerificationError",""]]});
+initSidebarItems({"enum":[["MlsCiphertextError",""],["MlsPlaintextError",""],["VerificationError",""]]});

@@ -420,11 +420,6 @@
 <span id="417">417</span>
 <span id="418">418</span>
 <span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -544,7 +539,7 @@
     }
 }
 
-<span class="doccomment">/// Confirmation tag field of MLSPlaintext. For type saftey this is a wrapper</span>
+<span class="doccomment">/// Confirmation tag field of MlsPlaintext. For type saftey this is a wrapper</span>
 <span class="doccomment">/// around a `Mac`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConfirmationTag</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Mac</span>);
@@ -636,11 +631,6 @@
     <span class="doccomment">/// Get the confirmed tag.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">confirmation_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ConfirmationTag</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">confirmation_tag</span>
-    }
-
-    <span class="doccomment">/// Get the confirmed tag.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">confirmation_tag_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ConfirmationTag</span> {
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">confirmation_tag</span>
     }
 
     <span class="doccomment">/// Get the extensions.</span>
@@ -776,7 +766,7 @@
         <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">mls_group</span>.<span class="ident">interim_transcript_hash</span>().<span class="ident">to_vec</span>();
         <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">mls_group</span>.<span class="ident">extensions</span>();
 
-        <span class="kw">let</span> <span class="ident">pgstbs</span> <span class="op">=</span> <span class="ident">PublicGroupStateTBS</span> {
+        <span class="kw">let</span> <span class="ident">pgstbs</span> <span class="op">=</span> <span class="ident">PublicGroupStateTbs</span> {
             <span class="ident">group_id</span>: <span class="kw-2">&amp;</span><span class="ident">group_id</span>,
             <span class="ident">epoch</span>: <span class="kw-2">&amp;</span><span class="ident">epoch</span>,
             <span class="ident">tree_hash</span>: <span class="kw-2">&amp;</span><span class="ident">tree_hash</span>,
@@ -801,7 +791,7 @@
     <span class="doccomment">/// Verifies the signature of the `PublicGroupState`.</span>
     <span class="doccomment">/// Returns `Ok(())` in case of success and `CredentialError` otherwise.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CredentialError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">pgstbs</span> <span class="op">=</span> <span class="ident">PublicGroupStateTBS</span> {
+        <span class="kw">let</span> <span class="ident">pgstbs</span> <span class="op">=</span> <span class="ident">PublicGroupStateTbs</span> {
             <span class="ident">group_id</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_id</span>,
             <span class="ident">epoch</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch</span>,
             <span class="ident">tree_hash</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">tree_hash</span>,
@@ -830,7 +820,7 @@
 <span class="doccomment">///     HPKEPublicKey external_pub;</span>
 <span class="doccomment">/// } PublicGroupStateTBS;</span>
 <span class="doccomment">/// ```</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PublicGroupStateTBS</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PublicGroupStateTbs</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">GroupEpoch</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">tree_hash</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
@@ -839,7 +829,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">external_pub</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HPKEPublicKey</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">PublicGroupStateTBS</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">PublicGroupStateTbs</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Signs the `PublicGroupStateTBS` with a `CredentialBundle`.</span>
     <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>

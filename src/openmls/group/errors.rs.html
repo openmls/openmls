@@ -172,7 +172,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">CodecError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::{<span class="ident">MLSCiphertextError</span>, <span class="ident">VerificationError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::{<span class="ident">MlsCiphertextError</span>, <span class="ident">VerificationError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">errors</span>::<span class="ident">ProposalQueueError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">treemath</span>::<span class="ident">TreeMathError</span>, <span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
@@ -184,8 +184,8 @@
                 <span class="string">&quot;Missing init secret when creating commit.&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">MLSCiphertextError</span>(<span class="ident">MLSCiphertextError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.&quot;</span>,
+            <span class="ident">MlsCiphertextError</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`MlsCiphertextError`](`crate::framing::errors::MlsCiphertextError`) for details.&quot;</span>,
             <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`WelcomeError`](`WelcomeError`) for details.&quot;</span>,
             <span class="ident">ApplyCommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
@@ -255,9 +255,9 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyCommitError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">EpochMismatch</span> <span class="op">=</span>
-                <span class="string">&quot;Couldn&#39;t apply Commit. The epoch of the group context and MLSPlaintext didn&#39;t match.&quot;</span>,
+                <span class="string">&quot;Couldn&#39;t apply Commit. The epoch of the group context and MlsPlaintext didn&#39;t match.&quot;</span>,
             <span class="ident">WrongPlaintextContentType</span> <span class="op">=</span>
-                <span class="string">&quot;apply_commit_internal was called with an MLSPlaintext that is not a Commit.&quot;</span>,
+                <span class="string">&quot;apply_commit_internal was called with an MlsPlaintext that is not a Commit.&quot;</span>,
             <span class="ident">SelfRemoved</span> <span class="op">=</span>
                 <span class="string">&quot;Tried to apply a commit to a group we are not a part of.&quot;</span>,
             <span class="ident">PathKeyPackageVerificationFailure</span> <span class="op">=</span>
@@ -283,7 +283,7 @@
         }
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextSignatureFailure</span>(<span class="ident">VerificationError</span>) <span class="op">=</span>
-                <span class="string">&quot;MLSPlaintext signature is invalid.&quot;</span>,
+                <span class="string">&quot;MlsPlaintext signature is invalid.&quot;</span>,
             <span class="ident">DecryptionFailure</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
                 <span class="string">&quot;A matching EncryptedPathSecret failed to decrypt.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>

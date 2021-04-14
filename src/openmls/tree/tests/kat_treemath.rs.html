@@ -270,31 +270,31 @@
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">TreeMathTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TMTestVectorError</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">TreeMathTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TmTestVectorError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">n_leaves</span> <span class="op">=</span> <span class="ident">test_vector</span>.<span class="ident">n_leaves</span> <span class="kw">as</span> <span class="ident">usize</span>;
     <span class="kw">let</span> <span class="ident">n_nodes</span> <span class="op">=</span> <span class="ident">node_width</span>(<span class="ident">n_leaves</span>);
     <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">n_leaves</span>);
     <span class="kw">if</span> <span class="ident">test_vector</span>.<span class="ident">n_nodes</span> <span class="op">!</span><span class="op">=</span> <span class="ident">node_width</span>(<span class="ident">leaves</span>.<span class="ident">as_usize</span>()) <span class="kw">as</span> <span class="ident">u32</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TMTestVectorError</span>::<span class="ident">TreeSizeMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TmTestVectorError</span>::<span class="ident">TreeSizeMismatch</span>);
     }
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">n_leaves</span> {
         <span class="kw">if</span> <span class="ident">test_vector</span>.<span class="ident">root</span>[<span class="ident">i</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">root</span>(<span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>)).<span class="ident">as_u32</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TMTestVectorError</span>::<span class="ident">RootIndexMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TmTestVectorError</span>::<span class="ident">RootIndexMismatch</span>);
         }
     }
 
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">n_nodes</span> {
         <span class="kw">if</span> <span class="ident">test_vector</span>.<span class="ident">left</span>[<span class="ident">i</span>] <span class="op">!</span><span class="op">=</span> <span class="macro">convert</span><span class="macro">!</span>(<span class="ident">left</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">i</span>))) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TMTestVectorError</span>::<span class="ident">LeftIndexMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TmTestVectorError</span>::<span class="ident">LeftIndexMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">test_vector</span>.<span class="ident">right</span>[<span class="ident">i</span>] <span class="op">!</span><span class="op">=</span> <span class="macro">convert</span><span class="macro">!</span>(<span class="ident">right</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">i</span>), <span class="ident">leaves</span>)) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TMTestVectorError</span>::<span class="ident">RightIndexMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TmTestVectorError</span>::<span class="ident">RightIndexMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">test_vector</span>.<span class="ident">parent</span>[<span class="ident">i</span>] <span class="op">!</span><span class="op">=</span> <span class="macro">convert</span><span class="macro">!</span>(<span class="ident">parent</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">i</span>), <span class="ident">leaves</span>)) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TMTestVectorError</span>::<span class="ident">ParentIndexMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TmTestVectorError</span>::<span class="ident">ParentIndexMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">test_vector</span>.<span class="ident">sibling</span>[<span class="ident">i</span>] <span class="op">!</span><span class="op">=</span> <span class="macro">convert</span><span class="macro">!</span>(<span class="ident">sibling</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="ident">i</span>), <span class="ident">leaves</span>)) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TMTestVectorError</span>::<span class="ident">SiblingIndexMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TmTestVectorError</span>::<span class="ident">SiblingIndexMismatch</span>);
         }
     }
     <span class="prelude-val">Ok</span>(())
@@ -313,7 +313,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="macro">implement_error</span><span class="macro">!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TMTestVectorError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TmTestVectorError</span> {
         <span class="ident">TreeSizeMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed tree size doesn&#39;t match the one in the test vector.&quot;</span>,
         <span class="ident">RootIndexMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed root index doesn&#39;t match the one in the test vector.&quot;</span>,
         <span class="ident">LeftIndexMismatch</span> <span class="op">=</span> <span class="string">&quot;A computed left child index doesn&#39;t match the one in the test vector.&quot;</span>,

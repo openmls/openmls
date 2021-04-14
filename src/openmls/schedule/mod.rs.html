@@ -953,11 +953,6 @@
 <span id="950">950</span>
 <span id="951">951</span>
 <span id="952">952</span>
-<span id="953">953</span>
-<span id="954">954</span>
-<span id="955">955</span>
-<span id="956">956</span>
-<span id="957">957</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
@@ -1083,7 +1078,7 @@
     <span class="ident">config</span>::<span class="ident">ProtocolVersion</span>,
     <span class="ident">messages</span>::<span class="ident">ConfirmationTag</span>,
 };
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">codec</span>::<span class="kw-2">*</span>, <span class="ident">prelude</span>::<span class="ident">MLSPlaintextTBMPayload</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">codec</span>::<span class="kw-2">*</span>, <span class="ident">prelude</span>::<span class="ident">MlsPlaintextTbmPayload</span>};
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
@@ -1093,10 +1088,10 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">psk</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">mod</span> <span class="ident">kat_key_schedule</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">kat_key_schedule</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::{<span class="ident">ErrorState</span>, <span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeyID</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
@@ -1634,17 +1629,12 @@
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">tag</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">tbm_payload</span>: <span class="ident">MLSPlaintextTBMPayload</span>,
+        <span class="ident">tbm_payload</span>: <span class="ident">MlsPlaintextTbmPayload</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MembershipTag</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">MembershipTag</span>(<span class="ident">Mac</span>::<span class="ident">new</span>(
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>,
             <span class="kw-2">&amp;</span><span class="ident">tbm_payload</span>.<span class="ident">into_bytes</span>()<span class="question-mark">?</span>,
         )))
-    }
-
-    <span class="doccomment">/// Get the internal `Secret`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>

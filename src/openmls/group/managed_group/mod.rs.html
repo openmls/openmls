@@ -1167,7 +1167,7 @@
     <span class="ident">group</span>: <span class="ident">MlsGroup</span>,
     <span class="comment">// A queue of incoming proposals from the DS for a given epoch. New proposals are added to the</span>
     <span class="comment">// queue through `process_messages()`. The queue is emptied after every epoch change.</span>
-    <span class="ident">pending_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span>,
+    <span class="ident">pending_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span>,
     <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is</span>
     <span class="comment">// emptied after every epoch change.</span>
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
@@ -1265,7 +1265,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackage</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="ident">Welcome</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="ident">Welcome</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
@@ -1289,7 +1289,7 @@
         <span class="kw">let</span> <span class="ident">proposals_by_reference</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>
             .<span class="ident">pending_proposals</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="comment">// Create Commit over all proposals</span>
         <span class="comment">// TODO #141</span>
@@ -1315,7 +1315,7 @@
             <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">kpb</span>);
         }
 
-        <span class="comment">// Convert MLSPlaintext messages to MLSMessage and encrypt them if required by</span>
+        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
         <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_messages</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">commit</span>])<span class="question-mark">?</span>;
 
@@ -1336,7 +1336,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="ident">usize</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
@@ -1362,7 +1362,7 @@
         <span class="kw">let</span> <span class="ident">proposals_by_reference</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>
             .<span class="ident">pending_proposals</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="comment">// Create Commit over all proposals</span>
         <span class="comment">// TODO #141</span>
@@ -1384,7 +1384,7 @@
             ));
         }
 
-        <span class="comment">// Convert MLSPlaintext messages to MLSMessage and encrypt them if required by</span>
+        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
         <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_messages</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">commit</span>])<span class="question-mark">?</span>;
 
@@ -1398,11 +1398,11 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_add_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackage</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
-        <span class="kw">let</span> <span class="ident">plaintext_messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> {
+        <span class="kw">let</span> <span class="ident">plaintext_messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">messages</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
             <span class="kw">for</span> <span class="ident">key_package</span> <span class="kw">in</span> <span class="ident">key_packages</span>.<span class="ident">iter</span>() {
                 <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_add_proposal</span>(
@@ -1427,11 +1427,11 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_remove_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="ident">usize</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
-        <span class="kw">let</span> <span class="ident">plaintext_messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> {
+        <span class="kw">let</span> <span class="ident">plaintext_messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">messages</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
             <span class="kw">for</span> <span class="ident">member</span> <span class="kw">in</span> <span class="ident">members</span>.<span class="ident">iter</span>() {
                 <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_remove_proposal</span>(
@@ -1453,7 +1453,7 @@
     }
 
     <span class="doccomment">/// Leave the group</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">leave_group</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">leave_group</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
@@ -1482,13 +1482,13 @@
 
     <span class="comment">// === Process messages ===</span>
 
-    <span class="doccomment">/// Processes any incoming messages from the DS (MLSPlaintext &amp;</span>
-    <span class="doccomment">/// MLSCiphertext) and triggers the corresponding callback functions.</span>
+    <span class="doccomment">/// Processes any incoming messages from the DS (MlsPlaintext &amp;</span>
+    <span class="doccomment">/// MlsCiphertext) and triggers the corresponding callback functions.</span>
     <span class="doccomment">/// Return a list of `GroupEvent` that contain the individual events that</span>
     <span class="doccomment">/// occurred while processing messages.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_messages</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>,
+        <span class="ident">messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GroupEvent</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
@@ -1499,7 +1499,7 @@
             <span class="comment">// Check the type of message we received</span>
             <span class="kw">let</span> (<span class="ident">plaintext</span>, <span class="ident">aad_option</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">message</span> {
                 <span class="comment">// If it is a ciphertext we decrypt it and return the plaintext message</span>
-                <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">MlsMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">aad</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>();
                     <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>) {
                         <span class="prelude-val">Ok</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">plaintext</span>, <span class="prelude-val">Some</span>(<span class="ident">aad</span>)),
@@ -1507,14 +1507,14 @@
                             <span class="ident">events</span>.<span class="ident">push</span>(<span class="ident">GroupEvent</span>::<span class="ident">InvalidMessage</span>(<span class="ident">InvalidMessageEvent</span>::<span class="ident">new</span>(
                                 <span class="ident">InvalidMessageError</span>::<span class="ident">InvalidCiphertext</span>(<span class="ident">aad</span>.<span class="ident">into</span>()),
                             )));
-                            <span class="comment">// Since we cannot decrypt the MLSCiphertext to a MLSPlaintext we move</span>
+                            <span class="comment">// Since we cannot decrypt the MlsCiphertext to a MlsPlaintext we move</span>
                             <span class="comment">// to the next message</span>
                             <span class="kw">continue</span>;
                         }
                     }
                 }
                 <span class="comment">// If it is a plaintext message we just return it</span>
-                <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">MlsMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// Verify signature &amp; membership tag</span>
                     <span class="comment">// TODO #106: Support external senders</span>
                     <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">is_proposal</span>()
@@ -1535,7 +1535,7 @@
             <span class="kw">let</span> <span class="ident">indexed_members</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">indexed_members</span>();
             <span class="comment">// See what kind of message it is</span>
             <span class="kw">match</span> <span class="ident">plaintext</span>.<span class="ident">content</span> {
-                <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// Incoming proposals are validated against the application validation</span>
                     <span class="comment">// policy and then appended to the internal `pending_proposal` list.</span>
                     <span class="comment">// TODO #133: Semantic validation of proposals</span>
@@ -1554,7 +1554,7 @@
                         )));
                     }
                 }
-                <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Commit</span>(<span class="kw-2">ref</span> <span class="ident">commit</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Commit</span>(<span class="kw-2">ref</span> <span class="ident">commit</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// Validate inline proposals</span>
                     <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">validate_inline_proposals</span>(
                         <span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">proposals</span>,
@@ -1575,7 +1575,7 @@
                     <span class="kw">let</span> <span class="ident">proposals</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>
                         .<span class="ident">pending_proposals</span>
                         .<span class="ident">iter</span>()
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
                     <span class="comment">// TODO #141</span>
                     <span class="kw">match</span> <span class="self">self</span>
                         .<span class="ident">group</span>
@@ -1639,7 +1639,7 @@
                         },
                     }
                 }
-                <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Application</span>(<span class="kw-2">ref</span> <span class="ident">app_message</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Application</span>(<span class="kw-2">ref</span> <span class="ident">app_message</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// Save the application message as an event</span>
                     <span class="ident">events</span>.<span class="ident">push</span>(<span class="ident">GroupEvent</span>::<span class="ident">ApplicationMessage</span>(
                         <span class="ident">ApplicationMessageEvent</span>::<span class="ident">new</span>(
@@ -1666,7 +1666,7 @@
     <span class="doccomment">/// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals</span>
     <span class="doccomment">/// exist. In that case `.process_pending_proposals()` must be called first</span>
     <span class="doccomment">/// and incoming messages from the DS must be processed afterwards.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_message</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">message</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MLSMessage</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_message</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">message</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessage</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
@@ -1685,18 +1685,18 @@
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">ciphertext</span>))
+        <span class="prelude-val">Ok</span>(<span class="ident">MlsMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">ciphertext</span>))
     }
 
     <span class="doccomment">/// Process pending proposals</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_pending_proposals</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
         <span class="comment">// Include pending proposals into Commit</span>
-        <span class="kw">let</span> <span class="ident">messages_to_commit</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_proposals</span>.<span class="ident">iter</span>().<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">messages_to_commit</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_proposals</span>.<span class="ident">iter</span>().<span class="ident">collect</span>();
 
         <span class="comment">// Create Commit over all pending proposals</span>
         <span class="comment">// TODO #141</span>
@@ -1717,7 +1717,7 @@
             <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">kpb</span>);
         }
 
-        <span class="comment">// Convert MLSPlaintext messages to MLSMessage and encrypt them if required by</span>
+        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
         <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_messages</span>(<span class="ident">plaintext_messages</span>)<span class="question-mark">?</span>;
 
@@ -1822,7 +1822,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">self_update</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
@@ -1841,7 +1841,7 @@
         };
 
         <span class="comment">// Include pending proposals into Commit</span>
-        <span class="kw">let</span> <span class="ident">messages_to_commit</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
+        <span class="kw">let</span> <span class="ident">messages_to_commit</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">pending_proposals</span>
             .<span class="ident">iter</span>()
             .<span class="ident">chain</span>(<span class="ident">plaintext_messages</span>.<span class="ident">iter</span>())
@@ -1872,7 +1872,7 @@
         };
         <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">kpb</span>);
 
-        <span class="comment">// Convert MLSPlaintext messages to MLSMessage and encrypt them if required by</span>
+        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
         <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_messages</span>(<span class="ident">plaintext_messages</span>)<span class="question-mark">?</span>;
 
@@ -1886,7 +1886,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_self_update</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError</span>::<span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>::<span class="ident">Error</span>));
         }
@@ -1920,7 +1920,7 @@
     }
 
     <span class="doccomment">/// Returns a list of proposal</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">MLSPlaintext</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">MlsPlaintext</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pending_proposals</span>
     }
 
@@ -1952,22 +1952,22 @@
 
 <span class="comment">// Private methods of ManagedGroup</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ManagedGroup</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Converts MLSPlaintext to MLSMessage. Depending on whether handshake</span>
-    <span class="doccomment">/// message should be encrypted, MLSPlaintext messages are encrypted to</span>
-    <span class="doccomment">/// MLSCiphertext first.</span>
+    <span class="doccomment">/// Converts MlsPlaintext to MLSMessage. Depending on whether handshake</span>
+    <span class="doccomment">/// message should be encrypted, MlsPlaintext messages are encrypted to</span>
+    <span class="doccomment">/// MlsCiphertext first.</span>
     <span class="kw">fn</span> <span class="ident">plaintext_to_mls_messages</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">plaintext_messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+        <span class="kw-2">mut</span> <span class="ident">plaintext_messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsMessage</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="ident">plaintext_messages</span>.<span class="ident">len</span>());
         <span class="kw">for</span> <span class="ident">plaintext</span> <span class="kw">in</span> <span class="ident">plaintext_messages</span>.<span class="ident">drain</span>(..) {
             <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">handshake_message_format</span> {
-                <span class="ident">HandshakeMessageFormat</span>::<span class="ident">Plaintext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">plaintext</span>),
+                <span class="ident">HandshakeMessageFormat</span>::<span class="ident">Plaintext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">plaintext</span>),
                 <span class="ident">HandshakeMessageFormat</span>::<span class="ident">Ciphertext</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="self">self</span>
                         .<span class="ident">group</span>
                         .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>())<span class="question-mark">?</span>;
-                    <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">ciphertext</span>)
+                    <span class="ident">MlsMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">ciphertext</span>)
                 }
             };
             <span class="ident">out</span>.<span class="ident">push</span>(<span class="ident">msg</span>);
@@ -2048,7 +2048,7 @@
         <span class="kw">let</span> <span class="ident">pending_proposals_list</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">pending_proposals</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
         <span class="comment">// Build a proposal queue for easier searching</span>
         <span class="kw">let</span> <span class="ident">pending_proposals_queue</span> <span class="op">=</span>
             <span class="ident">ProposalQueue</span>::<span class="ident">from_proposals_by_reference</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">pending_proposals_list</span>);
@@ -2141,48 +2141,48 @@
 
 <span class="doccomment">/// Unified message type</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MLSMessage</span> {
-    <span class="doccomment">/// An OpenMLS `MLSPlaintext`.</span>
-    <span class="ident">Plaintext</span>(<span class="ident">MLSPlaintext</span>),
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessage</span> {
+    <span class="doccomment">/// An OpenMLS `MlsPlaintext`.</span>
+    <span class="ident">Plaintext</span>(<span class="ident">MlsPlaintext</span>),
 
-    <span class="doccomment">/// An OpenMLS `MLSCiphertext`.</span>
-    <span class="ident">Ciphertext</span>(<span class="ident">MLSCiphertext</span>),
+    <span class="doccomment">/// An OpenMLS `MlsCiphertext`.</span>
+    <span class="ident">Ciphertext</span>(<span class="ident">MlsCiphertext</span>),
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MLSMessage</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">mls_plaintext</span>: <span class="ident">MLSPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">mls_plaintext</span>)
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessage</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">mls_plaintext</span>: <span class="ident">MlsPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">MlsMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">mls_plaintext</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MLSCiphertext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MLSMessage</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">mls_ciphertext</span>: <span class="ident">MLSCiphertext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">mls_ciphertext</span>)
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessage</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">mls_ciphertext</span>: <span class="ident">MlsCiphertext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">MlsMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">mls_ciphertext</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">MLSMessage</span> {
+<span class="kw">impl</span> <span class="ident">MlsMessage</span> {
     <span class="doccomment">/// Get the group ID as plain byte vector.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
-            <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>().<span class="ident">as_slice</span>(),
+            <span class="ident">MlsMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
+            <span class="ident">MlsMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>().<span class="ident">as_slice</span>(),
         }
     }
 
     <span class="doccomment">/// Get the epoch as plain u64.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">epoch</span>.<span class="number">0</span>,
-            <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">epoch</span>().<span class="number">0</span>,
+            <span class="ident">MlsMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">epoch</span>.<span class="number">0</span>,
+            <span class="ident">MlsMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">epoch</span>().<span class="number">0</span>,
         }
     }
 
     <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MLSMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">is_handshake_message</span>(),
-            <span class="ident">MLSMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">is_handshake_message</span>(),
+            <span class="ident">MlsMessage</span>::<span class="ident">Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">is_handshake_message</span>(),
+            <span class="ident">MlsMessage</span>::<span class="ident">Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">is_handshake_message</span>(),
         }
     }
 }

@@ -335,7 +335,7 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">Codec</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">key_packages</span>::<span class="ident">KeyPackage</span>, <span class="ident">schedule</span>::<span class="ident">psk</span>::<span class="ident">PreSharedKeyID</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">key_packages</span>::<span class="ident">KeyPackage</span>, <span class="ident">schedule</span>::<span class="ident">psk</span>::<span class="ident">PreSharedKeyId</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
 
@@ -585,7 +585,7 @@
         <span class="prelude-val">Ok</span>(())
     }
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="ident">PreSharedKeyID</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="ident">PreSharedKeyId</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">psk</span> })
     }
 }
@@ -649,7 +649,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PublicGroupStateTBS</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PublicGroupStateTbs</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">epoch</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;

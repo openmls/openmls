@@ -566,6 +566,10 @@
 <span id="563">563</span>
 <span id="564">564</span>
 <span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for encrypting to tree nodes</span>
 <span class="doccomment">//!</span>
@@ -621,18 +625,18 @@
 <span class="doccomment">//! For all `N` entries in the `leaves` and all generations `j`</span>
 <span class="doccomment">//! * `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`</span>
 <span class="doccomment">//! * `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`</span>
-<span class="doccomment">//! * `leaves[N].handshake[j].plaintext` represents an MLSPlaintext containing a</span>
+<span class="doccomment">//! * `leaves[N].handshake[j].plaintext` represents an MlsPlaintext containing a</span>
 <span class="doccomment">//!   handshake message (Proposal or Commit) from leaf `N`</span>
-<span class="doccomment">//! * `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object</span>
-<span class="doccomment">//!   that successfully decrypts to an MLSPlaintext equivalent to</span>
+<span class="doccomment">//! * `leaves[N].handshake[j].ciphertext` represents an MlsCiphertext object</span>
+<span class="doccomment">//!   that successfully decrypts to an MlsPlaintext equivalent to</span>
 <span class="doccomment">//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and</span>
 <span class="doccomment">//!   generation `j`.</span>
 <span class="doccomment">//! * `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`</span>
 <span class="doccomment">//! * `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`</span>
-<span class="doccomment">//! * `leaves[N].application[j].plaintext` represents an MLSPlaintext containing</span>
+<span class="doccomment">//! * `leaves[N].application[j].plaintext` represents an MlsPlaintext containing</span>
 <span class="doccomment">//!   application data from leaf `N`</span>
-<span class="doccomment">//! * `leaves[N].application[j].ciphertext` represents an MLSCiphertext object</span>
-<span class="doccomment">//!   that successfully decrypts to an MLSPlaintext equivalent to</span>
+<span class="doccomment">//! * `leaves[N].application[j].ciphertext` represents an MlsCiphertext object</span>
+<span class="doccomment">//!   that successfully decrypts to an MlsPlaintext equivalent to</span>
 <span class="doccomment">//!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and</span>
 <span class="doccomment">//!   generation `j`.</span>
 <span class="doccomment">//! * `sender_data_info.secret.key = sender_data_key(sender_data_secret,</span>
@@ -699,6 +703,7 @@
     <span class="ident">leaves</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LeafSequence</span><span class="op">&gt;</span>,
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">group</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MlsGroup</span> {
     <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle</span>::<span class="ident">new</span>(
         <span class="string">&quot;Kreator&quot;</span>.<span class="ident">into</span>(),
@@ -720,6 +725,7 @@
     .<span class="ident">unwrap</span>()
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">group_id</span>: <span class="kw-2">&amp;</span><span class="ident">GroupId</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MlsGroup</span> {
     <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle</span>::<span class="ident">new</span>(
         <span class="string">&quot;Receiver&quot;</span>.<span class="ident">into</span>(),
@@ -741,6 +747,7 @@
 }
 
 <span class="comment">// XXX: we could be more creative in generating these messages.</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">build_handshake_messages</span>(<span class="ident">leaf</span>: <span class="ident">LeafIndex</span>, <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
     <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
         <span class="ident">sender_type</span>: <span class="ident">SenderType</span>::<span class="ident">Member</span>,
@@ -748,18 +755,18 @@
     };
     <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>(<span class="ident">random_u64</span>());
     <span class="ident">group</span>.<span class="ident">context_mut</span>().<span class="ident">set_epoch</span>(<span class="ident">epoch</span>);
-    <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MLSPlaintext</span> {
+    <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span> {
         <span class="ident">group_id</span>: <span class="ident">group</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
         <span class="ident">epoch</span>,
         <span class="ident">sender</span>,
         <span class="ident">authenticated_data</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
         <span class="ident">content_type</span>: <span class="ident">ContentType</span>::<span class="ident">Proposal</span>,
-        <span class="ident">content</span>: <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="ident">Proposal</span>::<span class="ident">Remove</span>(<span class="ident">RemoveProposal</span> { <span class="ident">removed</span>: <span class="number">0</span> })),
+        <span class="ident">content</span>: <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="ident">Proposal</span>::<span class="ident">Remove</span>(<span class="ident">RemoveProposal</span> { <span class="ident">removed</span>: <span class="number">0</span> })),
         <span class="ident">signature</span>: <span class="ident">Signature</span>::<span class="ident">new_empty</span>(),
         <span class="ident">confirmation_tag</span>: <span class="prelude-val">None</span>,
         <span class="ident">membership_tag</span>: <span class="prelude-val">None</span>,
     };
-    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">MLSCiphertext</span>::<span class="ident">try_from_plaintext</span>(
+    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext</span>::<span class="ident">try_from_plaintext</span>(
         <span class="kw-2">&amp;</span><span class="ident">plaintext</span>,
         <span class="ident">group</span>.<span class="ident">ciphersuite</span>(),
         <span class="ident">group</span>.<span class="ident">context</span>(),
@@ -768,13 +775,14 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">group</span>.<span class="ident">secret_tree_mut</span>(),
         <span class="number">0</span>,
     )
-    .<span class="ident">expect</span>(<span class="string">&quot;Could not create MLSCiphertext&quot;</span>);
+    .<span class="ident">expect</span>(<span class="string">&quot;Could not create MlsCiphertext&quot;</span>);
     (
         <span class="ident">plaintext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
         <span class="ident">ciphertext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
     )
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">build_application_messages</span>(<span class="ident">leaf</span>: <span class="ident">LeafIndex</span>, <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
     <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
         <span class="ident">sender_type</span>: <span class="ident">SenderType</span>::<span class="ident">Member</span>,
@@ -782,18 +790,18 @@
     };
     <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>(<span class="ident">random_u64</span>());
     <span class="ident">group</span>.<span class="ident">context_mut</span>().<span class="ident">set_epoch</span>(<span class="ident">epoch</span>);
-    <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MLSPlaintext</span> {
+    <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span> {
         <span class="ident">group_id</span>: <span class="ident">group</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
         <span class="ident">epoch</span>,
         <span class="ident">sender</span>,
         <span class="ident">authenticated_data</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],
         <span class="ident">content_type</span>: <span class="ident">ContentType</span>::<span class="ident">Application</span>,
-        <span class="ident">content</span>: <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Application</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]),
+        <span class="ident">content</span>: <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Application</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]),
         <span class="ident">signature</span>: <span class="ident">Signature</span>::<span class="ident">new_empty</span>(),
         <span class="ident">confirmation_tag</span>: <span class="prelude-val">None</span>,
         <span class="ident">membership_tag</span>: <span class="prelude-val">None</span>,
     };
-    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">MLSCiphertext</span>::<span class="ident">try_from_plaintext</span>(
+    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">MlsCiphertext</span>::<span class="ident">try_from_plaintext</span>(
         <span class="kw-2">&amp;</span><span class="ident">plaintext</span>,
         <span class="ident">group</span>.<span class="ident">ciphersuite</span>(),
         <span class="ident">group</span>.<span class="ident">context</span>(),
@@ -803,7 +811,7 @@
         <span class="number">0</span>,
     ) {
         <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Could not create MLSCiphertext {}&quot;</span>, <span class="ident">e</span>),
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Could not create MlsCiphertext {}&quot;</span>, <span class="ident">e</span>),
     };
     (
         <span class="ident">plaintext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
@@ -1026,8 +1034,8 @@
 
             <span class="comment">// Setup group</span>
             <span class="kw">let</span> <span class="ident">mls_ciphertext_application</span> <span class="op">=</span>
-                <span class="ident">MLSCiphertext</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">ciphertext</span>)))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MLSCiphertext&quot;</span>);
+                <span class="ident">MlsCiphertext</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">ciphertext</span>)))
+                    .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MlsCiphertext&quot;</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_application</span>.<span class="ident">group_id</span>);
             <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_slice</span>(
                 <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>).<span class="ident">as_slice</span>(),
@@ -1038,11 +1046,11 @@
             <span class="comment">// Decrypt and check application message</span>
             <span class="kw">let</span> <span class="ident">mls_plaintext_application</span> <span class="op">=</span> <span class="ident">mls_ciphertext_application</span>
                 .<span class="ident">to_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">group</span>.<span class="ident">epoch_secrets</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">secret_tree</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Error decrypting MLSCiphertext&quot;</span>);
+                .<span class="ident">expect</span>(<span class="string">&quot;Error decrypting MlsCiphertext&quot;</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">plaintext</span>)
                 <span class="op">!</span><span class="op">=</span> <span class="ident">mls_plaintext_application</span>
                     .<span class="ident">encode_detached</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MLSPlaintext&quot;</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MlsPlaintext&quot;</span>)
             {
                 <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                     <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Decrypted application message mismatch&quot;</span>);
@@ -1074,8 +1082,8 @@
 
             <span class="comment">// Setup group</span>
             <span class="kw">let</span> <span class="ident">mls_ciphertext_handshake</span> <span class="op">=</span>
-                <span class="ident">MLSCiphertext</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MLSCiphertext&quot;</span>);
+                <span class="ident">MlsCiphertext</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
+                    .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MlsCiphertext&quot;</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_handshake</span>.<span class="ident">group_id</span>);
             <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_slice</span>(
                 <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>).<span class="ident">as_slice</span>(),
@@ -1086,11 +1094,11 @@
             <span class="comment">// Decrypt and check message</span>
             <span class="kw">let</span> <span class="ident">mls_plaintext_handshake</span> <span class="op">=</span> <span class="ident">mls_ciphertext_handshake</span>
                 .<span class="ident">to_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">group</span>.<span class="ident">epoch_secrets</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">secret_tree</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Error decrypting MLSCiphertext&quot;</span>);
+                .<span class="ident">expect</span>(<span class="string">&quot;Error decrypting MlsCiphertext&quot;</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">plaintext</span>)
                 <span class="op">!</span><span class="op">=</span> <span class="ident">mls_plaintext_handshake</span>
                     .<span class="ident">encode_detached</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MLSPlaintext&quot;</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MlsPlaintext&quot;</span>)
             {
                 <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                     <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Decrypted handshake message mismatch&quot;</span>);

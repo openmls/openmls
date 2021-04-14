@@ -261,7 +261,6 @@
 <span id="258">258</span>
 <span id="259">259</span>
 <span id="260">260</span>
-<span id="261">261</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for the transcript hashes</span>
 <span class="doccomment">//!</span>
@@ -284,8 +283,8 @@
     <span class="ident">messages</span>::<span class="ident">Commit</span>,
     <span class="ident">prelude</span>::{
         <span class="ident">random_u32</span>, <span class="ident">random_u64</span>, <span class="ident">randombytes</span>, <span class="ident">sender</span>::<span class="ident">SenderType</span>, <span class="ident">ContentType</span>, <span class="ident">LeafIndex</span>,
-        <span class="ident">MLSPlaintext</span>, <span class="ident">MLSPlaintextCommitAuthData</span>, <span class="ident">MLSPlaintextCommitContent</span>,
-        <span class="ident">MLSPlaintextContentType</span>, <span class="ident">Sender</span>,
+        <span class="ident">MlsPlaintext</span>, <span class="ident">MlsPlaintextCommitAuthData</span>, <span class="ident">MlsPlaintextCommitContent</span>,
+        <span class="ident">MlsPlaintextContentType</span>, <span class="ident">Sender</span>,
     },
     <span class="ident">schedule</span>::{<span class="ident">ConfirmationKey</span>, <span class="ident">MembershipKey</span>},
     <span class="ident">test_util</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
@@ -303,7 +302,7 @@
     <span class="ident">interim_transcript_hash_before</span>: <span class="ident">String</span>,
     <span class="ident">membership_key</span>: <span class="ident">String</span>,
     <span class="ident">confirmation_key</span>: <span class="ident">String</span>,
-    <span class="ident">commit</span>: <span class="ident">String</span>, <span class="comment">// TLS serialized MLSPlaintext(Commit)</span>
+    <span class="ident">commit</span>: <span class="ident">String</span>, <span class="comment">// TLS serialized MlsPlaintext(Commit)</span>
 
     <span class="ident">confirmed_transcript_hash_after</span>: <span class="ident">String</span>,
     <span class="ident">interim_transcript_hash_after</span>: <span class="ident">String</span>,
@@ -323,7 +322,7 @@
         <span class="ident">ConfirmationKey</span>::<span class="ident">from_secret</span>(<span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>));
 
     <span class="comment">// Build plaintext commit message.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">MLSPlaintext</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span> {
         <span class="ident">group_id</span>: <span class="ident">group_id</span>.<span class="ident">clone</span>(),
         <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>(<span class="ident">epoch</span>),
         <span class="ident">sender</span>: <span class="ident">Sender</span> {
@@ -332,7 +331,7 @@
         },
         <span class="ident">authenticated_data</span>: <span class="ident">randombytes</span>(<span class="number">48</span>),
         <span class="ident">content_type</span>: <span class="ident">ContentType</span>::<span class="ident">Commit</span>,
-        <span class="ident">content</span>: <span class="ident">MLSPlaintextContentType</span>::<span class="ident">Commit</span>(<span class="ident">Commit</span> {
+        <span class="ident">content</span>: <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Commit</span>(<span class="ident">Commit</span> {
             <span class="ident">proposals</span>: <span class="macro">vec</span><span class="macro">!</span>[],
             <span class="ident">path</span>: <span class="prelude-val">None</span>,
         }),
@@ -357,14 +356,14 @@
     <span class="comment">// Compute new transcript hashes.</span>
     <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
         <span class="ident">ciphersuite</span>,
-        <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitContent</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
+        <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">interim_transcript_hash_before</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating confirmed transcript hash&quot;</span>);
 
     <span class="kw">let</span> <span class="ident">interim_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
         <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
-        <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitAuthData</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
+        <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitAuthData</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating interim transcript hash&quot;</span>);
@@ -437,19 +436,19 @@
     ));
 
     <span class="comment">// Check membership and confirmation tags.</span>
-    <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">MLSPlaintext</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">commit</span>))
+    <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">commit</span>))
         .<span class="ident">expect</span>(<span class="string">&quot;Error decoding commit&quot;</span>);
     <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">GroupContext</span>::<span class="ident">new</span>(
-        <span class="ident">group_id</span>.<span class="ident">clone</span>(),
+        <span class="ident">group_id</span>,
         <span class="ident">GroupEpoch</span>(<span class="ident">epoch</span>),
-        <span class="ident">tree_hash_before</span>.<span class="ident">clone</span>(),
+        <span class="ident">tree_hash_before</span>,
         <span class="ident">confirmed_transcript_hash_before</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span>[], <span class="comment">// extensions</span>
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error creating group context&quot;</span>);
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">commit</span>
+    <span class="kw">if</span> <span class="ident">commit</span>
         .<span class="ident">verify_membership_tag</span>(<span class="ident">ciphersuite</span>, <span class="ident">context</span>.<span class="ident">serialized</span>(), <span class="kw-2">&amp;</span><span class="ident">membership_key</span>)
-        .<span class="ident">is_ok</span>()
+        .<span class="ident">is_err</span>()
     {
         <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Invalid membership tag&quot;</span>);
@@ -473,12 +472,12 @@
     <span class="comment">// Compute new transcript hashes.</span>
     <span class="kw">let</span> <span class="ident">my_confirmed_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
         <span class="ident">ciphersuite</span>,
-        <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitContent</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
+        <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">interim_transcript_hash_before</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating confirmed transcript hash&quot;</span>);
-    <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">my_confirmed_transcript_hash_after</span>
-        <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">confirmed_transcript_hash_after</span>)
+    <span class="kw">if</span> <span class="ident">my_confirmed_transcript_hash_after</span>
+        <span class="op">!</span><span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">confirmed_transcript_hash_after</span>)
     {
         <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Confirmed transcript hash mismatch&quot;</span>);
@@ -488,12 +487,11 @@
 
     <span class="kw">let</span> <span class="ident">my_interim_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
         <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
-        <span class="kw-2">&amp;</span><span class="ident">MLSPlaintextCommitAuthData</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
+        <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitAuthData</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">my_confirmed_transcript_hash_after</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating interim transcript hash&quot;</span>);
-    <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">my_interim_transcript_hash_after</span>
-        <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">interim_transcript_hash_after</span>)
+    <span class="kw">if</span> <span class="ident">my_interim_transcript_hash_after</span> <span class="op">!</span><span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">interim_transcript_hash_after</span>)
     {
         <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Interim transcript hash mismatch&quot;</span>);

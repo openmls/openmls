@@ -134,14 +134,14 @@
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PSKType</span> {
+<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PskType</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         (<span class="kw-2">*</span><span class="self">self</span> <span class="kw">as</span> <span class="ident">u8</span>).<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">PSKType</span>::<span class="ident">try_from</span>(<span class="ident">u8</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>) {
+        <span class="kw">match</span> <span class="ident">PskType</span>::<span class="ident">try_from</span>(<span class="ident">u8</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">psk_type</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">psk_type</span>),
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">CodecError</span>::<span class="ident">DecodingError</span>),
         }
@@ -194,7 +194,7 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PreSharedKeyID</span> {
+<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PreSharedKeyId</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">psk_type</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk</span> {
@@ -207,11 +207,11 @@
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">psktype</span> <span class="op">=</span> <span class="ident">PSKType</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psktype</span> <span class="op">=</span> <span class="ident">PskType</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">psktype</span> {
-            <span class="ident">PSKType</span>::<span class="ident">External</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">External</span>(<span class="ident">ExternalPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
-            <span class="ident">PSKType</span>::<span class="ident">Reinit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">Reinit</span>(<span class="ident">ReinitPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
-            <span class="ident">PSKType</span>::<span class="ident">Branch</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">Branch</span>(<span class="ident">BranchPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType</span>::<span class="ident">External</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">External</span>(<span class="ident">ExternalPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType</span>::<span class="ident">Reinit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">Reinit</span>(<span class="ident">ReinitPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType</span>::<span class="ident">Branch</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">Branch</span>(<span class="ident">BranchPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
         };
         <span class="kw">let</span> <span class="ident">psk_nonce</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {

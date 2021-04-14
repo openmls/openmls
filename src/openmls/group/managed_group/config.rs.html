@@ -84,8 +84,8 @@
 
 <span class="doccomment">/// Defines whether handshake messages (Proposals &amp; Commits) are encrypted.</span>
 <span class="doccomment">/// Application are always encrypted regardless. `Plaintext`: Handshake messages</span>
-<span class="doccomment">/// are returned as MLSPlaintext messages `Ciphertext`: Handshake messages are</span>
-<span class="doccomment">/// returned as MLSCiphertext messages</span>
+<span class="doccomment">/// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are</span>
+<span class="doccomment">/// returned as MlsCiphertext messages</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">HandshakeMessageFormat</span> {
     <span class="ident">Plaintext</span>,

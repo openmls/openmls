@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["__init10090422225418277350",""]],"static":[["__init10090422225418277350___rust_ctor___ctor",""]],"struct":[["KeyIDExtension",""]]});
+initSidebarItems({"fn":[["__init8638611003337923728",""]],"static":[["__init8638611003337923728___rust_ctor___ctor",""]],"struct":[["KeyIdExtension",""]]});

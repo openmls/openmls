@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["CryptoError",""],["HKDFError",""]]});
+initSidebarItems({"enum":[["CryptoError",""],["HkdfError",""]]});

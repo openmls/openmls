@@ -50,32 +50,32 @@
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! `MLSPlaintextError` and `MLSCiphertextError` are thrown on errors</span>
-<span class="doccomment">//! handling `MLSPlaintext` and `MLSCiphertext`.</span>
+<span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
+<span class="doccomment">//! handling `MlsPlaintext` and `MlsCiphertext`.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">CodecError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="ident">CredentialError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">secret_tree</span>::<span class="ident">SecretTreeError</span>;
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MLSPlaintextError</span> {
-        <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext message is not an application message.&quot;</span>,
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsPlaintextError</span> {
+        <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext message is not an application message.&quot;</span>,
         <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Sender is not part of the group&quot;</span>,
-        <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext signature is invalid&quot;</span>,
-        <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is invalid&quot;</span>,
+        <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext signature is invalid&quot;</span>,
+        <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is invalid&quot;</span>,
     }
 }
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MLSCiphertextError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsCiphertextError</span> {
         <span class="ident">Simple</span> {
-            <span class="ident">InvalidContentType</span> <span class="op">=</span> <span class="string">&quot;The MLSCiphertext has an invalid content type.&quot;</span>,
+            <span class="ident">InvalidContentType</span> <span class="op">=</span> <span class="string">&quot;The MlsCiphertext has an invalid content type.&quot;</span>,
             <span class="ident">GenerationOutOfBound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a ratcheting secret for the given sender and generation.&quot;</span>,
             <span class="ident">EncryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occurred while encrypting.&quot;</span>,
             <span class="ident">DecryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occurred while decrypting.&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">PlaintextError</span>(<span class="ident">MLSPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;MLSPlaintext error&quot;</span>,
+            <span class="ident">PlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;MlsPlaintext error&quot;</span>,
             <span class="ident">SecretTreeError</span>(<span class="ident">SecretTreeError</span>) <span class="op">=</span> <span class="string">&quot;SecretTree error&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,
         }
@@ -85,8 +85,8 @@
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VerificationError</span> {
         <span class="ident">Simple</span> {
-            <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is missing&quot;</span>,
-            <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MLSPlaintext membership tag is invalid&quot;</span>,
+            <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is missing&quot;</span>,
+            <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is invalid&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,

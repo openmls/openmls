@@ -835,7 +835,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">proposals</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>, <span class="ident">prelude</span>::<span class="ident">PreSharedKeyID</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>, <span class="ident">prelude</span>::<span class="ident">PreSharedKeyId</span>};
 
 <span class="comment">// Tree modules</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">codec</span>;
@@ -866,7 +866,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryInto</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
@@ -1549,7 +1549,7 @@
         }
 
         <span class="comment">// Process PSK proposals</span>
-        <span class="kw">let</span> <span class="ident">psks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyID</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proposal_queue</span>
+        <span class="kw">let</span> <span class="ident">psks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proposal_queue</span>
             .<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType</span>::<span class="ident">Presharedkey</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">queued_proposal</span><span class="op">|</span> {
                 <span class="comment">// Unwrapping here is safe because we know the proposal type</span>

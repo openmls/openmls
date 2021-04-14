@@ -302,6 +302,7 @@
 <span id="299">299</span>
 <span id="300">300</span>
 <span id="301">301</span>
+<span id="302">302</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="ident">node</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
@@ -495,6 +496,7 @@
         }
 
         <span class="kw">impl</span> <span class="ident">Serialize</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
+            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">vec_init_then_push</span>)]</span>
             <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S</span>::<span class="prelude-val">Ok</span>, <span class="ident">S</span>::<span class="ident">Error</span><span class="op">&gt;</span>
             <span class="kw">where</span>
                 <span class="ident">S</span>: <span class="ident">Serializer</span>,

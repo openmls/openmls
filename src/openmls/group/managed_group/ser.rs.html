@@ -66,7 +66,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializedManagedGroup</span> {
     <span class="ident">managed_group_config</span>: <span class="ident">ManagedGroupConfig</span>,
     <span class="ident">group</span>: <span class="ident">MlsGroup</span>,
-    <span class="ident">pending_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MLSPlaintext</span><span class="op">&gt;</span>,
+    <span class="ident">pending_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span>,
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">resumption_secret_store</span>: <span class="ident">ResumptionSecretStore</span>,

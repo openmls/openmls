@@ -593,7 +593,7 @@
     <span class="doccomment">/// Get the ID of this key package as byte slice.</span>
     <span class="doccomment">/// Returns an error if no Key ID extension is present.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType</span>::<span class="ident">KeyID</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType</span>::<span class="ident">KeyId</span>) {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">key_id_ext</span>.<span class="ident">to_key_id_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>());
         }
         <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError</span>::<span class="ident">ExtensionError</span>(

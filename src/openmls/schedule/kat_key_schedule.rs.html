@@ -392,7 +392,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">CommitSecret</span>;
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">errors</span>::<span class="ident">KSTestVectorError</span>, <span class="ident">PskSecret</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">errors</span>::<span class="ident">KsTestVectorError</span>, <span class="ident">PskSecret</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">struct</span> <span class="ident">Epoch</span> {
@@ -564,7 +564,7 @@
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">KeyScheduleTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KSTestVectorError</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">KeyScheduleTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KsTestVectorError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span>
         <span class="ident">CiphersuiteName</span>::<span class="ident">try_from</span>(<span class="ident">test_vector</span>.<span class="ident">cipher_suite</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid ciphersuite&quot;</span>);
     <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite</span>) {
@@ -601,7 +601,7 @@
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Joiner secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">JoinerSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">JoinerSecretMismatch</span>);
         }
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule</span>::<span class="ident">init</span>(
@@ -615,7 +615,7 @@
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Welcome secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">WelcomeSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">WelcomeSecretMismatch</span>);
         }
 
         <span class="kw">let</span> <span class="ident">confirmed_transcript_hash</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">confirmed_transcript_hash</span>);
@@ -637,7 +637,7 @@
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Group context mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">GroupContextMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">GroupContextMismatch</span>);
         }
 
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="kw-2">&amp;</span><span class="ident">group_context</span>).<span class="ident">unwrap</span>();
@@ -655,26 +655,26 @@
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Init secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">InitSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">InitSecretMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">sender_data_secret</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>().<span class="ident">as_slice</span>()
         {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Sender data secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">SenderDataSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">SenderDataSecretMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">encryption_secret</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">encryption_secret</span>().<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Encryption secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">EncryptionSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">EncryptionSecretMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">exporter_secret</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">exporter_secret</span>().<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Exporter secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">ExporterSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">ExporterSecretMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">authentication_secret</span>)
             <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">authentication_secret</span>().<span class="ident">as_slice</span>()
@@ -682,31 +682,31 @@
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Authentication secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">AuthenticationSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">AuthenticationSecretMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">external_secret</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">external_secret</span>().<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;External secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">ExternalSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">ExternalSecretMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">confirmation_key</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">confirmation_key</span>().<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Confirmation key mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">ConfirmationKeyMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">ConfirmationKeyMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">membership_key</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">membership_key</span>().<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Membership key mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">MembershipKeyMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">MembershipKeyMismatch</span>);
         }
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">resumption_secret</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">resumption_secret</span>().<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Resumption secret mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">ResumptionSecretMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">ResumptionSecretMismatch</span>);
         }
 
         <span class="comment">// Calculate external HPKE key pair</span>
@@ -725,7 +725,7 @@
             <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
                 <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;External pub mismatch&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KSTestVectorError</span>::<span class="ident">ExternalPubMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KsTestVectorError</span>::<span class="ident">ExternalPubMismatch</span>);
         }
     }
     <span class="prelude-val">Ok</span>(())
