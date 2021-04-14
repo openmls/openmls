@@ -19,8 +19,8 @@ use crate::{
     messages::Commit,
     prelude::{
         random_u32, random_u64, randombytes, sender::SenderType, ContentType, LeafIndex,
-        MLSPlaintext, MLSPlaintextCommitAuthData, MLSPlaintextCommitContent,
-        MLSPlaintextContentType, Sender,
+        MlsPlaintext, MlsPlaintextCommitAuthData, MlsPlaintextCommitContent,
+        MlsPlaintextContentType, Sender,
     },
     schedule::{ConfirmationKey, MembershipKey},
     test_util::{bytes_to_hex, hex_to_bytes},
@@ -38,7 +38,7 @@ pub struct TranscriptTestVector {
     interim_transcript_hash_before: String,
     membership_key: String,
     confirmation_key: String,
-    commit: String, // TLS serialized MLSPlaintext(Commit)
+    commit: String, // TLS serialized MlsPlaintext(Commit)
 
     confirmed_transcript_hash_after: String,
     interim_transcript_hash_after: String,
@@ -58,7 +58,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         ConfirmationKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
 
     // Build plaintext commit message.
-    let mut commit = MLSPlaintext {
+    let mut commit = MlsPlaintext {
         group_id: group_id.clone(),
         epoch: GroupEpoch(epoch),
         sender: Sender {
@@ -67,7 +67,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         },
         authenticated_data: randombytes(48),
         content_type: ContentType::Commit,
-        content: MLSPlaintextContentType::Commit(Commit {
+        content: MlsPlaintextContentType::Commit(Commit {
             proposals: vec![],
             path: None,
         }),
@@ -92,14 +92,14 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     // Compute new transcript hashes.
     let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
-        &MLSPlaintextCommitContent::try_from(&commit).unwrap(),
+        &MlsPlaintextCommitContent::try_from(&commit).unwrap(),
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
-        &MLSPlaintextCommitAuthData::try_from(&commit).unwrap(),
+        &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
@@ -172,19 +172,19 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     ));
 
     // Check membership and confirmation tags.
-    let commit = MLSPlaintext::decode_detached(&hex_to_bytes(&test_vector.commit))
+    let commit = MlsPlaintext::decode_detached(&hex_to_bytes(&test_vector.commit))
         .expect("Error decoding commit");
     let context = GroupContext::new(
-        group_id.clone(),
+        group_id,
         GroupEpoch(epoch),
-        tree_hash_before.clone(),
+        tree_hash_before,
         confirmed_transcript_hash_before.clone(),
         &[], // extensions
     )
     .expect("Error creating group context");
-    if !commit
+    if commit
         .verify_membership_tag(ciphersuite, context.serialized(), &membership_key)
-        .is_ok()
+        .is_err()
     {
         if cfg!(test) {
             panic!("Invalid membership tag");
@@ -208,12 +208,12 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     // Compute new transcript hashes.
     let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
-        &MLSPlaintextCommitContent::try_from(&commit).unwrap(),
+        &MlsPlaintextCommitContent::try_from(&commit).unwrap(),
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
-    if &my_confirmed_transcript_hash_after
-        != &hex_to_bytes(&test_vector.confirmed_transcript_hash_after)
+    if my_confirmed_transcript_hash_after
+        != hex_to_bytes(&test_vector.confirmed_transcript_hash_after)
     {
         if cfg!(test) {
             panic!("Confirmed transcript hash mismatch");
@@ -223,12 +223,11 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
 
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
-        &MLSPlaintextCommitAuthData::try_from(&commit).unwrap(),
+        &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &my_confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
-    if &my_interim_transcript_hash_after
-        != &hex_to_bytes(&test_vector.interim_transcript_hash_after)
+    if my_interim_transcript_hash_after != hex_to_bytes(&test_vector.interim_transcript_hash_after)
     {
         if cfg!(test) {
             panic!("Interim transcript hash mismatch");

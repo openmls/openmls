@@ -2,13 +2,12 @@ use tls_codec::{Cursor, Deserialize, Serialize, TlsVecU16, TlsVecU8};
 use tls_codec_derive::{TlsDeserialize, TlsSerialize};
 
 #[derive(TlsDeserialize, Debug, PartialEq, Clone, Copy, TlsSerialize)]
-#[allow(dead_code)]
 #[repr(u16)]
 pub enum ExtensionType {
     Reserved = 0,
     Capabilities = 1,
     Lifetime = 2,
-    KeyID = 3,
+    KeyId = 3,
     ParentHash = 4,
     RatchetTree = 5,
     SomethingElse = 500,
@@ -53,7 +52,7 @@ fn simple_enum() {
 fn simple_struct() {
     let b = [0, 3, 0, 5, 1, 2, 3, 4, 5];
     let extension = ExtensionStruct {
-        extension_type: ExtensionType::KeyID,
+        extension_type: ExtensionType::KeyId,
         extension_data: TlsVecU16::from_slice(&[1, 2, 3, 4, 5]),
     };
     let deserialized = ExtensionStruct::tls_deserialize_detached(&b).unwrap();
@@ -64,7 +63,7 @@ fn simple_struct() {
         data: TlsVecU8::from_slice(&[
             ExtensionType::Capabilities,
             ExtensionType::Lifetime,
-            ExtensionType::KeyID,
+            ExtensionType::KeyId,
             ExtensionType::SomethingElse,
         ]),
     };

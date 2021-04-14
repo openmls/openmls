@@ -188,7 +188,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .create_commit(
                     group_aad,
                     &initial_credential_bundle,
-                    &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
+                    &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                     &[],
                     true, /* Set this to true to populate the tree a little bit. */
                     None, /* PSKs are not supported here */
@@ -200,7 +200,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // the key package bundle returned by the create_commit earlier.
             match mls_group.apply_commit(
                 &commit_mls_plaintext,
-                &(proposal_list.iter().collect::<Vec<&MLSPlaintext>>()),
+                &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                 &[key_package_bundle],
                 None,
             ) {
@@ -261,25 +261,19 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
     }
 }
 
-#[allow(dead_code)]
 pub fn random_usize() -> usize {
     OsRng.next_u64() as usize
 }
 
-#[allow(dead_code)]
 pub fn randombytes(n: usize) -> Vec<u8> {
     get_random_vec(n)
 }
 
-// Not currently used.
-//pub(crate) fn hex_to_bytes(hex: &str) -> Vec<u8> {
-//    let mut bytes = Vec::new();
-//    for i in 0..(hex.len() / 2) {
-//        let b = u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap();
-//        bytes.push(b);
-//    }
-//    bytes
-//}
+#[test]
+fn test_random() {
+    random_usize();
+    randombytes(0);
+}
 
 #[test]
 fn test_setup() {

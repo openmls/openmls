@@ -3,7 +3,7 @@
 //! This file defines a set of errors thrown by crypto operations.
 
 implement_error! {
-    pub(crate) enum HKDFError {
+    pub(crate) enum HkdfError {
         InvalidLength = "The HKDF output is empty.",
     }
 }

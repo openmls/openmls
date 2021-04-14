@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 /// Defines whether handshake messages (Proposals & Commits) are encrypted.
 /// Application are always encrypted regardless. `Plaintext`: Handshake messages
-/// are returned as MLSPlaintext messages `Ciphertext`: Handshake messages are
-/// returned as MLSCiphertext messages
+/// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
+/// returned as MlsCiphertext messages
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum HandshakeMessageFormat {
     Plaintext,

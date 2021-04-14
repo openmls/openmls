@@ -122,7 +122,7 @@ use crate::{
     config::ProtocolVersion,
     messages::ConfirmationTag,
 };
-use crate::{codec::*, prelude::MLSPlaintextTBMPayload};
+use crate::{codec::*, prelude::MlsPlaintextTbmPayload};
 
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -132,10 +132,10 @@ pub mod errors;
 pub(crate) mod psk;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-mod kat_key_schedule;
+pub mod kat_key_schedule;
 
 pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
-pub use psk::{PreSharedKeyID, PreSharedKeys, PskSecret};
+pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -673,17 +673,12 @@ impl MembershipKey {
     /// ```
     pub(crate) fn tag(
         &self,
-        tbm_payload: MLSPlaintextTBMPayload,
+        tbm_payload: MlsPlaintextTbmPayload,
     ) -> Result<MembershipTag, CodecError> {
         Ok(MembershipTag(Mac::new(
             &self.secret,
             &tbm_payload.into_bytes()?,
         )))
-    }
-
-    /// Get the internal `Secret`.
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]

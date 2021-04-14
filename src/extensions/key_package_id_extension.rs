@@ -19,11 +19,11 @@ use super::{
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 
 #[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
-pub struct KeyIDExtension {
+pub struct KeyIdExtension {
     key_id: Vec<u8>,
 }
 
-impl KeyIDExtension {
+impl KeyIdExtension {
     /// Create a new key identifier extension from a byte slice.
     pub fn new(id: &[u8]) -> Self {
         Self {
@@ -38,9 +38,9 @@ impl KeyIDExtension {
 }
 
 #[typetag::serde]
-impl Extension for KeyIDExtension {
+impl Extension for KeyIdExtension {
     fn extension_type(&self) -> ExtensionType {
-        ExtensionType::KeyID
+        ExtensionType::KeyId
     }
 
     /// Build a new KeyIDExtension from a byte slice.
@@ -58,7 +58,7 @@ impl Extension for KeyIDExtension {
     fn to_extension_struct(&self) -> ExtensionStruct {
         let mut extension_data: Vec<u8> = vec![];
         encode_vec(VecSize::VecU16, &mut extension_data, &self.key_id).unwrap();
-        let extension_type = ExtensionType::KeyID;
+        let extension_type = ExtensionType::KeyId;
         ExtensionStruct::new(extension_type, extension_data)
     }
 

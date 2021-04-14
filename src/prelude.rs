@@ -4,8 +4,8 @@
 pub use crate::group::GroupConfig;
 pub use crate::group::MlsGroup;
 pub use crate::group::{
-    GroupEvent, HandshakeMessageFormat, InvalidMessageError, MLSMessage, ManagedGroup,
-    ManagedGroupCallbacks, ManagedGroupConfig, ManagedGroupError, Removal, UpdatePolicy,
+    GroupEvent, HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,
+    ManagedGroupConfig, ManagedGroupError, MlsMessage, Removal, UpdatePolicy,
 };
 // Errors
 pub use crate::error::ErrorString;
@@ -32,7 +32,7 @@ pub use crate::messages::{
     Welcome,
 };
 pub use crate::schedule::psk::{
-    BranchPsk, ExternalPsk, PSKType, PreSharedKeyID, PreSharedKeys, Psk, ReinitPsk,
+    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskType, ReinitPsk,
 };
 pub use crate::utils::*;
 

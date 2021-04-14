@@ -40,6 +40,9 @@ pub mod framing;
 pub mod group;
 mod key_packages;
 pub mod messages;
+#[cfg(any(feature = "expose-test-vectors", test))]
+pub mod schedule;
+#[cfg(not(any(feature = "expose-test-vectors", test)))]
 mod schedule;
 pub mod tree;
 

@@ -41,7 +41,7 @@ fn default_extensions() {
         vec![
             ExtensionType::Capabilities,
             ExtensionType::Lifetime,
-            ExtensionType::KeyID
+            ExtensionType::KeyId
         ],
         supported_extensions
     );

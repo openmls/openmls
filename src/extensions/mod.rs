@@ -12,7 +12,7 @@ mod ratchet_tree_extension;
 
 pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;
-pub use key_package_id_extension::KeyIDExtension;
+pub use key_package_id_extension::KeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
 pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
@@ -29,7 +29,7 @@ pub enum ExtensionType {
     Reserved = 0,
     Capabilities = 1,
     Lifetime = 2,
-    KeyID = 3,
+    KeyId = 3,
     ParentHash = 4,
     RatchetTree = 5,
 }
@@ -53,7 +53,7 @@ impl TryFrom<u16> for ExtensionType {
             0 => Ok(ExtensionType::Reserved),
             1 => Ok(ExtensionType::Capabilities),
             2 => Ok(ExtensionType::Lifetime),
-            3 => Ok(ExtensionType::KeyID),
+            3 => Ok(ExtensionType::KeyId),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
             _ => Err(CodecError::DecodingError),
@@ -131,7 +131,7 @@ impl Codec for ExtensionStruct {
 fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension>, ExtensionError> {
     match ext_type {
         ExtensionType::Capabilities => Ok(Box::new(CapabilitiesExtension::new_from_bytes(bytes)?)),
-        ExtensionType::KeyID => Ok(Box::new(KeyIDExtension::new_from_bytes(bytes)?)),
+        ExtensionType::KeyId => Ok(Box::new(KeyIdExtension::new_from_bytes(bytes)?)),
         ExtensionType::Lifetime => Ok(Box::new(LifetimeExtension::new_from_bytes(bytes)?)),
         ExtensionType::ParentHash => Ok(Box::new(ParentHashExtension::new_from_bytes(bytes)?)),
         ExtensionType::RatchetTree => Ok(Box::new(RatchetTreeExtension::new_from_bytes(bytes)?)),
@@ -246,8 +246,8 @@ pub trait Extension: Debug + ExtensionHelper + Send + Sync {
     /// Get a reference to the `KeyIDExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `KeyIDExtension`.
-    fn to_key_id_extension(&self) -> Result<&KeyIDExtension, ExtensionError> {
-        match self.as_any().downcast_ref::<KeyIDExtension>() {
+    fn to_key_id_extension(&self) -> Result<&KeyIdExtension, ExtensionError> {
+        match self.as_any().downcast_ref::<KeyIdExtension>() {
             Some(e) => Ok(e),
             None => Err(ExtensionError::InvalidExtensionType(
                 "This is not a KeyIDExtension".into(),

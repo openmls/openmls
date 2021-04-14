@@ -5,14 +5,14 @@ use crate::group::{GroupEpoch, GroupId};
 
 use std::convert::TryFrom;
 
-impl Codec for PSKType {
+impl Codec for PskType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)?;
         Ok(())
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        match PSKType::try_from(u8::decode(cursor)?) {
+        match PskType::try_from(u8::decode(cursor)?) {
             Ok(psk_type) => Ok(psk_type),
             Err(_) => Err(CodecError::DecodingError),
         }
@@ -65,7 +65,7 @@ impl Codec for BranchPsk {
     }
 }
 
-impl Codec for PreSharedKeyID {
+impl Codec for PreSharedKeyId {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.psk_type.encode(buffer)?;
         match &self.psk {
@@ -78,11 +78,11 @@ impl Codec for PreSharedKeyID {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let psktype = PSKType::decode(cursor)?;
+        let psktype = PskType::decode(cursor)?;
         let psk = match psktype {
-            PSKType::External => Psk::External(ExternalPsk::decode(cursor)?),
-            PSKType::Reinit => Psk::Reinit(ReinitPsk::decode(cursor)?),
-            PSKType::Branch => Psk::Branch(BranchPsk::decode(cursor)?),
+            PskType::External => Psk::External(ExternalPsk::decode(cursor)?),
+            PskType::Reinit => Psk::Reinit(ReinitPsk::decode(cursor)?),
+            PskType::Branch => Psk::Branch(BranchPsk::decode(cursor)?),
         };
         let psk_nonce = decode_vec(VecSize::VecU8, cursor)?;
         Ok(Self {

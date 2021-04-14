@@ -81,7 +81,7 @@ fn key_package_id_extension() {
         // Add an ID to the key package.
         let id = [1, 2, 3, 4];
         kpb.key_package_mut()
-            .add_extension(Box::new(KeyIDExtension::new(&id)));
+            .add_extension(Box::new(KeyIdExtension::new(&id)));
 
         // This is invalid now.
         assert!(kpb.key_package().verify().is_err());
@@ -91,7 +91,7 @@ fn key_package_id_extension() {
         assert!(kpb.key_package().verify().is_ok());
 
         // Check ID
-        assert_eq!(&id[..], &kpb.key_package().key_id().expect("No key ID")[..]);
+        assert_eq!(&id[..], kpb.key_package().key_id().expect("No key ID"));
     }
 }
 

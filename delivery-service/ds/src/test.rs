@@ -266,7 +266,7 @@ async fn test_group() {
         .unwrap();
 
     // Send mls_ciphertext to the group
-    let msg = GroupMessage::new(MLSMessage::Ciphertext(mls_ciphertext), &client_ids);
+    let msg = GroupMessage::new(MlsMessage::Ciphertext(mls_ciphertext), &client_ids);
     let req = test::TestRequest::post()
         .uri("/send/message")
         .set_payload(Bytes::copy_from_slice(&msg.encode_detached().unwrap()))
@@ -291,12 +291,12 @@ async fn test_group() {
 
     let mls_ciphertext = messages
         .iter()
-        .position(|m| matches!(m, Message::MLSMessage(_)))
+        .position(|m| matches!(m, Message::MlsMessage(_)))
         .expect("Didn't get an MLS application message from the server.");
     let mls_ciphertext = match messages.remove(mls_ciphertext) {
-        Message::MLSMessage(m) => match m {
-            MLSMessage::Ciphertext(m) => m,
-            _ => panic!("This is not an MLSCiphertext but an MLSPlaintext (or something else)."),
+        Message::MlsMessage(m) => match m {
+            MlsMessage::Ciphertext(m) => m,
+            _ => panic!("This is not an MlsCiphertext but an MlsPlaintext (or something else)."),
         },
         _ => panic!("This is not an MLS message."),
     };
@@ -305,7 +305,7 @@ async fn test_group() {
     // Decrypt the message on Client1
     let mls_plaintext = group
         .decrypt(&mls_ciphertext)
-        .expect("Error decrypting MLSCiphertext");
+        .expect("Error decrypting MlsCiphertext");
     assert_eq!(
         client2_message,
         mls_plaintext.as_application_message().unwrap()

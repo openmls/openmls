@@ -2,13 +2,12 @@ use tls_codec::{Serialize, TlsVecU16};
 use tls_codec_derive::TlsSerialize;
 
 #[derive(TlsSerialize, Debug)]
-#[allow(dead_code)]
 #[repr(u16)]
 pub enum ExtensionType {
     Reserved = 0,
     Capabilities = 1,
     Lifetime = 2,
-    KeyID = 3,
+    KeyId = 3,
     ParentHash = 4,
     RatchetTree = 5,
     SomethingElse = 500,
@@ -22,7 +21,7 @@ pub struct ExtensionStruct {
 
 #[test]
 fn simple_enum() {
-    let serialized = ExtensionType::KeyID.tls_serialize_detached().unwrap();
+    let serialized = ExtensionType::KeyId.tls_serialize_detached().unwrap();
     assert_eq!(vec![0, 3], serialized);
     let serialized = ExtensionType::SomethingElse
         .tls_serialize_detached()
@@ -33,7 +32,7 @@ fn simple_enum() {
 #[test]
 fn simple_struct() {
     let extension = ExtensionStruct {
-        extension_type: ExtensionType::KeyID,
+        extension_type: ExtensionType::KeyId,
         extension_data: TlsVecU16::from_slice(&[1, 2, 3, 4, 5]),
     };
     let serialized = extension.tls_serialize_detached().unwrap();

@@ -190,6 +190,7 @@ macro_rules! implement_persistence {
         }
 
         impl Serialize for $name {
+            #[allow(clippy::vec_init_then_push)]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer,
