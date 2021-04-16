@@ -26,7 +26,7 @@
 //! `KeyPackage` instances are meant to be published so other parties can use
 //! them to add the publishing party to groups.
 //!
-//! ### `KeyPackageBundle` Ownership
+//! ### `KeyPackageBundle` vs. `CredentialBundle` Ownership
 //!
 //! In contrast to the functions providing access to `CredentialBundle`
 //! instances, the function to retrieve `KeyPackageBundle` instances deletes
@@ -40,7 +40,8 @@
 //! access its `KeyPackageBundle` via the `KeyStore`. Once this is the case, the
 //! `take_key_package_bundle` will be deprecated in favor of a
 //! `get_key_package_bundle`, which only returns a reference to the
-//! `KeyPackageBundle`.
+//! `KeyPackageBundle`. The issue is tracked as part of the KeyStore roadmap in
+//! issue #337.
 //!
 //! # Example
 //!
