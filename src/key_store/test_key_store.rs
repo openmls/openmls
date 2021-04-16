@@ -7,6 +7,8 @@ use crate::key_packages::KeyPackageBundle;
 
 use super::{KeyStore, KeyStoreError};
 
+// This test tests the basic functions of the key store, i.e. generation and
+// retrieval of key packages and credential bundles, including error cases.
 ctest_ciphersuites!(key_storage, test(param: CiphersuiteName) {
     let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
