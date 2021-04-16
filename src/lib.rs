@@ -39,7 +39,7 @@ mod extensions;
 pub mod framing;
 pub mod group;
 mod key_packages;
-mod key_store;
+pub mod key_store;
 pub mod messages;
 mod schedule;
 pub mod tree;
