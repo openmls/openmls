@@ -15,7 +15,7 @@ pub struct SerializedManagedGroup {
     active: bool,
 }
 
-impl<'a> SerializedManagedGroup {
+impl SerializedManagedGroup {
     pub(crate) fn into_managed_group(self, callbacks: &ManagedGroupCallbacks) -> ManagedGroup {
         let mut managed_group = ManagedGroup {
             managed_group_config: self.managed_group_config,
@@ -31,7 +31,7 @@ impl<'a> SerializedManagedGroup {
     }
 }
 
-impl<'a> Serialize for ManagedGroup {
+impl Serialize for ManagedGroup {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
