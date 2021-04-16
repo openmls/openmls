@@ -58,7 +58,7 @@ lazy_static! {
             let config = PersistentConfig {
                 protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11],
                 ciphersuites,
-                extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyID],
+                extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyId],
                 constants,
             };
             config.into()

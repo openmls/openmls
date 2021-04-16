@@ -5,5 +5,5 @@ use openmls::prelude::*;
 
 fuzz_target!(|data: &[u8]| {
     let mut cursor = Cursor::new(data);
-    let _ = MLSCiphertext::decode(&mut cursor);
+    let _ = MlsCiphertext::decode(&mut cursor);
 });

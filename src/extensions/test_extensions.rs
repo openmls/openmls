@@ -35,14 +35,14 @@ fn capabilities() {
 fn key_package_id() {
     // A key package extension with the default values for openmls.
     let data = [0, 8, 1, 2, 3, 4, 5, 6, 6, 6];
-    let kpi = KeyIDExtension::new(&data[2..]);
-    assert_eq!(ExtensionType::KeyID, kpi.extension_type());
+    let kpi = KeyIdExtension::new(&data[2..]);
+    assert_eq!(ExtensionType::KeyId, kpi.extension_type());
 
-    let kpi_from_bytes = KeyIDExtension::new_from_bytes(&data).unwrap();
+    let kpi_from_bytes = KeyIdExtension::new_from_bytes(&data).unwrap();
     assert_eq!(kpi, kpi_from_bytes);
 
     let extension_struct = kpi.to_extension_struct();
-    assert_eq!(ExtensionType::KeyID, extension_struct.extension_type);
+    assert_eq!(ExtensionType::KeyId, extension_struct.extension_type);
     assert_eq!(&data[..], &extension_struct.extension_data[..]);
 }
 
@@ -60,8 +60,7 @@ fn lifetime() {
 
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
-ctest_ciphersuites!(ratchet_tree_extension, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

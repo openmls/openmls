@@ -8,7 +8,7 @@ use serde::{
 pub struct SerializedManagedGroup {
     managed_group_config: ManagedGroupConfig,
     group: MlsGroup,
-    pending_proposals: Vec<MLSPlaintext>,
+    pending_proposals: Vec<MlsPlaintext>,
     own_kpbs: Vec<KeyPackageBundle>,
     aad: Vec<u8>,
     resumption_secret_store: ResumptionSecretStore,

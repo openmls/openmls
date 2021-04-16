@@ -6,8 +6,6 @@ use crate::{
     tree::{TreeError, UpdatePath, UpdatePathNode},
 };
 
-use std::convert::TryFrom;
-
 #[test]
 fn test_mls_group_persistence() {
     use std::fs::File;
@@ -197,7 +195,7 @@ fn test_update_path() {
             .expect("Error creating commit");
 
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -249,7 +247,7 @@ fn test_update_path() {
         // apart the commit, manipulating the ciphertexts and the piecing it
         // back together.
         let commit = match &mls_plaintext_commit.content {
-            MLSPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Bob created a commit, which does not contain an actual commit."),
         };
 
@@ -284,9 +282,9 @@ fn test_update_path() {
             path: Some(broken_path),
         };
 
-        let broken_commit_content = MLSPlaintextContentType::Commit(broken_commit);
+        let broken_commit_content = MlsPlaintextContentType::Commit(broken_commit);
 
-        let mut broken_plaintext = MLSPlaintext::new_from_member(
+        let mut broken_plaintext = MlsPlaintext::new_from_member(
             mls_plaintext_commit.sender.to_leaf_index(),
             &mls_plaintext_commit.authenticated_data,
             broken_commit_content,
@@ -320,13 +318,13 @@ fn test_update_path() {
 }
 
 // Test several scenarios when PSKs are used in a group
-ctest_ciphersuites!(test_psks, test(param: CiphersuiteName) {
+ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     fn psk_fetcher(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>> {
         let psk_id = vec![1u8, 2, 3];
         let secret = Secret::from_slice(&[6, 6, 6], ProtocolVersion::Mls10, ciphersuite);
 
         let psk = &psks.psks[0];
-        if psk.psk_type == PSKType::External {
+        if psk.psk_type == PskType::External {
             if let Psk::External(external_psk) = &psk.psk {
                 if external_psk.psk_id() == psk_id {
                     Some(vec![secret])
@@ -341,7 +339,6 @@ ctest_ciphersuites!(test_psks, test(param: CiphersuiteName) {
         }
     }
 
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Basic group setup.

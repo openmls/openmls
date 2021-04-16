@@ -1,7 +1,7 @@
 use crate::{
     group::{GroupEpoch, GroupId},
     messages::{Codec, Config, PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
-    schedule::psk::{BranchPsk, ExternalPsk, PSKType, PreSharedKeyID, Psk, ReinitPsk},
+    schedule::psk::{BranchPsk, ExternalPsk, PreSharedKeyId, Psk, PskType, ReinitPsk},
 };
 
 /// Test the encoding for PreSharedKeyProposal, that also covers some of the
@@ -10,8 +10,8 @@ use crate::{
 fn test_pre_shared_key_proposal_codec() {
     // ReInit
     let orig = PreSharedKeyProposal {
-        psk: PreSharedKeyID {
-            psk_type: PSKType::Reinit,
+        psk: PreSharedKeyId {
+            psk_type: PskType::Reinit,
             psk: Psk::Reinit(ReinitPsk {
                 psk_group_id: GroupId::random(),
                 psk_epoch: GroupEpoch(1234),
@@ -25,8 +25,8 @@ fn test_pre_shared_key_proposal_codec() {
 
     // External
     let orig = PreSharedKeyProposal {
-        psk: PreSharedKeyID {
-            psk_type: PSKType::External,
+        psk: PreSharedKeyId {
+            psk_type: PskType::External,
             psk: Psk::External(ExternalPsk::new(vec![4, 5, 6])),
             psk_nonce: vec![1, 2, 3],
         },
@@ -37,8 +37,8 @@ fn test_pre_shared_key_proposal_codec() {
 
     // Branch
     let orig = PreSharedKeyProposal {
-        psk: PreSharedKeyID {
-            psk_type: PSKType::Branch,
+        psk: PreSharedKeyId {
+            psk_type: PskType::Branch,
             psk: Psk::Branch(BranchPsk {
                 psk_group_id: GroupId::random(),
                 psk_epoch: GroupEpoch(1234),

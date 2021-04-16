@@ -4,11 +4,9 @@ use openmls::prelude::*;
 #[macro_use]
 mod utils;
 
-use std::convert::TryFrom;
 use utils::managed_utils::*;
 
-ctest_ciphersuites!(decryption_key_index_computation, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

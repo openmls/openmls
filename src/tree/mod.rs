@@ -3,7 +3,7 @@ use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
-use crate::{ciphersuite::*, prelude::PreSharedKeyID};
+use crate::{ciphersuite::*, prelude::PreSharedKeyId};
 
 // Tree modules
 pub(crate) mod codec;
@@ -34,7 +34,7 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-mod tests;
+pub mod tests;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -717,7 +717,7 @@ impl RatchetTree {
         }
 
         // Process PSK proposals
-        let psks: Vec<PreSharedKeyID> = proposal_queue
+        let psks: Vec<PreSharedKeyId> = proposal_queue
             .filtered_by_type(ProposalType::Presharedkey)
             .map(|queued_proposal| {
                 // Unwrapping here is safe because we know the proposal type

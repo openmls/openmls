@@ -38,7 +38,7 @@ pub struct Certificate {
 
 /// This enum contains the different available credentials.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub enum MLSCredentialType {
+pub enum MlsCredentialType {
     Basic(BasicCredential),
     X509(Certificate),
 }
@@ -47,7 +47,7 @@ pub enum MLSCredentialType {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Credential {
     credential_type: CredentialType,
-    credential: MLSCredentialType,
+    credential: MlsCredentialType,
 }
 
 impl Credential {
@@ -55,45 +55,45 @@ impl Credential {
     /// in a credential.
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> Result<(), CredentialError> {
         match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => basic_credential
+            MlsCredentialType::Basic(basic_credential) => basic_credential
                 .public_key
                 .verify(signature, payload)
                 .map_err(|_| CredentialError::InvalidSignature),
             // TODO: implement verification for X509 certificates. See issue #134.
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
     /// Get the identity of a given credential.
     pub fn identity(&self) -> &Vec<u8> {
         match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => &basic_credential.identity,
+            MlsCredentialType::Basic(basic_credential) => &basic_credential.identity,
             // TODO: implement getter for identity for X509 certificates. See issue #134.
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
     /// Get the signature scheme used by the credential.
     pub fn signature_scheme(&self) -> SignatureScheme {
         match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => basic_credential.signature_scheme,
+            MlsCredentialType::Basic(basic_credential) => basic_credential.signature_scheme,
             // TODO: implement getter for signature scheme for X509 certificates. See issue #134.
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
     /// Get the public key contained in the credential.
     pub fn signature_key(&self) -> &SignaturePublicKey {
         match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => &basic_credential.public_key,
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            MlsCredentialType::Basic(basic_credential) => &basic_credential.public_key,
+            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
 }
 
-impl From<MLSCredentialType> for Credential {
-    fn from(mls_credential_type: MLSCredentialType) -> Self {
+impl From<MlsCredentialType> for Credential {
+    fn from(mls_credential_type: MlsCredentialType) -> Self {
         Credential {
             credential_type: match mls_credential_type {
-                MLSCredentialType::Basic(_) => CredentialType::Basic,
-                MLSCredentialType::X509(_) => CredentialType::X509,
+                MlsCredentialType::Basic(_) => CredentialType::Basic,
+                MlsCredentialType::X509(_) => CredentialType::X509,
             },
             credential: mls_credential_type,
         }
@@ -162,7 +162,7 @@ impl CredentialBundle {
         };
         let credential = Credential {
             credential_type,
-            credential: MLSCredentialType::Basic(mls_credential),
+            credential: MlsCredentialType::Basic(mls_credential),
         };
         Ok(CredentialBundle {
             credential,

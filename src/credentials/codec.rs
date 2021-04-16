@@ -17,12 +17,12 @@ impl Codec for CredentialType {
 impl Codec for Credential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => {
+            MlsCredentialType::Basic(basic_credential) => {
                 CredentialType::Basic.encode(buffer)?;
                 basic_credential.encode(buffer)?;
             }
             // TODO #134: implement encoding for X509 certificates
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
         Ok(())
     }
@@ -32,7 +32,7 @@ impl Codec for Credential {
             Err(_) => return Err(CodecError::DecodingError),
         };
         match credential_type {
-            CredentialType::Basic => Ok(Credential::from(MLSCredentialType::Basic(
+            CredentialType::Basic => Ok(Credential::from(MlsCredentialType::Basic(
                 BasicCredential::decode(cursor)?,
             ))),
             _ => Err(CodecError::DecodingError),

@@ -198,7 +198,7 @@ impl ManagedTestSetup {
         // been removed from the group.
         sender_id: &[u8],
         group: &mut Group,
-        messages: &[MLSMessage],
+        messages: &[MlsMessage],
     ) -> Result<(), ClientError> {
         let clients = self.clients.borrow();
         println!("Distributing and processing messages...");
@@ -319,8 +319,7 @@ impl ManagedTestSetup {
         let group = creator_groups.get(&group_id).unwrap();
         let public_tree = group.export_ratchet_tree();
         let exporter_secret = group.export_secret("test", &[], 32)?;
-        let mut member_ids = Vec::new();
-        member_ids.push((0, group_creator_id));
+        let member_ids = vec![(0, group_creator_id)];
         let group = Group {
             group_id: group_id.clone(),
             members: member_ids,

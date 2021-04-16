@@ -98,7 +98,7 @@ impl Client {
     /// Have the client process the given messages. Returns an error if an error
     /// occurs during message processing or if no group exists for one of the
     /// messages.
-    pub fn receive_messages_for_group(&self, messages: &[MLSMessage]) -> Result<(), ClientError> {
+    pub fn receive_messages_for_group(&self, messages: &[MlsMessage]) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
         for message in messages {
             let group_id = GroupId::from_slice(&message.group_id());
@@ -142,7 +142,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -167,7 +167,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -195,7 +195,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         target_indices: &[usize],
-    ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)

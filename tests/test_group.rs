@@ -77,7 +77,7 @@ fn create_commit_optional_path() {
             .create_commit(
                 group_aad,
                 &alice_credential_bundle,
-                &(epoch_proposals.iter().collect::<Vec<&MLSPlaintext>>()),
+                &(epoch_proposals.iter().collect::<Vec<&MlsPlaintext>>()),
                 &[],
                 true, /* force self-update */
                 None, /* No PSK fetcher */
@@ -86,7 +86,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path());
@@ -113,7 +113,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -164,7 +164,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match commit_mls_plaintext.content() {
-            MLSPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path() && kpb_option.is_some());
@@ -325,7 +325,7 @@ fn group_operations() {
             )
             .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
-            MLSPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -369,7 +369,7 @@ fn group_operations() {
             .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice) {
             Ok(mls_plaintext) => mls_plaintext,
-            Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
+            Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(
             message_alice,
@@ -621,11 +621,11 @@ fn group_operations() {
             .unwrap();
         let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone()) {
             Ok(mls_plaintext) => mls_plaintext,
-            Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
+            Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie) {
             Ok(mls_plaintext) => mls_plaintext,
-            Err(e) => panic!("Error decrypting MLSCiphertext: {:?}", e),
+            Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(
             message_charlie,

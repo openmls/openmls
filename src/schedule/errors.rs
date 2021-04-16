@@ -22,7 +22,7 @@ implement_error! {
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 implement_error! {
-    pub enum KSTestVectorError {
+    pub enum KsTestVectorError {
         JoinerSecretMismatch = "The computed joiner secret doesn't match the one in the test vector.",
         WelcomeSecretMismatch = "The computed welcome secret doesn't match the one in the test vector.",
         InitSecretMismatch = "The computed init secret doesn't match the one in the test vector.",

@@ -6,7 +6,7 @@
 use crate::ciphersuite::CryptoError;
 use crate::codec::CodecError;
 use crate::config::ConfigError;
-use crate::framing::errors::{MLSCiphertextError, VerificationError};
+use crate::framing::errors::{MlsCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
@@ -18,8 +18,8 @@ implement_error! {
                 "Missing init secret when creating commit.",
         }
         Complex {
-            MLSCiphertextError(MLSCiphertextError) =
-                "See [`MLSCiphertextError`](`crate::framing::errors::MLSCiphertextError`) for details.",
+            MlsCiphertextError(MlsCiphertextError) =
+                "See [`MlsCiphertextError`](`crate::framing::errors::MlsCiphertextError`) for details.",
             WelcomeError(WelcomeError) =
                 "See [`WelcomeError`](`WelcomeError`) for details.",
             ApplyCommitError(ApplyCommitError) =
@@ -89,9 +89,9 @@ implement_error! {
     pub enum ApplyCommitError {
         Simple {
             EpochMismatch =
-                "Couldn't apply Commit. The epoch of the group context and MLSPlaintext didn't match.",
+                "Couldn't apply Commit. The epoch of the group context and MlsPlaintext didn't match.",
             WrongPlaintextContentType =
-                "apply_commit_internal was called with an MLSPlaintext that is not a Commit.",
+                "apply_commit_internal was called with an MlsPlaintext that is not a Commit.",
             SelfRemoved =
                 "Tried to apply a commit to a group we are not a part of.",
             PathKeyPackageVerificationFailure =
@@ -117,7 +117,7 @@ implement_error! {
         }
         Complex {
             PlaintextSignatureFailure(VerificationError) =
-                "MLSPlaintext signature is invalid.",
+                "MlsPlaintext signature is invalid.",
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(CodecError) =

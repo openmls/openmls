@@ -48,19 +48,19 @@ use std::convert::TryFrom;
 /// ```
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u8)]
-pub enum PSKType {
+pub enum PskType {
     External = 1,
     Reinit = 2,
     Branch = 3,
 }
 
-impl TryFrom<u8> for PSKType {
+impl TryFrom<u8> for PskType {
     type Error = &'static str;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            1 => Ok(PSKType::External),
-            2 => Ok(PSKType::Reinit),
-            3 => Ok(PSKType::Branch),
+            1 => Ok(PskType::External),
+            2 => Ok(PskType::Reinit),
+            3 => Ok(PskType::Branch),
             _ => Err("Unknown PSK type."),
         }
     }
@@ -101,9 +101,9 @@ impl ExternalPskBundle {
         }
     }
     /// Return the `PreSharedKeyID`
-    pub fn to_presharedkey_id(&self) -> PreSharedKeyID {
-        PreSharedKeyID {
-            psk_type: PSKType::External,
+    pub fn to_presharedkey_id(&self) -> PreSharedKeyId {
+        PreSharedKeyId {
+            psk_type: PskType::External,
             psk: Psk::External(self.external_psk.clone()),
             psk_nonce: self.nonce.clone(),
         }
@@ -178,15 +178,15 @@ pub enum Psk {
 /// } PreSharedKeyID;
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct PreSharedKeyID {
-    pub(crate) psk_type: PSKType,
+pub struct PreSharedKeyId {
+    pub(crate) psk_type: PskType,
     pub(crate) psk: Psk,
     pub(crate) psk_nonce: Vec<u8>,
 }
 
-impl PreSharedKeyID {
+impl PreSharedKeyId {
     /// Create a new `PreSharedKeyID`
-    pub fn new(psk_type: PSKType, psk: Psk, psk_nonce: Vec<u8>) -> Self {
+    pub fn new(psk_type: PskType, psk: Psk, psk_nonce: Vec<u8>) -> Self {
         Self {
             psk_type,
             psk,
@@ -194,7 +194,7 @@ impl PreSharedKeyID {
         }
     }
     /// Return the type of the PSK
-    pub fn psktype(&self) -> &PSKType {
+    pub fn psktype(&self) -> &PskType {
         &self.psk_type
     }
     /// Return the PSK
@@ -212,12 +212,12 @@ impl PreSharedKeyID {
 ///     PreSharedKeyID psks<0..2^16-1>;
 /// } PreSharedKeys;
 pub struct PreSharedKeys {
-    pub(crate) psks: Vec<PreSharedKeyID>,
+    pub(crate) psks: Vec<PreSharedKeyId>,
 }
 
 impl PreSharedKeys {
     /// Return the `PreSharedKeyID`s
-    pub fn psks(&self) -> &Vec<PreSharedKeyID> {
+    pub fn psks(&self) -> &Vec<PreSharedKeyId> {
         &self.psks
     }
 }
@@ -229,14 +229,14 @@ impl PreSharedKeys {
 ///     uint16 count;
 /// } PSKLabel;
 pub(crate) struct PskLabel<'a> {
-    pub(crate) id: &'a PreSharedKeyID,
+    pub(crate) id: &'a PreSharedKeyId,
     pub(crate) index: u16,
     pub(crate) count: u16,
 }
 
 impl<'a> PskLabel<'a> {
     /// Create a new `PskLabel`
-    fn new(id: &'a PreSharedKeyID, index: u16, count: u16) -> Self {
+    fn new(id: &'a PreSharedKeyId, index: u16, count: u16) -> Self {
         Self { id, index, count }
     }
 }
@@ -251,7 +251,7 @@ impl PskSecret {
     /// Create a new `PskSecret` from PSK IDs and PSKs
     pub fn new(
         ciphersuite: &'static Ciphersuite,
-        psk_ids: &[PreSharedKeyID],
+        psk_ids: &[PreSharedKeyId],
         psks: &[Secret],
     ) -> Result<Self, PskSecretError> {
         if psk_ids.len() != psks.len() {

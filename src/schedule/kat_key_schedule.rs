@@ -24,7 +24,7 @@ use hpke::HPKEKeyPair;
 use serde::{self, Deserialize, Serialize};
 
 use super::CommitSecret;
-use super::{errors::KSTestVectorError, PskSecret};
+use super::{errors::KsTestVectorError, PskSecret};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Epoch {
@@ -196,7 +196,7 @@ fn read_test_vectors() {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestVectorError> {
+pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
@@ -233,7 +233,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
             if cfg!(test) {
                 panic!("Joiner secret mismatch");
             }
-            return Err(KSTestVectorError::JoinerSecretMismatch);
+            return Err(KsTestVectorError::JoinerSecretMismatch);
         }
 
         let mut key_schedule = KeySchedule::init(
@@ -247,7 +247,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
             if cfg!(test) {
                 panic!("Welcome secret mismatch");
             }
-            return Err(KSTestVectorError::WelcomeSecretMismatch);
+            return Err(KsTestVectorError::WelcomeSecretMismatch);
         }
 
         let confirmed_transcript_hash = hex_to_bytes(&epoch.confirmed_transcript_hash);
@@ -269,7 +269,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
             if cfg!(test) {
                 panic!("Group context mismatch");
             }
-            return Err(KSTestVectorError::GroupContextMismatch);
+            return Err(KsTestVectorError::GroupContextMismatch);
         }
 
         key_schedule.add_context(&group_context).unwrap();
@@ -287,26 +287,26 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
             if cfg!(test) {
                 panic!("Init secret mismatch");
             }
-            return Err(KSTestVectorError::InitSecretMismatch);
+            return Err(KsTestVectorError::InitSecretMismatch);
         }
         if hex_to_bytes(&epoch.sender_data_secret) != epoch_secrets.sender_data_secret().as_slice()
         {
             if cfg!(test) {
                 panic!("Sender data secret mismatch");
             }
-            return Err(KSTestVectorError::SenderDataSecretMismatch);
+            return Err(KsTestVectorError::SenderDataSecretMismatch);
         }
         if hex_to_bytes(&epoch.encryption_secret) != epoch_secrets.encryption_secret().as_slice() {
             if cfg!(test) {
                 panic!("Encryption secret mismatch");
             }
-            return Err(KSTestVectorError::EncryptionSecretMismatch);
+            return Err(KsTestVectorError::EncryptionSecretMismatch);
         }
         if hex_to_bytes(&epoch.exporter_secret) != epoch_secrets.exporter_secret().as_slice() {
             if cfg!(test) {
                 panic!("Exporter secret mismatch");
             }
-            return Err(KSTestVectorError::ExporterSecretMismatch);
+            return Err(KsTestVectorError::ExporterSecretMismatch);
         }
         if hex_to_bytes(&epoch.authentication_secret)
             != epoch_secrets.authentication_secret().as_slice()
@@ -314,31 +314,31 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
             if cfg!(test) {
                 panic!("Authentication secret mismatch");
             }
-            return Err(KSTestVectorError::AuthenticationSecretMismatch);
+            return Err(KsTestVectorError::AuthenticationSecretMismatch);
         }
         if hex_to_bytes(&epoch.external_secret) != epoch_secrets.external_secret().as_slice() {
             if cfg!(test) {
                 panic!("External secret mismatch");
             }
-            return Err(KSTestVectorError::ExternalSecretMismatch);
+            return Err(KsTestVectorError::ExternalSecretMismatch);
         }
         if hex_to_bytes(&epoch.confirmation_key) != epoch_secrets.confirmation_key().as_slice() {
             if cfg!(test) {
                 panic!("Confirmation key mismatch");
             }
-            return Err(KSTestVectorError::ConfirmationKeyMismatch);
+            return Err(KsTestVectorError::ConfirmationKeyMismatch);
         }
         if hex_to_bytes(&epoch.membership_key) != epoch_secrets.membership_key().as_slice() {
             if cfg!(test) {
                 panic!("Membership key mismatch");
             }
-            return Err(KSTestVectorError::MembershipKeyMismatch);
+            return Err(KsTestVectorError::MembershipKeyMismatch);
         }
         if hex_to_bytes(&epoch.resumption_secret) != epoch_secrets.resumption_secret().as_slice() {
             if cfg!(test) {
                 panic!("Resumption secret mismatch");
             }
-            return Err(KSTestVectorError::ResumptionSecretMismatch);
+            return Err(KsTestVectorError::ResumptionSecretMismatch);
         }
 
         // Calculate external HPKE key pair
@@ -357,7 +357,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KSTestV
             if cfg!(test) {
                 panic!("External pub mismatch");
             }
-            return Err(KSTestVectorError::ExternalPubMismatch);
+            return Err(KsTestVectorError::ExternalPubMismatch);
         }
     }
     Ok(())

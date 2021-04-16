@@ -1,5 +1,5 @@
 use openmls::prelude::*;
-mod utils;
+pub mod utils;
 use utils::mls_utils::*;
 
 /// Creates a simple test setup for various encoding tests.
@@ -68,9 +68,9 @@ fn test_application_message_encoding() {
                 .unwrap();
             let encrypted_message_bytes = encrypted_message.encode_detached().unwrap();
             let encrypted_message_decoded =
-                match MLSCiphertext::decode(&mut Cursor::new(&encrypted_message_bytes)) {
+                match MlsCiphertext::decode(&mut Cursor::new(&encrypted_message_bytes)) {
                     Ok(a) => a,
-                    Err(err) => panic!("Error decoding MLSCiphertext: {:?}", err),
+                    Err(err) => panic!("Error decoding MlsCiphertext: {:?}", err),
                 };
             assert_eq!(encrypted_message, encrypted_message_decoded);
         }
@@ -116,7 +116,7 @@ fn test_update_proposal_encoding() {
         let update_encoded = update
             .encode_detached()
             .expect("Could not encode proposal.");
-        let update_decoded = match MLSPlaintext::decode_detached(&update_encoded) {
+        let update_decoded = match MlsPlaintext::decode_detached(&update_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
         };
@@ -163,7 +163,7 @@ fn test_add_proposal_encoding() {
             )
             .expect("Could not create proposal.");
         let add_encoded = add.encode_detached().expect("Could not encode proposal.");
-        let add_decoded = match MLSPlaintext::decode_detached(&add_encoded) {
+        let add_decoded = match MlsPlaintext::decode_detached(&add_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
         };
@@ -191,7 +191,7 @@ fn test_remove_proposal_encoding() {
         let remove_encoded = remove
             .encode_detached()
             .expect("Could not encode proposal.");
-        let remove_decoded = match MLSPlaintext::decode_detached(&remove_encoded) {
+        let remove_decoded = match MlsPlaintext::decode_detached(&remove_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
         };
@@ -262,7 +262,7 @@ fn test_commit_encoding() {
             .create_commit(&[], alice_credential_bundle, proposals, &[], true, None)
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
-        let commit_decoded = match MLSPlaintext::decode_detached(&commit_encoded) {
+        let commit_decoded = match MlsPlaintext::decode_detached(&commit_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
         };

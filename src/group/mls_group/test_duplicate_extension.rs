@@ -11,8 +11,7 @@ use crate::{
 };
 
 // This tests the ratchet tree extension to test if the duplicate detection works
-ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

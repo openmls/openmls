@@ -1,5 +1,4 @@
 use openmls::prelude::*;
-use std::convert::TryFrom;
 
 #[macro_use]
 mod utils;
@@ -23,8 +22,7 @@ fn default_managed_group_config() -> ManagedGroupConfig {
 // B->A: KeyPackage
 // A->B: Welcome
 // ***:  Verify group state
-ctest_ciphersuites!(one_to_one_join, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let number_of_clients = 2;
@@ -58,8 +56,7 @@ ctest_ciphersuites!(one_to_one_join, test(param: CiphersuiteName) {
 // A->B: Add(C), Commit
 // A->C: Welcome
 // ***:  Verify group state
-ctest_ciphersuites!(three_party_join, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -101,8 +98,7 @@ ctest_ciphersuites!(three_party_join, test(param: CiphersuiteName) {
 // A->B: Welcome
 // A->C: Welcome
 // ***:  Verify group state
-ctest_ciphersuites!(multiple_joins, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -138,8 +134,7 @@ ctest_ciphersuites!(multiple_joins, test(param: CiphersuiteName) {
 // A->B: Welcome
 // A->B: Update, Commit
 // ***:  Verify group state
-ctest_ciphersuites!(update, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -172,8 +167,7 @@ ctest_ciphersuites!(update, test(param: CiphersuiteName) {
 // A->C: Welcome
 // A->B: Remove(B), Commit
 // ***:  Verify group state
-ctest_ciphersuites!(remove, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -210,8 +204,7 @@ ctest_ciphersuites!(remove, test(param: CiphersuiteName) {
 // * All members update
 // * While the group size is >1, a randomly-chosen group member removes a
 //   randomly-chosen other group member
-ctest_ciphersuites!(large_group_lifecycle, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

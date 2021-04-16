@@ -104,7 +104,7 @@ impl KeyPackage {
     /// Get the ID of this key package as byte slice.
     /// Returns an error if no Key ID extension is present.
     pub fn key_id(&self) -> Result<&[u8], KeyPackageError> {
-        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::KeyID) {
+        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::KeyId) {
             return Ok(key_id_ext.to_key_id_extension()?.as_slice());
         }
         Err(KeyPackageError::ExtensionError(

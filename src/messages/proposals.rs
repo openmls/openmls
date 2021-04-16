@@ -157,7 +157,7 @@ impl ProposalReference {
 }
 
 /// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating MLSPlaintext and the ProposalReference is attached.
+/// the encapsulating MlsPlaintext and the ProposalReference is attached.
 #[derive(Clone)]
 pub(crate) struct QueuedProposal<'a> {
     proposal: &'a Proposal,
@@ -167,14 +167,14 @@ pub(crate) struct QueuedProposal<'a> {
 }
 
 impl<'a> QueuedProposal<'a> {
-    /// Creates a new `QueuedProposal` from an `MLSPlaintext`
+    /// Creates a new `QueuedProposal` from an `MlsPlaintext`
     pub(crate) fn from_mls_plaintext(
         ciphersuite: &Ciphersuite,
-        mls_plaintext: &'a MLSPlaintext,
+        mls_plaintext: &'a MlsPlaintext,
     ) -> Result<Self, QueuedProposalError> {
         debug_assert!(mls_plaintext.content_type == ContentType::Proposal);
         let proposal = match &mls_plaintext.content {
-            MLSPlaintextContentType::Proposal(p) => p,
+            MlsPlaintextContentType::Proposal(p) => p,
             _ => return Err(QueuedProposalError::WrongContentType),
         };
         let proposal_reference = ProposalReference::from_proposal(ciphersuite, &proposal);
@@ -233,7 +233,7 @@ impl<'a> ProposalQueue<'a> {
     /// don't need filtering
     pub(crate) fn from_proposals_by_reference(
         ciphersuite: &Ciphersuite,
-        proposals: &'a [&MLSPlaintext],
+        proposals: &'a [&MlsPlaintext],
     ) -> Self {
         let mut proposal_queue = ProposalQueue::default();
         for mls_plaintext in proposals {
@@ -250,7 +250,7 @@ impl<'a> ProposalQueue<'a> {
     pub(crate) fn from_committed_proposals(
         ciphersuite: &Ciphersuite,
         committed_proposals: &'a [ProposalOrRef],
-        proposals_by_reference: &[&'a MLSPlaintext],
+        proposals_by_reference: &[&'a MlsPlaintext],
         sender: Sender,
     ) -> Result<Self, ProposalQueueError> {
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
@@ -306,7 +306,7 @@ impl<'a> ProposalQueue<'a> {
     /// own node were included
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
-        proposals_by_reference: &'a [&MLSPlaintext],
+        proposals_by_reference: &'a [&MlsPlaintext],
         proposals_by_value: &'a [&Proposal],
         own_index: LeafIndex,
         tree_size: LeafIndex,
@@ -496,7 +496,7 @@ pub struct RemoveProposal {
 /// } PreSharedKey;
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PreSharedKeyProposal {
-    pub psk: PreSharedKeyID,
+    pub psk: PreSharedKeyId,
 }
 
 /// ReInit proposal
