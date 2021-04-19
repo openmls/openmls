@@ -757,7 +757,9 @@ impl ManagedGroup {
     }
 
     /// Returns own credential. If the group is inactive, it returns a
-    /// `UseAfterEviction` error.
+    /// `UseAfterEviction` error. This function currently returns a full
+    /// `Credential` rather than just a reference. This issue is tracked in
+    /// issue #387.
     pub fn credential(&self) -> Result<Credential, ManagedGroupError> {
         if !self.is_active() {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
