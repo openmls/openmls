@@ -17,7 +17,7 @@ ctest_ciphersuites!(key_storage, test(param: CiphersuiteName) {
     let ks = KeyStore::default();
 
     let credential = ks
-        .generate_credential(
+        .generate_credential_bundle(
             "Alice".as_bytes().to_vec(),
             Basic,
             ciphersuite.signature_scheme(),
@@ -26,7 +26,7 @@ ctest_ciphersuites!(key_storage, test(param: CiphersuiteName) {
         .clone();
 
     let key_package = ks
-        .generate_key_package(&[ciphersuite.name()], &credential, Vec::new())
+        .generate_key_package_bundle(&[ciphersuite.name()], &credential, Vec::new())
         .expect("Error while generating key package.")
         .clone();
 
@@ -44,7 +44,7 @@ ctest_ciphersuites!(key_storage, test(param: CiphersuiteName) {
         .expect("Error while creating credential.");
 
     let kpb_external_cred_err = ks
-        .generate_key_package(&[ciphersuite.name()], cb_external.credential(), Vec::new()).expect_err("No error while trying to generate a key package with unavailable credential bundle.");
+        .generate_key_package_bundle(&[ciphersuite.name()], cb_external.credential(), Vec::new()).expect_err("No error while trying to generate a key package with unavailable credential bundle.");
 
     assert_eq!(kpb_external_cred_err, KeyStoreError::NoMatchingCredentialBundle);
 

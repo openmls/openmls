@@ -218,7 +218,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential(
+        .generate_credential_bundle(
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
@@ -227,7 +227,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 
     // Generate KeyPackages
     let alice_key_package = key_store
-        .generate_key_package(&[ciphersuite.name()], &alice_credential, vec![])
+        .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
         .unwrap();
 
     // Define the managed group configuration
