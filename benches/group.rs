@@ -9,6 +9,7 @@ use openmls::{node::Node, prelude::*, tree::index::NodeIndex};
 type RatchetTree = Vec<Option<Node>>;
 type Commit = (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>);
 
+#[derive(Clone)]
 struct Setup {
     credential_bundles: Vec<CredentialBundle>,
     key_package_bundles: Vec<KeyPackageBundle>,
@@ -168,6 +169,23 @@ fn send_message(
 
 fn receive_message(msg: MLSCiphertext, receiver: usize, mut groups: Vec<MlsGroup>) {
     groups[receiver].decrypt(&msg).unwrap();
+}
+
+fn send_messages(
+    mut groups: Vec<MlsGroup>,
+    setup: Setup,
+    sender: usize,
+    num_messages: usize,
+) -> (Vec<(MLSCiphertext, usize)>, Vec<MlsGroup>, Setup) {
+    let mut msgs = Vec::new();
+    let mut setup = setup;
+    for i in 0..num_messages {
+        let (msg, sender, new_groups, new_setup) = send_message(groups, setup, sender);
+        msgs.push((msg, sender));
+        groups = new_groups;
+        setup = new_setup;
+    }
+    (msgs, groups, setup)
 }
 
 fn send_update(
@@ -354,6 +372,30 @@ fn send_remove_user(
     )
 }
 
+fn send_message_bm(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize, _m: usize) {
+    c.bench_function(
+        &format!("Receive Message {} {}", ciphersuite.name(), n),
+        |b| {
+            b.iter_batched(
+                || {
+                    let setup = setup(n, ciphersuite);
+                    let (groups, setup) = join_groups(setup);
+                    let (groups, setup) = send_updates(groups, setup, ciphersuite);
+                    let sender = rand::thread_rng().gen_range(0..groups.len());
+                    let (msg, sender, groups, _setup) = send_message(groups, setup, sender);
+                    let mut receiver = rand::thread_rng().gen_range(0..groups.len());
+                    while receiver == sender {
+                        receiver = rand::thread_rng().gen_range(0..groups.len());
+                    }
+                    (msg, groups, receiver)
+                },
+                |(msg, groups, receiver)| receive_message(msg, receiver, groups),
+                BatchSize::SmallInput,
+            )
+        },
+    );
+}
+
 fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
     c.bench_function(&format!("Setup Group {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
@@ -380,41 +422,26 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
         )
     });
 
+    // Basic setup for all other benchmarks.
+    let bench_setup = setup(n, ciphersuite);
+    let (groups, bench_setup) = join_groups(bench_setup);
+    let (groups, bench_setup) = send_updates(groups, bench_setup, ciphersuite);
+
     c.bench_function(&format!("Send Message {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
             || {
-                let setup = setup(n, ciphersuite);
-                let (groups, setup) = join_groups(setup);
-                let (groups, setup) = send_updates(groups, setup, ciphersuite);
+                // let setup = setup(n, ciphersuite);
+                // let (groups, setup) = join_groups(setup);
+                // let (groups, setup) = send_updates(groups, setup, ciphersuite);
                 let sender = rand::thread_rng().gen_range(0..groups.len());
-                (groups, setup, sender)
+                (groups, bench_setup, sender)
             },
             |(groups, setup, sender)| send_message(groups, setup, sender),
             BatchSize::SmallInput,
         )
     });
 
-    c.bench_function(
-        &format!("Receive Message {} {}", ciphersuite.name(), n),
-        |b| {
-            b.iter_batched(
-                || {
-                    let setup = setup(n, ciphersuite);
-                    let (groups, setup) = join_groups(setup);
-                    let (groups, setup) = send_updates(groups, setup, ciphersuite);
-                    let sender = rand::thread_rng().gen_range(0..groups.len());
-                    let (msg, sender, groups, _setup) = send_message(groups, setup, sender);
-                    let mut receiver = rand::thread_rng().gen_range(0..groups.len());
-                    while receiver == sender {
-                        receiver = rand::thread_rng().gen_range(0..groups.len());
-                    }
-                    (msg, groups, receiver)
-                },
-                |(msg, groups, receiver)| receive_message(msg, receiver, groups),
-                BatchSize::SmallInput,
-            )
-        },
-    );
+    send_message_bm(c, ciphersuite, n, 1);
 
     c.bench_function(&format!("Send Update {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
@@ -554,15 +581,17 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
 
 fn benchmarks(c: &mut Criterion) {
     for ciphersuite in Config::supported_ciphersuites() {
-        for n in 2..10 {
+        // for n in 2..10 {
+        //     // bench_main(c, ciphersuite, n);
+        //     send_message_bm(c, ciphersuite, n);
+        // }
+        // for n in (10..=50).step_by(10) {
+        //     // bench_main(c, ciphersuite, n);
+        //     send_message_bm(c, ciphersuite, n);
+        // }
+        for n in (100..=500).step_by(100) {
             bench_main(c, ciphersuite, n);
         }
-        // for n in (10..=50).step_by(10) {
-        //     bench_main(c, ciphersuite, n);
-        // }
-        // for n in (100..=500).step_by(100) {
-        //     bench_main(c, ciphersuite, n);
-        // }
         // for n in (1_000..10_000).step_by(1_000) {
         //     bench_main(c, ciphersuite, n);
         // }
@@ -570,6 +599,8 @@ fn benchmarks(c: &mut Criterion) {
         //     bench_main(c, ciphersuite, n);
         // }
         // bench_main(c, ciphersuite, 10_000);
+        // More than 10_000 requires too much memory.
+        bench_main(c, ciphersuite, 1000);
         break;
     }
 }

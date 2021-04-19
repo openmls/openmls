@@ -46,6 +46,13 @@ impl RatchetTreeExtension {
     }
 }
 
+impl TlsSize for RatchetTreeExtension {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        4 + self.tree.len()
+    }
+}
+
 #[typetag::serde]
 impl Extension for RatchetTreeExtension {
     fn extension_type(&self) -> ExtensionType {

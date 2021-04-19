@@ -852,6 +852,10 @@ impl SignaturePublicKey {
             Err(SignatureError::InvalidSignature)
         }
     }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        &self.value
+    }
 }
 
 impl SignaturePrivateKey {

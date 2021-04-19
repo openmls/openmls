@@ -135,7 +135,7 @@ fn test_protocol_version() {
 }
 
 /// This struct contains a credential and the corresponding private key.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct CredentialBundle {
     credential: Credential,

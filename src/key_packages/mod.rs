@@ -135,7 +135,8 @@ impl KeyPackage {
 
     /// Populate the `signature` field using the `credential_bundle`.
     pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
-        self.signature = credential_bundle.sign(&self.encoded).unwrap();
+        // let payload = &self.encoded().unwrap();
+        self.signature = credential_bundle.sign(self.encoded()).unwrap();
     }
 }
 
@@ -173,13 +174,24 @@ impl KeyPackage {
     /// Compile the unsigned payload to create the signature required in the
     /// signature field.
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        let buffer = &mut Vec::new();
-        self.protocol_version.encode(buffer)?;
-        self.ciphersuite.name().encode(buffer)?;
-        self.hpke_init_key.encode(buffer)?;
-        self.credential.encode(buffer)?;
-        encode_extensions(&self.extensions, buffer)?;
-        Ok(buffer.to_vec())
+        let buffer_len = self.protocol_version.serialized_len()
+            + self.protocol_version.serialized_len()
+            + self.ciphersuite.name().serialized_len()
+            + self.hpke_init_key.serialized_len()
+            + self.credential.serialized_len()
+            + crate::extensions::serialized_len(self.extensions.as_slice());
+        let mut buffer = Vec::with_capacity(buffer_len);
+        // let mut buffer = Vec::new();
+        self.protocol_version.encode(&mut buffer)?;
+        self.ciphersuite.name().encode(&mut buffer)?;
+        self.hpke_init_key.encode(&mut buffer)?;
+        self.credential.encode(&mut buffer)?;
+        encode_extensions(&self.extensions, &mut buffer)?;
+        Ok(buffer)
+    }
+
+    fn encoded(&self) -> &[u8] {
+        &self.encoded
     }
 }
 
@@ -215,7 +227,7 @@ impl KeyPackage {
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions
             .retain(|e| e.extension_type() != extension_type);
-        self.encoded = self.unsigned_payload().unwrap();
+            self.encoded = self.unsigned_payload().unwrap();
     }
 
     /// Get a reference to the HPKE init key.
@@ -240,7 +252,7 @@ impl KeyPackage {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,

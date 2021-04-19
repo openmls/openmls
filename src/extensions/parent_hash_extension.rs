@@ -22,7 +22,7 @@ use super::{
     Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, ParentHashError,
     Serialize,
 };
-use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
+use crate::codec::{Cursor, TlsSize, VecSize, decode_vec, encode_vec};
 
 #[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ParentHashExtension {
@@ -39,6 +39,13 @@ impl ParentHashExtension {
     /// Get a reference to the parent hash value.
     pub(crate) fn parent_hash(&self) -> &[u8] {
         &self.parent_hash
+    }
+}
+
+impl TlsSize for ParentHashExtension {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        1 + self.parent_hash.len()
     }
 }
 

@@ -4,7 +4,7 @@ use crate::key_packages::*;
 
 impl Codec for KeyPackage {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        buffer.extend_from_slice(&self.encoded);
+        buffer.extend_from_slice(self.encoded());
         self.signature.encode(buffer)?;
         Ok(())
     }

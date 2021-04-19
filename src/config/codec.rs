@@ -1,3 +1,5 @@
+use crate::codec::TlsSize;
+
 use super::*;
 
 impl Codec for ProtocolVersion {
@@ -8,5 +10,12 @@ impl Codec for ProtocolVersion {
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         Ok(Self::try_from(u8::decode(cursor)?)?)
+    }
+}
+
+impl TlsSize for ProtocolVersion {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        1
     }
 }

@@ -16,7 +16,7 @@ use super::{
     Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, KeyPackageIdError,
     Serialize,
 };
-use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
+use crate::codec::{Cursor, TlsSize, VecSize, decode_vec, encode_vec};
 
 #[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct KeyIdExtension {
@@ -34,6 +34,13 @@ impl KeyIdExtension {
     /// Get the value of the key id as byte slice.
     pub fn as_slice(&self) -> &[u8] {
         &self.key_id
+    }
+}
+
+impl TlsSize for KeyIDExtension {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        2 + self.key_id.len()
     }
 }
 
