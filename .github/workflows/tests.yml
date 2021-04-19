@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - interop
   pull_request:
     branches:
       - main
