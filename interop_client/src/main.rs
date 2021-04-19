@@ -183,7 +183,8 @@ impl MlsClient for MlsClientImpl {
                 ("TreeKEM", kat_bytes)
             }
             Ok(TestVectorType::Messages) => {
-                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
+                let ciphersuite: &'static Ciphersuite =
+                    Config::supported_ciphersuites().as_ref().first().unwrap();
                 let kat_messages = kat_messages::generate_test_vector(ciphersuite);
                 let kat_bytes = to_bytes(kat_messages);
                 ("Messages", kat_bytes)
