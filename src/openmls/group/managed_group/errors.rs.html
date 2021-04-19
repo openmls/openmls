@@ -71,6 +71,15 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
@@ -81,27 +90,36 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">error</span>::{<span class="ident">ErrorPayload</span>, <span class="ident">ErrorString</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">GroupError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_store</span>::<span class="ident">KeyStoreError</span>;
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ManagedGroupError</span> {
-        <span class="ident">LibraryError</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
-            <span class="string">&quot;An internal library error occurred. Additional detail is provided.&quot;</span>,
-        <span class="ident">Codec</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`CodecError`](`crate::codec::CodecError`) for details&quot;</span>,
-        <span class="ident">Config</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details&quot;</span>,
-        <span class="ident">Group</span>(<span class="ident">GroupError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`GroupError`](`crate::group::GroupError`) for details&quot;</span>,
-        <span class="ident">CreateCommit</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`CreateCommitError`](`crate::group::CreateCommitError`) for details&quot;</span>,
-        <span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`UseAfterEviction`](`UseAfterEviction`) for details&quot;</span>,
-        <span class="ident">PendingProposalsExist</span>(<span class="ident">PendingProposalsError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`PendingProposalsError`](`PendingProposalsError`) for details&quot;</span>,
-        <span class="ident">Exporter</span>(<span class="ident">ExporterError</span>) <span class="op">=</span>
-            <span class="string">&quot;See [`ExporterError`](`crate::group::ExporterError`) for details&quot;</span>,
-        <span class="ident">EmptyInput</span>(<span class="ident">EmptyInputError</span>) <span class="op">=</span>
-            <span class="string">&quot;Empty input. Additional detail is provided.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">NoMatchingCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.&quot;</span>,
+            <span class="ident">NoMatchingKeyPackageBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.&quot;</span>,
+            <span class="ident">PoisonedCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">LibraryError</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
+                <span class="string">&quot;An internal library error occurred. Additional detail is provided.&quot;</span>,
+            <span class="ident">Codec</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CodecError`](`crate::codec::CodecError`) for details&quot;</span>,
+            <span class="ident">Config</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details&quot;</span>,
+            <span class="ident">Group</span>(<span class="ident">GroupError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`GroupError`](`crate::group::GroupError`) for details&quot;</span>,
+            <span class="ident">CreateCommit</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CreateCommitError`](`crate::group::CreateCommitError`) for details&quot;</span>,
+            <span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`UseAfterEviction`](`UseAfterEviction`) for details&quot;</span>,
+            <span class="ident">PendingProposalsExist</span>(<span class="ident">PendingProposalsError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`PendingProposalsError`](`PendingProposalsError`) for details&quot;</span>,
+            <span class="ident">Exporter</span>(<span class="ident">ExporterError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ExporterError`](`crate::group::ExporterError`) for details&quot;</span>,
+            <span class="ident">EmptyInput</span>(<span class="ident">EmptyInputError</span>) <span class="op">=</span>
+                <span class="string">&quot;Empty input. Additional detail is provided.&quot;</span>,
+            <span class="ident">KeyStoreError</span>(<span class="ident">KeyStoreError</span>) <span class="op">=</span> <span class="string">&quot;See [`KeyStoreError`](`crate::key_store::KeyStoreError`) for details&quot;</span>,
+        }
     }
 }
 
