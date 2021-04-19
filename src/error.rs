@@ -101,7 +101,7 @@ macro_rules! implement_error {
 
         impl std::fmt::Display for $src_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_fmt(format_args!("{:?}: {}", self, self._description()))
+                f.write_fmt(format_args!("{:?}: {}", self, self.description()))
             }
         }
 
@@ -121,11 +121,11 @@ macro_rules! implement_error {
         }
 
         impl $src_name {
-            pub(crate) fn _description(&self) -> String {
+            pub fn description(&self) -> String {
                 as_expr! {
                     match self {
                         $(
-                            $src_name::$var_name(e) => format!("{}: {}", $description, e._description()),
+                            $src_name::$var_name(e) => format!("{}: {}", $description, e.description()),
                         )*
                         $(
                             $src_name::$var_name_simple => format!("{}", $description_simple),
@@ -162,7 +162,7 @@ impl std::fmt::Display for ErrorString {
 }
 
 impl ErrorString {
-    pub(crate) fn _description(&self) -> String {
+    pub fn description(&self) -> String {
         self.0.clone()
     }
 }
@@ -192,7 +192,7 @@ impl std::fmt::Display for ErrorPayload {
 }
 
 impl ErrorPayload {
-    pub(crate) fn _description(&self) -> String {
+    pub fn description(&self) -> String {
         format!("{:?}", self.0.clone())
     }
 }
