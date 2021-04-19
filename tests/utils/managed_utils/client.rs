@@ -40,7 +40,7 @@ impl Client {
         let mandatory_extensions = Vec::new();
         let key_package: KeyPackage = self
             .key_store
-            .generate_key_package(ciphersuites, credential, mandatory_extensions)
+            .generate_key_package_bundle(ciphersuites, credential, mandatory_extensions)
             .unwrap();
         Ok(key_package)
     }
@@ -61,7 +61,7 @@ impl Client {
         let mandatory_extensions = Vec::new();
         let key_package: KeyPackage = self
             .key_store
-            .generate_key_package(&[ciphersuite.name()], credential, mandatory_extensions)
+            .generate_key_package_bundle(&[ciphersuite.name()], credential, mandatory_extensions)
             .unwrap();
         let group_state = ManagedGroup::new(
             &self.key_store,

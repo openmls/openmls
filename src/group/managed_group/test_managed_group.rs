@@ -11,7 +11,7 @@ fn test_managed_group_persistence() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential(
+        .generate_credential_bundle(
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
@@ -20,7 +20,7 @@ fn test_managed_group_persistence() {
 
     // Generate KeyPackages
     let alice_key_package = key_store
-        .generate_key_package(&[ciphersuite.name()], &alice_credential, vec![])
+        .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
         .unwrap();
 
     // Define the managed group configuration
@@ -78,7 +78,7 @@ fn remover() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential(
+        .generate_credential_bundle(
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
@@ -86,7 +86,7 @@ fn remover() {
         .unwrap();
 
     let bob_credential = key_store
-        .generate_credential(
+        .generate_credential_bundle(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
@@ -94,7 +94,7 @@ fn remover() {
         .unwrap();
 
     let charlie_credential = key_store
-        .generate_credential(
+        .generate_credential_bundle(
             "Charly".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
@@ -103,15 +103,15 @@ fn remover() {
 
     // Generate KeyPackages
     let alice_key_package = key_store
-        .generate_key_package(&[ciphersuite.name()], &alice_credential, vec![])
+        .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
         .unwrap();
 
     let bob_key_package = key_store
-        .generate_key_package(&[ciphersuite.name()], &bob_credential, vec![])
+        .generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![])
         .unwrap();
 
     let charlie_key_package = key_store
-        .generate_key_package(&[ciphersuite.name()], &charlie_credential, vec![])
+        .generate_key_package_bundle(&[ciphersuite.name()], &charlie_credential, vec![])
         .unwrap();
 
     // Define the managed group configuration

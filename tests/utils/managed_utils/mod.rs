@@ -118,7 +118,7 @@ impl ManagedTestSetup {
             let mut credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
                 let credential = key_store
-                    .generate_credential(
+                    .generate_credential_bundle(
                         identity.clone(),
                         CredentialType::Basic,
                         SignatureScheme::from(*ciphersuite),

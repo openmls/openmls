@@ -74,7 +74,7 @@ fn managed_group_operations() {
 
             // Generate credential bundles
             let alice_credential = key_store
-                .generate_credential(
+                .generate_credential_bundle(
                     "Alice".into(),
                     CredentialType::Basic,
                     ciphersuite.signature_scheme(),
@@ -82,7 +82,7 @@ fn managed_group_operations() {
                 .unwrap();
 
             let bob_credential = key_store
-                .generate_credential(
+                .generate_credential_bundle(
                     "Bob".into(),
                     CredentialType::Basic,
                     ciphersuite.signature_scheme(),
@@ -90,7 +90,7 @@ fn managed_group_operations() {
                 .unwrap();
 
             let charlie_credential = key_store
-                .generate_credential(
+                .generate_credential_bundle(
                     "Charlie".into(),
                     CredentialType::Basic,
                     ciphersuite.signature_scheme(),
@@ -99,11 +99,11 @@ fn managed_group_operations() {
 
             // Generate KeyPackages
             let alice_key_package = key_store
-                .generate_key_package(&[ciphersuite.name()], &alice_credential, vec![])
+                .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
                 .unwrap();
 
             let bob_key_package = key_store
-                .generate_key_package(&[ciphersuite.name()], &bob_credential, vec![])
+                .generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![])
                 .unwrap();
 
             // Define the managed group configuration
@@ -281,7 +281,7 @@ fn managed_group_operations() {
 
             // === Bob adds Charlie ===
             let charlie_key_package = key_store
-                .generate_key_package(&[ciphersuite.name()], &charlie_credential, vec![])
+                .generate_key_package_bundle(&[ciphersuite.name()], &charlie_credential, vec![])
                 .unwrap();
 
             let (queued_messages, welcome) =
@@ -458,7 +458,7 @@ fn managed_group_operations() {
 
             // Create a new KeyPackageBundle for Bob
             let bob_key_package = key_store
-                .generate_key_package(&[ciphersuite.name()], &bob_credential, vec![])
+                .generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![])
                 .unwrap();
 
             // Create RemoveProposal and process it
@@ -619,7 +619,7 @@ fn managed_group_operations() {
 
             // Create a new KeyPackageBundle for Bob
             let bob_key_package = key_store
-                .generate_key_package(&[ciphersuite.name()], &bob_credential, vec![])
+                .generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![])
                 .unwrap();
 
             // Add Bob to the group
@@ -668,7 +668,7 @@ fn test_empty_input_errors() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential(
+        .generate_credential_bundle(
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
@@ -677,7 +677,7 @@ fn test_empty_input_errors() {
 
     // Generate KeyPackages
     let alice_key_package = key_store
-        .generate_key_package(&[ciphersuite.name()], &alice_credential, vec![])
+        .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
         .unwrap();
 
     // Define the managed group configuration

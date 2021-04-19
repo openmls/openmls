@@ -14,7 +14,7 @@
 //! ## `CredentialBundle` Instances
 //!
 //! The API of the `KeyStore` allows the generation of `Credential` instances
-//! via `generate_credential`, such that it stores the corresponding
+//! via `generate_credential_bundle`, such that it stores the corresponding
 //! `CredentialBundle`. After storing them, references to `CredentialBundle`
 //! instances can be retrieved via `get_credential_bundle` using the
 //! `SignaturePublicKey` of the corresponding `Credential` as index.
@@ -22,7 +22,7 @@
 //! ## Init `KeyPackageBundle` Instances
 //!
 //! Similarly, the `KeyStore` can generate "init" `KeyPackage` instances via
-//! `generate_key_package` and store the corresponding `KeyPackageBundle`. Init
+//! `generate_key_package_bundle` and store the corresponding `KeyPackageBundle`. Init
 //! `KeyPackage` instances are meant to be published so other parties can use
 //! them to add the publishing party to groups.
 //!
@@ -57,7 +57,7 @@
 //!
 //! // Generate a credential bundle with the matching signature scheme.
 //! let alice_credential = key_store
-//!     .generate_credential(
+//!     .generate_credential_bundle(
 //!         "Alice".into(),
 //!         CredentialType::Basic,
 //!         SignatureScheme::from(ciphersuite_name),
@@ -66,7 +66,7 @@
 //!
 //! // Generate a key package bundle.
 //! let alice_key_package = key_store
-//!     .generate_key_package(&[ciphersuite_name], &alice_credential, vec![])
+//!     .generate_key_package_bundle(&[ciphersuite_name], &alice_credential, vec![])
 //!     .unwrap();
 //!
 //! // Create a group with the previously generated credential and key package.
@@ -153,7 +153,7 @@ impl KeyStore {
     /// corresponding to the given `KeyPackage` hash.
     pub fn take_key_package_bundle(&self, kp_hash: &[u8]) -> Option<KeyPackageBundle> {
         // We unwrap here, because the two functions claiming a write lock on
-        // `init_key_package_bundles` (this one and `generate_key_package`) only
+        // `init_key_package_bundles` (this one and `generate_key_package_bundle`) only
         // hold the lock very briefly and should not panic during that period.
         let mut kpbs = self.init_key_package_bundles.write().unwrap();
         kpbs.remove(kp_hash)
@@ -183,7 +183,7 @@ impl KeyStore {
     /// error if no `CredentialBundle` can be found in the `KeyStore`
     /// corresponding to the given `Credential` or if an error occurred during
     /// the creation of the `KeyPackageBundle`.
-    pub fn generate_key_package(
+    pub fn generate_key_package_bundle(
         &self,
         ciphersuites: &[CiphersuiteName],
         credential: &Credential,
@@ -206,7 +206,7 @@ impl KeyStore {
     /// Generate a fresh `CredentialBundle` with the given parameters and store
     /// it in the `KeyStore`. Returns the corresponding `Credential` or an error
     /// if the creation of the `CredentialBundle` fails.
-    pub fn generate_credential(
+    pub fn generate_credential_bundle(
         &self,
         identity: Vec<u8>,
         credential_type: CredentialType,
