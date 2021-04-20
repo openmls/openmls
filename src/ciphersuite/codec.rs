@@ -48,6 +48,13 @@ impl Codec for Signature {
     }
 }
 
+impl tls_codec::TlsSize for Signature {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        2 + self.value.len()
+    }
+}
+
 impl Codec for HPKEPublicKey {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, self.as_slice())?;

@@ -4,10 +4,10 @@
 use serde::ser::SerializeStruct;
 use std::convert::TryInto;
 
-use crate::{Cursor, Deserialize, Error, Serialize};
+use crate::{Cursor, Deserialize, Error, Serialize, TlsSize};
 
 macro_rules! impl_tls_vec {
-    ($size:ty, $name:ident) => {
+    ($size:ty, $name:ident, $len_len: literal) => {
         #[derive(PartialEq, Clone, Debug)]
         pub struct $name<T: Serialize + Deserialize + Clone + PartialEq> {
             vec: Vec<T>,
@@ -204,12 +204,21 @@ macro_rules! impl_tls_vec {
                 Ok(result)
             }
         }
+
+        impl<T: Serialize + Deserialize + Clone + PartialEq + TlsSize> TlsSize for $name<T> {
+            #[inline]
+            fn serialized_len(&self) -> usize {
+                self.vec
+                    .iter()
+                    .fold($len_len, |acc, e| acc + e.serialized_len())
+            }
+        }
     };
 }
 
-impl_tls_vec!(u8, TlsVecU8);
-impl_tls_vec!(u16, TlsVecU16);
-impl_tls_vec!(u32, TlsVecU32);
+impl_tls_vec!(u8, TlsVecU8, 1);
+impl_tls_vec!(u16, TlsVecU16, 2);
+impl_tls_vec!(u32, TlsVecU32, 4);
 // TODO: #319 impl_tls_vec!(u64, TlsVecU64);
 
 impl From<std::num::TryFromIntError> for Error {

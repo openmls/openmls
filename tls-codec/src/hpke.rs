@@ -16,3 +16,10 @@ impl Deserialize for HPKEPublicKey {
         Ok(Self::new(value.as_slice().to_vec()))
     }
 }
+
+impl TlsSize for HPKEPublicKey {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        2 + self.as_slice().len()
+    }
+}
