@@ -171,7 +171,8 @@ impl ManagedGroup {
     ///
     /// New members are added by providing a `KeyPackage` for each member.
     ///
-    /// The `include_path` flag controls if a Path is included in the Commit.
+    /// This operation results in a Commit with a `path`, i.e. it includes an
+    /// update of the committer's leaf `KeyPackage`.
     ///
     /// If successful, it returns a `Vec` of
     /// [`MLSMessage`](crate::prelude::MLSMessage) and a
@@ -180,7 +181,6 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_packages: &[KeyPackage],
-        include_path: bool,
     ) -> Result<(Vec<MlsMessage>, Welcome), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -219,7 +219,7 @@ impl ManagedGroup {
             &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
-            include_path,
+            true,
             None,
         )?;
 

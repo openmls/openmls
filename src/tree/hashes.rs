@@ -130,7 +130,7 @@ impl RatchetTree {
             // Check if the parent node is not blank
             if let Some(parent_node) = &self.nodes[parent_index].node {
                 for index in &parent_node.unmerged_leaves {
-                    unmerged_leaves.push(NodeIndex::from(*index as usize));
+                    unmerged_leaves.push(NodeIndex::from(LeafIndex::from(*index as usize)));
                 }
             }
         };
@@ -238,7 +238,7 @@ impl RatchetTree {
         let right = child;
 
         // "If R is a leaf node, the check fails"
-        if right.is_leaf() {
+        if self.nodes[right].is_blank() && right.is_leaf() {
             return Err(ParentHashError::EndedWithLeafNode);
         }
 
