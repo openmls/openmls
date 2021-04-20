@@ -4,7 +4,7 @@ use crate::key_packages::*;
 
 impl Codec for KeyPackage {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        buffer.append(&mut self.unsigned_payload()?);
+        buffer.extend_from_slice(&self.encoded);
         self.signature.encode(buffer)?;
         Ok(())
     }
@@ -16,14 +16,16 @@ impl Codec for KeyPackage {
         let credential = Credential::decode(cursor)?;
         let extensions = extensions_vec_from_cursor(cursor)?;
         let signature = Signature::decode(cursor)?;
-        let kp = KeyPackage {
+        let mut kp = KeyPackage {
             protocol_version,
             ciphersuite: Config::ciphersuite(cipher_suite_name)?,
             hpke_init_key,
             credential,
             extensions,
             signature,
+            encoded: Vec::new(),
         };
+        kp.encoded = kp.unsigned_payload()?;
 
         if kp.verify().is_err() {
             log::error!("Error verifying a key package after decoding\n{:?}", kp);
