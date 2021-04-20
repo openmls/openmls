@@ -35,6 +35,8 @@
 <span id="32">32</span>
 <span id="33">33</span>
 <span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
@@ -42,7 +44,7 @@
 
 <span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">KeyPackage</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">buffer</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">unsigned_payload</span>()<span class="question-mark">?</span>);
+        <span class="ident">buffer</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encoded</span>);
         <span class="self">self</span>.<span class="ident">signature</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -54,14 +56,16 @@
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">Credential</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">extensions_vec_from_cursor</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">Signature</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">kp</span> <span class="op">=</span> <span class="ident">KeyPackage</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">kp</span> <span class="op">=</span> <span class="ident">KeyPackage</span> {
             <span class="ident">protocol_version</span>,
             <span class="ident">ciphersuite</span>: <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">cipher_suite_name</span>)<span class="question-mark">?</span>,
             <span class="ident">hpke_init_key</span>,
             <span class="ident">credential</span>,
             <span class="ident">extensions</span>,
             <span class="ident">signature</span>,
+            <span class="ident">encoded</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
         };
+        <span class="ident">kp</span>.<span class="ident">encoded</span> <span class="op">=</span> <span class="ident">kp</span>.<span class="ident">unsigned_payload</span>()<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="ident">kp</span>.<span class="ident">verify</span>().<span class="ident">is_err</span>() {
             <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Error verifying a key package after decoding\n{:?}&quot;</span>, <span class="ident">kp</span>);
