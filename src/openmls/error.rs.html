@@ -303,7 +303,7 @@
 
         <span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span> {
             <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-                <span class="ident">f</span>.<span class="ident">write_fmt</span>(<span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;{:?}: {}&quot;</span>, <span class="self">self</span>, <span class="self">self</span>.<span class="ident">description</span>()))
+                <span class="ident">f</span>.<span class="ident">write_fmt</span>(<span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;{:?}: {}&quot;</span>, <span class="self">self</span>, <span class="self">self</span>.<span class="ident">_description</span>()))
             }
         }
 
@@ -323,11 +323,11 @@
         }
 
         <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span> {
-            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+            <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
                 <span class="macro">as_expr</span><span class="macro">!</span> {
                     <span class="kw">match</span> <span class="self">self</span> {
                         $(
-                            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">var_name</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">description</span>, <span class="ident">e</span>.<span class="ident">description</span>()),
+                            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">var_name</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">description</span>, <span class="ident">e</span>.<span class="ident">_description</span>()),
                         )<span class="op">*</span>
                         $(
                             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">var_name_simple</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">description_simple</span>),
@@ -364,7 +364,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ErrorString</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">clone</span>()
     }
 }
@@ -394,7 +394,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ErrorPayload</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
         <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.<span class="ident">clone</span>())
     }
 }
