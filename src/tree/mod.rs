@@ -1,9 +1,9 @@
-use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
 use crate::{ciphersuite::*, prelude::PreSharedKeyId};
+use crate::{codec::*, messages::PathSecret};
 
 // Tree modules
 pub(crate) mod codec;
@@ -352,7 +352,7 @@ impl RatchetTree {
             self.ciphersuite
                 .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?;
         let secret =
-            Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite);
+            Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree
@@ -513,8 +513,12 @@ impl RatchetTree {
                 .iter()
                 .map(|&index| {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
-                    self.ciphersuite
-                        .hpke_seal_secret(&pk, group_context, &[], &path_secret)
+                    self.ciphersuite.hpke_seal_secret(
+                        &pk,
+                        group_context,
+                        &[],
+                        &path_secret.path_secret,
+                    )
                 })
                 .collect();
             // TODO Check that all public keys are non-empty
@@ -759,9 +763,21 @@ impl RatchetTree {
         self.private_tree.commit_secret()
     }
 
-    /// Get a slice with the path secrets.
-    pub(crate) fn path_secrets(&self) -> &[Secret] {
-        self.private_tree.path_secrets()
+    /// Get the path secret for a given target node.
+    pub(crate) fn path_secret(&self, index: NodeIndex) -> Option<&PathSecret> {
+        // Get a Vector containing the node indices of the direct path to the
+        // root from our own leaf.
+        let dirpath = match treemath::leaf_direct_path(self.own_node_index(), self.leaf_count()) {
+            Ok(p) => p,
+            Err(_) => return None,
+        };
+
+        // Get the position of the node index that represents the
+        // common ancestor in the direct path. We can unwrap here,
+        // because the direct path must contain the shared ancestor.
+        let position = dirpath.iter().position(|&x| x == index).unwrap();
+
+        self.private_tree.path_secrets().get(position)
     }
 }
 
