@@ -41,7 +41,7 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
     let bob_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id, false)
         .expect("Error adding Bob");
 
     // Check that group members agree on a group state.
@@ -77,14 +77,14 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id, false)
         .expect("Error adding Bob");
 
     // A vector including Charly's id.
     let charly_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, charly_id)
+        .add_clients(ActionType::Commit, group, &alice_id, charly_id, false)
         .expect("Error adding Charly");
 
     // Check that group members agree on a group state.
@@ -119,7 +119,7 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id, false)
         .expect("Error adding Bob and Charly");
 
     // Check that group members agree on a group state.
@@ -242,6 +242,7 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
             .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .expect("Error while removing group member.");
         group_members = group.members.clone();
+        setup.check_group_states(group);
     }
 
     // Check that group members agree on a group state.

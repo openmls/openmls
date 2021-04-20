@@ -136,10 +136,11 @@ fn remover() {
     .unwrap();
 
     // === Alice adds Bob ===
-    let (queued_messages, welcome) = match alice_group.add_members(&key_store, &[bob_key_package]) {
-        Ok((qm, welcome)) => (qm, welcome),
-        Err(e) => panic!("Could not add member to group: {:?}", e),
-    };
+    let (queued_messages, welcome) =
+        match alice_group.add_members(&key_store, &[bob_key_package], false) {
+            Ok((qm, welcome)) => (qm, welcome),
+            Err(e) => panic!("Could not add member to group: {:?}", e),
+        };
 
     alice_group
         .process_messages(queued_messages)
@@ -154,11 +155,11 @@ fn remover() {
     .expect("Error creating group from Welcome");
 
     // === Bob adds Charlie ===
-    let (queued_messages, welcome) = match bob_group.add_members(&key_store, &[charlie_key_package])
-    {
-        Ok((qm, welcome)) => (qm, welcome),
-        Err(e) => panic!("Could not add member to group: {:?}", e),
-    };
+    let (queued_messages, welcome) =
+        match bob_group.add_members(&key_store, &[charlie_key_package], false) {
+            Ok((qm, welcome)) => (qm, welcome),
+            Err(e) => panic!("Could not add member to group: {:?}", e),
+        };
 
     alice_group
         .process_messages(queued_messages.clone())

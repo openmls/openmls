@@ -355,7 +355,7 @@ impl ManagedTestSetup {
             // Add between 1 and 5 new members.
             let number_of_adds = ((OsRng.next_u32() as usize) % 5 % new_members.len()) + 1;
             let members_to_add = new_members.drain(0..number_of_adds).collect();
-            self.add_clients(ActionType::Commit, group, &adder_id, members_to_add)?;
+            self.add_clients(ActionType::Commit, group, &adder_id, members_to_add, false)?;
         }
         Ok(group_id)
     }
@@ -396,6 +396,7 @@ impl ManagedTestSetup {
         group: &mut Group,
         adder_id: &[u8],
         addees: Vec<Vec<u8>>,
+        include_path: bool,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let adder = clients
@@ -419,7 +420,7 @@ impl ManagedTestSetup {
             key_packages.push(key_package);
         }
         let (messages, welcome_option) =
-            adder.add_members(action_type, &group.group_id, &key_packages)?;
+            adder.add_members(action_type, &group.group_id, &key_packages, include_path)?;
         self.distribute_to_members(&adder_id, group, &messages)?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -564,7 +565,7 @@ impl ManagedTestSetup {
                         action_type, new_member_ids
                     );
                     // Have the adder add them to the group.
-                    self.add_clients(action_type, group, &member_id, new_member_ids)?;
+                    self.add_clients(action_type, group, &member_id, new_member_ids, true)?;
                 }
             }
             _ => return Err(SetupError::Unknown),

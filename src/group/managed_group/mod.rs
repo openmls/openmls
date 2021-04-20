@@ -175,6 +175,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_packages: &[KeyPackage],
+        include_path: bool,
     ) -> Result<(Vec<MlsMessage>, Welcome), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -213,7 +214,7 @@ impl ManagedGroup {
             &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
-            false,
+            include_path,
             None,
         )?;
 
@@ -922,6 +923,26 @@ impl ManagedGroup {
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
         self.group.tree().public_key_tree_copy()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_path_secrets(&self) -> Vec<Secret> {
+        self.group.tree().private_tree().path_secrets().to_vec()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_group_context(&self) -> &GroupContext {
+        self.group.context()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn tree_hash(&self) -> Vec<u8> {
+        self.group.tree().tree_hash()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn print_tree(&self, message: &str) {
+        _print_tree(&self.group.tree(), message)
     }
 }
 

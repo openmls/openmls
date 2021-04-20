@@ -24,7 +24,7 @@ fn test_managed_api() {
         let (_, adder_id) = group.members[0].clone();
         let new_members = setup.random_new_members_for_group(group, 2).unwrap();
         setup
-            .add_clients(ActionType::Commit, group, &adder_id, new_members)
+            .add_clients(ActionType::Commit, group, &adder_id, new_members, false)
             .unwrap();
 
         // Remove a member

@@ -167,6 +167,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
+        include_path: bool,
     ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
@@ -174,7 +175,8 @@ impl Client {
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome) = group.add_members(&self.key_store, key_packages)?;
+                let (messages, welcome) =
+                    group.add_members(&self.key_store, key_packages, include_path)?;
                 (messages, Some(welcome))
             }
             ActionType::Proposal => (
