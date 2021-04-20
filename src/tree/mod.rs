@@ -189,7 +189,7 @@ impl RatchetTree {
                 node.unwrap()
                     .unmerged_leaves()
                     .iter()
-                    .map(|n| NodeIndex::from(*n)),
+                    .map(|n| NodeIndex::from(LeafIndex::from(*n))),
             );
             unmerged_leaves
         } else {
@@ -292,16 +292,23 @@ impl RatchetTree {
         // Resolve the node of that co-path index
         let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
 
-        // Figure out the position in the resolution of the node that is either
-        // our own leaf node or a node in our direct path.
-        let position_in_resolution = resolution
-            .iter()
-            .position(|&x| own_direct_path.contains(&x) || own_index == x)
-            // We can unwrap here, because regardless of what the resolution
-            // looks like, there has to be a an entry in the resolution that
-            // corresponds to either the own leaf or a node in the direct path.
-            .unwrap();
-
+        // Figure out the position in the resolution of the node that we have a
+        // secret for. We first have to check if our leaf is in the resolution,
+        // either due to blanks or due to us being an unmerged leaf.
+        let position_in_resolution = match resolution.iter().position(|&x| own_index == x) {
+            Some(position) => position,
+            // If our leaf is not included, we look again and search for an
+            // index in our leaf's direct path.
+            None => {
+                resolution
+                    .iter()
+                    .position(|&x| own_direct_path.contains(&x))
+                    // We can unwrap here, because regardless of what the resolution
+                    // looks like, there has to be a an entry in the resolution that
+                    // corresponds to either the own leaf or a node in the direct path.
+                    .unwrap()
+            }
+        };
         // Decrypt the ciphertext of that node
         let common_ancestor_node =
             match update_path.nodes.get(*common_ancestor_sender_dirpath_index) {
@@ -592,8 +599,9 @@ impl RatchetTree {
         Ok(())
     }
 
-    // Add a node for the provided key package the tree.
-    pub(crate) fn add_node(&mut self, key_package: &KeyPackage) -> (NodeIndex, Credential) {
+    /// Add a node for the provided key package the tree on the right side.
+    /// Note, that this function will not fill blank leaves.
+    fn add_node(&mut self, key_package: &KeyPackage) -> (NodeIndex, Credential) {
         if !self.nodes.is_empty() {
             self.nodes.push(Node::new_blank_parent_node());
         }
@@ -619,37 +627,37 @@ impl RatchetTree {
         // Note that zip makes it so only the first free_leaves().len() nodes are taken.
         let free_leaves = self.free_leaves();
         let free_leaves_len = free_leaves.len();
-        for (new_kp, leaf_index) in new_kps.iter().zip(free_leaves) {
-            self.nodes[leaf_index] = Node::new_leaf(Some((*new_kp).clone()));
+        for (&new_kp, leaf_index) in new_kps.iter().zip(free_leaves) {
+            self.nodes[leaf_index] = Node::new_leaf(Some((new_kp).clone()));
+            added_members.push((NodeIndex::from(leaf_index), new_kp.credential().clone()));
+        }
+        // Add the remaining nodes.
+        for &key_package in new_kps.iter().skip(free_leaves_len) {
+            added_members.push(self.add_node(key_package));
+        }
+
+        // Add the newly added leaves to the unmerged leaves of all non-blank
+        // parent nodes in their direct path.
+        for (added_index, _) in &added_members {
+            // We can unwrap here, because we know that members are only added
+            // into leaf nodes.
+            let leaf_index = LeafIndex::try_from(added_index.clone()).unwrap();
+
             let dirpath = treemath::leaf_direct_path(leaf_index, self.leaf_count())
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
                 if !self.nodes[d].is_blank() {
                     let node = &self.nodes[d];
-                    let index = d.as_u32();
                     // TODO handle error
                     let mut parent_node = node.node.clone().unwrap();
-                    if !parent_node.unmerged_leaves().contains(&index) {
-                        parent_node.add_unmerged_leaf(index);
+                    if !parent_node.unmerged_leaves().contains(&leaf_index.into()) {
+                        parent_node.add_unmerged_leaf(leaf_index.into());
                     }
                     self.nodes[d].node = Some(parent_node);
                 }
             }
-            added_members.push((NodeIndex::from(leaf_index), new_kp.credential().clone()));
         }
-        // Add the remaining nodes.
-        let mut new_nodes = Vec::with_capacity(num_new_kp * 2);
-        let mut index_counter = self.nodes.len() + 1;
-        for add_proposal in new_kps.iter().skip(free_leaves_len) {
-            let node_index = NodeIndex::from(index_counter);
-            new_nodes.extend(vec![
-                Node::new_blank_parent_node(),
-                Node::new_leaf(Some((*add_proposal).clone())),
-            ]);
-            added_members.push((node_index, add_proposal.credential().clone()));
-            index_counter += 2;
-        }
-        self.nodes.extend(new_nodes);
+
         self.trim_tree();
         added_members
     }

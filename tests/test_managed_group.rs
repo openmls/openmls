@@ -127,17 +127,28 @@ fn managed_group_operations() {
 
             // === Alice adds Bob ===
             let (queued_messages, welcome) =
-                match alice_group.add_members(&key_store, &[bob_key_package], false) {
+                match alice_group.add_members(&key_store, &[bob_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
 
-            let events = alice_group
+            let mut events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
 
-            // Check that we received the correct event
-            match events.last().expect("Expected an event to be returned") {
+            // Check that we received the correct events
+
+            // Since the add also triggered an update, we expect this to be the
+            // last event in the queue. We expect this update to be from alice.
+            match events.pop().expect("Expected an event to be returned") {
+                GroupEvent::MemberUpdated(member_updated_event) => {
+                    assert_eq!(member_updated_event.updated_member(), &alice_credential);
+                }
+                _ => unreachable!("Expected a MemberUpdated event"),
+            }
+            // Finally, we expect the event queue to contain an even reflecting
+            // the fact that bob was indeed added by alice.
+            match events.pop().expect("Expected an event to be returned") {
                 GroupEvent::MemberAdded(member_added_event) => {
                     assert_eq!(member_added_event.sender(), &alice_credential);
                     assert_eq!(member_added_event.added_member(), &bob_credential);
@@ -285,7 +296,7 @@ fn managed_group_operations() {
                 .unwrap();
 
             let (queued_messages, welcome) =
-                match bob_group.add_members(&key_store, &[charlie_key_package], false) {
+                match bob_group.add_members(&key_store, &[charlie_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
@@ -624,7 +635,7 @@ fn managed_group_operations() {
 
             // Add Bob to the group
             let (queued_messages, welcome) = alice_group
-                .add_members(&key_store, &[bob_key_package], false)
+                .add_members(&key_store, &[bob_key_package])
                 .expect("Could not add Bob");
 
             alice_group
@@ -702,7 +713,7 @@ fn test_empty_input_errors() {
 
     assert_eq!(
         alice_group
-            .add_members(&key_store, &[], false)
+            .add_members(&key_store, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
         ManagedGroupError::EmptyInput(EmptyInputError::AddMembers)
     );
