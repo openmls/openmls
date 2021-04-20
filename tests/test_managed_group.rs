@@ -127,7 +127,7 @@ fn managed_group_operations() {
 
             // === Alice adds Bob ===
             let (queued_messages, welcome) =
-                match alice_group.add_members(&key_store, &[bob_key_package], false) {
+                match alice_group.add_members(&key_store, &[bob_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
@@ -285,7 +285,7 @@ fn managed_group_operations() {
                 .unwrap();
 
             let (queued_messages, welcome) =
-                match bob_group.add_members(&key_store, &[charlie_key_package], false) {
+                match bob_group.add_members(&key_store, &[charlie_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
@@ -624,7 +624,7 @@ fn managed_group_operations() {
 
             // Add Bob to the group
             let (queued_messages, welcome) = alice_group
-                .add_members(&key_store, &[bob_key_package], false)
+                .add_members(&key_store, &[bob_key_package])
                 .expect("Could not add Bob");
 
             alice_group
@@ -702,7 +702,7 @@ fn test_empty_input_errors() {
 
     assert_eq!(
         alice_group
-            .add_members(&key_store, &[], false)
+            .add_members(&key_store, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
         ManagedGroupError::EmptyInput(EmptyInputError::AddMembers)
     );
