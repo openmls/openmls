@@ -372,30 +372,6 @@ fn send_remove_user(
     )
 }
 
-fn send_message_bm(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize, _m: usize) {
-    c.bench_function(
-        &format!("Receive Message {} {}", ciphersuite.name(), n),
-        |b| {
-            b.iter_batched(
-                || {
-                    let setup = setup(n, ciphersuite);
-                    let (groups, setup) = join_groups(setup);
-                    let (groups, setup) = send_updates(groups, setup, ciphersuite);
-                    let sender = rand::thread_rng().gen_range(0..groups.len());
-                    let (msg, sender, groups, _setup) = send_message(groups, setup, sender);
-                    let mut receiver = rand::thread_rng().gen_range(0..groups.len());
-                    while receiver == sender {
-                        receiver = rand::thread_rng().gen_range(0..groups.len());
-                    }
-                    (msg, groups, receiver)
-                },
-                |(msg, groups, receiver)| receive_message(msg, receiver, groups),
-                BatchSize::SmallInput,
-            )
-        },
-    );
-}
-
 fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
     c.bench_function(&format!("Setup Group {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
@@ -423,6 +399,7 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
     });
 
     // Basic setup for all other benchmarks.
+    // The setup can be cloned in the benchmark.
     let bench_setup = setup(n, ciphersuite);
     let (groups, bench_setup) = join_groups(bench_setup);
     let (groups, bench_setup) = send_updates(groups, bench_setup, ciphersuite);
@@ -430,27 +407,40 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
     c.bench_function(&format!("Send Message {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
             || {
-                // let setup = setup(n, ciphersuite);
-                // let (groups, setup) = join_groups(setup);
-                // let (groups, setup) = send_updates(groups, setup, ciphersuite);
                 let sender = rand::thread_rng().gen_range(0..groups.len());
-                (groups, bench_setup, sender)
+                (groups.clone(), bench_setup.clone(), sender)
             },
             |(groups, setup, sender)| send_message(groups, setup, sender),
             BatchSize::SmallInput,
         )
     });
 
-    send_message_bm(c, ciphersuite, n, 1);
+    c.bench_function(
+        &format!("Receive Message {} {}", ciphersuite.name(), n),
+        |b| {
+            b.iter_batched(
+                || {
+                    let groups = groups.clone();
+                    let setup = bench_setup.clone();
+                    let sender = rand::thread_rng().gen_range(0..groups.len());
+                    let (msg, sender, groups, _setup) = send_message(groups, setup, sender);
+                    let mut receiver = rand::thread_rng().gen_range(0..groups.len());
+                    while receiver == sender {
+                        receiver = rand::thread_rng().gen_range(0..groups.len());
+                    }
+                    (msg, groups, receiver)
+                },
+                |(msg, groups, receiver)| receive_message(msg, receiver, groups),
+                BatchSize::SmallInput,
+            )
+        },
+    );
 
     c.bench_function(&format!("Send Update {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
             || {
-                let setup = setup(n, ciphersuite);
-                let (groups, setup) = join_groups(setup);
-                let (groups, setup) = send_updates(groups, setup, ciphersuite);
                 let sender = rand::thread_rng().gen_range(0..groups.len());
-                (groups, setup, ciphersuite, sender)
+                (groups.clone(), bench_setup.clone(), ciphersuite, sender)
             },
             |(groups, setup, ciphersuite, sender)| send_update(groups, setup, ciphersuite, sender),
             BatchSize::SmallInput,
@@ -462,9 +452,8 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
         |b| {
             b.iter_batched(
                 || {
-                    let setup = setup(n, ciphersuite);
-                    let (groups, setup) = join_groups(setup);
-                    let (groups, setup) = send_updates(groups, setup, ciphersuite);
+                    let groups = groups.clone();
+                    let setup = bench_setup.clone();
                     let sender = rand::thread_rng().gen_range(0..groups.len());
                     let (groups, _setup, commit, proposal) =
                         send_update(groups, setup, ciphersuite, sender);
@@ -485,9 +474,8 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
     c.bench_function(&format!("Add user {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
             || {
-                let setup = setup(n, ciphersuite);
-                let (groups, setup) = join_groups(setup);
-                let (groups, setup) = send_updates(groups, setup, ciphersuite);
+                let groups = groups.clone();
+                let setup = bench_setup.clone();
                 let (kpb, _cb) = create_user(ciphersuite);
                 let sender = rand::thread_rng().gen_range(0..groups.len());
                 (groups, setup, kpb, sender)
@@ -502,9 +490,8 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
         |b| {
             b.iter_batched(
                 || {
-                    let setup = setup(n, ciphersuite);
-                    let (groups, setup) = join_groups(setup);
-                    let (groups, setup) = send_updates(groups, setup, ciphersuite);
+                    let groups = groups.clone();
+                    let setup = bench_setup.clone();
                     let (kpb, _cb) = create_user(ciphersuite);
                     let sender = rand::thread_rng().gen_range(0..groups.len());
                     let (commit, add_proposal, groups, _setup, sender, _tree) =
@@ -526,9 +513,8 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
     c.bench_function(&format!("Remove user {} {}", ciphersuite.name(), n), |b| {
         b.iter_batched(
             || {
-                let setup = setup(n, ciphersuite);
-                let (groups, setup) = join_groups(setup);
-                let (groups, setup) = send_updates(groups, setup, ciphersuite);
+                let groups = groups.clone();
+                let setup = bench_setup.clone();
                 let sender = rand::thread_rng().gen_range(0..groups.len());
                 let mut removed_index = rand::thread_rng().gen_range(0..groups.len());
                 while groups[removed_index].node_index() == groups[sender].node_index() {
@@ -544,15 +530,14 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
     });
 
     if n > 2 {
-        // We don't want a self removal here.
+        // We don't want a self removal for n == 2 (self removal).
         c.bench_function(
             &format!("Process remove user {} {}", ciphersuite.name(), n),
             |b| {
                 b.iter_batched(
                     || {
-                        let setup = setup(n, ciphersuite);
-                        let (groups, setup) = join_groups(setup);
-                        let (groups, setup) = send_updates(groups, setup, ciphersuite);
+                        let groups = groups.clone();
+                        let setup = bench_setup.clone();
                         let sender = rand::thread_rng().gen_range(0..groups.len());
                         let mut removed_index = rand::thread_rng().gen_range(0..groups.len());
                         while groups[removed_index].node_index() == groups[sender].node_index() {
@@ -589,9 +574,9 @@ fn benchmarks(c: &mut Criterion) {
         //     // bench_main(c, ciphersuite, n);
         //     send_message_bm(c, ciphersuite, n);
         // }
-        for n in (100..=500).step_by(100) {
-            bench_main(c, ciphersuite, n);
-        }
+        // for n in (100..=500).step_by(100) {
+        //     bench_main(c, ciphersuite, n);
+        // }
         // for n in (1_000..10_000).step_by(1_000) {
         //     bench_main(c, ciphersuite, n);
         // }
@@ -606,5 +591,4 @@ fn benchmarks(c: &mut Criterion) {
 }
 
 criterion_group!(benches, benchmarks);
-
 criterion_main!(benches);
