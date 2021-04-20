@@ -30,6 +30,7 @@ pub struct KeyPackage {
     credential: Credential,
     extensions: Vec<Box<dyn Extension>>,
     signature: Signature,
+    encoded: Vec<u8>,
 }
 
 implement_persistence!(
@@ -38,7 +39,8 @@ implement_persistence!(
     hpke_init_key,
     credential,
     extensions,
-    signature
+    signature,
+    encoded
 );
 
 /// Mandatory extensions for key packages.
@@ -118,6 +120,7 @@ impl KeyPackage {
     pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
+        self.encoded = self.unsigned_payload().unwrap();
     }
 
     /// Get a reference to the extensions of this key package.
@@ -132,8 +135,7 @@ impl KeyPackage {
 
     /// Populate the `signature` field using the `credential_bundle`.
     pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
-        let payload = &self.unsigned_payload().unwrap();
-        self.signature = credential_bundle.sign(payload).unwrap();
+        self.signature = credential_bundle.sign(&self.encoded).unwrap();
     }
 }
 
@@ -161,7 +163,9 @@ impl KeyPackage {
             credential: credential_bundle.credential().clone(),
             extensions,
             signature: Signature::new_empty(),
+            encoded: Vec::new(),
         };
+        key_package.encoded = key_package.unsigned_payload()?;
         key_package.sign(&credential_bundle);
         Ok(key_package)
     }
@@ -202,6 +206,7 @@ impl KeyPackage {
         self.remove_extension(ExtensionType::ParentHash);
         let extension = Box::new(ParentHashExtension::new(parent_hash));
         self.extensions.push(extension);
+        self.encoded = self.unsigned_payload().unwrap();
     }
 
     /// Remove an extension from the KeyPackage
@@ -210,6 +215,7 @@ impl KeyPackage {
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions
             .retain(|e| e.extension_type() != extension_type);
+        self.encoded = self.unsigned_payload().unwrap();
     }
 
     /// Get a reference to the HPKE init key.
@@ -220,6 +226,7 @@ impl KeyPackage {
     /// Set a new HPKE init key.
     pub(crate) fn set_hpke_init_key(&mut self, hpke_init_key: HPKEPublicKey) {
         self.hpke_init_key = hpke_init_key;
+        self.encoded = self.unsigned_payload().unwrap();
     }
 
     /// Get the `Ciphersuite`.
