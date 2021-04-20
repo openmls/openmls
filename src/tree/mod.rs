@@ -195,7 +195,7 @@ impl RatchetTree {
                 node.unwrap()
                     .unmerged_leaves()
                     .iter()
-                    .map(|n| NodeIndex::from(*n)),
+                    .map(|n| NodeIndex::from(LeafIndex::from(*n))),
             );
             unmerged_leaves
         } else {
@@ -615,8 +615,8 @@ impl RatchetTree {
                     let index = d.as_u32();
                     // TODO handle error
                     let mut parent_node = node.node.clone().unwrap();
-                    if !parent_node.unmerged_leaves().contains(&index) {
-                        parent_node.add_unmerged_leaf(index);
+                    if !parent_node.unmerged_leaves().contains(&leaf_index.into()) {
+                        parent_node.add_unmerged_leaf(leaf_index.into());
                     }
                     self.nodes[d].node = Some(parent_node);
                 }
