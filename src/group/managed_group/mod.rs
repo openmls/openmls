@@ -168,6 +168,8 @@ impl ManagedGroup {
     ///
     /// New members are added by providing a `KeyPackage` for each member.
     ///
+    /// The `include_path` flag controls if a Path is included in the Commit.
+    ///
     /// If successful, it returns a `Vec` of
     /// [`MLSMessage`](crate::prelude::MLSMessage) and a
     /// [`Welcome`](crate::prelude::Welcome) message.
