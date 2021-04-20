@@ -116,7 +116,7 @@ impl MlsGroup {
             }
         };
 
-        let mut tree = RatchetTree::new_from_nodes(ciphersuite, key_package_bundle, &nodes)?;
+        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes)?;
 
         // Verify tree hash
         let tree_hash = tree.tree_hash();

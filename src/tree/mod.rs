@@ -1,9 +1,9 @@
+use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
-use crate::{ciphersuite::*, prelude::PreSharedKeyId};
-use crate::{codec::*, messages::PathSecret};
+use crate::{ciphersuite::*, messages::PathSecret, prelude::PreSharedKeyId};
 
 // Tree modules
 pub(crate) mod codec;
@@ -30,8 +30,8 @@ pub(crate) use serde::{
     Deserialize, Deserializer, Serialize,
 };
 
-use std::collections::HashSet;
 use std::convert::TryInto;
+use std::{collections::HashSet, convert::TryFrom};
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub mod tests;
@@ -43,6 +43,9 @@ pub struct RatchetTree {
     /// The ciphersuite used in this tree.
     ciphersuite: &'static Ciphersuite,
 
+    /// The MLS protocol version used in this tree.
+    mls_version: ProtocolVersion,
+
     /// All nodes in the tree.
     /// Note that these only hold public values.
     /// Private values are stored in the `private_tree`.
@@ -53,23 +56,27 @@ pub struct RatchetTree {
     private_tree: PrivateTree,
 }
 
-implement_persistence!(RatchetTree, nodes, private_tree);
+implement_persistence!(RatchetTree, mls_version, nodes, private_tree);
 
 impl RatchetTree {
-    /// Create a new empty `RatchetTree`.
-    pub(crate) fn new(ciphersuite: &'static Ciphersuite, kpb: KeyPackageBundle) -> RatchetTree {
-        let nodes = vec![Node {
-            node_type: NodeType::Leaf,
-            key_package: Some(kpb.key_package().clone()),
-            node: None,
-        }];
-        let private_tree = PrivateTree::from_key_package_bundle(LeafIndex::from(0u32), &kpb);
+    /// Create a new `RatchetTree` with only the "self" member as first node.
+    pub(crate) fn new(kpb: KeyPackageBundle) -> RatchetTree {
+        // Create an initial, empty tree
+        let mut tree = Self {
+            ciphersuite: kpb.key_package().ciphersuite(),
+            mls_version: kpb.key_package().protocol_version(),
+            nodes: Vec::new(),
+            private_tree: PrivateTree::new(0usize.into()),
+        };
+        // Add our own node
+        let (index, _credential) = tree.add_node(kpb.key_package());
+        // We can unwrap  because the index must be a leaf index.
+        tree.private_tree = PrivateTree::from_key_package_bundle(index.try_into().unwrap(), &kpb);
+        tree
+    }
 
-        RatchetTree {
-            ciphersuite,
-            nodes,
-            private_tree,
-        }
+    pub fn ciphersuite(&self) -> &'static Ciphersuite {
+        self.ciphersuite
     }
 
     /// Create a new `RatchetTree` by cloning the public tree nodes from another
@@ -77,44 +84,31 @@ impl RatchetTree {
     pub(crate) fn new_from_public_tree(ratchet_tree: &RatchetTree) -> Self {
         RatchetTree {
             ciphersuite: ratchet_tree.ciphersuite,
+            mls_version: ratchet_tree.mls_version,
             nodes: ratchet_tree.nodes.clone(),
             private_tree: PrivateTree::new(ratchet_tree.private_tree.leaf_index()),
         }
     }
 
     /// Generate a new `RatchetTree` from `Node`s with the client's key package
-    /// bundle `kpb`.
+    /// bundle `kpb`. The client's node must be in the list of nodes and the list
+    /// of nodes must contain all nodes of the tree, including intermediates.
     pub(crate) fn new_from_nodes(
-        ciphersuite: &'static Ciphersuite,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
     ) -> Result<RatchetTree, TreeError> {
-        fn find_kp_in_tree(
-            key_package: &KeyPackage,
-            nodes: &[Option<Node>],
-        ) -> Result<LeafIndex, TreeError> {
-            // Only search in leaf nodes
-            for (i, node_option) in nodes.iter().enumerate().step_by(2) {
-                if let Some(node) = node_option {
-                    if let Some(kp) = &node.key_package {
-                        if kp == key_package {
-                            // Unwrapping here is safe, because we know it is a leaf node
-                            return Ok(NodeIndex::from(i).try_into().unwrap());
-                        }
-                    }
-                }
-            }
-            Err(TreeError::InvalidArguments)
-        }
-
-        // Find the own node in the list of nodes.
-        let own_node_index = find_kp_in_tree(kpb.key_package(), node_options)?;
-
         // Build a full set of nodes for the tree based on the potentially incomplete
         // input nodes.
-        let mut nodes = Vec::with_capacity(node_options.len());
+        let mut nodes: Vec<Node> = Vec::with_capacity(node_options.len());
+        let mut own_node_index = None;
         for (i, node_option) in node_options.iter().enumerate() {
             if let Some(node) = node_option.clone() {
+                if let Some(kp) = &node.key_package {
+                    if kp == kpb.key_package() {
+                        // Unwrapping here is safe, because we know it is a leaf node
+                        own_node_index = Some(LeafIndex::try_from(NodeIndex::from(i)).unwrap());
+                    }
+                }
                 nodes.push(node);
             } else if NodeIndex::from(i).is_leaf() {
                 nodes.push(Node::new_leaf(None));
@@ -123,12 +117,12 @@ impl RatchetTree {
             }
         }
 
-        // Build private tree
+        let own_node_index = own_node_index.ok_or(TreeError::InvalidArguments)?;
         let private_tree = PrivateTree::from_key_package_bundle(own_node_index, &kpb);
 
-        // Build tree.
-        Ok(RatchetTree {
-            ciphersuite,
+        Ok(Self {
+            ciphersuite: kpb.leaf_secret().ciphersuite(),
+            mls_version: kpb.leaf_secret().version(),
             nodes,
             private_tree,
         })
@@ -348,11 +342,14 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret_bytes =
-            self.ciphersuite
-                .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?;
-        let secret =
-            Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
+        let secret = Secret::from_slice(
+            &self
+                .ciphersuite
+                .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?,
+            self.mls_version,
+            &self.ciphersuite,
+        )
+        .into();
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree
@@ -595,7 +592,20 @@ impl RatchetTree {
         Ok(())
     }
 
+    // Add a node for the provided key package the tree.
+    pub(crate) fn add_node(&mut self, key_package: &KeyPackage) -> (NodeIndex, Credential) {
+        if !self.nodes.is_empty() {
+            self.nodes.push(Node::new_blank_parent_node());
+        }
+        self.nodes.push(Node::new_leaf(Some((key_package).clone())));
+        (
+            (self.nodes.len() - 1).into(),
+            key_package.credential().clone(),
+        )
+    }
+
     /// Add nodes for the provided key packages.
+    /// Returns `(NodeIndex, Credential)` for each new key package.
     pub(crate) fn add_nodes(&mut self, new_kps: &[&KeyPackage]) -> Vec<(NodeIndex, Credential)> {
         let num_new_kp = new_kps.len();
         let mut added_members = Vec::with_capacity(num_new_kp);
