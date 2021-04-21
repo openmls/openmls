@@ -651,9 +651,10 @@ impl RatchetTree {
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
                 if !self.nodes[d].is_blank() {
-                    let node = &self.nodes[d];
-                    // TODO handle error
-                    let mut parent_node = node.node.clone().unwrap();
+                    let node = &mut self.nodes[d];
+                    // We can unwrap here, because we just checked that the node
+                    // is not blank.
+                    let mut parent_node = node.node.take().unwrap();
                     if !parent_node.unmerged_leaves().contains(&leaf_index) {
                         parent_node.add_unmerged_leaf(leaf_index.to_owned());
                     }
