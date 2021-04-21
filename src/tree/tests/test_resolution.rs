@@ -155,7 +155,10 @@ fn test_original_child_resolution() {
             node: Some(ParentNode {
                 parent_hash: vec![],
                 public_key,
-                unmerged_leaves: ROOT_UNMERGED_LEAVES.to_vec(),
+                unmerged_leaves: ROOT_UNMERGED_LEAVES
+                    .iter()
+                    .map(|index| LeafIndex::from(*index))
+                    .collect(),
             }),
             key_package: None,
         };
