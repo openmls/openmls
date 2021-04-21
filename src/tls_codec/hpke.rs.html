@@ -19,6 +19,13 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! TLS Codec for HPKE primitives</span>
 
@@ -36,6 +43,13 @@
     <span class="kw">fn</span> <span class="ident">tls_deserialize</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">TlsVecU16</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>::<span class="ident">tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">value</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>()))
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">TlsSize</span> <span class="kw">for</span> <span class="ident">HPKEPublicKey</span> {
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+        <span class="ident">TlsVecU16</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>::<span class="ident">len_len</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">as_slice</span>().<span class="ident">len</span>()
     }
 }
 </pre></div>

@@ -226,6 +226,21 @@
 <span id="223">223</span>
 <span id="224">224</span>
 <span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! A vector with a length field for TLS serialisation.</span>
 <span class="doccomment">//! Use this for any vector that is serialised.</span>
@@ -233,10 +248,10 @@
 <span class="kw">use</span> <span class="ident">serde</span>::<span class="ident">ser</span>::<span class="ident">SerializeStruct</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryInto</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Cursor</span>, <span class="ident">Deserialize</span>, <span class="ident">Error</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Cursor</span>, <span class="ident">Deserialize</span>, <span class="ident">Error</span>, <span class="ident">Serialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_tls_vec</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">size</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>) <span class="op">=</span><span class="op">&gt;</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">size</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">len_len</span>: <span class="ident">literal</span>) <span class="op">=</span><span class="op">&gt;</span> {
         <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
         <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Serialize</span> <span class="op">+</span> <span class="ident">Deserialize</span> <span class="op">+</span> <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">PartialEq</span><span class="op">&gt;</span> {
             <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
@@ -273,6 +288,12 @@
             <span class="doccomment">/// Remove the last element.</span>
             <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">pop</span>()
+            }
+
+            <span class="doccomment">/// Get the number of bytes used for the length encoding.</span>
+            <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
+            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len_len</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">len_len</span>
             }
         }
 
@@ -433,12 +454,21 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">result</span>)
             }
         }
+
+        <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Serialize</span> <span class="op">+</span> <span class="ident">Deserialize</span> <span class="op">+</span> <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">PartialEq</span> <span class="op">+</span> <span class="ident">TlsSize</span><span class="op">&gt;</span> <span class="ident">TlsSize</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+            <span class="attribute">#[<span class="ident">inline</span>]</span>
+            <span class="kw">fn</span> <span class="ident">serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+                <span class="self">self</span>.<span class="ident">vec</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">fold</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">len_len</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">e</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">e</span>.<span class="ident">serialized_len</span>())
+            }
+        }
     };
 }
 
-<span class="macro">impl_tls_vec</span><span class="macro">!</span>(<span class="ident">u8</span>, <span class="ident">TlsVecU8</span>);
-<span class="macro">impl_tls_vec</span><span class="macro">!</span>(<span class="ident">u16</span>, <span class="ident">TlsVecU16</span>);
-<span class="macro">impl_tls_vec</span><span class="macro">!</span>(<span class="ident">u32</span>, <span class="ident">TlsVecU32</span>);
+<span class="macro">impl_tls_vec</span><span class="macro">!</span>(<span class="ident">u8</span>, <span class="ident">TlsVecU8</span>, <span class="number">1</span>);
+<span class="macro">impl_tls_vec</span><span class="macro">!</span>(<span class="ident">u16</span>, <span class="ident">TlsVecU16</span>, <span class="number">2</span>);
+<span class="macro">impl_tls_vec</span><span class="macro">!</span>(<span class="ident">u32</span>, <span class="ident">TlsVecU32</span>, <span class="number">4</span>);
 <span class="comment">// TODO: #319 impl_tls_vec!(u64, TlsVecU64);</span>
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">std</span>::<span class="ident">num</span>::<span class="ident">TryFromIntError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
