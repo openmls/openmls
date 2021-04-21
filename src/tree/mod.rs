@@ -646,20 +646,16 @@ impl RatchetTree {
 
         // Add the newly added leaves to the unmerged leaves of all non-blank
         // parent nodes in their direct path.
-        for (added_index, _) in &added_members {
-            // We can unwrap here, because we know that members are only added
-            // into leaf nodes.
-            let leaf_index = LeafIndex::try_from(added_index.clone()).unwrap();
-
-            let dirpath = treemath::leaf_direct_path(leaf_index, self.leaf_count())
+        for (leaf_index, _) in &added_members {
+            let dirpath = treemath::leaf_direct_path(leaf_index.to_owned(), self.leaf_count())
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
                 if !self.nodes[d].is_blank() {
                     let node = &self.nodes[d];
                     // TODO handle error
                     let mut parent_node = node.node.clone().unwrap();
-                    if !parent_node.unmerged_leaves().contains(&leaf_index.into()) {
-                        parent_node.add_unmerged_leaf(leaf_index.into());
+                    if !parent_node.unmerged_leaves().contains(&leaf_index) {
+                        parent_node.add_unmerged_leaf(leaf_index.to_owned());
                     }
                     self.nodes[d].node = Some(parent_node);
                 }
