@@ -1,6 +1,6 @@
 //! Codec implementations for unsigned integer primitives.
 
-use super::{Cursor, Deserialize, Error, Serialize};
+use super::{Cursor, Deserialize, Error, Serialize, TlsSize};
 
 use std::convert::TryInto;
 
@@ -11,10 +11,24 @@ impl Serialize for u8 {
     }
 }
 
+impl TlsSize for u8 {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        1
+    }
+}
+
 impl Serialize for u16 {
     fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
         buffer.extend_from_slice(&self.to_be_bytes());
         Ok(())
+    }
+}
+
+impl TlsSize for u16 {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        2
     }
 }
 
@@ -25,10 +39,34 @@ impl Serialize for u32 {
     }
 }
 
+impl TlsSize for u32 {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        4
+    }
+}
+
 impl Serialize for u64 {
     fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
         buffer.extend_from_slice(&self.to_be_bytes());
         Ok(())
+    }
+}
+
+impl TlsSize for u64 {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        8
+    }
+}
+
+impl<T: TlsSize> TlsSize for Option<T> {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        1 + match self {
+            Some(v) => v.serialized_len(),
+            None => 0,
+        }
     }
 }
 

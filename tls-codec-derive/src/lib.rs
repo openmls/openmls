@@ -23,12 +23,21 @@ fn impl_serialize(ast: DeriveInput) -> Result<TokenStream> {
         Data::Struct(st) => match st.fields {
             Fields::Named(FieldsNamed { named, .. }) => {
                 let idents = named.iter().map(|f| &f.ident);
+                let idents2 = idents.clone();
 
                 let gen = quote! {
                     impl tls_codec::Serialize for #ident {
                         fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), tls_codec::Error> {
                             #(self.#idents.tls_serialize(buffer)?;)*
                             Ok(())
+                        }
+                    }
+
+                    impl tls_codec::TlsSize for #ident {
+                        #[inline]
+                        fn serialized_len(&self) -> usize {
+                            #(self.#idents2.serialized_len() + )*
+                            0
                         }
                     }
                 };
@@ -68,6 +77,13 @@ fn impl_serialize(ast: DeriveInput) -> Result<TokenStream> {
                             #(#variants)*
                         };
                         enum_value.tls_serialize(buffer)
+                    }
+                }
+
+                impl tls_codec::TlsSize for #ident {
+                    #[inline]
+                    fn serialized_len(&self) -> usize {
+                        std::mem::size_of::<#repr>()
                     }
                 }
             };
