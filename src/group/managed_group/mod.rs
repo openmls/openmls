@@ -22,6 +22,9 @@ use crate::{
 use std::collections::HashMap;
 use std::io::{Error, Read, Write};
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+use std::cell::Ref;
+
 pub use callbacks::*;
 pub use config::*;
 pub use errors::{
@@ -928,8 +931,8 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn export_path_secrets(&self) -> Vec<Secret> {
-        self.group.tree().private_tree().path_secrets().to_vec()
+    pub fn export_path_secrets(&self) -> Ref<[Secret]> {
+        Ref::map(self.group.tree(), |tree| tree.private_tree().path_secrets())
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
