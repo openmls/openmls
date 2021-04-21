@@ -129,13 +129,13 @@ impl RatchetTree {
         if let Ok(parent_index) = treemath::parent(index, self.leaf_count()) {
             // Check if the parent node is not blank
             if let Some(parent_node) = &self.nodes[parent_index].node {
-                for index in &parent_node.unmerged_leaves {
-                    unmerged_nodes.push(NodeIndex::from(*index));
+                for &index in &parent_node.unmerged_leaves {
+                    unmerged_nodes.push(index);
                 }
             }
         };
         // Convert the exclusion list to a HashSet for faster searching
-        let exclusion_list: HashSet<&NodeIndex> = unmerged_nodes.iter().collect();
+        let exclusion_list: HashSet<&LeafIndex> = unmerged_nodes.iter().collect();
 
         // Compute the resolution for the index with the exclusion list
         let resolution = self.resolve(index, &exclusion_list);

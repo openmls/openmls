@@ -227,7 +227,7 @@ impl PlaintextSecret {
     /// `GroupSecrets`.
     pub(crate) fn new(
         joiner_secret: &JoinerSecret,
-        invited_members: Vec<(NodeIndex, AddProposal)>,
+        invited_members: Vec<(LeafIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
         presharedkeys: &PreSharedKeys,
     ) -> Result<Vec<Self>, GroupError> {
@@ -248,7 +248,7 @@ impl PlaintextSecret {
                 // Compute the index of the common ancestor lowest in the
                 // tree of our own leaf and the given index.
                 let common_ancestor_index = treemath::common_ancestor_index(
-                    index,
+                    index.into(),
                     provisional_tree.own_node_index().into(),
                 );
                 // Get the position of the node index that represents the
