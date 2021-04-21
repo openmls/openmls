@@ -60,9 +60,9 @@ impl tls_codec::TlsSize for ParentNode {
     #[inline]
     fn serialized_len(&self) -> usize {
         self.public_key.serialized_len()
-            + 4
+            + VecSize::VecU32.len_len()
             + self.unmerged_leaves.len() * 4
-            + 1
+            + VecSize::VecU8.len_len()
             + self.parent_hash.len()
     }
 }
@@ -129,9 +129,9 @@ impl<'a> tls_codec::TlsSize for ParentHashInput<'a> {
     #[inline]
     fn serialized_len(&self) -> usize {
         self.public_key.serialized_len()
-            + 1
+            + VecSize::VecU8.len_len()
             + self.parent_hash.len()
-            + 4
+            + VecSize::VecU32.len_len()
             + self
                 .original_child_resolution
                 .iter()
@@ -158,7 +158,12 @@ impl<'a> tls_codec::Serialize for ParentNodeTreeHashInput<'a> {
 impl<'a> tls_codec::TlsSize for ParentNodeTreeHashInput<'a> {
     #[inline]
     fn serialized_len(&self) -> usize {
-        4 + self.parent_node.serialized_len() + 1 + self.left_hash.len() + 1 + self.right_hash.len()
+        VecSize::VecU32.len_len()
+            + self.parent_node.serialized_len()
+            + VecSize::VecU8.len_len()
+            + self.left_hash.len()
+            + VecSize::VecU8.len_len()
+            + self.right_hash.len()
     }
 }
 
@@ -177,7 +182,7 @@ impl<'a> tls_codec::Serialize for LeafNodeHashInput<'a> {
 impl<'a> tls_codec::TlsSize for LeafNodeHashInput<'a> {
     #[inline]
     fn serialized_len(&self) -> usize {
-        4 + self.key_package.serialized_len()
+        VecSize::VecU32.len_len() + self.key_package.serialized_len()
     }
 }
 

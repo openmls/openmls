@@ -13,6 +13,19 @@ pub enum VecSize {
     VecU32,
     VecU64,
 }
+
+impl VecSize {
+    #[inline(always)]
+    pub(crate) const fn len_len(self) -> usize {
+        match self {
+            VecSize::VecU8 => 1,
+            VecSize::VecU16 => 2,
+            VecSize::VecU32 => 4,
+            VecSize::VecU64 => 8,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Cursor {
     buffer: Vec<u8>,

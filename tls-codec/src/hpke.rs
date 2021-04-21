@@ -20,6 +20,6 @@ impl Deserialize for HPKEPublicKey {
 impl TlsSize for HPKEPublicKey {
     #[inline]
     fn serialized_len(&self) -> usize {
-        2 + self.as_slice().len()
+        TlsVecU16::<u8>::len_len() + self.as_slice().len()
     }
 }

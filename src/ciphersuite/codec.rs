@@ -51,7 +51,7 @@ impl Codec for Signature {
 impl tls_codec::TlsSize for Signature {
     #[inline]
     fn serialized_len(&self) -> usize {
-        2 + self.value.len()
+        VecSize::VecU16.len_len() + self.value.len()
     }
 }
 

@@ -45,6 +45,12 @@ macro_rules! impl_tls_vec {
             pub fn pop(&mut self) -> Option<T> {
                 self.vec.pop()
             }
+
+            /// Get the number of bytes used for the length encoding.
+            #[inline(always)]
+            pub fn len_len() -> usize {
+                $len_len
+            }
         }
 
         impl<T: Serialize + Deserialize + Clone + PartialEq> From<Vec<T>> for $name<T> {
