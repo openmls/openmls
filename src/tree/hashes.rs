@@ -123,19 +123,17 @@ impl RatchetTree {
     pub(crate) fn original_child_resolution(&self, index: NodeIndex) -> Vec<&HPKEPublicKey> {
         // Build the exclusion list that consists of the unmerged leaves of the parent
         // node
-        let mut unmerged_nodes = vec![];
+        let mut unmerged_leaves = vec![];
         // If the current index is not the root, we collect the unmerged leaves of the
         // parent
         if let Ok(parent_index) = treemath::parent(index, self.leaf_count()) {
             // Check if the parent node is not blank
             if let Some(parent_node) = &self.nodes[parent_index].node {
-                for &index in &parent_node.unmerged_leaves {
-                    unmerged_nodes.push(index);
-                }
+                unmerged_leaves.extend_from_slice(&parent_node.unmerged_leaves);
             }
         };
         // Convert the exclusion list to a HashSet for faster searching
-        let exclusion_list: HashSet<&LeafIndex> = unmerged_nodes.iter().collect();
+        let exclusion_list: HashSet<&LeafIndex> = unmerged_leaves.iter().collect();
 
         // Compute the resolution for the index with the exclusion list
         let resolution = self.resolve(index, &exclusion_list);
