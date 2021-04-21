@@ -173,7 +173,7 @@ impl RatchetTree {
         treemath::leaf_count(self.tree_size())
     }
 
-    /// Compute the resolution for a given node index. Nodes listed in the
+    /// Compute the resolution for a given node index. Leaves listed in the
     /// `exclusion_list` are substracted from the final resolution.
     fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&LeafIndex>) -> Vec<NodeIndex> {
         let size = self.leaf_count();
@@ -604,7 +604,9 @@ impl RatchetTree {
     }
 
     /// Add a node for the provided key package the tree on the right side.
-    /// Note, that this function will not fill blank leaves.
+    /// Note, that this function will not fill blank leaves. This function
+    /// returns references to the `LeafIndex` the `KeyPackage` was placed into
+    /// and to the Credential of the `KeyPackage.`
     fn add_node<'a>(&mut self, key_package: &'a KeyPackage) -> (LeafIndex, &'a Credential) {
         if !self.nodes.is_empty() {
             self.nodes.push(Node::new_blank_parent_node());
