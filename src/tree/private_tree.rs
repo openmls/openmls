@@ -2,7 +2,7 @@
 //! belongs to the current client.
 
 use super::{index::NodeIndex, path_keys::PathKeys, *};
-use crate::ciphersuite::{Ciphersuite, HPKEPrivateKey, HPKEPublicKey};
+use crate::ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey};
 use crate::prelude::Secret;
 
 pub(crate) type PathSecrets = Vec<Secret>;
@@ -13,9 +13,9 @@ pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
     leaf_index: LeafIndex,
 
-    // This is the HPKE private key corresponding to the HPKEPublicKey in the
+    // This is the HPKE private key corresponding to the HpkePublicKey in the
     // node with index `node_index`.
-    hpke_private_key: Option<HPKEPrivateKey>,
+    hpke_private_key: Option<HpkePrivateKey>,
 
     // A vector of HPKEKeyPairs in the path from this leaf.
     path_keys: PathKeys,
@@ -33,7 +33,7 @@ pub(crate) struct PrivateTree {
 
 impl PrivateTree {
     /// Create a new empty placeholder `PrivateTree` with default values and no
-    /// `HPKEPrivateKey`
+    /// `HpkePrivateKey`
     pub(crate) fn new(leaf_index: LeafIndex) -> PrivateTree {
         PrivateTree {
             leaf_index,
@@ -75,7 +75,7 @@ impl PrivateTree {
         leaf_index: LeafIndex,
         key_package_bundle: &KeyPackageBundle,
         path: &[NodeIndex],
-    ) -> (Self, Vec<HPKEPublicKey>) {
+    ) -> (Self, Vec<HpkePublicKey>) {
         let mut private_tree = PrivateTree::from_key_package_bundle(leaf_index, key_package_bundle);
 
         // Compute path secrets and generate keypairs
@@ -87,7 +87,7 @@ impl PrivateTree {
 
     // === Setter and Getter ===
 
-    pub(crate) fn hpke_private_key(&self) -> &HPKEPrivateKey {
+    pub(crate) fn hpke_private_key(&self) -> &HpkePrivateKey {
         match &self.hpke_private_key {
             Some(private_key) => private_key,
             None => panic!("Library error, private key was never initialized"),
@@ -120,7 +120,7 @@ impl PrivateTree {
         ciphersuite: &Ciphersuite,
         leaf_secret: &Secret,
         path: &[NodeIndex],
-    ) -> Vec<HPKEPublicKey> {
+    ) -> Vec<HpkePublicKey> {
         let path_secrets = if path.is_empty() {
             vec![]
         } else {
@@ -144,7 +144,7 @@ impl PrivateTree {
         ciphersuite: &Ciphersuite,
         start_secret: Secret,
         path: &[NodeIndex],
-    ) -> Vec<HPKEPublicKey> {
+    ) -> Vec<HpkePublicKey> {
         let path_secrets = vec![start_secret];
         self.derive_path_secrets(ciphersuite, path_secrets, path)
     }
@@ -156,7 +156,7 @@ impl PrivateTree {
         ciphersuite: &Ciphersuite,
         path_secrets: Vec<Secret>,
         path: &[NodeIndex],
-    ) -> Vec<HPKEPublicKey> {
+    ) -> Vec<HpkePublicKey> {
         let hash_len = ciphersuite.hash_length();
 
         let mut path_secrets = path_secrets;
@@ -199,12 +199,12 @@ impl PrivateTree {
     ///
     /// Note that this **extends** existing `path_keys` in this leaf.
     ///
-    /// Returns a vector of `HPKEPublicKey`.
+    /// Returns a vector of `HpkePublicKey`.
     fn generate_path_keypairs(
         &mut self,
         ciphersuite: &Ciphersuite,
         path: &[NodeIndex],
-    ) -> Vec<HPKEPublicKey> {
+    ) -> Vec<HpkePublicKey> {
         let hash_len = ciphersuite.hash_length();
         let mut private_keys = vec![];
         let mut public_keys = vec![];

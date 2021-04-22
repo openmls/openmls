@@ -45,7 +45,7 @@ impl Codec for ParentNode {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let public_key = HPKEPublicKey::decode(cursor)?;
+        let public_key = HpkePublicKey::decode(cursor)?;
         let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;
         let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
         Ok(ParentNode {
@@ -74,7 +74,7 @@ impl Codec for UpdatePathNode {
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let public_key = HPKEPublicKey::decode(cursor)?;
+        let public_key = HpkePublicKey::decode(cursor)?;
         let encrypted_path_secret = decode_vec(VecSize::VecU32, cursor)?;
         Ok(UpdatePathNode {
             public_key,

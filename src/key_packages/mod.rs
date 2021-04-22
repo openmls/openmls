@@ -26,7 +26,7 @@ mod test_key_packages;
 pub struct KeyPackage {
     protocol_version: ProtocolVersion,
     ciphersuite: &'static Ciphersuite,
-    hpke_init_key: HPKEPublicKey,
+    hpke_init_key: HpkePublicKey,
     credential: Credential,
     extensions: Vec<Box<dyn Extension>>,
     signature: Signature,
@@ -146,7 +146,7 @@ impl KeyPackage {
     /// `init_key`.
     fn new(
         ciphersuite_name: CiphersuiteName,
-        hpke_init_key: HPKEPublicKey,
+        hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, KeyPackageError> {
@@ -219,12 +219,12 @@ impl KeyPackage {
     }
 
     /// Get a reference to the HPKE init key.
-    pub(crate) fn hpke_init_key(&self) -> &HPKEPublicKey {
+    pub(crate) fn hpke_init_key(&self) -> &HpkePublicKey {
         &self.hpke_init_key
     }
 
     /// Set a new HPKE init key.
-    pub(crate) fn set_hpke_init_key(&mut self, hpke_init_key: HPKEPublicKey) {
+    pub(crate) fn set_hpke_init_key(&mut self, hpke_init_key: HpkePublicKey) {
         self.hpke_init_key = hpke_init_key;
         self.encoded = self.unsigned_payload().unwrap();
     }
@@ -244,13 +244,13 @@ impl KeyPackage {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
-    pub(crate) private_key: HPKEPrivateKey,
+    pub(crate) private_key: HpkePrivateKey,
     pub(crate) leaf_secret: Secret,
 }
 
 /// Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
-    /// Create a new `KeyPackageBundle` with a fresh `HPKEKeyPair`.
+    /// Create a new `KeyPackageBundle` with a fresh `HpkeKeyPair`.
     /// See `new_with_keypair` and `new_with_version` for details.
     /// This key package will have the default MLS version. Use `new_with_version`
     /// to get a key package bundle for a specific MLS version.
@@ -270,7 +270,7 @@ impl KeyPackageBundle {
     }
 
     /// Create a new `KeyPackageBundle` with
-    /// * a fresh `HPKEKeyPair`
+    /// * a fresh `HpkeKeyPair`
     /// * the provided MLS version
     /// * the first cipher suite in the `ciphersuites` slice
     /// * the provided `extensions`
@@ -328,7 +328,7 @@ impl KeyPackageBundle {
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
         mut extensions: Vec<Box<dyn Extension>>,
-        key_pair: HPKEKeyPair,
+        key_pair: HpkeKeyPair,
         leaf_secret: Secret,
     ) -> Result<Self, KeyPackageError> {
         if ciphersuites.is_empty() {
@@ -437,11 +437,11 @@ impl KeyPackageBundle {
         )
     }
 
-    /// Assembles a new KeyPackageBundle from a KeyPackage, a HPKEPrivateKey,
+    /// Assembles a new KeyPackageBundle from a KeyPackage, a HpkePrivateKey,
     /// and a leaf secret
     fn new_from_values(
         key_package: KeyPackage,
-        private_key: HPKEPrivateKey,
+        private_key: HpkePrivateKey,
         leaf_secret: Secret,
     ) -> Self {
         Self {
@@ -455,7 +455,7 @@ impl KeyPackageBundle {
 /// Crate visible `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     /// Update the private key in the bundle.
-    pub(crate) fn _set_private_key(&mut self, private_key: HPKEPrivateKey) {
+    pub(crate) fn _set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key = private_key;
     }
 
@@ -469,8 +469,8 @@ impl KeyPackageBundle {
         &mut self.key_package
     }
 
-    /// Get a reference to the `HPKEPrivateKey`.
-    pub(crate) fn private_key(&self) -> &HPKEPrivateKey {
+    /// Get a reference to the `HpkePrivateKey`.
+    pub(crate) fn private_key(&self) -> &HpkePrivateKey {
         &self.private_key
     }
 
