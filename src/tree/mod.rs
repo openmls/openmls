@@ -359,7 +359,7 @@ impl RatchetTree {
                 .continue_path_secrets(&self.ciphersuite, secret, &common_path);
 
         // Extract public keys from UpdatePath
-        let update_path_public_keys: Vec<HPKEPublicKey> = update_path
+        let update_path_public_keys: Vec<HpkePublicKey> = update_path
             .nodes
             .iter()
             .map(|node| node.public_key.clone())
@@ -484,7 +484,7 @@ impl RatchetTree {
     /// Encrypt the path secrets to the co path and return the update path.
     fn encrypt_to_copath(
         &self,
-        public_keys: Vec<HPKEPublicKey>,
+        public_keys: Vec<HpkePublicKey>,
         group_context: &[u8],
         new_leaves_indexes: HashSet<&NodeIndex>,
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
@@ -555,7 +555,7 @@ impl RatchetTree {
     /// along `path`
     pub(crate) fn validate_public_keys(
         &self,
-        public_keys: &[HPKEPublicKey],
+        public_keys: &[HpkePublicKey],
         path: &[NodeIndex],
     ) -> Result<(), TreeError> {
         if public_keys.len() != path.len() {
@@ -576,7 +576,7 @@ impl RatchetTree {
     /// Merges `public_keys` into the tree along the `path`
     pub(crate) fn merge_public_keys(
         &mut self,
-        public_keys: &[HPKEPublicKey],
+        public_keys: &[HpkePublicKey],
         path: &[NodeIndex],
     ) -> Result<(), TreeError> {
         debug_assert_eq!(public_keys.len(), path.len());
@@ -799,7 +799,7 @@ impl ApplyProposalsValues {
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct UpdatePathNode {
-    pub public_key: HPKEPublicKey,
+    pub public_key: HpkePublicKey,
     pub encrypted_path_secret: Vec<HpkeCiphertext>,
 }
 
