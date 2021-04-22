@@ -36,10 +36,11 @@
 //! } ParentNodeTreeHashInput;
 //! ```
 
+use tls_codec::Serialize;
+
 use super::node::ParentNode;
 use super::*;
 use crate::ciphersuite::{Ciphersuite, HPKEPublicKey};
-use crate::codec::Codec;
 use crate::key_packages::KeyPackage;
 
 pub(crate) struct ParentHashInput<'a> {
@@ -67,7 +68,7 @@ impl<'a> ParentHashInput<'a> {
         })
     }
     pub(crate) fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -84,7 +85,7 @@ impl<'a> LeafNodeHashInput<'a> {
         }
     }
     pub fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -110,7 +111,7 @@ impl<'a> ParentNodeTreeHashInput<'a> {
         }
     }
     pub(crate) fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -129,13 +130,11 @@ impl RatchetTree {
         if let Ok(parent_index) = treemath::parent(index, self.leaf_count()) {
             // Check if the parent node is not blank
             if let Some(parent_node) = &self.nodes[parent_index].node {
-                for index in &parent_node.unmerged_leaves {
-                    unmerged_leaves.push(NodeIndex::from(LeafIndex::from(*index as usize)));
-                }
+                unmerged_leaves.extend_from_slice(&parent_node.unmerged_leaves);
             }
         };
         // Convert the exclusion list to a HashSet for faster searching
-        let exclusion_list: HashSet<&NodeIndex> = unmerged_leaves.iter().collect();
+        let exclusion_list: HashSet<&LeafIndex> = unmerged_leaves.iter().collect();
 
         // Compute the resolution for the index with the exclusion list
         let resolution = self.resolve(index, &exclusion_list);
