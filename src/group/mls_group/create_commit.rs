@@ -215,7 +215,7 @@ impl MlsGroup {
 /// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
 /// encrypted for the `public_key` into `encrypted_group_secrets` later.
 pub(crate) struct PlaintextSecret {
-    pub(crate) public_key: HPKEPublicKey,
+    pub(crate) public_key: HpkePublicKey,
     pub(crate) group_secrets_bytes: Vec<u8>,
     pub(crate) key_package_hash: Vec<u8>,
 }

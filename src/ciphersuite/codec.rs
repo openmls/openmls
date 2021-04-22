@@ -55,7 +55,7 @@ impl tls_codec::TlsSize for Signature {
     }
 }
 
-impl Codec for HPKEPublicKey {
+impl Codec for HpkePublicKey {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, self.as_slice())?;
         Ok(())

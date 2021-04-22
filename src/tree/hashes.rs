@@ -40,13 +40,13 @@ use tls_codec::Serialize;
 
 use super::node::ParentNode;
 use super::*;
-use crate::ciphersuite::{Ciphersuite, HPKEPublicKey};
+use crate::ciphersuite::{Ciphersuite, HpkePublicKey};
 use crate::key_packages::KeyPackage;
 
 pub(crate) struct ParentHashInput<'a> {
-    pub(crate) public_key: &'a HPKEPublicKey,
+    pub(crate) public_key: &'a HpkePublicKey,
     pub(crate) parent_hash: &'a [u8],
-    pub(crate) original_child_resolution: Vec<&'a HPKEPublicKey>,
+    pub(crate) original_child_resolution: Vec<&'a HpkePublicKey>,
 }
 
 impl<'a> ParentHashInput<'a> {
@@ -119,9 +119,9 @@ impl<'a> ParentNodeTreeHashInput<'a> {
 // === Parent hashes ===
 
 impl RatchetTree {
-    /// The list of HPKEPublicKey values of the nodes in the resolution of
+    /// The list of HpkePublicKey values of the nodes in the resolution of
     /// `index` but with the `unmerged_leaves` of the parent node omitted.
-    pub(crate) fn original_child_resolution(&self, index: NodeIndex) -> Vec<&HPKEPublicKey> {
+    pub(crate) fn original_child_resolution(&self, index: NodeIndex) -> Vec<&HpkePublicKey> {
         // Build the exclusion list that consists of the unmerged leaves of the parent
         // node
         let mut unmerged_leaves = vec![];

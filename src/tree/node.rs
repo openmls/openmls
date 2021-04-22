@@ -68,7 +68,7 @@ impl Node {
     }
 
     /// Returns the public HPKE key of either node type.
-    pub fn public_hpke_key(&self) -> Option<&HPKEPublicKey> {
+    pub fn public_hpke_key(&self) -> Option<&HpkePublicKey> {
         match self.node_type {
             NodeType::Leaf => self.key_package.as_ref().map(|kp| kp.hpke_init_key()),
             NodeType::Parent => self
@@ -140,7 +140,7 @@ impl Node {
 /// Content of a parent node.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
-    pub(crate) public_key: HPKEPublicKey,
+    pub(crate) public_key: HpkePublicKey,
     pub(crate) unmerged_leaves: Vec<LeafIndex>,
     pub(crate) parent_hash: Vec<u8>,
 }
@@ -148,7 +148,7 @@ pub struct ParentNode {
 impl ParentNode {
     /// Creates a new `ParentNode` from the provided values.
     pub fn new(
-        public_key: HPKEPublicKey,
+        public_key: HpkePublicKey,
         unmerged_leaves: &[LeafIndex],
         parent_hash: &[u8],
     ) -> Self {
@@ -159,7 +159,7 @@ impl ParentNode {
         }
     }
     /// Returns the node's HPKE public key
-    pub fn public_key(&self) -> &HPKEPublicKey {
+    pub fn public_key(&self) -> &HpkePublicKey {
         &self.public_key
     }
     /// Sets the node's parent hash
