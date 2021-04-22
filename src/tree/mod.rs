@@ -363,12 +363,12 @@ impl RatchetTree {
         let secret_bytes =
             self.ciphersuite
                 .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?;
-        let secret =
+        let path_secret =
             Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree
-                .continue_path_secrets(&self.ciphersuite, secret, &common_path);
+                .continue_path_secrets(&self.ciphersuite, path_secret, &common_path);
 
         // Extract public keys from UpdatePath
         let update_path_public_keys: Vec<HpkePublicKey> = update_path
@@ -790,21 +790,20 @@ impl RatchetTree {
         self.private_tree.commit_secret()
     }
 
-    /// Get the path secret for a given target node.
+    /// Get the path secret for a given target node. Returns `None` if the given
+    /// index is not in the tree or not on the direct path of the `own_node`.
     pub(crate) fn path_secret(&self, index: NodeIndex) -> Option<&PathSecret> {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
-        let dirpath = match treemath::leaf_direct_path(self.own_node_index(), self.leaf_count()) {
-            Ok(p) => p,
-            Err(_) => return None,
-        };
+        if let Ok(dirpath) = treemath::leaf_direct_path(self.own_node_index(), self.leaf_count()) {
+            // Compute the right index in the `path_secrets` vector and get the secret.
+            if let Some(position) = dirpath.iter().position(|&x| x == index) {
+                return self.private_tree.path_secrets().get(position);
+            }
+        }
 
-        // Get the position of the node index that represents the
-        // common ancestor in the direct path. We can unwrap here,
-        // because the direct path must contain the shared ancestor.
-        let position = dirpath.iter().position(|&x| x == index).unwrap();
-
-        self.private_tree.path_secrets().get(position)
+        // Return None if either of the conditions is not fulfilled.
+        None
     }
 }
 
