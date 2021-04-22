@@ -388,7 +388,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">test_util</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
 
-<span class="kw">use</span> <span class="ident">hpke</span>::<span class="ident">HPKEKeyPair</span>;
+<span class="kw">use</span> <span class="ident">hpke</span>::<span class="ident">HpkeKeyPair</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">CommitSecret</span>;
@@ -417,7 +417,7 @@
     <span class="ident">membership_key</span>: <span class="ident">String</span>,
     <span class="ident">resumption_secret</span>: <span class="ident">String</span>,
 
-    <span class="ident">external_pub</span>: <span class="ident">String</span>, <span class="comment">// TLS serialized HPKEPublicKey</span>
+    <span class="ident">external_pub</span>: <span class="ident">String</span>, <span class="comment">// TLS serialized HpkePublicKey</span>
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
@@ -442,7 +442,7 @@
     <span class="ident">EpochSecrets</span>,
     <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">GroupContext</span>,
-    <span class="ident">HPKEKeyPair</span>,
+    <span class="ident">HpkeKeyPair</span>,
 ) {
     <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
     <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">CommitSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>);

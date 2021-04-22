@@ -505,7 +505,7 @@
 <span class="doccomment">/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are</span>
 <span class="doccomment">/// encrypted for the `public_key` into `encrypted_group_secrets` later.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PlaintextSecret</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">public_key</span>: <span class="ident">HPKEPublicKey</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_secrets_bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">key_package_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }

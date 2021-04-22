@@ -179,7 +179,7 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">HPKEPublicKey</span> {
+<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">HpkePublicKey</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU16</span>, <span class="ident">buffer</span>, <span class="self">self</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())

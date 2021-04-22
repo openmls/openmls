@@ -354,13 +354,13 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">node</span>::<span class="ident">ParentNode</span>;
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">HPKEPublicKey</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">HpkePublicKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="ident">KeyPackage</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ParentHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HPKEPublicKey</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HpkePublicKey</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">parent_hash</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">original_child_resolution</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HPKEPublicKey</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">original_child_resolution</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HpkePublicKey</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ParentHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -433,9 +433,9 @@
 <span class="comment">// === Parent hashes ===</span>
 
 <span class="kw">impl</span> <span class="ident">RatchetTree</span> {
-    <span class="doccomment">/// The list of HPKEPublicKey values of the nodes in the resolution of</span>
+    <span class="doccomment">/// The list of HpkePublicKey values of the nodes in the resolution of</span>
     <span class="doccomment">/// `index` but with the `unmerged_leaves` of the parent node omitted.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">original_child_resolution</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HPKEPublicKey</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">original_child_resolution</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> {
         <span class="comment">// Build the exclusion list that consists of the unmerged leaves of the parent</span>
         <span class="comment">// node</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unmerged_leaves</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];

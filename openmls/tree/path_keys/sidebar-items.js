@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["PathKeys","A set of keys for a path stored as `HashMap` with entries `(NodeIndex, HPKEPrivateKey)`."]]});
+initSidebarItems({"struct":[["PathKeys","A set of keys for a path stored as `HashMap` with entries `(NodeIndex, HpkePrivateKey)`."]]});

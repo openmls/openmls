@@ -915,7 +915,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">hash</span>::<span class="ident">Hash</span>;
 
 <span class="comment">// re-export for other parts of the library when we can use it</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::{<span class="ident">HPKEKeyPair</span>, <span class="ident">HPKEPrivateKey</span>, <span class="ident">HPKEPublicKey</span>};
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::{<span class="ident">HpkeKeyPair</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>};
 
 <span class="kw">mod</span> <span class="ident">ciphersuites</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
@@ -1500,7 +1500,7 @@
     <span class="doccomment">/// HPKE single-shot encryption of `ptxt` to `pk_r`, using `info` and `aad`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hpke_seal</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">pk_r</span>: <span class="kw-2">&amp;</span><span class="ident">HPKEPublicKey</span>,
+        <span class="ident">pk_r</span>: <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span>,
         <span class="ident">info</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">ptxt</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
@@ -1519,7 +1519,7 @@
     <span class="doccomment">/// `pk_r`, using `info` and `aad`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hpke_seal_secret</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">pk_r</span>: <span class="kw-2">&amp;</span><span class="ident">HPKEPublicKey</span>,
+        <span class="ident">pk_r</span>: <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span>,
         <span class="ident">info</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
@@ -1532,7 +1532,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hpke_open</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">HpkeCiphertext</span>,
-        <span class="ident">sk_r</span>: <span class="kw-2">&amp;</span><span class="ident">HPKEPrivateKey</span>,
+        <span class="ident">sk_r</span>: <span class="kw-2">&amp;</span><span class="ident">HpkePrivateKey</span>,
         <span class="ident">info</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
@@ -1551,7 +1551,7 @@
     }
 
     <span class="doccomment">/// Derive a new HPKE keypair from a given Secret.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ikm</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HPKEKeyPair</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ikm</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HpkeKeyPair</span> {
         <span class="self">self</span>.<span class="ident">hpke</span>.<span class="ident">derive_key_pair</span>(<span class="kw-2">&amp;</span><span class="ident">ikm</span>.<span class="ident">value</span>)
     }
 }
