@@ -42,7 +42,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     key_store::KeyStore,
-    messages::{PathSecret, PublicGroupState, Welcome},
+    messages::{proposals::Proposal, PathSecret, PublicGroupState, Welcome},
     node::Node,
     prelude::{KeyPackageBundle, MLSPlaintext},
     schedule::ResumptionSecret,
@@ -327,9 +327,10 @@ impl ManagedClient {
     pub fn process_pending_proposals(
         &self,
         group_id: &GroupId,
+        proposals_by_value: &[&Proposal],
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedClientError> {
         let mut group = self.groups.get_mut(group_id)?;
-        Ok(group.process_pending_proposals(&self.key_store)?)
+        Ok(group.process_pending_proposals(proposals_by_value, &self.key_store)?)
     }
 
     // === Export secrets ===

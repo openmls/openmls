@@ -650,6 +650,7 @@ impl ManagedGroup {
     /// Process pending proposals
     pub fn process_pending_proposals(
         &mut self,
+        proposals_by_value: &[&Proposal],
         key_store: &KeyStore,
     ) -> Result<(Vec<MLSMessage>, Option<Welcome>), ManagedGroupError> {
         if !self.active {
@@ -669,7 +670,7 @@ impl ManagedGroup {
             &self.aad,
             &credential_bundle,
             &messages_to_commit,
-            &[],
+            proposals_by_value,
             true,
             None,
         )?;

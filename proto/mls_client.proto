@@ -29,14 +29,14 @@ service MLSClient {
   rpc Protect(ProtectRequest) returns (ProtectResponse) {}
   rpc Unprotect(UnprotectRequest) returns (UnprotectResponse) {}
   rpc StorePSK(StorePSKRequest) returns (StorePSKResponse) {}
-  
+
   rpc AddProposal(AddProposalRequest) returns (ProposalResponse) {}
   rpc UpdateProposal(UpdateProposalRequest) returns (ProposalResponse) {}
   rpc RemoveProposal(RemoveProposalRequest) returns (ProposalResponse) {}
   rpc PSKProposal(PSKProposalRequest) returns (ProposalResponse) {}
   rpc ReInitProposal(ReInitProposalRequest) returns (ProposalResponse) {}
   rpc AppAckProposal(AppAckProposalRequest) returns (ProposalResponse) {}
-  
+
   rpc Commit(CommitRequest) returns (CommitResponse) {}
   rpc HandleCommit(HandleCommitRequest) returns (HandleCommitResponse) {}
 }
@@ -89,10 +89,10 @@ message VerifyTestVectorResponse {}
 
 // rpc CreateGroup
 // XXX(RLB): Credential type is omitted; let's just use Basic for these tests
-message CreateGroupRequest { 
+message CreateGroupRequest {
   bytes group_id = 1;
   uint32 cipher_suite = 2; // Actually uint16
-  bool encrypt_handshake = 3; 
+  bool encrypt_handshake = 3;
 }
 
 message CreateGroupResponse {
@@ -116,7 +116,7 @@ message JoinGroupRequest {
   bool encrypt_handshake = 3;
 }
 
-message JoinGroupResponse { 
+message JoinGroupResponse {
   uint32 state_id = 1;
 }
 
@@ -168,7 +168,7 @@ message ProtectRequest {
   bytes application_data = 2;
 }
 
-message ProtectResponse { 
+message ProtectResponse {
   bytes ciphertext = 1;
 }
 
@@ -238,8 +238,8 @@ message CommitRequest {
 }
 
 message CommitResponse {
-  repeated bytes proposal = 1;
-  bytes commit = 2;
+  bytes commit = 1;
+  bytes welcome = 2;
 }
 
 // rpc HandleCommit
@@ -249,6 +249,6 @@ message HandleCommitRequest {
   bytes commit = 3;
 }
 
-message HandleCommitResponse { 
+message HandleCommitResponse {
   uint32 state_id = 1;
 }

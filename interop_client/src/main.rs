@@ -733,16 +733,114 @@ impl MlsClient for MlsClientImpl {
 
     async fn commit(
         &self,
-        _request: tonic::Request<CommitRequest>,
+        request: tonic::Request<CommitRequest>,
     ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
-        Ok(Response::new(CommitResponse::default())) // TODO
+        let commit_request = request.get_ref();
+
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&commit_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+
+        // First, feed the proposals that are supposed to be included by
+        // reference into the group.
+        let mut proposals_by_reference = Vec::new();
+        for pt_bytes in &commit_request.by_reference {
+            let pt = MLSPlaintext::decode_detached(&pt_bytes)
+                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?;
+            proposals_by_reference.push(MLSMessage::Plaintext(pt))
+        }
+        self.client
+            .lock()
+            .unwrap()
+            .process_messages(&group_id, proposals_by_reference)
+            .expect("error processing proposals");
+
+        let mut proposals_by_value = Vec::new();
+        let mut plaintexts = Vec::new();
+        for pt_bytes in &commit_request.by_value {
+            let pt = MLSPlaintext::decode_detached(&pt_bytes)
+                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?;
+            plaintexts.push(pt);
+        }
+        for pt in &plaintexts {
+            match pt.content() {
+                MLSPlaintextContentType::Proposal(proposal) => proposals_by_value.push(proposal),
+                _ => return Err(Status::aborted("plaintext did not contain a proposal")),
+            }
+        }
+
+        let (messages, welcome_option) = self
+            .client
+            .lock()
+            .unwrap()
+            .process_pending_proposals(&group_id, &proposals_by_value)
+            .map_err(|e| to_status(e))?;
+        let commit = messages
+            .first()
+            .unwrap()
+            .tls_serialize_detached()
+            .map_err(|_| Status::aborted("failed to serialize proposal"))?;
+        let welcome = if let Some(welcome) = welcome_option {
+            welcome.encode_detached().unwrap()
+        } else {
+            vec![]
+        };
+
+        Ok(Response::new(CommitResponse { commit, welcome }))
     }
 
     async fn handle_commit(
         &self,
-        _request: tonic::Request<HandleCommitRequest>,
+        request: tonic::Request<HandleCommitRequest>,
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
-        Ok(Response::new(HandleCommitResponse::default())) // TODO
+        let handle_commit_request = request.get_ref();
+
+        let group_id = self
+            .state_id_map
+            .lock()
+            .unwrap()
+            .get(&handle_commit_request.state_id)
+            .ok_or(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "unknown state_id",
+            ))?
+            // Cloning here to avoid potential poisoning of the state_id_map.
+            .clone();
+
+        // First, feed the proposals into the group.
+        let mut proposals = Vec::new();
+        for pt_bytes in &handle_commit_request.proposal {
+            let pt = MLSPlaintext::decode_detached(&pt_bytes)
+                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?;
+            proposals.push(MLSMessage::Plaintext(pt))
+        }
+
+        self.client
+            .lock()
+            .unwrap()
+            .process_messages(&group_id, proposals)
+            .expect("error processing proposals");
+
+        // Then feed the commit into the group.
+        let commit = MLSPlaintext::decode_detached(&handle_commit_request.commit)
+            .map_err(|_| Status::aborted("failed to deserialize plaintext"))?;
+        self.client
+            .lock()
+            .unwrap()
+            .process_messages(&group_id, vec![MLSMessage::Plaintext(commit)])
+            .expect("error processing proposals");
+
+        Ok(Response::new(HandleCommitResponse {
+            state_id: handle_commit_request.state_id,
+        }))
     }
 }
 
