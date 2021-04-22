@@ -325,7 +325,7 @@ pub struct PublicGroupState {
     pub(crate) tree_hash: Vec<u8>,
     pub(crate) interim_transcript_hash: Vec<u8>,
     pub(crate) extensions: Vec<Box<dyn Extension>>,
-    pub(crate) external_pub: HPKEPublicKey,
+    pub(crate) external_pub: HpkePublicKey,
     pub(crate) signer_index: LeafIndex,
     pub(crate) signature: Signature,
 }
@@ -410,7 +410,7 @@ pub(crate) struct PublicGroupStateTbs<'a> {
     pub(crate) tree_hash: &'a [u8],
     pub(crate) interim_transcript_hash: &'a [u8],
     pub(crate) extensions: &'a [Box<dyn Extension>],
-    pub(crate) external_pub: &'a HPKEPublicKey,
+    pub(crate) external_pub: &'a HpkePublicKey,
 }
 
 impl<'a> PublicGroupStateTbs<'a> {

@@ -20,7 +20,7 @@ use crate::{
 #[cfg(test)]
 use crate::test_util::{read, write};
 
-use hpke::HPKEKeyPair;
+use hpke::HpkeKeyPair;
 use serde::{self, Deserialize, Serialize};
 
 use super::CommitSecret;
@@ -49,7 +49,7 @@ struct Epoch {
     membership_key: String,
     resumption_secret: String,
 
-    external_pub: String, // TLS serialized HPKEPublicKey
+    external_pub: String, // TLS serialized HpkePublicKey
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -74,7 +74,7 @@ fn generate(
     EpochSecrets,
     Vec<u8>,
     GroupContext,
-    HPKEKeyPair,
+    HpkeKeyPair,
 ) {
     let tree_hash = randombytes(ciphersuite.hash_length());
     let commit_secret = CommitSecret::random(ciphersuite);

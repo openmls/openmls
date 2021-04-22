@@ -138,7 +138,7 @@ fn test_original_child_resolution() {
             .iter()
             .filter(|index| nodes[**index].is_some())
             .map(|index| nodes[*index].as_ref().unwrap().public_hpke_key().unwrap())
-            .collect::<Vec<&HPKEPublicKey>>();
+            .collect::<Vec<&HpkePublicKey>>();
 
         // Since the root node has no unmerged leaves, we expect all keys to be returned
         assert_eq!(
@@ -169,7 +169,7 @@ fn test_original_child_resolution() {
             .iter()
             .filter(|index| nodes[**index].is_some())
             .map(|index| nodes[*index].as_ref().unwrap().public_hpke_key().unwrap())
-            .collect::<Vec<&HPKEPublicKey>>();
+            .collect::<Vec<&HpkePublicKey>>();
 
         // Since the root node now has unmerged leaves, we expect only certain public
         // keys to be returned

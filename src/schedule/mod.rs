@@ -118,7 +118,7 @@ use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
 use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HPKEKeyPair, Secret},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkeKeyPair, Secret},
     config::ProtocolVersion,
     messages::ConfirmationTag,
 };
@@ -594,7 +594,7 @@ impl ExternalSecret {
     }
 
     /// Derive the external keypair for External Commits
-    pub(crate) fn derive_external_keypair(&self, ciphersuite: &Ciphersuite) -> HPKEKeyPair {
+    pub(crate) fn derive_external_keypair(&self, ciphersuite: &Ciphersuite) -> HpkeKeyPair {
         ciphersuite.derive_hpke_keypair(&self.secret)
     }
 

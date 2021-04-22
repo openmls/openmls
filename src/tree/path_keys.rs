@@ -1,24 +1,24 @@
 //! A data structure holding HPKE key pairs for a path in the tree.
 
 use super::index::NodeIndex;
-use crate::ciphersuite::HPKEPrivateKey;
+use crate::ciphersuite::HpkePrivateKey;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// A set of keys for a path stored as `HashMap` with entries `(NodeIndex,
-/// HPKEPrivateKey)`.
+/// HpkePrivateKey)`.
 #[derive(Default, PartialEq, Debug, Serialize, Deserialize)]
 pub(crate) struct PathKeys {
-    keys: HashMap<NodeIndex, HPKEPrivateKey>,
+    keys: HashMap<NodeIndex, HpkePrivateKey>,
 }
 
 impl PathKeys {
-    /// Add a slice of `HPKEPrivateKey`s with the indices given in `path` to
+    /// Add a slice of `HpkePrivateKey`s with the indices given in `path` to
     /// this set of `PathKeys`.
     ///
     /// This consumes the private keys.
-    pub fn add(&mut self, private_keys: Vec<HPKEPrivateKey>, path: &[NodeIndex]) {
+    pub fn add(&mut self, private_keys: Vec<HpkePrivateKey>, path: &[NodeIndex]) {
         // TODO: #42 operate on path index not NodeIndex.
         debug_assert_eq!(
             private_keys.len(),
@@ -34,7 +34,7 @@ impl PathKeys {
     }
 
     /// Get an HPKE private key for a given node index.
-    pub fn get(&self, index: NodeIndex) -> Option<&HPKEPrivateKey> {
+    pub fn get(&self, index: NodeIndex) -> Option<&HpkePrivateKey> {
         self.keys.get(&index)
     }
 }
