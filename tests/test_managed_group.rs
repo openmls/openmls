@@ -132,12 +132,23 @@ fn managed_group_operations() {
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
 
-            let events = alice_group
+            let mut events = alice_group
                 .process_messages(queued_messages.clone())
                 .expect("The group is no longer active");
 
-            // Check that we received the correct event
-            match events.last().expect("Expected an event to be returned") {
+            // Check that we received the correct events
+
+            // Since the add also triggered an update, we expect this to be the
+            // last event in the queue. We expect this update to be from alice.
+            match events.pop().expect("Expected an event to be returned") {
+                GroupEvent::MemberUpdated(member_updated_event) => {
+                    assert_eq!(member_updated_event.updated_member(), &alice_credential);
+                }
+                _ => unreachable!("Expected a MemberUpdated event"),
+            }
+            // Finally, we expect the event queue to contain an even reflecting
+            // the fact that bob was indeed added by alice.
+            match events.pop().expect("Expected an event to be returned") {
                 GroupEvent::MemberAdded(member_added_event) => {
                     assert_eq!(member_added_event.sender(), &alice_credential);
                     assert_eq!(member_added_event.added_member(), &bob_credential);

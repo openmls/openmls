@@ -30,8 +30,8 @@ pub(crate) use serde::{
     Deserialize, Deserializer, Serialize,
 };
 
-use std::collections::HashSet;
 use std::convert::TryInto;
+use std::{collections::HashSet, convert::TryFrom};
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub mod tests;
@@ -173,31 +173,36 @@ impl RatchetTree {
         treemath::leaf_count(self.tree_size())
     }
 
-    /// Compute the resolution for a given node index. Nodes listed in the
+    /// Compute the resolution for a given node index. Leaves listed in the
     /// `exclusion_list` are substracted from the final resolution.
-    fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&NodeIndex>) -> Vec<NodeIndex> {
+    fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&LeafIndex>) -> Vec<NodeIndex> {
         let size = self.leaf_count();
 
         // We end the recursion at leaf level
         if self.nodes[index].node_type == NodeType::Leaf {
-            if self.nodes[index].is_blank() || exclusion_list.contains(&index) {
+            if self.nodes[index].is_blank()
+                // We can unwrap here, because we just checked that the node is
+                // indeed a leaf.
+                || exclusion_list.contains(&LeafIndex::try_from(index).unwrap())
+            {
                 return vec![];
             } else {
                 return vec![index];
             }
         }
 
-        // If a node is not blank, we only return the unmerged leaves of that node
+        // If a node is not blank, the resolution consists of that node's index,
+        // as well as its unmerged leaves.
         if !self.nodes[index].is_blank() {
-            let mut unmerged_leaves = vec![index];
-            let node = &self.nodes[index].node.as_ref();
-            unmerged_leaves.extend(
+            let mut resolution = vec![index];
+            let node = self.nodes[index].node.as_ref();
+            resolution.extend(
                 node.unwrap()
                     .unmerged_leaves()
                     .iter()
-                    .map(|n| NodeIndex::from(*n)),
+                    .map(|&n| NodeIndex::from(n)),
             );
-            unmerged_leaves
+            resolution
         } else {
             // Otherwise we take the resolution of the children
             // Unwrapping here is safe, since parent nodes always have children
@@ -266,7 +271,7 @@ impl RatchetTree {
         sender: LeafIndex,
         update_path: &UpdatePath,
         group_context: &[u8],
-        new_leaves_indexes: HashSet<&NodeIndex>,
+        new_leaves_indexes: HashSet<&LeafIndex>,
     ) -> Result<&CommitSecret, TreeError> {
         let own_index = NodeIndex::from(self.own_node_index());
 
@@ -298,16 +303,23 @@ impl RatchetTree {
         // Resolve the node of that co-path index
         let resolution = self.resolve(common_ancestor_copath_index, &new_leaves_indexes);
 
-        // Figure out the position in the resolution of the node that is either
-        // our own leaf node or a node in our direct path.
-        let position_in_resolution = resolution
-            .iter()
-            .position(|&x| own_direct_path.contains(&x) || own_index == x)
-            // We can unwrap here, because regardless of what the resolution
-            // looks like, there has to be a an entry in the resolution that
-            // corresponds to either the own leaf or a node in the direct path.
-            .unwrap();
-
+        // Figure out the position in the resolution of the node that we have a
+        // secret for. We first have to check if our leaf is in the resolution,
+        // either due to blanks or due to us being an unmerged leaf.
+        let position_in_resolution = match resolution.iter().position(|&x| own_index == x) {
+            Some(position) => position,
+            // If our leaf is not included, we look again and search for an
+            // index in our leaf's direct path.
+            None => {
+                resolution
+                    .iter()
+                    .position(|&x| own_direct_path.contains(&x))
+                    // We can unwrap here, because regardless of what the resolution
+                    // looks like, there has to be a an entry in the resolution that
+                    // corresponds to either the own leaf or a node in the direct path.
+                    .unwrap()
+            }
+        };
         // Decrypt the ciphertext of that node
         let common_ancestor_node =
             match update_path.nodes.get(*common_ancestor_sender_dirpath_index) {
@@ -408,7 +420,7 @@ impl RatchetTree {
         &mut self,
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
-        new_leaves_indexes: HashSet<&NodeIndex>,
+        new_leaves_indexes: HashSet<&LeafIndex>,
     ) -> (UpdatePath, KeyPackageBundle) {
         // Generate new keypair
         let own_index = self.own_node_index();
@@ -447,7 +459,7 @@ impl RatchetTree {
         &mut self,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
-        new_leaves_indexes_option: Option<HashSet<&NodeIndex>>,
+        new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
     ) -> Option<UpdatePath> {
         let key_package = key_package_bundle.key_package().clone();
         let ciphersuite = key_package.ciphersuite();
@@ -486,7 +498,7 @@ impl RatchetTree {
         &self,
         public_keys: Vec<HpkePublicKey>,
         group_context: &[u8],
-        new_leaves_indexes: HashSet<&NodeIndex>,
+        new_leaves_indexes: HashSet<&LeafIndex>,
     ) -> Result<Vec<UpdatePathNode>, TreeError> {
         let copath = treemath::copath(self.private_tree.leaf_index(), self.leaf_count())
             .expect("encrypt_to_copath: Error when computing copath.");
@@ -591,8 +603,26 @@ impl RatchetTree {
         Ok(())
     }
 
+    /// Add a node for the provided key package the tree on the right side.
+    /// Note, that this function will not fill blank leaves. This function
+    /// returns references to the `LeafIndex` the `KeyPackage` was placed into
+    /// and to the Credential of the `KeyPackage.`
+    fn add_node<'a>(&mut self, key_package: &'a KeyPackage) -> (LeafIndex, &'a Credential) {
+        if !self.nodes.is_empty() {
+            self.nodes.push(Node::new_blank_parent_node());
+        }
+        self.nodes.push(Node::new_leaf(Some((key_package).clone())));
+        (
+            (self.leaf_count().as_usize() - 1).into(),
+            key_package.credential(),
+        )
+    }
+
     /// Add nodes for the provided key packages.
-    pub(crate) fn add_nodes(&mut self, new_kps: &[&KeyPackage]) -> Vec<(NodeIndex, Credential)> {
+    pub(crate) fn add_nodes<'a>(
+        &mut self,
+        new_kps: &[&'a KeyPackage],
+    ) -> Vec<(LeafIndex, &'a Credential)> {
         let num_new_kp = new_kps.len();
         let mut added_members = Vec::with_capacity(num_new_kp);
 
@@ -605,37 +635,34 @@ impl RatchetTree {
         // Note that zip makes it so only the first free_leaves().len() nodes are taken.
         let free_leaves = self.free_leaves();
         let free_leaves_len = free_leaves.len();
-        for (new_kp, leaf_index) in new_kps.iter().zip(free_leaves) {
-            self.nodes[leaf_index] = Node::new_leaf(Some((*new_kp).clone()));
-            let dirpath = treemath::leaf_direct_path(leaf_index, self.leaf_count())
+        for (&new_kp, leaf_index) in new_kps.iter().zip(free_leaves) {
+            self.nodes[leaf_index] = Node::new_leaf(Some((new_kp).clone()));
+            added_members.push((leaf_index, new_kp.credential()));
+        }
+        // Add the remaining nodes.
+        for &key_package in new_kps.iter().skip(free_leaves_len) {
+            added_members.push(self.add_node(key_package));
+        }
+
+        // Add the newly added leaves to the unmerged leaves of all non-blank
+        // parent nodes in their direct path.
+        for (leaf_index, _) in &added_members {
+            let dirpath = treemath::leaf_direct_path(leaf_index.to_owned(), self.leaf_count())
                 .expect("add_nodes: Error when computing direct path.");
             for d in dirpath.iter() {
                 if !self.nodes[d].is_blank() {
-                    let node = &self.nodes[d];
-                    let index = d.as_u32();
-                    // TODO handle error
-                    let mut parent_node = node.node.clone().unwrap();
-                    if !parent_node.unmerged_leaves().contains(&index) {
-                        parent_node.add_unmerged_leaf(index);
+                    let node = &mut self.nodes[d];
+                    // We can unwrap here, because we just checked that the node
+                    // is not blank.
+                    let mut parent_node = node.node.take().unwrap();
+                    if !parent_node.unmerged_leaves().contains(&leaf_index) {
+                        parent_node.add_unmerged_leaf(leaf_index.to_owned());
                     }
                     self.nodes[d].node = Some(parent_node);
                 }
             }
-            added_members.push((NodeIndex::from(leaf_index), new_kp.credential().clone()));
         }
-        // Add the remaining nodes.
-        let mut new_nodes = Vec::with_capacity(num_new_kp * 2);
-        let mut index_counter = self.nodes.len() + 1;
-        for add_proposal in new_kps.iter().skip(free_leaves_len) {
-            let node_index = NodeIndex::from(index_counter);
-            new_nodes.extend(vec![
-                Node::new_blank_parent_node(),
-                Node::new_leaf(Some((*add_proposal).clone())),
-            ]);
-            added_members.push((node_index, add_proposal.credential().clone()));
-            index_counter += 2;
-        }
-        self.nodes.extend(new_nodes);
+
         self.trim_tree();
         added_members
     }
@@ -696,7 +723,6 @@ impl RatchetTree {
         }
 
         // Process adds
-        let mut invitation_list = Vec::new();
         let add_proposals: Vec<AddProposal> = proposal_queue
             .filtered_by_type(ProposalType::Add)
             .map(|queued_proposal| {
@@ -712,6 +738,7 @@ impl RatchetTree {
         let added_members = self.add_nodes(&key_packages);
 
         // Prepare invitations
+        let mut invitation_list = Vec::new();
         for (i, added) in added_members.iter().enumerate() {
             invitation_list.push((added.0, add_proposals.get(i).unwrap().clone()));
         }
@@ -769,7 +796,7 @@ impl RatchetTree {
 pub struct ApplyProposalsValues {
     pub path_required: bool,
     pub self_removed: bool,
-    pub invitation_list: Vec<(NodeIndex, AddProposal)>,
+    pub invitation_list: Vec<(LeafIndex, AddProposal)>,
     pub presharedkeys: PreSharedKeys,
 }
 
@@ -777,10 +804,10 @@ impl ApplyProposalsValues {
     /// This function creates a `HashSet` of node indexes of the new nodes that
     /// were added to the tree. The `HashSet` will be querried by the
     /// `resolve()` function to filter out those nodes from the resolution.
-    pub fn exclusion_list(&self) -> HashSet<&NodeIndex> {
+    pub fn exclusion_list(&self) -> HashSet<&LeafIndex> {
         // Collect the new leaves' indexes so we can filter them out in the resolution
         // later
-        let new_leaves_indexes: HashSet<&NodeIndex> = self
+        let new_leaves_indexes: HashSet<&LeafIndex> = self
             .invitation_list
             .iter()
             .map(|(index, _)| index)
