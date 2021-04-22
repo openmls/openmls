@@ -32,7 +32,7 @@ fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex,
 fn test_private_tree(
     private_tree: &PrivateTree,
     direct_path: &[NodeIndex],
-    public_keys: &[HPKEPublicKey],
+    public_keys: &[HpkePublicKey],
     ciphersuite: &Ciphersuite,
 ) {
     // Check that we can encrypt to a public key.

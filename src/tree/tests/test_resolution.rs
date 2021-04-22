@@ -10,8 +10,8 @@ fn test_exclusion_list() {
         // Resolution for the root node of that tree
         const FULL_RESOLUTION: &[usize] =
             &[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
-        // Arbitrary exclusion list
-        const EXCLUSION_LIST: &[usize] = &[10, 12, 14, 16, 18, 20, 22];
+        // Arbitrary exclusion list (leaf indices)
+        const EXCLUSION_LIST: &[usize] = &[5, 6, 7, 8, 9, 10, 11];
         // Expected filtered resolution (the nodes from the exclusion list should be
         // stripped from the full resolution)
         const FILTERED_RESOLUTION: &[usize] = &[0, 2, 4, 6, 8, 24, 26, 28, 30];
@@ -65,8 +65,8 @@ fn test_exclusion_list() {
         // Test resolution with exclusion list
         let exclusion_list_node_indexes = EXCLUSION_LIST
             .iter()
-            .map(|index| NodeIndex::from(*index))
-            .collect::<Vec<NodeIndex>>();
+            .map(|&index| LeafIndex::from(index))
+            .collect::<Vec<LeafIndex>>();
         let exclusion_list = exclusion_list_node_indexes.iter().collect();
         let filtered_resultion = tree
             .resolve(root, &exclusion_list)
@@ -137,7 +137,7 @@ fn test_original_child_resolution() {
             .iter()
             .filter(|index| nodes[**index].is_some())
             .map(|index| nodes[*index].as_ref().unwrap().public_hpke_key().unwrap())
-            .collect::<Vec<&HPKEPublicKey>>();
+            .collect::<Vec<&HpkePublicKey>>();
 
         // Since the root node has no unmerged leaves, we expect all keys to be returned
         assert_eq!(
@@ -154,7 +154,10 @@ fn test_original_child_resolution() {
             node: Some(ParentNode {
                 parent_hash: vec![],
                 public_key,
-                unmerged_leaves: ROOT_UNMERGED_LEAVES.to_vec(),
+                unmerged_leaves: ROOT_UNMERGED_LEAVES
+                    .iter()
+                    .map(|index| LeafIndex::from(*index))
+                    .collect(),
             }),
             key_package: None,
         };
@@ -165,7 +168,7 @@ fn test_original_child_resolution() {
             .iter()
             .filter(|index| nodes[**index].is_some())
             .map(|index| nodes[*index].as_ref().unwrap().public_hpke_key().unwrap())
-            .collect::<Vec<&HPKEPublicKey>>();
+            .collect::<Vec<&HpkePublicKey>>();
 
         // Since the root node now has unmerged leaves, we expect only certain public
         // keys to be returned

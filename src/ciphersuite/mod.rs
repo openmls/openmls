@@ -15,7 +15,7 @@ pub(crate) use serde::{
 use std::hash::Hash;
 
 // re-export for other parts of the library when we can use it
-pub(crate) use hpke::{HPKEKeyPair, HPKEPrivateKey, HPKEPublicKey};
+pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
 
 mod ciphersuites;
 mod codec;
@@ -605,7 +605,7 @@ impl Ciphersuite {
     /// HPKE single-shot encryption of `ptxt` to `pk_r`, using `info` and `aad`.
     pub(crate) fn hpke_seal(
         &self,
-        pk_r: &HPKEPublicKey,
+        pk_r: &HpkePublicKey,
         info: &[u8],
         aad: &[u8],
         ptxt: &[u8],
@@ -624,7 +624,7 @@ impl Ciphersuite {
     /// `pk_r`, using `info` and `aad`.
     pub(crate) fn hpke_seal_secret(
         &self,
-        pk_r: &HPKEPublicKey,
+        pk_r: &HpkePublicKey,
         info: &[u8],
         aad: &[u8],
         secret: &Secret,
@@ -637,7 +637,7 @@ impl Ciphersuite {
     pub(crate) fn hpke_open(
         &self,
         input: &HpkeCiphertext,
-        sk_r: &HPKEPrivateKey,
+        sk_r: &HpkePrivateKey,
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
@@ -656,7 +656,7 @@ impl Ciphersuite {
     }
 
     /// Derive a new HPKE keypair from a given Secret.
-    pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HPKEKeyPair {
+    pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HpkeKeyPair {
         self.hpke.derive_key_pair(&ikm.value)
     }
 }

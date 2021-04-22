@@ -36,16 +36,17 @@
 //! } ParentNodeTreeHashInput;
 //! ```
 
+use tls_codec::Serialize;
+
 use super::node::ParentNode;
 use super::*;
-use crate::ciphersuite::{Ciphersuite, HPKEPublicKey};
-use crate::codec::Codec;
+use crate::ciphersuite::{Ciphersuite, HpkePublicKey};
 use crate::key_packages::KeyPackage;
 
 pub(crate) struct ParentHashInput<'a> {
-    pub(crate) public_key: &'a HPKEPublicKey,
+    pub(crate) public_key: &'a HpkePublicKey,
     pub(crate) parent_hash: &'a [u8],
-    pub(crate) original_child_resolution: Vec<&'a HPKEPublicKey>,
+    pub(crate) original_child_resolution: Vec<&'a HpkePublicKey>,
 }
 
 impl<'a> ParentHashInput<'a> {
@@ -67,7 +68,7 @@ impl<'a> ParentHashInput<'a> {
         })
     }
     pub(crate) fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -84,7 +85,7 @@ impl<'a> LeafNodeHashInput<'a> {
         }
     }
     pub fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -110,7 +111,7 @@ impl<'a> ParentNodeTreeHashInput<'a> {
         }
     }
     pub(crate) fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -118,9 +119,9 @@ impl<'a> ParentNodeTreeHashInput<'a> {
 // === Parent hashes ===
 
 impl RatchetTree {
-    /// The list of HPKEPublicKey values of the nodes in the resolution of
+    /// The list of HpkePublicKey values of the nodes in the resolution of
     /// `index` but with the `unmerged_leaves` of the parent node omitted.
-    pub(crate) fn original_child_resolution(&self, index: NodeIndex) -> Vec<&HPKEPublicKey> {
+    pub(crate) fn original_child_resolution(&self, index: NodeIndex) -> Vec<&HpkePublicKey> {
         // Build the exclusion list that consists of the unmerged leaves of the parent
         // node
         let mut unmerged_leaves = vec![];
@@ -129,13 +130,11 @@ impl RatchetTree {
         if let Ok(parent_index) = treemath::parent(index, self.leaf_count()) {
             // Check if the parent node is not blank
             if let Some(parent_node) = &self.nodes[parent_index].node {
-                for index in &parent_node.unmerged_leaves {
-                    unmerged_leaves.push(NodeIndex::from(LeafIndex::from(*index as usize)));
-                }
+                unmerged_leaves.extend_from_slice(&parent_node.unmerged_leaves);
             }
         };
         // Convert the exclusion list to a HashSet for faster searching
-        let exclusion_list: HashSet<&NodeIndex> = unmerged_leaves.iter().collect();
+        let exclusion_list: HashSet<&LeafIndex> = unmerged_leaves.iter().collect();
 
         // Compute the resolution for the index with the exclusion list
         let resolution = self.resolve(index, &exclusion_list);
