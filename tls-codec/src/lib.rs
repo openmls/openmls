@@ -42,16 +42,24 @@ pub enum Error {
     DecodingError,
 }
 
+/// The `TlsSize` trait needs to be implemented by any struct that should be
+/// efficiently serialized.
+/// This allows to collect the length of a serialized structure before allocating
+/// memory.
+pub trait TlsSize {
+    fn serialized_len(&self) -> usize;
+}
+
 /// The `Serialize` trait provides functions to serialize a struct or enum.
 ///
 /// The trait provides two functions:
 /// * `tls_serialize` that takes a buffer to write the serialization to
 /// * `tls_serialize_detached` that returns a byte vector
-pub trait Serialize {
+pub trait Serialize: TlsSize {
     fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), Error>;
 
     fn tls_serialize_detached(&self) -> Result<Vec<u8>, Error> {
-        let mut buffer = Vec::new();
+        let mut buffer = Vec::with_capacity(self.serialized_len());
         self.tls_serialize(&mut buffer)?;
         Ok(buffer)
     }

@@ -36,10 +36,11 @@
 //! } ParentNodeTreeHashInput;
 //! ```
 
+use tls_codec::Serialize;
+
 use super::node::ParentNode;
 use super::*;
 use crate::ciphersuite::{Ciphersuite, HPKEPublicKey};
-use crate::codec::Codec;
 use crate::key_packages::KeyPackage;
 
 pub(crate) struct ParentHashInput<'a> {
@@ -67,7 +68,7 @@ impl<'a> ParentHashInput<'a> {
         })
     }
     pub(crate) fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -84,7 +85,7 @@ impl<'a> LeafNodeHashInput<'a> {
         }
     }
     pub fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }
@@ -110,7 +111,7 @@ impl<'a> ParentNodeTreeHashInput<'a> {
         }
     }
     pub(crate) fn hash(&self, ciphersuite: &Ciphersuite) -> Vec<u8> {
-        let payload = self.encode_detached().unwrap();
+        let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(&payload)
     }
 }

@@ -34,3 +34,10 @@ impl Codec for KeyPackage {
         Ok(kp)
     }
 }
+
+impl tls_codec::TlsSize for KeyPackage {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        self.encoded.len() + self.signature.serialized_len()
+    }
+}

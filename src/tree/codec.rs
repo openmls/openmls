@@ -1,3 +1,5 @@
+use tls_codec::TlsSize;
+
 use crate::tree::{node::*, secret_tree::*, *};
 use std::convert::TryFrom;
 
@@ -54,6 +56,17 @@ impl Codec for ParentNode {
     }
 }
 
+impl tls_codec::TlsSize for ParentNode {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        self.public_key.serialized_len()
+            + VecSize::VecU32.len_len()
+            + self.unmerged_leaves.len() * 4
+            + VecSize::VecU8.len_len()
+            + self.parent_hash.len()
+    }
+}
+
 impl Codec for UpdatePathNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
@@ -97,30 +110,79 @@ impl Codec for SecretTreeNode {
 
 // Hash inputs
 
-impl<'a> Codec for ParentHashInput<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.parent_hash)?;
-        encode_vec(VecSize::VecU32, buffer, &self.original_child_resolution)?;
+impl<'a> tls_codec::Serialize for ParentHashInput<'a> {
+    fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), tls_codec::Error> {
+        debug_assert!(buffer.capacity() == (buffer.len() + self.serialized_len()));
+        self.public_key.tls_serialize(buffer)?;
+        buffer.push(self.parent_hash.len() as u8);
+        buffer.extend_from_slice(&self.parent_hash);
+        buffer.extend_from_slice(&(self.original_child_resolution.len() as u32).to_be_bytes());
+        for &pk in self.original_child_resolution.iter() {
+            pk.tls_serialize(buffer)?;
+        }
+        debug_assert!(buffer.capacity() == buffer.len());
         Ok(())
     }
 }
 
-impl<'a> Codec for ParentNodeTreeHashInput<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.encode(buffer)?;
-        self.parent_node.encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.left_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.right_hash)?;
+impl<'a> tls_codec::TlsSize for ParentHashInput<'a> {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        self.public_key.serialized_len()
+            + VecSize::VecU8.len_len()
+            + self.parent_hash.len()
+            + VecSize::VecU32.len_len()
+            + self
+                .original_child_resolution
+                .iter()
+                .fold(0, |acc, e| acc + e.serialized_len())
+    }
+}
+
+impl<'a> tls_codec::Serialize for ParentNodeTreeHashInput<'a> {
+    fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), tls_codec::Error> {
+        debug_assert!(buffer.capacity() == (buffer.len() + self.serialized_len()));
+        buffer.extend_from_slice(&self.node_index.to_be_bytes());
+        self.parent_node
+            .encode(buffer)
+            .map_err(|_| tls_codec::Error::EncodingError)?;
+        buffer.push(self.left_hash.len() as u8);
+        buffer.extend_from_slice(&self.left_hash);
+        buffer.push(self.right_hash.len() as u8);
+        buffer.extend_from_slice(&self.right_hash);
+        debug_assert!(buffer.capacity() == buffer.len());
         Ok(())
     }
 }
 
-impl<'a> Codec for LeafNodeHashInput<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.node_index.as_u32().encode(buffer)?;
-        self.key_package.encode(buffer)?;
+impl<'a> tls_codec::TlsSize for ParentNodeTreeHashInput<'a> {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        VecSize::VecU32.len_len()
+            + self.parent_node.serialized_len()
+            + VecSize::VecU8.len_len()
+            + self.left_hash.len()
+            + VecSize::VecU8.len_len()
+            + self.right_hash.len()
+    }
+}
+
+impl<'a> tls_codec::Serialize for LeafNodeHashInput<'a> {
+    fn tls_serialize(&self, buffer: &mut Vec<u8>) -> Result<(), tls_codec::Error> {
+        debug_assert!(buffer.capacity() == (buffer.len() + self.serialized_len()));
+        buffer.extend_from_slice(&self.node_index.as_u32().to_be_bytes());
+        self.key_package
+            .encode(buffer)
+            .map_err(|_| tls_codec::Error::EncodingError)?;
+        debug_assert!(buffer.capacity() == buffer.len());
         Ok(())
+    }
+}
+
+impl<'a> tls_codec::TlsSize for LeafNodeHashInput<'a> {
+    #[inline]
+    fn serialized_len(&self) -> usize {
+        VecSize::VecU32.len_len() + self.key_package.serialized_len()
     }
 }
 
