@@ -174,14 +174,7 @@ impl KeyPackage {
     /// Compile the unsigned payload to create the signature required in the
     /// signature field.
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        let buffer_len = self.protocol_version.serialized_len()
-            + self.protocol_version.serialized_len()
-            + self.ciphersuite.name().serialized_len()
-            + self.hpke_init_key.serialized_len()
-            + self.credential.serialized_len()
-            + crate::extensions::serialized_len(self.extensions.as_slice());
-        let mut buffer = Vec::with_capacity(buffer_len);
-        // let mut buffer = Vec::new();
+        let mut buffer = Vec::new();
         self.protocol_version.encode(&mut buffer)?;
         self.ciphersuite.name().encode(&mut buffer)?;
         self.hpke_init_key.encode(&mut buffer)?;
@@ -227,7 +220,7 @@ impl KeyPackage {
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions
             .retain(|e| e.extension_type() != extension_type);
-            self.encoded = self.unsigned_payload().unwrap();
+        self.encoded = self.unsigned_payload().unwrap();
     }
 
     /// Get a reference to the HPKE init key.

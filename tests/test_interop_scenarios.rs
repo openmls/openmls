@@ -1,4 +1,5 @@
 use openmls::prelude::*;
+use std::convert::TryFrom;
 
 #[macro_use]
 mod utils;
@@ -142,7 +143,6 @@ ctest_ciphersuites!(bulk_joins, test(param: CiphersuiteName) {
 
     let number_of_clients = 100;
     let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
 
     // Create a group with a random creator.
     let group_id = setup
@@ -217,7 +217,6 @@ ctest_ciphersuites!(update_large_group, test(param: CiphersuiteName) {
 
     let number_of_clients = 100;
     let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
@@ -290,7 +289,6 @@ ctest_ciphersuites!(remove_large_group, test(param: CiphersuiteName) {
 
     let number_of_clients = 100;
     let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
@@ -330,7 +328,6 @@ ctest_ciphersuites!(bulk_remove, test(param: CiphersuiteName) {
 
     let number_of_clients = 200;
     let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients);
-    setup.create_clients();
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup

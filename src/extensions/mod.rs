@@ -1,6 +1,6 @@
 use std::{any::Any, convert::TryFrom, fmt::Debug};
 
-use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, TlsSize, VecSize};
+use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
 pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
@@ -32,13 +32,6 @@ pub enum ExtensionType {
     KeyId = 3,
     ParentHash = 4,
     RatchetTree = 5,
-}
-
-impl TlsSize for ExtensionType {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        2
-    }
 }
 
 /// The default extension type is invalid.
@@ -101,13 +94,6 @@ pub struct ExtensionStruct {
     extension_data: Vec<u8>,
 }
 
-impl TlsSize for ExtensionStruct {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        self.extension_type.serialized_len() + 2 + self.extension_data.len()
-    }
-}
-
 impl<'a> ExtensionStruct {
     /// Build a new `ExtensionStruct`.
     pub(crate) fn new(extension_type: ExtensionType, extension_data: Vec<u8>) -> Self {
@@ -167,13 +153,6 @@ pub(crate) fn encode_extensions(
     Ok(())
 }
 
-pub(crate) fn serialized_len(extensions: &[Box<dyn Extension>]) -> usize {
-    extensions.iter().fold(
-        0,
-        |len, e| len + e.serialized_len() + 2 /* u16 type */ + 2, /* extension data u16 len*/
-    ) + 4 // u32 length
-}
-
 /// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
 ///
 /// Note that this function returns a `CodecError` instead of an
@@ -208,7 +187,7 @@ pub(crate) fn extensions_vec_from_cursor(
 ///
 /// This trait defines functions to interact with an extension.
 #[typetag::serde(tag = "type")]
-pub trait Extension: Debug + ExtensionHelper + Send + Sync + TlsSize {
+pub trait Extension: Debug + ExtensionHelper + Send + Sync {
     /// Build a new extension from a byte slice.
     ///
     /// Note that all implementations of this trait are not public such that

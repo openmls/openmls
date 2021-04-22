@@ -16,20 +16,6 @@ impl Codec for CiphersuiteName {
     }
 }
 
-impl TlsSize for CiphersuiteName {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        2
-    }
-}
-
-impl TlsSize for HPKEPublicKey {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        2 + self.as_slice().len()
-    }
-}
-
 impl Codec for SignatureScheme {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u16).encode(buffer)?;

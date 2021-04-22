@@ -22,7 +22,7 @@ use super::{
     Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError,
     Serialize,
 };
-use crate::codec::{Codec, Cursor, TlsSize};
+use crate::codec::{Codec, Cursor};
 use crate::config::Config;
 
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -66,13 +66,6 @@ impl LifetimeExtension {
 impl Default for LifetimeExtension {
     fn default() -> Self {
         LifetimeExtension::new(Config::default_key_package_lifetime())
-    }
-}
-
-impl TlsSize for LifetimeExtension {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        8 + 8
     }
 }
 

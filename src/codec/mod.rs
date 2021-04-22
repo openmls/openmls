@@ -69,48 +69,6 @@ impl<'a> Cursor {
     }
 }
 
-pub trait TlsSize {
-    fn serialized_len(&self) -> usize;
-}
-
-struct TlsSerializer {
-    buf: Vec<u8>,
-}
-
-impl TlsSerializer {
-    pub(crate) fn new(len: usize) -> Self {
-        Self {
-            buf: Vec::with_capacity(len),
-        }
-    }
-
-    pub(crate) fn write(&mut self, bytes: &[u8]) -> Result<(), CodecError> {
-        if bytes.len() > (self.buf.capacity() - self.buf.len()) {
-            return Err(CodecError::EncodingError);
-        }
-        self.buf.extend_from_slice(bytes);
-        Ok(())
-    }
-
-    pub(crate) fn write_byte(&mut self, byte: u8) -> Result<(), CodecError> {
-        if self.buf.capacity() <= self.buf.len() {
-            return Err(CodecError::EncodingError);
-        }
-        self.buf.push(byte);
-        Ok(())
-    }
-
-    pub(crate) fn finish(self) -> Result<Vec<u8>, CodecError> {
-        if self.buf.len() != self.buf.capacity() {
-            return Err(CodecError::EncodingError);
-        }
-        Ok(self.buf)
-    }
-}
-
-#[cfg(test)]
-mod tests;
-
 pub trait Codec: Sized {
     fn encode(&self, _buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         unimplemented!();
@@ -144,13 +102,6 @@ impl Codec for u8 {
             Ok(bytes) => Ok(bytes[0]),
             Err(e) => Err(e),
         }
-    }
-}
-
-impl TlsSize for u8 {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        1
     }
 }
 

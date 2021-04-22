@@ -40,18 +40,6 @@ impl Codec for Credential {
     }
 }
 
-impl TlsSize for Credential {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        match &self.credential {
-            MLSCredentialType::Basic(basic_credential) => {
-                2 + basic_credential.serialized_len()
-            }
-            MLSCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-    }
-}
-
 impl Codec for BasicCredential {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
@@ -72,14 +60,5 @@ impl Codec for BasicCredential {
             signature_scheme,
             public_key,
         })
-    }
-}
-
-impl TlsSize for BasicCredential {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        2 + self.identity.len() // u16 len + identity
-        + 2 // u16 signature scheme
-        + 2 + self.public_key.as_slice().len() // u16 len + public key
     }
 }

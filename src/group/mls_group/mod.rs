@@ -67,7 +67,7 @@ implement_persistence!(
 impl Clone for MlsGroup {
     fn clone(&self) -> Self {
         let mut serialized = Vec::new();
-        self.save(&mut serialized);
+        self.save(&mut serialized).unwrap();
         Self::load(&serialized[..]).unwrap()
     }
 }

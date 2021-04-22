@@ -20,9 +20,9 @@ use super::{
     CapabilitiesExtensionError, Deserialize, Extension, ExtensionError, ExtensionStruct,
     ExtensionType, Serialize,
 };
+use crate::ciphersuite::CiphersuiteName;
 use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
 use crate::config::{Config, ProtocolVersion};
-use crate::{ciphersuite::CiphersuiteName, codec::TlsSize};
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilitiesExtension {
@@ -76,13 +76,6 @@ impl CapabilitiesExtension {
     /// Get a reference to the list of supported extensions.
     pub fn extensions(&self) -> &[ExtensionType] {
         &self.extensions
-    }
-}
-
-impl TlsSize for CapabilitiesExtension {
-    #[inline]
-    fn serialized_len(&self) -> usize {
-        1 + self.versions.len() + 1 + self.ciphersuites.len() + 1 + self.extensions.len()
     }
 }
 
