@@ -309,8 +309,6 @@
 <span id="306">306</span>
 <span id="307">307</span>
 <span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! 7.4. Parent Hash</span>
 <span class="doccomment">//!</span>
@@ -444,13 +442,11 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">parent_index</span>) <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">parent</span>(<span class="ident">index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>()) {
             <span class="comment">// Check if the parent node is not blank</span>
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">parent_node</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">parent_index</span>].<span class="ident">node</span> {
-                <span class="kw">for</span> <span class="ident">index</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">parent_node</span>.<span class="ident">unmerged_leaves</span> {
-                    <span class="ident">unmerged_leaves</span>.<span class="ident">push</span>(<span class="ident">NodeIndex</span>::<span class="ident">from</span>(<span class="kw-2">*</span><span class="ident">index</span> <span class="kw">as</span> <span class="ident">usize</span>));
-                }
+                <span class="ident">unmerged_leaves</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">parent_node</span>.<span class="ident">unmerged_leaves</span>);
             }
         };
         <span class="comment">// Convert the exclusion list to a HashSet for faster searching</span>
-        <span class="kw">let</span> <span class="ident">exclusion_list</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">unmerged_leaves</span>.<span class="ident">iter</span>().<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">exclusion_list</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">unmerged_leaves</span>.<span class="ident">iter</span>().<span class="ident">collect</span>();
 
         <span class="comment">// Compute the resolution for the index with the exclusion list</span>
         <span class="kw">let</span> <span class="ident">resolution</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">resolve</span>(<span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">exclusion_list</span>);
@@ -553,7 +549,7 @@
         <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">child</span>;
 
         <span class="comment">// &quot;If R is a leaf node, the check fails&quot;</span>
-        <span class="kw">if</span> <span class="ident">right</span>.<span class="ident">is_leaf</span>() {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">right</span>].<span class="ident">is_blank</span>() <span class="op">&amp;&amp;</span> <span class="ident">right</span>.<span class="ident">is_leaf</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParentHashError</span>::<span class="ident">EndedWithLeafNode</span>);
         }
 
