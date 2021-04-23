@@ -175,7 +175,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MlsMessage>, Welcome), ManagedGroupError> {
+    ) -> Result<(MlsMessage, Welcome), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -233,7 +233,7 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
+        let mls_messages = self.plaintext_to_mls_message(commit)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -253,7 +253,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         members: &[usize],
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessage, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -308,20 +308,20 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(vec![commit])?;
+        let mls_message = self.plaintext_to_mls_message(commit)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok((mls_messages, welcome_option))
+        Ok((mls_message, welcome_option))
     }
 
     /// Creates proposals to add members to the group
-    pub fn propose_add_members(
+    pub fn propose_add_member(
         &mut self,
         key_store: &KeyStore,
-        key_packages: &[KeyPackage],
-    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
+        key_package: &KeyPackage,
+    ) -> Result<MlsMessage, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -331,33 +331,24 @@ impl ManagedGroup {
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
-        let plaintext_messages: Vec<MlsPlaintext> = {
-            let mut messages = vec![];
-            for key_package in key_packages.iter() {
-                let add_proposal = self.group.create_add_proposal(
-                    &self.aad,
-                    &credential_bundle,
-                    key_package.clone(),
-                )?;
-                messages.push(add_proposal);
-            }
-            messages
-        };
+        let add_proposal =
+            self.group
+                .create_add_proposal(&self.aad, &credential_bundle, key_package.clone())?;
 
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
+        let mls_message = self.plaintext_to_mls_message(add_proposal)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(mls_messages)
+        Ok(mls_message)
     }
 
     /// Creates proposals to remove members from the group
-    pub fn propose_remove_members(
+    pub fn propose_remove_member(
         &mut self,
         key_store: &KeyStore,
-        members: &[usize],
-    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
+        member: usize,
+    ) -> Result<MlsMessage, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -367,32 +358,22 @@ impl ManagedGroup {
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
-        let plaintext_messages: Vec<MlsPlaintext> = {
-            let mut messages = vec![];
-            for member in members.iter() {
-                let remove_proposal = self.group.create_remove_proposal(
-                    &self.aad,
-                    &credential_bundle,
-                    LeafIndex::from(*member),
-                )?;
-                messages.push(remove_proposal);
-            }
-            messages
-        };
+        let remove_proposal = self.group.create_remove_proposal(
+            &self.aad,
+            &credential_bundle,
+            LeafIndex::from(member),
+        )?;
 
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
+        let mls_message = self.plaintext_to_mls_message(remove_proposal)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(mls_messages)
+        Ok(mls_message)
     }
 
     /// Leave the group
-    pub fn leave_group(
-        &mut self,
-        key_store: &KeyStore,
-    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
+    pub fn leave_group(&mut self, key_store: &KeyStore) -> Result<MlsMessage, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -408,7 +389,7 @@ impl ManagedGroup {
             self.group.tree().own_node_index(),
         )?;
 
-        self.plaintext_to_mls_messages(vec![remove_proposal])
+        self.plaintext_to_mls_message(remove_proposal)
     }
 
     /// Gets the current list of members
@@ -431,169 +412,144 @@ impl ManagedGroup {
     /// MlsCiphertext) and triggers the corresponding callback functions.
     /// Return a list of `GroupEvent` that contain the individual events that
     /// occurred while processing messages.
-    pub fn process_messages(
+    pub fn process_message(
         &mut self,
-        messages: Vec<MlsMessage>,
+        message: MlsMessage,
     ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let mut events = Vec::new();
-        // Iterate over all incoming messages
-        for message in messages {
-            // Check the type of message we received
-            let (plaintext, aad_option) = match message {
-                // If it is a ciphertext we decrypt it and return the plaintext message
-                MlsMessage::Ciphertext(ciphertext) => {
-                    let aad = ciphertext.authenticated_data.clone();
-                    match self.group.decrypt(&ciphertext) {
-                        Ok(plaintext) => (plaintext, Some(aad)),
-                        Err(_) => {
-                            events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
-                                InvalidMessageError::InvalidCiphertext(aad.into()),
+        // Check the type of message we received
+        let (plaintext, aad_option) = match message {
+            // If it is a ciphertext we decrypt it and return the plaintext message
+            MlsMessage::Ciphertext(ciphertext) => {
+                let aad = ciphertext.authenticated_data.clone();
+                (
+                    self.group
+                        .decrypt(&ciphertext)
+                        .map_err(|e| InvalidMessageError::InvalidCiphertext(e))?,
+                    Some(aad),
+                )
+            }
+            // If it is a plaintext message we just return it
+            MlsMessage::Plaintext(plaintext) => {
+                // Verify signature & membership tag
+                // TODO #106: Support external senders
+                if plaintext.is_proposal()
+                    && plaintext.sender.is_member()
+                    && self.group.verify_membership_tag(&plaintext).is_err()
+                {
+                    return Err(ManagedGroupError::InvalidMessage(
+                        InvalidMessageError::MembershipTagMismatch,
+                    ));
+                }
+                (plaintext, None)
+            }
+        };
+        // Save the current member list for validation end events
+        let indexed_members = self.indexed_members();
+        // See what kind of message it is
+        match plaintext.content {
+            MlsPlaintextContentType::Proposal(ref proposal) => {
+                // Incoming proposals are validated against the application validation
+                // policy and then appended to the internal `pending_proposal` list.
+                // TODO #133: Semantic validation of proposals
+                if self.validate_proposal(proposal, &plaintext.sender.sender, &indexed_members) {
+                    self.pending_proposals.push(plaintext);
+                } else {
+                    // The proposal was invalid
+                    return Err(ManagedGroupError::InvalidMessage(
+                        InvalidMessageError::InvalidProposal,
+                    ));
+                }
+            }
+            MlsPlaintextContentType::Commit(ref commit) => {
+                // Validate inline proposals
+                if !self.validate_inline_proposals(
+                    &commit.proposals,
+                    &plaintext.sender.sender,
+                    &indexed_members,
+                ) {
+                    return Err(ManagedGroupError::InvalidMessage(
+                        InvalidMessageError::CommitWithInvalidProposals,
+                    ));
+                }
+                // If all proposals were valid, we continue with applying the Commit
+                // message
+                let proposals = &self
+                    .pending_proposals
+                    .iter()
+                    .collect::<Vec<&MlsPlaintext>>();
+                // TODO #141
+                match self
+                    .group
+                    .apply_commit(&plaintext, proposals, &self.own_kpbs, None)
+                {
+                    Ok(()) => {
+                        // Since the Commit was applied without errors, we can collect
+                        // all proposals from the Commit and generate events
+                        events.append(&mut self.prepare_events(
+                            self.ciphersuite(),
+                            &commit.proposals,
+                            plaintext.sender.sender,
+                            &indexed_members,
+                        ));
+
+                        // If a Commit has an update path, it is additionally to be treated
+                        // like a commited UpdateProposal.
+                        if commit.has_path() {
+                            events.push(GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
+                                aad_option.unwrap_or_default(),
+                                indexed_members[&plaintext.sender.sender].clone(),
                             )));
-                            // Since we cannot decrypt the MlsCiphertext to a MlsPlaintext we move
-                            // to the next message
-                            continue;
                         }
+
+                        // Extract and store the resumption secret for the current epoch
+                        let resumption_secret = self.group.epoch_secrets().resumption_secret();
+                        self.resumption_secret_store
+                            .add(self.group.context().epoch(), resumption_secret.clone());
+                        // We don't need the pending proposals and key package bundles any
+                        // longer
+                        self.pending_proposals.clear();
+                        self.own_kpbs.clear();
                     }
-                }
-                // If it is a plaintext message we just return it
-                MlsMessage::Plaintext(plaintext) => {
-                    // Verify signature & membership tag
-                    // TODO #106: Support external senders
-                    if plaintext.is_proposal()
-                        && plaintext.sender.is_member()
-                        && self.group.verify_membership_tag(&plaintext).is_err()
-                    {
-                        events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
-                            InvalidMessageError::MembershipTagMismatch,
-                        )));
-                        // Since the membership tag verification failed, we skip the message
-                        // and go to the next one
-                        continue;
-                    }
-                    (plaintext, None)
-                }
-            };
-            // Save the current member list for validation end events
-            let indexed_members = self.indexed_members();
-            // See what kind of message it is
-            match plaintext.content {
-                MlsPlaintextContentType::Proposal(_) => {
-                    // Incoming proposals are validated against the application validation
-                    // policy and then appended to the internal `pending_proposal` list.
-                    // TODO #133: Semantic validation of proposals
-                    if self.validate_proposal(
-                        plaintext.content.to_proposal(),
-                        &plaintext.sender.sender,
-                        &indexed_members,
-                    ) {
-                        self.pending_proposals.push(plaintext);
-                    } else {
-                        // The proposal was invalid
-                        events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
-                            InvalidMessageError::CommitWithInvalidProposals(
-                                "Invalid proposal".into(),
-                            ),
-                        )));
-                    }
-                }
-                MlsPlaintextContentType::Commit(ref commit) => {
-                    // Validate inline proposals
-                    if !self.validate_inline_proposals(
-                        &commit.proposals,
-                        &plaintext.sender.sender,
-                        &indexed_members,
-                    ) {
-                        // If not all proposals are valid we issue an error event
-                        events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
-                            InvalidMessageError::CommitWithInvalidProposals(
-                                "Not all proposals are valid".into(),
-                            ),
-                        )));
-                        // And move on to the next message
-                        continue;
-                    }
-                    // If all proposals were valid, we continue with applying the Commit
-                    // message
-                    let proposals = &self
-                        .pending_proposals
-                        .iter()
-                        .collect::<Vec<&MlsPlaintext>>();
-                    // TODO #141
-                    match self
-                        .group
-                        .apply_commit(&plaintext, proposals, &self.own_kpbs, None)
-                    {
-                        Ok(()) => {
-                            // Since the Commit was applied without errors, we can collect
-                            // all proposals from the Commit and generate events
+                    Err(apply_commit_error) => match apply_commit_error {
+                        GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
+                            // Prepare events
                             events.append(&mut self.prepare_events(
                                 self.ciphersuite(),
                                 &commit.proposals,
                                 plaintext.sender.sender,
                                 &indexed_members,
                             ));
-
-                            // If a Commit has an update path, it is additionally to be treated
-                            // like a commited UpdateProposal.
-                            if commit.has_path() {
-                                events.push(GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
-                                    aad_option.unwrap_or_default(),
-                                    indexed_members[&plaintext.sender.sender].clone(),
-                                )));
-                            }
-
-                            // Extract and store the resumption secret for the current epoch
-                            let resumption_secret = self.group.epoch_secrets().resumption_secret();
-                            self.resumption_secret_store
-                                .add(self.group.context().epoch(), resumption_secret.clone());
-                            // We don't need the pending proposals and key package bundles any
-                            // longer
-                            self.pending_proposals.clear();
-                            self.own_kpbs.clear();
+                            // The group is no longer active
+                            self.active = false;
                         }
-                        Err(apply_commit_error) => match apply_commit_error {
-                            GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
-                                // Prepare events
-                                events.append(&mut self.prepare_events(
-                                    self.ciphersuite(),
-                                    &commit.proposals,
-                                    plaintext.sender.sender,
-                                    &indexed_members,
-                                ));
-                                // The group is no longer active
-                                self.active = false;
-                            }
-                            GroupError::ApplyCommitError(e) => {
-                                events.push(GroupEvent::InvalidMessage(InvalidMessageEvent::new(
-                                    InvalidMessageError::CommitError(e),
-                                )));
-                            }
-                            _ => {
-                                let error_string =
-                                    "apply_commit() did not return an ApplyCommitError."
-                                        .to_string();
-                                events.push(GroupEvent::Error(ErrorEvent::new(
-                                    ManagedGroupError::LibraryError(ErrorString::from(
-                                        error_string,
-                                    )),
-                                )));
-                            }
-                        },
-                    }
+                        GroupError::ApplyCommitError(e) => {
+                            return Err(ManagedGroupError::InvalidMessage(
+                                InvalidMessageError::CommitError(e),
+                            ))
+                        }
+                        _ => {
+                            let error_string =
+                                "apply_commit() did not return an ApplyCommitError.".to_string();
+                            events.push(GroupEvent::Error(ErrorEvent::new(
+                                ManagedGroupError::LibraryError(ErrorString::from(error_string)),
+                            )));
+                        }
+                    },
                 }
-                MlsPlaintextContentType::Application(ref app_message) => {
-                    // Save the application message as an event
-                    events.push(GroupEvent::ApplicationMessage(
-                        ApplicationMessageEvent::new(
-                            aad_option.unwrap(),
-                            indexed_members[&plaintext.sender()].clone(),
-                            app_message.to_vec(),
-                        ),
-                    ));
-                }
+            }
+            MlsPlaintextContentType::Application(ref app_message) => {
+                // Save the application message as an event
+                events.push(GroupEvent::ApplicationMessage(
+                    ApplicationMessageEvent::new(
+                        aad_option.unwrap(),
+                        indexed_members[&plaintext.sender()].clone(),
+                        app_message.to_vec(),
+                    ),
+                ));
             }
         }
 
@@ -647,7 +603,7 @@ impl ManagedGroup {
     pub fn process_pending_proposals(
         &mut self,
         key_store: &KeyStore,
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessage, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -670,9 +626,6 @@ impl ManagedGroup {
             None,
         )?;
 
-        // Add the Commit message to the other pending messages
-        let plaintext_messages = vec![commit];
-
         // If it was a full Commit, we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {
             self.own_kpbs.push(kpb);
@@ -680,12 +633,12 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
+        let mls_message = self.plaintext_to_mls_message(commit)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok((mls_messages, welcome_option))
+        Ok((mls_message, welcome_option))
     }
 
     // === Export secrets ===
@@ -786,7 +739,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessage, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -796,59 +749,52 @@ impl ManagedGroup {
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
-        // If a KeyPackageBundle was provided, create an UpdateProposal
-        let mut plaintext_messages = if let Some(key_package_bundle) = key_package_bundle_option {
-            let update_proposal = self.group.create_update_proposal(
-                &self.aad,
-                &credential_bundle,
-                key_package_bundle.key_package().clone(),
-            )?;
-            self.own_kpbs.push(key_package_bundle);
-            vec![update_proposal]
-        } else {
-            vec![]
-        };
-
         // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MlsPlaintext> = self
-            .pending_proposals
-            .iter()
-            .chain(plaintext_messages.iter())
-            .collect();
+        let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
 
-        // Create Commit over all proposals
-        // TODO #141
-        let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            &self.aad,
-            &credential_bundle,
-            &messages_to_commit,
-            &[],
-            true, /* force_self_update */
-            None,
-        )?;
-
-        // Add the Commit message to the other pending messages
-        plaintext_messages.push(commit);
-
-        // Take the new KeyPackageBundle and save it for later
-        let kpb = match kpb_option {
-            Some(kpb) => kpb,
+        // Create Commit over all proposals. If a `KeyPackageBundle` was passed
+        // in, use it to create an update proposal by value. TODO #141
+        let (commit, welcome_option, kpb_option) = match key_package_bundle_option {
+            Some(kpb) => {
+                let update_proposal = Proposal::Update(UpdateProposal {
+                    key_package: kpb.key_package().clone(),
+                });
+                self.group.create_commit(
+                    &self.aad,
+                    &credential_bundle,
+                    &messages_to_commit,
+                    &[&update_proposal],
+                    true, /* force_self_update */
+                    None,
+                )?
+            }
             None => {
-                return Err(ManagedGroupError::LibraryError(
-                    "We didn't get a key package for a full commit on self update.".into(),
-                ))
+                self.group.create_commit(
+                    &self.aad,
+                    &credential_bundle,
+                    &messages_to_commit,
+                    &[],
+                    true, /* force_self_update */
+                    None,
+                )?
             }
         };
+
+        // Take the new KeyPackageBundle and save it for later
+        let kpb = kpb_option.ok_or(ManagedGroupError::LibraryError(
+            "We didn't get a key package for a full commit on self update.".into(),
+        ))?;
+
         self.own_kpbs.push(kpb);
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
+        let mls_message = self.plaintext_to_mls_message(commit)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok((mls_messages, welcome_option))
+        Ok((mls_message, welcome_option))
     }
 
     /// Creates a proposal to update the own leaf node
@@ -856,7 +802,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
+    ) -> Result<MlsMessage, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -878,21 +824,21 @@ impl ManagedGroup {
             }
         };
 
-        let plaintext_messages = vec![self.group.create_update_proposal(
+        let update_proposal = self.group.create_update_proposal(
             &self.aad,
             &credential_bundle,
             key_package_bundle.key_package().clone(),
-        )?];
+        )?;
         drop(tree);
 
         self.own_kpbs.push(key_package_bundle);
 
-        let mls_messages = self.plaintext_to_mls_messages(plaintext_messages)?;
+        let mls_message = self.plaintext_to_mls_message(update_proposal)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(mls_messages)
+        Ok(mls_message)
     }
 
     /// Returns a list of proposal
@@ -930,24 +876,20 @@ impl ManagedGroup {
     /// Converts MlsPlaintext to MLSMessage. Depending on whether handshake
     /// message should be encrypted, MlsPlaintext messages are encrypted to
     /// MlsCiphertext first.
-    fn plaintext_to_mls_messages(
+    fn plaintext_to_mls_message(
         &mut self,
-        mut plaintext_messages: Vec<MlsPlaintext>,
-    ) -> Result<Vec<MlsMessage>, ManagedGroupError> {
-        let mut out = Vec::with_capacity(plaintext_messages.len());
-        for plaintext in plaintext_messages.drain(..) {
-            let msg = match self.configuration().handshake_message_format {
-                HandshakeMessageFormat::Plaintext => MlsMessage::Plaintext(plaintext),
-                HandshakeMessageFormat::Ciphertext => {
-                    let ciphertext = self
-                        .group
-                        .encrypt(plaintext, self.configuration().padding_size())?;
-                    MlsMessage::Ciphertext(ciphertext)
-                }
-            };
-            out.push(msg);
-        }
-        Ok(out)
+        plaintext: MlsPlaintext,
+    ) -> Result<MlsMessage, ManagedGroupError> {
+        let msg = match self.configuration().handshake_message_format {
+            HandshakeMessageFormat::Plaintext => MlsMessage::Plaintext(plaintext),
+            HandshakeMessageFormat::Ciphertext => {
+                let ciphertext = self
+                    .group
+                    .encrypt(plaintext, self.configuration().padding_size())?;
+                MlsMessage::Ciphertext(ciphertext)
+            }
+        };
+        Ok(msg)
     }
 
     /// Validate all pending proposals. The function returns `true` only if all
