@@ -242,6 +242,7 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
             .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .expect("Error while removing group member.");
         group_members = group.members.clone();
+        setup.check_group_states(group);
     }
 
     // Check that group members agree on a group state.

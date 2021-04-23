@@ -22,6 +22,9 @@ use crate::{
 use std::collections::HashMap;
 use std::io::{Error, Read, Write};
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+use std::cell::Ref;
+
 pub use callbacks::*;
 pub use config::*;
 pub use errors::{
@@ -168,6 +171,9 @@ impl ManagedGroup {
     ///
     /// New members are added by providing a `KeyPackage` for each member.
     ///
+    /// This operation results in a Commit with a `path`, i.e. it includes an
+    /// update of the committer's leaf `KeyPackage`.
+    ///
     /// If successful, it returns a `Vec` of
     /// [`MLSMessage`](crate::prelude::MLSMessage) and a
     /// [`Welcome`](crate::prelude::Welcome) message.
@@ -213,7 +219,7 @@ impl ManagedGroup {
             &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
-            false,
+            true,
             None,
         )?;
 
@@ -868,6 +874,26 @@ impl ManagedGroup {
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
         self.group.tree().public_key_tree_copy()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_path_secrets(&self) -> Ref<[Secret]> {
+        Ref::map(self.group.tree(), |tree| tree.private_tree().path_secrets())
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn export_group_context(&self) -> &GroupContext {
+        self.group.context()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn tree_hash(&self) -> Vec<u8> {
+        self.group.tree().tree_hash()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn print_tree(&self, message: &str) {
+        _print_tree(&self.group.tree(), message)
     }
 }
 
