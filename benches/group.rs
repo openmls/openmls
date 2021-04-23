@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 use openmls::{node::Node, prelude::*, tree::index::NodeIndex};
 
 type RatchetTree = Vec<Option<Node>>;
-type Commit = (MLSPlaintext, Option<Welcome>, Option<KeyPackageBundle>);
+type Commit = (MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>);
 
 #[derive(Clone)]
 struct Setup {
@@ -60,7 +60,7 @@ fn setup_group(
     let add_proposal_refs = add_proposals
         .iter()
         .map(|p| p)
-        .collect::<Vec<&MLSPlaintext>>();
+        .collect::<Vec<&MlsPlaintext>>();
     let commit = match group.create_commit(
         group_aad,
         p1_cb,
@@ -154,7 +154,7 @@ fn send_message(
     mut groups: Vec<MlsGroup>,
     setup: Setup,
     sender: usize,
-) -> (MLSCiphertext, usize, Vec<MlsGroup>, Setup) {
+) -> (MlsCiphertext, usize, Vec<MlsGroup>, Setup) {
     let msg = format!("Hello, saying hi from {}", sender);
     let msg = groups[sender]
         .create_application_message(
@@ -167,7 +167,7 @@ fn send_message(
     (msg, sender, groups, setup)
 }
 
-fn receive_message(msg: MLSCiphertext, receiver: usize, mut groups: Vec<MlsGroup>) {
+fn receive_message(msg: MlsCiphertext, receiver: usize, mut groups: Vec<MlsGroup>) {
     groups[receiver].decrypt(&msg).unwrap();
 }
 
@@ -176,7 +176,7 @@ fn send_messages(
     setup: Setup,
     sender: usize,
     num_messages: usize,
-) -> (Vec<(MLSCiphertext, usize)>, Vec<MlsGroup>, Setup) {
+) -> (Vec<(MlsCiphertext, usize)>, Vec<MlsGroup>, Setup) {
     let mut msgs = Vec::new();
     let mut setup = setup;
     for i in 0..num_messages {
@@ -193,7 +193,7 @@ fn send_update(
     setup: Setup,
     ciphersuite: &Ciphersuite,
     sender: usize,
-) -> (Vec<MlsGroup>, Setup, MLSPlaintext, MLSPlaintext) {
+) -> (Vec<MlsGroup>, Setup, MlsPlaintext, MlsPlaintext) {
     let update_kpb = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &setup.credential_bundles[sender],
@@ -251,8 +251,8 @@ fn send_updates(
 fn apply_commit(
     mut groups: Vec<MlsGroup>,
     receiver: usize,
-    mls_plaintext_commit: MLSPlaintext,
-    proposal: MLSPlaintext,
+    mls_plaintext_commit: MlsPlaintext,
+    proposal: MlsPlaintext,
 ) -> Vec<MlsGroup> {
     groups[receiver]
         .apply_commit(
@@ -287,7 +287,7 @@ fn send_add_user(
     sender: usize,
 ) -> (
     Commit,
-    MLSPlaintext,
+    MlsPlaintext,
     Vec<MlsGroup>,
     Setup,
     usize,
@@ -330,8 +330,8 @@ fn send_remove_user(
     sender: usize,
     removed_index: usize,
 ) -> (
-    MLSPlaintext,
-    MLSPlaintext,
+    MlsPlaintext,
+    MlsPlaintext,
     Vec<MlsGroup>,
     Setup,
     usize,
@@ -574,9 +574,9 @@ fn benchmarks(c: &mut Criterion) {
         //     // bench_main(c, ciphersuite, n);
         //     send_message_bm(c, ciphersuite, n);
         // }
-        // for n in (100..=500).step_by(100) {
-        //     bench_main(c, ciphersuite, n);
-        // }
+        for n in (200..=500).step_by(100) {
+            bench_main(c, ciphersuite, n);
+        }
         // for n in (1_000..10_000).step_by(1_000) {
         //     bench_main(c, ciphersuite, n);
         // }
