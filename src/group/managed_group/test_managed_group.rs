@@ -190,7 +190,7 @@ fn remover() {
         .expect("Could not process messages");
 
     let (queued_messages, _welcome) = charlie_group
-        .process_pending_proposals(&key_store)
+        .process_pending_proposals(&[], &key_store)
         .expect("Could not commit proposal");
 
     let events = charlie_group

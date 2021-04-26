@@ -242,7 +242,7 @@ fn managed_group_operations() {
                 .expect("The group is no longer active");
 
             let (queued_messages, _welcome_option) =
-                match alice_group.process_pending_proposals(&key_store) {
+                match alice_group.process_pending_proposals(&[], &key_store) {
                     Ok(qm) => qm,
                     Err(e) => panic!("Error performing self-update: {:?}", e),
                 };
@@ -485,7 +485,7 @@ fn managed_group_operations() {
 
             // Commit to the proposals and process it
             let (queued_messages, welcome_option) = alice_group
-                .process_pending_proposals(&key_store)
+                .process_pending_proposals(&[], &key_store)
                 .expect("Could not flush proposals");
             alice_group
                 .process_messages(queued_messages.clone())
@@ -551,14 +551,14 @@ fn managed_group_operations() {
 
             // Should fail because you cannot remove yourself from a group
             assert_eq!(
-                bob_group.process_pending_proposals(&key_store,),
+                bob_group.process_pending_proposals(&[], &key_store,),
                 Err(ManagedGroupError::Group(GroupError::CreateCommitError(
                     CreateCommitError::CannotRemoveSelf
                 )))
             );
 
             let (queued_messages, _welcome_option) = alice_group
-                .process_pending_proposals(&key_store)
+                .process_pending_proposals(&[], &key_store)
                 .expect("Could not commit to proposals");
 
             // Check that Bob's group is still active
