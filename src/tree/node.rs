@@ -8,8 +8,8 @@ use std::convert::TryFrom;
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum NodeType {
-    Leaf = 0,
-    Parent = 1,
+    Leaf = 1,
+    Parent = 2,
 }
 
 impl NodeType {
@@ -28,8 +28,8 @@ impl TryFrom<u8> for NodeType {
     type Error = &'static str;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(NodeType::Leaf),
-            1 => Ok(NodeType::Parent),
+            1 => Ok(NodeType::Leaf),
+            2 => Ok(NodeType::Parent),
             _ => Err("Unknown node type."),
         }
     }
