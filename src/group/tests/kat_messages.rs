@@ -280,8 +280,6 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // GroupSecrets
     let tv_group_secrets = &hex_to_bytes(&tv.group_secrets);
-    // TODO: Continue here: This doesn't work (yet) as GroupSecrets doesn't
-    // implement Codec.
     let gs = GroupSecrets::decode_detached(&tv_group_secrets).unwrap();
     let my_group_secrets =
         GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), gs.psks.as_ref())
