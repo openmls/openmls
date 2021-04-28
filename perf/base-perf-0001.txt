@@ -1,0 +1,179 @@
+Add user, 2, 1.1695, ms
+Add user, 3, 1.0806, ms
+Add user, 4, 1.1732, ms
+Add user, 5, 1.2506, ms
+Add user, 6, 1.2764, ms
+Add user, 7, 1.2379, ms
+Add user, 8, 1.2272, ms
+Add user, 9, 1.2877, ms
+Add user, 10, 1.3261, ms
+Add user, 20, 1.1994, ms
+Add user, 30, 1.3011, ms
+Add user, 40, 1.6733, ms
+Add user, 50, 1.5386, ms
+Add user, 200, 2.8701, ms
+Add user, 300, 3.6685, ms
+Add user, 400, 4.6511, ms
+Add user, 500, 5.5547, ms
+Add user, 1000, 18.182, ms
+Join Group, 2, 504.15, us
+Join Group, 3, 494.94, us
+Join Group, 4, 513.75, us
+Join Group, 5, 504.93, us
+Join Group, 6, 514.74, us
+Join Group, 7, 518.19, us
+Join Group, 8, 516.35, us
+Join Group, 9, 529.01, us
+Join Group, 10, 530.98, us
+Join Group, 20, 672.81, us
+Join Group, 30, 751.81, us
+Join Group, 40, 805.81, us
+Join Group, 50, 848.08, us
+Join Group, 200, 1756.8, us
+Join Group, 300, 2371.0, us
+Join Group, 400, 2965.2, us
+Join Group, 500, 3589.9, us
+Join Group, 1000, 6580.2, us
+Process add user, 2, 0.051024, ms
+Process add user, 3, 0.048060, ms
+Process add user, 4, 0.053733, ms
+Process add user, 5, 0.055216, ms
+Process add user, 6, 0.056492, ms
+Process add user, 7, 0.064382, ms
+Process add user, 8, 0.067852, ms
+Process add user, 9, 0.067166, ms
+Process add user, 10, 0.070902, ms
+Process add user, 20, 0.13650, ms
+Process add user, 30, 0.17325, ms
+Process add user, 40, 0.20567, ms
+Process add user, 50, 0.24490, ms
+Process add user, 200, 0.75349, ms
+Process add user, 300, 1.1104, ms
+Process add user, 400, 1.5584, ms
+Process add user, 500, 1.9212, ms
+Process add user, 1000, 6.0349, ms
+Process remove user, 3, 0.79073, ms
+Process remove user, 4, 0.80632, ms
+Process remove user, 5, 0.81845, ms
+Process remove user, 6, 0.82890, ms
+Process remove user, 7, 0.83361, ms
+Process remove user, 8, 0.84485, ms
+Process remove user, 9, 0.87479, ms
+Process remove user, 10, 0.94469, ms
+Process remove user, 20, 1.0967, ms
+Process remove user, 30, 1.1214, ms
+Process remove user, 40, 1.1010, ms
+Process remove user, 50, 1.1056, ms
+Process remove user, 200, 1.7583, ms
+Process remove user, 300, 2.1609, ms
+Process remove user, 400, 2.4998, ms
+Process remove user, 500, 2.7125, ms
+Process remove user, 1000, 7.9404, ms
+Receive Message, 2, 0.33619, ms
+Receive Message, 3, 0.32454, ms
+Receive Message, 4, 0.30762, ms
+Receive Message, 5, 0.33618, ms
+Receive Message, 6, 0.31412, ms
+Receive Message, 7, 0.33568, ms
+Receive Message, 8, 0.33035, ms
+Receive Message, 9, 0.34195, ms
+Receive Message, 10, 0.35770, ms
+Receive Message, 20, 0.57027, ms
+Receive Message, 30, 0.78970, ms
+Receive Message, 40, 1.3805, ms
+Receive Message, 50, 1.5260, ms
+Receive Message, 200, 19.600, ms
+Receive Message, 300, 42.848, ms
+Receive Message, 400, 73.045, ms
+Receive Message, 500, 111.77, ms
+Receive Message, 1000, 16129.0, ms
+Receive Update, 2, 0.90512, ms
+Receive Update, 3, 0.81444, ms
+Receive Update, 4, 0.81270, ms
+Receive Update, 5, 0.84720, ms
+Receive Update, 6, 0.83985, ms
+Receive Update, 7, 0.90393, ms
+Receive Update, 8, 0.86825, ms
+Receive Update, 9, 0.88914, ms
+Receive Update, 10, 0.87902, ms
+Receive Update, 20, 1.0962, ms
+Receive Update, 30, 1.0618, ms
+Receive Update, 40, 1.1080, ms
+Receive Update, 50, 1.0989, ms
+Receive Update, 200, 1.7102, ms
+Receive Update, 300, 2.0987, ms
+Receive Update, 400, 2.4977, ms
+Receive Update, 500, 2.8322, ms
+Receive Update, 1000, 25.835, ms
+Remove user, 2, 1.7554, ms
+Remove user, 3, 2.0831, ms
+Remove user, 4, 2.5485, ms
+Remove user, 5, 2.5608, ms
+Remove user, 6, 2.3558, ms
+Remove user, 7, 2.8784, ms
+Remove user, 8, 2.9346, ms
+Remove user, 9, 3.0134, ms
+Remove user, 10, 3.1324, ms
+Remove user, 20, 3.1859, ms
+Remove user, 30, 3.3029, ms
+Remove user, 40, 3.6698, ms
+Remove user, 50, 3.8622, ms
+Remove user, 200, 6.1352, ms
+Remove user, 300, 7.0887, ms
+Remove user, 400, 8.1266, ms
+Remove user, 500, 9.0365, ms
+Remove user, 1000, 81.954, ms
+Send Message, 2, 345.03, us
+Send Message, 3, 333.29, us
+Send Message, 4, 334.91, us
+Send Message, 5, 355.46, us
+Send Message, 6, 319.38, us
+Send Message, 7, 372.53, us
+Send Message, 8, 339.04, us
+Send Message, 9, 345.54, us
+Send Message, 10, 354.72, us
+Send Message, 20, 332.27, us
+Send Message, 30, 337.65, us
+Send Message, 40, 388.97, us
+Send Message, 50, 380.51, us
+Send Message, 200, 396.23, us
+Send Message, 300, 372.17, us
+Send Message, 400, 385.62, us
+Send Message, 500, 386.75, us
+Send Message, 1000, 19931.0, us
+Send Update, 2, 2.2013, ms
+Send Update, 3, 2.7422, ms
+Send Update, 4, 2.9207, ms
+Send Update, 5, 3.0539, ms
+Send Update, 6, 2.9588, ms
+Send Update, 7, 3.0522, ms
+Send Update, 8, 3.1345, ms
+Send Update, 9, 3.2109, ms
+Send Update, 10, 3.3620, ms
+Send Update, 20, 3.2760, ms
+Send Update, 30, 3.3795, ms
+Send Update, 40, 3.6601, ms
+Send Update, 50, 4.0040, ms
+Send Update, 200, 5.9193, ms
+Send Update, 300, 6.9903, ms
+Send Update, 400, 7.8611, ms
+Send Update, 500, 8.5385, ms
+Send Update, 1000, 39.262, ms
+Setup Group, 2, 1.6599, ms
+Setup Group, 3, 2.0643, ms
+Setup Group, 4, 2.5808, ms
+Setup Group, 5, 3.1255, ms
+Setup Group, 6, 3.1993, ms
+Setup Group, 7, 3.9616, ms
+Setup Group, 8, 4.5981, ms
+Setup Group, 9, 5.0081, ms
+Setup Group, 10, 5.0572, ms
+Setup Group, 20, 9.3156, ms
+Setup Group, 30, 13.002, ms
+Setup Group, 40, 17.190, ms
+Setup Group, 50, 24.005, ms
+Setup Group, 200, 88.266, ms
+Setup Group, 300, 131.56, ms
+Setup Group, 400, 182.74, ms
+Setup Group, 500, 225.94, ms
+Setup Group, 1000, 445.90, ms
