@@ -6,6 +6,9 @@ implement_error! {
         LeafHasNoChildren = "Leaf nodes don't have children.",
         RootHasNoParent = "Root nodes don't have parents.",
         NotAParentNode = "Node index was not a parent node.",
+        LeafNotInTree = "The leaf index is larger than the tree size.",
+        NodeNotInTree = "The node index is larger than the tree size.",
+        InvalidInput = "The provided input is invalid for tree math.",
     }
 }
 
@@ -69,6 +72,7 @@ pub(crate) fn right(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, Tree
     Ok(NodeIndex::from(r))
 }
 
+// The parent here might be beyond the right edge of the tree.
 pub(crate) fn parent_step(x: usize) -> usize {
     let k = level(NodeIndex::from(x));
     let b = (x >> (k + 1)) & 0x01;
@@ -76,24 +80,55 @@ pub(crate) fn parent_step(x: usize) -> usize {
 }
 
 pub(crate) fn parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
+    node_in_tree(index, size)?;
+    unsafe_parent(index, size)
+}
+
+// This function is only safe to use if index <= size.
+// If this is not checked before calling the function, `parent` should be used.
+fn unsafe_parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
     let x = index.as_usize();
     let n = size.as_usize();
     if index == root(size) {
         return Err(TreeMathError::RootHasNoParent);
     }
     let mut p = parent_step(x);
-    while p >= node_width(n) {
-        p = parent_step(p)
+    let node_width = node_width(n);
+    while p >= node_width {
+        let new_p = parent_step(p);
+        if new_p == p {
+            return Err(TreeMathError::InvalidInput);
+        }
+        p = new_p;
     }
     Ok(NodeIndex::from(p))
 }
 
 pub(crate) fn sibling(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
-    let p = parent(index, size)?;
+    node_in_tree(index, size)?;
+    let p = unsafe_parent(index, size)?;
     match index.cmp(&p) {
         Ordering::Less => right(p, size),
         Ordering::Greater => left(p),
         Ordering::Equal => left(p),
+    }
+}
+
+#[inline(always)]
+fn node_in_tree(node_index: NodeIndex, size: LeafIndex) -> Result<(), TreeMathError> {
+    if node_index.as_usize() >= node_width(size.as_usize()) {
+        Err(TreeMathError::NodeNotInTree)
+    } else {
+        Ok(())
+    }
+}
+
+#[inline(always)]
+fn leaf_in_tree(leaf_index: LeafIndex, size: LeafIndex) -> Result<(), TreeMathError> {
+    if leaf_index >= size {
+        Err(TreeMathError::LeafNotInTree)
+    } else {
+        Ok(())
     }
 }
 
@@ -103,6 +138,7 @@ pub(crate) fn leaf_direct_path(
     leaf_index: LeafIndex,
     size: LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
+    leaf_in_tree(leaf_index, size)?;
     let node_index = NodeIndex::from(leaf_index);
     let r = root(size);
     if node_index == r {
@@ -112,7 +148,7 @@ pub(crate) fn leaf_direct_path(
     let mut d = vec![];
     let mut x = node_index;
     while x != r {
-        x = parent(x, size)?;
+        x = unsafe_parent(x, size)?;
         d.push(x);
     }
     Ok(d)
@@ -125,6 +161,7 @@ pub(crate) fn parent_direct_path(
     node_index: NodeIndex,
     size: LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
+    node_in_tree(node_index, size)?;
     if !node_index.is_parent() {
         return Err(TreeMathError::NotAParentNode);
     }
@@ -148,6 +185,7 @@ pub(crate) fn copath(
     leaf_index: LeafIndex,
     size: LeafIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
+    leaf_in_tree(leaf_index, size)?;
     let node_index = NodeIndex::from(leaf_index);
     // If the tree only has one leaf
     if node_index == root(size) {
@@ -227,4 +265,12 @@ pub(crate) fn descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
         ]
         .concat()
     }
+}
+
+#[test]
+fn invalid_inputs() {
+    assert_eq!(
+        Err(TreeMathError::InvalidInput),
+        unsafe_parent(1000u32.into(), 100u32.into())
+    );
 }
