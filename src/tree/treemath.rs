@@ -93,8 +93,7 @@ fn unsafe_parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMat
         return Err(TreeMathError::RootHasNoParent);
     }
     let mut p = parent_step(x);
-    let node_width = node_width(n);
-    while p >= node_width {
+    while p >= node_width(n) {
         let new_p = parent_step(p);
         if new_p == p {
             return Err(TreeMathError::InvalidInput);
