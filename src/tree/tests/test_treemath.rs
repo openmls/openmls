@@ -40,7 +40,7 @@ fn test_tree_hash() {
         let kbp = create_identity(b"Tree creator", ciphersuite.name());
 
         // Initialise tree
-        let mut tree = RatchetTree::new(ciphersuite, kbp);
+        let mut tree = RatchetTree::new(kbp);
         let tree_hash = tree.tree_hash();
         println!("Tree hash: {:?}", tree_hash);
 
