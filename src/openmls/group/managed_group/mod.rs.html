@@ -1190,6 +1190,9 @@
 <span id="1187">1187</span>
 <span id="1188">1188</span>
 <span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -1199,6 +1202,9 @@
 <span class="kw">mod</span> <span class="ident">ser</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_managed_group</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">PathSecret</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">credentials</span>::<span class="ident">Credential</span>,
@@ -2124,7 +2130,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_path_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Ref</span><span class="op">&lt;</span>[<span class="ident">Secret</span>]<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_path_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Ref</span><span class="op">&lt;</span>[<span class="ident">PathSecret</span>]<span class="op">&gt;</span> {
         <span class="ident">Ref</span>::<span class="ident">map</span>(<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>(), <span class="op">|</span><span class="ident">tree</span><span class="op">|</span> <span class="ident">tree</span>.<span class="ident">private_tree</span>().<span class="ident">path_secrets</span>())
     }
 

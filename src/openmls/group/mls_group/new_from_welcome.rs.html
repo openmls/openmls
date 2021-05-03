@@ -227,9 +227,6 @@
 <span id="224">224</span>
 <span id="225">225</span>
 <span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
 
@@ -385,11 +382,8 @@
             <span class="comment">// Update the private tree.</span>
             <span class="kw">let</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">private_tree_mut</span>();
             <span class="comment">// Derive path secrets and generate keypairs</span>
-            <span class="kw">let</span> <span class="ident">new_public_keys</span> <span class="op">=</span> <span class="ident">private_tree</span>.<span class="ident">continue_path_secrets</span>(
-                <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
-                <span class="ident">path_secret</span>.<span class="ident">path_secret</span>,
-                <span class="kw-2">&amp;</span><span class="ident">common_path</span>,
-            );
+            <span class="kw">let</span> <span class="ident">new_public_keys</span> <span class="op">=</span>
+                <span class="ident">private_tree</span>.<span class="ident">continue_path_secrets</span>(<span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>, <span class="ident">path_secret</span>, <span class="kw-2">&amp;</span><span class="ident">common_path</span>);
 
             <span class="comment">// Validate public keys</span>
             <span class="kw">if</span> <span class="ident">tree</span>
