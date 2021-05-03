@@ -114,6 +114,11 @@ impl Commit {
     pub fn has_path(&self) -> bool {
         self.path.is_some()
     }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn path(&self) -> &Option<UpdatePath> {
+        &self.path
+    }
 }
 
 /// Confirmation tag field of MlsPlaintext. For type saftey this is a wrapper

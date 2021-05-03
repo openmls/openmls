@@ -102,7 +102,7 @@ use std::{
 };
 
 use crate::{
-    ciphersuite::{CiphersuiteName, SignaturePublicKey, SignatureScheme},
+    ciphersuite::{CiphersuiteName, Secret, SignaturePublicKey, SignatureScheme},
     credentials::{Credential, CredentialBundle, CredentialType},
     extensions::Extension,
     key_packages::{KeyPackage, KeyPackageBundle},
@@ -220,5 +220,13 @@ impl KeyStore {
         let mut cbs = self.credential_bundles.write().unwrap();
         cbs.insert(credential.signature_key().clone(), cb);
         Ok(credential)
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    /// This function allows us to get hold of the next `leaf_secret` in the
+    /// TreeKEM test vector.
+    pub fn get_leaf_secret(&self, kp_hash: &[u8]) -> Secret {
+        let kpbs = self.init_key_package_bundles.read().unwrap();
+        kpbs.get(kp_hash).unwrap().leaf_secret().clone()
     }
 }

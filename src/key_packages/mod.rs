@@ -455,6 +455,28 @@ impl KeyPackageBundle {
             leaf_secret,
         }
     }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn from_key_package_and_leaf_secret(
+        leaf_secret: &Secret,
+        key_package: &KeyPackage,
+    ) -> Self {
+        let leaf_node_secret = Self::derive_leaf_node_secret(leaf_secret);
+        let (private_key, _public_key) = key_package
+            .ciphersuite()
+            .derive_hpke_keypair(&leaf_node_secret)
+            .into_keys();
+        KeyPackageBundle {
+            key_package: key_package.clone(),
+            private_key,
+            leaf_secret: leaf_secret.clone(),
+        }
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn get_leaf_secret(&self) -> Secret {
+        self.leaf_secret.clone()
+    }
 }
 
 /// Crate visible `KeyPackageBundle` functions.
