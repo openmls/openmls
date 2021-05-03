@@ -1,9 +1,9 @@
-use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
 use crate::{ciphersuite::*, prelude::PreSharedKeyId};
+use crate::{codec::*, messages::PathSecret};
 
 // Tree modules
 pub(crate) mod codec;
@@ -363,12 +363,12 @@ impl RatchetTree {
         let secret_bytes =
             self.ciphersuite
                 .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?;
-        let secret =
-            Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite);
+        let path_secret =
+            Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree
-                .continue_path_secrets(&self.ciphersuite, secret, &common_path);
+                .continue_path_secrets(&self.ciphersuite, path_secret, &common_path);
 
         // Extract public keys from UpdatePath
         let update_path_public_keys: Vec<HpkePublicKey> = update_path
@@ -525,8 +525,12 @@ impl RatchetTree {
                 .iter()
                 .map(|&index| {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
-                    self.ciphersuite
-                        .hpke_seal_secret(&pk, group_context, &[], &path_secret)
+                    self.ciphersuite.hpke_seal_secret(
+                        &pk,
+                        group_context,
+                        &[],
+                        &path_secret.path_secret,
+                    )
                 })
                 .collect();
             // TODO Check that all public keys are non-empty
@@ -786,9 +790,20 @@ impl RatchetTree {
         self.private_tree.commit_secret()
     }
 
-    /// Get a slice with the path secrets.
-    pub(crate) fn path_secrets(&self) -> &[Secret] {
-        self.private_tree.path_secrets()
+    /// Get the path secret for a given target node. Returns `None` if the given
+    /// index is not in the tree or not on the direct path of the `own_node`.
+    pub(crate) fn path_secret(&self, index: NodeIndex) -> Option<&PathSecret> {
+        // Get a Vector containing the node indices of the direct path to the
+        // root from our own leaf.
+        if let Ok(dirpath) = treemath::leaf_direct_path(self.own_node_index(), self.leaf_count()) {
+            // Compute the right index in the `path_secrets` vector and get the secret.
+            if let Some(position) = dirpath.iter().position(|&x| x == index) {
+                return self.private_tree.path_secrets().get(position);
+            }
+        }
+
+        // Return None if either of the conditions is not fulfilled.
+        None
     }
 }
 
