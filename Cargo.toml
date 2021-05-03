@@ -53,6 +53,7 @@ pretty_env_logger = "0.4.0"
 itertools = "0.10"
 test_macros = { path = "test_macros" }
 tempfile = "3.2"
+pprof = { version = "0.4", features = ["flamegraph", "criterion"]}
 
 [[bench]]
 name = "benchmark"
