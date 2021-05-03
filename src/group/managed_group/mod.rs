@@ -434,7 +434,7 @@ impl ManagedGroup {
                 (
                     self.group
                         .decrypt(&ciphertext)
-                        .map_err(|e| InvalidMessageError::InvalidCiphertext(e))?,
+                        .map_err(InvalidMessageError::InvalidCiphertext)?,
                     Some(aad),
                 )
             }
@@ -787,9 +787,11 @@ impl ManagedGroup {
         };
 
         // Take the new KeyPackageBundle and save it for later
-        let kpb = kpb_option.ok_or(ManagedGroupError::LibraryError(
-            "We didn't get a key package for a full commit on self update.".into(),
-        ))?;
+        let kpb = kpb_option.ok_or_else(|| {
+            ManagedGroupError::LibraryError(
+                "We didn't get a key package for a full commit on self update.".into(),
+            )
+        })?;
 
         self.own_kpbs.push(kpb);
 
