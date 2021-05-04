@@ -4,13 +4,12 @@
 //! for more description on the test vectors.
 //!
 //! The test vector describes a tree of `n` leaves adds a new leaf with
-//! `my_key_package` and `my_path_secret` (common ancestor of `add_sender` and
-//! `my_key_package`).
-//! Then an update, sent by `update_sender` with `update_path` is processed, which
-//! is processed by the newly added leaf as well.
+//! `my_key_package`, `my_leaf_secret` and `my_path_secret` (common ancestor of
+//! `add_sender` and `my_key_package`). Then an update, sent by `update_sender`
+//! with `update_path` is processed, which is processed by the newly added leaf
+//! as well.
 //!
 //! Some more points
-//! * An empty group context is used.
 //! * update path with empty exclusion list.
 
 #[cfg(any(feature = "expose-test-vectors", test))]
