@@ -102,11 +102,14 @@ use std::{
 };
 
 use crate::{
-    ciphersuite::{CiphersuiteName, Secret, SignaturePublicKey, SignatureScheme},
+    ciphersuite::{CiphersuiteName, SignaturePublicKey, SignatureScheme},
     credentials::{Credential, CredentialBundle, CredentialType},
     extensions::Extension,
     key_packages::{KeyPackage, KeyPackageBundle},
 };
+
+#[cfg(any(feature = "expose-test-vectors", test))]
+use crate::ciphersuite::Secret;
 
 pub mod errors;
 
