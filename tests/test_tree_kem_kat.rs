@@ -195,10 +195,10 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let addee = clients.get(&addee_id).unwrap().borrow();
     let addee_groups = addee.groups.borrow();
     let addee_group = addee_groups.get(&group_id).unwrap();
-    let tree = addee_group.export_ratchet_tree();
+    let mut tree = addee_group.export_ratchet_tree();
 
-    let my_key_package_after = tree
-        .iter()
+    let own_node = tree
+        .drain(..)
         .find(|node_option| {
             if let Some(node) = node_option {
                 if let Some(key_package) = node.key_package() {
@@ -209,14 +209,11 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
             }
             return false;
         })
-        .unwrap()
-        .as_ref()
-        .unwrap()
-        .key_package()
-        .unwrap()
-        .clone();
+        .unwrap();
 
-    assert_eq!(my_key_package, my_key_package_after);
+    let my_key_package_after = own_node.as_ref().unwrap().key_package().unwrap();
+
+    assert_eq!(&my_key_package, my_key_package_after);
 
     let path_secrets_after_update = addee_group.export_path_secrets();
     let root_secret_after_update = path_secrets_after_update.last().unwrap();
