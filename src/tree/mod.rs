@@ -30,7 +30,6 @@ pub(crate) use serde::{
     Deserialize, Deserializer, Serialize,
 };
 
-use std::convert::TryInto;
 use std::{collections::HashSet, convert::TryFrom};
 
 #[cfg(any(feature = "expose-test-vectors", test))]
