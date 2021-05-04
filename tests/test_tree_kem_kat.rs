@@ -152,8 +152,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         )
         .unwrap();
 
+    // It's only going to be a single message, since we only add one member.
     setup
-        .distribute_to_members(&adder.identity, group, &messages)
+        .distribute_to_members(&adder.identity, group, &messages[0])
         .unwrap();
 
     setup.deliver_welcome(welcome.unwrap(), group).unwrap();
@@ -195,10 +196,10 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let updater_group = updater_groups.get_mut(&group_id).unwrap();
     let group_context = updater_group.export_group_context().serialized().to_vec();
 
-    let (messages, _) = updater_group.self_update(&updater.key_store, None).unwrap();
+    let (message, _) = updater_group.self_update(&updater.key_store, None).unwrap();
 
-    let update_path = match messages.first().unwrap() {
-        MlsMessage::Plaintext(pt) => match pt.content() {
+    let update_path = match message {
+        MlsMessage::Plaintext(ref pt) => match pt.content() {
             MlsPlaintextContentType::Commit(commit) => commit.path().as_ref().unwrap().clone(),
             _ => panic!("The message should not be anything but a commit."),
         },
@@ -214,7 +215,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     drop(clients);
 
     setup
-        .distribute_to_members(&updater_id, group, &messages)
+        .distribute_to_members(&updater_id, group, &message)
         .unwrap();
 
     // The update was sent, now we get the right state variables again
