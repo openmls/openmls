@@ -69,12 +69,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     while remover_id == target_id {
         target_id = group.random_group_member();
     }
-    //let remover_index = thread_rng().gen_range(0..n_leaves);
     log::trace!("remover id: {:?}", remover_id);
-    //let mut target_index = thread_rng().gen_range(0..n_leaves);
-    //while remover_index == target_index {
-    //    target_index = thread_rng().gen_range(0..n_leaves);
-    //}
     log::trace!("target id: {:?}", target_id);
 
     let (target_index, _) = group
@@ -221,7 +216,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     let path_secrets_after_update = addee_group.export_path_secrets();
     let root_secret_after_update = path_secrets_after_update.last().unwrap();
-    //let root_secret_after_update = addee.export_root_secret(&group_id).unwrap();
+
     let ratchet_tree_extension_after =
         RatchetTreeExtension::new(addee_group.export_ratchet_tree()).to_extension_struct();
     let ratchet_tree_after = ratchet_tree_extension_after.extension_data();
