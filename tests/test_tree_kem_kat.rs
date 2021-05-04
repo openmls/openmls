@@ -24,7 +24,7 @@ fn test_tree_kem_kat() {
 
     for ciphersuite in Config::supported_ciphersuites() {
         for n_leaves in 2..NUM_LEAVES {
-            println!(" Creating test case with {:?} leaves ...", n_leaves);
+            log::trace!(" Creating test vector with {:?} leaves ...", n_leaves);
             let test = generate_test_vector(n_leaves, ciphersuite);
             tests.push(test);
         }
@@ -70,12 +70,12 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         target_id = group.random_group_member();
     }
     //let remover_index = thread_rng().gen_range(0..n_leaves);
-    println!("remover id: {:?}", remover_id);
+    log::trace!("remover id: {:?}", remover_id);
     //let mut target_index = thread_rng().gen_range(0..n_leaves);
     //while remover_index == target_index {
     //    target_index = thread_rng().gen_range(0..n_leaves);
     //}
-    println!("target id: {:?}", target_id);
+    log::trace!("target id: {:?}", target_id);
 
     let (target_index, _) = group
         .members
@@ -95,7 +95,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     // We then have the same client who removed the target add a fresh member.
     let adder_id = remover_id;
-    println!("adder id: {:?}", adder_id);
+    log::trace!("adder id: {:?}", adder_id);
     let (adder_index, _) = group
         .members
         .iter()
@@ -103,7 +103,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .unwrap()
         .clone();
     let addees = setup.random_new_members_for_group(group, 1).unwrap();
-    println!("adding member with id: {:?}", addees);
+    log::trace!("adding member with id: {:?}", addees);
 
     let clients = setup.clients.borrow();
     let adder = clients.get(&adder_id).unwrap().borrow();
