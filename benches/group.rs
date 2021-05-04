@@ -1,9 +1,12 @@
 #![allow(non_snake_case)]
 
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
-use pprof::criterion::{Output, PProfProfiler};
+use pprof::{
+    criterion::{Output, PProfProfiler},
+    protos::Message,
+};
 use rand::Rng;
-use std::{convert::TryFrom, fs::File};
+use std::{convert::TryFrom, fs::File, io::Write};
 
 use openmls::{node::Node, prelude::*, tree::index::NodeIndex};
 
@@ -467,8 +470,15 @@ fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
                         receive_message(msg, receiver, &mut groups);
                     }
                     if let Ok(report) = guard.report().build() {
-                        let file = File::create("flamegraph.svg").unwrap();
-                        report.flamegraph(file).unwrap();
+                        let mut file = File::create("profile.pb").unwrap();
+                        let profile = report.pprof().unwrap();
+
+                        let mut content = Vec::new();
+                        profile.encode(&mut content).unwrap();
+                        file.write_all(&content).unwrap();
+
+                        // let file = File::create("flamegraph.svg").unwrap();
+                        // report.flamegraph(file).unwrap();
                     };
                 },
                 BatchSize::SmallInput,
