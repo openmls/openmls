@@ -119,7 +119,7 @@ fn remover() {
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let mut managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Plaintext,
+        HandshakeMessageFormat::Ciphertext,
         update_policy,
         0, // padding_size
         0, // number_of_resumption_secrets
