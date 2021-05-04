@@ -12,36 +12,10 @@
 //! Some more points
 //! * update path with empty exclusion list.
 
-use openmls::{prelude::*, test_util::*};
+use openmls::{prelude::*, test_util::*, tree::tests::kat_tree_kem::TreeKemTestVector};
 
 mod utils;
 use utils::managed_utils::*;
-
-use serde::{self, Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TreeKemTestVector {
-    pub cipher_suite: u16,
-
-    // Chosen by the generator
-    ratchet_tree_before: String,
-
-    add_sender: u32,
-    my_leaf_secret: String,
-    my_key_package: String,
-    my_path_secret: String,
-
-    update_sender: u32,
-    update_path: String,
-    update_group_context: String,
-
-    // Computed values
-    tree_hash_before: String,
-    root_secret_after_add: String,
-    root_secret_after_update: String,
-    ratchet_tree_after: String,
-    tree_hash_after: String,
-}
 
 #[test]
 fn test_tree_kem_kat() {
