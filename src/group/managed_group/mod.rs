@@ -7,6 +7,9 @@ mod ser;
 #[cfg(test)]
 mod test_managed_group;
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+use crate::messages::PathSecret;
+
 use crate::{
     credentials::Credential,
     error::ErrorString,
@@ -879,7 +882,7 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn export_path_secrets(&self) -> Ref<[Secret]> {
+    pub fn export_path_secrets(&self) -> Ref<[PathSecret]> {
         Ref::map(self.group.tree(), |tree| tree.private_tree().path_secrets())
     }
 

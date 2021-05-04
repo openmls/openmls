@@ -116,7 +116,7 @@ impl MlsGroup {
             }
         };
 
-        let mut tree = RatchetTree::new_from_nodes(ciphersuite, key_package_bundle, &nodes)?;
+        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes)?;
 
         // Verify tree hash
         let tree_hash = tree.tree_hash();
@@ -152,11 +152,8 @@ impl MlsGroup {
             // Update the private tree.
             let private_tree = tree.private_tree_mut();
             // Derive path secrets and generate keypairs
-            let new_public_keys = private_tree.continue_path_secrets(
-                &ciphersuite,
-                path_secret.path_secret,
-                &common_path,
-            );
+            let new_public_keys =
+                private_tree.continue_path_secrets(&ciphersuite, path_secret, &common_path);
 
             // Validate public keys
             if tree

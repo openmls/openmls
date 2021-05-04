@@ -234,6 +234,11 @@ impl KeyPackage {
         self.ciphersuite
     }
 
+    /// Get the `ProtocolVersion`.
+    pub(crate) fn protocol_version(&self) -> ProtocolVersion {
+        self.protocol_version
+    }
+
     /// Get the `CiphersuiteName`.
     pub fn ciphersuite_name(&self) -> CiphersuiteName {
         self.ciphersuite.name()

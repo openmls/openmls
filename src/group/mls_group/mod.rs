@@ -78,7 +78,7 @@ impl MlsGroup {
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let tree = RatchetTree::new(ciphersuite, key_package_bundle);
+        let tree = RatchetTree::new(key_package_bundle);
         // TODO #186: Implement extensions
         let extensions: Vec<Box<dyn Extension>> = Vec::new();
 
