@@ -12,7 +12,6 @@ pub enum GroupEvent {
     PskReceived(PskReceivedEvent),
     ReInit(ReInitEvent),
     ApplicationMessage(ApplicationMessageEvent),
-    InvalidMessage(InvalidMessageEvent),
     Error(ErrorEvent),
 }
 
@@ -188,26 +187,6 @@ impl ApplicationMessageEvent {
     /// Get a reference to the event's message.
     pub fn message(&self) -> &[u8] {
         &self.message
-    }
-}
-
-// Errors
-
-/// Event that occurs when an invalid message is received.
-/// `error` contains the specific error.
-#[derive(Debug, PartialEq, Clone)]
-pub struct InvalidMessageEvent {
-    error: InvalidMessageError,
-}
-
-impl InvalidMessageEvent {
-    pub(crate) fn new(error: InvalidMessageError) -> Self {
-        Self { error }
-    }
-
-    /// Get a reference to the event's error.
-    pub fn error(&self) -> &InvalidMessageError {
-        &self.error
     }
 }
 

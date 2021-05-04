@@ -198,7 +198,7 @@ impl ManagedTestSetup {
         // been removed from the group.
         sender_id: &[u8],
         group: &mut Group,
-        messages: &[MlsMessage],
+        message: &MlsMessage,
     ) -> Result<(), ClientError> {
         let clients = self.clients.borrow();
         println!("Distributing and processing messages...");
@@ -206,7 +206,7 @@ impl ManagedTestSetup {
         for (index, member_id) in &group.members {
             println!("Index: {:?}, Id: {:?}", index, member_id);
             let member = clients.get(member_id).unwrap().borrow();
-            member.receive_messages_for_group(messages)?;
+            member.receive_messages_for_group(message)?;
         }
         // Get the current tree and figure out who's still in the group.
         let sender = clients.get(sender_id).unwrap().borrow();
@@ -252,7 +252,7 @@ impl ManagedTestSetup {
         }
         drop(clients);
         for (sender_id, message) in messages {
-            self.distribute_to_members(&sender_id, group, &[message])
+            self.distribute_to_members(&sender_id, group, &message)
                 .expect("Error sending messages to clients while checking group states.");
         }
     }
@@ -420,7 +420,9 @@ impl ManagedTestSetup {
         }
         let (messages, welcome_option) =
             adder.add_members(action_type, &group.group_id, &key_packages)?;
-        self.distribute_to_members(&adder_id, group, &messages)?;
+        for message in &messages {
+            self.distribute_to_members(&adder_id, group, &message)?;
+        }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
         }
@@ -453,7 +455,9 @@ impl ManagedTestSetup {
         }
         let (messages, welcome_option) =
             remover.remove_members(action_type, &group.group_id, &target_indices)?;
-        self.distribute_to_members(remover_id, group, &messages)?;
+        for message in &messages {
+            self.distribute_to_members(remover_id, group, &message)?;
+        }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
         }
