@@ -12,11 +12,9 @@
 //! Some more points
 //! * update path with empty exclusion list.
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 use crate::test_util::hex_to_bytes;
 #[cfg(test)]
 use crate::test_util::read;
-#[cfg(any(feature = "expose-test-vectors", test))]
 use crate::{
     ciphersuite::Secret,
     config::Config,
@@ -57,7 +55,6 @@ pub struct TreeKemTestVector {
     tree_hash_after: String,
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
@@ -237,7 +234,6 @@ fn read_test_vector() {
     }
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 implement_error! {
     pub enum TreeKemTestVectorError {
         BeforeTreeHashMismatch = "Tree hash mismatch in the 'before' tree.",
