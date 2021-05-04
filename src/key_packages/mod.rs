@@ -472,11 +472,6 @@ impl KeyPackageBundle {
             leaf_secret: leaf_secret.clone(),
         }
     }
-
-    #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn leaf_secret(&self) -> Secret {
-        self.leaf_secret.clone()
-    }
 }
 
 /// Crate visible `KeyPackageBundle` functions.
@@ -502,7 +497,7 @@ impl KeyPackageBundle {
     }
 
     /// Get a reference to the `leaf_secret`.
-    pub(crate) fn leaf_secret(&self) -> &Secret {
+    pub fn leaf_secret(&self) -> &Secret {
         &self.leaf_secret
     }
 
