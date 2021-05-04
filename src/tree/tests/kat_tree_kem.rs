@@ -161,9 +161,6 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     if root_secret_after_add
         != tree_before
-            //.private_tree()
-            //.path_secrets()
-            //.last()
             .path_secret(root(tree_before.leaf_count()))
             .unwrap()
     {
@@ -188,12 +185,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     // Rename to avoid confusion.
     let tree_after = tree_before;
-    let root_secret_after = tree_after
-        .private_tree()
-        .path_secrets()
-        .last()
-        //.path_secret(root(tree_after.leaf_count()))
-        .unwrap();
+    let root_secret_after = tree_after.private_tree().path_secrets().last().unwrap();
     let root_secret_after_update: &PathSecret = &Secret::from_slice(
         &hex_to_bytes(&test_vector.root_secret_after_update),
         ProtocolVersion::default(),
