@@ -5,7 +5,8 @@
 
 use crate::codec::CodecError;
 use crate::config::ConfigError;
-use crate::error::{ErrorPayload, ErrorString};
+use crate::error::ErrorString;
+use crate::framing::MlsCiphertextError;
 use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, GroupError};
 use crate::key_store::KeyStoreError;
 
@@ -36,6 +37,7 @@ implement_error! {
             EmptyInput(EmptyInputError) =
                 "Empty input. Additional detail is provided.",
             KeyStoreError(KeyStoreError) = "See [`KeyStoreError`](`crate::key_store::KeyStoreError`) for details",
+            InvalidMessage(InvalidMessageError) = "The message could not be processed.",
         }
     }
 }
@@ -64,12 +66,14 @@ implement_error! {
         Simple {
             MembershipTagMismatch =
                 "A Proposal with an invalid membership tag was received.",
+            InvalidProposal =
+                "The given proposal is invalid.",
+            CommitWithInvalidProposals =
+                "A commit contained an invalid proposal.",
         }
         Complex {
-            InvalidCiphertext(ErrorPayload) =
+            InvalidCiphertext(MlsCiphertextError) =
                 "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
-            CommitWithInvalidProposals(ErrorString) =
-                "A commit contained an invalid proposal. Additional detail is provided.",
             CommitError(ApplyCommitError) =
                 "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
             GroupError(GroupError) =

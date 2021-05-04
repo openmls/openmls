@@ -325,15 +325,6 @@ pub enum MlsPlaintextContentType {
     Commit(Commit),
 }
 
-impl MlsPlaintextContentType {
-    pub(crate) fn to_proposal(&self) -> &Proposal {
-        match self {
-            MlsPlaintextContentType::Proposal(proposal) => proposal,
-            _ => panic!("Library error. Expected Proposal in MlsPlaintextContentType"),
-        }
-    }
-}
-
 /// 9.1 Content Authentication
 ///
 /// ```c

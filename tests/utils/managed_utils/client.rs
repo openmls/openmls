@@ -98,15 +98,13 @@ impl Client {
     /// Have the client process the given messages. Returns an error if an error
     /// occurs during message processing or if no group exists for one of the
     /// messages.
-    pub fn receive_messages_for_group(&self, messages: &[MlsMessage]) -> Result<(), ClientError> {
+    pub fn receive_messages_for_group(&self, message: &MlsMessage) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
-        for message in messages {
-            let group_id = GroupId::from_slice(&message.group_id());
-            let group_state = group_states
-                .get_mut(&group_id)
-                .ok_or(ClientError::NoMatchingGroup)?;
-            group_state.process_messages(vec![message.clone()])?;
-        }
+        let group_id = GroupId::from_slice(&message.group_id());
+        let group_state = group_states
+            .get_mut(&group_id)
+            .ok_or(ClientError::NoMatchingGroup)?;
+        group_state.process_message(message.clone())?;
         Ok(())
     }
 
@@ -142,7 +140,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(MlsMessage, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -175,12 +173,16 @@ impl Client {
         let action_results = match action_type {
             ActionType::Commit => {
                 let (messages, welcome) = group.add_members(&self.key_store, key_packages)?;
-                (messages, Some(welcome))
+                (vec![messages], Some(welcome))
             }
-            ActionType::Proposal => (
-                group.propose_add_members(&self.key_store, key_packages)?,
-                None,
-            ),
+            ActionType::Proposal => {
+                let mut messages = Vec::new();
+                for key_package in key_packages {
+                    let message = group.propose_add_member(&self.key_store, key_package)?;
+                    messages.push(message);
+                }
+                (messages, None)
+            }
         };
         Ok(action_results)
     }
@@ -201,11 +203,19 @@ impl Client {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
-            ActionType::Commit => group.remove_members(&self.key_store, target_indices)?,
-            ActionType::Proposal => (
-                group.propose_remove_members(&self.key_store, target_indices)?,
-                None,
-            ),
+            ActionType::Commit => {
+                let (message, welcome_option) =
+                    group.remove_members(&self.key_store, target_indices)?;
+                (vec![message], welcome_option)
+            }
+            ActionType::Proposal => {
+                let mut messages = Vec::new();
+                for &target_index in target_indices {
+                    let message = group.propose_remove_member(&self.key_store, target_index)?;
+                    messages.push(message);
+                }
+                (messages, None)
+            }
         };
         Ok(action_results)
     }
