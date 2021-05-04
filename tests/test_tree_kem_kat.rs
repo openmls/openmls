@@ -97,14 +97,18 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .find(|(_, id)| id == &adder_id)
         .unwrap()
         .clone();
-    let addees = setup.random_new_members_for_group(group, 1).unwrap();
-    log::trace!("adding member with id: {:?}", addees);
+    let addee_id = setup
+        .random_new_members_for_group(group, 1)
+        .unwrap()
+        .pop()
+        .unwrap();
+    log::trace!("adding member with id: {:?}", addee_id);
 
     let clients = setup.clients.borrow();
     let adder = clients.get(&adder_id).unwrap().borrow();
 
     // We add the test client manually, so that we can get a hold of the leaf secret.
-    let addee = clients.get(&addees[0]).unwrap().borrow();
+    let addee = clients.get(&addee_id).unwrap().borrow();
 
     let my_key_package = setup
         .get_fresh_key_package(&addee, &group.ciphersuite)
@@ -148,7 +152,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     drop(addee);
 
     let mut updater_id = group.random_group_member();
-    while updater_id == addees[0] {
+    while updater_id == addee_id {
         updater_id = group.random_group_member();
     }
 
@@ -188,7 +192,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     // The update was sent, now we get the right state variables again
     let clients = setup.clients.borrow();
-    let addee = clients.get(&addees[0]).unwrap().borrow();
+    let addee = clients.get(&addee_id).unwrap().borrow();
     let addee_groups = addee.groups.borrow();
     let addee_group = addee_groups.get(&group_id).unwrap();
     let tree = addee_group.export_ratchet_tree();
@@ -198,7 +202,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .find(|node_option| {
             if let Some(node) = node_option {
                 if let Some(key_package) = node.key_package() {
-                    if key_package.credential().identity() == &addees[0] {
+                    if key_package.credential().identity() == &addee_id {
                         return true;
                     }
                 }
