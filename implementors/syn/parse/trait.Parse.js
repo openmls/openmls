@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["test_macros"] = [{"text":"impl <a class=\"trait\" href=\"https://docs.rs/syn/1.0.71/syn/parse/trait.Parse.html\" title=\"trait syn::parse::Parse\">Parse</a> for <a class=\"struct\" href=\"test_macros/struct.TestInput.html\" title=\"struct test_macros::TestInput\">TestInput</a>","synthetic":false,"types":["test_macros::TestInput"]}];
+implementors["test_macros"] = [{"text":"impl <a class=\"trait\" href=\"https://docs.rs/syn/1.0.72/syn/parse/trait.Parse.html\" title=\"trait syn::parse::Parse\">Parse</a> for <a class=\"struct\" href=\"test_macros/struct.TestInput.html\" title=\"struct test_macros::TestInput\">TestInput</a>","synthetic":false,"types":["test_macros::TestInput"]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

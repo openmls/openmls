@@ -80,6 +80,10 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
@@ -88,7 +92,8 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">CodecError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">error</span>::{<span class="ident">ErrorPayload</span>, <span class="ident">ErrorString</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">error</span>::<span class="ident">ErrorString</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">MlsCiphertextError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">GroupError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_store</span>::<span class="ident">KeyStoreError</span>;
 
@@ -119,6 +124,7 @@
             <span class="ident">EmptyInput</span>(<span class="ident">EmptyInputError</span>) <span class="op">=</span>
                 <span class="string">&quot;Empty input. Additional detail is provided.&quot;</span>,
             <span class="ident">KeyStoreError</span>(<span class="ident">KeyStoreError</span>) <span class="op">=</span> <span class="string">&quot;See [`KeyStoreError`](`crate::key_store::KeyStoreError`) for details&quot;</span>,
+            <span class="ident">InvalidMessage</span>(<span class="ident">InvalidMessageError</span>) <span class="op">=</span> <span class="string">&quot;The message could not be processed.&quot;</span>,
         }
     }
 }
@@ -147,12 +153,14 @@
         <span class="ident">Simple</span> {
             <span class="ident">MembershipTagMismatch</span> <span class="op">=</span>
                 <span class="string">&quot;A Proposal with an invalid membership tag was received.&quot;</span>,
+            <span class="ident">InvalidProposal</span> <span class="op">=</span>
+                <span class="string">&quot;The given proposal is invalid.&quot;</span>,
+            <span class="ident">CommitWithInvalidProposals</span> <span class="op">=</span>
+                <span class="string">&quot;A commit contained an invalid proposal.&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">InvalidCiphertext</span>(<span class="ident">ErrorPayload</span>) <span class="op">=</span>
+            <span class="ident">InvalidCiphertext</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>
                 <span class="string">&quot;An invalid ciphertext was provided. The error returns the associated data of the ciphertext.&quot;</span>,
-            <span class="ident">CommitWithInvalidProposals</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
-                <span class="string">&quot;A commit contained an invalid proposal. Additional detail is provided.&quot;</span>,
             <span class="ident">CommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details&quot;</span>,
             <span class="ident">GroupError</span>(<span class="ident">GroupError</span>) <span class="op">=</span>

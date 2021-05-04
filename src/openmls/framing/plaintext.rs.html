@@ -483,15 +483,6 @@
 <span id="480">480</span>
 <span id="481">481</span>
 <span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
@@ -818,15 +809,6 @@
     <span class="ident">Application</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
     <span class="ident">Proposal</span>(<span class="ident">Proposal</span>),
     <span class="ident">Commit</span>(<span class="ident">Commit</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">MlsPlaintextContentType</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_proposal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Proposal</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Library error. Expected Proposal in MlsPlaintextContentType&quot;</span>),
-        }
-    }
 }
 
 <span class="doccomment">/// 9.1 Content Authentication</span>
