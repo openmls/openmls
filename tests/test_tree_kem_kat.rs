@@ -45,7 +45,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config =
         ManagedGroupConfig::new(handshake_message_format, update_policy, 0, 0, callbacks);
-    let setup = ManagedTestSetup::new(managed_group_config, n_leaves as usize + 10);
+    let setup = ManagedTestSetup::new(managed_group_config, n_leaves as usize);
 
     // - I am the client with key package `my_key_package`
     // - I was added by the client at leaf index add_sender
