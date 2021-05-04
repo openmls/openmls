@@ -70,8 +70,7 @@ impl RatchetTree {
         };
         // Add our own node
         let (index, _credential) = tree.add_node(kpb.key_package());
-        // We can unwrap  because the index must be a leaf index.
-        tree.private_tree = PrivateTree::from_key_package_bundle(index.try_into().unwrap(), &kpb);
+        tree.private_tree = PrivateTree::from_key_package_bundle(index, &kpb);
         tree
     }
 

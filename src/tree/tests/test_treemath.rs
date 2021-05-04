@@ -1,6 +1,6 @@
 use crate::config::*;
 use crate::tree::index::{LeafIndex, NodeIndex};
-use crate::tree::treemath::{descendants, descendants_alt};
+use crate::tree::treemath::{descendants, descendants_alt, TreeMathError};
 use crate::tree::{treemath, *};
 use std::convert::TryFrom;
 
@@ -76,4 +76,24 @@ fn test_treemath_functions() {
     assert_eq!(0, treemath::root(LeafIndex::from(1u32)).as_u32());
     assert_eq!(1, treemath::root(LeafIndex::from(2u32)).as_u32());
     assert_eq!(3, treemath::root(LeafIndex::from(3u32)).as_u32());
+}
+
+#[test]
+fn invalid_inputs() {
+    assert_eq!(
+        Err(TreeMathError::LeafNotInTree),
+        treemath::leaf_direct_path(3u32.into(), 2u32.into())
+    );
+    assert_eq!(
+        Err(TreeMathError::NodeNotInTree),
+        treemath::parent_direct_path(3u32.into(), 2u32.into())
+    );
+    assert_eq!(
+        Err(TreeMathError::LeafNotInTree),
+        treemath::copath(10u32.into(), 5u32.into())
+    );
+    assert_eq!(
+        Err(TreeMathError::NodeNotInTree),
+        treemath::parent(1000u32.into(), 100u32.into())
+    );
 }
