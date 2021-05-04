@@ -107,7 +107,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let psk_proposal = PreSharedKeyProposal { psk: psk_id };
     let reinit_proposal = ReInitProposal {
-        group_id: group_id.clone(),
+        group_id,
         version: ProtocolVersion::Mls10,
         ciphersuite: ciphersuite_name,
         extensions: vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
