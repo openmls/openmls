@@ -56,6 +56,7 @@ pub struct TreeKemTestVector {
 }
 
 pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
+    log::debug!("Running TreeKEM test vector");
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
@@ -122,15 +123,15 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     // Initialize private portion of the RatchetTree
     let add_sender = test_vector.add_sender;
-    println!(
+    log::trace!(
         "Add sender index: {:?}",
         NodeIndex::from(LeafIndex::from(add_sender))
     );
-    println!(
+    log::trace!(
         "Test client index: {:?}",
         NodeIndex::from(tree_before.own_node_index())
     );
-    println!(
+    log::trace!(
         "Updater index: {:?}",
         NodeIndex::from(LeafIndex::from(test_vector.update_sender))
     );
@@ -138,9 +139,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         NodeIndex::from(LeafIndex::from(add_sender)),
         NodeIndex::from(tree_before.own_node_index()),
     );
-    println!("Common ancestor: {:?}", common_ancestor);
+    log::trace!("Common ancestor: {:?}", common_ancestor);
     let path = parent_direct_path(common_ancestor, tree_before.leaf_count()).unwrap();
-    println!("path: {:?}", path);
+    log::trace!("path: {:?}", path);
     let start_secret = Secret::from_slice(
         &hex_to_bytes(&test_vector.my_path_secret),
         ProtocolVersion::default(),
@@ -172,7 +173,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     // Apply the update path
     let update_path = UpdatePath::decode_detached(&hex_to_bytes(&test_vector.update_path)).unwrap();
-    println!("UpdatePath: {:?}", update_path);
+    log::trace!("UpdatePath: {:?}", update_path);
     let group_context = hex_to_bytes(&test_vector.update_group_context);
     let _commit_secret = tree_before
         .update_path(
@@ -212,7 +213,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         return Err(TreeKemTestVectorError::AfterRatchetTreeMismatch);
     }
 
-    println!("\nDone running test\n");
+    log::debug!("Done verifying TreeKEM test vector");
 
     Ok(())
 }
