@@ -11,12 +11,12 @@ Add user, 20, 1.1994, ms
 Add user, 30, 1.3011, ms
 Add user, 40, 1.6733, ms
 Add user, 50, 1.5386, ms
-Add user, 100, 2.1562, ms
-Add user, 200, 2.8701, ms
-Add user, 300, 3.6685, ms
-Add user, 400, 4.6511, ms
-Add user, 500, 5.5547, ms
-Add user, 1000, 18.182, ms
+Add user, 100, 1.8631, ms
+Add user, 200, 2.6955, ms
+Add user, 300, 3.4664, ms
+Add user, 400, 4.2631, ms
+Add user, 500, 5.0705, ms
+Add user, 1000, 9.1542, ms
 Join Group, 2, 504.15, us
 Join Group, 3, 494.94, us
 Join Group, 4, 513.75, us
@@ -30,12 +30,12 @@ Join Group, 20, 672.81, us
 Join Group, 30, 751.81, us
 Join Group, 40, 805.81, us
 Join Group, 50, 848.08, us
-Join Group, 100, 1186.5, us
-Join Group, 200, 1756.8, us
-Join Group, 300, 2371.0, us
-Join Group, 400, 2965.2, us
-Join Group, 500, 3589.9, us
-Join Group, 1000, 6580.2, us
+Join Group, 100, 1089.4, us
+Join Group, 200, 1606.8, us
+Join Group, 300, 2190.3, us
+Join Group, 400, 2783.9, us
+Join Group, 500, 3355.2, us
+Join Group, 1000, 6154.6, us
 Process add user, 2, 0.051024, ms
 Process add user, 3, 0.048060, ms
 Process add user, 4, 0.053733, ms
@@ -49,12 +49,12 @@ Process add user, 20, 0.13650, ms
 Process add user, 30, 0.17325, ms
 Process add user, 40, 0.20567, ms
 Process add user, 50, 0.24490, ms
-Process add user, 100, 0.45066, ms
-Process add user, 200, 0.75349, ms
-Process add user, 300, 1.1104, ms
-Process add user, 400, 1.5584, ms
-Process add user, 500, 1.9212, ms
-Process add user, 1000, 6.0349, ms
+Process add user, 100, 0.40528, ms
+Process add user, 200, 0.72417, ms
+Process add user, 300, 1.0710, ms
+Process add user, 400, 1.4103, ms
+Process add user, 500, 1.7545, ms
+Process add user, 1000, 3.3732, ms
 Process remove user, 3, 0.79073, ms
 Process remove user, 4, 0.80632, ms
 Process remove user, 5, 0.81845, ms
@@ -67,12 +67,12 @@ Process remove user, 20, 1.0967, ms
 Process remove user, 30, 1.1214, ms
 Process remove user, 40, 1.1010, ms
 Process remove user, 50, 1.1056, ms
-Process remove user, 100, 1.3175, ms
-Process remove user, 200, 1.7583, ms
-Process remove user, 300, 2.1609, ms
-Process remove user, 400, 2.4998, ms
-Process remove user, 500, 2.7125, ms
-Process remove user, 1000, 7.9404, ms
+Process remove user, 100, 1.2482, ms
+Process remove user, 200, 1.5758, ms
+Process remove user, 300, 1.9718, ms
+Process remove user, 400, 2.2639, ms
+Process remove user, 500, 2.6470, ms
+Process remove user, 1000, 4.2058, ms
 Receive Message, 2, 0.33619, ms
 Receive Message, 3, 0.32454, ms
 Receive Message, 4, 0.30762, ms
@@ -86,12 +86,12 @@ Receive Message, 20, 0.57027, ms
 Receive Message, 30, 0.78970, ms
 Receive Message, 40, 1.3805, ms
 Receive Message, 50, 1.5260, ms
-Receive Message, 100, 5.3688, ms
-Receive Message, 200, 19.600, ms
-Receive Message, 300, 42.848, ms
-Receive Message, 400, 73.045, ms
-Receive Message, 500, 111.77, ms
-Receive Message, 1000, 16129.0, ms
+Receive Message, 100, 4.9174, ms
+Receive Message, 200, 18.039, ms
+Receive Message, 300, 38.014, ms
+Receive Message, 400, 68.216, ms
+Receive Message, 500, 104.33, ms
+Receive Message, 1000, 395.97, ms
 Receive Update, 2, 0.90512, ms
 Receive Update, 3, 0.81444, ms
 Receive Update, 4, 0.81270, ms
@@ -105,12 +105,12 @@ Receive Update, 20, 1.0962, ms
 Receive Update, 30, 1.0618, ms
 Receive Update, 40, 1.1080, ms
 Receive Update, 50, 1.0989, ms
-Receive Update, 100, 1.3396, ms
-Receive Update, 200, 1.7102, ms
-Receive Update, 300, 2.0987, ms
-Receive Update, 400, 2.4977, ms
-Receive Update, 500, 2.8322, ms
-Receive Update, 1000, 25.835, ms
+Receive Update, 100, 1.2337, ms
+Receive Update, 200, 1.5772, ms
+Receive Update, 300, 1.9795, ms
+Receive Update, 400, 2.2361, ms
+Receive Update, 500, 2.6022, ms
+Receive Update, 1000, 4.2134, ms
 Remove user, 2, 1.7554, ms
 Remove user, 3, 2.0831, ms
 Remove user, 4, 2.5485, ms
@@ -124,12 +124,12 @@ Remove user, 20, 3.1859, ms
 Remove user, 30, 3.3029, ms
 Remove user, 40, 3.6698, ms
 Remove user, 50, 3.8622, ms
-Remove user, 100, 5.0209, ms
-Remove user, 200, 6.1352, ms
-Remove user, 300, 7.0887, ms
-Remove user, 400, 8.1266, ms
-Remove user, 500, 9.0365, ms
-Remove user, 1000, 81.954, ms
+Remove user, 100, 4.3356, ms
+Remove user, 200, 5.5343, ms
+Remove user, 300, 6.6284, ms
+Remove user, 400, 7.3024, ms
+Remove user, 500, 8.2628, ms
+Remove user, 1000, 12.117, ms
 Send Message, 2, 345.03, us
 Send Message, 3, 333.29, us
 Send Message, 4, 334.91, us
@@ -143,12 +143,12 @@ Send Message, 20, 332.27, us
 Send Message, 30, 337.65, us
 Send Message, 40, 388.97, us
 Send Message, 50, 380.51, us
-Send Message, 100, 385.34, us
-Send Message, 200, 396.23, us
-Send Message, 300, 372.17, us
-Send Message, 400, 385.62, us
-Send Message, 500, 386.75, us
-Send Message, 1000, 19931.0, us
+Send Message, 100, 337.68, us
+Send Message, 200, 350.49, us
+Send Message, 300, 350.18, us
+Send Message, 400, 347.32, us
+Send Message, 500, 348.01, us
+Send Message, 1000, 349.44, us
 Send Update, 2, 2.2013, ms
 Send Update, 3, 2.7422, ms
 Send Update, 4, 2.9207, ms
@@ -162,12 +162,12 @@ Send Update, 20, 3.2760, ms
 Send Update, 30, 3.3795, ms
 Send Update, 40, 3.6601, ms
 Send Update, 50, 4.0040, ms
-Send Update, 100, 4.7871, ms
-Send Update, 200, 5.9193, ms
-Send Update, 300, 6.9903, ms
-Send Update, 400, 7.8611, ms
-Send Update, 500, 8.5385, ms
-Send Update, 1000, 39.262, ms
+Send Update, 100, 4.4019, ms
+Send Update, 200, 5.4759, ms
+Send Update, 300, 6.4027, ms
+Send Update, 400, 7.1824, ms
+Send Update, 500, 7.8129, ms
+Send Update, 1000, 11.780, ms
 Setup Group, 2, 1.6599, ms
 Setup Group, 3, 2.0643, ms
 Setup Group, 4, 2.5808, ms
@@ -181,9 +181,9 @@ Setup Group, 20, 9.3156, ms
 Setup Group, 30, 13.002, ms
 Setup Group, 40, 17.190, ms
 Setup Group, 50, 24.005, ms
-Setup Group, 100, 44.035, ms
-Setup Group, 200, 88.266, ms
-Setup Group, 300, 131.56, ms
-Setup Group, 400, 182.74, ms
-Setup Group, 500, 225.94, ms
-Setup Group, 1000, 445.90, ms
+Setup Group, 100, 42.513, ms
+Setup Group, 200, 82.724, ms
+Setup Group, 300, 122.39, ms
+Setup Group, 400, 167.72, ms
+Setup Group, 500, 204.72, ms
+Setup Group, 1000, 398.92, ms
