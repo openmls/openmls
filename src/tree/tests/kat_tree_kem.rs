@@ -36,23 +36,23 @@ pub struct TreeKemTestVector {
     pub cipher_suite: u16,
 
     // Chosen by the generator
-    ratchet_tree_before: String,
+    pub ratchet_tree_before: String,
 
-    add_sender: u32,
-    my_leaf_secret: String,
-    my_key_package: String,
-    my_path_secret: String,
+    pub add_sender: u32,
+    pub my_leaf_secret: String,
+    pub my_key_package: String,
+    pub my_path_secret: String,
 
-    update_sender: u32,
-    update_path: String,
-    update_group_context: String,
+    pub update_sender: u32,
+    pub update_path: String,
+    pub update_group_context: String,
 
     // Computed values
-    tree_hash_before: String,
-    root_secret_after_add: String,
-    root_secret_after_update: String,
-    ratchet_tree_after: String,
-    tree_hash_after: String,
+    pub tree_hash_before: String,
+    pub root_secret_after_add: String,
+    pub root_secret_after_update: String,
+    pub ratchet_tree_after: String,
+    pub tree_hash_after: String,
 }
 
 pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
