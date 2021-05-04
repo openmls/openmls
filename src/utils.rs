@@ -20,7 +20,7 @@ pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "expose-test-vectors", test))]
 pub(crate) fn random_u8() -> u8 {
     get_random_vec(1)[0]
 }
