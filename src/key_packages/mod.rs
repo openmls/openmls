@@ -474,7 +474,7 @@ impl KeyPackageBundle {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn get_leaf_secret(&self) -> Secret {
+    pub fn leaf_secret(&self) -> Secret {
         self.leaf_secret.clone()
     }
 }
