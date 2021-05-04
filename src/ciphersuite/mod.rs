@@ -393,7 +393,6 @@ impl Secret {
     }
 
     /// Returns the inner bytes of a secret
-    #[cfg(any(feature = "expose-test-vectors", test))]
     pub fn as_slice(&self) -> &[u8] {
         &self.value
     }
