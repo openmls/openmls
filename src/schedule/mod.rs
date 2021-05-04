@@ -266,6 +266,13 @@ impl JoinerSecret {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
+        Self {
+            secret: Secret::random(ciphersuite, version),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
