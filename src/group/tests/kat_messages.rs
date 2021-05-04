@@ -99,8 +99,8 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         removed: random_u32(),
     };
 
-    let psk_id = PreSharedKeyID::new(
-        PSKType::External,
+    let psk_id = PreSharedKeyId::new(
+        PskType::External,
         Psk::External(ExternalPsk::new(get_random_vec(ciphersuite.hash_length()))),
         get_random_vec(ciphersuite.hash_length()),
     );
@@ -136,7 +136,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             None,
         )
         .unwrap();
-    let commit = if let MLSPlaintextContentType::Commit(commit) = commit_pt.content() {
+    let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
         commit.clone()
     } else {
         panic!("Wrong content of MLS plaintext");
@@ -374,7 +374,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
         }
         return Err(MessagesTestVectorError::RemoveProposalEncodingMismatch);
     }
-    //pre_shared_key_proposal: String, /* serialized PreSharedKey */
+
     // PreSharedKeyProposal
     let tv_pre_shared_key_proposal = &hex_to_bytes(&tv.pre_shared_key_proposal);
     let my_pre_shared_key_proposal =
@@ -391,10 +391,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
         }
         return Err(MessagesTestVectorError::PreSharedKeyProposalEncodingMismatch);
     }
-    //re_init_proposal: String,        /* serialized ReInit */
-    //external_init_proposal: String,  /* serialized ExternalInit */
-    //app_ack_proposal: String,        /* serialized AppAck */
-    //commit: String, /* serialized Commit */
+
+    // Re-Init, External Init and App-Ack Proposals go here...
+
     // Commit
     let tv_commit = &hex_to_bytes(&tv.commit);
     let my_commit = Commit::decode_detached(&tv_commit)
@@ -410,69 +409,69 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
         }
         return Err(MessagesTestVectorError::CommitEncodingMismatch);
     }
-    //mls_plaintext_application: String, /* serialized MLSPlaintext(ApplicationData) */
-    // MLSPlaintextApplication
+
+    // MlsPlaintextApplication
     let tv_mls_plaintext_application = &hex_to_bytes(&tv.mls_plaintext_application);
-    let my_mls_plaintext_application = MLSPlaintext::decode_detached(&tv_mls_plaintext_application)
+    let my_mls_plaintext_application = MlsPlaintext::decode_detached(&tv_mls_plaintext_application)
         .unwrap()
         .encode_detached()
         .unwrap();
     if tv_mls_plaintext_application != &my_mls_plaintext_application {
-        log::error!("  MLSPlaintextApplication encoding mismatch");
+        log::error!("  MlsPlaintextApplication encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_application);
         log::debug!("    Expected: {:x?}", tv_mls_plaintext_application);
         if cfg!(test) {
-            panic!("MLSPlaintextApplication encoding mismatch");
+            panic!("MlsPlaintextApplication encoding mismatch");
         }
-        return Err(MessagesTestVectorError::MLSPlaintextApplicationEncodingMismatch);
+        return Err(MessagesTestVectorError::MlsPlaintextApplicationEncodingMismatch);
     }
 
-    // MLSPlaintext(Proposal)
+    // MlsPlaintext(Proposal)
     let tv_mls_plaintext_proposal = &hex_to_bytes(&tv.mls_plaintext_proposal);
-    let my_mls_plaintext_proposal = MLSPlaintext::decode_detached(&tv_mls_plaintext_proposal)
+    let my_mls_plaintext_proposal = MlsPlaintext::decode_detached(&tv_mls_plaintext_proposal)
         .unwrap()
         .encode_detached()
         .unwrap();
     if tv_mls_plaintext_proposal != &my_mls_plaintext_proposal {
-        log::error!("  MLSPlaintext(Proposal) encoding mismatch");
+        log::error!("  MlsPlaintext(Proposal) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_proposal);
         log::debug!("    Expected: {:x?}", tv_mls_plaintext_proposal);
         if cfg!(test) {
-            panic!("MLSPlaintext(Proposal) encoding mismatch");
+            panic!("MlsPlaintext(Proposal) encoding mismatch");
         }
-        return Err(MessagesTestVectorError::MLSPlaintextProposalEncodingMismatch);
+        return Err(MessagesTestVectorError::MlsPlaintextProposalEncodingMismatch);
     }
 
-    // MLSPlaintext(Commit)
+    // MlsPlaintext(Commit)
     let tv_mls_plaintext_commit = &hex_to_bytes(&tv.mls_plaintext_commit);
-    let my_mls_plaintext_commit = MLSPlaintext::decode_detached(&tv_mls_plaintext_commit)
+    let my_mls_plaintext_commit = MlsPlaintext::decode_detached(&tv_mls_plaintext_commit)
         .unwrap()
         .encode_detached()
         .unwrap();
     if tv_mls_plaintext_commit != &my_mls_plaintext_commit {
-        log::error!("  MLSPlaintext(Commit) encoding mismatch");
+        log::error!("  MlsPlaintext(Commit) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_commit);
         log::debug!("    Expected: {:x?}", tv_mls_plaintext_commit);
         if cfg!(test) {
-            panic!("MLSPlaintext(Commit) encoding mismatch");
+            panic!("MlsPlaintext(Commit) encoding mismatch");
         }
-        return Err(MessagesTestVectorError::MLSPlaintextCommitEncodingMismatch);
+        return Err(MessagesTestVectorError::MlsPlaintextCommitEncodingMismatch);
     }
 
-    // MLSCiphertext
+    // MlsCiphertext
     let tv_mls_ciphertext = &hex_to_bytes(&tv.mls_ciphertext);
-    let my_mls_ciphertext = MLSCiphertext::decode_detached(&tv_mls_ciphertext)
+    let my_mls_ciphertext = MlsCiphertext::decode_detached(&tv_mls_ciphertext)
         .unwrap()
         .encode_detached()
         .unwrap();
     if tv_mls_ciphertext != &my_mls_ciphertext {
-        log::error!("  MLSCiphertext encoding mismatch");
+        log::error!("  MlsCiphertext encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_ciphertext);
         log::debug!("    Expected: {:x?}", tv_mls_ciphertext);
         if cfg!(test) {
-            panic!("MLSCiphertext encoding mismatch");
+            panic!("MlsCiphertext encoding mismatch");
         }
-        return Err(MessagesTestVectorError::MLSCiphertextEncodingMismatch);
+        return Err(MessagesTestVectorError::MlsCiphertextEncodingMismatch);
     }
     Ok(())
 }
@@ -487,17 +486,6 @@ fn read_test_vectors() {
             Err(e) => panic!("Error while checking messages test vector.\n{:?}", e),
         }
     }
-
-    // mlspp test vectors
-    //let tv_files = [
-    //    "test_vectors/mlspp/mlspp_messages_1.json",
-    //    "test_vectors/mlspp/mlspp_messages_2.json",
-    //    "test_vectors/mlspp/mlspp_messages_3.json",
-    //];
-    //for &tv_file in tv_files.iter() {
-    //    let tv: MessagesTestVector = read(tv_file);
-    //    run_test_vector(tv).expect("Error while checking messages test vector.");
-    //}
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
@@ -508,10 +496,10 @@ implement_error! {
         WelcomeEncodingMismatch = "Welcome encodings don't match.",
         PublicGroupStateEncodingMismatch = "PublicGroupState encodings don't match.",
         AddProposalEncodingMismatch = "AddProposal encodings don't match.",
-        MLSCiphertextEncodingMismatch = "MLSCiphertext encodings don't match.",
-        MLSPlaintextCommitEncodingMismatch = "MLSPlaintextCommit encodings don't match.",
-        MLSPlaintextProposalEncodingMismatch = "MLSPlaintextProposal encodings don't match.",
-        MLSPlaintextApplicationEncodingMismatch = "MLSPlaintextApplication encodings don't match.",
+        MlsCiphertextEncodingMismatch = "MlsCiphertext encodings don't match.",
+        MlsPlaintextCommitEncodingMismatch = "MlsPlaintextCommit encodings don't match.",
+        MlsPlaintextProposalEncodingMismatch = "MlsPlaintextProposal encodings don't match.",
+        MlsPlaintextApplicationEncodingMismatch = "MlsPlaintextApplication encodings don't match.",
         CommitEncodingMismatch = "Commit encodings don't match.",
         PreSharedKeyProposalEncodingMismatch = "PreSharedKeyProposal encodings don't match.",
         RemoveProposalEncodingMismatch = "RemoveProposal encodings don't match.",
