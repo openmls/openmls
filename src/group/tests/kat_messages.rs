@@ -19,9 +19,9 @@ use serde::{self, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct MessagesTestVector {
-    key_package: String,  // serialized KeyPackage,
-    capabilities: String, // serialized Capabilities,
-    lifetime: String,     // serialized {uint64 not_before; uint64 not_after;},
+    key_package: String,  /* serialized KeyPackage, */
+    capabilities: String, /* serialized Capabilities, */
+    lifetime: String,     /* serialized {uint64 not_before; uint64 not_after;}, */
     ratchet_tree: String, /* serialized optional<Node> ratchet_tree<1..2^32-1>; */
 
     group_info: String,    /* serialized GroupInfo */
