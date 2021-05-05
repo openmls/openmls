@@ -1,3 +1,9 @@
+//! # Known Answer Tests for the encoding and decoding of various structs of the
+//! MLS spec
+//!
+//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! for more description on the test vectors.
+
 use crate::{
     group::GroupEpoch,
     messages::ConfirmationTag,
