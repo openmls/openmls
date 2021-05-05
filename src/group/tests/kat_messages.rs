@@ -118,9 +118,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         extensions: vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
     };
     // We don't support external init proposals yet.
-    let external_init_proposal = vec![0u8];
+    let external_init_proposal: Vec<u8> = vec![];
     // We don't support app ack proposals yet.
-    let app_ack_proposal = vec![0u8];
+    let app_ack_proposal: Vec<u8> = vec![];
     let joiner_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
 
