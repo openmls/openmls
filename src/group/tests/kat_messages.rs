@@ -152,8 +152,15 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         .unwrap();
     let mls_plaintext_application = group.decrypt(&mls_ciphertext_application).unwrap();
 
+    let encryption_target = match random_u32() % 3 {
+        0 => commit_pt.clone(),
+        1 => add_proposal_pt.clone(),
+        2 => mls_plaintext_application.clone(),
+        _ => panic!("Modulo 3 of u32 shouldn't give us anything larger than 2"),
+    };
+
     let mls_ciphertext = group
-        .encrypt(commit_pt.clone(), random_u8() as usize)
+        .encrypt(encryption_target, random_u8() as usize)
         .unwrap();
 
     MessagesTestVector {
