@@ -153,11 +153,7 @@ impl Codec for CapabilitiesExtension {
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, crate::codec::CodecError> {
-        let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor)?;
-        let mut versions = Vec::new();
-        for &version_number in version_numbers.iter() {
-            versions.push(ProtocolVersion::try_from(version_number)?)
-        }
+        let versions: Vec<ProtocolVersion> = decode_vec(VecSize::VecU8, cursor)?;
         let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = decode_vec(VecSize::VecU8, cursor)?;
         Ok(CapabilitiesExtension {
