@@ -46,7 +46,6 @@ pub struct MessagesTestVector {
     mls_ciphertext: String,            /* serialized MLSCiphertext */
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
     let ciphersuite_name = ciphersuite.name();
     let credential_bundle = CredentialBundle::new(
@@ -203,7 +202,6 @@ fn write_test_vectors() {
     write("test_vectors/kat_messages-new.json", &tests);
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorError> {
     // KeyPackage
     let tv_key_package = &hex_to_bytes(&tv.key_package);
@@ -494,7 +492,6 @@ fn read_test_vectors() {
     }
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 implement_error! {
     pub enum MessagesTestVectorError {
         LifetimeEncodingMismatch = "Lifetime encodings don't match.",
