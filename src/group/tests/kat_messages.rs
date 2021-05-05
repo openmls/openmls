@@ -84,7 +84,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         ConfirmationTag(Mac {
             mac_value: get_random_vec(ciphersuite.hash_length()),
         }),
-        LeafIndex::from(0u32),
+        LeafIndex::from(random_u32()),
     );
     let group_secrets = GroupSecrets::random_encoded(ciphersuite, ProtocolVersion::default());
     let public_group_state = group.export_public_group_state(&credential_bundle).unwrap();
