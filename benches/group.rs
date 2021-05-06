@@ -1,12 +1,8 @@
 #![allow(non_snake_case)]
 
-use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
-use pprof::{
-    criterion::{Output, PProfProfiler},
-    protos::Message,
-};
 use rand::Rng;
-use std::{convert::TryFrom, fs::File, io::Write};
+use std::time::{Duration, Instant};
+use std::{convert::TryFrom, fs::File};
 
 use openmls::{node::Node, prelude::*, tree::index::NodeIndex};
 
@@ -171,25 +167,12 @@ fn send_message(
     (msg, sender, groups, setup)
 }
 
-fn receive_message(msg: MlsCiphertext, receiver: usize, groups: &mut Vec<MlsGroup>) {
-    groups[receiver].decrypt(&msg).unwrap();
-}
-
-fn send_messages(
-    mut groups: Vec<MlsGroup>,
-    setup: Setup,
-    sender: usize,
-    num_messages: usize,
-) -> (Vec<(MlsCiphertext, usize)>, Vec<MlsGroup>, Setup) {
-    let mut msgs = Vec::new();
-    let mut setup = setup;
-    for i in 0..num_messages {
-        let (msg, sender, new_groups, new_setup) = send_message(groups, setup, sender);
-        msgs.push((msg, sender));
-        groups = new_groups;
-        setup = new_setup;
-    }
-    (msgs, groups, setup)
+fn receive_message(
+    msg: MlsCiphertext,
+    receiver: usize,
+    groups: &mut Vec<MlsGroup>,
+) -> MlsPlaintext {
+    groups[receiver].decrypt(&msg).unwrap()
 }
 
 fn send_update(
@@ -376,274 +359,306 @@ fn send_remove_user(
     )
 }
 
-fn bench_main(c: &mut Criterion, ciphersuite: &Ciphersuite, n: usize) {
-    // c.bench_function(&format!("Setup Group {} {}", ciphersuite.name(), n), |b| {
-    //     b.iter_batched(
-    //         || {
-    //             let (credential_bundles, key_package_bundles) = create_users(n, ciphersuite);
-    //             (n, ciphersuite, credential_bundles, key_package_bundles)
-    //         },
-    //         |(n, ciphersuite, credential_bundles, key_package_bundles)| {
-    //             setup_group(n, ciphersuite, credential_bundles, key_package_bundles)
-    //         },
-    //         BatchSize::SmallInput,
-    //     )
-    // });
+fn duration_nanos(d: Duration) -> f64 {
+    (d.as_secs() as f64) + (d.subsec_nanos() as f64 * 1e-9)
+}
 
-    // c.bench_function(&format!("Join Group {} {}", ciphersuite.name(), n), |b| {
-    //     b.iter_batched(
-    //         || {
-    //             let setup = setup(n, ciphersuite);
-    //             let joiner = rand::thread_rng().gen_range(0..setup.key_package_bundles.len());
-    //             (setup, joiner)
-    //         },
-    //         |(setup, joiner)| join_group(setup, joiner),
-    //         BatchSize::SmallInput,
-    //     )
-    // });
+fn time<F, S, I>(name: &str, mut setup: S, mut f: F, groups: Vec<MlsGroup>, bench_setup: Setup)
+where
+    S: FnMut(Vec<MlsGroup>, Setup) -> I,
+    F: FnMut(I) -> (Instant, Instant),
+{
+    let mut time = 0f64;
+    const ITERATIONS: usize = 10;
+    for _ in 0..ITERATIONS {
+        let r = setup(groups.clone(), bench_setup.clone());
+        let guard = pprof::ProfilerGuard::new(1000).unwrap();
+        let (start, end) = f(r);
+        if let Ok(report) = guard.report().build() {
+            let file = File::create(&format!("flamegraph_{}.svg", name.replace(" ", "_"))).unwrap();
+            report.flamegraph(file).unwrap();
+        };
+        time += duration_nanos(end.duration_since(start));
+    }
+    let duration = f64::from(time / (ITERATIONS as f64));
+    println!("{}: {} ns", name, duration);
+}
 
+fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
     // Basic setup for all other benchmarks.
     // The setup can be cloned in the benchmark.
     let bench_setup = setup(n, ciphersuite);
     let (groups, bench_setup) = join_groups(bench_setup);
-    // let (groups, bench_setup) = send_updates(groups, bench_setup, ciphersuite);
+    let (groups, bench_setup) = match setting {
+        BenchmarkSetting::Bare => (groups, bench_setup),
+        BenchmarkSetting::Base => send_updates(groups, bench_setup, ciphersuite),
+    };
 
-    // c.bench_function(&format!("Send Message {} {}", ciphersuite.name(), n), |b| {
-    //     b.iter_batched(
-    //         || {
-    //             let sender = rand::thread_rng().gen_range(0..groups.len());
-    //             (groups.clone(), bench_setup.clone(), sender)
-    //         },
-    //         |(groups, setup, sender)| send_message(groups, setup, sender),
-    //         BatchSize::SmallInput,
-    //     )
-    // });
+    let name = format!("{} {:?} {}", ciphersuite.name(), setting, n);
 
-    // c.bench_function(
-    //     &format!("Receive Message {} {}", ciphersuite.name(), n),
-    //     |b| {
-    //         b.iter_batched(
-    //             || {
-    //                 let groups = groups.clone();
-    //                 let setup = bench_setup.clone();
-    //                 let sender = rand::thread_rng().gen_range(0..groups.len());
-    //                 let (msg, sender, groups, _setup) = send_message(groups, setup, sender);
-    //                 let mut receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                 while receiver == sender {
-    //                     receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                 }
-    //                 (msg, groups, receiver)
-    //             },
-    //             |(msg, mut groups, receiver)| receive_message(msg, receiver, &mut groups),
-    //             BatchSize::SmallInput,
-    //         )
-    //     },
-    // );
-
-    c.bench_function(
-        &format!("Receive 2nd Messages {} {}", ciphersuite.name(), n),
-        |b| {
-            b.iter_batched(
-                || {
-                    let groups = groups.clone();
-                    let setup = bench_setup.clone();
-                    let sender = rand::thread_rng().gen_range(0..groups.len());
-                    let (msg, sender, mut groups, setup) = send_message(groups, setup, sender);
-                    let mut receiver = rand::thread_rng().gen_range(0..groups.len());
-                    while receiver == sender {
-                        receiver = rand::thread_rng().gen_range(0..groups.len());
-                    }
-                    receive_message(msg, receiver, &mut groups);
-                    let mut messages = Vec::new();
-                    for _ in 0..1 {
-                        let (msg, _sender, new_groups, _setup) =
-                            send_message(groups, setup.clone(), sender);
-                        messages.push(msg);
-                        groups = new_groups;
-                    }
-                    (messages, groups, receiver)
-                },
-                |(mut messages, mut groups, receiver)| {
-                    let guard = pprof::ProfilerGuard::new(100).unwrap();
-                    for msg in messages.drain(..) {
-                        println!(" >>> foooo");
-                        receive_message(msg, receiver, &mut groups);
-                    }
-                    if let Ok(report) = guard.report().build() {
-                        let mut file = File::create("profile.pb").unwrap();
-                        let profile = report.pprof().unwrap();
-
-                        let mut content = Vec::new();
-                        profile.encode(&mut content).unwrap();
-                        file.write_all(&content).unwrap();
-
-                        // let file = File::create("flamegraph.svg").unwrap();
-                        // report.flamegraph(file).unwrap();
-                    };
-                },
-                BatchSize::SmallInput,
-            )
+    time(
+        &format!("Setup Group {}", name),
+        |_groups, _bench_setup| {
+            let (credential_bundles, key_package_bundles) = create_users(n, ciphersuite);
+            (n, ciphersuite, credential_bundles, key_package_bundles)
         },
+        |(n, ciphersuite, credential_bundles, key_package_bundles)| {
+            let start = Instant::now();
+            setup_group(n, ciphersuite, credential_bundles, key_package_bundles);
+            (start, Instant::now())
+        },
+        // These two arguments aren't actually used here.
+        Vec::new(),
+        bench_setup.clone(),
     );
 
-    // c.bench_function(&format!("Send Update {} {}", ciphersuite.name(), n), |b| {
-    //     b.iter_batched(
-    //         || {
-    //             let sender = rand::thread_rng().gen_range(0..groups.len());
-    //             (groups.clone(), bench_setup.clone(), ciphersuite, sender)
-    //         },
-    //         |(groups, setup, ciphersuite, sender)| send_update(groups, setup, ciphersuite, sender),
-    //         BatchSize::SmallInput,
-    //     )
-    // });
+    time(
+        &format!("Join Group {}", name),
+        |_groups, _bench_setup| {
+            let setup = setup(n, ciphersuite);
+            let joiner = rand::thread_rng().gen_range(0..setup.key_package_bundles.len());
+            (setup, joiner)
+        },
+        |(setup, joiner)| {
+            let start = Instant::now();
+            join_group(setup, joiner);
+            (start, Instant::now())
+        },
+        // These two arguments aren't actually used here.
+        Vec::new(),
+        bench_setup.clone(),
+    );
 
-    // c.bench_function(
-    //     &format!("Receive Update {} {}", ciphersuite.name(), n),
-    //     |b| {
-    //         b.iter_batched(
-    //             || {
-    //                 let groups = groups.clone();
-    //                 let setup = bench_setup.clone();
-    //                 let sender = rand::thread_rng().gen_range(0..groups.len());
-    //                 let (groups, _setup, commit, proposal) =
-    //                     send_update(groups, setup, ciphersuite, sender);
-    //                 let mut receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                 while receiver == sender {
-    //                     receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                 }
-    //                 (groups, receiver, commit, proposal)
-    //             },
-    //             |(groups, receiver, commit, proposal)| {
-    //                 apply_commit(groups, receiver, commit, proposal)
-    //             },
-    //             BatchSize::SmallInput,
-    //         )
-    //     },
-    // );
+    time(
+        &format!("Send Message {}", name),
+        |groups, bench_setup| {
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            (groups, bench_setup, sender)
+        },
+        |(groups, setup, sender)| {
+            let start = Instant::now();
+            send_message(groups, setup, sender);
+            (start, Instant::now())
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
 
-    // c.bench_function(&format!("Add user {} {}", ciphersuite.name(), n), |b| {
-    //     b.iter_batched(
-    //         || {
-    //             let groups = groups.clone();
-    //             let setup = bench_setup.clone();
-    //             let (kpb, _cb) = create_user(ciphersuite);
-    //             let sender = rand::thread_rng().gen_range(0..groups.len());
-    //             (groups, setup, kpb, sender)
-    //         },
-    //         |(groups, setup, kpb, sender)| send_add_user(groups, setup, kpb, sender),
-    //         BatchSize::SmallInput,
-    //     )
-    // });
+    time(
+        &format!("Receive message {}", name),
+        |mut groups, bench_setup| {
+            // Setup
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            let mut messages = Vec::new();
+            const NUM_MESSAGES: usize = 1;
+            for _ in 0..NUM_MESSAGES {
+                let (msg, _sender, new_groups, _setup) =
+                    send_message(groups, bench_setup.clone(), sender);
+                messages.push(msg);
+                groups = new_groups;
+            }
+            let mut receiver = rand::thread_rng().gen_range(0..groups.len());
+            while receiver == sender {
+                receiver = rand::thread_rng().gen_range(0..groups.len());
+            }
+            (groups.clone(), messages, receiver)
+        },
+        |(mut groups, mut messages, receiver)| {
+            // Profile
+            let start = Instant::now();
+            for msg in messages.drain(..) {
+                receive_message(msg, receiver, &mut groups);
+            }
+            let end = Instant::now();
+            (start, end)
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
 
-    // c.bench_function(
-    //     &format!("Process add user {} {}", ciphersuite.name(), n),
-    //     |b| {
-    //         b.iter_batched(
-    //             || {
-    //                 let groups = groups.clone();
-    //                 let setup = bench_setup.clone();
-    //                 let (kpb, _cb) = create_user(ciphersuite);
-    //                 let sender = rand::thread_rng().gen_range(0..groups.len());
-    //                 let (commit, add_proposal, groups, _setup, sender, _tree) =
-    //                     send_add_user(groups, setup, kpb, sender);
-    //                 let mut receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                 while receiver == sender {
-    //                     receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                 }
-    //                 (commit.0, add_proposal, groups, receiver)
-    //             },
-    //             |(commit, add_proposal, groups, receiver)| {
-    //                 apply_commit(groups, receiver, commit, add_proposal)
-    //             },
-    //             BatchSize::SmallInput,
-    //         )
-    //     },
-    // );
+    time(
+        &format!("Receive 2nd message {}", name),
+        |mut groups, bench_setup| {
+            // Setup
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            let (msg, _sender, new_groups, _setup) =
+                send_message(groups, bench_setup.clone(), sender);
+            groups = new_groups;
+            let mut receiver = rand::thread_rng().gen_range(0..groups.len());
+            while receiver == sender {
+                receiver = rand::thread_rng().gen_range(0..groups.len());
+            }
+            receive_message(msg, receiver, &mut groups);
+            let mut messages = Vec::new();
+            const NUM_MESSAGES: usize = 1;
+            for _ in 0..NUM_MESSAGES {
+                let (msg, _sender, new_groups, _setup) =
+                    send_message(groups, bench_setup.clone(), sender);
+                messages.push(msg);
+                groups = new_groups;
+            }
+            (groups.clone(), messages, receiver)
+        },
+        |(mut groups, mut messages, receiver)| {
+            // Profile
+            let start = Instant::now();
+            for msg in messages.drain(..) {
+                receive_message(msg, receiver, &mut groups);
+            }
+            let end = Instant::now();
+            (start, end)
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
 
-    // c.bench_function(&format!("Remove user {} {}", ciphersuite.name(), n), |b| {
-    //     b.iter_batched(
-    //         || {
-    //             let groups = groups.clone();
-    //             let setup = bench_setup.clone();
-    //             let sender = rand::thread_rng().gen_range(0..groups.len());
-    //             let mut removed_index = rand::thread_rng().gen_range(0..groups.len());
-    //             while groups[removed_index].node_index() == groups[sender].node_index() {
-    //                 removed_index = rand::thread_rng().gen_range(0..groups.len());
-    //             }
-    //             (groups, setup, sender, removed_index)
-    //         },
-    //         |(groups, setup, sender, removed_index)| {
-    //             send_remove_user(groups, setup, sender, removed_index)
-    //         },
-    //         BatchSize::SmallInput,
-    //     )
-    // });
+    time(
+        &format!("Send Update {}", name),
+        |groups, bench_setup| {
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            (groups, bench_setup, ciphersuite, sender)
+        },
+        |(groups, setup, ciphersuite, sender)| {
+            let start = Instant::now();
+            send_update(groups, setup, ciphersuite, sender);
+            let end = Instant::now();
+            (start, end)
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
 
-    // if n > 2 {
-    //     // We don't want a self removal for n == 2 (self removal).
-    //     c.bench_function(
-    //         &format!("Process remove user {} {}", ciphersuite.name(), n),
-    //         |b| {
-    //             b.iter_batched(
-    //                 || {
-    //                     let groups = groups.clone();
-    //                     let setup = bench_setup.clone();
-    //                     let sender = rand::thread_rng().gen_range(0..groups.len());
-    //                     let mut removed_index = rand::thread_rng().gen_range(0..groups.len());
-    //                     while groups[removed_index].node_index() == groups[sender].node_index() {
-    //                         removed_index = rand::thread_rng().gen_range(0..groups.len());
-    //                     }
-    //                     let (commit, remove_proposal, groups, _setup, sender, removed) =
-    //                         send_remove_user(groups, setup, sender, removed_index);
-    //                     let mut receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                     while receiver == sender
-    //                         || groups[receiver].node_index() == groups[sender].node_index()
-    //                         || groups[receiver].node_index() == (removed as u32 * 2)
-    //                     {
-    //                         receiver = rand::thread_rng().gen_range(0..groups.len());
-    //                     }
-    //                     (commit, remove_proposal, groups, receiver)
-    //                 },
-    //                 |(commit, remove_proposal, groups, receiver)| {
-    //                     apply_commit(groups, receiver, commit, remove_proposal)
-    //                 },
-    //                 BatchSize::SmallInput,
-    //             )
-    //         },
-    //     );
-    // }
-}
+    time(
+        &format!("Receive Update {}", name),
+        |groups, bench_setup| {
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            let (groups, _setup, commit, proposal) =
+                send_update(groups, bench_setup, ciphersuite, sender);
+            let mut receiver = rand::thread_rng().gen_range(0..groups.len());
+            while receiver == sender {
+                receiver = rand::thread_rng().gen_range(0..groups.len());
+            }
+            (groups, receiver, commit, proposal)
+        },
+        |(groups, receiver, commit, proposal)| {
+            let start = Instant::now();
+            apply_commit(groups, receiver, commit, proposal);
+            let end = Instant::now();
+            (start, end)
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
 
-fn benchmarks(c: &mut Criterion) {
-    for ciphersuite in Config::supported_ciphersuites() {
-        // for n in 2..10 {
-        //     // bench_main(c, ciphersuite, n);
-        //     send_message_bm(c, ciphersuite, n);
-        // }
-        // for n in (10..=50).step_by(10) {
-        //     // bench_main(c, ciphersuite, n);
-        //     send_message_bm(c, ciphersuite, n);
-        // }
-        // for n in (100..=500).step_by(100) {
-        //     bench_main(c, ciphersuite, n);
-        // }
-        // for n in (1_000..10_000).step_by(1_000) {
-        //     bench_main(c, ciphersuite, n);
-        // }
-        // for n in (10_000..=100_000).step_by(10_000) {
-        //     bench_main(c, ciphersuite, n);
-        // }
-        // bench_main(c, ciphersuite, 10_000);
-        // More than 10_000 requires too much memory.
-        bench_main(c, ciphersuite, 100);
-        break;
+    time(
+        &format!("Add user {}", name),
+        |groups, bench_setup| {
+            let (kpb, _cb) = create_user(ciphersuite);
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            (groups, bench_setup, kpb, sender)
+        },
+        |(groups, setup, kpb, sender)| {
+            let start = Instant::now();
+            send_add_user(groups, setup, kpb, sender);
+            let end = Instant::now();
+            (start, end)
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
+
+    time(
+        &format!("Process add user {}", name),
+        |groups, bench_setup| {
+            let (kpb, _cb) = create_user(ciphersuite);
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            let (commit, add_proposal, groups, _setup, sender, _tree) =
+                send_add_user(groups, bench_setup, kpb, sender);
+            let mut receiver = rand::thread_rng().gen_range(0..groups.len());
+            while receiver == sender {
+                receiver = rand::thread_rng().gen_range(0..groups.len());
+            }
+            (commit.0, add_proposal, groups, receiver)
+        },
+        |(commit, add_proposal, groups, receiver)| {
+            let start = Instant::now();
+            apply_commit(groups, receiver, commit, add_proposal);
+            let end = Instant::now();
+            (start, end)
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
+
+    time(
+        &format!("Remove user {}", name),
+        |groups, bench_setup| {
+            let sender = rand::thread_rng().gen_range(0..groups.len());
+            let mut removed_index = rand::thread_rng().gen_range(0..groups.len());
+            while groups[removed_index].node_index() == groups[sender].node_index() {
+                removed_index = rand::thread_rng().gen_range(0..groups.len());
+            }
+            (groups, bench_setup, sender, removed_index)
+        },
+        |(groups, setup, sender, removed_index)| {
+            let start = Instant::now();
+            send_remove_user(groups, setup, sender, removed_index);
+            let end = Instant::now();
+            (start, end)
+        },
+        groups.clone(),
+        bench_setup.clone(),
+    );
+
+    if n > 2 {
+        // We don't want a self removal for n == 2 (self removal).
+        time(
+            &format!("Process remove user {}", name),
+            |groups, bench_setup| {
+                let sender = rand::thread_rng().gen_range(0..groups.len());
+                let mut removed_index = rand::thread_rng().gen_range(0..groups.len());
+                while groups[removed_index].node_index() == groups[sender].node_index() {
+                    removed_index = rand::thread_rng().gen_range(0..groups.len());
+                }
+                let (commit, remove_proposal, groups, _setup, sender, removed) =
+                    send_remove_user(groups, bench_setup, sender, removed_index);
+                let mut receiver = rand::thread_rng().gen_range(0..groups.len());
+                while receiver == sender
+                    || groups[receiver].node_index() == groups[sender].node_index()
+                    || groups[receiver].node_index() == (removed as u32 * 2)
+                {
+                    receiver = rand::thread_rng().gen_range(0..groups.len());
+                }
+                (commit, remove_proposal, groups, receiver)
+            },
+            |(commit, remove_proposal, groups, receiver)| {
+                let start = Instant::now();
+                apply_commit(groups, receiver, commit, remove_proposal);
+                let end = Instant::now();
+                (start, end)
+            },
+            groups.clone(),
+            bench_setup.clone(),
+        );
     }
 }
 
-criterion_group!(benches, benchmarks);
-// criterion_group!(
-//     name = benches;
-//     config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
-//     targets = benchmarks
-// );
-criterion_main!(benches);
+#[derive(Debug, Clone, Copy)]
+enum BenchmarkSetting {
+    Base,
+    Bare,
+}
+
+/// Usage: `cargo bench --bench group -- 2, 3, 4, 5`
+fn main() {
+    pretty_env_logger::init();
+    let args = std::env::args().skip(1).rev().skip(1).rev();
+    for n in args {
+        for ciphersuite in Config::supported_ciphersuites() {
+            for &setup in [BenchmarkSetting::Bare, BenchmarkSetting::Base].iter() {
+                bench_main(setup, ciphersuite, n.parse::<usize>().unwrap());
+            }
+            break;
+        }
+    }
+}

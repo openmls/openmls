@@ -1,0 +1,419 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" width="1200" height="838" onload="init(evt)" viewBox="0 0 1200 838" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><!--Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples.--><!--NOTES: --><defs><linearGradient id="background" y1="0" y2="1" x1="0" x2="0"><stop stop-color="#eeeeee" offset="5%"/><stop stop-color="#eeeeb0" offset="95%"/></linearGradient></defs><style type="text/css">
+text { font-family:"Verdana"; font-size:12px; fill:rgb(0,0,0); }
+#title { text-anchor:middle; font-size:17px; }
+#search { opacity:0.1; cursor:pointer; }
+#search:hover, #search.show { opacity:1; }
+#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style><script type="text/ecmascript"><![CDATA[var nametype = 'Function:';
+var fontsize = 12;
+var fontwidth = 0.59;
+var xpad = 10;
+var inverted = false;
+var searchcolor = 'rgb(230,0,230)';
+var fluiddrawing = true;
+var truncate_text_right = false;]]><![CDATA["use strict";
+var details, searchbtn, unzoombtn, matchedtxt, svg, searching, frames;
+function init(evt) {
+    details = document.getElementById("details").firstChild;
+    searchbtn = document.getElementById("search");
+    unzoombtn = document.getElementById("unzoom");
+    matchedtxt = document.getElementById("matched");
+    svg = document.getElementsByTagName("svg")[0];
+    frames = document.getElementById("frames");
+    searching = 0;
+
+    // Use GET parameters to restore a flamegraph's state.
+    var restore_state = function() {
+        var params = get_params();
+        if (params.x && params.y)
+            zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+        if (params.s)
+            search(params.s);
+    };
+
+    if (fluiddrawing) {
+        // Make width dynamic so the SVG fits its parent's width.
+        svg.removeAttribute("width");
+        // Edge requires us to have a viewBox that gets updated with size changes.
+        var isEdge = /Edge\/\d./i.test(navigator.userAgent);
+        if (!isEdge) {
+          svg.removeAttribute("viewBox");
+        }
+        var update_for_width_change = function() {
+            if (isEdge) {
+                svg.attributes.viewBox.value = "0 0 " + svg.width.baseVal.value + " " + svg.height.baseVal.value;
+            }
+
+            // Keep consistent padding on left and right of frames container.
+            frames.attributes.width.value = svg.width.baseVal.value - xpad * 2;
+
+            // Text truncation needs to be adjusted for the current width.
+            var el = frames.children;
+            for(var i = 0; i < el.length; i++) {
+                update_text(el[i]);
+            }
+
+            // Keep search elements at a fixed distance from right edge.
+            var svgWidth = svg.width.baseVal.value;
+            searchbtn.attributes.x.value = svgWidth - xpad - 100;
+            matchedtxt.attributes.x.value = svgWidth - xpad - 100;
+        };
+        window.addEventListener('resize', function() {
+            update_for_width_change();
+        });
+        // This needs to be done asynchronously for Safari to work.
+        setTimeout(function() {
+            unzoom();
+            update_for_width_change();
+            restore_state();
+        }, 0);
+    } else {
+        restore_state();
+    }
+}
+// event listeners
+window.addEventListener("click", function(e) {
+    var target = find_group(e.target);
+    if (target) {
+        if (target.nodeName == "a") {
+            if (e.ctrlKey === false) return;
+            e.preventDefault();
+        }
+        if (target.classList.contains("parent")) unzoom();
+        zoom(target);
+
+        // set parameters for zoom state
+        var el = target.querySelector("rect");
+        if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+            var params = get_params()
+            params.x = el.attributes._orig_x.value;
+            params.y = el.attributes.y.value;
+            history.replaceState(null, null, parse_params(params));
+        }
+    }
+    else if (e.target.id == "unzoom") {
+        unzoom();
+
+        // remove zoom state
+        var params = get_params();
+        if (params.x) delete params.x;
+        if (params.y) delete params.y;
+        history.replaceState(null, null, parse_params(params));
+    }
+    else if (e.target.id == "search") search_prompt();
+}, false)
+// mouse-over for info
+// show
+window.addEventListener("mouseover", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = nametype + " " + g_to_text(target);
+}, false)
+// clear
+window.addEventListener("mouseout", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = ' ';
+}, false)
+// ctrl-F for search
+window.addEventListener("keydown",function (e) {
+    if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+        e.preventDefault();
+        search_prompt();
+    }
+}, false)
+// functions
+function get_params() {
+    var params = {};
+    var paramsarr = window.location.search.substr(1).split('&');
+    for (var i = 0; i < paramsarr.length; ++i) {
+        var tmp = paramsarr[i].split("=");
+        if (!tmp[0] || !tmp[1]) continue;
+        params[tmp[0]]  = decodeURIComponent(tmp[1]);
+    }
+    return params;
+}
+function parse_params(params) {
+    var uri = "?";
+    for (var key in params) {
+        uri += key + '=' + encodeURIComponent(params[key]) + '&';
+    }
+    if (uri.slice(-1) == "&")
+        uri = uri.substring(0, uri.length - 1);
+    if (uri == '?')
+        uri = window.location.href.split('?')[0];
+    return uri;
+}
+function find_child(node, selector) {
+    var children = node.querySelectorAll(selector);
+    if (children.length) return children[0];
+    return;
+}
+function find_group(node) {
+    var parent = node.parentElement;
+    if (!parent) return;
+    if (parent.id == "frames") return node;
+    return find_group(parent);
+}
+function orig_save(e, attr, val) {
+    if (e.attributes["_orig_" + attr] != undefined) return;
+    if (e.attributes[attr] == undefined) return;
+    if (val == undefined) val = e.attributes[attr].value;
+    e.setAttribute("_orig_" + attr, val);
+}
+function orig_load(e, attr) {
+    if (e.attributes["_orig_"+attr] == undefined) return;
+    e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+    e.removeAttribute("_orig_" + attr);
+}
+function g_to_text(e) {
+    var text = find_child(e, "title").firstChild.nodeValue;
+    return (text)
+}
+function g_to_func(e) {
+    var func = g_to_text(e);
+    // if there's any manipulation we want to do to the function
+    // name before it's searched, do it here before returning.
+    return (func);
+}
+function update_text(e) {
+    var r = find_child(e, "rect");
+    var t = find_child(e, "text");
+    var w = parseFloat(r.attributes.width.value) * frames.attributes.width.value / 100 - 3;
+    var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+    t.attributes.x.value = format_percent((parseFloat(r.attributes.x.value) + (100 * 3 / frames.attributes.width.value)));
+    // Smaller than this size won't fit anything
+    if (w < 2 * fontsize * fontwidth) {
+        t.textContent = "";
+        return;
+    }
+    t.textContent = txt;
+    // Fit in full text width
+    if (/^ *\$/.test(txt) || t.getComputedTextLength() < w)
+        return;
+    if (truncate_text_right) {
+        // Truncate the right side of the text.
+        for (var x = txt.length - 2; x > 0; x--) {
+            if (t.getSubStringLength(0, x + 2) <= w) {
+                t.textContent = txt.substring(0, x) + "..";
+                return;
+            }
+        }
+    } else {
+        // Truncate the left side of the text.
+        for (var x = 2; x < txt.length; x++) {
+            if (t.getSubStringLength(x - 2, txt.length) <= w) {
+                t.textContent = ".." + txt.substring(x, txt.length);
+                return;
+            }
+        }
+    }
+    t.textContent = "";
+}
+// zoom
+function zoom_reset(e) {
+    if (e.attributes != undefined) {
+        orig_load(e, "x");
+        orig_load(e, "width");
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_reset(c[i]);
+    }
+}
+function zoom_child(e, x, ratio) {
+    if (e.attributes != undefined) {
+        if (e.attributes.x != undefined) {
+            orig_save(e, "x");
+            e.attributes.x.value = format_percent((parseFloat(e.attributes.x.value) - x) * ratio);
+            if (e.tagName == "text") {
+                e.attributes.x.value = format_percent(parseFloat(find_child(e.parentNode, "rect[x]").attributes.x.value) + (100 * 3 / frames.attributes.width.value));
+            }
+        }
+        if (e.attributes.width != undefined) {
+            orig_save(e, "width");
+            e.attributes.width.value = format_percent(parseFloat(e.attributes.width.value) * ratio);
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_child(c[i], x, ratio);
+    }
+}
+function zoom_parent(e) {
+    if (e.attributes) {
+        if (e.attributes.x != undefined) {
+            orig_save(e, "x");
+            e.attributes.x.value = "0.0%";
+        }
+        if (e.attributes.width != undefined) {
+            orig_save(e, "width");
+            e.attributes.width.value = "100.0%";
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_parent(c[i]);
+    }
+}
+function zoom(node) {
+    var attr = find_child(node, "rect").attributes;
+    var width = parseFloat(attr.width.value);
+    var xmin = parseFloat(attr.x.value);
+    var xmax = xmin + width;
+    var ymin = parseFloat(attr.y.value);
+    var ratio = 100 / width;
+    // XXX: Workaround for JavaScript float issues (fix me)
+    var fudge = 0.001;
+    unzoombtn.classList.remove("hide");
+    var el = frames.children;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        var a = find_child(e, "rect").attributes;
+        var ex = parseFloat(a.x.value);
+        var ew = parseFloat(a.width.value);
+        // Is it an ancestor
+        if (!inverted) {
+            var upstack = parseFloat(a.y.value) > ymin;
+        } else {
+            var upstack = parseFloat(a.y.value) < ymin;
+        }
+        if (upstack) {
+            // Direct ancestor
+            if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+                e.classList.add("parent");
+                zoom_parent(e);
+                update_text(e);
+            }
+            // not in current path
+            else
+                e.classList.add("hide");
+        }
+        // Children maybe
+        else {
+            // no common path
+            if (ex < xmin || ex + fudge >= xmax) {
+                e.classList.add("hide");
+            }
+            else {
+                zoom_child(e, xmin, ratio);
+                update_text(e);
+            }
+        }
+    }
+}
+function unzoom() {
+    unzoombtn.classList.add("hide");
+    var el = frames.children;
+    for(var i = 0; i < el.length; i++) {
+        el[i].classList.remove("parent");
+        el[i].classList.remove("hide");
+        zoom_reset(el[i]);
+        update_text(el[i]);
+    }
+}
+// search
+function reset_search() {
+    var el = document.querySelectorAll("#frames rect");
+    for (var i = 0; i < el.length; i++) {
+        orig_load(el[i], "fill")
+    }
+    var params = get_params();
+    delete params.s;
+    history.replaceState(null, null, parse_params(params));
+}
+function search_prompt() {
+    if (!searching) {
+        var term = prompt("Enter a search term (regexp " +
+            "allowed, eg: ^ext4_)", "");
+        if (term != null) {
+            search(term)
+        }
+    } else {
+        reset_search();
+        searching = 0;
+        searchbtn.classList.remove("show");
+        searchbtn.firstChild.nodeValue = "Search"
+        matchedtxt.classList.add("hide");
+        matchedtxt.firstChild.nodeValue = ""
+    }
+}
+function search(term) {
+    var re = new RegExp(term);
+    var el = frames.children;
+    var matches = new Object();
+    var maxwidth = 0;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        var func = g_to_func(e);
+        var rect = find_child(e, "rect");
+        if (func == null || rect == null)
+            continue;
+        // Save max width. Only works as we have a root frame
+        var w = parseFloat(rect.attributes.width.value);
+        if (w > maxwidth)
+            maxwidth = w;
+        if (func.match(re)) {
+            // highlight
+            var x = parseFloat(rect.attributes.x.value);
+            orig_save(rect, "fill");
+            rect.attributes.fill.value = searchcolor;
+            // remember matches
+            if (matches[x] == undefined) {
+                matches[x] = w;
+            } else {
+                if (w > matches[x]) {
+                    // overwrite with parent
+                    matches[x] = w;
+                }
+            }
+            searching = 1;
+        }
+    }
+    if (!searching)
+        return;
+    var params = get_params();
+    params.s = term;
+    history.replaceState(null, null, parse_params(params));
+
+    searchbtn.classList.add("show");
+    searchbtn.firstChild.nodeValue = "Reset Search";
+    // calculate percent matched, excluding vertical overlap
+    var count = 0;
+    var lastx = -1;
+    var lastw = 0;
+    var keys = Array();
+    for (k in matches) {
+        if (matches.hasOwnProperty(k))
+            keys.push(k);
+    }
+    // sort the matched frames by their x location
+    // ascending, then width descending
+    keys.sort(function(a, b){
+        return a - b;
+    });
+    // Step through frames saving only the biggest bottom-up frames
+    // thanks to the sort order. This relies on the tree property
+    // where children are always smaller than their parents.
+    var fudge = 0.0001;    // JavaScript floating point
+    for (var k in keys) {
+        var x = parseFloat(keys[k]);
+        var w = matches[keys[k]];
+        if (x >= lastx + lastw - fudge) {
+            count += w;
+            lastx = x;
+            lastw = w;
+        }
+    }
+    // display matched percent
+    matchedtxt.classList.remove("hide");
+    var pct = 100 * count / maxwidth;
+    if (pct != 100) pct = pct.toFixed(1);
+    matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+}
+function format_percent(n) {
+    return n.toFixed(4) + "%";
+}
+]]></script><rect x="0" y="0" width="100%" height="838" fill="url(#background)"/><text id="title" x="50.0000%" y="24.00">Flame Graph</text><text id="details" x="10" y="821.00"> </text><text id="unzoom" class="hide" x="10" y="24.00">Reset Zoom</text><text id="search" x="1090" y="24.00">Search</text><text id="matched" x="1090" y="821.00"> </text><svg id="frames" x="10" width="1180"><g><title>openmls::group::mls_group::MlsGroup::apply_commit (1 samples, 2.86%)</title><rect x="0.0000%" y="501" width="2.8571%" height="15" fill="rgb(238,20,8)"/><text x="0.2500%" y="511.50">op..</text></g><g><title>openmls::group::mls_group::apply_commit::&lt;impl openmls::group::mls_group::MlsGroup&gt;::apply_commit_internal (1 samples, 2.86%)</title><rect x="0.0000%" y="485" width="2.8571%" height="15" fill="rgb(218,80,54)"/><text x="0.2500%" y="495.50">op..</text></g><g><title>openmls::messages::proposals::ProposalQueue::from_committed_proposals (1 samples, 2.86%)</title><rect x="0.0000%" y="469" width="2.8571%" height="15" fill="rgb(240,144,17)"/><text x="0.2500%" y="479.50">op..</text></g><g><title>openmls::messages::proposals::QueuedProposal::from_mls_plaintext (1 samples, 2.86%)</title><rect x="0.0000%" y="453" width="2.8571%" height="15" fill="rgb(245,27,50)"/><text x="0.2500%" y="463.50">op..</text></g><g><title>openmls::messages::proposals::ProposalReference::from_proposal (1 samples, 2.86%)</title><rect x="0.0000%" y="437" width="2.8571%" height="15" fill="rgb(251,51,7)"/><text x="0.2500%" y="447.50">op..</text></g><g><title>openmls::ciphersuite::Ciphersuite::hash (1 samples, 2.86%)</title><rect x="0.0000%" y="421" width="2.8571%" height="15" fill="rgb(245,217,29)"/><text x="0.2500%" y="431.50">op..</text></g><g><title>evercrypt::digest::hash (1 samples, 2.86%)</title><rect x="0.0000%" y="405" width="2.8571%" height="15" fill="rgb(221,176,29)"/><text x="0.2500%" y="415.50">ev..</text></g><g><title>EverCrypt_Hash_hash_256 (1 samples, 2.86%)</title><rect x="0.0000%" y="389" width="2.8571%" height="15" fill="rgb(212,180,24)"/><text x="0.2500%" y="399.50">Ev..</text></g><g><title>EverCrypt_Hash_update_last_256 (1 samples, 2.86%)</title><rect x="0.0000%" y="373" width="2.8571%" height="15" fill="rgb(254,24,2)"/><text x="0.2500%" y="383.50">Ev..</text></g><g><title>Hacl_Hash_SHA2_update_multi_256 (1 samples, 2.86%)</title><rect x="0.0000%" y="357" width="2.8571%" height="15" fill="rgb(230,100,2)"/><text x="0.2500%" y="367.50">Ha..</text></g><g><title>Hacl_Hash_Core_SHA2_update_224 (1 samples, 2.86%)</title><rect x="0.0000%" y="341" width="2.8571%" height="15" fill="rgb(219,142,25)"/><text x="0.2500%" y="351.50">Ha..</text></g><g><title>Hacl_Impl_Curve25519_Field51_fsub (1 samples, 2.86%)</title><rect x="2.8571%" y="261" width="2.8571%" height="15" fill="rgb(240,73,43)"/><text x="3.1071%" y="271.50">Ha..</text></g><g><title>fmul0 (2 samples, 5.71%)</title><rect x="5.7143%" y="261" width="5.7143%" height="15" fill="rgb(214,114,15)"/><text x="5.9643%" y="271.50">fmul0</text></g><g><title>Unknow (2 samples, 5.71%)</title><rect x="5.7143%" y="245" width="5.7143%" height="15" fill="rgb(207,130,4)"/><text x="5.9643%" y="255.50">Unknow</text></g><g><title>Hacl_Impl_Ed25519_PointAdd_point_add (9 samples, 25.71%)</title><rect x="2.8571%" y="277" width="25.7143%" height="15" fill="rgb(221,25,40)"/><text x="3.1071%" y="287.50">Hacl_Impl_Ed25519_PointAdd_point_add</text></g><g><title>times_2d (6 samples, 17.14%)</title><rect x="11.4286%" y="261" width="17.1429%" height="15" fill="rgb(241,184,7)"/><text x="11.6786%" y="271.50">times_2d</text></g><g><title>fmul0 (6 samples, 17.14%)</title><rect x="11.4286%" y="245" width="17.1429%" height="15" fill="rgb(235,159,4)"/><text x="11.6786%" y="255.50">fmul0</text></g><g><title>Hacl_Impl_Curve25519_Field51_fmul (6 samples, 17.14%)</title><rect x="11.4286%" y="229" width="17.1429%" height="15" fill="rgb(214,87,48)"/><text x="11.6786%" y="239.50">Hacl_Impl_Curve25519_Field5..</text></g><g><title>sign_step_1 (11 samples, 31.43%)</title><rect x="2.8571%" y="341" width="31.4286%" height="15" fill="rgb(246,198,24)"/><text x="3.1071%" y="351.50">sign_step_1</text></g><g><title>point_mul_g_compress (11 samples, 31.43%)</title><rect x="2.8571%" y="325" width="31.4286%" height="15" fill="rgb(209,66,40)"/><text x="3.1071%" y="335.50">point_mul_g_compress</text></g><g><title>point_mul_g (11 samples, 31.43%)</title><rect x="2.8571%" y="309" width="31.4286%" height="15" fill="rgb(233,147,39)"/><text x="3.1071%" y="319.50">point_mul_g</text></g><g><title>Hacl_Impl_Ed25519_Ladder_point_mul (11 samples, 31.43%)</title><rect x="2.8571%" y="293" width="31.4286%" height="15" fill="rgb(231,145,52)"/><text x="3.1071%" y="303.50">Hacl_Impl_Ed25519_Ladder_point_mul</text></g><g><title>point_double (2 samples, 5.71%)</title><rect x="28.5714%" y="277" width="5.7143%" height="15" fill="rgb(206,20,26)"/><text x="28.8214%" y="287.50">point_d..</text></g><g><title>Hacl_Impl_Curve25519_Field51_fmul1 (2 samples, 5.71%)</title><rect x="28.5714%" y="261" width="5.7143%" height="15" fill="rgb(238,220,4)"/><text x="28.8214%" y="271.50">Hacl_Im..</text></g><g><title>Hacl_Impl_Ed25519_PointAdd_point_add (2 samples, 5.71%)</title><rect x="34.2857%" y="277" width="5.7143%" height="15" fill="rgb(252,195,42)"/><text x="34.5357%" y="287.50">Hacl_Im..</text></g><g><title>fmul0 (2 samples, 5.71%)</title><rect x="34.2857%" y="261" width="5.7143%" height="15" fill="rgb(209,10,6)"/><text x="34.5357%" y="271.50">fmul0</text></g><g><title>fmul0 (3 samples, 8.57%)</title><rect x="48.5714%" y="261" width="8.5714%" height="15" fill="rgb(229,3,52)"/><text x="48.8214%" y="271.50">fmul0</text></g><g><title>Hacl_Impl_Curve25519_Field51_fmul (3 samples, 8.57%)</title><rect x="48.5714%" y="245" width="8.5714%" height="15" fill="rgb(253,49,37)"/><text x="48.8214%" y="255.50">Hacl_Impl_Cu..</text></g><g><title>openmls::group::mls_group::MlsGroup::create_add_proposal (23 samples, 65.71%)</title><rect x="2.8571%" y="501" width="65.7143%" height="15" fill="rgb(240,103,49)"/><text x="3.1071%" y="511.50">openmls::group::mls_group::MlsGroup::create_add_proposal</text></g><g><title>openmls::framing::plaintext::MlsPlaintext::new_from_proposal_member (23 samples, 65.71%)</title><rect x="2.8571%" y="485" width="65.7143%" height="15" fill="rgb(250,182,30)"/><text x="3.1071%" y="495.50">openmls::framing::plaintext::MlsPlaintext::new_from_proposal_member</text></g><g><title>openmls::framing::plaintext::MlsPlaintext::new_from_member (23 samples, 65.71%)</title><rect x="2.8571%" y="469" width="65.7143%" height="15" fill="rgb(248,8,30)"/><text x="3.1071%" y="479.50">openmls::framing::plaintext::MlsPlaintext::new_from_member</text></g><g><title>openmls::framing::plaintext::MlsPlaintext::sign_from_member (23 samples, 65.71%)</title><rect x="2.8571%" y="453" width="65.7143%" height="15" fill="rgb(237,120,30)"/><text x="3.1071%" y="463.50">openmls::framing::plaintext::MlsPlaintext::sign_from_member</text></g><g><title>openmls::framing::plaintext::MlsPlaintextTbs::sign (23 samples, 65.71%)</title><rect x="2.8571%" y="437" width="65.7143%" height="15" fill="rgb(221,146,34)"/><text x="3.1071%" y="447.50">openmls::framing::plaintext::MlsPlaintextTbs::sign</text></g><g><title>openmls::credentials::CredentialBundle::sign (23 samples, 65.71%)</title><rect x="2.8571%" y="421" width="65.7143%" height="15" fill="rgb(242,55,13)"/><text x="3.1071%" y="431.50">openmls::credentials::CredentialBundle::sign</text></g><g><title>openmls::ciphersuite::SignaturePrivateKey::sign (23 samples, 65.71%)</title><rect x="2.8571%" y="405" width="65.7143%" height="15" fill="rgb(242,112,31)"/><text x="3.1071%" y="415.50">openmls::ciphersuite::SignaturePrivateKey::sign</text></g><g><title>evercrypt::signature::sign (23 samples, 65.71%)</title><rect x="2.8571%" y="389" width="65.7143%" height="15" fill="rgb(249,192,27)"/><text x="3.1071%" y="399.50">evercrypt::signature::sign</text></g><g><title>evercrypt::ed25519::eddsa_sign (23 samples, 65.71%)</title><rect x="2.8571%" y="373" width="65.7143%" height="15" fill="rgb(208,204,44)"/><text x="3.1071%" y="383.50">evercrypt::ed25519::eddsa_sign</text></g><g><title>Hacl_Ed25519_sign (23 samples, 65.71%)</title><rect x="2.8571%" y="357" width="65.7143%" height="15" fill="rgb(208,93,54)"/><text x="3.1071%" y="367.50">Hacl_Ed25519_sign</text></g><g><title>sign_step_3 (12 samples, 34.29%)</title><rect x="34.2857%" y="341" width="34.2857%" height="15" fill="rgb(242,1,31)"/><text x="34.5357%" y="351.50">sign_step_3</text></g><g><title>point_mul_g_compress (12 samples, 34.29%)</title><rect x="34.2857%" y="325" width="34.2857%" height="15" fill="rgb(241,83,25)"/><text x="34.5357%" y="335.50">point_mul_g_compress</text></g><g><title>point_mul_g (12 samples, 34.29%)</title><rect x="34.2857%" y="309" width="34.2857%" height="15" fill="rgb(205,169,50)"/><text x="34.5357%" y="319.50">point_mul_g</text></g><g><title>Hacl_Impl_Ed25519_Ladder_point_mul (12 samples, 34.29%)</title><rect x="34.2857%" y="293" width="34.2857%" height="15" fill="rgb(239,186,37)"/><text x="34.5357%" y="303.50">Hacl_Impl_Ed25519_Ladder_point_mul</text></g><g><title>point_double (10 samples, 28.57%)</title><rect x="40.0000%" y="277" width="28.5714%" height="15" fill="rgb(205,221,10)"/><text x="40.2500%" y="287.50">point_double</text></g><g><title>fsquare (4 samples, 11.43%)</title><rect x="57.1429%" y="261" width="11.4286%" height="15" fill="rgb(218,196,15)"/><text x="57.3929%" y="271.50">fsquare</text></g><g><title>Hacl_Impl_Curve25519_Field51_fsqr (4 samples, 11.43%)</title><rect x="57.1429%" y="245" width="11.4286%" height="15" fill="rgb(218,196,35)"/><text x="57.3929%" y="255.50">Hacl_Impl_Curve25..</text></g><g><title>FStar_UInt128_add (4 samples, 11.43%)</title><rect x="57.1429%" y="229" width="11.4286%" height="15" fill="rgb(233,63,24)"/><text x="57.3929%" y="239.50">FStar_UInt128_add</text></g><g><title>&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::derive_key_pair (4 samples, 11.43%)</title><rect x="68.5714%" y="229" width="11.4286%" height="15" fill="rgb(225,8,4)"/><text x="68.8214%" y="239.50">&lt;hpke_rs::dh_kem:..</text></g><g><title>hpke_rs::dh_kem::DhKem::dh_base (4 samples, 11.43%)</title><rect x="68.5714%" y="213" width="11.4286%" height="15" fill="rgb(234,105,35)"/><text x="68.8214%" y="223.50">hpke_rs::dh_kem::..</text></g><g><title>evercrypt::ecdh::derive_base (4 samples, 11.43%)</title><rect x="68.5714%" y="197" width="11.4286%" height="15" fill="rgb(236,21,32)"/><text x="68.8214%" y="207.50">evercrypt::ecdh::..</text></g><g><title>evercrypt::x25519::dh_base (4 samples, 11.43%)</title><rect x="68.5714%" y="181" width="11.4286%" height="15" fill="rgb(228,109,6)"/><text x="68.8214%" y="191.50">evercrypt::x25519..</text></g><g><title>Hacl_Curve25519_51_secret_to_public (4 samples, 11.43%)</title><rect x="68.5714%" y="165" width="11.4286%" height="15" fill="rgb(229,215,31)"/><text x="68.8214%" y="175.50">Hacl_Curve25519_5..</text></g><g><title>Hacl_Curve25519_51_scalarmult (4 samples, 11.43%)</title><rect x="68.5714%" y="149" width="11.4286%" height="15" fill="rgb(221,52,54)"/><text x="68.8214%" y="159.50">Hacl_Curve25519_5..</text></g><g><title>montgomery_ladder (4 samples, 11.43%)</title><rect x="68.5714%" y="133" width="11.4286%" height="15" fill="rgb(252,129,43)"/><text x="68.8214%" y="143.50">montgomery_ladder</text></g><g><title>point_add_and_double (4 samples, 11.43%)</title><rect x="68.5714%" y="117" width="11.4286%" height="15" fill="rgb(248,183,27)"/><text x="68.8214%" y="127.50">point_add_and_dou..</text></g><g><title>fsqr20 (4 samples, 11.43%)</title><rect x="68.5714%" y="101" width="11.4286%" height="15" fill="rgb(250,0,22)"/><text x="68.8214%" y="111.50">fsqr20</text></g><g><title>FStar_UInt128_mul_wide (4 samples, 11.43%)</title><rect x="68.5714%" y="85" width="11.4286%" height="15" fill="rgb(213,166,10)"/><text x="68.8214%" y="95.50">FStar_UInt128_mul..</text></g><g><title>core::iter::traits::iterator::Iterator::collect (9 samples, 25.71%)</title><rect x="68.5714%" y="469" width="25.7143%" height="15" fill="rgb(207,163,36)"/><text x="68.8214%" y="479.50">core::iter::traits::iterator::Iterator::c..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as core::iter::traits::collect::FromIterator&lt;T&gt;&gt;::from_iter (9 samples, 25.71%)</title><rect x="68.5714%" y="453" width="25.7143%" height="15" fill="rgb(208,122,22)"/><text x="68.8214%" y="463.50">&lt;alloc::vec::Vec&lt;T&gt; as core::iter::traits..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter::SpecFromIter&lt;T,I&gt;&gt;::from_iter (9 samples, 25.71%)</title><rect x="68.5714%" y="437" width="25.7143%" height="15" fill="rgb(207,104,49)"/><text x="68.8214%" y="447.50">&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_f..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter_nested::SpecFromIterNested&lt;T,I&gt;&gt;::from_iter (9 samples, 25.71%)</title><rect x="68.5714%" y="421" width="25.7143%" height="15" fill="rgb(248,211,50)"/><text x="68.8214%" y="431.50">&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_f..</text></g><g><title>&lt;alloc::vec::Vec&lt;T,A&gt; as alloc::vec::spec_extend::SpecExtend&lt;T,I&gt;&gt;::spec_extend (9 samples, 25.71%)</title><rect x="68.5714%" y="405" width="25.7143%" height="15" fill="rgb(217,13,45)"/><text x="68.8214%" y="415.50">&lt;alloc::vec::Vec&lt;T,A&gt; as alloc::vec::spec..</text></g><g><title>core::iter::traits::iterator::Iterator::for_each (9 samples, 25.71%)</title><rect x="68.5714%" y="389" width="25.7143%" height="15" fill="rgb(211,216,49)"/><text x="68.8214%" y="399.50">core::iter::traits::iterator::Iterator::f..</text></g><g><title>&lt;core::iter::adapters::map::Map&lt;I,F&gt; as core::iter::traits::iterator::Iterator&gt;::fold (9 samples, 25.71%)</title><rect x="68.5714%" y="373" width="25.7143%" height="15" fill="rgb(221,58,53)"/><text x="68.8214%" y="383.50">&lt;core::iter::adapters::map::Map&lt;I,F&gt; as c..</text></g><g><title>core::iter::traits::iterator::Iterator::fold (9 samples, 25.71%)</title><rect x="68.5714%" y="357" width="25.7143%" height="15" fill="rgb(220,112,41)"/><text x="68.8214%" y="367.50">core::iter::traits::iterator::Iterator::f..</text></g><g><title>core::iter::adapters::map::map_fold::{{closure}} (9 samples, 25.71%)</title><rect x="68.5714%" y="341" width="25.7143%" height="15" fill="rgb(236,38,28)"/><text x="68.8214%" y="351.50">core::iter::adapters::map::map_fold::{{cl..</text></g><g><title>openmls::group::mls_group::create_commit::&lt;impl openmls::group::mls_group::MlsGroup&gt;::create_commit_internal::{{closure}} (9 samples, 25.71%)</title><rect x="68.5714%" y="325" width="25.7143%" height="15" fill="rgb(227,195,22)"/><text x="68.8214%" y="335.50">openmls::group::mls_group::create_commit:..</text></g><g><title>openmls::ciphersuite::Ciphersuite::hpke_seal (9 samples, 25.71%)</title><rect x="68.5714%" y="309" width="25.7143%" height="15" fill="rgb(214,55,33)"/><text x="68.8214%" y="319.50">openmls::ciphersuite::Ciphersuite::hpke_s..</text></g><g><title>hpke_rs::Hpke::seal (9 samples, 25.71%)</title><rect x="68.5714%" y="293" width="25.7143%" height="15" fill="rgb(248,80,13)"/><text x="68.8214%" y="303.50">hpke_rs::Hpke::seal</text></g><g><title>hpke_rs::Hpke::setup_sender (9 samples, 25.71%)</title><rect x="68.5714%" y="277" width="25.7143%" height="15" fill="rgb(238,52,6)"/><text x="68.8214%" y="287.50">hpke_rs::Hpke::setup_sender</text></g><g><title>hpke_rs::kem::Kem::encaps (9 samples, 25.71%)</title><rect x="68.5714%" y="261" width="25.7143%" height="15" fill="rgb(224,198,47)"/><text x="68.8214%" y="271.50">hpke_rs::kem::Kem::encaps</text></g><g><title>&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::encaps (9 samples, 25.71%)</title><rect x="68.5714%" y="245" width="25.7143%" height="15" fill="rgb(233,171,20)"/><text x="68.8214%" y="255.50">&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::..</text></g><g><title>hpke_rs::dh_kem::DhKem::dh (5 samples, 14.29%)</title><rect x="80.0000%" y="229" width="14.2857%" height="15" fill="rgb(241,30,25)"/><text x="80.2500%" y="239.50">hpke_rs::dh_kem::DhKem..</text></g><g><title>evercrypt::ecdh::derive (5 samples, 14.29%)</title><rect x="80.0000%" y="213" width="14.2857%" height="15" fill="rgb(207,171,38)"/><text x="80.2500%" y="223.50">evercrypt::ecdh::derive</text></g><g><title>evercrypt::x25519::dh (5 samples, 14.29%)</title><rect x="80.0000%" y="197" width="14.2857%" height="15" fill="rgb(234,70,1)"/><text x="80.2500%" y="207.50">evercrypt::x25519::dh</text></g><g><title>Hacl_Curve25519_51_ecdh (5 samples, 14.29%)</title><rect x="80.0000%" y="181" width="14.2857%" height="15" fill="rgb(232,178,18)"/><text x="80.2500%" y="191.50">Hacl_Curve25519_51_ecdh</text></g><g><title>Hacl_Curve25519_51_scalarmult (5 samples, 14.29%)</title><rect x="80.0000%" y="165" width="14.2857%" height="15" fill="rgb(241,78,40)"/><text x="80.2500%" y="175.50">Hacl_Curve25519_51_sca..</text></g><g><title>montgomery_ladder (5 samples, 14.29%)</title><rect x="80.0000%" y="149" width="14.2857%" height="15" fill="rgb(222,35,25)"/><text x="80.2500%" y="159.50">montgomery_ladder</text></g><g><title>point_add_and_double (5 samples, 14.29%)</title><rect x="80.0000%" y="133" width="14.2857%" height="15" fill="rgb(207,92,16)"/><text x="80.2500%" y="143.50">point_add_and_double</text></g><g><title>Hacl_Impl_Curve25519_Field51_fmul (5 samples, 14.29%)</title><rect x="80.0000%" y="117" width="14.2857%" height="15" fill="rgb(216,59,51)"/><text x="80.2500%" y="127.50">Hacl_Impl_Curve25519_F..</text></g><g><title>FStar_UInt128_mul_wide (5 samples, 14.29%)</title><rect x="80.0000%" y="101" width="14.2857%" height="15" fill="rgb(213,80,28)"/><text x="80.2500%" y="111.50">FStar_UInt128_mul_wide</text></g><g><title>openmls::ciphersuite::signable::Signable::sign (1 samples, 2.86%)</title><rect x="94.2857%" y="469" width="2.8571%" height="15" fill="rgb(220,93,7)"/><text x="94.5357%" y="479.50">op..</text></g><g><title>openmls::credentials::CredentialBundle::sign (1 samples, 2.86%)</title><rect x="94.2857%" y="453" width="2.8571%" height="15" fill="rgb(225,24,44)"/><text x="94.5357%" y="463.50">op..</text></g><g><title>openmls::ciphersuite::SignaturePrivateKey::sign (1 samples, 2.86%)</title><rect x="94.2857%" y="437" width="2.8571%" height="15" fill="rgb(243,74,40)"/><text x="94.5357%" y="447.50">op..</text></g><g><title>evercrypt::signature::sign (1 samples, 2.86%)</title><rect x="94.2857%" y="421" width="2.8571%" height="15" fill="rgb(228,39,7)"/><text x="94.5357%" y="431.50">ev..</text></g><g><title>evercrypt::ed25519::eddsa_sign (1 samples, 2.86%)</title><rect x="94.2857%" y="405" width="2.8571%" height="15" fill="rgb(227,79,8)"/><text x="94.5357%" y="415.50">ev..</text></g><g><title>Hacl_Ed25519_sign (1 samples, 2.86%)</title><rect x="94.2857%" y="389" width="2.8571%" height="15" fill="rgb(236,58,11)"/><text x="94.5357%" y="399.50">Ha..</text></g><g><title>sign_step_1 (1 samples, 2.86%)</title><rect x="94.2857%" y="373" width="2.8571%" height="15" fill="rgb(249,63,35)"/><text x="94.5357%" y="383.50">si..</text></g><g><title>point_mul_g_compress (1 samples, 2.86%)</title><rect x="94.2857%" y="357" width="2.8571%" height="15" fill="rgb(252,114,16)"/><text x="94.5357%" y="367.50">po..</text></g><g><title>point_mul_g (1 samples, 2.86%)</title><rect x="94.2857%" y="341" width="2.8571%" height="15" fill="rgb(254,151,24)"/><text x="94.5357%" y="351.50">po..</text></g><g><title>Hacl_Impl_Ed25519_Ladder_point_mul (1 samples, 2.86%)</title><rect x="94.2857%" y="325" width="2.8571%" height="15" fill="rgb(253,54,39)"/><text x="94.5357%" y="335.50">Ha..</text></g><g><title>swap_conditional_inplace (1 samples, 2.86%)</title><rect x="94.2857%" y="309" width="2.8571%" height="15" fill="rgb(243,25,45)"/><text x="94.5357%" y="319.50">sw..</text></g><g><title>swap_conditional_step (1 samples, 2.86%)</title><rect x="94.2857%" y="293" width="2.8571%" height="15" fill="rgb(234,134,9)"/><text x="94.5357%" y="303.50">sw..</text></g><g><title>all (35 samples, 100%)</title><rect x="0.0000%" y="789" width="100.0000%" height="15" fill="rgb(227,166,31)"/><text x="0.2500%" y="799.50"></text></g><g><title>group-f2b402fe5 (35 samples, 100.00%)</title><rect x="0.0000%" y="773" width="100.0000%" height="15" fill="rgb(245,143,41)"/><text x="0.2500%" y="783.50">group-f2b402fe5</text></g><g><title>_start (35 samples, 100.00%)</title><rect x="0.0000%" y="757" width="100.0000%" height="15" fill="rgb(238,181,32)"/><text x="0.2500%" y="767.50">_start</text></g><g><title>__libc_start_main (35 samples, 100.00%)</title><rect x="0.0000%" y="741" width="100.0000%" height="15" fill="rgb(224,113,18)"/><text x="0.2500%" y="751.50">__libc_start_main</text></g><g><title>main (35 samples, 100.00%)</title><rect x="0.0000%" y="725" width="100.0000%" height="15" fill="rgb(240,229,28)"/><text x="0.2500%" y="735.50">main</text></g><g><title>std::rt::lang_start_internal (35 samples, 100.00%)</title><rect x="0.0000%" y="709" width="100.0000%" height="15" fill="rgb(250,185,3)"/><text x="0.2500%" y="719.50">std::rt::lang_start_internal</text></g><g><title>std::panic::catch_unwind (35 samples, 100.00%)</title><rect x="0.0000%" y="693" width="100.0000%" height="15" fill="rgb(212,59,25)"/><text x="0.2500%" y="703.50">std::panic::catch_unwind</text></g><g><title>std::panicking::try (35 samples, 100.00%)</title><rect x="0.0000%" y="677" width="100.0000%" height="15" fill="rgb(221,87,20)"/><text x="0.2500%" y="687.50">std::panicking::try</text></g><g><title>std::panicking::try::do_call (35 samples, 100.00%)</title><rect x="0.0000%" y="661" width="100.0000%" height="15" fill="rgb(213,74,28)"/><text x="0.2500%" y="671.50">std::panicking::try::do_call</text></g><g><title>core::ops::function::impls::&lt;impl core::ops::function::FnOnce&lt;A&gt; for &amp;F&gt;::call_once (35 samples, 100.00%)</title><rect x="0.0000%" y="645" width="100.0000%" height="15" fill="rgb(224,132,34)"/><text x="0.2500%" y="655.50">core::ops::function::impls::&lt;impl core::ops::function::FnOnce&lt;A&gt; for &amp;F&gt;::call_once</text></g><g><title>std::rt::lang_start::{{closure}} (35 samples, 100.00%)</title><rect x="0.0000%" y="629" width="100.0000%" height="15" fill="rgb(222,101,24)"/><text x="0.2500%" y="639.50">std::rt::lang_start::{{closure}}</text></g><g><title>std::sys_common::backtrace::__rust_begin_short_backtrace (35 samples, 100.00%)</title><rect x="0.0000%" y="613" width="100.0000%" height="15" fill="rgb(254,142,4)"/><text x="0.2500%" y="623.50">std::sys_common::backtrace::__rust_begin_short_backtrace</text></g><g><title>core::ops::function::FnOnce::call_once (35 samples, 100.00%)</title><rect x="0.0000%" y="597" width="100.0000%" height="15" fill="rgb(230,229,49)"/><text x="0.2500%" y="607.50">core::ops::function::FnOnce::call_once</text></g><g><title>group::main (35 samples, 100.00%)</title><rect x="0.0000%" y="581" width="100.0000%" height="15" fill="rgb(238,70,47)"/><text x="0.2500%" y="591.50">group::main</text></g><g><title>group::bench_main (35 samples, 100.00%)</title><rect x="0.0000%" y="565" width="100.0000%" height="15" fill="rgb(231,160,17)"/><text x="0.2500%" y="575.50">group::bench_main</text></g><g><title>group::time (35 samples, 100.00%)</title><rect x="0.0000%" y="549" width="100.0000%" height="15" fill="rgb(218,68,53)"/><text x="0.2500%" y="559.50">group::time</text></g><g><title>group::bench_main::{{closure}} (35 samples, 100.00%)</title><rect x="0.0000%" y="533" width="100.0000%" height="15" fill="rgb(236,111,10)"/><text x="0.2500%" y="543.50">group::bench_main::{{closure}}</text></g><g><title>group::setup_group (35 samples, 100.00%)</title><rect x="0.0000%" y="517" width="100.0000%" height="15" fill="rgb(224,34,41)"/><text x="0.2500%" y="527.50">group::setup_group</text></g><g><title>openmls::group::mls_group::MlsGroup::create_commit (11 samples, 31.43%)</title><rect x="68.5714%" y="501" width="31.4286%" height="15" fill="rgb(241,118,19)"/><text x="68.8214%" y="511.50">openmls::group::mls_group::MlsGroup::create_commit</text></g><g><title>openmls::group::mls_group::create_commit::&lt;impl openmls::group::mls_group::MlsGroup&gt;::create_commit_internal (11 samples, 31.43%)</title><rect x="68.5714%" y="485" width="31.4286%" height="15" fill="rgb(238,129,25)"/><text x="68.8214%" y="495.50">openmls::group::mls_group::create_commit::&lt;impl ope..</text></g><g><title>openmls::messages::proposals::ProposalQueue::filter_proposals (1 samples, 2.86%)</title><rect x="97.1429%" y="469" width="2.8571%" height="15" fill="rgb(238,22,31)"/><text x="97.3929%" y="479.50">op..</text></g><g><title>core::iter::traits::iterator::Iterator::collect (1 samples, 2.86%)</title><rect x="97.1429%" y="453" width="2.8571%" height="15" fill="rgb(222,174,48)"/><text x="97.3929%" y="463.50">co..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as core::iter::traits::collect::FromIterator&lt;T&gt;&gt;::from_iter (1 samples, 2.86%)</title><rect x="97.1429%" y="437" width="2.8571%" height="15" fill="rgb(206,152,40)"/><text x="97.3929%" y="447.50">&lt;a..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter::SpecFromIter&lt;T,I&gt;&gt;::from_iter (1 samples, 2.86%)</title><rect x="97.1429%" y="421" width="2.8571%" height="15" fill="rgb(218,99,54)"/><text x="97.3929%" y="431.50">&lt;a..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter_nested::SpecFromIterNested&lt;T,I&gt;&gt;::from_iter (1 samples, 2.86%)</title><rect x="97.1429%" y="405" width="2.8571%" height="15" fill="rgb(220,174,26)"/><text x="97.3929%" y="415.50">&lt;a..</text></g><g><title>&lt;alloc::vec::Vec&lt;T,A&gt; as alloc::vec::spec_extend::SpecExtend&lt;T,I&gt;&gt;::spec_extend (1 samples, 2.86%)</title><rect x="97.1429%" y="389" width="2.8571%" height="15" fill="rgb(245,116,9)"/><text x="97.3929%" y="399.50">&lt;a..</text></g><g><title>core::iter::traits::iterator::Iterator::for_each (1 samples, 2.86%)</title><rect x="97.1429%" y="373" width="2.8571%" height="15" fill="rgb(209,72,35)"/><text x="97.3929%" y="383.50">co..</text></g><g><title>&lt;core::iter::adapters::map::Map&lt;I,F&gt; as core::iter::traits::iterator::Iterator&gt;::fold (1 samples, 2.86%)</title><rect x="97.1429%" y="357" width="2.8571%" height="15" fill="rgb(226,126,21)"/><text x="97.3929%" y="367.50">&lt;c..</text></g><g><title>core::iter::traits::iterator::Iterator::fold (1 samples, 2.86%)</title><rect x="97.1429%" y="341" width="2.8571%" height="15" fill="rgb(227,192,1)"/><text x="97.3929%" y="351.50">co..</text></g><g><title>core::iter::adapters::map::map_fold::{{closure}} (1 samples, 2.86%)</title><rect x="97.1429%" y="325" width="2.8571%" height="15" fill="rgb(237,180,29)"/><text x="97.3929%" y="335.50">co..</text></g><g><title>openmls::messages::proposals::ProposalQueue::filter_proposals::{{closure}} (1 samples, 2.86%)</title><rect x="97.1429%" y="309" width="2.8571%" height="15" fill="rgb(230,197,35)"/><text x="97.3929%" y="319.50">op..</text></g><g><title>openmls::messages::proposals::QueuedProposal::from_mls_plaintext (1 samples, 2.86%)</title><rect x="97.1429%" y="293" width="2.8571%" height="15" fill="rgb(246,193,31)"/><text x="97.3929%" y="303.50">op..</text></g><g><title>openmls::messages::proposals::ProposalReference::from_proposal (1 samples, 2.86%)</title><rect x="97.1429%" y="277" width="2.8571%" height="15" fill="rgb(241,36,4)"/><text x="97.3929%" y="287.50">op..</text></g><g><title>openmls::codec::Codec::encode_detached (1 samples, 2.86%)</title><rect x="97.1429%" y="261" width="2.8571%" height="15" fill="rgb(241,130,17)"/><text x="97.3929%" y="271.50">op..</text></g><g><title>openmls::codec::encode_vec (1 samples, 2.86%)</title><rect x="97.1429%" y="245" width="2.8571%" height="15" fill="rgb(206,137,32)"/><text x="97.3929%" y="255.50">op..</text></g><g><title>&lt;u8 as openmls::codec::Codec&gt;::encode (1 samples, 2.86%)</title><rect x="97.1429%" y="229" width="2.8571%" height="15" fill="rgb(237,228,51)"/><text x="97.3929%" y="239.50">&lt;u..</text></g><g><title>alloc::vec::Vec&lt;T,A&gt;::push (1 samples, 2.86%)</title><rect x="97.1429%" y="213" width="2.8571%" height="15" fill="rgb(243,6,42)"/><text x="97.3929%" y="223.50">al..</text></g><g><title>alloc::vec::Vec&lt;T,A&gt;::reserve (1 samples, 2.86%)</title><rect x="97.1429%" y="197" width="2.8571%" height="15" fill="rgb(251,74,28)"/><text x="97.3929%" y="207.50">al..</text></g><g><title>alloc::raw_vec::RawVec&lt;T,A&gt;::reserve (1 samples, 2.86%)</title><rect x="97.1429%" y="181" width="2.8571%" height="15" fill="rgb(218,20,49)"/><text x="97.3929%" y="191.50">al..</text></g><g><title>alloc::raw_vec::RawVec&lt;T,A&gt;::try_reserve (1 samples, 2.86%)</title><rect x="97.1429%" y="165" width="2.8571%" height="15" fill="rgb(238,28,14)"/><text x="97.3929%" y="175.50">al..</text></g><g><title>alloc::raw_vec::RawVec&lt;T,A&gt;::grow_amortized (1 samples, 2.86%)</title><rect x="97.1429%" y="149" width="2.8571%" height="15" fill="rgb(229,40,46)"/><text x="97.3929%" y="159.50">al..</text></g><g><title>alloc::raw_vec::finish_grow (1 samples, 2.86%)</title><rect x="97.1429%" y="133" width="2.8571%" height="15" fill="rgb(244,195,20)"/><text x="97.3929%" y="143.50">al..</text></g><g><title>&lt;alloc::alloc::Global as core::alloc::Allocator&gt;::grow (1 samples, 2.86%)</title><rect x="97.1429%" y="117" width="2.8571%" height="15" fill="rgb(253,56,35)"/><text x="97.3929%" y="127.50">&lt;a..</text></g><g><title>alloc::alloc::Global::grow_impl (1 samples, 2.86%)</title><rect x="97.1429%" y="101" width="2.8571%" height="15" fill="rgb(210,149,44)"/><text x="97.3929%" y="111.50">al..</text></g><g><title>alloc::alloc::realloc (1 samples, 2.86%)</title><rect x="97.1429%" y="85" width="2.8571%" height="15" fill="rgb(240,135,12)"/><text x="97.3929%" y="95.50">al..</text></g><g><title>__GI___libc_realloc (1 samples, 2.86%)</title><rect x="97.1429%" y="69" width="2.8571%" height="15" fill="rgb(251,24,50)"/><text x="97.3929%" y="79.50">__..</text></g><g><title>_int_realloc (1 samples, 2.86%)</title><rect x="97.1429%" y="53" width="2.8571%" height="15" fill="rgb(243,200,47)"/><text x="97.3929%" y="63.50">_i..</text></g><g><title>_int_malloc (1 samples, 2.86%)</title><rect x="97.1429%" y="37" width="2.8571%" height="15" fill="rgb(224,166,26)"/><text x="97.3929%" y="47.50">_i..</text></g></svg></svg>

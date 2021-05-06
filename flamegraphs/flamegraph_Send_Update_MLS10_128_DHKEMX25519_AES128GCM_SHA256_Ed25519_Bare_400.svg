@@ -1,0 +1,419 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" width="1200" height="854" onload="init(evt)" viewBox="0 0 1200 854" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><!--Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples.--><!--NOTES: --><defs><linearGradient id="background" y1="0" y2="1" x1="0" x2="0"><stop stop-color="#eeeeee" offset="5%"/><stop stop-color="#eeeeb0" offset="95%"/></linearGradient></defs><style type="text/css">
+text { font-family:"Verdana"; font-size:12px; fill:rgb(0,0,0); }
+#title { text-anchor:middle; font-size:17px; }
+#search { opacity:0.1; cursor:pointer; }
+#search:hover, #search.show { opacity:1; }
+#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style><script type="text/ecmascript"><![CDATA[var nametype = 'Function:';
+var fontsize = 12;
+var fontwidth = 0.59;
+var xpad = 10;
+var inverted = false;
+var searchcolor = 'rgb(230,0,230)';
+var fluiddrawing = true;
+var truncate_text_right = false;]]><![CDATA["use strict";
+var details, searchbtn, unzoombtn, matchedtxt, svg, searching, frames;
+function init(evt) {
+    details = document.getElementById("details").firstChild;
+    searchbtn = document.getElementById("search");
+    unzoombtn = document.getElementById("unzoom");
+    matchedtxt = document.getElementById("matched");
+    svg = document.getElementsByTagName("svg")[0];
+    frames = document.getElementById("frames");
+    searching = 0;
+
+    // Use GET parameters to restore a flamegraph's state.
+    var restore_state = function() {
+        var params = get_params();
+        if (params.x && params.y)
+            zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+        if (params.s)
+            search(params.s);
+    };
+
+    if (fluiddrawing) {
+        // Make width dynamic so the SVG fits its parent's width.
+        svg.removeAttribute("width");
+        // Edge requires us to have a viewBox that gets updated with size changes.
+        var isEdge = /Edge\/\d./i.test(navigator.userAgent);
+        if (!isEdge) {
+          svg.removeAttribute("viewBox");
+        }
+        var update_for_width_change = function() {
+            if (isEdge) {
+                svg.attributes.viewBox.value = "0 0 " + svg.width.baseVal.value + " " + svg.height.baseVal.value;
+            }
+
+            // Keep consistent padding on left and right of frames container.
+            frames.attributes.width.value = svg.width.baseVal.value - xpad * 2;
+
+            // Text truncation needs to be adjusted for the current width.
+            var el = frames.children;
+            for(var i = 0; i < el.length; i++) {
+                update_text(el[i]);
+            }
+
+            // Keep search elements at a fixed distance from right edge.
+            var svgWidth = svg.width.baseVal.value;
+            searchbtn.attributes.x.value = svgWidth - xpad - 100;
+            matchedtxt.attributes.x.value = svgWidth - xpad - 100;
+        };
+        window.addEventListener('resize', function() {
+            update_for_width_change();
+        });
+        // This needs to be done asynchronously for Safari to work.
+        setTimeout(function() {
+            unzoom();
+            update_for_width_change();
+            restore_state();
+        }, 0);
+    } else {
+        restore_state();
+    }
+}
+// event listeners
+window.addEventListener("click", function(e) {
+    var target = find_group(e.target);
+    if (target) {
+        if (target.nodeName == "a") {
+            if (e.ctrlKey === false) return;
+            e.preventDefault();
+        }
+        if (target.classList.contains("parent")) unzoom();
+        zoom(target);
+
+        // set parameters for zoom state
+        var el = target.querySelector("rect");
+        if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+            var params = get_params()
+            params.x = el.attributes._orig_x.value;
+            params.y = el.attributes.y.value;
+            history.replaceState(null, null, parse_params(params));
+        }
+    }
+    else if (e.target.id == "unzoom") {
+        unzoom();
+
+        // remove zoom state
+        var params = get_params();
+        if (params.x) delete params.x;
+        if (params.y) delete params.y;
+        history.replaceState(null, null, parse_params(params));
+    }
+    else if (e.target.id == "search") search_prompt();
+}, false)
+// mouse-over for info
+// show
+window.addEventListener("mouseover", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = nametype + " " + g_to_text(target);
+}, false)
+// clear
+window.addEventListener("mouseout", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = ' ';
+}, false)
+// ctrl-F for search
+window.addEventListener("keydown",function (e) {
+    if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+        e.preventDefault();
+        search_prompt();
+    }
+}, false)
+// functions
+function get_params() {
+    var params = {};
+    var paramsarr = window.location.search.substr(1).split('&');
+    for (var i = 0; i < paramsarr.length; ++i) {
+        var tmp = paramsarr[i].split("=");
+        if (!tmp[0] || !tmp[1]) continue;
+        params[tmp[0]]  = decodeURIComponent(tmp[1]);
+    }
+    return params;
+}
+function parse_params(params) {
+    var uri = "?";
+    for (var key in params) {
+        uri += key + '=' + encodeURIComponent(params[key]) + '&';
+    }
+    if (uri.slice(-1) == "&")
+        uri = uri.substring(0, uri.length - 1);
+    if (uri == '?')
+        uri = window.location.href.split('?')[0];
+    return uri;
+}
+function find_child(node, selector) {
+    var children = node.querySelectorAll(selector);
+    if (children.length) return children[0];
+    return;
+}
+function find_group(node) {
+    var parent = node.parentElement;
+    if (!parent) return;
+    if (parent.id == "frames") return node;
+    return find_group(parent);
+}
+function orig_save(e, attr, val) {
+    if (e.attributes["_orig_" + attr] != undefined) return;
+    if (e.attributes[attr] == undefined) return;
+    if (val == undefined) val = e.attributes[attr].value;
+    e.setAttribute("_orig_" + attr, val);
+}
+function orig_load(e, attr) {
+    if (e.attributes["_orig_"+attr] == undefined) return;
+    e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+    e.removeAttribute("_orig_" + attr);
+}
+function g_to_text(e) {
+    var text = find_child(e, "title").firstChild.nodeValue;
+    return (text)
+}
+function g_to_func(e) {
+    var func = g_to_text(e);
+    // if there's any manipulation we want to do to the function
+    // name before it's searched, do it here before returning.
+    return (func);
+}
+function update_text(e) {
+    var r = find_child(e, "rect");
+    var t = find_child(e, "text");
+    var w = parseFloat(r.attributes.width.value) * frames.attributes.width.value / 100 - 3;
+    var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+    t.attributes.x.value = format_percent((parseFloat(r.attributes.x.value) + (100 * 3 / frames.attributes.width.value)));
+    // Smaller than this size won't fit anything
+    if (w < 2 * fontsize * fontwidth) {
+        t.textContent = "";
+        return;
+    }
+    t.textContent = txt;
+    // Fit in full text width
+    if (/^ *\$/.test(txt) || t.getComputedTextLength() < w)
+        return;
+    if (truncate_text_right) {
+        // Truncate the right side of the text.
+        for (var x = txt.length - 2; x > 0; x--) {
+            if (t.getSubStringLength(0, x + 2) <= w) {
+                t.textContent = txt.substring(0, x) + "..";
+                return;
+            }
+        }
+    } else {
+        // Truncate the left side of the text.
+        for (var x = 2; x < txt.length; x++) {
+            if (t.getSubStringLength(x - 2, txt.length) <= w) {
+                t.textContent = ".." + txt.substring(x, txt.length);
+                return;
+            }
+        }
+    }
+    t.textContent = "";
+}
+// zoom
+function zoom_reset(e) {
+    if (e.attributes != undefined) {
+        orig_load(e, "x");
+        orig_load(e, "width");
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_reset(c[i]);
+    }
+}
+function zoom_child(e, x, ratio) {
+    if (e.attributes != undefined) {
+        if (e.attributes.x != undefined) {
+            orig_save(e, "x");
+            e.attributes.x.value = format_percent((parseFloat(e.attributes.x.value) - x) * ratio);
+            if (e.tagName == "text") {
+                e.attributes.x.value = format_percent(parseFloat(find_child(e.parentNode, "rect[x]").attributes.x.value) + (100 * 3 / frames.attributes.width.value));
+            }
+        }
+        if (e.attributes.width != undefined) {
+            orig_save(e, "width");
+            e.attributes.width.value = format_percent(parseFloat(e.attributes.width.value) * ratio);
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_child(c[i], x, ratio);
+    }
+}
+function zoom_parent(e) {
+    if (e.attributes) {
+        if (e.attributes.x != undefined) {
+            orig_save(e, "x");
+            e.attributes.x.value = "0.0%";
+        }
+        if (e.attributes.width != undefined) {
+            orig_save(e, "width");
+            e.attributes.width.value = "100.0%";
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_parent(c[i]);
+    }
+}
+function zoom(node) {
+    var attr = find_child(node, "rect").attributes;
+    var width = parseFloat(attr.width.value);
+    var xmin = parseFloat(attr.x.value);
+    var xmax = xmin + width;
+    var ymin = parseFloat(attr.y.value);
+    var ratio = 100 / width;
+    // XXX: Workaround for JavaScript float issues (fix me)
+    var fudge = 0.001;
+    unzoombtn.classList.remove("hide");
+    var el = frames.children;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        var a = find_child(e, "rect").attributes;
+        var ex = parseFloat(a.x.value);
+        var ew = parseFloat(a.width.value);
+        // Is it an ancestor
+        if (!inverted) {
+            var upstack = parseFloat(a.y.value) > ymin;
+        } else {
+            var upstack = parseFloat(a.y.value) < ymin;
+        }
+        if (upstack) {
+            // Direct ancestor
+            if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+                e.classList.add("parent");
+                zoom_parent(e);
+                update_text(e);
+            }
+            // not in current path
+            else
+                e.classList.add("hide");
+        }
+        // Children maybe
+        else {
+            // no common path
+            if (ex < xmin || ex + fudge >= xmax) {
+                e.classList.add("hide");
+            }
+            else {
+                zoom_child(e, xmin, ratio);
+                update_text(e);
+            }
+        }
+    }
+}
+function unzoom() {
+    unzoombtn.classList.add("hide");
+    var el = frames.children;
+    for(var i = 0; i < el.length; i++) {
+        el[i].classList.remove("parent");
+        el[i].classList.remove("hide");
+        zoom_reset(el[i]);
+        update_text(el[i]);
+    }
+}
+// search
+function reset_search() {
+    var el = document.querySelectorAll("#frames rect");
+    for (var i = 0; i < el.length; i++) {
+        orig_load(el[i], "fill")
+    }
+    var params = get_params();
+    delete params.s;
+    history.replaceState(null, null, parse_params(params));
+}
+function search_prompt() {
+    if (!searching) {
+        var term = prompt("Enter a search term (regexp " +
+            "allowed, eg: ^ext4_)", "");
+        if (term != null) {
+            search(term)
+        }
+    } else {
+        reset_search();
+        searching = 0;
+        searchbtn.classList.remove("show");
+        searchbtn.firstChild.nodeValue = "Search"
+        matchedtxt.classList.add("hide");
+        matchedtxt.firstChild.nodeValue = ""
+    }
+}
+function search(term) {
+    var re = new RegExp(term);
+    var el = frames.children;
+    var matches = new Object();
+    var maxwidth = 0;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        var func = g_to_func(e);
+        var rect = find_child(e, "rect");
+        if (func == null || rect == null)
+            continue;
+        // Save max width. Only works as we have a root frame
+        var w = parseFloat(rect.attributes.width.value);
+        if (w > maxwidth)
+            maxwidth = w;
+        if (func.match(re)) {
+            // highlight
+            var x = parseFloat(rect.attributes.x.value);
+            orig_save(rect, "fill");
+            rect.attributes.fill.value = searchcolor;
+            // remember matches
+            if (matches[x] == undefined) {
+                matches[x] = w;
+            } else {
+                if (w > matches[x]) {
+                    // overwrite with parent
+                    matches[x] = w;
+                }
+            }
+            searching = 1;
+        }
+    }
+    if (!searching)
+        return;
+    var params = get_params();
+    params.s = term;
+    history.replaceState(null, null, parse_params(params));
+
+    searchbtn.classList.add("show");
+    searchbtn.firstChild.nodeValue = "Reset Search";
+    // calculate percent matched, excluding vertical overlap
+    var count = 0;
+    var lastx = -1;
+    var lastw = 0;
+    var keys = Array();
+    for (k in matches) {
+        if (matches.hasOwnProperty(k))
+            keys.push(k);
+    }
+    // sort the matched frames by their x location
+    // ascending, then width descending
+    keys.sort(function(a, b){
+        return a - b;
+    });
+    // Step through frames saving only the biggest bottom-up frames
+    // thanks to the sort order. This relies on the tree property
+    // where children are always smaller than their parents.
+    var fudge = 0.0001;    // JavaScript floating point
+    for (var k in keys) {
+        var x = parseFloat(keys[k]);
+        var w = matches[keys[k]];
+        if (x >= lastx + lastw - fudge) {
+            count += w;
+            lastx = x;
+            lastw = w;
+        }
+    }
+    // display matched percent
+    matchedtxt.classList.remove("hide");
+    var pct = 100 * count / maxwidth;
+    if (pct != 100) pct = pct.toFixed(1);
+    matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+}
+function format_percent(n) {
+    return n.toFixed(4) + "%";
+}
+]]></script><rect x="0" y="0" width="100%" height="854" fill="url(#background)"/><text id="title" x="50.0000%" y="24.00">Flame Graph</text><text id="details" x="10" y="837.00"> </text><text id="unzoom" class="hide" x="10" y="24.00">Reset Zoom</text><text id="search" x="1090" y="24.00">Search</text><text id="matched" x="1090" y="837.00"> </text><svg id="frames" x="10" width="1180"><g><title>cfree@GLIBC_2.2.5 (2 samples, 7.69%)</title><rect x="3.8462%" y="325" width="7.6923%" height="15" fill="rgb(230,185,30)"/><text x="4.0962%" y="335.50">cfree@GLIBC..</text></g><g><title>_int_free (1 samples, 3.85%)</title><rect x="7.6923%" y="309" width="3.8462%" height="15" fill="rgb(220,14,11)"/><text x="7.9423%" y="319.50">_int..</text></g><g><title>alloc::alloc::box_free (1 samples, 3.85%)</title><rect x="11.5385%" y="245" width="3.8462%" height="15" fill="rgb(215,169,44)"/><text x="11.7885%" y="255.50">allo..</text></g><g><title>&lt;alloc::alloc::Global as core::alloc::Allocator&gt;::deallocate (1 samples, 3.85%)</title><rect x="11.5385%" y="229" width="3.8462%" height="15" fill="rgb(253,203,20)"/><text x="11.7885%" y="239.50">&lt;all..</text></g><g><title>alloc::alloc::dealloc (1 samples, 3.85%)</title><rect x="11.5385%" y="213" width="3.8462%" height="15" fill="rgb(229,225,17)"/><text x="11.7885%" y="223.50">allo..</text></g><g><title>cfree@GLIBC_2.2.5 (1 samples, 3.85%)</title><rect x="11.5385%" y="197" width="3.8462%" height="15" fill="rgb(236,76,26)"/><text x="11.7885%" y="207.50">cfre..</text></g><g><title>_int_free (1 samples, 3.85%)</title><rect x="11.5385%" y="181" width="3.8462%" height="15" fill="rgb(234,15,30)"/><text x="11.7885%" y="191.50">_int..</text></g><g><title>&lt;alloc::vec::Vec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop (2 samples, 7.69%)</title><rect x="11.5385%" y="293" width="7.6923%" height="15" fill="rgb(211,113,48)"/><text x="11.7885%" y="303.50">&lt;alloc::vec..</text></g><g><title>core::ptr::drop_in_place&lt;[alloc::boxed::Box&lt;dyn openmls::extensions::Extension&gt;]&gt; (2 samples, 7.69%)</title><rect x="11.5385%" y="277" width="7.6923%" height="15" fill="rgb(221,31,36)"/><text x="11.7885%" y="287.50">core::ptr::..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::boxed::Box&lt;dyn openmls::extensions::Extension&gt;&gt; (2 samples, 7.69%)</title><rect x="11.5385%" y="261" width="7.6923%" height="15" fill="rgb(215,118,52)"/><text x="11.7885%" y="271.50">core::ptr::..</text></g><g><title>core::ptr::drop_in_place&lt;openmls::extensions::capabilities_extension::CapabilitiesExtension&gt; (1 samples, 3.85%)</title><rect x="15.3846%" y="245" width="3.8462%" height="15" fill="rgb(241,151,27)"/><text x="15.6346%" y="255.50">core..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::vec::Vec&lt;openmls::ciphersuite::CiphersuiteName&gt;&gt; (1 samples, 3.85%)</title><rect x="15.3846%" y="229" width="3.8462%" height="15" fill="rgb(253,51,3)"/><text x="15.6346%" y="239.50">core..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::raw_vec::RawVec&lt;openmls::ciphersuite::CiphersuiteName&gt;&gt; (1 samples, 3.85%)</title><rect x="15.3846%" y="213" width="3.8462%" height="15" fill="rgb(216,201,24)"/><text x="15.6346%" y="223.50">core..</text></g><g><title>&lt;alloc::raw_vec::RawVec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop (1 samples, 3.85%)</title><rect x="15.3846%" y="197" width="3.8462%" height="15" fill="rgb(231,107,4)"/><text x="15.6346%" y="207.50">&lt;all..</text></g><g><title>&lt;alloc::alloc::Global as core::alloc::Allocator&gt;::deallocate (1 samples, 3.85%)</title><rect x="15.3846%" y="181" width="3.8462%" height="15" fill="rgb(243,97,54)"/><text x="15.6346%" y="191.50">&lt;all..</text></g><g><title>alloc::alloc::dealloc (1 samples, 3.85%)</title><rect x="15.3846%" y="165" width="3.8462%" height="15" fill="rgb(221,32,51)"/><text x="15.6346%" y="175.50">allo..</text></g><g><title>cfree@GLIBC_2.2.5 (1 samples, 3.85%)</title><rect x="15.3846%" y="149" width="3.8462%" height="15" fill="rgb(218,171,35)"/><text x="15.6346%" y="159.50">cfre..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::vec::Vec&lt;alloc::boxed::Box&lt;dyn openmls::extensions::Extension&gt;&gt;&gt; (4 samples, 15.38%)</title><rect x="11.5385%" y="309" width="15.3846%" height="15" fill="rgb(214,20,53)"/><text x="11.7885%" y="319.50">core::ptr::drop_in_place..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::raw_vec::RawVec&lt;alloc::boxed::Box&lt;dyn openmls::extensions::Extension&gt;&gt;&gt; (2 samples, 7.69%)</title><rect x="19.2308%" y="293" width="7.6923%" height="15" fill="rgb(239,9,52)"/><text x="19.4808%" y="303.50">core::ptr::..</text></g><g><title>&lt;alloc::raw_vec::RawVec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop (2 samples, 7.69%)</title><rect x="19.2308%" y="277" width="7.6923%" height="15" fill="rgb(215,114,45)"/><text x="19.4808%" y="287.50">&lt;alloc::raw..</text></g><g><title>&lt;alloc::alloc::Global as core::alloc::Allocator&gt;::deallocate (2 samples, 7.69%)</title><rect x="19.2308%" y="261" width="7.6923%" height="15" fill="rgb(208,118,9)"/><text x="19.4808%" y="271.50">&lt;alloc::all..</text></g><g><title>alloc::alloc::dealloc (2 samples, 7.69%)</title><rect x="19.2308%" y="245" width="7.6923%" height="15" fill="rgb(235,7,39)"/><text x="19.4808%" y="255.50">alloc::allo..</text></g><g><title>core::ptr::drop_in_place&lt;core::option::Option&lt;openmls::key_packages::KeyPackage&gt;&gt; (7 samples, 26.92%)</title><rect x="3.8462%" y="341" width="26.9231%" height="15" fill="rgb(243,225,15)"/><text x="4.0962%" y="351.50">core::ptr::drop_in_place&lt;core::option::Opti..</text></g><g><title>core::ptr::drop_in_place&lt;openmls::key_packages::KeyPackage&gt; (5 samples, 19.23%)</title><rect x="11.5385%" y="325" width="19.2308%" height="15" fill="rgb(225,216,18)"/><text x="11.7885%" y="335.50">core::ptr::drop_in_place&lt;openm..</text></g><g><title>core::ptr::drop_in_place&lt;openmls::credentials::Credential&gt; (1 samples, 3.85%)</title><rect x="26.9231%" y="309" width="3.8462%" height="15" fill="rgb(233,36,38)"/><text x="27.1731%" y="319.50">core..</text></g><g><title>core::ptr::drop_in_place&lt;openmls::credentials::MlsCredentialType&gt; (1 samples, 3.85%)</title><rect x="26.9231%" y="293" width="3.8462%" height="15" fill="rgb(239,88,23)"/><text x="27.1731%" y="303.50">core..</text></g><g><title>core::ptr::drop_in_place&lt;openmls::credentials::BasicCredential&gt; (1 samples, 3.85%)</title><rect x="26.9231%" y="277" width="3.8462%" height="15" fill="rgb(219,181,35)"/><text x="27.1731%" y="287.50">core..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::vec::Vec&lt;u8&gt;&gt; (1 samples, 3.85%)</title><rect x="26.9231%" y="261" width="3.8462%" height="15" fill="rgb(215,18,46)"/><text x="27.1731%" y="271.50">core..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::raw_vec::RawVec&lt;u8&gt;&gt; (1 samples, 3.85%)</title><rect x="26.9231%" y="245" width="3.8462%" height="15" fill="rgb(241,38,11)"/><text x="27.1731%" y="255.50">core..</text></g><g><title>&lt;alloc::raw_vec::RawVec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop (1 samples, 3.85%)</title><rect x="26.9231%" y="229" width="3.8462%" height="15" fill="rgb(248,169,45)"/><text x="27.1731%" y="239.50">&lt;all..</text></g><g><title>&lt;alloc::alloc::Global as core::alloc::Allocator&gt;::deallocate (1 samples, 3.85%)</title><rect x="26.9231%" y="213" width="3.8462%" height="15" fill="rgb(239,50,49)"/><text x="27.1731%" y="223.50">&lt;all..</text></g><g><title>alloc::alloc::dealloc (1 samples, 3.85%)</title><rect x="26.9231%" y="197" width="3.8462%" height="15" fill="rgb(231,96,31)"/><text x="27.1731%" y="207.50">allo..</text></g><g><title>cfree@GLIBC_2.2.5 (1 samples, 3.85%)</title><rect x="26.9231%" y="181" width="3.8462%" height="15" fill="rgb(224,193,37)"/><text x="27.1731%" y="191.50">cfre..</text></g><g><title>_int_free (1 samples, 3.85%)</title><rect x="26.9231%" y="165" width="3.8462%" height="15" fill="rgb(227,153,50)"/><text x="27.1731%" y="175.50">_int..</text></g><g><title>&lt;alloc::vec::Vec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop (8 samples, 30.77%)</title><rect x="3.8462%" y="389" width="30.7692%" height="15" fill="rgb(249,228,3)"/><text x="4.0962%" y="399.50">&lt;alloc::vec::Vec&lt;T,A&gt; as core::ops::drop::Drop&gt;::d..</text></g><g><title>core::ptr::drop_in_place&lt;[openmls::tree::node::Node]&gt; (8 samples, 30.77%)</title><rect x="3.8462%" y="373" width="30.7692%" height="15" fill="rgb(219,164,43)"/><text x="4.0962%" y="383.50">core::ptr::drop_in_place&lt;[openmls::tree::node::Nod..</text></g><g><title>core::ptr::drop_in_place&lt;openmls::tree::node::Node&gt; (8 samples, 30.77%)</title><rect x="3.8462%" y="357" width="30.7692%" height="15" fill="rgb(216,45,41)"/><text x="4.0962%" y="367.50">core::ptr::drop_in_place&lt;openmls::tree::node::Node&gt;</text></g><g><title>core::ptr::drop_in_place&lt;core::option::Option&lt;openmls::tree::node::ParentNode&gt;&gt; (1 samples, 3.85%)</title><rect x="30.7692%" y="341" width="3.8462%" height="15" fill="rgb(210,226,51)"/><text x="31.0192%" y="351.50">core..</text></g><g><title>core::ptr::drop_in_place&lt;(alloc::vec::Vec&lt;openmls::group::mls_group::MlsGroup&gt;,group::Setup,openmls::framing::plaintext::MlsPlaintext,openmls::framing::plaintext::MlsPlaintext)&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="533" width="42.3077%" height="15" fill="rgb(209,117,49)"/><text x="4.0962%" y="543.50">core::ptr::drop_in_place&lt;(alloc::vec::Vec&lt;openmls::group::mls_group::..</text></g><g><title>core::ptr::drop_in_place&lt;alloc::vec::Vec&lt;openmls::group::mls_group::MlsGroup&gt;&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="517" width="42.3077%" height="15" fill="rgb(206,196,24)"/><text x="4.0962%" y="527.50">core::ptr::drop_in_place&lt;alloc::vec::Vec&lt;openmls::group::mls_group::M..</text></g><g><title>&lt;alloc::vec::Vec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop (11 samples, 42.31%)</title><rect x="3.8462%" y="501" width="42.3077%" height="15" fill="rgb(253,218,3)"/><text x="4.0962%" y="511.50">&lt;alloc::vec::Vec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop</text></g><g><title>core::ptr::drop_in_place&lt;[openmls::group::mls_group::MlsGroup]&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="485" width="42.3077%" height="15" fill="rgb(252,166,2)"/><text x="4.0962%" y="495.50">core::ptr::drop_in_place&lt;[openmls::group::mls_group::MlsGroup]&gt;</text></g><g><title>core::ptr::drop_in_place&lt;openmls::group::mls_group::MlsGroup&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="469" width="42.3077%" height="15" fill="rgb(236,218,26)"/><text x="4.0962%" y="479.50">core::ptr::drop_in_place&lt;openmls::group::mls_group::MlsGroup&gt;</text></g><g><title>core::ptr::drop_in_place&lt;core::cell::RefCell&lt;openmls::tree::RatchetTree&gt;&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="453" width="42.3077%" height="15" fill="rgb(254,84,19)"/><text x="4.0962%" y="463.50">core::ptr::drop_in_place&lt;core::cell::RefCell&lt;openmls::tree::RatchetTr..</text></g><g><title>core::ptr::drop_in_place&lt;core::cell::UnsafeCell&lt;openmls::tree::RatchetTree&gt;&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="437" width="42.3077%" height="15" fill="rgb(219,137,29)"/><text x="4.0962%" y="447.50">core::ptr::drop_in_place&lt;core::cell::UnsafeCell&lt;openmls::tree::Ratche..</text></g><g><title>core::ptr::drop_in_place&lt;openmls::tree::RatchetTree&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="421" width="42.3077%" height="15" fill="rgb(227,47,52)"/><text x="4.0962%" y="431.50">core::ptr::drop_in_place&lt;openmls::tree::RatchetTree&gt;</text></g><g><title>core::ptr::drop_in_place&lt;alloc::vec::Vec&lt;openmls::tree::node::Node&gt;&gt; (11 samples, 42.31%)</title><rect x="3.8462%" y="405" width="42.3077%" height="15" fill="rgb(229,167,24)"/><text x="4.0962%" y="415.50">core::ptr::drop_in_place&lt;alloc::vec::Vec&lt;openmls::tree::node::Node&gt;&gt;</text></g><g><title>core::ptr::drop_in_place&lt;alloc::raw_vec::RawVec&lt;openmls::tree::node::Node&gt;&gt; (3 samples, 11.54%)</title><rect x="34.6154%" y="389" width="11.5385%" height="15" fill="rgb(233,164,1)"/><text x="34.8654%" y="399.50">core::ptr::drop_i..</text></g><g><title>&lt;alloc::raw_vec::RawVec&lt;T,A&gt; as core::ops::drop::Drop&gt;::drop (3 samples, 11.54%)</title><rect x="34.6154%" y="373" width="11.5385%" height="15" fill="rgb(218,88,48)"/><text x="34.8654%" y="383.50">&lt;alloc::raw_vec::..</text></g><g><title>&lt;alloc::alloc::Global as core::alloc::Allocator&gt;::deallocate (3 samples, 11.54%)</title><rect x="34.6154%" y="357" width="11.5385%" height="15" fill="rgb(226,214,24)"/><text x="34.8654%" y="367.50">&lt;alloc::alloc::Gl..</text></g><g><title>alloc::alloc::dealloc (3 samples, 11.54%)</title><rect x="34.6154%" y="341" width="11.5385%" height="15" fill="rgb(233,29,12)"/><text x="34.8654%" y="351.50">alloc::alloc::dea..</text></g><g><title>cfree@GLIBC_2.2.5 (3 samples, 11.54%)</title><rect x="34.6154%" y="325" width="11.5385%" height="15" fill="rgb(219,120,34)"/><text x="34.8654%" y="335.50">cfree@GLIBC_2.2.5</text></g><g><title>_int_free (3 samples, 11.54%)</title><rect x="34.6154%" y="309" width="11.5385%" height="15" fill="rgb(226,78,44)"/><text x="34.8654%" y="319.50">_int_free</text></g><g><title>malloc_consolidate (3 samples, 11.54%)</title><rect x="34.6154%" y="293" width="11.5385%" height="15" fill="rgb(240,15,48)"/><text x="34.8654%" y="303.50">malloc_consolidate</text></g><g><title>unlink_chunk.constprop.0 (1 samples, 3.85%)</title><rect x="42.3077%" y="277" width="3.8462%" height="15" fill="rgb(253,176,7)"/><text x="42.5577%" y="287.50">unli..</text></g><g><title>openmls::group::mls_group::MlsGroup::apply_commit (1 samples, 3.85%)</title><rect x="46.1538%" y="517" width="3.8462%" height="15" fill="rgb(206,166,28)"/><text x="46.4038%" y="527.50">open..</text></g><g><title>openmls::group::mls_group::apply_commit::&lt;impl openmls::group::mls_group::MlsGroup&gt;::apply_commit_internal (1 samples, 3.85%)</title><rect x="46.1538%" y="501" width="3.8462%" height="15" fill="rgb(241,53,51)"/><text x="46.4038%" y="511.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="485" width="3.8462%" height="15" fill="rgb(249,112,30)"/><text x="46.4038%" y="495.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="469" width="3.8462%" height="15" fill="rgb(217,85,30)"/><text x="46.4038%" y="479.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="453" width="3.8462%" height="15" fill="rgb(233,49,7)"/><text x="46.4038%" y="463.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="437" width="3.8462%" height="15" fill="rgb(234,109,9)"/><text x="46.4038%" y="447.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="421" width="3.8462%" height="15" fill="rgb(253,95,22)"/><text x="46.4038%" y="431.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="405" width="3.8462%" height="15" fill="rgb(233,176,25)"/><text x="46.4038%" y="415.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="389" width="3.8462%" height="15" fill="rgb(236,33,39)"/><text x="46.4038%" y="399.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="373" width="3.8462%" height="15" fill="rgb(223,226,42)"/><text x="46.4038%" y="383.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="357" width="3.8462%" height="15" fill="rgb(216,99,33)"/><text x="46.4038%" y="367.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="341" width="3.8462%" height="15" fill="rgb(235,84,23)"/><text x="46.4038%" y="351.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="46.1538%" y="325" width="3.8462%" height="15" fill="rgb(232,2,27)"/><text x="46.4038%" y="335.50">open..</text></g><g><title>openmls::tree::hashes::LeafNodeHashInput::hash (1 samples, 3.85%)</title><rect x="46.1538%" y="309" width="3.8462%" height="15" fill="rgb(241,23,22)"/><text x="46.4038%" y="319.50">open..</text></g><g><title>openmls::ciphersuite::Ciphersuite::hash (1 samples, 3.85%)</title><rect x="46.1538%" y="293" width="3.8462%" height="15" fill="rgb(211,73,27)"/><text x="46.4038%" y="303.50">open..</text></g><g><title>evercrypt::digest::hash (1 samples, 3.85%)</title><rect x="46.1538%" y="277" width="3.8462%" height="15" fill="rgb(235,109,49)"/><text x="46.4038%" y="287.50">ever..</text></g><g><title>EverCrypt_Hash_hash_256 (1 samples, 3.85%)</title><rect x="46.1538%" y="261" width="3.8462%" height="15" fill="rgb(230,99,29)"/><text x="46.4038%" y="271.50">Ever..</text></g><g><title>Hacl_Hash_SHA2_update_multi_256 (1 samples, 3.85%)</title><rect x="46.1538%" y="245" width="3.8462%" height="15" fill="rgb(245,199,7)"/><text x="46.4038%" y="255.50">Hacl..</text></g><g><title>Hacl_Hash_Core_SHA2_update_224 (1 samples, 3.85%)</title><rect x="46.1538%" y="229" width="3.8462%" height="15" fill="rgb(217,179,10)"/><text x="46.4038%" y="239.50">Hacl..</text></g><g><title>hpke_rs::kdf::Kdf::labeled_expand (1 samples, 3.85%)</title><rect x="50.0000%" y="197" width="3.8462%" height="15" fill="rgb(254,99,47)"/><text x="50.2500%" y="207.50">hpke..</text></g><g><title>&lt;hpke_rs::hkdf::HkdfSha256 as hpke_rs::kdf::KdfTrait&gt;::expand (1 samples, 3.85%)</title><rect x="50.0000%" y="181" width="3.8462%" height="15" fill="rgb(251,121,7)"/><text x="50.2500%" y="191.50">&lt;hpk..</text></g><g><title>evercrypt::hkdf::expand (1 samples, 3.85%)</title><rect x="50.0000%" y="165" width="3.8462%" height="15" fill="rgb(250,177,26)"/><text x="50.2500%" y="175.50">ever..</text></g><g><title>EverCrypt_HKDF_expand_sha2_256 (1 samples, 3.85%)</title><rect x="50.0000%" y="149" width="3.8462%" height="15" fill="rgb(232,88,15)"/><text x="50.2500%" y="159.50">Ever..</text></g><g><title>EverCrypt_HMAC_compute_sha2_256 (1 samples, 3.85%)</title><rect x="50.0000%" y="133" width="3.8462%" height="15" fill="rgb(251,54,54)"/><text x="50.2500%" y="143.50">Ever..</text></g><g><title>EverCrypt_Hash_update_last_256 (1 samples, 3.85%)</title><rect x="50.0000%" y="117" width="3.8462%" height="15" fill="rgb(208,177,15)"/><text x="50.2500%" y="127.50">Ever..</text></g><g><title>Hacl_Hash_SHA2_update_multi_256 (1 samples, 3.85%)</title><rect x="50.0000%" y="101" width="3.8462%" height="15" fill="rgb(205,97,32)"/><text x="50.2500%" y="111.50">Hacl..</text></g><g><title>Hacl_Hash_Core_SHA2_update_224 (1 samples, 3.85%)</title><rect x="50.0000%" y="85" width="3.8462%" height="15" fill="rgb(217,192,13)"/><text x="50.2500%" y="95.50">Hacl..</text></g><g><title>hpke_rs::Hpke::key_schedule (2 samples, 7.69%)</title><rect x="50.0000%" y="213" width="7.6923%" height="15" fill="rgb(215,163,41)"/><text x="50.2500%" y="223.50">hpke_rs::Hp..</text></g><g><title>hpke_rs::kdf::Kdf::labeled_extract (1 samples, 3.85%)</title><rect x="53.8462%" y="197" width="3.8462%" height="15" fill="rgb(246,83,29)"/><text x="54.0962%" y="207.50">hpke..</text></g><g><title>&lt;hpke_rs::hkdf::HkdfSha256 as hpke_rs::kdf::KdfTrait&gt;::extract (1 samples, 3.85%)</title><rect x="53.8462%" y="181" width="3.8462%" height="15" fill="rgb(219,2,45)"/><text x="54.0962%" y="191.50">&lt;hpk..</text></g><g><title>evercrypt::hkdf::extract (1 samples, 3.85%)</title><rect x="53.8462%" y="165" width="3.8462%" height="15" fill="rgb(242,215,33)"/><text x="54.0962%" y="175.50">ever..</text></g><g><title>EverCrypt_HMAC_compute_sha2_256 (1 samples, 3.85%)</title><rect x="53.8462%" y="149" width="3.8462%" height="15" fill="rgb(217,1,6)"/><text x="54.0962%" y="159.50">Ever..</text></g><g><title>Hacl_Hash_SHA2_update_multi_256 (1 samples, 3.85%)</title><rect x="53.8462%" y="133" width="3.8462%" height="15" fill="rgb(207,85,52)"/><text x="54.0962%" y="143.50">Hacl..</text></g><g><title>Hacl_Hash_Core_SHA2_update_224 (1 samples, 3.85%)</title><rect x="53.8462%" y="117" width="3.8462%" height="15" fill="rgb(231,171,19)"/><text x="54.0962%" y="127.50">Hacl..</text></g><g><title>&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::derive_key_pair (2 samples, 7.69%)</title><rect x="57.6923%" y="181" width="7.6923%" height="15" fill="rgb(207,128,4)"/><text x="57.9423%" y="191.50">&lt;hpke_rs::d..</text></g><g><title>hpke_rs::dh_kem::DhKem::dh_base (2 samples, 7.69%)</title><rect x="57.6923%" y="165" width="7.6923%" height="15" fill="rgb(219,208,4)"/><text x="57.9423%" y="175.50">hpke_rs::dh..</text></g><g><title>evercrypt::ecdh::derive_base (2 samples, 7.69%)</title><rect x="57.6923%" y="149" width="7.6923%" height="15" fill="rgb(235,161,42)"/><text x="57.9423%" y="159.50">evercrypt::..</text></g><g><title>evercrypt::x25519::dh_base (2 samples, 7.69%)</title><rect x="57.6923%" y="133" width="7.6923%" height="15" fill="rgb(247,218,18)"/><text x="57.9423%" y="143.50">evercrypt::..</text></g><g><title>Hacl_Curve25519_51_secret_to_public (2 samples, 7.69%)</title><rect x="57.6923%" y="117" width="7.6923%" height="15" fill="rgb(232,114,51)"/><text x="57.9423%" y="127.50">Hacl_Curve2..</text></g><g><title>Hacl_Curve25519_51_scalarmult (2 samples, 7.69%)</title><rect x="57.6923%" y="101" width="7.6923%" height="15" fill="rgb(222,95,3)"/><text x="57.9423%" y="111.50">Hacl_Curve2..</text></g><g><title>montgomery_ladder (2 samples, 7.69%)</title><rect x="57.6923%" y="85" width="7.6923%" height="15" fill="rgb(240,65,29)"/><text x="57.9423%" y="95.50">montgomery_..</text></g><g><title>point_add_and_double (2 samples, 7.69%)</title><rect x="57.6923%" y="69" width="7.6923%" height="15" fill="rgb(249,209,20)"/><text x="57.9423%" y="79.50">point_add_a..</text></g><g><title>fmul20 (2 samples, 7.69%)</title><rect x="57.6923%" y="53" width="7.6923%" height="15" fill="rgb(241,48,37)"/><text x="57.9423%" y="63.50">fmul20</text></g><g><title>FStar_UInt128_add (2 samples, 7.69%)</title><rect x="57.6923%" y="37" width="7.6923%" height="15" fill="rgb(230,140,42)"/><text x="57.9423%" y="47.50">FStar_UInt1..</text></g><g><title>encode_point (4 samples, 15.38%)</title><rect x="65.3846%" y="101" width="15.3846%" height="15" fill="rgb(230,176,45)"/><text x="65.6346%" y="111.50">encode_point</text></g><g><title>Hacl_Curve25519_51_finv (4 samples, 15.38%)</title><rect x="65.3846%" y="85" width="15.3846%" height="15" fill="rgb(245,112,21)"/><text x="65.6346%" y="95.50">Hacl_Curve25519_51_finv</text></g><g><title>Hacl_Curve25519_51_fsquare_times (4 samples, 15.38%)</title><rect x="65.3846%" y="69" width="15.3846%" height="15" fill="rgb(207,183,35)"/><text x="65.6346%" y="79.50">Hacl_Curve25519_51_fsqua..</text></g><g><title>Hacl_Impl_Curve25519_Field51_fsqr (4 samples, 15.38%)</title><rect x="65.3846%" y="53" width="15.3846%" height="15" fill="rgb(227,44,33)"/><text x="65.6346%" y="63.50">Hacl_Impl_Curve25519_Fie..</text></g><g><title>FStar_UInt128_mul_wide (4 samples, 15.38%)</title><rect x="65.3846%" y="37" width="15.3846%" height="15" fill="rgb(246,120,21)"/><text x="65.6346%" y="47.50">FStar_UInt128_mul_wide</text></g><g><title>openmls::tree::RatchetTree::refresh_private_tree (12 samples, 46.15%)</title><rect x="50.0000%" y="485" width="46.1538%" height="15" fill="rgb(235,57,52)"/><text x="50.2500%" y="495.50">openmls::tree::RatchetTree::refresh_private_tree</text></g><g><title>openmls::tree::RatchetTree::replace_private_tree_ (12 samples, 46.15%)</title><rect x="50.0000%" y="469" width="46.1538%" height="15" fill="rgb(238,84,10)"/><text x="50.2500%" y="479.50">openmls::tree::RatchetTree::replace_private_tree_</text></g><g><title>openmls::tree::RatchetTree::encrypt_to_copath (12 samples, 46.15%)</title><rect x="50.0000%" y="453" width="46.1538%" height="15" fill="rgb(251,200,32)"/><text x="50.2500%" y="463.50">openmls::tree::RatchetTree::encrypt_to_copath</text></g><g><title>core::iter::traits::iterator::Iterator::collect (12 samples, 46.15%)</title><rect x="50.0000%" y="437" width="46.1538%" height="15" fill="rgb(247,159,13)"/><text x="50.2500%" y="447.50">core::iter::traits::iterator::Iterator::collect</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as core::iter::traits::collect::FromIterator&lt;T&gt;&gt;::from_iter (12 samples, 46.15%)</title><rect x="50.0000%" y="421" width="46.1538%" height="15" fill="rgb(238,64,4)"/><text x="50.2500%" y="431.50">&lt;alloc::vec::Vec&lt;T&gt; as core::iter::traits::collect::FromIterator&lt;T&gt;&gt;::from_i..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter::SpecFromIter&lt;T,I&gt;&gt;::from_iter (12 samples, 46.15%)</title><rect x="50.0000%" y="405" width="46.1538%" height="15" fill="rgb(221,131,51)"/><text x="50.2500%" y="415.50">&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter::SpecFromIter&lt;T,I&gt;&gt;::from_..</text></g><g><title>&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter_nested::SpecFromIterNested&lt;T,I&gt;&gt;::from_iter (12 samples, 46.15%)</title><rect x="50.0000%" y="389" width="46.1538%" height="15" fill="rgb(242,5,29)"/><text x="50.2500%" y="399.50">&lt;alloc::vec::Vec&lt;T&gt; as alloc::vec::spec_from_iter_nested::SpecFromIterNested..</text></g><g><title>&lt;alloc::vec::Vec&lt;T,A&gt; as alloc::vec::spec_extend::SpecExtend&lt;T,I&gt;&gt;::spec_extend (12 samples, 46.15%)</title><rect x="50.0000%" y="373" width="46.1538%" height="15" fill="rgb(214,130,32)"/><text x="50.2500%" y="383.50">&lt;alloc::vec::Vec&lt;T,A&gt; as alloc::vec::spec_extend::SpecExtend&lt;T,I&gt;&gt;::spec_ext..</text></g><g><title>core::iter::traits::iterator::Iterator::for_each (12 samples, 46.15%)</title><rect x="50.0000%" y="357" width="46.1538%" height="15" fill="rgb(244,210,16)"/><text x="50.2500%" y="367.50">core::iter::traits::iterator::Iterator::for_each</text></g><g><title>&lt;core::iter::adapters::map::Map&lt;I,F&gt; as core::iter::traits::iterator::Iterator&gt;::fold (12 samples, 46.15%)</title><rect x="50.0000%" y="341" width="46.1538%" height="15" fill="rgb(234,48,26)"/><text x="50.2500%" y="351.50">&lt;core::iter::adapters::map::Map&lt;I,F&gt; as core::iter::traits::iterator::Iterat..</text></g><g><title>core::iter::traits::iterator::Iterator::fold (12 samples, 46.15%)</title><rect x="50.0000%" y="325" width="46.1538%" height="15" fill="rgb(231,82,38)"/><text x="50.2500%" y="335.50">core::iter::traits::iterator::Iterator::fold</text></g><g><title>core::iter::adapters::map::map_fold::{{closure}} (12 samples, 46.15%)</title><rect x="50.0000%" y="309" width="46.1538%" height="15" fill="rgb(254,128,41)"/><text x="50.2500%" y="319.50">core::iter::adapters::map::map_fold::{{closure}}</text></g><g><title>openmls::tree::RatchetTree::encrypt_to_copath::{{closure}} (12 samples, 46.15%)</title><rect x="50.0000%" y="293" width="46.1538%" height="15" fill="rgb(212,73,49)"/><text x="50.2500%" y="303.50">openmls::tree::RatchetTree::encrypt_to_copath::{{closure}}</text></g><g><title>openmls::ciphersuite::Ciphersuite::hpke_seal_secret (12 samples, 46.15%)</title><rect x="50.0000%" y="277" width="46.1538%" height="15" fill="rgb(205,62,54)"/><text x="50.2500%" y="287.50">openmls::ciphersuite::Ciphersuite::hpke_seal_secret</text></g><g><title>openmls::ciphersuite::Ciphersuite::hpke_seal (12 samples, 46.15%)</title><rect x="50.0000%" y="261" width="46.1538%" height="15" fill="rgb(228,0,8)"/><text x="50.2500%" y="271.50">openmls::ciphersuite::Ciphersuite::hpke_seal</text></g><g><title>hpke_rs::Hpke::seal (12 samples, 46.15%)</title><rect x="50.0000%" y="245" width="46.1538%" height="15" fill="rgb(251,28,17)"/><text x="50.2500%" y="255.50">hpke_rs::Hpke::seal</text></g><g><title>hpke_rs::Hpke::setup_sender (12 samples, 46.15%)</title><rect x="50.0000%" y="229" width="46.1538%" height="15" fill="rgb(238,105,27)"/><text x="50.2500%" y="239.50">hpke_rs::Hpke::setup_sender</text></g><g><title>hpke_rs::kem::Kem::encaps (10 samples, 38.46%)</title><rect x="57.6923%" y="213" width="38.4615%" height="15" fill="rgb(237,216,33)"/><text x="57.9423%" y="223.50">hpke_rs::kem::Kem::encaps</text></g><g><title>&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::encaps (10 samples, 38.46%)</title><rect x="57.6923%" y="197" width="38.4615%" height="15" fill="rgb(229,228,25)"/><text x="57.9423%" y="207.50">&lt;hpke_rs::dh_kem::DhKem as hpke_rs::kem::KemTrait&gt;::encaps</text></g><g><title>hpke_rs::dh_kem::DhKem::dh (8 samples, 30.77%)</title><rect x="65.3846%" y="181" width="30.7692%" height="15" fill="rgb(233,75,23)"/><text x="65.6346%" y="191.50">hpke_rs::dh_kem::DhKem::dh</text></g><g><title>evercrypt::ecdh::derive (8 samples, 30.77%)</title><rect x="65.3846%" y="165" width="30.7692%" height="15" fill="rgb(231,207,16)"/><text x="65.6346%" y="175.50">evercrypt::ecdh::derive</text></g><g><title>evercrypt::x25519::dh (8 samples, 30.77%)</title><rect x="65.3846%" y="149" width="30.7692%" height="15" fill="rgb(231,191,45)"/><text x="65.6346%" y="159.50">evercrypt::x25519::dh</text></g><g><title>Hacl_Curve25519_51_ecdh (8 samples, 30.77%)</title><rect x="65.3846%" y="133" width="30.7692%" height="15" fill="rgb(224,133,17)"/><text x="65.6346%" y="143.50">Hacl_Curve25519_51_ecdh</text></g><g><title>Hacl_Curve25519_51_scalarmult (8 samples, 30.77%)</title><rect x="65.3846%" y="117" width="30.7692%" height="15" fill="rgb(209,178,27)"/><text x="65.6346%" y="127.50">Hacl_Curve25519_51_scalarmult</text></g><g><title>montgomery_ladder (4 samples, 15.38%)</title><rect x="80.7692%" y="101" width="15.3846%" height="15" fill="rgb(218,37,11)"/><text x="81.0192%" y="111.50">montgomery_ladder</text></g><g><title>point_add_and_double (4 samples, 15.38%)</title><rect x="80.7692%" y="85" width="15.3846%" height="15" fill="rgb(251,226,25)"/><text x="81.0192%" y="95.50">point_add_and_double</text></g><g><title>fmul20 (4 samples, 15.38%)</title><rect x="80.7692%" y="69" width="15.3846%" height="15" fill="rgb(209,222,27)"/><text x="81.0192%" y="79.50">fmul20</text></g><g><title>FStar_UInt128_add (4 samples, 15.38%)</title><rect x="80.7692%" y="53" width="15.3846%" height="15" fill="rgb(238,22,21)"/><text x="81.0192%" y="63.50">FStar_UInt128_add</text></g><g><title>all (26 samples, 100%)</title><rect x="0.0000%" y="805" width="100.0000%" height="15" fill="rgb(233,161,25)"/><text x="0.2500%" y="815.50"></text></g><g><title>group-f2b402fe5 (26 samples, 100.00%)</title><rect x="0.0000%" y="789" width="100.0000%" height="15" fill="rgb(226,122,53)"/><text x="0.2500%" y="799.50">group-f2b402fe5</text></g><g><title>_start (25 samples, 96.15%)</title><rect x="3.8462%" y="773" width="96.1538%" height="15" fill="rgb(220,123,17)"/><text x="4.0962%" y="783.50">_start</text></g><g><title>__libc_start_main (25 samples, 96.15%)</title><rect x="3.8462%" y="757" width="96.1538%" height="15" fill="rgb(230,224,35)"/><text x="4.0962%" y="767.50">__libc_start_main</text></g><g><title>main (25 samples, 96.15%)</title><rect x="3.8462%" y="741" width="96.1538%" height="15" fill="rgb(246,83,8)"/><text x="4.0962%" y="751.50">main</text></g><g><title>std::rt::lang_start_internal (25 samples, 96.15%)</title><rect x="3.8462%" y="725" width="96.1538%" height="15" fill="rgb(230,214,17)"/><text x="4.0962%" y="735.50">std::rt::lang_start_internal</text></g><g><title>std::panic::catch_unwind (25 samples, 96.15%)</title><rect x="3.8462%" y="709" width="96.1538%" height="15" fill="rgb(222,97,18)"/><text x="4.0962%" y="719.50">std::panic::catch_unwind</text></g><g><title>std::panicking::try (25 samples, 96.15%)</title><rect x="3.8462%" y="693" width="96.1538%" height="15" fill="rgb(206,79,1)"/><text x="4.0962%" y="703.50">std::panicking::try</text></g><g><title>std::panicking::try::do_call (25 samples, 96.15%)</title><rect x="3.8462%" y="677" width="96.1538%" height="15" fill="rgb(214,121,34)"/><text x="4.0962%" y="687.50">std::panicking::try::do_call</text></g><g><title>core::ops::function::impls::&lt;impl core::ops::function::FnOnce&lt;A&gt; for &amp;F&gt;::call_once (25 samples, 96.15%)</title><rect x="3.8462%" y="661" width="96.1538%" height="15" fill="rgb(249,199,46)"/><text x="4.0962%" y="671.50">core::ops::function::impls::&lt;impl core::ops::function::FnOnce&lt;A&gt; for &amp;F&gt;::call_once</text></g><g><title>std::rt::lang_start::{{closure}} (25 samples, 96.15%)</title><rect x="3.8462%" y="645" width="96.1538%" height="15" fill="rgb(214,222,46)"/><text x="4.0962%" y="655.50">std::rt::lang_start::{{closure}}</text></g><g><title>std::sys_common::backtrace::__rust_begin_short_backtrace (25 samples, 96.15%)</title><rect x="3.8462%" y="629" width="96.1538%" height="15" fill="rgb(248,168,30)"/><text x="4.0962%" y="639.50">std::sys_common::backtrace::__rust_begin_short_backtrace</text></g><g><title>core::ops::function::FnOnce::call_once (25 samples, 96.15%)</title><rect x="3.8462%" y="613" width="96.1538%" height="15" fill="rgb(226,14,28)"/><text x="4.0962%" y="623.50">core::ops::function::FnOnce::call_once</text></g><g><title>group::main (25 samples, 96.15%)</title><rect x="3.8462%" y="597" width="96.1538%" height="15" fill="rgb(253,123,1)"/><text x="4.0962%" y="607.50">group::main</text></g><g><title>group::bench_main (25 samples, 96.15%)</title><rect x="3.8462%" y="581" width="96.1538%" height="15" fill="rgb(225,24,42)"/><text x="4.0962%" y="591.50">group::bench_main</text></g><g><title>group::time (25 samples, 96.15%)</title><rect x="3.8462%" y="565" width="96.1538%" height="15" fill="rgb(216,161,37)"/><text x="4.0962%" y="575.50">group::time</text></g><g><title>group::bench_main::{{closure}} (25 samples, 96.15%)</title><rect x="3.8462%" y="549" width="96.1538%" height="15" fill="rgb(251,164,26)"/><text x="4.0962%" y="559.50">group::bench_main::{{closure}}</text></g><g><title>group::send_update (14 samples, 53.85%)</title><rect x="46.1538%" y="533" width="53.8462%" height="15" fill="rgb(219,177,3)"/><text x="46.4038%" y="543.50">group::send_update</text></g><g><title>openmls::group::mls_group::MlsGroup::create_commit (13 samples, 50.00%)</title><rect x="50.0000%" y="517" width="50.0000%" height="15" fill="rgb(222,65,0)"/><text x="50.2500%" y="527.50">openmls::group::mls_group::MlsGroup::create_commit</text></g><g><title>openmls::group::mls_group::create_commit::&lt;impl openmls::group::mls_group::MlsGroup&gt;::create_commit_internal (13 samples, 50.00%)</title><rect x="50.0000%" y="501" width="50.0000%" height="15" fill="rgb(223,69,54)"/><text x="50.2500%" y="511.50">openmls::group::mls_group::create_commit::&lt;impl openmls::group::mls_group::MlsGrou..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="485" width="3.8462%" height="15" fill="rgb(235,30,27)"/><text x="96.4038%" y="495.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="469" width="3.8462%" height="15" fill="rgb(220,183,50)"/><text x="96.4038%" y="479.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="453" width="3.8462%" height="15" fill="rgb(248,198,15)"/><text x="96.4038%" y="463.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="437" width="3.8462%" height="15" fill="rgb(222,211,4)"/><text x="96.4038%" y="447.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="421" width="3.8462%" height="15" fill="rgb(214,102,34)"/><text x="96.4038%" y="431.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="405" width="3.8462%" height="15" fill="rgb(245,92,5)"/><text x="96.4038%" y="415.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="389" width="3.8462%" height="15" fill="rgb(252,72,51)"/><text x="96.4038%" y="399.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="373" width="3.8462%" height="15" fill="rgb(252,208,19)"/><text x="96.4038%" y="383.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="357" width="3.8462%" height="15" fill="rgb(211,69,7)"/><text x="96.4038%" y="367.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="341" width="3.8462%" height="15" fill="rgb(211,27,16)"/><text x="96.4038%" y="351.50">open..</text></g><g><title>openmls::tree::hashes::&lt;impl openmls::tree::RatchetTree&gt;::tree_hash::node_hash (1 samples, 3.85%)</title><rect x="96.1538%" y="325" width="3.8462%" height="15" fill="rgb(219,216,14)"/><text x="96.4038%" y="335.50">open..</text></g><g><title>openmls::tree::hashes::LeafNodeHashInput::hash (1 samples, 3.85%)</title><rect x="96.1538%" y="309" width="3.8462%" height="15" fill="rgb(219,71,8)"/><text x="96.4038%" y="319.50">open..</text></g><g><title>openmls::ciphersuite::Ciphersuite::hash (1 samples, 3.85%)</title><rect x="96.1538%" y="293" width="3.8462%" height="15" fill="rgb(223,170,53)"/><text x="96.4038%" y="303.50">open..</text></g><g><title>evercrypt::digest::hash (1 samples, 3.85%)</title><rect x="96.1538%" y="277" width="3.8462%" height="15" fill="rgb(246,21,26)"/><text x="96.4038%" y="287.50">ever..</text></g><g><title>EverCrypt_Hash_hash_256 (1 samples, 3.85%)</title><rect x="96.1538%" y="261" width="3.8462%" height="15" fill="rgb(248,20,46)"/><text x="96.4038%" y="271.50">Ever..</text></g><g><title>Hacl_Hash_SHA2_update_multi_256 (1 samples, 3.85%)</title><rect x="96.1538%" y="245" width="3.8462%" height="15" fill="rgb(252,94,11)"/><text x="96.4038%" y="255.50">Hacl..</text></g><g><title>Hacl_Hash_Core_SHA2_update_224 (1 samples, 3.85%)</title><rect x="96.1538%" y="229" width="3.8462%" height="15" fill="rgb(236,163,8)"/><text x="96.4038%" y="239.50">Hacl..</text></g></svg></svg>
