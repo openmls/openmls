@@ -326,7 +326,7 @@
     <span class="ident">OsRng</span>.<span class="ident">next_u64</span>()
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u8</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u8</span> {
     <span class="ident">get_random_vec</span>(<span class="number">1</span>)[<span class="number">0</span>]
 }

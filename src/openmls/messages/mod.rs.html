@@ -427,6 +427,35 @@
 <span id="424">424</span>
 <span id="425">425</span>
 <span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
@@ -452,6 +481,14 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::{
+    <span class="ident">psk</span>::{<span class="ident">ExternalPsk</span>, <span class="ident">Psk</span>, <span class="ident">PskType</span>::<span class="ident">External</span>},
+    <span class="ident">PreSharedKeyId</span>,
+};
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">use</span> <span class="ident">evercrypt</span>::<span class="ident">prelude</span>::<span class="ident">get_random_vec</span>;
 
 <span class="doccomment">/// Welcome Messages</span>
 <span class="doccomment">///</span>
@@ -729,6 +766,27 @@
             <span class="ident">s</span>.<span class="ident">path_secret</span>.<span class="ident">config</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_version</span>);
         }
         <span class="self">self</span>
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random_encoded</span>(
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+        <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">psk_id</span> <span class="op">=</span> <span class="ident">PreSharedKeyId</span>::<span class="ident">new</span>(
+            <span class="ident">External</span>,
+            <span class="ident">Psk</span>::<span class="ident">External</span>(<span class="ident">ExternalPsk</span>::<span class="ident">new</span>(<span class="ident">get_random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()))),
+            <span class="ident">get_random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+        );
+        <span class="kw">let</span> <span class="ident">psks</span> <span class="op">=</span> <span class="ident">PreSharedKeys</span> { <span class="ident">psks</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">psk_id</span>] };
+
+        <span class="ident">GroupSecrets</span>::<span class="ident">new_encoded</span>(
+            <span class="kw-2">&amp;</span><span class="ident">JoinerSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">PathSecret</span> {
+                <span class="ident">path_secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
+            }),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">psks</span>),
+        )
     }
 }
 
