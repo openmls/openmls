@@ -337,7 +337,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">key_package_id_extension</span>::<span class="ident">KeyIdExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">life_time_extension</span>::<span class="ident">LifetimeExtension</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">parent_hash_extension</span>::<span class="ident">ParentHashExtension</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">ratchet_tree_extension</span>::<span class="ident">RatchetTreeExtension</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ratchet_tree_extension</span>::<span class="ident">RatchetTreeExtension</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_extensions</span>;
@@ -425,9 +425,9 @@
         }
     }
 
-    <span class="doccomment">/// Get the type of this extension struct.</span>
-    <span class="comment">// Not needed now, but will be when we support this extension</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_extension_data</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>] {
+    <span class="doccomment">/// Get the data of this extension struct.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extension_data</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">extension_data</span>
     }
 }

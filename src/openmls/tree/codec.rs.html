@@ -206,6 +206,10 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">tls_codec</span>::<span class="ident">TlsSize</span>;
 
@@ -400,6 +404,10 @@
 <span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">LeafIndex</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">LeafIndex</span>(<span class="ident">u32</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>))
     }
 }
 

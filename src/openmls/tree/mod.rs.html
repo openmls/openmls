@@ -866,6 +866,12 @@
 <span id="863">863</span>
 <span id="864">864</span>
 <span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="kw-2">*</span>;
@@ -899,7 +905,6 @@
     <span class="ident">Deserialize</span>, <span class="ident">Deserializer</span>, <span class="ident">Serialize</span>,
 };
 
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryInto</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections</span>::<span class="ident">HashSet</span>, <span class="ident">convert</span>::<span class="ident">TryFrom</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1659,9 +1664,16 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">path_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PathSecret</span><span class="op">&gt;</span> {
         <span class="comment">// Get a Vector containing the node indices of the direct path to the</span>
         <span class="comment">// root from our own leaf.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">dirpath</span>) <span class="op">=</span> <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(<span class="self">self</span>.<span class="ident">own_node_index</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>()) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">dirpath</span>) <span class="op">=</span>
+            <span class="ident">treemath</span>::<span class="ident">leaf_direct_path</span>(<span class="self">self</span>.<span class="ident">own_node_index</span>(), <span class="self">self</span>.<span class="ident">leaf_count</span>())
+        {
+            <span class="comment">// Filter out blanks for which we don&#39;t have path secrets</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dirpath_filter</span> <span class="op">=</span> <span class="ident">dirpath</span>
+                .<span class="ident">drain</span>(..)
+                .<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">index</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">index</span>].<span class="ident">is_blank</span>());
+
             <span class="comment">// Compute the right index in the `path_secrets` vector and get the secret.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">position</span>) <span class="op">=</span> <span class="ident">dirpath</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="op">=</span><span class="op">=</span> <span class="ident">index</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">position</span>) <span class="op">=</span> <span class="ident">dirpath_filter</span>.<span class="ident">position</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="op">=</span><span class="op">=</span> <span class="ident">index</span>) {
                 <span class="kw">return</span> <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">path_secrets</span>().<span class="ident">get</span>(<span class="ident">position</span>);
             }
         }
