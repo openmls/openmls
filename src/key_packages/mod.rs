@@ -321,7 +321,7 @@ impl KeyPackageBundle {
         KeyPackageBundle {
             key_package: new_key_package,
             private_key,
-            leaf_secret: leaf_secret.clone(),
+            leaf_secret,
         }
     }
 
