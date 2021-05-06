@@ -74,8 +74,11 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     let my_key_package = KeyPackage::decode_detached(&hex_to_bytes(&test_vector.my_key_package))
         .expect("failed to decode my_key_package from test vector.");
+
+    // We clone the leaf secret here, because we need it later to re-create the
+    // KeyPackageBundle.
     let my_key_package_bundle =
-        KeyPackageBundle::from_key_package_and_leaf_secret(&my_leaf_secret, &my_key_package);
+        KeyPackageBundle::from_key_package_and_leaf_secret(my_leaf_secret.clone(), &my_key_package);
 
     // Check tree hashes.
     let mut tree_before =
@@ -95,7 +98,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     let ratchet_tree_after = tree_extension_after.into_vector();
 
     let my_key_package_bundle =
-        KeyPackageBundle::from_key_package_and_leaf_secret(&my_leaf_secret, &my_key_package);
+        KeyPackageBundle::from_key_package_and_leaf_secret(my_leaf_secret, &my_key_package);
     let tree_after =
         RatchetTree::new_from_nodes(my_key_package_bundle, &ratchet_tree_after).unwrap();
     crate::utils::_print_tree(&tree_after, "Tree after");

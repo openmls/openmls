@@ -300,20 +300,29 @@ impl KeyPackageBundle {
     }
 
     /// Replace the init key in the `KeyPackage` with a random one and return a
-    /// `KeyPackageBundle` with the corresponding secret values
+    /// `KeyPackageBundle` with the corresponding secret values. Note, that the
+    /// `KeyPackage` needs to be re-signed afterwards.
     pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
-        // Generate a new leaf secret and derive the key pair
-        let ciphersuite = key_package.ciphersuite();
-        let leaf_secret = Secret::random(ciphersuite, key_package.protocol_version);
+        let leaf_secret = Secret::random(key_package.ciphersuite(), key_package.protocol_version);
+        KeyPackageBundle::from_key_package_and_leaf_secret(leaf_secret, key_package)
+    }
+
+    /// Creates a new `KeyPackageBundle` from a given `KeyPackage` and a leaf
+    /// secret. Note, that the `KeyPackage` needs to be re-signed afterwards.
+    pub fn from_key_package_and_leaf_secret(leaf_secret: Secret, key_package: &KeyPackage) -> Self {
         let leaf_node_secret = Self::derive_leaf_node_secret(&leaf_secret);
-        let (private_key, public_key) = ciphersuite
+        let (private_key, public_key) = key_package
+            .ciphersuite()
             .derive_hpke_keypair(&leaf_node_secret)
             .into_keys();
-
-        // Repackage everything as a KeyPackageBundle
         let mut new_key_package = key_package.clone();
+        // Set the public key and re-set the unsigned payload.
         new_key_package.set_hpke_init_key(public_key);
-        KeyPackageBundle::new_from_values(new_key_package, private_key, leaf_secret)
+        KeyPackageBundle {
+            key_package: new_key_package,
+            private_key,
+            leaf_secret: leaf_secret.clone(),
+        }
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -440,37 +449,6 @@ impl KeyPackageBundle {
             keypair,
             leaf_secret,
         )
-    }
-
-    /// Assembles a new KeyPackageBundle from a KeyPackage, a HpkePrivateKey,
-    /// and a leaf secret
-    fn new_from_values(
-        key_package: KeyPackage,
-        private_key: HpkePrivateKey,
-        leaf_secret: Secret,
-    ) -> Self {
-        Self {
-            key_package,
-            private_key,
-            leaf_secret,
-        }
-    }
-
-    #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn from_key_package_and_leaf_secret(
-        leaf_secret: &Secret,
-        key_package: &KeyPackage,
-    ) -> Self {
-        let leaf_node_secret = Self::derive_leaf_node_secret(leaf_secret);
-        let (private_key, _public_key) = key_package
-            .ciphersuite()
-            .derive_hpke_keypair(&leaf_node_secret)
-            .into_keys();
-        KeyPackageBundle {
-            key_package: key_package.clone(),
-            private_key,
-            leaf_secret: leaf_secret.clone(),
-        }
     }
 }
 
