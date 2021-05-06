@@ -37,7 +37,7 @@ pub struct RatchetTreeExtension {
 
 impl RatchetTreeExtension {
     /// Build a new extension from a vector of `Node`s.
-    pub(crate) fn new(tree: Vec<Option<Node>>) -> Self {
+    pub fn new(tree: Vec<Option<Node>>) -> Self {
         RatchetTreeExtension { tree }
     }
 

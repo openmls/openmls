@@ -30,7 +30,6 @@ pub(crate) use serde::{
     Deserialize, Deserializer, Serialize,
 };
 
-use std::convert::TryInto;
 use std::{collections::HashSet, convert::TryFrom};
 
 #[cfg(any(feature = "expose-test-vectors", test))]
@@ -790,9 +789,16 @@ impl RatchetTree {
     pub(crate) fn path_secret(&self, index: NodeIndex) -> Option<&PathSecret> {
         // Get a Vector containing the node indices of the direct path to the
         // root from our own leaf.
-        if let Ok(dirpath) = treemath::leaf_direct_path(self.own_node_index(), self.leaf_count()) {
+        if let Ok(mut dirpath) =
+            treemath::leaf_direct_path(self.own_node_index(), self.leaf_count())
+        {
+            // Filter out blanks for which we don't have path secrets
+            let mut dirpath_filter = dirpath
+                .drain(..)
+                .filter(|&index| !self.nodes[index].is_blank());
+
             // Compute the right index in the `path_secrets` vector and get the secret.
-            if let Some(position) = dirpath.iter().position(|&x| x == index) {
+            if let Some(position) = dirpath_filter.position(|x| x == index) {
                 return self.private_tree.path_secrets().get(position);
             }
         }

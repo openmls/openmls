@@ -192,6 +192,10 @@ impl Codec for LeafIndex {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)
     }
+
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
+        Ok(LeafIndex(u32::decode(cursor)?))
+    }
 }
 
 // Secret tree

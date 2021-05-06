@@ -15,7 +15,7 @@ pub use errors::*;
 pub use key_package_id_extension::KeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
-pub(crate) use ratchet_tree_extension::RatchetTreeExtension;
+pub use ratchet_tree_extension::RatchetTreeExtension;
 
 #[cfg(test)]
 mod test_extensions;
@@ -103,9 +103,9 @@ impl<'a> ExtensionStruct {
         }
     }
 
-    /// Get the type of this extension struct.
-    // Not needed now, but will be when we support this extension
-    pub(crate) fn _extension_data(&'a self) -> &'a [u8] {
+    /// Get the data of this extension struct.
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn extension_data(&'a self) -> &'a [u8] {
         &self.extension_data
     }
 }
