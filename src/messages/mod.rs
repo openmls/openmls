@@ -23,6 +23,14 @@ use proposals::*;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+use crate::schedule::{
+    psk::{ExternalPsk, Psk, PskType::External},
+    PreSharedKeyId,
+};
+#[cfg(any(feature = "expose-test-vectors", test))]
+use evercrypt::prelude::get_random_vec;
+
 /// Welcome Messages
 ///
 /// > 11.2.2. Welcoming New Members
@@ -304,6 +312,27 @@ impl GroupSecrets {
             s.path_secret.config(ciphersuite, mls_version);
         }
         self
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn random_encoded(
+        ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
+    ) -> Result<Vec<u8>, CodecError> {
+        let psk_id = PreSharedKeyId::new(
+            External,
+            Psk::External(ExternalPsk::new(get_random_vec(ciphersuite.hash_length()))),
+            get_random_vec(ciphersuite.hash_length()),
+        );
+        let psks = PreSharedKeys { psks: vec![psk_id] };
+
+        GroupSecrets::new_encoded(
+            &JoinerSecret::random(ciphersuite, version),
+            Some(&PathSecret {
+                path_secret: Secret::random(ciphersuite, version),
+            }),
+            Some(&psks),
+        )
     }
 }
 
