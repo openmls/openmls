@@ -29,6 +29,15 @@ fn capabilities() {
         &extension_bytes[..],
         &ext_struct.encode_detached().unwrap()[..]
     );
+
+    // Test encoding and decoding
+    let encoded = ext
+        .encode_detached()
+        .expect("error encoding capabilities extension");
+    let ext_decoded = CapabilitiesExtension::decode_detached(&encoded)
+        .expect("error decoding capabilities extension");
+
+    assert_eq!(ext, ext_decoded);
 }
 
 #[test]
@@ -56,6 +65,15 @@ fn lifetime() {
     let ext = LifetimeExtension::new(0);
     std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(!ext.is_valid());
+
+    // Test encoding and decoding
+    let encoded = ext
+        .encode_detached()
+        .expect("error encoding capabilities extension");
+    let ext_decoded = LifetimeExtension::decode_detached(&encoded)
+        .expect("error decoding capabilities extension");
+
+    assert_eq!(ext, ext_decoded);
 }
 
 // This tests the ratchet tree extension to deliver the public ratcheting tree

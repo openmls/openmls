@@ -44,7 +44,6 @@ pub struct TranscriptTestVector {
     interim_transcript_hash_after: String,
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTestVector {
     // Generate random values.
     let group_id = GroupId::random();
@@ -135,7 +134,6 @@ fn write_test_vectors() {
     write("test_vectors/kat_transcripts-new.json", &tests);
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), TranscriptTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
@@ -249,7 +247,6 @@ fn read_test_vectors() {
     }
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
 implement_error! {
     pub enum TranscriptTestVectorError {
         MembershipTagVerificationError = "Membership tag could not be verified.",
