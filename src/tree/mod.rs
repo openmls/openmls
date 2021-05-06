@@ -793,12 +793,12 @@ impl RatchetTree {
             treemath::leaf_direct_path(self.own_node_index(), self.leaf_count())
         {
             // Filter out blanks for which we don't have path secrets
-            let mut dirpath = dirpath
+            let mut dirpath_filter = dirpath
                 .drain(..)
                 .filter(|&index| !self.nodes[index].is_blank());
 
             // Compute the right index in the `path_secrets` vector and get the secret.
-            if let Some(position) = dirpath.position(|x| x == index) {
+            if let Some(position) = dirpath_filter.position(|x| x == index) {
                 return self.private_tree.path_secrets().get(position);
             }
         }
