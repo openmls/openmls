@@ -363,17 +363,17 @@ fn duration_nanos(d: Duration) -> f64 {
     (d.as_secs() as f64) + (d.subsec_nanos() as f64 * 1e-9)
 }
 
-fn time<F, S, I>(name: &str, mut setup: S, mut f: F, groups: Vec<MlsGroup>, bench_setup: Setup)
+fn time<F, S, I, O>(name: &str, mut setup: S, mut f: F, groups: Vec<MlsGroup>, bench_setup: Setup)
 where
     S: FnMut(Vec<MlsGroup>, Setup) -> I,
-    F: FnMut(I) -> (Instant, Instant),
+    F: FnMut(I) -> (Instant, Instant, O),
 {
     let mut time = 0f64;
     const ITERATIONS: usize = 10;
     for _ in 0..ITERATIONS {
         let r = setup(groups.clone(), bench_setup.clone());
         let guard = pprof::ProfilerGuard::new(1000).unwrap();
-        let (start, end) = f(r);
+        let (start, end, _o) = f(r);
         if let Ok(report) = guard.report().build() {
             let file = File::create(&format!("flamegraph_{}.svg", name.replace(" ", "_"))).unwrap();
             report.flamegraph(file).unwrap();
@@ -404,8 +404,8 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         },
         |(n, ciphersuite, credential_bundles, key_package_bundles)| {
             let start = Instant::now();
-            setup_group(n, ciphersuite, credential_bundles, key_package_bundles);
-            (start, Instant::now())
+            let setup = setup_group(n, ciphersuite, credential_bundles, key_package_bundles);
+            (start, Instant::now(), setup)
         },
         // These two arguments aren't actually used here.
         Vec::new(),
@@ -422,7 +422,7 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         |(setup, joiner)| {
             let start = Instant::now();
             join_group(setup, joiner);
-            (start, Instant::now())
+            (start, Instant::now(), 0)
         },
         // These two arguments aren't actually used here.
         Vec::new(),
@@ -437,8 +437,8 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         },
         |(groups, setup, sender)| {
             let start = Instant::now();
-            send_message(groups, setup, sender);
-            (start, Instant::now())
+            let out = send_message(groups, setup, sender);
+            (start, Instant::now(), out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -449,28 +449,21 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         |mut groups, bench_setup| {
             // Setup
             let sender = rand::thread_rng().gen_range(0..groups.len());
-            let mut messages = Vec::new();
-            const NUM_MESSAGES: usize = 1;
-            for _ in 0..NUM_MESSAGES {
-                let (msg, _sender, new_groups, _setup) =
-                    send_message(groups, bench_setup.clone(), sender);
-                messages.push(msg);
-                groups = new_groups;
-            }
+            let (msg, _sender, new_groups, _setup) =
+                send_message(groups, bench_setup.clone(), sender);
+            groups = new_groups;
             let mut receiver = rand::thread_rng().gen_range(0..groups.len());
             while receiver == sender {
                 receiver = rand::thread_rng().gen_range(0..groups.len());
             }
-            (groups.clone(), messages, receiver)
+            (groups.clone(), msg, receiver)
         },
-        |(mut groups, mut messages, receiver)| {
+        |(mut groups, msg, receiver)| {
             // Profile
             let start = Instant::now();
-            for msg in messages.drain(..) {
-                receive_message(msg, receiver, &mut groups);
-            }
+            let out = receive_message(msg, receiver, &mut groups);
             let end = Instant::now();
-            (start, end)
+            (start, end, out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -489,24 +482,17 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
                 receiver = rand::thread_rng().gen_range(0..groups.len());
             }
             receive_message(msg, receiver, &mut groups);
-            let mut messages = Vec::new();
-            const NUM_MESSAGES: usize = 1;
-            for _ in 0..NUM_MESSAGES {
-                let (msg, _sender, new_groups, _setup) =
-                    send_message(groups, bench_setup.clone(), sender);
-                messages.push(msg);
-                groups = new_groups;
-            }
-            (groups.clone(), messages, receiver)
+            let (msg, _sender, new_groups, _setup) =
+                send_message(groups, bench_setup.clone(), sender);
+            groups = new_groups;
+            (groups.clone(), msg, receiver)
         },
-        |(mut groups, mut messages, receiver)| {
+        |(mut groups, msg, receiver)| {
             // Profile
             let start = Instant::now();
-            for msg in messages.drain(..) {
-                receive_message(msg, receiver, &mut groups);
-            }
+            let out = receive_message(msg, receiver, &mut groups);
             let end = Instant::now();
-            (start, end)
+            (start, end, out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -520,9 +506,9 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         },
         |(groups, setup, ciphersuite, sender)| {
             let start = Instant::now();
-            send_update(groups, setup, ciphersuite, sender);
+            let out = send_update(groups, setup, ciphersuite, sender);
             let end = Instant::now();
-            (start, end)
+            (start, end, out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -542,9 +528,9 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         },
         |(groups, receiver, commit, proposal)| {
             let start = Instant::now();
-            apply_commit(groups, receiver, commit, proposal);
+            let out = apply_commit(groups, receiver, commit, proposal);
             let end = Instant::now();
-            (start, end)
+            (start, end, out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -559,9 +545,9 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         },
         |(groups, setup, kpb, sender)| {
             let start = Instant::now();
-            send_add_user(groups, setup, kpb, sender);
+            let out = send_add_user(groups, setup, kpb, sender);
             let end = Instant::now();
-            (start, end)
+            (start, end, out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -582,9 +568,9 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         },
         |(commit, add_proposal, groups, receiver)| {
             let start = Instant::now();
-            apply_commit(groups, receiver, commit, add_proposal);
+            let out = apply_commit(groups, receiver, commit, add_proposal);
             let end = Instant::now();
-            (start, end)
+            (start, end, out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -602,9 +588,9 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
         },
         |(groups, setup, sender, removed_index)| {
             let start = Instant::now();
-            send_remove_user(groups, setup, sender, removed_index);
+            let out = send_remove_user(groups, setup, sender, removed_index);
             let end = Instant::now();
-            (start, end)
+            (start, end, out)
         },
         groups.clone(),
         bench_setup.clone(),
@@ -633,9 +619,9 @@ fn bench_main(setting: BenchmarkSetting, ciphersuite: &Ciphersuite, n: usize) {
             },
             |(commit, remove_proposal, groups, receiver)| {
                 let start = Instant::now();
-                apply_commit(groups, receiver, commit, remove_proposal);
+                let out = apply_commit(groups, receiver, commit, remove_proposal);
                 let end = Instant::now();
-                (start, end)
+                (start, end, out)
             },
             groups.clone(),
             bench_setup.clone(),
