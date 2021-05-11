@@ -7,26 +7,45 @@ impl GroupContext {
         epoch: GroupEpoch,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
-        extensions: &[Box<dyn Extension>],
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, CodecError> {
         let mut group_context = GroupContext {
             group_id,
             epoch,
             tree_hash,
             confirmed_transcript_hash,
-            extensions: extensions.to_vec(),
+            extensions,
             serialized: vec![],
         };
         let serialized = group_context.encode_detached()?;
         group_context.serialized = serialized.to_vec();
         Ok(group_context)
     }
+
+    /// Create the group context of a new epoch from the one of the previous
+    /// epoch.
+    pub(crate) fn from_previous_group_context(
+        group_context: &GroupContext,
+        tree_hash: Vec<u8>,
+        confirmed_transcript_hash: Vec<u8>,
+    ) -> Result<Self, CodecError> {
+        let mut epoch = group_context.epoch().clone();
+        epoch.increment();
+        GroupContext::new(
+            group_context.group_id.clone(),
+            epoch,
+            tree_hash,
+            confirmed_transcript_hash,
+            group_context.extensions.clone(),
+        )
+    }
+
     /// Create the `GroupContext` needed upon creation of a new group.
     pub fn create_initial_group_context(
         ciphersuite: &Ciphersuite,
         group_id: GroupId,
         tree_hash: Vec<u8>,
-        extensions: &[Box<dyn Extension>],
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, CodecError> {
         Self::new(
             group_id,

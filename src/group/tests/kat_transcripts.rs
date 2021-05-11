@@ -79,7 +79,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         GroupEpoch(epoch),
         tree_hash_before.clone(),
         confirmed_transcript_hash_before.clone(),
-        &[], // extensions
+        vec![], // extensions
     )
     .expect("Error creating group context");
     let confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
@@ -177,7 +177,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         GroupEpoch(epoch),
         tree_hash_before,
         confirmed_transcript_hash_before.clone(),
-        &[], // extensions
+        vec![], // extensions
     )
     .expect("Error creating group context");
     if commit

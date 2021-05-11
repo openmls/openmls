@@ -91,7 +91,7 @@ fn generate(
         GroupEpoch(epoch),
         tree_hash.to_vec(),
         confirmed_transcript_hash.clone(),
-        &[], // Extensions
+        vec![], // Extensions
     )
     .unwrap();
 
@@ -257,7 +257,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             GroupEpoch(i as u64),
             tree_hash.to_vec(),
             confirmed_transcript_hash.clone(),
-            &[], // Extensions
+            vec![], // Extensions
         )
         .expect("Error creating group context");
 

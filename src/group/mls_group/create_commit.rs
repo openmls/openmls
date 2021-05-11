@@ -97,16 +97,11 @@ impl MlsGroup {
         // Calculate tree hash
         let tree_hash = provisional_tree.tree_hash();
 
-        // TODO #186: Implement extensions
-        let extensions: Vec<Box<dyn Extension>> = Vec::new();
-
         // Calculate group context
-        let provisional_group_context = GroupContext::new(
-            self.group_context.group_id.clone(),
-            provisional_epoch,
+        let provisional_group_context = GroupContext::from_previous_group_context(
+            &self.group_context,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
-            &extensions,
         )?;
 
         let joiner_secret = JoinerSecret::new(

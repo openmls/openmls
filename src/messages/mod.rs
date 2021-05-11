@@ -203,29 +203,33 @@ impl GroupInfo {
         self.signature = signature;
     }
 
-    /// Get the group ID.
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.group_id
-    }
-
-    /// Get the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.epoch
-    }
-
-    /// Get the confirmed transcript hash.
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        &self.confirmed_transcript_hash
-    }
-
-    /// Get the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
-        &self.confirmation_tag
-    }
-
     /// Get the extensions.
     pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
         &self.extensions
+    }
+
+    /// Create a `GroupContext` and `ConfirmationTag` from a `GroupInfo`
+    /// instance.
+    pub(crate) fn to_group_context_and_tag(
+        mut self,
+    ) -> Result<(GroupContext, ConfirmationTag), CodecError> {
+        // The RatchetTreeExtension is not meant to go into into the
+        // GroupContext.
+        let extensions = self
+            .extensions
+            .drain(..)
+            .filter(|ext| ext.extension_type() != ExtensionType::RatchetTree)
+            .collect();
+        Ok((
+            GroupContext::new(
+                self.group_id,
+                self.epoch,
+                self.tree_hash,
+                self.confirmed_transcript_hash,
+                extensions,
+            )?,
+            self.confirmation_tag,
+        ))
     }
 
     /// Set the group info's extensions.

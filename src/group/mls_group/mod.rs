@@ -86,7 +86,7 @@ impl MlsGroup {
             ciphersuite,
             group_id,
             tree.tree_hash(),
-            &extensions,
+            extensions,
         )?;
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.

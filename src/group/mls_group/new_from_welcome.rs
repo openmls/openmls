@@ -165,14 +165,7 @@ impl MlsGroup {
         }
 
         // Compute state
-        let group_context = GroupContext::new(
-            group_info.group_id().clone(),
-            group_info.epoch(),
-            tree_hash,
-            group_info.confirmed_transcript_hash().to_vec(),
-            // TODO #186: Implement extensions
-            &[],
-        )?;
+        let (group_context, group_info_confirmation_tag) = group_info.to_group_context_and_tag()?;
         // TODO #141: Implement PSK
         key_schedule.add_context(&group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(true)?;
@@ -191,7 +184,7 @@ impl MlsGroup {
         )?;
 
         // Verify confirmation tag
-        if &confirmation_tag != group_info.confirmation_tag() {
+        if confirmation_tag != group_info_confirmation_tag {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());

@@ -28,7 +28,7 @@ fn codec() {
         };
 
         let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
+            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], vec![]).unwrap();
         let serialized_context = group_context.serialized();
         let signature_input = MlsPlaintextTbs::new_from(&orig, Some(serialized_context));
         orig.signature = signature_input
@@ -68,7 +68,7 @@ fn membership_tag() {
         };
 
         let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
+            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], vec![]).unwrap();
         let serialized_context = group_context.serialized();
         let membership_key =
             MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
