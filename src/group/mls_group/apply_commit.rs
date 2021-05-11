@@ -111,12 +111,10 @@ impl MlsGroup {
         );
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch;
-        provisional_epoch.increment();
-
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
-            // It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a Commit
+            // It is ok to use `unwrap()` here, because we know the MlsPlaintext
+            // contains a Commit
             &MlsPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
         )?;

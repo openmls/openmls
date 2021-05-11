@@ -63,8 +63,6 @@ impl MlsGroup {
         };
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch;
-        provisional_epoch.increment();
 
         // Build MlsPlaintext
         let content = MlsPlaintextContentType::Commit(commit);
@@ -150,20 +148,16 @@ impl MlsGroup {
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
-            let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
-                vec![Box::new(RatchetTreeExtension::new(
+            let option_ratchet_tree_extension = if self.use_ratchet_tree_extension {
+                Some(RatchetTreeExtension::new(
                     provisional_tree.public_key_tree_copy(),
-                ))]
+                ))
             } else {
-                Vec::new()
+                None
             };
             // Create GroupInfo object
-            let mut group_info = GroupInfo::new(
-                provisional_group_context.group_id.clone(),
-                provisional_group_context.epoch,
-                tree_hash,
-                confirmed_transcript_hash,
-                extensions,
+            let mut group_info = provisional_group_context.into_group_info(
+                option_ratchet_tree_extension,
                 confirmation_tag,
                 sender_index,
             );

@@ -1,3 +1,8 @@
+use crate::{
+    messages::{ConfirmationTag, GroupInfo},
+    tree::index::LeafIndex,
+};
+
 use super::*;
 
 impl GroupContext {
@@ -37,6 +42,26 @@ impl GroupContext {
             tree_hash,
             confirmed_transcript_hash,
             group_context.extensions.clone(),
+        )
+    }
+
+    pub(crate) fn into_group_info(
+        mut self,
+        option_ratchet_tree_extension: Option<RatchetTreeExtension>,
+        confirmation_tag: ConfirmationTag,
+        signer_index: LeafIndex,
+    ) -> GroupInfo {
+        if let Some(rt_ext) = option_ratchet_tree_extension {
+            self.extensions.push(Box::new(rt_ext));
+        }
+        GroupInfo::new(
+            self.group_id,
+            self.epoch,
+            self.tree_hash,
+            self.confirmed_transcript_hash,
+            self.extensions,
+            confirmation_tag,
+            signer_index,
         )
     }
 
