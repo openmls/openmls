@@ -157,8 +157,9 @@ async fn test_group() {
         group_ciphersuite,
         key_package_bundles.remove(0),
         GroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
+        None,   /* Initial PSK */
+        None,   /* MLS version */
+        vec![], /* extensions */
     )
     .unwrap();
 

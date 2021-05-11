@@ -235,8 +235,9 @@ impl User {
             CIPHERSUITE,
             kpb,
             config,
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], /* extensions */
         )
         .unwrap();
         let group = Group {
