@@ -188,7 +188,7 @@ impl MlsGroup {
         if confirmation_tag != group_info_confirmation_tag {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
-            log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
+            log_crypto!(trace, "  Expected: {:x?}", group_info_confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             Ok(MlsGroup {
