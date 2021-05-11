@@ -165,7 +165,8 @@ impl MlsGroup {
         }
 
         // Compute state
-        let (group_context, group_info_confirmation_tag) = group_info.to_group_context_and_tag()?;
+        let (group_context, group_info_confirmation_tag) =
+            group_info.into_group_context_and_tag()?;
         // TODO #141: Implement PSK
         key_schedule.add_context(&group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(true)?;

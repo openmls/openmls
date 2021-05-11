@@ -210,7 +210,7 @@ impl GroupInfo {
 
     /// Create a `GroupContext` and `ConfirmationTag` from a `GroupInfo`
     /// instance.
-    pub(crate) fn to_group_context_and_tag(
+    pub(crate) fn into_group_context_and_tag(
         mut self,
     ) -> Result<(GroupContext, ConfirmationTag), CodecError> {
         // The RatchetTreeExtension is not meant to go into into the
