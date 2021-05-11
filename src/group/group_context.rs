@@ -29,7 +29,7 @@ impl GroupContext {
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
     ) -> Result<Self, CodecError> {
-        let mut epoch = group_context.epoch().clone();
+        let mut epoch = group_context.epoch();
         epoch.increment();
         GroupContext::new(
             group_context.group_id.clone(),
