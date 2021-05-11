@@ -68,6 +68,7 @@ impl Client {
             &managed_group_config,
             group_id.clone(),
             &key_package.hash(),
+            vec![], // extensions
         )?;
         self.groups.borrow_mut().insert(group_id, group_state);
         Ok(())

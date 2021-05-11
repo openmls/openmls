@@ -41,6 +41,7 @@ fn test_managed_group_persistence() {
         &managed_group_config,
         group_id,
         &alice_key_package.hash(),
+        vec![], /* extensions */
     )
     .unwrap();
 
@@ -132,6 +133,7 @@ fn remover() {
         &managed_group_config,
         group_id,
         &alice_key_package.hash(),
+        vec![], /* extensions */
     )
     .unwrap();
 
@@ -247,6 +249,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         &managed_group_config,
         group_id,
         &alice_key_package.hash(),
+        vec![], /* extensions */
     )
     .unwrap();
 

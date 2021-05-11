@@ -61,8 +61,9 @@ fn create_commit_optional_path() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], /* extensions */
         )
         .unwrap();
 
@@ -217,8 +218,9 @@ fn basic_group_setup() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], /* extensions */
         )
         .expect("Could not create group.");
 
@@ -304,8 +306,9 @@ fn group_operations() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], /* extensions */
         )
         .expect("Could not create group.");
 

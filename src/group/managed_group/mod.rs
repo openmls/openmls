@@ -102,6 +102,7 @@ impl ManagedGroup {
         managed_group_config: &ManagedGroupConfig,
         group_id: GroupId,
         key_package_hash: &[u8],
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, ManagedGroupError> {
         // TODO #141
         let key_package_bundle = key_store
@@ -114,6 +115,7 @@ impl ManagedGroup {
             GroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            extensions,
         )?;
 
         let resumption_secret_store =
@@ -875,6 +877,11 @@ impl ManagedGroup {
     }
 
     // === Extensions ===
+
+    /// Extensions of the group
+    pub fn extensions(&self) -> &[Box<dyn Extension>] {
+        self.group.context().extensions()
+    }
 
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {

@@ -31,8 +31,9 @@ fn test_mls_group_persistence() {
         ciphersuite.name(),
         alice_key_package_bundle,
         GroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
+        None,   /* Initial PSK */
+        None,   /* MLS version */
+        vec![], /* extensions */
     )
     .unwrap();
 
@@ -173,8 +174,9 @@ fn test_update_path() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], /* extensions */
         )
         .unwrap();
 
@@ -390,6 +392,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         GroupConfig::default(),
         Some(initial_psk),
         None, /* MLS version */
+        vec![], /* extensions */
     )
     .unwrap();
 

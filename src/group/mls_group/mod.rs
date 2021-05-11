@@ -73,14 +73,13 @@ impl MlsGroup {
         config: GroupConfig,
         psk_option: impl Into<Option<PskSecret>>,
         version: impl Into<Option<ProtocolVersion>>,
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, GroupError> {
         debug!("Created group {:x?}", id);
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(key_package_bundle);
-        // TODO #186: Implement extensions
-        let extensions: Vec<Box<dyn Extension>> = Vec::new();
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,

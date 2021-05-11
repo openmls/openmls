@@ -69,6 +69,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         config,
         None,
         ProtocolVersion::default(),
+        // Extensions for GroupContext, i.e. extensions in GroupInfo minus the
+        // ratchet tree extension
+        vec![],
     )
     .unwrap();
 

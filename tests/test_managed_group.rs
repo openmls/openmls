@@ -122,6 +122,7 @@ fn managed_group_operations() {
                 &managed_group_config,
                 group_id,
                 &alice_key_package.hash(),
+                vec![], //extensions
             )
             .unwrap();
 
@@ -708,6 +709,7 @@ fn test_empty_input_errors() {
         &managed_group_config,
         group_id,
         &alice_key_package.hash(),
+        vec![], //extensions
     )
     .unwrap();
 

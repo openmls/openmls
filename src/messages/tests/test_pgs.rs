@@ -44,8 +44,9 @@ fn test_pgs() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], /* extensions */
         )
         .expect("Could not create group.");
 

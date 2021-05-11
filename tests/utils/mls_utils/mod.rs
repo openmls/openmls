@@ -143,8 +143,9 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             group_config.ciphersuite,
             initial_key_package_bundle,
             group_config.config,
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], // extensions
         )
         .unwrap();
         let mut proposal_list = Vec::new();

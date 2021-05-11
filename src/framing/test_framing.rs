@@ -166,8 +166,9 @@ fn unknown_sender() {
             ciphersuite.name(),
             alice_key_package_bundle,
             GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            None,   /* Initial PSK */
+            None,   /* MLS version */
+            vec![], /* extensions */
         )
         .unwrap();
 

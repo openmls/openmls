@@ -55,16 +55,24 @@ impl GroupContext {
             extensions,
         )
     }
+
     /// Return the serialized group context
     pub fn serialized(&self) -> &[u8] {
         &self.serialized
     }
+
     /// Return the group ID
     pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
+
     /// Return the epoch
     pub fn epoch(&self) -> GroupEpoch {
         self.epoch
+    }
+
+    /// Return the extensions
+    pub fn extensions(&self) -> &[Box<dyn Extension>] {
+        &self.extensions
     }
 }

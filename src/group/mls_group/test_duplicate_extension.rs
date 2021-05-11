@@ -55,6 +55,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         config,
         None, /* Initial PSK */
         None, /* MLS version */
+        vec![], /* extensions */
     )
     .unwrap();
 

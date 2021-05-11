@@ -123,6 +123,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         config,
         None, /* Initial PSK */
         None, /* MLS version */
+        vec![], /* extensions */
     )
     .unwrap();
 
@@ -191,6 +192,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         config,
         None, /* Initial PSK */
         None, /* MLS version */
+        vec![], /* extensions */
     )
     .unwrap();
 

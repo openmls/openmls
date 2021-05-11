@@ -148,6 +148,7 @@ fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
         GroupConfig::default(),
         None, /* Initial PSK */
         ProtocolVersion::Mls10,
+        vec![], // extensions
     )
     .unwrap()
 }
@@ -169,6 +170,7 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
         GroupConfig::default(),
         None, /* Initial PSK */
         ProtocolVersion::Mls10,
+        vec![], // extensions
     )
     .unwrap()
 }
