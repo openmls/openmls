@@ -369,7 +369,7 @@ impl RatchetTree {
         let secret = Secret::from_slice(
             &self
                 .ciphersuite
-                .hpke_open(hpke_ciphertext, &private_key, group_context, &[])?,
+                .hpke_open(hpke_ciphertext, &private_key, &[], group_context)?,
             self.mls_version,
             &self.ciphersuite,
         )
@@ -537,8 +537,8 @@ impl RatchetTree {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
                     self.ciphersuite.hpke_seal_secret(
                         &pk,
-                        group_context,
                         &[],
+                        group_context,
                         &path_secret.path_secret,
                     )
                 })

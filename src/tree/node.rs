@@ -141,8 +141,8 @@ impl Node {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
     pub(crate) public_key: HPKEPublicKey,
-    pub(crate) unmerged_leaves: Vec<u32>,
     pub(crate) parent_hash: Vec<u8>,
+    pub(crate) unmerged_leaves: Vec<u32>,
 }
 
 impl ParentNode {
