@@ -352,11 +352,14 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret_bytes =
-            self.ciphersuite
-                .hpke_open(hpke_ciphertext, &private_key, &[], group_context)?;
-        let path_secret =
-            Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
+        let path_secret = Secret::from_slice(
+            &self
+                .ciphersuite
+                .hpke_open(hpke_ciphertext, &private_key, &[], group_context)?,
+            self.mls_version,
+            &self.ciphersuite,
+        )
+        .into();
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree

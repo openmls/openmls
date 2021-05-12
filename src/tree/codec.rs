@@ -48,14 +48,14 @@ impl Codec for Node {
 impl Codec for ParentNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.unmerged_leaves)?;
         encode_vec(VecSize::VecU8, buffer, &self.parent_hash)?;
+        encode_vec(VecSize::VecU32, buffer, &self.unmerged_leaves)?;
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let public_key = HpkePublicKey::decode(cursor)?;
-        let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;
         let parent_hash = decode_vec(VecSize::VecU8, cursor)?;
+        let unmerged_leaves = decode_vec(VecSize::VecU32, cursor)?;
         Ok(ParentNode {
             public_key,
             unmerged_leaves,
