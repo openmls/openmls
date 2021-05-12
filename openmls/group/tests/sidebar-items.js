@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["kat_messages","Known Answer Tests for the encoding and decoding of various structs of theMLS spec"],["kat_transcripts","Known Answer Tests for the transcript hashesSee https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md for more description on the test vectors."]]});
+initSidebarItems({"mod":[["kat_messages","Known Answer Tests for the encoding and decoding of various structs of the"],["kat_transcripts","Known Answer Tests for the transcript hashes"]]});
