@@ -83,6 +83,7 @@
 //!     &managed_group_config,
 //!     GroupId::from_slice(b"Test Group"),
 //!     &alice_key_package.hash(),
+//!     vec![], // extensions
 //! )
 //! .unwrap();
 //! ```
