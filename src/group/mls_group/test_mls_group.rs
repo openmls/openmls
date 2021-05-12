@@ -30,7 +30,7 @@ fn test_mls_group_persistence() {
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        GroupConfig::default(),
+        true, /* use ratchet tree extension */
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -172,9 +172,9 @@ fn test_update_path() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            false, /* use ratchet tree extension */
+            None,  /* Initial PSK */
+            None,  /* MLS version */
         )
         .unwrap();
 
@@ -191,6 +191,7 @@ fn test_update_path() {
                 &[],
                 false,
                 None,
+                vec![], /* Extensions */
             )
             .expect("Error creating commit");
 
@@ -212,7 +213,7 @@ fn test_update_path() {
             .expect("error applying commit");
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
-        let group_bob = MlsGroup::new_from_welcome(
+        let (group_bob, _extensions) = MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
@@ -240,6 +241,7 @@ fn test_update_path() {
                 &[],
                 false, /* force self update */
                 None,
+                vec![], /* Extensions */
             )
             .unwrap();
 
@@ -387,7 +389,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        GroupConfig::default(),
+        false, /* use ratchet tree extension */
         Some(initial_psk),
         None, /* MLS version */
     )
@@ -413,6 +415,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             &[],
             false,
             Some(psk_fetcher),
+            vec![], /* Extensions */
         )
         .expect("Error creating commit");
 
@@ -427,7 +430,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .expect("error applying commit");
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
-    let group_bob = MlsGroup::new_from_welcome(
+    let (group_bob, _extensions) = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -455,6 +458,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             &[],
             false, /* force self update */
             None,
+            vec![], /* Extensions */
         )
         .unwrap();
 

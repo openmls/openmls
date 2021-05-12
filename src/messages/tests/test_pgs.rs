@@ -1,8 +1,7 @@
 use crate::{
     key_packages::KeyPackageBundle,
     messages::{
-        Codec, Config, CredentialBundle, CredentialType, GroupConfig, LeafIndex, MlsGroup,
-        PublicGroupState,
+        Codec, Config, CredentialBundle, CredentialType, LeafIndex, MlsGroup, PublicGroupState,
     },
 };
 
@@ -43,9 +42,9 @@ fn test_pgs() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            false, /* use ratchet tree extension */
+            None,  /* Initial PSK */
+            None,  /* MLS version */
         )
         .expect("Could not create group.");
 
@@ -60,6 +59,7 @@ fn test_pgs() {
             &[],
             true,
             None,
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -75,7 +75,7 @@ fn test_pgs() {
             .expect("Could not apply Commit");
 
         let pgs = group_alice
-            .export_public_group_state(&alice_credential_bundle)
+            .export_public_group_state(&alice_credential_bundle, vec![] /* Extensions */)
             .expect("Could not export the public group state");
 
         // Make sure Alice is the signer

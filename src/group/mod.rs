@@ -74,30 +74,3 @@ impl GroupContext {
         self.epoch = epoch;
     }
 }
-
-/// Configuration for an MLS group.
-#[derive(Clone, Copy, Debug)]
-pub struct GroupConfig {
-    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
-    /// Defaults to false.
-    pub add_ratchet_tree_extension: bool,
-    pub padding_block_size: u32,
-    pub additional_as_epochs: u32,
-}
-
-impl GroupConfig {
-    /// Get the padding block size used in this config.
-    pub fn padding_block_size(&self) -> u32 {
-        self.padding_block_size
-    }
-}
-
-impl Default for GroupConfig {
-    fn default() -> Self {
-        Self {
-            add_ratchet_tree_extension: false,
-            padding_block_size: 10,
-            additional_as_epochs: 0,
-        }
-    }
-}

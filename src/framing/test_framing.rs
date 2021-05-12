@@ -165,9 +165,9 @@ fn unknown_sender() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            false, /* use ratchet tree extension */
+            None,  /* Initial PSK */
+            None,  /* MLS version */
         )
         .unwrap();
 
@@ -184,6 +184,7 @@ fn unknown_sender() {
                 &[],
                 false,
                 None,
+                vec![], /* Extensions */
             )
             .expect("Error creating Commit");
 
@@ -209,6 +210,7 @@ fn unknown_sender() {
                 &[],
                 false,
                 None,
+                vec![], /* Extensions */
             )
             .expect("Error creating Commit");
 
@@ -216,7 +218,7 @@ fn unknown_sender() {
             .apply_commit(&commit, &[&charlie_add_proposal], &[], None)
             .expect("Could not apply Commit");
 
-        let mut group_charlie = MlsGroup::new_from_welcome(
+        let (mut group_charlie, _extensions) = MlsGroup::new_from_welcome(
             welcome_option.unwrap(),
             Some(group_alice.tree().public_key_tree_copy()),
             charlie_key_package_bundle,
@@ -236,6 +238,7 @@ fn unknown_sender() {
                 &[],
                 false,
                 None,
+                vec![], /* Extensions */
             )
             .expect("Error creating Commit");
 

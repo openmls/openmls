@@ -8,6 +8,7 @@ use crate::group::*;
 use crate::messages::*;
 
 impl MlsGroup {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn create_commit_internal(
         &self,
         aad: &[u8],
@@ -16,6 +17,7 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
+        group_info_extensions: Vec<Box<dyn Extension>>,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
@@ -98,7 +100,7 @@ impl MlsGroup {
         let tree_hash = provisional_tree.tree_hash();
 
         // TODO #186: Implement extensions
-        let extensions: Vec<Box<dyn Extension>> = Vec::new();
+        let context_extensions: Vec<Box<dyn Extension>> = Vec::new();
 
         // Calculate group context
         let provisional_group_context = GroupContext::new(
@@ -106,7 +108,7 @@ impl MlsGroup {
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
-            &extensions,
+            &context_extensions,
         )?;
 
         let joiner_secret = JoinerSecret::new(
@@ -155,13 +157,12 @@ impl MlsGroup {
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
-            let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
-                vec![Box::new(RatchetTreeExtension::new(
+            let mut extensions = group_info_extensions;
+            if self.use_ratchet_tree_extension {
+                extensions.push(Box::new(RatchetTreeExtension::new(
                     provisional_tree.public_key_tree_copy(),
-                ))]
-            } else {
-                Vec::new()
-            };
+                )));
+            }
             // Create GroupInfo object
             let mut group_info = GroupInfo::new(
                 provisional_group_context.group_id.clone(),

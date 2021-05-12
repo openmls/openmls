@@ -14,7 +14,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
-    ) -> Result<Self, WelcomeError> {
+    ) -> Result<(Self, Vec<Box<dyn Extension>>), WelcomeError> {
         log::debug!("MlsGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
         if !Config::supported_versions().contains(&mls_version) {
@@ -67,7 +67,7 @@ impl MlsGroup {
         let group_info_bytes = welcome_key
             .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let group_info = GroupInfo::decode_detached(&group_info_bytes)?;
+        let mut group_info = GroupInfo::decode_detached(&group_info_bytes)?;
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
@@ -105,7 +105,7 @@ impl MlsGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let (nodes, enable_ratchet_tree_extension) = match ratchet_tree_extension {
+        let (nodes, use_ratchet_tree_extension) = match ratchet_tree_extension {
             Some(tree) => (tree.into_vector(), true),
             None => {
                 if let Some(nodes) = nodes_option {
@@ -190,6 +190,12 @@ impl MlsGroup {
             &group_context.confirmed_transcript_hash,
         )?;
 
+        // Strip the ratchet tree extensions from the group info extensions
+        group_info
+            .extensions_mut()
+            .retain(|e| e.extension_type() != ExtensionType::RatchetTree);
+        let group_info_extensions = Clone::clone(group_info.extensions_mut());
+
         // Verify confirmation tag
         if &confirmation_tag != group_info.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
@@ -197,16 +203,19 @@ impl MlsGroup {
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
-            Ok(MlsGroup {
-                ciphersuite,
-                group_context,
-                epoch_secrets,
-                secret_tree: RefCell::new(secret_tree),
-                tree: RefCell::new(tree),
-                interim_transcript_hash,
-                use_ratchet_tree_extension: enable_ratchet_tree_extension,
-                mls_version,
-            })
+            Ok((
+                MlsGroup {
+                    ciphersuite,
+                    group_context,
+                    epoch_secrets,
+                    secret_tree: RefCell::new(secret_tree),
+                    tree: RefCell::new(tree),
+                    interim_transcript_hash,
+                    use_ratchet_tree_extension,
+                    mls_version,
+                },
+                group_info_extensions,
+            ))
         }
     }
 

@@ -26,11 +26,7 @@ fn create_encoding_test_setup() -> TestSetup {
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: GroupConfig {
-                add_ratchet_tree_extension: true,
-                padding_block_size: 10,
-                additional_as_epochs: 0,
-            },
+            use_ratchet_tree_extension: true,
             members: vec![alice_config.clone(), bob_config.clone()],
         };
         test_group_configs.push(test_group);
@@ -259,7 +255,15 @@ fn test_commit_encoding() {
 
         let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], alice_credential_bundle, proposals, &[], true, None)
+            .create_commit(
+                &[],
+                alice_credential_bundle,
+                proposals,
+                &[],
+                true,
+                None,
+                vec![], /* Extensions */
+            )
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
         let commit_decoded = match MlsPlaintext::decode_detached(&commit_encoded) {
@@ -299,7 +303,7 @@ fn test_welcome_message_encoding() {
 
         let proposals = &[&add];
         let (commit, welcome_option, key_package_bundle_option) = group_state
-            .create_commit(&[], credential_bundle, proposals, &[], true, None)
+            .create_commit(&[], credential_bundle, proposals, &[], true, None, vec![])
             .unwrap();
         // Alice applies the commit
         assert!(group_state

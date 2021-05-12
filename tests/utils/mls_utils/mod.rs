@@ -23,7 +23,7 @@ pub(crate) struct TestClientConfig {
 /// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
     pub(crate) ciphersuite: CiphersuiteName,
-    pub(crate) config: GroupConfig,
+    pub(crate) use_ratchet_tree_extension: bool,
     pub(crate) members: Vec<TestClientConfig>,
 }
 
@@ -142,7 +142,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             &group_id.to_be_bytes(),
             group_config.ciphersuite,
             initial_key_package_bundle,
-            group_config.config,
+            group_config.use_ratchet_tree_extension,
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -190,8 +190,9 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     &initial_credential_bundle,
                     &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                     &[],
-                    true, /* Set this to true to populate the tree a little bit. */
-                    None, /* PSKs are not supported here */
+                    true,   /* Set this to true to populate the tree a little bit. */
+                    None,   /* PSKs are not supported here */
+                    vec![], /* Extensions */
                 )
                 .unwrap();
             let welcome = welcome_option.unwrap();
@@ -238,7 +239,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group = match MlsGroup::new_from_welcome(
+                let (new_group, _extensions) = match MlsGroup::new_from_welcome(
                     welcome.clone(),
                     Some(mls_group.tree().public_key_tree_copy()),
                     key_package_bundle,
@@ -285,10 +286,9 @@ fn test_setup() {
         name: "TestClientConfigB",
         ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
-    let group_config = GroupConfig::default();
     let test_group_config = TestGroupConfig {
         ciphersuite: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        config: group_config,
+        use_ratchet_tree_extension: false,
         members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
     };
     let test_setup_config = TestSetupConfig {

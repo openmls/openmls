@@ -70,12 +70,12 @@ impl MlsGroup {
         id: &[u8],
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
-        config: GroupConfig,
+        use_ratchet_tree_extension: bool,
         psk_option: impl Into<Option<PskSecret>>,
         version: impl Into<Option<ProtocolVersion>>,
     ) -> Result<Self, GroupError> {
         debug!("Created group {:x?}", id);
-        trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
+        trace!(" >>> with {:?}", ciphersuite_name);
         let group_id = GroupId { value: id.to_vec() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(key_package_bundle);
@@ -111,7 +111,7 @@ impl MlsGroup {
             secret_tree: RefCell::new(secret_tree),
             tree: RefCell::new(tree),
             interim_transcript_hash,
-            use_ratchet_tree_extension: config.add_ratchet_tree_extension,
+            use_ratchet_tree_extension,
             mls_version: version,
         })
     }
@@ -122,7 +122,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
-    ) -> Result<Self, GroupError> {
+    ) -> Result<(Self, Vec<Box<dyn Extension>>), GroupError> {
         Ok(Self::new_from_welcome_internal(
             welcome,
             nodes_option,
@@ -239,6 +239,7 @@ impl MlsGroup {
     //     ProposalID proposals<0..2^32-1>;
     //     optional<UpdatePath> path;
     // } Commit;
+    #[allow(clippy::too_many_arguments)]
     pub fn create_commit(
         &self,
         aad: &[u8],
@@ -247,6 +248,7 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
+        extensions: Vec<Box<dyn Extension>>,
     ) -> CreateCommitResult {
         self.create_commit_internal(
             aad,
@@ -255,6 +257,7 @@ impl MlsGroup {
             proposals_by_value,
             force_self_update,
             psk_fetcher_option,
+            extensions,
         )
     }
 
@@ -418,32 +421,20 @@ impl MlsGroup {
         &self.group_context.group_id
     }
 
-    /// Get the groups extensions.
-    /// Right now this is limited to the ratchet tree extension which is built
-    /// on the fly when calling this function.
-    pub fn extensions(&self) -> Vec<Box<dyn Extension>> {
-        let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
-            vec![Box::new(RatchetTreeExtension::new(
-                self.tree().public_key_tree_copy(),
-            ))]
-        } else {
-            Vec::new()
-        };
-        extensions
+    /// Returns the ratchet tree extension.
+    pub fn ratchet_tree_extension(&self) -> Box<RatchetTreeExtension> {
+        Box::new(RatchetTreeExtension::new(
+            self.tree().public_key_tree_copy(),
+        ))
     }
 
     /// Export the `PublicGroupState`
     pub fn export_public_group_state(
         &self,
         credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Result<PublicGroupState, CredentialError> {
-        PublicGroupState::new(self, credential_bundle)
-    }
-
-    /// Returns `true` if the group uses the ratchet tree extension anf `false
-    /// otherwise
-    pub fn use_ratchet_tree_extension(&self) -> bool {
-        self.use_ratchet_tree_extension
+        PublicGroupState::new(self, credential_bundle, extensions)
     }
 }
 

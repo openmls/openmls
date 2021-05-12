@@ -111,7 +111,7 @@ impl ManagedGroup {
             &group_id.as_slice(),
             key_package_bundle.key_package().ciphersuite_name(),
             key_package_bundle,
-            GroupConfig::default(),
+            false,
             None, /* Initial PSK */
             None, /* MLS version */
         )?;
@@ -150,7 +150,8 @@ impl ManagedGroup {
             .find_map(|egs| key_store.take_key_package_bundle(&egs.key_package_hash))
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141
-        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None)?;
+        let (group, _extensions) =
+            MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None)?;
 
         let managed_group = ManagedGroup {
             managed_group_config: managed_group_config.clone(),
@@ -224,6 +225,7 @@ impl ManagedGroup {
             proposals_by_value,
             true,
             None,
+            vec![], /* Extensions */
         )?;
 
         let welcome = match welcome_option {
@@ -304,6 +306,7 @@ impl ManagedGroup {
             proposals_by_value,
             false,
             None,
+            vec![], /* Extensions */
         )?;
 
         // It has to be a full Commit and we have to save the KeyPackageBundle for later
@@ -633,6 +636,7 @@ impl ManagedGroup {
             &[],
             true,
             None,
+            vec![], /* Extensions */
         )?;
 
         // If it was a full Commit, we have to save the KeyPackageBundle for later
@@ -775,6 +779,7 @@ impl ManagedGroup {
                     &[&update_proposal],
                     true, /* force_self_update */
                     None,
+                    vec![], /* Extensions */
                 )?
             }
             None => {
@@ -785,6 +790,7 @@ impl ManagedGroup {
                     &[],
                     true, /* force_self_update */
                     None,
+                    vec![], /* Extensions */
                 )?
             }
         };

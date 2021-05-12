@@ -145,7 +145,7 @@ fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
         &group_id,
         ciphersuite.name(),
         key_package_bundle,
-        GroupConfig::default(),
+        false,
         None, /* Initial PSK */
         ProtocolVersion::Mls10,
     )
@@ -166,7 +166,7 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
         &group_id.as_slice(),
         ciphersuite.name(),
         key_package_bundle,
-        GroupConfig::default(),
+        false,
         None, /* Initial PSK */
         ProtocolVersion::Mls10,
     )

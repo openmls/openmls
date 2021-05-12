@@ -109,18 +109,13 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = GroupConfig {
-        add_ratchet_tree_extension: true,
-        ..GroupConfig::default()
-    };
-
     // === Alice creates a group with the ratchet tree extension ===
     let group_id = [1, 2, 3, 4];
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        config,
+        true, /* use ratchet tree extension */
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -139,6 +134,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             &[],
             false,
             None,
+            vec![], /* Extensions */
         )
         .expect("Error creating commit");
 
@@ -146,7 +142,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
         .expect("error applying commit");
 
-    let bob_group = match MlsGroup::new_from_welcome(
+    let (bob_group, _extensions) = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         None,
         bob_key_package_bundle,
@@ -162,10 +158,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         bob_group.authentication_secret()
     );
 
-    // Make sure both groups have set the flag correctly
-    assert!(alice_group.use_ratchet_tree_extension());
-    assert!(bob_group.use_ratchet_tree_extension());
-
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
@@ -178,17 +170,12 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = GroupConfig {
-        add_ratchet_tree_extension: false,
-        ..GroupConfig::default()
-    };
-
     let group_id = [5, 6, 7, 8];
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        config,
+        false, /* use ratchet tree extension */
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -207,6 +194,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             &[],
             false,
             None,
+            vec![], /* Extensions */
         )
         .expect("Error creating commit");
 

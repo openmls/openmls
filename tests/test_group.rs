@@ -60,9 +60,9 @@ fn create_commit_optional_path() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            false, /* use ratchet tree extension */
+            None,  /* Initial PSK */
+            None,  /* MLS version */
         )
         .unwrap();
 
@@ -79,8 +79,9 @@ fn create_commit_optional_path() {
                 &alice_credential_bundle,
                 &(epoch_proposals.iter().collect::<Vec<&MlsPlaintext>>()),
                 &[],
-                true, /* force self-update */
-                None, /* No PSK fetcher */
+                true,   /* force self-update */
+                None,   /* No PSK fetcher */
+                vec![], /* Extensions */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -106,8 +107,9 @@ fn create_commit_optional_path() {
                 &alice_credential_bundle,
                 epoch_proposals,
                 &[],
-                false, /* don't force selfupdate */
-                None,  /* PSK fetcher */
+                false,  /* don't force selfupdate */
+                None,   /* PSK fetcher */
+                vec![], /* Extensions */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -126,7 +128,7 @@ fn create_commit_optional_path() {
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         // Bob creates group from Welcome
-        let group_bob = match MlsGroup::new_from_welcome(
+        let (group_bob, _extensions) = match MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
@@ -157,8 +159,9 @@ fn create_commit_optional_path() {
             &alice_credential_bundle,
             proposals,
             &[],
-            false, /* force self update */
-            None,  /* PSK fetcher */
+            false,  /* force self update */
+            None,   /* PSK fetcher */
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -216,9 +219,9 @@ fn basic_group_setup() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            false, /* use ratchet tree extension */
+            None,  /* Initial PSK */
+            None,  /* MLS version */
         )
         .expect("Could not create group.");
 
@@ -232,7 +235,8 @@ fn basic_group_setup() {
             &[&bob_add_proposal],
             &[],
             true,
-            None, /* PSK fetcher */
+            None,   /* PSK fetcher */
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -303,9 +307,9 @@ fn group_operations() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
+            false, /* use ratchet tree extension */
+            None,  /* Initial PSK */
+            None,  /* MLS version */
         )
         .expect("Could not create group.");
 
@@ -321,7 +325,8 @@ fn group_operations() {
                 epoch_proposals,
                 &[],
                 false,
-                None, /* PSK fetcher */
+                None,   /* PSK fetcher */
+                vec![], /* Extensions */
             )
             .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
@@ -342,7 +347,7 @@ fn group_operations() {
             .expect("error applying commit");
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
-        let mut group_bob = match MlsGroup::new_from_welcome(
+        let (mut group_bob, _extensions) = match MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.unwrap(),
             Some(ratchet_tree),
             bob_key_package_bundle,
@@ -396,8 +401,9 @@ fn group_operations() {
             &bob_credential_bundle,
             &[&update_proposal_bob],
             &[],
-            false, /* force self update */
-            None,  /* PSK fetcher */
+            false,  /* force self update */
+            None,   /* PSK fetcher */
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -451,8 +457,9 @@ fn group_operations() {
             &alice_credential_bundle,
             &[&update_proposal_alice],
             &[],
-            false, /* force self update */
-            None,  /* PSK fetcher */
+            false,  /* force self update */
+            None,   /* PSK fetcher */
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -504,8 +511,9 @@ fn group_operations() {
             &alice_credential_bundle,
             &[&update_proposal_bob],
             &[],
-            false, /* force self update */
-            None,  /* PSK fetcher */
+            false,  /* force self update */
+            None,   /* PSK fetcher */
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -563,8 +571,9 @@ fn group_operations() {
                 &bob_credential_bundle,
                 &[&add_charlie_proposal_bob],
                 &[],
-                false, /* force self update */
-                None,  /* PSK fetcher */
+                false,  /* force self update */
+                None,   /* PSK fetcher */
+                vec![], /* Extensions */
             ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -594,7 +603,7 @@ fn group_operations() {
             .expect("Error applying commit (Bob)");
 
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
-        let mut group_charlie = match MlsGroup::new_from_welcome(
+        let (mut group_charlie, _extensions) = match MlsGroup::new_from_welcome(
             welcome_for_charlie_option.unwrap(),
             Some(ratchet_tree),
             charlie_key_package_bundle,
@@ -656,8 +665,9 @@ fn group_operations() {
             &charlie_credential_bundle,
             &[&update_proposal_charlie],
             &[],
-            false, /* force self update */
-            None,  /* PSK fetcher */
+            false,  /* force self update */
+            None,   /* PSK fetcher */
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -710,8 +720,9 @@ fn group_operations() {
             &charlie_credential_bundle,
             &[&remove_bob_proposal_charlie],
             &[],
-            false, /* force self update */
-            None,  /* PSK fetcher */
+            false,  /* force self update */
+            None,   /* PSK fetcher */
+            vec![], /* Extensions */
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),

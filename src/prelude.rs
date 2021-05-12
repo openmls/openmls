@@ -1,7 +1,6 @@
 //! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
-pub use crate::group::GroupConfig;
 pub use crate::group::MlsGroup;
 pub use crate::group::{
     GroupEvent, HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,

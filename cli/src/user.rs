@@ -229,14 +229,13 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update();
-        let config = GroupConfig::default();
         let mls_group = MlsGroup::new(
             group_id,
             CIPHERSUITE,
             kpb,
-            config,
-            None, /* Initial PSK */
-            None, /* MLS version */
+            false, /* use ratchet tree extension */
+            None,  /* Initial PSK */
+            None,  /* MLS version */
         )
         .unwrap();
         let group = Group {
@@ -285,7 +284,15 @@ impl User {
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
-            .create_commit(&group.group_aad, credentials, &proposals, &[], false, None)
+            .create_commit(
+                &group.group_aad,
+                credentials,
+                &proposals,
+                &[],
+                false,
+                None,
+                vec![],
+            )
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
         group
@@ -324,7 +331,7 @@ impl User {
         log::debug!("{} joining group ...", self.username);
 
         let kpb = self.identity.borrow_mut().update();
-        let mls_group = match MlsGroup::new_from_welcome(
+        let (mls_group, _extensions) = match MlsGroup::new_from_welcome(
             welcome, None, /* no public tree here, has to be in the extension */
             kpb, None, /* PSK fetcher */
         ) {

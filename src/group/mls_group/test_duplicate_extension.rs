@@ -42,17 +42,12 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = GroupConfig {
-        add_ratchet_tree_extension: true,
-        ..GroupConfig::default()
-    };
-
     let group_id = [5, 6, 7, 8];
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        config,
+        true, /* use ratchet tree extension */
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -71,6 +66,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
             &[],
             false,
             None,
+            vec![], /* Extensions */
         )
         .expect("Error creating commit");
 

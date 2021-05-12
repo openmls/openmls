@@ -156,9 +156,9 @@ async fn test_group() {
         group_id,
         group_ciphersuite,
         key_package_bundles.remove(0),
-        GroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
+        false, /* use ratchet tree extension */
+        None,  /* Initial PSK */
+        None,  /* MLS version */
     )
     .unwrap();
 
@@ -202,6 +202,7 @@ async fn test_group() {
             &[],
             false,
             None,
+            vec![], /* Extensions */
         )
         .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
@@ -246,7 +247,7 @@ async fn test_group() {
     assert_eq!(welcome_msg, welcome_message);
     assert!(messages.is_empty());
 
-    let mut group_on_client2 = MlsGroup::new_from_welcome(
+    let (mut group_on_client2, _extensions) = MlsGroup::new_from_welcome(
         welcome_message,
         Some(group.tree().public_key_tree_copy()), // delivered out of band
         key_package_bundles.remove(0),

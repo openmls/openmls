@@ -228,6 +228,11 @@ impl GroupInfo {
         &self.extensions
     }
 
+    /// Get a mutable reference to the extensions.
+    pub(crate) fn extensions_mut(&mut self) -> &mut Vec<Box<dyn Extension>> {
+        &mut self.extensions
+    }
+
     /// Set the group info's extensions.
     #[cfg(test)]
     pub(crate) fn set_extensions(&mut self, extensions: Vec<Box<dyn Extension>>) {
@@ -370,6 +375,7 @@ impl PublicGroupState {
     pub(crate) fn new(
         mls_group: &MlsGroup,
         credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
     ) -> Result<Self, CredentialError> {
         let ciphersuite = mls_group.ciphersuite();
         let (_external_priv, external_pub) = mls_group
@@ -382,7 +388,6 @@ impl PublicGroupState {
         let epoch = mls_group.context().epoch();
         let tree_hash = mls_group.tree().tree_hash();
         let interim_transcript_hash = mls_group.interim_transcript_hash().to_vec();
-        let extensions = mls_group.extensions();
 
         let pgstbs = PublicGroupStateTbs {
             group_id: &group_id,
