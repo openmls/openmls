@@ -98,7 +98,7 @@ impl MlsGroup {
         // Calculate group context
         let provisional_group_context = GroupContext::from_previous_group_context(
             &self.group_context,
-            tree_hash.clone(),
+            tree_hash,
             confirmed_transcript_hash.clone(),
         )?;
 
