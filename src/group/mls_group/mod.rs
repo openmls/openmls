@@ -7,6 +7,8 @@ mod new_from_welcome;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
+mod test_group_info_extensions;
+#[cfg(test)]
 mod test_mls_group;
 
 use crate::codec::*;
@@ -122,7 +124,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
-    ) -> Result<(Self, Vec<Box<dyn Extension>>), GroupError> {
+    ) -> Result<(Self, Vec<ExtensionStruct>), GroupError> {
         Ok(Self::new_from_welcome_internal(
             welcome,
             nodes_option,
@@ -248,7 +250,7 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<ExtensionStruct>,
     ) -> CreateCommitResult {
         self.create_commit_internal(
             aad,

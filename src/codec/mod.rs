@@ -69,12 +69,15 @@ impl<'a> Cursor {
     }
 }
 
-pub trait Codec: Sized {
+pub trait Codec {
     fn encode(&self, _buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         unimplemented!();
     }
 
-    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
+    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError>
+    where
+        Self: Sized,
+    {
         unimplemented!();
     }
 
@@ -84,7 +87,10 @@ pub trait Codec: Sized {
         Ok(buffer)
     }
 
-    fn decode_detached(bytes: &[u8]) -> Result<Self, CodecError> {
+    fn decode_detached(bytes: &[u8]) -> Result<Self, CodecError>
+    where
+        Self: Sized,
+    {
         let cursor = &mut Cursor::new(bytes);
         Self::decode(cursor)
     }

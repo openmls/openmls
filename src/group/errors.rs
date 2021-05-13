@@ -61,8 +61,8 @@ implement_error! {
                 "The signature on the GroupInfo is not valid.",
             GroupInfoDecryptionFailure =
                 "Unable to decrypt the GroupInfo.",
-            DuplicateRatchetTreeExtension =
-                "Found a duplicate ratchet tree extension in the Welcome message.",
+            DuplicateGroupInfoExtension =
+                "Found a duplicate group info extension in the Welcome message.",
             UnsupportedMlsVersion =
                 "The Welcome message uses an unsupported MLS version.",
             UnknownError =

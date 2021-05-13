@@ -79,7 +79,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         GroupEpoch(0),
         get_random_vec(ciphersuite.hash_length()),
         get_random_vec(ciphersuite.hash_length()),
-        vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
+        vec![RatchetTreeExtension::new(ratchet_tree.clone()).to_extension_struct()],
         ConfirmationTag(Mac {
             mac_value: get_random_vec(ciphersuite.hash_length()),
         }),

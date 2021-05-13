@@ -41,7 +41,7 @@ impl Codec for GroupInfo {
         let epoch = GroupEpoch::decode(cursor)?;
         let tree_hash = decode_vec(VecSize::VecU8, cursor)?;
         let confirmed_transcript_hash = decode_vec(VecSize::VecU8, cursor)?;
-        let extensions = extensions_vec_from_cursor(cursor)?;
+        let extensions: Vec<ExtensionStruct> = decode_vec(VecSize::VecU32, cursor)?;
         let confirmation_tag = ConfirmationTag::decode(cursor)?;
         let signer_index = LeafIndex::from(u32::decode(cursor)?);
         let signature = Signature::decode(cursor)?;

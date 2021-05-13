@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::ciphersuite::{signable::*, *};
 use crate::codec::*;
 use crate::config::Config;
@@ -155,7 +157,7 @@ pub(crate) struct GroupInfo {
     epoch: GroupEpoch,
     tree_hash: Vec<u8>,
     confirmed_transcript_hash: Vec<u8>,
-    extensions: Vec<Box<dyn Extension>>,
+    extensions: Vec<ExtensionStruct>,
     confirmation_tag: ConfirmationTag,
     signer_index: LeafIndex,
     signature: Signature,
@@ -167,7 +169,7 @@ impl GroupInfo {
         epoch: GroupEpoch,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<ExtensionStruct>,
         confirmation_tag: ConfirmationTag,
         signer_index: LeafIndex,
     ) -> Self {
@@ -224,19 +226,54 @@ impl GroupInfo {
     }
 
     /// Get the extensions.
-    pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
-        &self.extensions
+    pub(crate) fn into_extensions(self) -> Vec<ExtensionStruct> {
+        self.extensions
     }
 
-    /// Get a mutable reference to the extensions.
-    pub(crate) fn extensions_mut(&mut self) -> &mut Vec<Box<dyn Extension>> {
-        &mut self.extensions
+    /// Get the group info's extensions.
+    #[cfg(test)]
+    pub(crate) fn extensions(&mut self) -> &Vec<ExtensionStruct> {
+        &self.extensions
     }
 
     /// Set the group info's extensions.
     #[cfg(test)]
-    pub(crate) fn set_extensions(&mut self, extensions: Vec<Box<dyn Extension>>) {
+    pub(crate) fn set_extensions(&mut self, extensions: Vec<ExtensionStruct>) {
         self.extensions = extensions;
+    }
+
+    /// Returns the ratchet tree extension if present. The extension is dropped from the list of extensions.
+    pub(crate) fn take_ratchet_tree_extension(&mut self) -> Option<RatchetTreeExtension> {
+        let mut rte = None;
+        for e in &self.extensions {
+            if e.extension_type() == ExtensionType::RatchetTree {
+                rte = Some(e.extension_data().to_vec());
+                break;
+            }
+        }
+        // Remove all ratchet tree extensions
+        self.extensions
+            .retain(|e| e.extension_type() != ExtensionType::RatchetTree);
+        // Try to decode the ratchet tree extension
+        if let Some(rte) = rte {
+            match RatchetTreeExtension::new_from_bytes(&rte) {
+                Ok(rte) => Some(rte),
+                Err(_) => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if all extensions are unique and `false` otherwise.
+    pub(crate) fn extensions_are_unique(&self) -> bool {
+        let mut ehs = HashSet::new();
+        for e in &self.extensions {
+            if !ehs.insert(e) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -247,7 +284,7 @@ impl Signable for GroupInfo {
         self.epoch.encode(buffer)?;
         encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
         encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
-        encode_extensions(&self.extensions, buffer)?;
+        encode_vec(VecSize::VecU32, buffer, &self.extensions)?;
         self.confirmation_tag.encode(buffer)?;
         self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())

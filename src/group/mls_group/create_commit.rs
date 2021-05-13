@@ -17,7 +17,7 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
-        group_info_extensions: Vec<Box<dyn Extension>>,
+        group_info_extensions: Vec<ExtensionStruct>,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
@@ -159,9 +159,8 @@ impl MlsGroup {
             // Create the ratchet tree extension if necessary
             let mut extensions = group_info_extensions;
             if self.use_ratchet_tree_extension {
-                extensions.push(Box::new(RatchetTreeExtension::new(
-                    provisional_tree.public_key_tree_copy(),
-                )));
+                let rte = RatchetTreeExtension::new(provisional_tree.public_key_tree_copy());
+                extensions.push(rte.to_extension_struct());
             }
             // Create GroupInfo object
             let mut group_info = GroupInfo::new(

@@ -5,6 +5,7 @@ pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
 pub mod errors;
+mod group_info_extension;
 mod key_package_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
@@ -12,6 +13,7 @@ mod ratchet_tree_extension;
 
 pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;
+pub use group_info_extension::GroupInfoExtension;
 pub use key_package_id_extension::KeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
@@ -24,14 +26,28 @@ mod test_extensions;
 ///
 /// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
-#[repr(u16)]
 pub enum ExtensionType {
-    Reserved = 0,
-    Capabilities = 1,
-    Lifetime = 2,
-    KeyId = 3,
-    ParentHash = 4,
-    RatchetTree = 5,
+    Reserved,
+    Capabilities,
+    Lifetime,
+    KeyId,
+    ParentHash,
+    RatchetTree,
+    Custom(u16),
+}
+
+impl From<ExtensionType> for u16 {
+    fn from(extension_type: ExtensionType) -> Self {
+        match extension_type {
+            ExtensionType::Reserved => 0,
+            ExtensionType::Capabilities => 1,
+            ExtensionType::Lifetime => 2,
+            ExtensionType::KeyId => 3,
+            ExtensionType::ParentHash => 4,
+            ExtensionType::RatchetTree => 5,
+            ExtensionType::Custom(value) => value,
+        }
+    }
 }
 
 /// The default extension type is invalid.
@@ -46,7 +62,7 @@ impl TryFrom<u16> for ExtensionType {
     type Error = CodecError;
 
     /// Get the `ExtensionType` from a u16.
-    /// Returns an error if the extension type is not known.
+    /// Returns an error if the extension type is not known or not in the custom range.
     /// Note that this returns a [`CodecError`](`crate::codec::CodecError`).
     fn try_from(a: u16) -> Result<Self, Self::Error> {
         match a {
@@ -56,14 +72,20 @@ impl TryFrom<u16> for ExtensionType {
             3 => Ok(ExtensionType::KeyId),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
-            _ => Err(CodecError::DecodingError),
+            _ => {
+                // Check that we are in the IANA range
+                if a < 0xff00 {
+                    return Err(CodecError::DecodingError);
+                }
+                Ok(ExtensionType::Custom(a))
+            }
         }
     }
 }
 
 impl Codec for ExtensionType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u16).encode(buffer)?;
+        u16::from(*self).encode(buffer)?;
         Ok(())
     }
 
@@ -101,6 +123,11 @@ impl<'a> ExtensionStruct {
             extension_type,
             extension_data,
         }
+    }
+
+    /// Get the extension type
+    pub fn extension_type(&self) -> ExtensionType {
+        self.extension_type
     }
 
     /// Get the data of this extension struct.
