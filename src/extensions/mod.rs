@@ -125,13 +125,12 @@ impl<'a> ExtensionStruct {
         }
     }
 
-    /// Get the extension type
+    /// Get the extension type.
     pub fn extension_type(&self) -> ExtensionType {
         self.extension_type
     }
 
     /// Get the data of this extension struct.
-    #[cfg(any(feature = "expose-test-vectors", test))]
     pub fn extension_data(&'a self) -> &'a [u8] {
         &self.extension_data
     }
