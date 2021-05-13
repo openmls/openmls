@@ -225,7 +225,7 @@ impl GroupInfo {
         &self.confirmation_tag
     }
 
-    /// Get the extensions.
+    /// Consume the group info and return the extensions.
     pub(crate) fn into_extensions(self) -> Vec<ExtensionStruct> {
         self.extensions
     }
@@ -269,7 +269,7 @@ impl GroupInfo {
     pub(crate) fn extensions_are_unique(&self) -> bool {
         let mut ehs = HashSet::new();
         for e in &self.extensions {
-            if !ehs.insert(e) {
+            if !ehs.insert(e.extension_type()) {
                 return false;
             }
         }
