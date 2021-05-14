@@ -147,7 +147,6 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     let tree_hash_before = addee_group.tree_hash();
 
-    drop(addee_group);
     drop(addee_groups);
     drop(addee);
 
@@ -180,7 +179,6 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     // Drop all the borrows as not to cause problems when having the setup
     // distribute to members.
-    drop(updater_group);
     drop(updater_groups);
     drop(updater);
     drop(adder);
@@ -207,7 +205,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
                     }
                 }
             }
-            return false;
+            false
         })
         .unwrap();
 

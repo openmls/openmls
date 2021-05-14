@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use test_macros::ctest;
 
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 #[repr(u16)]
 pub enum CiphersuiteName {
@@ -35,9 +36,7 @@ ctest!(ciphersuite_test [
     CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
     CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
 ] {
-    println!("ciphersuite_code: {:?}", param);
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    println!("Testing ciphersuite {:?}", param);
 });
 
 macro_rules! ctest_ciphersuites {
@@ -57,8 +56,6 @@ macro_rules! ctest_ciphersuites {
     };
 }
 
-ctest_ciphersuites!(better_test, test(param: CiphersuiteName) {
-    println!("ciphersuite_code: {:?}", param);
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(better_test, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
 });

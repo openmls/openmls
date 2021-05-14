@@ -1,6 +1,5 @@
 use crate::config::*;
 use crate::{ciphersuite::*, credentials::CredentialBundle};
-use std::convert::TryFrom;
 
 use crate::credentials::CredentialType::Basic;
 use crate::key_packages::KeyPackageBundle;
@@ -9,8 +8,7 @@ use super::{KeyStore, KeyStoreError};
 
 // This test tests the basic functions of the key store, i.e. generation and
 // retrieval of key packages and credential bundles, including error cases.
-ctest_ciphersuites!(key_storage, test(param: CiphersuiteName) {
-    let ciphersuite_name = CiphersuiteName::try_from(param).unwrap();
+ctest_ciphersuites!(key_storage, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -22,13 +20,11 @@ ctest_ciphersuites!(key_storage, test(param: CiphersuiteName) {
             Basic,
             ciphersuite.signature_scheme(),
         )
-        .expect("Error while creating credential.")
-        .clone();
+        .expect("Error while creating credential.");
 
     let key_package = ks
         .generate_key_package_bundle(&[ciphersuite.name()], &credential, Vec::new())
-        .expect("Error while generating key package.")
-        .clone();
+        .expect("Error while generating key package.");
 
     assert_eq!(&credential, key_package.credential());
 
