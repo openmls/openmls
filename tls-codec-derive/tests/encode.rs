@@ -1,4 +1,4 @@
-use tls_codec::{Serialize, TlsVecU16};
+use tls_codec::{Serialize, TlsVecU32};
 use tls_codec_derive::TlsSerialize;
 
 #[derive(TlsSerialize, Debug)]
@@ -16,7 +16,7 @@ pub enum ExtensionType {
 #[derive(TlsSerialize, Debug)]
 pub struct ExtensionStruct {
     extension_type: ExtensionType,
-    extension_data: TlsVecU16<u8>,
+    extension_data: TlsVecU32<u8>,
 }
 
 #[test]
@@ -33,7 +33,7 @@ fn simple_enum() {
 fn simple_struct() {
     let extension = ExtensionStruct {
         extension_type: ExtensionType::KeyId,
-        extension_data: TlsVecU16::from_slice(&[1, 2, 3, 4, 5]),
+        extension_data: TlsVecU32::from_slice(&[1, 2, 3, 4, 5]),
     };
     let serialized = extension.tls_serialize_detached().unwrap();
     assert_eq!(vec![0, 3, 0, 5, 1, 2, 3, 4, 5], serialized);
