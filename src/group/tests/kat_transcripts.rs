@@ -95,7 +95,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
-        &MlsPlaintextCommitAuthData::from(&commit),
+        &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
@@ -247,7 +247,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
 
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
-        &MlsPlaintextCommitAuthData::from(&commit),
+        &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &my_confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");

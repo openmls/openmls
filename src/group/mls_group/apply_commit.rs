@@ -145,7 +145,8 @@ impl MlsGroup {
         key_schedule.add_context(&provisional_group_context)?;
         let provisional_epoch_secrets = key_schedule.epoch_secrets(true)?;
 
-        let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::from(mls_plaintext);
+        let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
+            .map_err(|_| ApplyCommitError::ConfirmationTagMissing)?;
 
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,

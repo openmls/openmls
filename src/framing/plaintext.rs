@@ -465,10 +465,15 @@ pub(crate) struct MlsPlaintextCommitAuthData<'a> {
     pub(crate) confirmation_tag: Option<&'a ConfirmationTag>,
 }
 
-impl<'a> From<&'a MlsPlaintext> for MlsPlaintextCommitAuthData<'a> {
-    fn from(mls_plaintext: &'a MlsPlaintext) -> Self {
-        MlsPlaintextCommitAuthData {
-            confirmation_tag: mls_plaintext.confirmation_tag.as_ref(),
+impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitAuthData<'a> {
+    type Error = &'static str;
+
+    fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
+        match mls_plaintext.confirmation_tag.as_ref() {
+            Some(confirmation_tag) => Ok(MlsPlaintextCommitAuthData {
+                confirmation_tag: Some(confirmation_tag),
+            }),
+            None => Err("MLSPlaintext needs to contain a confirmation tag."),
         }
     }
 }
