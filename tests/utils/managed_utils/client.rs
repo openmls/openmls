@@ -104,7 +104,20 @@ impl Client {
         let group_state = group_states
             .get_mut(&group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        group_state.process_message(message.clone())?;
+        // Prevent feeding further messages to client after it was removed
+        // by one of the messages.
+        if !group_state.is_active() {
+            return Ok(());
+        }
+        let events = group_state.process_message(message.clone())?;
+        for event in events {
+            match event {
+                GroupEvent::Error(e) => {
+                    return Err(ClientError::ErrorEvent(e));
+                }
+                _ => {}
+            }
+        }
         Ok(())
     }
 

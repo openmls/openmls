@@ -1,4 +1,4 @@
-use openmls::prelude::*;
+use openmls::{group::ErrorEvent, prelude::*};
 
 #[derive(Debug)]
 pub enum SetupError {
@@ -41,6 +41,7 @@ pub enum ClientError {
     InvalidMessage(GroupError),
     ManagedGroupError(ManagedGroupError),
     GroupError(GroupError),
+    ErrorEvent(ErrorEvent),
     Unknown,
 }
 
