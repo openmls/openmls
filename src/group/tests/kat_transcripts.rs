@@ -178,7 +178,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         group_id,
         GroupEpoch(epoch),
         tree_hash_before,
-        confirmed_transcript_hash_before.clone(),
+        confirmed_transcript_hash_before,
         &[], // extensions
     )
     .expect("Error creating group context");
