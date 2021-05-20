@@ -21,14 +21,22 @@ impl Codec for NodeType {
 impl Codec for Node {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.node_type.encode(buffer)?;
-        self.key_package.encode(buffer)?;
-        self.node.encode(buffer)?;
+        match self.node_type {
+            NodeType::Leaf => {
+                self.key_package.as_ref().unwrap().encode(buffer)?;
+            }
+            NodeType::Parent => {
+                self.node.as_ref().unwrap().encode(buffer)?;
+            }
+        }
         Ok(())
     }
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let node_type = NodeType::decode(cursor)?;
-        let key_package = Option::<KeyPackage>::decode(cursor)?;
-        let node = Option::<ParentNode>::decode(cursor)?;
+        let (key_package, node) = match node_type {
+            NodeType::Leaf => (Some(KeyPackage::decode(cursor)?), None),
+            NodeType::Parent => (None, Some(ParentNode::decode(cursor)?)),
+        };
         Ok(Node {
             node_type,
             key_package,
