@@ -1,0 +1,14 @@
+{
+    "cipher_suite": 2,
+    "commit": "0400010203000000000000000001000000000000000003000000000000000120553b1fe297f8ebd113eb620d8f88a69bd5ac679640c7d77890f9dd91a4a1437e012024af2faa58c672678d3efa2add2beaed41c8932add31eac566a7a53f3b00bd3a",
+    "confirmation_key": "b074de3b2aa67159b49b76092be86d422406610f50eb225d908600ce035dedcb",
+    "confirmed_transcript_hash_after": "d2cec90d156fde9aed6ffcfbfb336d3cbb3c7d3b61417f746a5e41a7d37e601a",
+    "confirmed_transcript_hash_before": "d7848c63d9f14f688ae076e70438e8ee3fd4d818aec3a0ffc14138d7535fbb0d",
+    "epoch": 0,
+    "group_context": "0400010203000000000000000020bdb1c795f40821df36e8ac22d2552b3b2183ff3a191fb587b3ab22e58b6e697f20d7848c63d9f14f688ae076e70438e8ee3fd4d818aec3a0ffc14138d7535fbb0d00000000",
+    "group_id": "00010203",
+    "interim_transcript_hash_after": "0458e158594122c9776886ecb8303fbd1c38f76985978dcc35d7dc8bcbc55fa0",
+    "interim_transcript_hash_before": "3e1fd4a39ef5ec3a7f1bd555b99b2738fea001ae7e6aad4745049861d1790639",
+    "membership_key": "ff0027cd89f4cd36bcbddd61796eeb5a9f274733a642edb3be0dc97f40bd335c",
+    "tree_hash_before": "bdb1c795f40821df36e8ac22d2552b3b2183ff3a191fb587b3ab22e58b6e697f"
+}

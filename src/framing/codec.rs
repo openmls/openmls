@@ -256,6 +256,7 @@ impl<'a> Codec for MlsPlaintextCommitContent<'a> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;
         self.sender.encode(buffer)?;
+        encode_vec(VecSize::VecU32, buffer, self.authenticated_data)?;
         self.content_type.encode(buffer)?;
         self.commit.encode(buffer)?;
         self.signature.encode(buffer)?;

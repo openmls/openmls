@@ -324,3 +324,77 @@ fn unknown_sender() {
         );
     }
 }
+
+#[test]
+fn confirmation_tag_presence() {
+    use crate::config::*;
+    use crate::credentials::*;
+    use crate::key_packages::*;
+
+    for ciphersuite in Config::supported_ciphersuites() {
+        let group_aad = b"Alice's test group";
+
+        // Define credential bundles
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+
+        // Generate KeyPackages
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+                .unwrap();
+        let bob_key_package = bob_key_package_bundle.key_package();
+
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+                .unwrap();
+
+        // Alice creates a group
+        let group_id = [1, 2, 3, 4];
+        let mut group_alice = MlsGroup::new(
+            &group_id,
+            ciphersuite.name(),
+            alice_key_package_bundle,
+            GroupConfig::default(),
+            None, /* Initial PSK */
+            None, /* MLS version */
+        )
+        .unwrap();
+
+        // Alice adds Bob
+        let bob_add_proposal = group_alice
+            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .expect("Could not create proposal.");
+
+        let (mut commit, _welcome_option, _kpb_option) = group_alice
+            .create_commit(
+                group_aad,
+                &alice_credential_bundle,
+                &[&bob_add_proposal],
+                &[],
+                false,
+                None,
+            )
+            .expect("Error creating Commit");
+
+        commit.confirmation_tag = None;
+
+        let err = group_alice
+            .apply_commit(&commit, &[&bob_add_proposal], &[], None)
+            .expect_err("No error despite missing confirmation tag.");
+
+        assert_eq!(
+            err,
+            GroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing)
+        );
+    }
+}
