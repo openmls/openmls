@@ -1,4 +1,4 @@
-use tls_codec::{Cursor, Deserialize, Serialize, TlsVecU16, TlsVecU8};
+use tls_codec::{Cursor, Deserialize, Serialize, TlsVecU32, TlsVecU8};
 use tls_codec_derive::{TlsDeserialize, TlsSerialize};
 
 #[derive(TlsDeserialize, Debug, PartialEq, Clone, Copy, TlsSerialize)]
@@ -16,7 +16,7 @@ pub enum ExtensionType {
 #[derive(TlsDeserialize, Debug, PartialEq, TlsSerialize)]
 pub struct ExtensionStruct {
     extension_type: ExtensionType,
-    extension_data: TlsVecU16<u8>,
+    extension_data: TlsVecU32<u8>,
 }
 
 #[derive(TlsDeserialize, Debug, PartialEq, TlsSerialize)]
@@ -53,7 +53,7 @@ fn simple_struct() {
     let b = [0, 3, 0, 5, 1, 2, 3, 4, 5];
     let extension = ExtensionStruct {
         extension_type: ExtensionType::KeyId,
-        extension_data: TlsVecU16::from_slice(&[1, 2, 3, 4, 5]),
+        extension_data: TlsVecU32::from_slice(&[1, 2, 3, 4, 5]),
     };
     let deserialized = ExtensionStruct::tls_deserialize_detached(&b).unwrap();
     assert_eq!(extension, deserialized);

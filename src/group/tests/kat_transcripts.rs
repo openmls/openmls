@@ -30,7 +30,7 @@ use serde::{self, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TranscriptTestVector {
-    cipher_suite: u16,
+    pub cipher_suite: u16,
     group_id: String,
     epoch: u64,
     tree_hash_before: String,
@@ -40,6 +40,7 @@ pub struct TranscriptTestVector {
     confirmation_key: String,
     commit: String, // TLS serialized MlsPlaintext(Commit)
 
+    group_context: String,
     confirmed_transcript_hash_after: String,
     interim_transcript_hash_after: String,
 }
@@ -82,19 +83,15 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &[], // extensions
     )
     .expect("Error creating group context");
-    let confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
-    commit.confirmation_tag = Some(confirmation_tag);
-    commit
-        .add_membership_tag(context.serialized(), &membership_key)
-        .expect("Error adding membership tag");
 
-    // Compute new transcript hashes.
     let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
         &MlsPlaintextCommitContent::try_from(&commit).unwrap(),
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
+    let confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_after);
+    commit.confirmation_tag = Some(confirmation_tag);
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
@@ -102,6 +99,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
+    commit
+        .add_membership_tag(context.serialized(), &membership_key)
+        .expect("Error adding membership tag");
 
     TranscriptTestVector {
         cipher_suite: ciphersuite.name() as u16,
@@ -114,6 +114,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         confirmation_key: bytes_to_hex(confirmation_key.as_slice()),
         commit: bytes_to_hex(&commit.encode_detached().expect("Error encoding commit")),
 
+        group_context: bytes_to_hex(&context.serialized()),
         confirmed_transcript_hash_after: bytes_to_hex(&confirmed_transcript_hash_after),
         interim_transcript_hash_after: bytes_to_hex(&interim_transcript_hash_after),
     }
@@ -148,6 +149,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         }
     };
     log::debug!("Testing test vector for ciphersuite {:?}", ciphersuite);
+    log::trace!("  {:?}", test_vector);
 
     // Read input values.
     let group_id = GroupId {
@@ -176,10 +178,21 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         group_id,
         GroupEpoch(epoch),
         tree_hash_before,
-        confirmed_transcript_hash_before.clone(),
+        confirmed_transcript_hash_before,
         &[], // extensions
     )
     .expect("Error creating group context");
+    let expected_group_context = hex_to_bytes(&test_vector.group_context);
+    if context.serialized() != expected_group_context {
+        log::error!("  Group context mismatch");
+        log::debug!("    Computed: {:x?}", context.serialized());
+        log::debug!("    Expected: {:x?}", expected_group_context);
+        if cfg!(test) {
+            panic!("Group context mismatch");
+        }
+        return Err(TranscriptTestVectorError::GroupContextMismatch);
+    }
+
     if commit
         .verify_membership_tag(ciphersuite, context.serialized(), &membership_key)
         .is_err()
@@ -190,13 +203,23 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
 
-    let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
+    //let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
+    let confirmed_transcript_hash_after =
+        hex_to_bytes(&test_vector.confirmed_transcript_hash_after);
+
+    let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_after);
     if &my_confirmation_tag
         != commit
             .confirmation_tag
             .as_ref()
             .expect("Confirmation tag is missing")
     {
+        log::error!("  Confirmation tag mismatch");
+        log::debug!("    Computed: {:x?}", my_confirmation_tag);
+        log::debug!(
+            "    Expected: {:x?}",
+            commit.confirmation_tag.as_ref().unwrap()
+        );
         if cfg!(test) {
             panic!("Invalid confirmation tag");
         }
@@ -210,14 +233,17 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
-    if my_confirmed_transcript_hash_after
-        != hex_to_bytes(&test_vector.confirmed_transcript_hash_after)
-    {
+    if my_confirmed_transcript_hash_after != confirmed_transcript_hash_after {
+        log::debug!("  Confirmed transcript hash mismatch");
+        log::debug!("    Got:      {:x?}", my_confirmed_transcript_hash_after);
+        log::debug!("    Expected: {:x?}", confirmed_transcript_hash_after);
         if cfg!(test) {
             panic!("Confirmed transcript hash mismatch");
         }
         return Err(TranscriptTestVectorError::ConfirmedTranscriptHashMismatch);
     }
+
+    let interim_transcript_hash_after = hex_to_bytes(&test_vector.interim_transcript_hash_after);
 
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
@@ -225,13 +251,16 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         &my_confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
-    if my_interim_transcript_hash_after != hex_to_bytes(&test_vector.interim_transcript_hash_after)
-    {
+    if my_interim_transcript_hash_after != interim_transcript_hash_after {
+        log::debug!("  Interim transcript hash mismatch");
+        log::debug!("    Got:      {:x?}", my_interim_transcript_hash_after);
+        log::debug!("    Expected: {:x?}", interim_transcript_hash_after);
         if cfg!(test) {
             panic!("Interim transcript hash mismatch");
         }
         return Err(TranscriptTestVectorError::InterimTranscriptHashMismatch);
     }
+    log::debug!("  Finished transcript test vector verification");
     Ok(())
 }
 
@@ -245,11 +274,23 @@ fn read_test_vectors() {
             Err(e) => panic!("Error while checking transcript test vector.\n{:?}", e),
         }
     }
+
+    // mlspp test vectors
+    let tv_files = [
+        "test_vectors/mlspp/mlspp_transcript_1.json",
+        "test_vectors/mlspp/mlspp_transcript_2.json",
+        "test_vectors/mlspp/mlspp_transcript_3.json",
+    ];
+    for &tv_file in tv_files.iter() {
+        let tv: TranscriptTestVector = read(tv_file);
+        run_test_vector(tv).expect("Error while checking key schedule test vector.");
+    }
 }
 
 implement_error! {
     pub enum TranscriptTestVectorError {
         MembershipTagVerificationError = "Membership tag could not be verified.",
+        GroupContextMismatch = "The group context does not match",
         ConfirmationTagMismatch = "The computed confirmation tag doesn't match the one in the test vector.",
         ConfirmedTranscriptHashMismatch = "The computed transcript hash doesn't match the one in the test vector.",
         InterimTranscriptHashMismatch = "The computed interim transcript hash doesn't match the one in the test vector.",

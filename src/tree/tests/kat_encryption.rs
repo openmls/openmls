@@ -122,8 +122,8 @@ struct LeafSequence {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EncryptionTestVector {
-    cipher_suite: u16,
-    n_leaves: u32,
+    pub cipher_suite: u16,
+    pub n_leaves: u32,
     encryption_secret: String,
     sender_data_secret: String,
     sender_data_info: SenderDataInfo,
@@ -532,6 +532,45 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 }
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }
+
+            // Check handshake keys
+            let (handshake_secret_key, handshake_secret_nonce) = secret_tree
+                .secret_for_decryption(
+                    ciphersuite,
+                    leaf_index,
+                    SecretType::HandshakeSecret,
+                    generation,
+                )
+                .expect("Error getting decryption secret");
+            if hex_to_bytes(&handshake.key) != handshake_secret_key.as_slice() {
+                return Err(EncTestVectorError::HandshakeSecretKeyMismatch);
+            }
+            if hex_to_bytes(&handshake.nonce) != handshake_secret_nonce.as_slice() {
+                return Err(EncTestVectorError::HandshakeSecretNonceMismatch);
+            }
+
+            // Setup group
+            let mls_ciphertext_handshake =
+                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
+                    .expect("Error parsing MLSCiphertext");
+            let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
+            *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
+                &hex_to_bytes(&test_vector.sender_data_secret),
+                ProtocolVersion::default(),
+                ciphersuite,
+            );
+
+            // Decrypt and check message
+            let mls_plaintext_handshake = mls_ciphertext_handshake
+                .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
+                .expect("Error decrypting MLSCiphertext");
+            if hex_to_bytes(&handshake.plaintext)
+                != mls_plaintext_handshake
+                    .encode_detached()
+                    .expect("Error encoding MLSPlaintext")
+            {
+                return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
+            }
         }
         log::trace!("Finished test vector for leaf {:?}", leaf_index);
     }
@@ -549,6 +588,19 @@ fn read_test_vectors() {
             Err(e) => panic!("Error while checking encryption test vector.\n{:?}", e),
         }
     }
+
+    // mlspp test vectors
+    let tv_files = [
+        "test_vectors/mlspp/mlspp_encryption_1_10.json",
+        "test_vectors/mlspp/mlspp_encryption_2_10.json",
+        "test_vectors/mlspp/mlspp_encryption_3_10.json",
+    ];
+    for &tv_file in tv_files.iter() {
+        let tv: EncryptionTestVector = read(tv_file);
+        run_test_vector(tv).expect("Error while checking key schedule test vector.");
+    }
+
+    log::trace!("Finished test vector verification");
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]

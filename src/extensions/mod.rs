@@ -85,7 +85,7 @@ impl Codec for ExtensionType {
 ///
 /// struct {
 ///     ExtensionType extension_type;
-///     opaque extension_data<0..2^16-1>;
+///     opaque extension_data<0..2^32-1>;
 /// } Extension;
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -113,13 +113,13 @@ impl<'a> ExtensionStruct {
 impl Codec for ExtensionStruct {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.extension_type.encode(buffer)?;
-        encode_vec(VecSize::VecU16, buffer, &self.extension_data)?;
+        encode_vec(VecSize::VecU32, buffer, &self.extension_data)?;
         Ok(())
     }
 
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let extension_type = ExtensionType::decode(cursor)?;
-        let extension_data = decode_vec(VecSize::VecU16, cursor)?;
+        let extension_data = decode_vec(VecSize::VecU32, cursor)?;
         Ok(Self {
             extension_type,
             extension_data,
