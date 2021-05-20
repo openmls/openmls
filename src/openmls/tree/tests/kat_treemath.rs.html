@@ -161,6 +161,10 @@
 <span id="158">158</span>
 <span id="159">159</span>
 <span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for treemath</span>
 <span class="doccomment">//!</span>
@@ -309,6 +313,10 @@
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Error while checking tree math test vector.\n{:?}&quot;</span>, <span class="ident">e</span>),
         }
     }
+
+    <span class="comment">// mlspp test vector</span>
+    <span class="kw">let</span> <span class="ident">tv</span>: <span class="ident">TreeMathTestVector</span> <span class="op">=</span> <span class="ident">read</span>(<span class="string">&quot;test_vectors/mlspp/mlspp_treemath.json&quot;</span>);
+    <span class="ident">run_test_vector</span>(<span class="ident">tv</span>).<span class="ident">expect</span>(<span class="string">&quot;Error while checking key schedule test vector.&quot;</span>);
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>

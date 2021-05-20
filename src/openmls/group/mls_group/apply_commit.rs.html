@@ -204,9 +204,6 @@
 <span id="201">201</span>
 <span id="202">202</span>
 <span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
@@ -355,11 +352,8 @@
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="kw-2">&amp;</span><span class="ident">provisional_group_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">mls_plaintext_commit_auth_data</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">MlsPlaintextCommitAuthData</span>::<span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">mpcad</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">mpcad</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyCommitError</span>::<span class="ident">ConfirmationTagMissing</span>),
-            };
+        <span class="kw">let</span> <span class="ident">mls_plaintext_commit_auth_data</span> <span class="op">=</span> <span class="ident">MlsPlaintextCommitAuthData</span>::<span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ApplyCommitError</span>::<span class="ident">ConfirmationTagMissing</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
             <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,

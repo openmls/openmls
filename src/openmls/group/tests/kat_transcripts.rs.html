@@ -258,6 +258,47 @@
 <span id="255">255</span>
 <span id="256">256</span>
 <span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for the transcript hashes</span>
 <span class="doccomment">//!</span>
@@ -291,7 +332,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TranscriptTestVector</span> {
-    <span class="ident">cipher_suite</span>: <span class="ident">u16</span>,
+    <span class="kw">pub</span> <span class="ident">cipher_suite</span>: <span class="ident">u16</span>,
     <span class="ident">group_id</span>: <span class="ident">String</span>,
     <span class="ident">epoch</span>: <span class="ident">u64</span>,
     <span class="ident">tree_hash_before</span>: <span class="ident">String</span>,
@@ -301,6 +342,7 @@
     <span class="ident">confirmation_key</span>: <span class="ident">String</span>,
     <span class="ident">commit</span>: <span class="ident">String</span>, <span class="comment">// TLS serialized MlsPlaintext(Commit)</span>
 
+    <span class="ident">group_context</span>: <span class="ident">String</span>,
     <span class="ident">confirmed_transcript_hash_after</span>: <span class="ident">String</span>,
     <span class="ident">interim_transcript_hash_after</span>: <span class="ident">String</span>,
 }
@@ -343,19 +385,15 @@
         <span class="kw-2">&amp;</span>[], <span class="comment">// extensions</span>
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error creating group context&quot;</span>);
-    <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_before</span>);
-    <span class="ident">commit</span>.<span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">confirmation_tag</span>);
-    <span class="ident">commit</span>
-        .<span class="ident">add_membership_tag</span>(<span class="ident">context</span>.<span class="ident">serialized</span>(), <span class="kw-2">&amp;</span><span class="ident">membership_key</span>)
-        .<span class="ident">expect</span>(<span class="string">&quot;Error adding membership tag&quot;</span>);
 
-    <span class="comment">// Compute new transcript hashes.</span>
     <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
         <span class="ident">ciphersuite</span>,
         <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">interim_transcript_hash_before</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating confirmed transcript hash&quot;</span>);
+    <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>);
+    <span class="ident">commit</span>.<span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">confirmation_tag</span>);
 
     <span class="kw">let</span> <span class="ident">interim_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
         <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
@@ -363,6 +401,9 @@
         <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating interim transcript hash&quot;</span>);
+    <span class="ident">commit</span>
+        .<span class="ident">add_membership_tag</span>(<span class="ident">context</span>.<span class="ident">serialized</span>(), <span class="kw-2">&amp;</span><span class="ident">membership_key</span>)
+        .<span class="ident">expect</span>(<span class="string">&quot;Error adding membership tag&quot;</span>);
 
     <span class="ident">TranscriptTestVector</span> {
         <span class="ident">cipher_suite</span>: <span class="ident">ciphersuite</span>.<span class="ident">name</span>() <span class="kw">as</span> <span class="ident">u16</span>,
@@ -375,6 +416,7 @@
         <span class="ident">confirmation_key</span>: <span class="ident">bytes_to_hex</span>(<span class="ident">confirmation_key</span>.<span class="ident">as_slice</span>()),
         <span class="ident">commit</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">encode_detached</span>().<span class="ident">expect</span>(<span class="string">&quot;Error encoding commit&quot;</span>)),
 
+        <span class="ident">group_context</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">serialized</span>()),
         <span class="ident">confirmed_transcript_hash_after</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>),
         <span class="ident">interim_transcript_hash_after</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">interim_transcript_hash_after</span>),
     }
@@ -409,6 +451,7 @@
         }
     };
     <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Testing test vector for ciphersuite {:?}&quot;</span>, <span class="ident">ciphersuite</span>);
+    <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;  {:?}&quot;</span>, <span class="ident">test_vector</span>);
 
     <span class="comment">// Read input values.</span>
     <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId</span> {
@@ -437,10 +480,21 @@
         <span class="ident">group_id</span>,
         <span class="ident">GroupEpoch</span>(<span class="ident">epoch</span>),
         <span class="ident">tree_hash_before</span>,
-        <span class="ident">confirmed_transcript_hash_before</span>.<span class="ident">clone</span>(),
+        <span class="ident">confirmed_transcript_hash_before</span>,
         <span class="kw-2">&amp;</span>[], <span class="comment">// extensions</span>
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error creating group context&quot;</span>);
+    <span class="kw">let</span> <span class="ident">expected_group_context</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">group_context</span>);
+    <span class="kw">if</span> <span class="ident">context</span>.<span class="ident">serialized</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">expected_group_context</span> {
+        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Group context mismatch&quot;</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Computed: {:x?}&quot;</span>, <span class="ident">context</span>.<span class="ident">serialized</span>());
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">expected_group_context</span>);
+        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Group context mismatch&quot;</span>);
+        }
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TranscriptTestVectorError</span>::<span class="ident">GroupContextMismatch</span>);
+    }
+
     <span class="kw">if</span> <span class="ident">commit</span>
         .<span class="ident">verify_membership_tag</span>(<span class="ident">ciphersuite</span>, <span class="ident">context</span>.<span class="ident">serialized</span>(), <span class="kw-2">&amp;</span><span class="ident">membership_key</span>)
         .<span class="ident">is_err</span>()
@@ -451,13 +505,23 @@
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TranscriptTestVectorError</span>::<span class="ident">MembershipTagVerificationError</span>);
     }
 
-    <span class="kw">let</span> <span class="ident">my_confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_before</span>);
+    <span class="comment">//let my_confirmation_tag = confirmation_key.tag(&amp;confirmed_transcript_hash_before);</span>
+    <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_after</span> <span class="op">=</span>
+        <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">confirmed_transcript_hash_after</span>);
+
+    <span class="kw">let</span> <span class="ident">my_confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>);
     <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">my_confirmation_tag</span>
         <span class="op">!</span><span class="op">=</span> <span class="ident">commit</span>
             .<span class="ident">confirmation_tag</span>
             .<span class="ident">as_ref</span>()
             .<span class="ident">expect</span>(<span class="string">&quot;Confirmation tag is missing&quot;</span>)
     {
+        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Confirmation tag mismatch&quot;</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Computed: {:x?}&quot;</span>, <span class="ident">my_confirmation_tag</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+            <span class="string">&quot;    Expected: {:x?}&quot;</span>,
+            <span class="ident">commit</span>.<span class="ident">confirmation_tag</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
+        );
         <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Invalid confirmation tag&quot;</span>);
         }
@@ -471,14 +535,17 @@
         <span class="kw-2">&amp;</span><span class="ident">interim_transcript_hash_before</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating confirmed transcript hash&quot;</span>);
-    <span class="kw">if</span> <span class="ident">my_confirmed_transcript_hash_after</span>
-        <span class="op">!</span><span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">confirmed_transcript_hash_after</span>)
-    {
+    <span class="kw">if</span> <span class="ident">my_confirmed_transcript_hash_after</span> <span class="op">!</span><span class="op">=</span> <span class="ident">confirmed_transcript_hash_after</span> {
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;  Confirmed transcript hash mismatch&quot;</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Got:      {:x?}&quot;</span>, <span class="ident">my_confirmed_transcript_hash_after</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">confirmed_transcript_hash_after</span>);
         <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Confirmed transcript hash mismatch&quot;</span>);
         }
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TranscriptTestVectorError</span>::<span class="ident">ConfirmedTranscriptHashMismatch</span>);
     }
+
+    <span class="kw">let</span> <span class="ident">interim_transcript_hash_after</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">interim_transcript_hash_after</span>);
 
     <span class="kw">let</span> <span class="ident">my_interim_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
         <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
@@ -486,13 +553,16 @@
         <span class="kw-2">&amp;</span><span class="ident">my_confirmed_transcript_hash_after</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating interim transcript hash&quot;</span>);
-    <span class="kw">if</span> <span class="ident">my_interim_transcript_hash_after</span> <span class="op">!</span><span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">interim_transcript_hash_after</span>)
-    {
+    <span class="kw">if</span> <span class="ident">my_interim_transcript_hash_after</span> <span class="op">!</span><span class="op">=</span> <span class="ident">interim_transcript_hash_after</span> {
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;  Interim transcript hash mismatch&quot;</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Got:      {:x?}&quot;</span>, <span class="ident">my_interim_transcript_hash_after</span>);
+        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">interim_transcript_hash_after</span>);
         <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
             <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Interim transcript hash mismatch&quot;</span>);
         }
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TranscriptTestVectorError</span>::<span class="ident">InterimTranscriptHashMismatch</span>);
     }
+    <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;  Finished transcript test vector verification&quot;</span>);
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -506,11 +576,23 @@
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Error while checking transcript test vector.\n{:?}&quot;</span>, <span class="ident">e</span>),
         }
     }
+
+    <span class="comment">// mlspp test vectors</span>
+    <span class="kw">let</span> <span class="ident">tv_files</span> <span class="op">=</span> [
+        <span class="string">&quot;test_vectors/mlspp/mlspp_transcript_1.json&quot;</span>,
+        <span class="string">&quot;test_vectors/mlspp/mlspp_transcript_2.json&quot;</span>,
+        <span class="string">&quot;test_vectors/mlspp/mlspp_transcript_3.json&quot;</span>,
+    ];
+    <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">tv_file</span> <span class="kw">in</span> <span class="ident">tv_files</span>.<span class="ident">iter</span>() {
+        <span class="kw">let</span> <span class="ident">tv</span>: <span class="ident">TranscriptTestVector</span> <span class="op">=</span> <span class="ident">read</span>(<span class="ident">tv_file</span>);
+        <span class="ident">run_test_vector</span>(<span class="ident">tv</span>).<span class="ident">expect</span>(<span class="string">&quot;Error while checking key schedule test vector.&quot;</span>);
+    }
 }
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TranscriptTestVectorError</span> {
         <span class="ident">MembershipTagVerificationError</span> <span class="op">=</span> <span class="string">&quot;Membership tag could not be verified.&quot;</span>,
+        <span class="ident">GroupContextMismatch</span> <span class="op">=</span> <span class="string">&quot;The group context does not match&quot;</span>,
         <span class="ident">ConfirmationTagMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed confirmation tag doesn&#39;t match the one in the test vector.&quot;</span>,
         <span class="ident">ConfirmedTranscriptHashMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed transcript hash doesn&#39;t match the one in the test vector.&quot;</span>,
         <span class="ident">InterimTranscriptHashMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed interim transcript hash doesn&#39;t match the one in the test vector.&quot;</span>,
