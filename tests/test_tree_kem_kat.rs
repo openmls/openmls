@@ -43,8 +43,14 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let handshake_message_format = HandshakeMessageFormat::Plaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, 0, 0, callbacks);
+    let managed_group_config = ManagedGroupConfig::new(
+        handshake_message_format,
+        update_policy,
+        0,
+        0,
+        false, // use_ratchet_tree_extension
+        callbacks,
+    );
     let setup = ManagedTestSetup::new(managed_group_config, n_leaves as usize);
 
     // - I am the client with key package `my_key_package`

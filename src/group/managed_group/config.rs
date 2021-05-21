@@ -22,6 +22,8 @@ pub struct ManagedGroupConfig {
     pub(crate) padding_size: usize,
     /// Number of resumtion secrets to keep
     pub(crate) number_of_resumption_secrets: usize,
+    /// Flag to indicate the Ratchet Tree Extension should be used
+    pub(crate) use_ratchet_tree_extension: bool,
     /// Callbacks
     #[serde(skip)]
     pub(crate) callbacks: ManagedGroupCallbacks,
@@ -33,6 +35,7 @@ impl ManagedGroupConfig {
         update_policy: UpdatePolicy,
         padding_size: usize,
         number_of_resumption_secrets: usize,
+        use_ratchet_tree_extension: bool,
         callbacks: ManagedGroupCallbacks,
     ) -> Self {
         ManagedGroupConfig {
@@ -40,6 +43,7 @@ impl ManagedGroupConfig {
             update_policy,
             padding_size,
             number_of_resumption_secrets,
+            use_ratchet_tree_extension,
             callbacks,
         }
     }
