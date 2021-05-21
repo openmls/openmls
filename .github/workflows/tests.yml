@@ -25,8 +25,25 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup MacOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
+          sudo xcode-select -s /Applications/Xcode_12.4.app
+          rustup target install aarch64-apple-darwin
+          rustup target install aarch64-apple-ios
       - name: Tests
         run: cargo test --verbose
+      - name: Apple Silicon Build
+        if: matrix.os == 'macos-latest'
+        run: |
+          cargo build --target aarch64-apple-darwin --tests --verbose --features rust-crypto
+          cargo build --release --target aarch64-apple-darwin --tests --verbose --features rust-crypto
+      - name: iOS build
+        if: matrix.os == 'macos-latest'
+        run: |
+          cargo build --target aarch64-apple-ios --tests --verbose --features rust-crypto
+          cargo build --release --target aarch64-apple-ios --tests --verbose --features rust-crypto
   checks:
     runs-on: ubuntu-latest
     steps:
