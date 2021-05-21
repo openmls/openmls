@@ -1,4 +1,4 @@
-use crate::ciphersuite::{*, AeadNonce};
+use crate::ciphersuite::{AeadNonce, *};
 use crate::tree::{index::LeafIndex, secret_tree::*};
 
 use super::*;
