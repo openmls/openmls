@@ -77,6 +77,10 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -102,6 +106,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">padding_size</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Number of resumtion secrets to keep</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Flag to indicate the Ratchet Tree Extension should be used</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Callbacks</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">callbacks</span>: <span class="ident">ManagedGroupCallbacks</span>,
@@ -113,6 +119,7 @@
         <span class="ident">update_policy</span>: <span class="ident">UpdatePolicy</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
         <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>,
+        <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>,
         <span class="ident">callbacks</span>: <span class="ident">ManagedGroupCallbacks</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">ManagedGroupConfig</span> {
@@ -120,6 +127,7 @@
             <span class="ident">update_policy</span>,
             <span class="ident">padding_size</span>,
             <span class="ident">number_of_resumption_secrets</span>,
+            <span class="ident">use_ratchet_tree_extension</span>,
             <span class="ident">callbacks</span>,
         }
     }
