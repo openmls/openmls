@@ -266,7 +266,7 @@ pub fn random_usize() -> usize {
 }
 
 pub fn randombytes(n: usize) -> Vec<u8> {
-    get_random_vec(n)
+    random_vec(n)
 }
 
 #[test]

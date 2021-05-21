@@ -29,7 +29,7 @@ use crate::schedule::{
     PreSharedKeyId,
 };
 #[cfg(any(feature = "expose-test-vectors", test))]
-use evercrypt::prelude::get_random_vec;
+use evercrypt::prelude::random_vec;
 
 /// Welcome Messages
 ///
@@ -321,8 +321,8 @@ impl GroupSecrets {
     ) -> Result<Vec<u8>, CodecError> {
         let psk_id = PreSharedKeyId::new(
             External,
-            Psk::External(ExternalPsk::new(get_random_vec(ciphersuite.hash_length()))),
-            get_random_vec(ciphersuite.hash_length()),
+            Psk::External(ExternalPsk::new(random_vec(ciphersuite.hash_length()))),
+            random_vec(ciphersuite.hash_length()),
         );
         let psks = PreSharedKeys { psks: vec![psk_id] };
 
