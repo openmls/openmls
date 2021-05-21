@@ -15,7 +15,7 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, callbacks);
+        ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, false, callbacks);
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.

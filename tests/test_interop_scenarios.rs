@@ -14,7 +14,14 @@ fn default_managed_group_config() -> ManagedGroupConfig {
     let handshake_message_format = HandshakeMessageFormat::Plaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
-    ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, callbacks)
+    ManagedGroupConfig::new(
+        handshake_message_format,
+        update_policy,
+        10,
+        0,
+        false, // use_ratchet_tree_extension
+        callbacks,
+    )
 }
 
 // # 1:1 join

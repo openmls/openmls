@@ -29,8 +29,9 @@ fn test_managed_group_persistence() {
     let managed_group_config = ManagedGroupConfig::new(
         HandshakeMessageFormat::Plaintext,
         update_policy,
-        0, // padding_size
-        0, // number_of_resumption_secrets
+        0,     // padding_size
+        0,     // number_of_resumption_secrets
+        false, // use_ratchet_tree_extension
         callbacks,
     );
 
@@ -121,8 +122,9 @@ fn remover() {
     let mut managed_group_config = ManagedGroupConfig::new(
         HandshakeMessageFormat::Ciphertext,
         update_policy,
-        0, // padding_size
-        0, // number_of_resumption_secrets
+        0,     // padding_size
+        0,     // number_of_resumption_secrets
+        false, // use_ratchet_tree_extension
         callbacks,
     );
 
@@ -238,6 +240,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         update_policy,
         0, // padding_size
         0, // number_of_resumption_secrets
+        false, // use_ratchet_tree_extension
         callbacks,
     );
 

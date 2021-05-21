@@ -107,11 +107,15 @@ impl ManagedGroup {
         let key_package_bundle = key_store
             .take_key_package_bundle(key_package_hash)
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
+        let group_config = GroupConfig {
+            add_ratchet_tree_extension: managed_group_config.use_ratchet_tree_extension,
+            ..Default::default()
+        };
         let group = MlsGroup::new(
             &group_id.as_slice(),
             key_package_bundle.key_package().ciphersuite_name(),
             key_package_bundle,
-            GroupConfig::default(),
+            group_config,
             None, /* Initial PSK */
             None, /* MLS version */
         )?;
