@@ -75,6 +75,7 @@
 //!     UpdatePolicy::default(),
 //!     0,
 //!     0,
+//!     false, // use_ratchet_tree_extension
 //!     ManagedGroupCallbacks::default(),
 //! );
 //!
