@@ -13,7 +13,7 @@ use crate::{
     test_util::*,
     utils::*,
 };
-use evercrypt::prelude::get_random_vec;
+use evercrypt::prelude::random_vec;
 
 use serde::{self, Deserialize, Serialize};
 
@@ -78,11 +78,11 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let group_info = GroupInfo::new(
         group_id.clone(),
         GroupEpoch(0),
-        get_random_vec(ciphersuite.hash_length()),
-        get_random_vec(ciphersuite.hash_length()),
+        random_vec(ciphersuite.hash_length()),
+        random_vec(ciphersuite.hash_length()),
         vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
         ConfirmationTag(Mac {
-            mac_value: get_random_vec(ciphersuite.hash_length()),
+            mac_value: random_vec(ciphersuite.hash_length()),
         }),
         LeafIndex::from(random_u32()),
     );
@@ -106,8 +106,8 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let psk_id = PreSharedKeyId::new(
         PskType::External,
-        Psk::External(ExternalPsk::new(get_random_vec(ciphersuite.hash_length()))),
-        get_random_vec(ciphersuite.hash_length()),
+        Psk::External(ExternalPsk::new(random_vec(ciphersuite.hash_length()))),
+        random_vec(ciphersuite.hash_length()),
     );
 
     let psk_proposal = PreSharedKeyProposal { psk: psk_id };

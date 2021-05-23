@@ -275,7 +275,7 @@ impl Secret {
             mls_version
         );
         Secret {
-            value: get_random_vec(ciphersuite.hash_length()),
+            value: random_vec(ciphersuite.hash_length()),
             mls_version,
             ciphersuite,
         }
@@ -468,7 +468,7 @@ impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
     pub fn from_random() -> Self {
         Self {
-            value: get_random_array(),
+            value: random_array(),
         }
     }
 }
@@ -584,17 +584,17 @@ impl Ciphersuite {
 
     /// Get the length of the used hash algorithm.
     pub(crate) fn hash_length(&self) -> usize {
-        get_digest_size(self.hash)
+        digest_size(self.hash)
     }
 
     /// Get the length of the AEAD tag.
     pub(crate) fn mac_length(&self) -> usize {
-        aead_tag_size(&self.aead)
+        aead_tag_size(self.aead)
     }
 
     /// Returns the key size of the used AEAD.
     pub(crate) fn aead_key_length(&self) -> usize {
-        aead_key_size(&self.aead)
+        aead_key_size(self.aead)
     }
 
     /// Returns the length of the nonce in the AEAD.
@@ -657,7 +657,7 @@ impl Ciphersuite {
 
     /// Derive a new HPKE keypair from a given Secret.
     pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HpkeKeyPair {
-        self.hpke.derive_key_pair(&ikm.value)
+        self.hpke.derive_key_pair(&ikm.value).unwrap()
     }
 }
 
@@ -744,9 +744,10 @@ impl AeadNonce {
     }
 
     /// Generate a new random nonce.
+    #[cfg(test)]
     pub fn random() -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(get_random_vec(NONCE_BYTES).as_slice());
+        nonce.clone_from_slice(random_vec(NONCE_BYTES).as_slice());
         AeadNonce { value: nonce }
     }
 
@@ -870,7 +871,7 @@ impl SignaturePrivateKey {
             SignatureMode::Ed25519 => (None, None),
             SignatureMode::P256 => (
                 Some(DigestMode::try_from(self.signature_scheme).unwrap()),
-                Some(p256_ecdsa_random_nonce()),
+                Some(p256_ecdsa_random_nonce().unwrap()),
             ),
         };
         match sign(signature_mode, hash, &self.value, payload, nonce.as_ref()) {

@@ -7,7 +7,7 @@ use evercrypt::prelude::*;
 use rand::{rngs::OsRng, RngCore};
 
 pub(crate) fn randombytes(n: usize) -> Vec<u8> {
-    get_random_vec(n)
+    random_vec(n)
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
@@ -22,7 +22,7 @@ pub(crate) fn random_u64() -> u64 {
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub(crate) fn random_u8() -> u8 {
-    get_random_vec(1)[0]
+    random_vec(1)[0]
 }
 
 pub(crate) fn zero(length: usize) -> Vec<u8> {
