@@ -17,11 +17,13 @@ impl Codec for KeyPackage {
         let extensions = extensions_vec_from_cursor(cursor)?;
         let signature = Signature::decode(cursor)?;
         let mut kp = KeyPackage {
-            protocol_version,
-            ciphersuite: Config::ciphersuite(cipher_suite_name)?,
-            hpke_init_key,
-            credential,
-            extensions,
+            payload: KeyPackagePayload {
+                protocol_version,
+                ciphersuite: Config::ciphersuite(cipher_suite_name)?,
+                hpke_init_key,
+                credential,
+                extensions,
+            },
             signature,
             encoded: Vec::new(),
         };
