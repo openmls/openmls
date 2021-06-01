@@ -32,6 +32,8 @@ use crate::{
 use ciphersuites::*;
 pub(crate) use errors::*;
 
+use self::signable::SignedStruct;
+
 #[cfg(test)]
 mod test_ciphersuite;
 #[cfg(test)]
@@ -481,6 +483,12 @@ pub struct AeadNonce {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Signature {
     value: Vec<u8>,
+}
+
+impl<T> SignedStruct<T> for Signature {
+    fn from_payload(_payload: T, signature: Signature) -> Self {
+        signature
+    }
 }
 
 #[derive(Debug, Clone)]

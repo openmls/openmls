@@ -473,14 +473,10 @@ pub(crate) struct PublicGroupStateTbs<'a> {
     pub(crate) external_pub: &'a HpkePublicKey,
 }
 
-impl<'a> PublicGroupStateTbs<'a> {
-    /// Signs the `PublicGroupStateTBS` with a `CredentialBundle`.
-    fn sign(&self, credential_bundle: &CredentialBundle) -> Result<Signature, CredentialError> {
-        let payload = self
-            .encode_detached()
-            .map_err(CredentialError::CodecError)?;
-        credential_bundle
-            .sign(&payload)
-            .map_err(|_| CredentialError::SignatureError)
+impl<'a> Signable for PublicGroupStateTbs<'a> {
+    type SignedOutput = Signature;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
+        self.encode_detached()
     }
 }
