@@ -5,9 +5,10 @@
 //! for more description on the test vectors.
 
 use crate::{
+    ciphersuite::signable::Signable,
     group::GroupEpoch,
-    messages::ConfirmationTag,
     messages::{Commit, GroupInfo, GroupSecrets, PublicGroupState},
+    messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
     prelude::*,
     test_util::*,
@@ -75,7 +76,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let ratchet_tree = group.tree().public_key_tree_copy();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
-    let group_info = GroupInfo::new(
+    let group_info = GroupInfoPayload::new(
         group_id.clone(),
         GroupEpoch(0),
         random_vec(ciphersuite.hash_length()),
@@ -86,6 +87,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         }),
         LeafIndex::from(random_u32()),
     );
+    let group_info = group_info.sign(&&credential_bundle).unwrap();
     let group_secrets = GroupSecrets::random_encoded(ciphersuite, ProtocolVersion::default());
     let public_group_state = group.export_public_group_state(&credential_bundle).unwrap();
 

@@ -6,6 +6,7 @@
 use crate::ciphersuite::CryptoError;
 use crate::codec::CodecError;
 use crate::config::ConfigError;
+use crate::credentials::CredentialError;
 use crate::framing::errors::{MlsCiphertextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
@@ -40,6 +41,8 @@ implement_error! {
                 "An error occurred during a tree math operation.",
             PskError(PskError) =
                 "A PSK error occured.",
+            CredentialError(CredentialError) =
+                "See [`CredentialError`](crate::credentials::CredentialError) for details.",
         }
     }
 }
@@ -65,6 +68,8 @@ implement_error! {
                 "Found a duplicate ratchet tree extension in the Welcome message.",
             UnsupportedMlsVersion =
                 "The Welcome message uses an unsupported MLS version.",
+            MissingKeyPackage =
+                "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
         }

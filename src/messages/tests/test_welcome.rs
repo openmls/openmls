@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, CiphersuiteName, Mac, Secret, Signature},
+    ciphersuite::{signable::Signable, AeadKey, AeadNonce, CiphersuiteName, Mac, Secret},
     codec::{Codec, Cursor},
     config::Config,
+    credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
-    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfo, Welcome},
+    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
     tree::index::LeafIndex,
 };
 
@@ -14,18 +15,28 @@ macro_rules! test_welcome_msg {
         #[test]
         fn $name() {
             // We use this dummy group info in all test cases.
-            let group_info = GroupInfo {
-                group_id: GroupId::random(),
-                epoch: GroupEpoch(123),
-                tree_hash: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                confirmed_transcript_hash: vec![1, 1, 1],
-                extensions: Vec::new(),
-                confirmation_tag: ConfirmationTag(Mac {
+            let group_info = GroupInfoPayload::new(
+                GroupId::random(),
+                GroupEpoch(123),
+                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                vec![1, 1, 1],
+                Vec::new(),
+                ConfirmationTag(Mac {
                     mac_value: vec![1, 2, 3, 4, 5],
                 }),
-                signer_index: LeafIndex::from(8u32),
-                signature: Signature::new_empty(),
-            };
+                LeafIndex::from(8u32),
+            );
+
+            // We need a credential bundle to sign the group info.
+            let credential_bundle = CredentialBundle::new(
+                "XXX".into(),
+                CredentialType::Basic,
+                $ciphersuite.signature_scheme(),
+            )
+            .unwrap();
+            let group_info = group_info
+                .sign(&credential_bundle)
+                .expect("Error signing GroupInfo");
 
             // Generate key and nonce for the symmetric cipher.
             let welcome_key = AeadKey::random($ciphersuite);

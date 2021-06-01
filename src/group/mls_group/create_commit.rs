@@ -163,7 +163,7 @@ impl MlsGroup {
                 Vec::new()
             };
             // Create GroupInfo object
-            let mut group_info = GroupInfo::new(
+            let group_info = GroupInfoPayload::new(
                 provisional_group_context.group_id.clone(),
                 provisional_group_context.epoch,
                 tree_hash,
@@ -172,7 +172,7 @@ impl MlsGroup {
                 confirmation_tag,
                 sender_index,
             );
-            group_info.set_signature(group_info.sign(credential_bundle));
+            let group_info = group_info.sign(credential_bundle)?;
 
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce();

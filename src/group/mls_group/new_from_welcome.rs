@@ -1,12 +1,13 @@
 use log::debug;
 
+use crate::ciphersuite::signable::Verifiable;
+use crate::codec::*;
 use crate::extensions::ExtensionType;
 use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, treemath, *};
-use crate::{ciphersuite::signable::Signable, codec::*};
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -129,12 +130,11 @@ impl MlsGroup {
 
         // Verify GroupInfo signature
         let signer_node = tree.nodes[group_info.signer_index()].clone();
-        let signer_key_package = signer_node.key_package.unwrap();
-        let payload = group_info.unsigned_payload().unwrap();
-
-        signer_key_package
-            .credential()
-            .verify(&payload, group_info.signature())
+        let signer_key_package = signer_node
+            .key_package
+            .ok_or(WelcomeError::MissingKeyPackage)?;
+        group_info
+            .verify(signer_key_package.credential())
             .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
 
         // Compute path secrets
