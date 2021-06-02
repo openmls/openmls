@@ -49,7 +49,7 @@ impl MlsGroup {
                     credential_bundle,
                     &self.group_context.serialized(),
                     apply_proposals_values.exclusion_list(),
-                );
+                )?;
                 (Some(path), Some(key_package_bundle))
             } else {
                 // If path is not needed, return empty commit secret

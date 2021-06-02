@@ -20,7 +20,7 @@ pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
 mod ciphersuites;
 mod codec;
 mod errors;
-pub(crate) mod signable;
+pub mod signable;
 
 mod ser;
 

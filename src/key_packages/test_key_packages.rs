@@ -50,12 +50,12 @@ fn test_codec() {
         let id = vec![1, 2, 3];
         let credential_bundle =
             CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name().into()).unwrap();
-        let mut kpb =
-            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
+        let mut kpb = KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new())
+            .unwrap()
+            .unsigned();
 
-        let kp = kpb.key_package_mut();
-        kp.add_extension(Box::new(LifetimeExtension::new(60)));
-        kp.sign(&credential_bundle);
+        kpb.add_extension(Box::new(LifetimeExtension::new(60)));
+        let kpb = kpb.sign(&credential_bundle).unwrap();
         let enc = kpb.key_package().encode_detached().unwrap();
 
         // Now it's valid.
@@ -70,24 +70,21 @@ fn key_package_id_extension() {
         let id = vec![1, 2, 3];
         let credential_bundle =
             CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name().into()).unwrap();
-        let mut kpb = KeyPackageBundle::new(
+        let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
             vec![Box::new(LifetimeExtension::new(60))],
         )
         .unwrap();
         assert!(kpb.key_package().verify().is_ok());
+        let mut kpb = kpb.unsigned();
 
         // Add an ID to the key package.
         let id = [1, 2, 3, 4];
-        kpb.key_package_mut()
-            .add_extension(Box::new(KeyIdExtension::new(&id)));
-
-        // This is invalid now.
-        assert!(kpb.key_package().verify().is_err());
+        kpb.add_extension(Box::new(KeyIdExtension::new(&id)));
 
         // Sign it to make it valid.
-        kpb.key_package_mut().sign(&credential_bundle);
+        let kpb = kpb.sign(&credential_bundle).unwrap();
         assert!(kpb.key_package().verify().is_ok());
 
         // Check ID

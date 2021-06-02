@@ -48,17 +48,16 @@ impl PrivateTree {
     }
     /// Create a minimal `PrivateTree` setting only the private key.
     /// This function is used to initialize a `PrivateTree` with a
-    /// `KeyPackageBundle`. Further secrets like path secrets and keypairs
+    /// leaf secret. Further secrets like path secrets and keypairs
     /// will only be derived in a further step. The HPKE private key is
     /// derived from the leaf secret contained in the KeyPackageBundle.
-    pub(crate) fn from_key_package_bundle(
-        leaf_index: LeafIndex,
-        key_package_bundle: &KeyPackageBundle,
-    ) -> Self {
-        let leaf_secret = key_package_bundle.leaf_secret();
-        let ciphersuite = key_package_bundle.key_package.ciphersuite();
-        let leaf_node_secret = KeyPackageBundle::derive_leaf_node_secret(&leaf_secret);
-        let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
+    pub(crate) fn from_leaf_secret(leaf_index: LeafIndex, leaf_secret: &Secret) -> Self {
+        // let leaf_secret = key_package_bundle.leaf_secret();
+        // let ciphersuite = key_package_bundle.key_package.ciphersuite();
+        let leaf_node_secret = derive_leaf_node_secret(leaf_secret);
+        let keypair = leaf_secret
+            .ciphersuite()
+            .derive_hpke_keypair(&leaf_node_secret);
         let (private_key, _) = keypair.into_keys();
 
         Self {
@@ -71,19 +70,17 @@ impl PrivateTree {
     }
 
     /// Creates a `PrivateTree` with a new private key, leaf secret and path
-    /// The private key is derived from the leaf secret contained in the
-    /// KeyPackageBundle.
+    /// The private key is derived from the leaf secret.
     pub(crate) fn new_with_keys(
         ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
-        key_package_bundle: &KeyPackageBundle,
+        leaf_secret: &Secret,
         path: &[NodeIndex],
     ) -> (Self, Vec<HpkePublicKey>) {
-        let mut private_tree = PrivateTree::from_key_package_bundle(leaf_index, key_package_bundle);
+        let mut private_tree = PrivateTree::from_leaf_secret(leaf_index, leaf_secret);
 
         // Compute path secrets and generate keypairs
-        let public_keys =
-            private_tree.generate_path_secrets(ciphersuite, key_package_bundle.leaf_secret(), path);
+        let public_keys = private_tree.generate_path_secrets(ciphersuite, leaf_secret, path);
 
         (private_tree, public_keys)
     }

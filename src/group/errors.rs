@@ -43,6 +43,8 @@ implement_error! {
                 "A PSK error occured.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
+            TreeError(TreeError) =
+                "See [`TreeError`](crate::tree::TreeError) for details.",
         }
     }
 }

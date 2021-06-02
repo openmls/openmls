@@ -11,6 +11,7 @@ mod test_managed_group;
 use crate::messages::PathSecret;
 
 use crate::{
+    ciphersuite::signable::Signable,
     credentials::Credential,
     error::ErrorString,
     framing::*,
@@ -18,6 +19,7 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     key_store::KeyStore,
     messages::{proposals::*, Welcome},
+    prelude::KeyPackageBundlePayload,
     schedule::ResumptionSecret,
     tree::{index::LeafIndex, node::Node},
 };
@@ -831,12 +833,8 @@ impl ManagedGroup {
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
-            None => {
-                let mut key_package_bundle =
-                    KeyPackageBundle::from_rekeyed_key_package(existing_key_package);
-                key_package_bundle.sign(&credential_bundle);
-                key_package_bundle
-            }
+            None => KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package)
+                .sign(&credential_bundle)?,
         };
 
         let update_proposal = self.group.create_update_proposal(

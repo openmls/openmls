@@ -31,7 +31,7 @@ pub mod error;
 #[macro_use]
 pub mod test_util;
 
-mod ciphersuite;
+pub mod ciphersuite;
 mod codec;
 pub mod config;
 mod credentials;

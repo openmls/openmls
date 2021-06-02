@@ -12,16 +12,20 @@
 //! Some more points
 //! * update path with empty exclusion list.
 
-use crate::test_util::hex_to_bytes;
 #[cfg(test)]
 use crate::test_util::read;
+use crate::{
+    ciphersuite::signable::Signable,
+    credentials::{CredentialBundle, CredentialType},
+    prelude::KeyPackageBundlePayload,
+    test_util::hex_to_bytes,
+};
 use crate::{
     ciphersuite::Secret,
     config::Config,
     config::ProtocolVersion,
     extensions::{Extension, RatchetTreeExtension},
     key_packages::KeyPackage,
-    key_packages::KeyPackageBundle,
     messages::PathSecret,
     tree::{
         treemath::*, CiphersuiteName, Codec, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath,
@@ -77,8 +81,18 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     // We clone the leaf secret here, because we need it later to re-create the
     // KeyPackageBundle.
-    let my_key_package_bundle =
-        KeyPackageBundle::from_key_package_and_leaf_secret(my_leaf_secret.clone(), &my_key_package);
+    let credential_bundle = CredentialBundle::new(
+        "username".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
+    let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
+        my_leaf_secret.clone(),
+        &my_key_package,
+    )
+    .sign(&credential_bundle)
+    .unwrap();
 
     // Check tree hashes.
     let mut tree_before =
@@ -98,7 +112,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     let ratchet_tree_after = tree_extension_after.into_vector();
 
     let my_key_package_bundle =
-        KeyPackageBundle::from_key_package_and_leaf_secret(my_leaf_secret, &my_key_package);
+        KeyPackageBundlePayload::from_key_package_and_leaf_secret(my_leaf_secret, &my_key_package)
+            .sign(&credential_bundle)
+            .unwrap();
     let tree_after =
         RatchetTree::new_from_nodes(my_key_package_bundle, &ratchet_tree_after).unwrap();
     crate::utils::_print_tree(&tree_after, "Tree after");
@@ -223,6 +239,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
 #[test]
 fn read_test_vector() {
+    let _ = pretty_env_logger::try_init();
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {
