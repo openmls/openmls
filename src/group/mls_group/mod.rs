@@ -156,7 +156,7 @@ impl MlsGroup {
             &self.context(),
             self.epoch_secrets().membership_key(),
         )
-        .map_err(GroupError::CodecError)
+        .map_err(|e| e.into())
     }
 
     // 11.1.2. Update
@@ -179,7 +179,7 @@ impl MlsGroup {
             &self.context(),
             self.epoch_secrets().membership_key(),
         )
-        .map_err(GroupError::CodecError)
+        .map_err(|e| e.into())
     }
 
     // 11.1.3. Remove
@@ -204,7 +204,7 @@ impl MlsGroup {
             &self.context(),
             self.epoch_secrets().membership_key(),
         )
-        .map_err(GroupError::CodecError)
+        .map_err(|e| e.into())
     }
 
     // 11.1.4. PreSharedKey
@@ -227,7 +227,7 @@ impl MlsGroup {
             &self.context(),
             self.epoch_secrets().membership_key(),
         )
-        .map_err(GroupError::CodecError)
+        .map_err(|e| e.into())
     }
 
     // === ===

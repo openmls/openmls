@@ -7,7 +7,7 @@ use crate::ciphersuite::CryptoError;
 use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
-use crate::framing::errors::{MlsCiphertextError, VerificationError};
+use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
@@ -21,6 +21,8 @@ implement_error! {
         Complex {
             MlsCiphertextError(MlsCiphertextError) =
                 "See [`MlsCiphertextError`](`crate::framing::errors::MlsCiphertextError`) for details.",
+            MlsPlaintextError(MlsPlaintextError) =
+                "See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.",
             WelcomeError(WelcomeError) =
                 "See [`WelcomeError`](`WelcomeError`) for details.",
             ApplyCommitError(ApplyCommitError) =

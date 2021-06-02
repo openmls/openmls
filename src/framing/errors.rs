@@ -9,10 +9,17 @@ use crate::tree::secret_tree::SecretTreeError;
 
 implement_error! {
     pub enum MlsPlaintextError {
-        NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
-        UnknownSender = "Sender is not part of the group",
-        InvalidSignature = "The MlsPlaintext signature is invalid",
-        InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
+        Simple {
+            NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
+            UnknownSender = "Sender is not part of the group",
+            InvalidSignature = "The MlsPlaintext signature is invalid",
+            InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
+        }
+        Complex {
+            CodecError(CodecError) = "Codec error",
+            CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
+            VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
+        }
     }
 }
 
