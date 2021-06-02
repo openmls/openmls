@@ -431,10 +431,10 @@ impl PublicGroupState {
             signature,
         })
     }
+}
 
-    /// Verifies the signature of the `PublicGroupState`.
-    /// Returns `Ok(())` in case of success and `CredentialError` otherwise.
-    pub fn verify(&self, credential_bundle: &CredentialBundle) -> Result<(), CredentialError> {
+impl Verifiable for PublicGroupState {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let pgstbs = PublicGroupStateTbs {
             group_id: &self.group_id,
             epoch: &self.epoch,
@@ -443,12 +443,11 @@ impl PublicGroupState {
             extensions: &self.extensions,
             external_pub: &self.external_pub,
         };
-        let payload = pgstbs
-            .encode_detached()
-            .map_err(CredentialError::CodecError)?;
-        credential_bundle
-            .credential()
-            .verify(&payload, &self.signature)
+        pgstbs.encode_detached()
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
     }
 }
 

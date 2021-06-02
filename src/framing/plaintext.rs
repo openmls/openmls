@@ -1,4 +1,4 @@
-use crate::ciphersuite::signable::Signable;
+use crate::ciphersuite::signable::{Signable, Verifiable};
 
 use super::*;
 use std::convert::TryFrom;
@@ -185,7 +185,7 @@ impl MlsPlaintext {
         credential: &Credential,
     ) -> Result<(), VerificationError> {
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        tbs_payload.verify(credential, &self.signature)
+        tbs_payload.verify(credential).map_err(|e| e.into())
     }
 
     /// Verify the membership tag of an `MlsPlaintext` sent from member.
@@ -229,7 +229,7 @@ impl MlsPlaintext {
     ) -> Result<(), MlsPlaintextError> {
         // Verify the signature first
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        let signature_result = tbs_payload.verify(credential, &self.signature);
+        let signature_result = tbs_payload.verify(credential);
 
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
@@ -378,6 +378,8 @@ pub struct MlsPlaintextTbs<'a> {
     pub(crate) authenticated_data: &'a [u8],
     pub(crate) content_type: &'a ContentType,
     pub(crate) payload: &'a MlsPlaintextContentType,
+    // We store the signature here as well in order to implement Verifiable.
+    signature: &'a Signature,
 }
 
 impl<'a> Signable for MlsPlaintextTbs<'a> {
@@ -401,18 +403,21 @@ impl<'a> MlsPlaintextTbs<'a> {
             authenticated_data: &mls_plaintext.authenticated_data,
             content_type: &mls_plaintext.content_type,
             payload: &mls_plaintext.content,
+            signature: &mls_plaintext.signature,
         }
     }
+}
 
-    pub(crate) fn verify(
-        &self,
-        credential: &Credential,
-        signature: &Signature,
-    ) -> Result<(), VerificationError> {
-        let bytes = self.unsigned_payload()?;
-        credential
-            .verify(&bytes, &signature)
-            .map_err(VerificationError::CredentialError)
+// Usually Verifiable and Signable shouldn't be implemented on the same struct.
+// In this case however we don't have the serialized context in the MlsPlaintext
+// (the object that should actually implement Verifiable).
+impl<'a> Verifiable for MlsPlaintextTbs<'a> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.encode_detached()
+    }
+
+    fn signature(&self) -> &Signature {
+        self.signature
     }
 }
 

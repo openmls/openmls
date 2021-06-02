@@ -171,13 +171,10 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        self.payload
-            .credential
-            .verify(&self.encoded, &self.signature)
-            .map_err(|_| {
-                log::error!("Key package signature is invalid.");
-                KeyPackageError::InvalidSignature
-            })
+        <Self as Verifiable>::verify(&self, &self.payload.credential).map_err(|_| {
+            log::error!("Key package signature is invalid.");
+            KeyPackageError::InvalidSignature
+        })
     }
 
     /// Compute the hash of the encoding of this key package.
