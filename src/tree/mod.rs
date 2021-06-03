@@ -421,25 +421,29 @@ impl RatchetTree {
         // Replace the init key in the current KeyPackage
         let key_package_bundle_unsigned =
             KeyPackageBundlePayload::from_rekeyed_key_package(own_key_package);
-        // FIXME: THIS IS UNNECESSARY
+        // FIXME: #419 THIS IS UNNECESSARY
         let key_package_bundle = key_package_bundle_unsigned.sign(credential_bundle)?;
 
         // Replace the private tree with a new one based on the new key package
         // bundle and store the key package in the own node.
-        let mut path = self
-            .replace_private_tree_(
+        // XXX: #419 this step of setting the key package must go away.
+        self.nodes[own_index] = Node::new_leaf(Some(key_package_bundle.key_package().clone()));
+        let path_nodes = self
+            .replace_private_tree_path_(
                 key_package_bundle.leaf_secret(),
-                key_package_bundle.key_package(),
                 group_context,
                 Some(new_leaves_indexes), /* with update path */
             )
-            .unwrap();
+            .ok_or(TreeError::InvalidTree)?;
 
         // Compute the parent hash extension and update the KeyPackage and sign it
         let parent_hash = self.set_parent_hashes(own_index);
         let mut key_package_bundle_unsigned = key_package_bundle.unsigned();
         key_package_bundle_unsigned.update_parent_hash(&parent_hash);
         let key_package_bundle = key_package_bundle_unsigned.sign(credential_bundle)?;
+
+        // Use new key package
+        let mut path = UpdatePath::new(key_package_bundle.key_package().clone(), path_nodes);
 
         // Store it in the UpdatePath and the tree
         path.leaf_key_package = key_package_bundle.key_package().clone();
@@ -449,7 +453,7 @@ impl RatchetTree {
     }
 
     /// Replace the private tree with a new one based on the
-    /// `key_package_bundle`.
+    /// `key_package` and `leaf_secret`.
     fn replace_private_tree_(
         &mut self,
         leaf_secret: &Secret,
@@ -457,6 +461,22 @@ impl RatchetTree {
         group_context: &[u8],
         new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
     ) -> Option<UpdatePath> {
+        let own_index = self.own_node_index();
+        // Update own leaf node with the new values
+        self.nodes[own_index] = Node::new_leaf(Some(key_package.clone()));
+        let update_path_nodes =
+            self.replace_private_tree_path_(leaf_secret, group_context, new_leaves_indexes_option);
+        update_path_nodes.map(|nodes| UpdatePath::new(key_package.clone(), nodes))
+    }
+
+    /// Replace the private tree with a new one based on the
+    /// `leaf_secret` only.
+    fn replace_private_tree_path_(
+        &mut self,
+        leaf_secret: &Secret,
+        group_context: &[u8],
+        new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
+    ) -> Option<Vec<UpdatePathNode>> {
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
         let direct_path_root = treemath::leaf_direct_path(own_index, self.leaf_count())
@@ -469,15 +489,12 @@ impl RatchetTree {
         self.merge_public_keys(&new_public_keys, &direct_path_root)
             .unwrap();
 
-        // Update own leaf node with the new values
-        self.nodes[own_index] = Node::new_leaf(Some(key_package.clone()));
         self.set_parent_hashes(own_index);
         if let Some(new_leaves_indexes) = new_leaves_indexes_option {
             let update_path_nodes = self
                 .encrypt_to_copath(new_public_keys, group_context, new_leaves_indexes)
                 .unwrap();
-            let update_path = UpdatePath::new(key_package.clone(), update_path_nodes);
-            Some(update_path)
+            Some(update_path_nodes)
         } else {
             None
         }

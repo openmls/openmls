@@ -1,5 +1,8 @@
-use crate::ciphersuite::*;
-use crate::credentials::*;
+use crate::{
+    ciphersuite::Signature,
+    codec::CodecError,
+    credentials::{Credential, CredentialBundle, CredentialError},
+};
 
 /// This trait must be implemented by all structs that contain a self-signature.
 pub trait SignedStruct<T> {
@@ -12,7 +15,8 @@ pub trait SignedStruct<T> {
 pub trait Signable: Sized {
     type SignedOutput;
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError>;
+    /// Return the unsigned, serialized payload that should be signed.
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError>;
 
     /// Sign the payload with the given `id`.
     ///
@@ -32,8 +36,20 @@ pub trait Signable: Sized {
     }
 }
 
+/// The verifiable trait must be implemented by any struct that is signed with
+/// a credential. The actual `verify` method is provided.
+/// The `unsigned_payload` and `signature` functions have to be implemented for
+/// each struct, returning the serialized payload and the signature respectively.
+///
+/// Note that `Verifiable` should not be implemented on the same struct as
+/// `Signable`. If this appears to be necessary, it is probably a sign that the
+/// struct implementing them aren't well defined. Not that both traits define an
+/// `unsigned_payload` function.
 pub trait Verifiable {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError>;
+    /// Return the unsigned, serialized payload that should be verified.
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError>;
+
+    /// A reference to the signature to be verified.
     fn signature(&self) -> &Signature;
 
     /// Verifies the payload against the given `credential` and `signature`.

@@ -185,7 +185,8 @@ impl MlsPlaintext {
         credential: &Credential,
     ) -> Result<(), VerificationError> {
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        tbs_payload.verify(credential).map_err(|e| e.into())
+        tbs_payload.verify(credential)?;
+        Ok(())
     }
 
     /// Verify the membership tag of an `MlsPlaintext` sent from member.
