@@ -280,15 +280,16 @@ pub struct KeyPackageBundlePayload {
 
 impl KeyPackageBundlePayload {
     /// Replace the init key in the `KeyPackage` with a random one and return a
-    /// `KeyPackageBundle` with the corresponding secret values. Note, that the
-    /// `KeyPackage` needs to be re-signed afterwards.
+    /// `KeyPackageBundlePayload` with the corresponding secret values.
+    /// To get a key package bundle sign the `KeyPackageBundlePayload`.
     pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
         let leaf_secret = Secret::random(key_package.ciphersuite(), key_package.protocol_version());
         Self::from_key_package_and_leaf_secret(leaf_secret, key_package)
     }
 
-    /// Creates a new `KeyPackageBundle` from a given `KeyPackage` and a leaf
-    /// secret. Note, that the `KeyPackage` needs to be re-signed afterwards.
+    /// Creates a new `KeyPackageBundlePayload` from a given `KeyPackage` and a leaf
+    /// secret.
+    /// To get a key package bundle sign the `KeyPackageBundlePayload`.
     pub fn from_key_package_and_leaf_secret(leaf_secret: Secret, key_package: &KeyPackage) -> Self {
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret);
         let (private_key, public_key) = key_package
