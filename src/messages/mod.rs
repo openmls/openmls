@@ -134,23 +134,7 @@ impl Commit {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ConfirmationTag(pub(crate) Mac);
 
-/// GroupInfo
-///
-/// > 11.2.2. Welcoming New Members
-///
-/// ```text
-/// struct {
-///   opaque group_id<0..255>;
-///   uint64 epoch;
-///   opaque tree_hash<0..255>;
-///   opaque confirmed_transcript_hash<0..255>;
-///   Extension extensions<0..2^32-1>;
-///   MAC confirmation_tag;
-///   uint32 signer_index;
-///   opaque signature<0..2^16-1>;
-/// } GroupInfo;
-/// ```
-pub(crate) struct GroupInfo {
+pub(crate) struct GroupInfoPayload {
     group_id: GroupId,
     epoch: GroupEpoch,
     tree_hash: Vec<u8>,
@@ -158,10 +142,10 @@ pub(crate) struct GroupInfo {
     extensions: Vec<Box<dyn Extension>>,
     confirmation_tag: ConfirmationTag,
     signer_index: LeafIndex,
-    signature: Signature,
 }
 
-impl GroupInfo {
+impl GroupInfoPayload {
+    /// Create a new group info payload struct.
     pub(crate) fn new(
         group_id: GroupId,
         epoch: GroupEpoch,
@@ -179,63 +163,13 @@ impl GroupInfo {
             extensions,
             confirmation_tag,
             signer_index,
-            signature: Signature::new_empty(),
         }
-    }
-
-    /// Get the tree hash as byte slice.
-    pub(crate) fn tree_hash(&self) -> &[u8] {
-        &self.tree_hash
-    }
-
-    /// Get the signer index.
-    pub(crate) fn signer_index(&self) -> LeafIndex {
-        self.signer_index
-    }
-
-    /// Get the signature.
-    pub(crate) fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    /// Set the signature.
-    pub(crate) fn set_signature(&mut self, signature: Signature) {
-        self.signature = signature;
-    }
-
-    /// Get the group ID.
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.group_id
-    }
-
-    /// Get the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.epoch
-    }
-
-    /// Get the confirmed transcript hash.
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        &self.confirmed_transcript_hash
-    }
-
-    /// Get the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
-        &self.confirmation_tag
-    }
-
-    /// Get the extensions.
-    pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
-        &self.extensions
-    }
-
-    /// Set the group info's extensions.
-    #[cfg(test)]
-    pub(crate) fn set_extensions(&mut self, extensions: Vec<Box<dyn Extension>>) {
-        self.extensions = extensions;
     }
 }
 
-impl Signable for GroupInfo {
+impl Signable for GroupInfoPayload {
+    type SignedOutput = GroupInfo;
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut vec![];
         self.group_id.encode(buffer)?;
@@ -246,6 +180,98 @@ impl Signable for GroupInfo {
         self.confirmation_tag.encode(buffer)?;
         self.signer_index.encode(buffer)?;
         Ok(buffer.to_vec())
+    }
+}
+
+/// GroupInfo
+///
+/// The struct is split into the payload and the signature.
+/// `GroupInfoPayload` holds the actual values, stored in `payload` here.
+///
+/// > 11.2.2. Welcoming New Members
+///
+/// ```text
+/// struct {
+///   opaque group_id<0..255>;
+///   uint64 epoch;
+///   opaque tree_hash<0..255>;
+///   opaque confirmed_transcript_hash<0..255>;
+///   Extension extensions<0..2^32-1>;
+///   MAC confirmation_tag;
+///   uint32 signer_index;
+///   opaque signature<0..2^16-1>;
+/// } GroupInfo;
+/// ```
+pub(crate) struct GroupInfo {
+    payload: GroupInfoPayload,
+    signature: Signature,
+}
+
+impl GroupInfo {
+    /// Get the tree hash as byte slice.
+    pub(crate) fn tree_hash(&self) -> &[u8] {
+        &self.payload.tree_hash
+    }
+
+    /// Get the signer index.
+    pub(crate) fn signer_index(&self) -> LeafIndex {
+        self.payload.signer_index
+    }
+
+    /// Get the group ID.
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.payload.group_id
+    }
+
+    /// Get the epoch.
+    pub(crate) fn epoch(&self) -> GroupEpoch {
+        self.payload.epoch
+    }
+
+    /// Get the confirmed transcript hash.
+    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
+        &self.payload.confirmed_transcript_hash
+    }
+
+    /// Get the confirmed tag.
+    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
+        &self.payload.confirmation_tag
+    }
+
+    /// Get the extensions.
+    pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
+        &self.payload.extensions
+    }
+
+    /// Set the group info's extensions.
+    #[cfg(test)]
+    pub(crate) fn set_extensions(&mut self, extensions: Vec<Box<dyn Extension>>) {
+        self.payload.extensions = extensions;
+    }
+
+    /// Re-sign the group info.
+    #[cfg(test)]
+    pub(crate) fn re_sign(
+        self,
+        credential_bundle: &CredentialBundle,
+    ) -> Result<Self, CredentialError> {
+        self.payload.sign(credential_bundle)
+    }
+}
+
+impl Verifiable for GroupInfo {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.payload.unsigned_payload()
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+}
+
+impl SignedStruct<GroupInfoPayload> for GroupInfo {
+    fn from_payload(payload: GroupInfoPayload, signature: Signature) -> Self {
+        Self { payload, signature }
     }
 }
 
@@ -405,10 +431,10 @@ impl PublicGroupState {
             signature,
         })
     }
+}
 
-    /// Verifies the signature of the `PublicGroupState`.
-    /// Returns `Ok(())` in case of success and `CredentialError` otherwise.
-    pub fn verify(&self, credential_bundle: &CredentialBundle) -> Result<(), CredentialError> {
+impl Verifiable for PublicGroupState {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         let pgstbs = PublicGroupStateTbs {
             group_id: &self.group_id,
             epoch: &self.epoch,
@@ -417,12 +443,11 @@ impl PublicGroupState {
             extensions: &self.extensions,
             external_pub: &self.external_pub,
         };
-        let payload = pgstbs
-            .encode_detached()
-            .map_err(CredentialError::CodecError)?;
-        credential_bundle
-            .credential()
-            .verify(&payload, &self.signature)
+        pgstbs.encode_detached()
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
     }
 }
 
@@ -447,14 +472,10 @@ pub(crate) struct PublicGroupStateTbs<'a> {
     pub(crate) external_pub: &'a HpkePublicKey,
 }
 
-impl<'a> PublicGroupStateTbs<'a> {
-    /// Signs the `PublicGroupStateTBS` with a `CredentialBundle`.
-    fn sign(&self, credential_bundle: &CredentialBundle) -> Result<Signature, CredentialError> {
-        let payload = self
-            .encode_detached()
-            .map_err(CredentialError::CodecError)?;
-        credential_bundle
-            .sign(&payload)
-            .map_err(|_| CredentialError::SignatureError)
+impl<'a> Signable for PublicGroupStateTbs<'a> {
+    type SignedOutput = Signature;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
+        self.encode_detached()
     }
 }

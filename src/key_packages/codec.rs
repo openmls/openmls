@@ -16,16 +16,19 @@ impl Codec for KeyPackage {
         let credential = Credential::decode(cursor)?;
         let extensions = extensions_vec_from_cursor(cursor)?;
         let signature = Signature::decode(cursor)?;
-        let mut kp = KeyPackage {
+        let payload = KeyPackagePayload {
             protocol_version,
             ciphersuite: Config::ciphersuite(cipher_suite_name)?,
             hpke_init_key,
             credential,
             extensions,
-            signature,
-            encoded: Vec::new(),
         };
-        kp.encoded = kp.unsigned_payload()?;
+        let encoded = payload.unsigned_payload()?;
+        let kp = KeyPackage {
+            payload,
+            signature,
+            encoded,
+        };
 
         if kp.verify().is_err() {
             log::error!("Error verifying a key package after decoding\n{:?}", kp);

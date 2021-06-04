@@ -1,5 +1,6 @@
 //! # Key package tests
 
+use openmls::ciphersuite::signable::Signable;
 use openmls::prelude::*;
 
 #[macro_use]
@@ -12,7 +13,7 @@ ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteNa
     let id = vec![1, 2, 3];
     let credential_bundle =
         CredentialBundle::new(id, CredentialType::Basic, ciphersuite.signature_scheme()).unwrap();
-    let mut kpb =
+    let kpb =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
 
     // After creation, the signature should be ok.
@@ -55,14 +56,11 @@ ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteNa
 
     // Add and retrieve a key package ID.
     let key_id = [1, 2, 3, 4, 5, 6, 7];
-    kpb.key_package_mut()
-        .add_extension(Box::new(KeyIdExtension::new(&key_id)));
-
-    // The key package is invalid because the signature is invalid now.
-    assert!(kpb.key_package().verify().is_err());
+    let mut kpb_unsigned: KeyPackageBundlePayload = kpb.into();
+    kpb_unsigned.add_extension(Box::new(KeyIdExtension::new(&key_id)));
 
     // After re-signing the package it is valid.
-    kpb.key_package_mut().sign(&credential_bundle);
+    let kpb = kpb_unsigned.sign(&credential_bundle).unwrap();
     assert!(kpb.key_package().verify().is_ok());
 
     // Get the key ID extension.

@@ -3,7 +3,6 @@
 use super::*;
 
 use crate::{
-    ciphersuite::signable::Signable,
     codec::{Codec, CodecError},
     messages::GroupSecrets,
     prelude::*,
@@ -121,13 +120,13 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         .map_err(|_| WelcomeError::GroupInfoDecryptionFailure).expect("Could not decrypt GroupInfo");
     let mut group_info = GroupInfo::decode_detached(&group_info_bytes).expect("Could not decode GroupInfo");
 
-    // Dupicate extensions
+    // Duplicate extensions
     let extensions = group_info.extensions();
     let duplicate_extensions = vec![extensions[0].clone(), extensions[0].clone()];
     group_info.set_extensions(duplicate_extensions);
 
     // Put everything back together
-    group_info.set_signature(group_info.sign(&bob_credential_bundle));
+    let group_info = group_info.re_sign(&bob_credential_bundle).expect("Error re-signing GroupInfo");
 
     let encrypted_group_info = welcome_key
         .aead_seal(&group_info.encode_detached().expect("Could not encode GroupInfo"), &[], &welcome_nonce)

@@ -1,3 +1,4 @@
+use crate::ciphersuite::signable::Signable;
 use crate::config::*;
 use crate::framing::*;
 

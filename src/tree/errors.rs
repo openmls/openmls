@@ -1,4 +1,4 @@
-use crate::ciphersuite::CryptoError;
+use crate::{ciphersuite::CryptoError, credentials::CredentialError};
 
 implement_error! {
     pub enum TreeError {
@@ -11,6 +11,8 @@ implement_error! {
         Complex {
             PathSecretDecryptionError(CryptoError) =
                 "Error while decrypting `PathSecret`.",
+                CredentialError(CredentialError) =
+                    "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
         }
     }
 }

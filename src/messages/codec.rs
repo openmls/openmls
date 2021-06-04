@@ -32,7 +32,7 @@ impl Codec for ConfirmationTag {
 
 impl Codec for GroupInfo {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        buffer.append(&mut self.unsigned_payload()?);
+        buffer.append(&mut self.payload.unsigned_payload()?);
         self.signature.encode(buffer)?;
         Ok(())
     }
@@ -46,13 +46,15 @@ impl Codec for GroupInfo {
         let signer_index = LeafIndex::from(u32::decode(cursor)?);
         let signature = Signature::decode(cursor)?;
         Ok(GroupInfo {
-            group_id,
-            epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            extensions,
-            confirmation_tag,
-            signer_index,
+            payload: GroupInfoPayload {
+                group_id,
+                epoch,
+                tree_hash,
+                confirmed_transcript_hash,
+                extensions,
+                confirmation_tag,
+                signer_index,
+            },
             signature,
         })
     }

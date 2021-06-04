@@ -1,7 +1,7 @@
 use crate::{
-    ciphersuite::AeadNonce,
+    ciphersuite::{signable::Signable, AeadNonce},
     group::GroupEpoch,
-    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfo},
+    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
     prelude::*,
     schedule::psk::*,
     tree::{TreeError, UpdatePath, UpdatePathNode},
@@ -64,7 +64,7 @@ fn test_failed_groupinfo_decryption() {
                 mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             });
             let signer_index = LeafIndex::from(8u32);
-            let group_info = GroupInfo::new(
+            let group_info = GroupInfoPayload::new(
                 group_id,
                 epoch,
                 tree_hash,
@@ -97,6 +97,9 @@ fn test_failed_groupinfo_decryption() {
                 ciphersuite.signature_scheme(),
             )
             .unwrap();
+            let group_info = group_info
+                .sign(&alice_credential_bundle)
+                .expect("Error signing group info");
 
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![])

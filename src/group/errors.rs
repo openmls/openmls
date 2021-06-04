@@ -6,7 +6,8 @@
 use crate::ciphersuite::CryptoError;
 use crate::codec::CodecError;
 use crate::config::ConfigError;
-use crate::framing::errors::{MlsCiphertextError, VerificationError};
+use crate::credentials::CredentialError;
+use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
@@ -20,6 +21,8 @@ implement_error! {
         Complex {
             MlsCiphertextError(MlsCiphertextError) =
                 "See [`MlsCiphertextError`](`crate::framing::errors::MlsCiphertextError`) for details.",
+            MlsPlaintextError(MlsPlaintextError) =
+                "See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.",
             WelcomeError(WelcomeError) =
                 "See [`WelcomeError`](`WelcomeError`) for details.",
             ApplyCommitError(ApplyCommitError) =
@@ -40,6 +43,10 @@ implement_error! {
                 "An error occurred during a tree math operation.",
             PskError(PskError) =
                 "A PSK error occured.",
+            CredentialError(CredentialError) =
+                "See [`CredentialError`](crate::credentials::CredentialError) for details.",
+            TreeError(TreeError) =
+                "See [`TreeError`](crate::tree::TreeError) for details.",
         }
     }
 }
@@ -65,6 +72,8 @@ implement_error! {
                 "Found a duplicate ratchet tree extension in the Welcome message.",
             UnsupportedMlsVersion =
                 "The Welcome message uses an unsupported MLS version.",
+            MissingKeyPackage =
+                "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
         }

@@ -1,5 +1,8 @@
 use log::error;
 
+use crate::ciphersuite::signable::Signable;
+use crate::ciphersuite::signable::SignedStruct;
+use crate::ciphersuite::signable::Verifiable;
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
@@ -22,26 +25,105 @@ pub use errors::*;
 #[cfg(test)]
 mod test_key_packages;
 
+/// The unsigned payload of a key package.
+/// Any modification must happen on this unsigned struct. Use `sign` to get a
+/// signed key package.
 #[derive(Debug, Clone, PartialEq)]
-pub struct KeyPackage {
-    protocol_version: ProtocolVersion,
+pub struct KeyPackagePayload {
     ciphersuite: &'static Ciphersuite,
+    protocol_version: ProtocolVersion,
     hpke_init_key: HpkePublicKey,
     credential: Credential,
     extensions: Vec<Box<dyn Extension>>,
+}
+
+implement_persistence!(
+    KeyPackagePayload,
+    protocol_version,
+    hpke_init_key,
+    credential,
+    extensions
+);
+
+impl Signable for KeyPackagePayload {
+    type SignedOutput = KeyPackage;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        let buffer = &mut Vec::new();
+        self.protocol_version.encode(buffer)?;
+        self.ciphersuite.name().encode(buffer)?;
+        self.hpke_init_key.encode(buffer)?;
+        self.credential.encode(buffer)?;
+        encode_extensions(&self.extensions, buffer)?;
+        Ok(buffer.to_vec())
+    }
+}
+
+impl From<KeyPackage> for KeyPackagePayload {
+    fn from(kp: KeyPackage) -> Self {
+        kp.payload
+    }
+}
+
+impl KeyPackagePayload {
+    fn from_key_package(kp: &KeyPackage, hpke_init_key: HpkePublicKey) -> Self {
+        Self {
+            protocol_version: kp.payload.protocol_version,
+            ciphersuite: kp.payload.ciphersuite,
+            hpke_init_key,
+            credential: kp.payload.credential.clone(),
+            extensions: kp.payload.extensions.clone(),
+        }
+    }
+
+    /// Remove an extension from the KeyPackage.
+    pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
+        self.extensions
+            .retain(|e| e.extension_type() != extension_type);
+    }
+
+    /// Add (or replace) an extension to the KeyPackage.
+    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
+        self.remove_extension(extension.extension_type());
+        self.extensions.push(extension);
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KeyPackage {
+    payload: KeyPackagePayload,
     signature: Signature,
     encoded: Vec<u8>,
 }
 
-implement_persistence!(
-    KeyPackage,
-    protocol_version,
-    hpke_init_key,
-    credential,
-    extensions,
-    signature,
-    encoded
-);
+impl PartialEq for KeyPackage {
+    fn eq(&self, other: &Self) -> bool {
+        // We ignore the signature in the comparison. The same key package
+        // may have different, valid signatures.
+        self.payload == other.payload && self.encoded == other.encoded
+    }
+}
+
+impl SignedStruct<KeyPackagePayload> for KeyPackage {
+    fn from_payload(payload: KeyPackagePayload, signature: Signature) -> Self {
+        let encoded = payload.unsigned_payload().unwrap();
+        Self {
+            payload,
+            signature,
+            encoded,
+        }
+    }
+}
+
+impl Verifiable for KeyPackage {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        Ok(self.encoded.clone())
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+}
 
 /// Mandatory extensions for key packages.
 const MANDATORY_EXTENSIONS: [ExtensionType; 2] =
@@ -57,7 +139,7 @@ impl KeyPackage {
     pub fn verify(&self) -> Result<(), KeyPackageError> {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
-        for extension in self.extensions.iter() {
+        for extension in self.payload.extensions.iter() {
             if let Some(p) = mandatory_extensions_found
                 .iter()
                 .position(|&e| e == extension.extension_type())
@@ -89,18 +171,16 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        self.credential
-            .verify(&self.unsigned_payload().unwrap(), &self.signature)
-            .map_err(|_| {
-                log::error!("Key package signature is invalid.");
-                KeyPackageError::InvalidSignature
-            })
+        <Self as Verifiable>::verify(&self, &self.payload.credential).map_err(|_| {
+            log::error!("Key package signature is invalid.");
+            KeyPackageError::InvalidSignature
+        })
     }
 
     /// Compute the hash of the encoding of this key package.
     pub fn hash(&self) -> Vec<u8> {
         let bytes = self.encode_detached().unwrap();
-        self.ciphersuite.hash(&bytes)
+        self.payload.ciphersuite.hash(&bytes)
     }
 
     /// Get the ID of this key package as byte slice.
@@ -114,28 +194,14 @@ impl KeyPackage {
         ))
     }
 
-    /// Add (or replace) an extension to the KeyPackage.
-    /// Make sure to re-sign the package before using it. It will be invalid
-    /// after calling this function!
-    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
-        self.remove_extension(extension.extension_type());
-        self.extensions.push(extension);
-        self.encoded = self.unsigned_payload().unwrap();
-    }
-
     /// Get a reference to the extensions of this key package.
     pub fn extensions(&self) -> &[Box<dyn Extension>] {
-        &self.extensions
+        &self.payload.extensions
     }
 
     /// Get a reference to the credential.
     pub fn credential(&self) -> &Credential {
-        &self.credential
-    }
-
-    /// Populate the `signature` field using the `credential_bundle`.
-    pub fn sign(&mut self, credential_bundle: &CredentialBundle) {
-        self.signature = credential_bundle.sign(&self.encoded).unwrap();
+        &self.payload.credential
     }
 }
 
@@ -155,31 +221,15 @@ impl KeyPackage {
         {
             return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
         }
-        let mut key_package = Self {
+        let key_package = KeyPackagePayload {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
             ciphersuite: Config::ciphersuite(ciphersuite_name)?,
             hpke_init_key,
             credential: credential_bundle.credential().clone(),
             extensions,
-            signature: Signature::new_empty(),
-            encoded: Vec::new(),
         };
-        key_package.encoded = key_package.unsigned_payload()?;
-        key_package.sign(&credential_bundle);
-        Ok(key_package)
-    }
-
-    /// Compile the unsigned payload to create the signature required in the
-    /// signature field.
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        let buffer = &mut Vec::new();
-        self.protocol_version.encode(buffer)?;
-        self.ciphersuite.name().encode(buffer)?;
-        self.hpke_init_key.encode(buffer)?;
-        self.credential.encode(buffer)?;
-        encode_extensions(&self.extensions, buffer)?;
-        Ok(buffer.to_vec())
+        Ok(key_package.sign(&credential_bundle)?)
     }
 }
 
@@ -193,7 +243,7 @@ impl KeyPackage {
         &self,
         extension_type: ExtensionType,
     ) -> Option<&Box<dyn Extension>> {
-        for e in &self.extensions {
+        for e in &self.payload.extensions {
             if e.extension_type() == extension_type {
                 return Some(e);
             }
@@ -201,47 +251,89 @@ impl KeyPackage {
         None
     }
 
-    /// Update the parent hash extension of this key package.
-    pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
-        self.remove_extension(ExtensionType::ParentHash);
-        let extension = Box::new(ParentHashExtension::new(parent_hash));
-        self.extensions.push(extension);
-        self.encoded = self.unsigned_payload().unwrap();
-    }
-
-    /// Remove an extension from the KeyPackage
-    /// Make sure to re-sign the package before using it. It will be invalid
-    /// after calling this function!
-    pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
-        self.extensions
-            .retain(|e| e.extension_type() != extension_type);
-        self.encoded = self.unsigned_payload().unwrap();
-    }
-
     /// Get a reference to the HPKE init key.
     pub(crate) fn hpke_init_key(&self) -> &HpkePublicKey {
-        &self.hpke_init_key
-    }
-
-    /// Set a new HPKE init key.
-    pub(crate) fn set_hpke_init_key(&mut self, hpke_init_key: HpkePublicKey) {
-        self.hpke_init_key = hpke_init_key;
-        self.encoded = self.unsigned_payload().unwrap();
+        &self.payload.hpke_init_key
     }
 
     /// Get the `Ciphersuite`.
     pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
-        self.ciphersuite
+        self.payload.ciphersuite
     }
 
     /// Get the `ProtocolVersion`.
     pub(crate) fn protocol_version(&self) -> ProtocolVersion {
-        self.protocol_version
+        self.payload.protocol_version
     }
 
     /// Get the `CiphersuiteName`.
     pub fn ciphersuite_name(&self) -> CiphersuiteName {
-        self.ciphersuite.name()
+        self.payload.ciphersuite.name()
+    }
+}
+
+pub struct KeyPackageBundlePayload {
+    key_package_payload: KeyPackagePayload,
+    private_key: HpkePrivateKey,
+    leaf_secret: Secret,
+}
+
+impl KeyPackageBundlePayload {
+    /// Replace the init key in the `KeyPackage` with a random one and return a
+    /// `KeyPackageBundlePayload` with the corresponding secret values.
+    /// To get a key package bundle sign the `KeyPackageBundlePayload`.
+    pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
+        let leaf_secret = Secret::random(key_package.ciphersuite(), key_package.protocol_version());
+        Self::from_key_package_and_leaf_secret(leaf_secret, key_package)
+    }
+
+    /// Creates a new `KeyPackageBundlePayload` from a given `KeyPackage` and a leaf
+    /// secret.
+    /// To get a key package bundle sign the `KeyPackageBundlePayload`.
+    pub fn from_key_package_and_leaf_secret(leaf_secret: Secret, key_package: &KeyPackage) -> Self {
+        let leaf_node_secret = derive_leaf_node_secret(&leaf_secret);
+        let (private_key, public_key) = key_package
+            .ciphersuite()
+            .derive_hpke_keypair(&leaf_node_secret)
+            .into_keys();
+        let key_package_payload = KeyPackagePayload::from_key_package(key_package, public_key);
+        Self {
+            key_package_payload,
+            private_key,
+            leaf_secret,
+        }
+    }
+
+    /// Update the parent hash extension of this key package.
+    pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
+        self.key_package_payload
+            .remove_extension(ExtensionType::ParentHash);
+        let extension = Box::new(ParentHashExtension::new(parent_hash));
+        self.key_package_payload.extensions.push(extension);
+    }
+
+    /// Add (or replace) an extension to the KeyPackage.
+    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
+        self.key_package_payload.add_extension(extension)
+    }
+}
+
+impl Signable for KeyPackageBundlePayload {
+    type SignedOutput = KeyPackageBundle;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.key_package_payload.unsigned_payload()
+    }
+}
+
+impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
+    fn from_payload(payload: KeyPackageBundlePayload, signature: Signature) -> Self {
+        let key_package = KeyPackage::from_payload(payload.key_package_payload, signature);
+        Self {
+            key_package,
+            private_key: payload.private_key,
+            leaf_secret: payload.leaf_secret,
+        }
     }
 }
 
@@ -251,6 +343,16 @@ pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HpkePrivateKey,
     pub(crate) leaf_secret: Secret,
+}
+
+impl From<KeyPackageBundle> for KeyPackageBundlePayload {
+    fn from(kpb: KeyPackageBundle) -> Self {
+        Self {
+            key_package_payload: kpb.key_package.into(),
+            private_key: kpb.private_key,
+            leaf_secret: kpb.leaf_secret,
+        }
+    }
 }
 
 /// Public `KeyPackageBundle` functions.
@@ -297,32 +399,6 @@ impl KeyPackageBundle {
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_secret = Secret::random(ciphersuite, version);
         Self::new_from_leaf_secret(ciphersuites, credential_bundle, extensions, leaf_secret)
-    }
-
-    /// Replace the init key in the `KeyPackage` with a random one and return a
-    /// `KeyPackageBundle` with the corresponding secret values. Note, that the
-    /// `KeyPackage` needs to be re-signed afterwards.
-    pub(crate) fn from_rekeyed_key_package(key_package: &KeyPackage) -> Self {
-        let leaf_secret = Secret::random(key_package.ciphersuite(), key_package.protocol_version);
-        KeyPackageBundle::from_key_package_and_leaf_secret(leaf_secret, key_package)
-    }
-
-    /// Creates a new `KeyPackageBundle` from a given `KeyPackage` and a leaf
-    /// secret. Note, that the `KeyPackage` needs to be re-signed afterwards.
-    pub fn from_key_package_and_leaf_secret(leaf_secret: Secret, key_package: &KeyPackage) -> Self {
-        let leaf_node_secret = Self::derive_leaf_node_secret(&leaf_secret);
-        let (private_key, public_key) = key_package
-            .ciphersuite()
-            .derive_hpke_keypair(&leaf_node_secret)
-            .into_keys();
-        let mut new_key_package = key_package.clone();
-        // Set the public key and re-set the unsigned payload.
-        new_key_package.set_hpke_init_key(public_key);
-        KeyPackageBundle {
-            key_package: new_key_package,
-            private_key,
-            leaf_secret,
-        }
     }
 
     /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
@@ -420,6 +496,11 @@ impl KeyPackageBundle {
     pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
+
+    /// Get the unsigned payload version of this key package bundle for modificaiton.
+    pub fn unsigned(self) -> KeyPackageBundlePayload {
+        self.into()
+    }
 }
 
 /// Private `KeyPackageBundle` functions.
@@ -440,7 +521,7 @@ impl KeyPackageBundle {
         }
 
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_node_secret = Self::derive_leaf_node_secret(&leaf_secret);
+        let leaf_node_secret = derive_leaf_node_secret(&leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
         Self::new_with_keypair(
             ciphersuites,
@@ -459,16 +540,6 @@ impl KeyPackageBundle {
         self.private_key = private_key;
     }
 
-    /// Update the key package in the bundle.
-    pub(crate) fn set_key_package(&mut self, key_package: KeyPackage) {
-        self.key_package = key_package;
-    }
-
-    /// Get a mutable reference to the `KeyPackage`.
-    pub fn key_package_mut(&mut self) -> &mut KeyPackage {
-        &mut self.key_package
-    }
-
     /// Get a reference to the `HpkePrivateKey`.
     pub(crate) fn private_key(&self) -> &HpkePrivateKey {
         &self.private_key
@@ -478,15 +549,10 @@ impl KeyPackageBundle {
     pub fn leaf_secret(&self) -> &Secret {
         &self.leaf_secret
     }
+}
 
-    /// This function derives the leaf_node_secret from the leaf_secret as
-    /// described in 5.4 Ratchet Tree Evolution
-    pub(crate) fn derive_leaf_node_secret(leaf_secret: &Secret) -> Secret {
-        leaf_secret.derive_secret("node")
-    }
-
-    /// Sign the KeyPackageBundle
-    pub(crate) fn sign(&mut self, credential_bundle: &CredentialBundle) {
-        self.key_package_mut().sign(credential_bundle);
-    }
+/// This function derives the leaf_node_secret from the leaf_secret as
+/// described in 5.4 Ratchet Tree Evolution
+pub(crate) fn derive_leaf_node_secret(leaf_secret: &Secret) -> Secret {
+    leaf_secret.derive_secret("node")
 }

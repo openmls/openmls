@@ -1,3 +1,5 @@
+use crate::ciphersuite::signable::{Signable, Verifiable};
+
 use super::*;
 use std::convert::TryFrom;
 
@@ -52,7 +54,7 @@ impl MlsPlaintext {
         content: MlsPlaintextContentType,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
-    ) -> Result<Self, CodecError> {
+    ) -> Result<Self, MlsPlaintextError> {
         let sender = Sender::member(sender_index);
 
         let mut mls_plaintext = MlsPlaintext {
@@ -81,7 +83,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
-    ) -> Result<Self, CodecError> {
+    ) -> Result<Self, MlsPlaintextError> {
         let content = MlsPlaintextContentType::Proposal(proposal);
         let mut mls_plaintext = Self::new_from_member(
             sender_index,
@@ -103,7 +105,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
-    ) -> Result<Self, CodecError> {
+    ) -> Result<Self, MlsPlaintextError> {
         let content = MlsPlaintextContentType::Application(application_message.to_vec());
         let mut mls_plaintext = Self::new_from_member(
             sender_index,
@@ -128,17 +130,21 @@ impl MlsPlaintext {
 
     /// Sign this `MlsPlaintext`. This populates the
     /// `signature` field. The signature is produced from
-    /// the private key conatined in the credential bundle.
+    /// the private key contained in the credential bundle.
     ///
     /// This should be used when signing messages from external parties.
-    pub fn sign_from_external(&mut self, credential_bundle: &CredentialBundle) {
+    pub fn sign_from_external(
+        &mut self,
+        credential_bundle: &CredentialBundle,
+    ) -> Result<(), MlsPlaintextError> {
         let tbs_payload = MlsPlaintextTbsPayload::new_from_mls_plaintext(&self, None);
-        self.signature = tbs_payload.sign(credential_bundle);
+        self.signature = tbs_payload.sign(credential_bundle)?;
+        Ok(())
     }
 
     /// Sign this `MlsPlaintext` and add a membership tag. This populates the
     /// `signature` and `membership_tag` fields. The signature is produced from
-    /// the private key conatined in the credential bundle, and the
+    /// the private key contained in the credential bundle, and the
     /// membership_tag is produced using the the membership secret.
     ///
     /// This should be used to sign messages from group members.
@@ -146,7 +152,7 @@ impl MlsPlaintext {
         &mut self,
         credential_bundle: &CredentialBundle,
         serialized_context: &[u8],
-    ) -> Result<(), CodecError> {
+    ) -> Result<(), MlsPlaintextError> {
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
         self.signature = tbs_payload.sign(credential_bundle)?;
         Ok(())
@@ -160,7 +166,7 @@ impl MlsPlaintext {
         &mut self,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
-    ) -> Result<(), CodecError> {
+    ) -> Result<(), MlsPlaintextError> {
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
 
         let tbm_payload =
@@ -179,7 +185,8 @@ impl MlsPlaintext {
         credential: &Credential,
     ) -> Result<(), VerificationError> {
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        tbs_payload.verify(credential, &self.signature)
+        tbs_payload.verify(credential)?;
+        Ok(())
     }
 
     /// Verify the membership tag of an `MlsPlaintext` sent from member.
@@ -190,25 +197,24 @@ impl MlsPlaintext {
         ciphersuite: &'static Ciphersuite,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
-    ) -> Result<(), VerificationError> {
+    ) -> Result<(), MlsPlaintextError> {
         log::debug!("Verifying membership tag {}.", ciphersuite);
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
         let tbm_payload =
-            MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)
-                .map_err(VerificationError::CodecError)?;
+            MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
         let expected_membership_tag = &membership_key.tag(tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
             if membership_tag != expected_membership_tag {
-                Err(VerificationError::InvalidMembershipTag)
+                Err(VerificationError::InvalidMembershipTag.into())
             } else {
                 Ok(())
             }
         } else {
-            Err(VerificationError::MissingMembershipTag)
+            Err(VerificationError::MissingMembershipTag.into())
         }
     }
 
@@ -221,27 +227,26 @@ impl MlsPlaintext {
         serialized_context: &[u8],
         credential: &Credential,
         membership_key: &MembershipKey,
-    ) -> Result<(), VerificationError> {
+    ) -> Result<(), MlsPlaintextError> {
         // Verify the signature first
         let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        let signature_result = tbs_payload.verify(credential, &self.signature);
+        let signature_result = tbs_payload.verify(credential);
 
         let tbm_payload =
-            MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)
-                .map_err(VerificationError::CodecError)?;
+            MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
         let expected_membership_tag = &membership_key.tag(tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
             // TODO #133: make this a constant-time comparison
             if membership_tag != expected_membership_tag {
-                Err(VerificationError::InvalidMembershipTag)
+                Err(VerificationError::InvalidMembershipTag.into())
             } else {
                 // If the tags are equal we just return the signature result
-                signature_result
+                signature_result.map_err(|e| e.into())
             }
         } else {
-            Err(VerificationError::MissingMembershipTag)
+            Err(VerificationError::MissingMembershipTag.into())
         }
     }
 
@@ -346,7 +351,7 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
         tbs_payload: &MlsPlaintextTbs,
         signature: &'a Signature,
         confirmation_tag: &'a Option<ConfirmationTag>,
-    ) -> Result<Self, CodecError> {
+    ) -> Result<Self, MlsPlaintextError> {
         Ok(Self {
             tbs_payload: tbs_payload.encode_detached()?,
             signature,
@@ -374,6 +379,16 @@ pub struct MlsPlaintextTbs<'a> {
     pub(crate) authenticated_data: &'a [u8],
     pub(crate) content_type: &'a ContentType,
     pub(crate) payload: &'a MlsPlaintextContentType,
+    // We store the signature here as well in order to implement Verifiable.
+    signature: &'a Signature,
+}
+
+impl<'a> Signable for MlsPlaintextTbs<'a> {
+    type SignedOutput = Signature;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.encode_detached()
+    }
 }
 
 impl<'a> MlsPlaintextTbs<'a> {
@@ -389,26 +404,21 @@ impl<'a> MlsPlaintextTbs<'a> {
             authenticated_data: &mls_plaintext.authenticated_data,
             content_type: &mls_plaintext.content_type,
             payload: &mls_plaintext.content,
+            signature: &mls_plaintext.signature,
         }
     }
-    pub(crate) fn sign(
-        &self,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<Signature, CodecError> {
-        let bytes = self.encode_detached()?;
-        // Unwrapping here is safe, because signatures would only fail due to a bad
-        // implementation of the crypto primitive
-        Ok(credential_bundle.sign(&bytes).unwrap())
+}
+
+// Usually Verifiable and Signable shouldn't be implemented on the same struct.
+// In this case however we don't have the serialized context in the MlsPlaintext
+// (the object that should actually implement Verifiable).
+impl<'a> Verifiable for MlsPlaintextTbs<'a> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.encode_detached()
     }
-    pub(crate) fn verify(
-        &self,
-        credential: &Credential,
-        signature: &Signature,
-    ) -> Result<(), VerificationError> {
-        let bytes = self.encode_detached()?;
-        credential
-            .verify(&bytes, &signature)
-            .map_err(VerificationError::CredentialError)
+
+    fn signature(&self) -> &Signature {
+        self.signature
     }
 }
 
@@ -426,8 +436,13 @@ impl<'a> MlsPlaintextTbsPayload {
             payload: tbs.encode_detached().unwrap(),
         }
     }
-    pub(crate) fn sign(&self, credential_bundle: &CredentialBundle) -> Signature {
-        credential_bundle.sign(&self.payload).unwrap()
+}
+
+impl Signable for MlsPlaintextTbsPayload {
+    type SignedOutput = Signature;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        Ok(self.payload.clone())
     }
 }
 
