@@ -693,7 +693,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>(),
             <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>(),
         )
-        .<span class="ident">map_err</span>(<span class="ident">GroupError</span>::<span class="ident">CodecError</span>)
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="comment">// 11.1.2. Update</span>
@@ -716,7 +716,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>(),
             <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>(),
         )
-        .<span class="ident">map_err</span>(<span class="ident">GroupError</span>::<span class="ident">CodecError</span>)
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="comment">// 11.1.3. Remove</span>
@@ -741,7 +741,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>(),
             <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>(),
         )
-        .<span class="ident">map_err</span>(<span class="ident">GroupError</span>::<span class="ident">CodecError</span>)
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="comment">// 11.1.4. PreSharedKey</span>
@@ -764,7 +764,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>(),
             <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>(),
         )
-        .<span class="ident">map_err</span>(<span class="ident">GroupError</span>::<span class="ident">CodecError</span>)
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="comment">// === ===</span>

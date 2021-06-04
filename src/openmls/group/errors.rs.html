@@ -163,6 +163,15 @@
 <span id="160">160</span>
 <span id="161">161</span>
 <span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
@@ -172,7 +181,8 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">CodecError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::{<span class="ident">MlsCiphertextError</span>, <span class="ident">VerificationError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="ident">CredentialError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">errors</span>::{<span class="ident">MlsCiphertextError</span>, <span class="ident">MlsPlaintextError</span>, <span class="ident">VerificationError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="ident">errors</span>::<span class="ident">ProposalQueueError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">treemath</span>::<span class="ident">TreeMathError</span>, <span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
@@ -186,6 +196,8 @@
         <span class="ident">Complex</span> {
             <span class="ident">MlsCiphertextError</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`MlsCiphertextError`](`crate::framing::errors::MlsCiphertextError`) for details.&quot;</span>,
+            <span class="ident">MlsPlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.&quot;</span>,
             <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`WelcomeError`](`WelcomeError`) for details.&quot;</span>,
             <span class="ident">ApplyCommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
@@ -206,6 +218,10 @@
                 <span class="string">&quot;An error occurred during a tree math operation.&quot;</span>,
             <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
                 <span class="string">&quot;A PSK error occured.&quot;</span>,
+            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CredentialError`](crate::credentials::CredentialError) for details.&quot;</span>,
+            <span class="ident">TreeError</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`TreeError`](crate::tree::TreeError) for details.&quot;</span>,
         }
     }
 }
@@ -231,6 +247,8 @@
                 <span class="string">&quot;Found a duplicate ratchet tree extension in the Welcome message.&quot;</span>,
             <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span>
                 <span class="string">&quot;The Welcome message uses an unsupported MLS version.&quot;</span>,
+            <span class="ident">MissingKeyPackage</span> <span class="op">=</span>
+                <span class="string">&quot;The sender key package is missing.&quot;</span>,
             <span class="ident">UnknownError</span> <span class="op">=</span>
                 <span class="string">&quot;An unknown error occurred.&quot;</span>,
         }

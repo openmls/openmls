@@ -230,13 +230,14 @@
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
 
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Verifiable</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="ident">ExtensionType</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">mls_group</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">messages</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="ident">node</span>::<span class="kw-2">*</span>, <span class="ident">treemath</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Signable</span>, <span class="ident">codec</span>::<span class="kw-2">*</span>};
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_welcome_internal</span>(
@@ -359,12 +360,11 @@
 
         <span class="comment">// Verify GroupInfo signature</span>
         <span class="kw">let</span> <span class="ident">signer_node</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">nodes</span>[<span class="ident">group_info</span>.<span class="ident">signer_index</span>()].<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">signer_key_package</span> <span class="op">=</span> <span class="ident">signer_node</span>.<span class="ident">key_package</span>.<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">unsigned_payload</span>().<span class="ident">unwrap</span>();
-
-        <span class="ident">signer_key_package</span>
-            .<span class="ident">credential</span>()
-            .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="ident">group_info</span>.<span class="ident">signature</span>())
+        <span class="kw">let</span> <span class="ident">signer_key_package</span> <span class="op">=</span> <span class="ident">signer_node</span>
+            .<span class="ident">key_package</span>
+            .<span class="ident">ok_or</span>(<span class="ident">WelcomeError</span>::<span class="ident">MissingKeyPackage</span>)<span class="question-mark">?</span>;
+        <span class="ident">group_info</span>
+            .<span class="ident">verify</span>(<span class="ident">signer_key_package</span>.<span class="ident">credential</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">WelcomeError</span>::<span class="ident">InvalidGroupInfoSignature</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Compute path secrets</span>

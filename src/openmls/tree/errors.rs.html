@@ -27,8 +27,10 @@
 <span id="24">24</span>
 <span id="25">25</span>
 <span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite</span>::<span class="ident">CryptoError</span>, <span class="ident">credentials</span>::<span class="ident">CredentialError</span>};
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeError</span> {
@@ -41,6 +43,8 @@
         <span class="ident">Complex</span> {
             <span class="ident">PathSecretDecryptionError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;Error while decrypting `PathSecret`.&quot;</span>,
+                <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span>
+                    <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details&quot;</span>,
         }
     }
 }

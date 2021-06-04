@@ -903,6 +903,14 @@
 <span id="900">900</span>
 <span id="901">901</span>
 <span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
@@ -926,7 +934,7 @@
 <span class="kw">mod</span> <span class="ident">ciphersuites</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">signable</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signable</span>;
 
 <span class="kw">mod</span> <span class="ident">ser</span>;
 
@@ -937,6 +945,8 @@
 
 <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
+
+<span class="kw">use</span> <span class="self">self</span>::<span class="ident">signable</span>::<span class="ident">SignedStruct</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_ciphersuite</span>;
@@ -1387,6 +1397,12 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span> {
     <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">SignedStruct</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Signature</span> {
+    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">_payload</span>: <span class="ident">T</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">signature</span>
+    }
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>

@@ -32,13 +32,21 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Key Package errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `KeyPackageError` are thrown on errors handling `KeyPackage`s and</span>
 <span class="doccomment">//! `KeyPackageBundle`s.</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">codec</span>::<span class="ident">CodecError</span>, <span class="ident">config</span>::<span class="ident">ConfigError</span>, <span class="ident">extensions</span>::<span class="ident">ExtensionError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">codec</span>::<span class="ident">CodecError</span>, <span class="ident">config</span>::<span class="ident">ConfigError</span>, <span class="ident">credentials</span>::<span class="ident">CredentialError</span>,
+    <span class="ident">extensions</span>::<span class="ident">ExtensionError</span>,
+};
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageError</span> {
@@ -61,6 +69,8 @@
                 <span class="string">&quot;See [`ConfigError`](crate::config::ConfigError`) for details.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CodecError`](crate::codec::CodecError`) for details.&quot;</span>,
+            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CredentialError`](crate::credentials::CredentialError`) for details.&quot;</span>,
         }
     }
 }

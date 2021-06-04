@@ -84,6 +84,9 @@
 <span id="81">81</span>
 <span id="82">82</span>
 <span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
@@ -92,9 +95,11 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="ident">CodecError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ConfigError</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">credentials</span>::<span class="ident">CredentialError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">error</span>::<span class="ident">ErrorString</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="ident">MlsCiphertextError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">GroupError</span>};
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_store</span>::<span class="ident">KeyStoreError</span>;
 
 <span class="macro">implement_error</span><span class="macro">!</span> {
@@ -125,6 +130,7 @@
                 <span class="string">&quot;Empty input. Additional detail is provided.&quot;</span>,
             <span class="ident">KeyStoreError</span>(<span class="ident">KeyStoreError</span>) <span class="op">=</span> <span class="string">&quot;See [`KeyStoreError`](`crate::key_store::KeyStoreError`) for details&quot;</span>,
             <span class="ident">InvalidMessage</span>(<span class="ident">InvalidMessageError</span>) <span class="op">=</span> <span class="string">&quot;The message could not be processed.&quot;</span>,
+            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details&quot;</span>,
         }
     }
 }

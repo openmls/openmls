@@ -318,7 +318,7 @@
                     <span class="ident">credential_bundle</span>,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">serialized</span>(),
                     <span class="ident">apply_proposals_values</span>.<span class="ident">exclusion_list</span>(),
-                );
+                )<span class="question-mark">?</span>;
                 (<span class="prelude-val">Some</span>(<span class="ident">path</span>), <span class="prelude-val">Some</span>(<span class="ident">key_package_bundle</span>))
             } <span class="kw">else</span> {
                 <span class="comment">// If path is not needed, return empty commit secret</span>
@@ -432,7 +432,7 @@
                 <span class="ident">Vec</span>::<span class="ident">new</span>()
             };
             <span class="comment">// Create GroupInfo object</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfo</span>::<span class="ident">new</span>(
+            <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfoPayload</span>::<span class="ident">new</span>(
                 <span class="ident">provisional_group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
                 <span class="ident">provisional_group_context</span>.<span class="ident">epoch</span>,
                 <span class="ident">tree_hash</span>,
@@ -441,7 +441,7 @@
                 <span class="ident">confirmation_tag</span>,
                 <span class="ident">sender_index</span>,
             );
-            <span class="ident">group_info</span>.<span class="ident">set_signature</span>(<span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="ident">credential_bundle</span>));
+            <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
 
             <span class="comment">// Encrypt GroupInfo object</span>
             <span class="kw">let</span> (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>) <span class="op">=</span> <span class="ident">welcome_secret</span>.<span class="ident">derive_welcome_key_nonce</span>();
