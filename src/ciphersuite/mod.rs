@@ -780,12 +780,6 @@ impl AeadNonce {
     }
 }
 
-impl Signature {
-    pub(crate) fn new_empty() -> Signature {
-        Signature { value: vec![] }
-    }
-}
-
 impl SignatureKeypair {
     /// Sign the `payload` byte slice with this signature key.
     /// Returns a `Result` with a `Signature` or a `SignatureError`.

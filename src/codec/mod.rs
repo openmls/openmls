@@ -69,12 +69,8 @@ impl<'a> Cursor {
     }
 }
 
-pub trait Codec: Sized {
+pub trait Encode: Sized {
     fn encode(&self, _buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        unimplemented!();
-    }
-
-    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
         unimplemented!();
     }
 
@@ -83,6 +79,12 @@ pub trait Codec: Sized {
         self.encode(&mut buffer)?;
         Ok(buffer)
     }
+}
+
+pub trait Decode: Sized {
+    fn decode(_cursor: &mut Cursor) -> Result<Self, CodecError> {
+        unimplemented!();
+    }
 
     fn decode_detached(bytes: &[u8]) -> Result<Self, CodecError> {
         let cursor = &mut Cursor::new(bytes);
@@ -90,7 +92,31 @@ pub trait Codec: Sized {
     }
 }
 
-impl Codec for u8 {
+pub trait Codec: Encode + Decode {}
+
+macro_rules! implement_codec {
+    (
+        $t: ty,
+        fn encode $params_encode:tt -> Result<(), CodecError>
+            $body_encode:block
+
+        fn decode $params_decode:tt -> Result<Self, CodecError>
+            $body_decode:block
+    ) => {
+        impl Encode for $t {
+            fn encode $params_encode -> Result<(), CodecError>
+                $body_encode
+        }
+        impl Decode for $t {
+            fn decode $params_decode-> Result<Self, CodecError>
+                $body_decode
+        }
+        impl Codec for $t {}
+    };
+}
+
+implement_codec! {
+    u8,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.push(*self);
         Ok(())
@@ -105,7 +131,8 @@ impl Codec for u8 {
     }
 }
 
-impl Codec for u16 {
+implement_codec! {
+    u16,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.write_u16::<BigEndian>(*self).unwrap();
         Ok(())
@@ -120,7 +147,8 @@ impl Codec for u16 {
     }
 }
 
-impl Codec for u32 {
+implement_codec! {
+    u32,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.write_u32::<BigEndian>(*self).unwrap();
         Ok(())
@@ -135,7 +163,8 @@ impl Codec for u32 {
     }
 }
 
-impl Codec for u64 {
+implement_codec! {
+    u64,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.write_u64::<BigEndian>(*self).unwrap();
         Ok(())
@@ -150,7 +179,8 @@ impl Codec for u64 {
     }
 }
 
-impl Codec for String {
+implement_codec! {
+    String,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         let string_bytes = self.as_bytes();
         let string_bytes_len = match u16::try_from(string_bytes.len()) {
@@ -171,23 +201,26 @@ impl Codec for String {
     }
 }
 
-impl<T> Codec for Vec<T>
-where
-    T: Codec,
-{
+impl<T: Codec> Codec for Vec<T> {}
+
+impl<T: Encode> Encode for Vec<T> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         if self.len() >= (u32::MAX as usize) {
             return Err(CodecError::EncodingError);
         }
         encode_vec(VecSize::VecU32, buffer, self)
     }
+}
 
+impl<T: Decode> Decode for Vec<T> {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         decode_vec(VecSize::VecU32, cursor)
     }
 }
 
-impl<T: Codec> Codec for Option<T> {
+impl<T: Encode + Decode> Codec for Option<T> {}
+
+impl<T: Encode> Encode for Option<T> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
             None => buffer.push(0),
@@ -198,7 +231,9 @@ impl<T: Codec> Codec for Option<T> {
         }
         Ok(())
     }
+}
 
+impl<T: Decode> Decode for Option<T> {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let tag = u8::decode(cursor)?;
         match tag {
@@ -212,26 +247,35 @@ impl<T: Codec> Codec for Option<T> {
     }
 }
 
-impl<T: Codec> Codec for &T {
+impl<T: Encode> Encode for &T {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self).encode(buffer)?;
         Ok(())
     }
 }
 
-impl<T1: Codec, T2: Codec> Codec for (T1, T2) {
+impl<T1: Codec, T2: Codec> Codec for (T1, T2) {}
+
+impl<T1: Encode, T2: Encode> Encode for (T1, T2) {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)?;
         self.1.encode(buffer)?;
         Ok(())
     }
+}
 
+impl<T1: Decode, T2: Decode> Decode for (T1, T2) {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         Ok((T1::decode(cursor)?, T2::decode(cursor)?))
     }
 }
 
 impl<K: Codec + Eq + ::std::hash::Hash, V: Codec, S: ::std::hash::BuildHasher + Default> Codec
+    for HashMap<K, V, S>
+{
+}
+
+impl<K: Encode + Eq + ::std::hash::Hash, V: Encode, S: ::std::hash::BuildHasher + Default> Encode
     for HashMap<K, V, S>
 {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
@@ -243,7 +287,11 @@ impl<K: Codec + Eq + ::std::hash::Hash, V: Codec, S: ::std::hash::BuildHasher + 
         }
         Ok(())
     }
+}
 
+impl<K: Decode + Eq + ::std::hash::Hash, V: Decode, S: ::std::hash::BuildHasher + Default> Decode
+    for HashMap<K, V, S>
+{
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let size = u32::decode(cursor)? as usize;
         let mut hm = HashMap::with_capacity_and_hasher(size, Default::default());
@@ -256,7 +304,7 @@ impl<K: Codec + Eq + ::std::hash::Hash, V: Codec, S: ::std::hash::BuildHasher + 
     }
 }
 
-pub fn encode_vec<T: Codec>(
+pub fn encode_vec<T: Encode>(
     vec_size: VecSize,
     bytes: &mut Vec<u8>,
     slice: &[T],
@@ -303,7 +351,7 @@ pub fn encode_vec<T: Codec>(
     Ok(())
 }
 
-pub fn decode_vec<T: Codec>(vec_size: VecSize, cursor: &mut Cursor) -> Result<Vec<T>, CodecError> {
+pub fn decode_vec<T: Decode>(vec_size: VecSize, cursor: &mut Cursor) -> Result<Vec<T>, CodecError> {
     log::trace!(
         "Decoding vector with size {:?}: {:X?}",
         vec_size,

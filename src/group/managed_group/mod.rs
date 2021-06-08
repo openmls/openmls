@@ -49,12 +49,12 @@ use ser::*;
 /// Delivery Service. Functions that modify the public state of the group will
 /// return a `Vec<MLSMessage>` that can be sent to the Delivery
 /// Service directly. Conversely, incoming messages from the Delivery Service
-/// can be fed into [process_messages()](`ManagedGroup::process_messages()`).
+/// can be fed into [process_message()](`ManagedGroup::process_message()`).
 ///
 /// A `ManagedGroup` has an internal queue of pending proposals that builds up
 /// as new messages are processed. When creating proposals, those messages are
 /// not automatically appended to this queue, instead they have to be processed
-/// again through [process_messages()](`ManagedGroup::process_messages()`). This
+/// again through [process_message()](`ManagedGroup::process_message()`). This
 /// allows the Delivery Service to reject them (e.g. if they reference the wrong
 /// epoch).
 ///
@@ -184,8 +184,7 @@ impl ManagedGroup {
     /// update of the committer's leaf `KeyPackage`.
     ///
     /// If successful, it returns a `Vec` of
-    /// [`MLSMessage`](crate::prelude::MLSMessage) and a
-    /// [`Welcome`](crate::prelude::Welcome) message.
+    /// [`MlsMessage`] and a [`Welcome`] message.
     pub fn add_members(
         &mut self,
         key_store: &KeyStore,
@@ -231,6 +230,7 @@ impl ManagedGroup {
             true,
             None,
         )?;
+        log::error!("plaintext (foo): {:?}", commit);
 
         let welcome = match welcome_option {
             Some(welcome) => welcome,
@@ -261,9 +261,8 @@ impl ManagedGroup {
     /// Members are removed by providing the index of their leaf in the tree.
     ///
     /// If successful, it returns a `Vec` of
-    /// [`MLSMessage`](crate::prelude::MLSMessage) and an optional
-    /// [`Welcome`](crate::prelude::Welcome) message if there were add proposals
-    /// in the queue of pending proposals.
+    /// [`MlsMessage`] and an optional [`Welcome`] message if there were add
+    /// proposals in the queue of pending proposals.
     pub fn remove_members(
         &mut self,
         key_store: &KeyStore,
@@ -452,7 +451,7 @@ impl ManagedGroup {
                 // Verify signature & membership tag
                 // TODO #106: Support external senders
                 if plaintext.is_proposal()
-                    && plaintext.sender.is_member()
+                    && plaintext.sender().is_member()
                     && self.group.verify_membership_tag(&plaintext).is_err()
                 {
                     return Err(ManagedGroupError::InvalidMessage(
@@ -465,12 +464,12 @@ impl ManagedGroup {
         // Save the current member list for validation end events
         let indexed_members = self.indexed_members();
         // See what kind of message it is
-        match plaintext.content {
+        match plaintext.content() {
             MlsPlaintextContentType::Proposal(ref proposal) => {
                 // Incoming proposals are validated against the application validation
                 // policy and then appended to the internal `pending_proposal` list.
                 // TODO #133: Semantic validation of proposals
-                if self.validate_proposal(proposal, &plaintext.sender.sender, &indexed_members) {
+                if self.validate_proposal(proposal, plaintext.sender_index(), &indexed_members) {
                     self.pending_proposals.push(plaintext);
                 } else {
                     // The proposal was invalid
@@ -483,7 +482,7 @@ impl ManagedGroup {
                 // Validate inline proposals
                 if !self.validate_inline_proposals(
                     &commit.proposals,
-                    &plaintext.sender.sender,
+                    plaintext.sender_index(),
                     &indexed_members,
                 ) {
                     return Err(ManagedGroupError::InvalidMessage(
@@ -507,7 +506,7 @@ impl ManagedGroup {
                         events.append(&mut self.prepare_events(
                             self.ciphersuite(),
                             &commit.proposals,
-                            plaintext.sender.sender,
+                            plaintext.sender_index(),
                             &indexed_members,
                         ));
 
@@ -516,7 +515,7 @@ impl ManagedGroup {
                         if commit.has_path() {
                             events.push(GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
                                 aad_option.unwrap_or_default(),
-                                indexed_members[&plaintext.sender.sender].clone(),
+                                indexed_members[&plaintext.sender_index()].clone(),
                             )));
                         }
 
@@ -535,7 +534,7 @@ impl ManagedGroup {
                             events.append(&mut self.prepare_events(
                                 self.ciphersuite(),
                                 &commit.proposals,
-                                plaintext.sender.sender,
+                                plaintext.sender_index(),
                                 &indexed_members,
                             ));
                             // The group is no longer active
@@ -561,7 +560,7 @@ impl ManagedGroup {
                 events.push(GroupEvent::ApplicationMessage(
                     ApplicationMessageEvent::new(
                         aad_option.unwrap(),
-                        indexed_members[&plaintext.sender()].clone(),
+                        indexed_members[&plaintext.sender_index()].clone(),
                         app_message.to_vec(),
                     ),
                 ));
@@ -747,9 +746,8 @@ impl ManagedGroup {
     /// be provided. If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a `Vec` of
-    /// [`MLSMessage`](crate::prelude::MLSMessage) and an optional
-    /// [`Welcome`](crate::prelude::Welcome) message if there were add proposals
-    /// in the queue of pending proposals.
+    /// [`MlsMessage`] and an optional [`Welcome`] message if there were add
+    /// proposals in the queue of pending proposals.
     pub fn self_update(
         &mut self,
         key_store: &KeyStore,
@@ -930,10 +928,10 @@ impl ManagedGroup {
     fn validate_proposal(
         &self,
         proposal: &Proposal,
-        sender: &LeafIndex,
+        sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,
     ) -> bool {
-        let sender = &indexed_members[sender];
+        let sender = &indexed_members[&sender];
         match proposal {
             // Validate add proposals
             Proposal::Add(add_proposal) => {
@@ -967,7 +965,7 @@ impl ManagedGroup {
     fn validate_inline_proposals(
         &self,
         proposals: &[ProposalOrRef],
-        sender: &LeafIndex,
+        sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,
     ) -> bool {
         for proposal_or_ref in proposals {
@@ -1115,8 +1113,8 @@ impl MlsMessage {
     /// Get the group ID as plain byte vector.
     pub fn group_id(&self) -> Vec<u8> {
         match self {
-            MlsMessage::Ciphertext(m) => m.group_id.as_slice(),
-            MlsMessage::Plaintext(m) => m.group_id().as_slice(),
+            MlsMessage::Ciphertext(m) => m.group_id.to_vec(),
+            MlsMessage::Plaintext(m) => m.group_id().to_vec(),
         }
     }
 

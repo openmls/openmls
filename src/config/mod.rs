@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, env, fmt, fs::File, io::BufReader};
 
 use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
-use crate::codec::{Codec, CodecError, Cursor};
+use crate::codec::{Codec, CodecError};
 use crate::extensions::ExtensionType;
 
 pub mod codec;

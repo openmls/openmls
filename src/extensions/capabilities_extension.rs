@@ -20,7 +20,7 @@ use super::{
     CapabilitiesExtensionError, Deserialize, Extension, ExtensionError, ExtensionStruct,
     ExtensionType, Serialize,
 };
-use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
+use crate::codec::{decode_vec, encode_vec, CodecError, Cursor, Decode, Encode, VecSize};
 use crate::config::{Config, ProtocolVersion};
 use crate::{ciphersuite::CiphersuiteName, codec::Codec};
 
@@ -144,15 +144,15 @@ impl Extension for CapabilitiesExtension {
     }
 }
 
-impl Codec for CapabilitiesExtension {
-    fn encode(&self, mut buffer: &mut Vec<u8>) -> Result<(), crate::codec::CodecError> {
+implement_codec! {
+    CapabilitiesExtension,
+    fn encode(&self, mut buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, &mut buffer, &self.versions)?;
         encode_vec(VecSize::VecU8, &mut buffer, &self.ciphersuites)?;
         encode_vec(VecSize::VecU8, &mut buffer, &self.extensions)?;
         Ok(())
     }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, crate::codec::CodecError> {
+    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let versions: Vec<ProtocolVersion> = decode_vec(VecSize::VecU8, cursor)?;
         let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor)?;
         let extensions = decode_vec(VecSize::VecU8, cursor)?;

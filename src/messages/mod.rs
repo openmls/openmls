@@ -318,7 +318,7 @@ impl GroupSecrets {
     pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
         path_secret: Option<&'a PathSecret>,
-        psks_option: impl Into<Option<&'a PreSharedKeys>> + crate::codec::Codec,
+        psks_option: impl Into<Option<&'a PreSharedKeys>> + Encode,
     ) -> Result<Vec<u8>, CodecError> {
         let buffer = &mut Vec::new();
         joiner_secret.encode(buffer)?;

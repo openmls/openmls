@@ -99,12 +99,14 @@ impl MlsCiphertext {
         })
     }
 
+    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
+    /// In order to get an [`MlsPlaintext`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
-    ) -> Result<MlsPlaintext, MlsCiphertextError> {
+    ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
@@ -166,7 +168,8 @@ impl MlsCiphertext {
                 log::error!("  Ciphertext decryption error");
                 MlsCiphertextError::DecryptionError
             })?;
-        log::trace!(
+        log_content!(
+            trace,
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
@@ -179,12 +182,14 @@ impl MlsCiphertext {
             sender_type: SenderType::Member,
             sender: sender_data.sender,
         };
-        log::trace!(
+        log_content!(
+            trace,
             "  Successfully decoded MlsPlaintext with: {:x?}",
             mls_ciphertext_content.content
         );
+
         // Return the MlsPlaintext
-        Ok(MlsPlaintext {
+        let plaintext = MlsPlaintext {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             sender,
@@ -193,8 +198,10 @@ impl MlsCiphertext {
             content: mls_ciphertext_content.content,
             signature: mls_ciphertext_content.signature,
             confirmation_tag: mls_ciphertext_content.confirmation_tag,
+            // MlsCiphertexts don't carry along the membership tag.
             membership_tag: None,
-        })
+        };
+        Ok(VerifiableMlsPlaintext::from_plaintext(plaintext, None))
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.

@@ -19,7 +19,6 @@ use utils::managed_utils::*;
 
 #[test]
 fn test_tree_kem_kat() {
-    let _ = pretty_env_logger::try_init();
     let mut tests = Vec::new();
     const NUM_LEAVES: u32 = 20;
 

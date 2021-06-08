@@ -1,4 +1,5 @@
 use crate::ciphersuite::signable::Signable;
+use crate::ciphersuite::signable::Verifiable;
 use crate::config::*;
 use crate::framing::*;
 
@@ -16,28 +17,30 @@ fn codec() {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),
         };
-        let mut orig = MlsPlaintext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(1u64),
-            sender,
-            authenticated_data: vec![1, 2, 3],
-            content_type: ContentType::Application,
-            content: MlsPlaintextContentType::Application(vec![4, 5, 6]),
-            signature: Signature::new_empty(),
-            confirmation_tag: None,
-            membership_tag: None,
-        };
-
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
+
         let serialized_context = group_context.serialized();
-        let signature_input = MlsPlaintextTbs::new_from(&orig, Some(serialized_context));
-        orig.signature = signature_input
+        let signature_input = MlsPlaintextTbs::new(
+            serialized_context,
+            GroupId::random(),
+            GroupEpoch(1u64),
+            sender,
+            vec![1, 2, 3],
+            ContentType::Application,
+            MlsPlaintextContentType::Application(vec![4, 5, 6]),
+        );
+        let orig: MlsPlaintext = signature_input
             .sign(&credential_bundle)
-            .expect("Signing failed.");
+            .expect("Signing failed.")
+            .into();
 
         let enc = orig.encode_detached().unwrap();
-        let copy = MlsPlaintext::decode(&mut Cursor::new(&enc)).unwrap();
+        let copy = VerifiableMlsPlaintext::decode(&mut Cursor::new(&enc)).unwrap();
+        let copy = copy
+            .set_context(serialized_context)
+            .verify(credential_bundle.credential())
+            .unwrap();
         assert_eq!(orig, copy);
         assert!(!orig.is_handshake_message());
     }
@@ -52,50 +55,34 @@ fn membership_tag() {
             ciphersuite.signature_scheme(),
         )
         .unwrap();
-        let sender = Sender {
-            sender_type: SenderType::Member,
-            sender: LeafIndex::from(2u32),
-        };
-        let mut mls_plaintext = MlsPlaintext {
-            group_id: GroupId::random(),
-            epoch: GroupEpoch(1u64),
-            sender,
-            authenticated_data: vec![1, 2, 3],
-            content_type: ContentType::Application,
-            content: MlsPlaintextContentType::Application(vec![4, 5, 6]),
-            signature: Signature::new_empty(),
-            confirmation_tag: None,
-            membership_tag: None,
-        };
-
+        // let sender = Sender {
+        //     sender_type: SenderType::Member,
+        //     sender: LeafIndex::from(2u32),
+        // };
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
-        let serialized_context = group_context.serialized();
         let membership_key =
             MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
-        mls_plaintext
-            .sign_from_member(&credential_bundle, serialized_context)
-            .expect("Could not sign plaintext.");
-        mls_plaintext
-            .add_membership_tag(serialized_context, &membership_key)
-            .expect("Could not mac plaintext.");
+        let mut mls_plaintext = MlsPlaintext::new_application(
+            LeafIndex::from(2u32),
+            &[1, 2, 3],
+            &[4, 5, 6],
+            &&credential_bundle,
+            &group_context,
+            &membership_key,
+        )
+        .unwrap();
+
+        let serialized_context = group_context.serialized();
 
         println!(
             "Membership tag error: {:?}",
-            mls_plaintext.verify_from_member(
-                serialized_context,
-                &credential_bundle.credential(),
-                &membership_key,
-            )
+            mls_plaintext.verify_membership(serialized_context, &membership_key)
         );
 
         // Verify signature & membership tag
         assert!(mls_plaintext
-            .verify_from_member(
-                serialized_context,
-                &credential_bundle.credential(),
-                &membership_key,
-            )
+            .verify_membership(serialized_context, &membership_key)
             .is_ok());
 
         // Change the content of the plaintext message
@@ -103,11 +90,7 @@ fn membership_tag() {
 
         // Expect the signature & membership tag verification to fail
         assert!(mls_plaintext
-            .verify_from_member(
-                serialized_context,
-                &credential_bundle.credential(),
-                &membership_key,
-            )
+            .verify_membership(serialized_context, &membership_key)
             .is_err());
     }
 }
@@ -262,7 +245,7 @@ fn unknown_sender() {
         // Expected result: MlsCiphertextError::UnknownSender
 
         let bogus_sender = LeafIndex::from(1usize);
-        let bogus_sender_message = MlsPlaintext::new_from_application(
+        let bogus_sender_message = MlsPlaintext::new_application(
             bogus_sender,
             &[],
             &[1, 2, 3],
@@ -292,7 +275,7 @@ fn unknown_sender() {
         // Alice sends a message with a sender that is outside of the group
         // Expected result: MlsCiphertextError::GenerationOutOfBound
         let bogus_sender = LeafIndex::from(100usize);
-        let bogus_sender_message = MlsPlaintext::new_from_application(
+        let bogus_sender_message = MlsPlaintext::new_application(
             bogus_sender,
             &[],
             &[1, 2, 3],

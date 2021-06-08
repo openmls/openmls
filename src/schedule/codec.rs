@@ -5,7 +5,8 @@ use crate::group::{GroupEpoch, GroupId};
 
 use std::convert::TryFrom;
 
-impl Codec for PskType {
+implement_codec! {
+    PskType,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)?;
         Ok(())
@@ -19,7 +20,8 @@ impl Codec for PskType {
     }
 }
 
-impl Codec for ExternalPsk {
+implement_codec! {
+    ExternalPsk,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.psk_id())?;
         Ok(())
@@ -31,7 +33,8 @@ impl Codec for ExternalPsk {
     }
 }
 
-impl Codec for ReinitPsk {
+implement_codec! {
+    ReinitPsk,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.psk_group_id.encode(buffer)?;
         self.psk_epoch.encode(buffer)?;
@@ -48,7 +51,8 @@ impl Codec for ReinitPsk {
     }
 }
 
-impl Codec for BranchPsk {
+implement_codec! {
+    BranchPsk,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.psk_group_id.encode(buffer)?;
         self.psk_epoch.encode(buffer)?;
@@ -65,7 +69,8 @@ impl Codec for BranchPsk {
     }
 }
 
-impl Codec for PreSharedKeyId {
+implement_codec! {
+    PreSharedKeyId,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.psk_type.encode(buffer)?;
         match &self.psk {
@@ -93,7 +98,8 @@ impl Codec for PreSharedKeyId {
     }
 }
 
-impl Codec for PreSharedKeys {
+implement_codec! {
+    PreSharedKeys,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.psks)?;
         Ok(())
@@ -105,7 +111,8 @@ impl Codec for PreSharedKeys {
     }
 }
 
-impl Codec for JoinerSecret {
+implement_codec! {
+    JoinerSecret,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.secret.encode(buffer)
     }
@@ -116,7 +123,7 @@ impl Codec for JoinerSecret {
     }
 }
 
-impl<'a> Codec for PskLabel<'a> {
+impl<'a> Encode for PskLabel<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.id.encode(buffer)?;
         self.index.encode(buffer)?;

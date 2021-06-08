@@ -16,6 +16,7 @@
 use crate::test_util::read;
 use crate::{
     ciphersuite::signable::Signable,
+    codec::Decode,
     credentials::{CredentialBundle, CredentialType},
     prelude::KeyPackageBundlePayload,
     test_util::hex_to_bytes,
@@ -27,9 +28,7 @@ use crate::{
     extensions::{Extension, RatchetTreeExtension},
     key_packages::KeyPackage,
     messages::PathSecret,
-    tree::{
-        treemath::*, CiphersuiteName, Codec, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath,
-    },
+    tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 
 use serde::{self, Deserialize, Serialize};
@@ -239,7 +238,6 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
 #[test]
 fn read_test_vector() {
-    let _ = pretty_env_logger::try_init();
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {

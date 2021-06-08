@@ -10,6 +10,13 @@ pub trait SignedStruct<T> {
     fn from_payload(payload: T, signature: Signature) -> Self;
 }
 
+/// This trait must be implemented by all structs that contain a verified
+/// self-signature.
+pub trait VerifiedStruct<T> {
+    /// Build a verified struct version from the payload struct.
+    fn from_verifiable(verifiable: T) -> Self;
+}
+
 /// The `Signable` trait is implemented by all struct that are being signed.
 /// The implementation has to provide the `unsigned_payload` function.
 pub trait Signable: Sized {
@@ -45,7 +52,7 @@ pub trait Signable: Sized {
 /// `Signable`. If this appears to be necessary, it is probably a sign that the
 /// struct implementing them aren't well defined. Not that both traits define an
 /// `unsigned_payload` function.
-pub trait Verifiable {
+pub trait Verifiable: Sized {
     /// Return the unsigned, serialized payload that should be verified.
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError>;
 
@@ -54,9 +61,22 @@ pub trait Verifiable {
 
     /// Verifies the payload against the given `credential` and `signature`.
     ///
+    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
+    /// `CredentialError::InvalidSignature` otherwise.
+    fn verify<T>(self, credential: &Credential) -> Result<T, CredentialError>
+    where
+        T: VerifiedStruct<Self>,
+    {
+        let payload = self.unsigned_payload()?;
+        credential.verify(&payload, self.signature())?;
+        Ok(T::from_verifiable(self))
+    }
+
+    /// Verifies the payload against the given `credential` and `signature`.
+    ///
     /// Returns `Ok(())` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify(&self, credential: &Credential) -> Result<(), CredentialError> {
+    fn verify_no_out(&self, credential: &Credential) -> Result<(), CredentialError> {
         let payload = self.unsigned_payload()?;
         credential.verify(&payload, self.signature())
     }

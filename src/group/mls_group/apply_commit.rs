@@ -21,13 +21,13 @@ impl MlsGroup {
         }
 
         // Extract Commit & Confirmation Tag from MlsPlaintext
-        let commit = match &mls_plaintext.content {
+        let commit = match mls_plaintext.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
+
         let received_confirmation_tag = mls_plaintext
-            .confirmation_tag
-            .as_ref()
+            .confirmation_tag()
             .ok_or(ApplyCommitError::ConfirmationTagMissing)?;
 
         // Build a queue with all proposals from the Commit and check that we have all
@@ -36,7 +36,7 @@ impl MlsGroup {
             ciphersuite,
             &commit.proposals,
             proposals_by_reference,
-            mls_plaintext.sender,
+            mls_plaintext.sender().clone(),
         ) {
             Ok(proposal_queue) => proposal_queue,
             Err(_) => return Err(ApplyCommitError::MissingProposal),
@@ -56,23 +56,20 @@ impl MlsGroup {
         }
 
         // Determine if Commit is own Commit
-        let sender = mls_plaintext.sender.sender;
-        let is_own_commit =
-            mls_plaintext.sender.to_leaf_index() == provisional_tree.own_node_index();
+        let sender = mls_plaintext.sender_index();
+        let is_own_commit = sender == provisional_tree.own_node_index();
 
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite, self.mls_version);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
-            // Verify KeyPackage and MlsPlaintext signature & membership tag
+            // Verify KeyPackage and MlsPlaintext membership tag
+            // Note that the signature must have been verified already.
             // TODO #106: Support external members
             let kp = &path.leaf_key_package;
             if kp.verify().is_err() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
             let serialized_context = self.group_context.serialized();
-            mls_plaintext
-                .verify_signature(serialized_context, kp.credential())
-                .map_err(ApplyCommitError::PlaintextSignatureFailure)?;
 
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles and
@@ -146,7 +143,10 @@ impl MlsGroup {
         let provisional_epoch_secrets = key_schedule.epoch_secrets(true)?;
 
         let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
-            .map_err(|_| ApplyCommitError::ConfirmationTagMissing)?;
+            .map_err(|_| {
+                log::error!("Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.");
+                ApplyCommitError::ConfirmationTagMissing
+            })?;
 
         let interim_transcript_hash = update_interim_transcript_hash(
             &ciphersuite,
