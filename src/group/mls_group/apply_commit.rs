@@ -44,6 +44,8 @@ impl MlsGroup {
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
+        // FIXME: this is a copy of the nodes in the tree to reset the original state.
+        let original_nodes = provisional_tree.nodes.clone();
         let apply_proposals_values =
             match provisional_tree.apply_proposals(proposal_queue, own_key_packages) {
                 Ok(res) => res,
@@ -159,6 +161,8 @@ impl MlsGroup {
             .confirmation_key()
             .tag(&confirmed_transcript_hash);
         if &own_confirmation_tag != received_confirmation_tag {
+            // FIXME: reset nodes. This should get fixed with the tree rewrite.
+            provisional_tree.nodes = original_nodes;
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);

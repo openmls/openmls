@@ -49,6 +49,7 @@ pub struct RatchetTree {
     /// All nodes in the tree.
     /// Note that these only hold public values.
     /// Private values are stored in the `private_tree`.
+    /// FIXME: this must not be public
     pub nodes: Vec<Node>,
 
     /// This holds all private values in the tree.
@@ -167,7 +168,7 @@ impl RatchetTree {
     }
 
     /// Compute the resolution for a given node index. Leaves listed in the
-    /// `exclusion_list` are substracted from the final resolution.
+    /// `exclusion_list` are subtracted from the final resolution.
     fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&LeafIndex>) -> Vec<NodeIndex> {
         let size = self.leaf_count();
 
@@ -690,6 +691,7 @@ impl RatchetTree {
         proposal_queue: ProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeError> {
+        log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
         let mut self_removed = false;

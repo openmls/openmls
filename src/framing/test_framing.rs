@@ -2,6 +2,8 @@ use crate::ciphersuite::signable::Signable;
 use crate::ciphersuite::signable::Verifiable;
 use crate::config::*;
 use crate::framing::*;
+use crate::prelude::KeyPackageBundle;
+use crate::prelude::_print_tree;
 
 /// This tests serializing/deserializing MlsPlaintext
 #[test]
@@ -55,10 +57,6 @@ fn membership_tag() {
             ciphersuite.signature_scheme(),
         )
         .unwrap();
-        // let sender = Sender {
-        //     sender_type: SenderType::Member,
-        //     sender: LeafIndex::from(2u32),
-        // };
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
         let membership_key =
@@ -97,11 +95,6 @@ fn membership_tag() {
 
 #[test]
 fn unknown_sender() {
-    use crate::config::*;
-    use crate::credentials::*;
-    use crate::key_packages::*;
-    use crate::utils::*;
-
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
 
@@ -311,10 +304,6 @@ fn unknown_sender() {
 
 #[test]
 fn confirmation_tag_presence() {
-    use crate::config::*;
-    use crate::credentials::*;
-    use crate::key_packages::*;
-
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
 
@@ -382,3 +371,148 @@ fn confirmation_tag_presence() {
         );
     }
 }
+
+ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: CiphersuiteName) {
+    let _ = pretty_env_logger::try_init();
+    log::info!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let group_aad = b"Alice's test group";
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
+
+    // Generate KeyPackages
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+            .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+            .unwrap();
+
+    // Alice creates a group
+    let group_id = [1, 2, 3, 4];
+    let mut group_alice = MlsGroup::new(
+        &group_id,
+        ciphersuite.name(),
+        alice_key_package_bundle,
+        GroupConfig::default(),
+        None, /* Initial PSK */
+        None, /* MLS version */
+    )
+    .unwrap();
+
+    // Alice adds Bob
+    let bob_add_proposal = group_alice
+        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .expect("Could not create proposal.");
+
+    let (mut commit, _welcome, _kpb_option) = group_alice
+        .create_commit(
+            group_aad,
+            &alice_credential_bundle,
+            &[&bob_add_proposal],
+            &[],
+            false,
+            None,
+        )
+        .expect("Error creating Commit");
+
+    let original_encoded_commit = commit.encode_detached().unwrap();
+    let input_commit = VerifiableMlsPlaintext::decode_detached(&original_encoded_commit).unwrap();
+    let decoded_commit = group_alice.verify(input_commit).expect("Error verifying valid commit message");
+    assert_eq!(decoded_commit.encode_detached().unwrap(), original_encoded_commit);
+
+    // Remove membership tag.
+    let good_membership_tag = commit.membership_tag.clone();
+    commit.membership_tag = None;
+    let membership_error = commit.verify_membership(
+        group_alice.context().serialized(),
+        group_alice.epoch_secrets().membership_key())
+        .err()
+        .expect("Membership verification should have returned an error");
+    assert_eq!(
+        membership_error,
+        MlsPlaintextError::VerificationError(VerificationError::MissingMembershipTag));
+
+    // Tamper with membership tag.
+    let mut modified_membership_tag = good_membership_tag
+        .clone()
+        .expect("There should have been a membership tag.");
+    modified_membership_tag.0.mac_value[0] ^= 0xFF;
+    commit.membership_tag = Some(modified_membership_tag);
+    let membership_error = commit.verify_membership(
+        group_alice.context().serialized(),
+        group_alice.epoch_secrets().membership_key())
+        .err()
+        .expect("Membership verification should have returned an error");
+    assert_eq!(
+        membership_error,
+        MlsPlaintextError::VerificationError(VerificationError::InvalidMembershipTag));
+
+    // Tamper with signature.
+    let good_signature = commit.signature.clone();
+    let mut modified_signature = commit.signature.as_slice().to_vec();
+    modified_signature[0] ^= 0xFF;
+    commit.signature.modify(&modified_signature);
+    let encoded_commit = commit.encode_detached().unwrap();
+    let input_commit = VerifiableMlsPlaintext::decode_detached(&encoded_commit).unwrap();
+    let decoded_commit = group_alice.verify(input_commit);
+    assert_eq!(
+        decoded_commit.err().expect("group.verify() should have returned an error"),
+        MlsCiphertextError::PlaintextError(MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)));
+
+    // Fix commit
+    commit.signature = good_signature;
+    commit.membership_tag = good_membership_tag;
+
+    // Remove confirmation tag.
+    let good_confirmation_tag = commit.confirmation_tag.clone();
+    commit.confirmation_tag = None;
+    let error = group_alice
+        .apply_commit(&commit, &[&bob_add_proposal], &[], None)
+        .err()
+        .expect("Applying commit should have yielded an error.");
+    assert_eq!(
+        error,
+        GroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing));
+
+    // Tamper with confirmation tag.
+    let mut modified_confirmation_tag = good_confirmation_tag
+        .clone()
+        .expect("There should have been a membership tag.");
+    modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
+    commit.confirmation_tag = Some(modified_confirmation_tag);
+    let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
+    let error = group_alice
+        .apply_commit(&commit, &[&bob_add_proposal], &[], None)
+        .err()
+        .expect("Applying commit should have yielded an error.");
+    assert_eq!(
+        error,
+        GroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMismatch));
+    let serialized_group_after = serde_json::to_string(&group_alice).unwrap();
+    assert_eq!(serialized_group_before, serialized_group_after);
+
+    // Fix commit again and apply it.
+    commit.confirmation_tag = good_confirmation_tag;
+    let encoded_commit = commit.encode_detached().unwrap();
+    let input_commit = VerifiableMlsPlaintext::decode_detached(&encoded_commit).unwrap();
+    let decoded_commit = group_alice.verify(input_commit).expect("Error verifying commit");
+    assert_eq!(original_encoded_commit, decoded_commit.encode_detached().unwrap());
+    group_alice
+        .apply_commit(&decoded_commit, &[&bob_add_proposal], &[], None)
+        .expect("Alice: Error applying commit.");
+});
