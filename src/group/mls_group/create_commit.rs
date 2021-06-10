@@ -67,8 +67,6 @@ impl MlsGroup {
         provisional_epoch.increment();
 
         // Build MlsPlaintext
-        // let content = MlsPlaintextContentType::Commit(commit);
-        // let sender = Sender::member(sender_index);
         let serialized_context = self.group_context.serialized();
         let mut mls_plaintext = MlsPlaintext::new_commit(
             sender_index,

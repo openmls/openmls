@@ -84,7 +84,7 @@ fn membership_tag() {
             .is_ok());
 
         // Change the content of the plaintext message
-        mls_plaintext.content = MlsPlaintextContentType::Application(vec![7, 8, 9]);
+        mls_plaintext.set_content(MlsPlaintextContentType::Application(vec![7, 8, 9]));
 
         // Expect the signature & membership tag verification to fail
         assert!(mls_plaintext
@@ -359,7 +359,7 @@ fn confirmation_tag_presence() {
             )
             .expect("Error creating Commit");
 
-        commit.confirmation_tag = None;
+        commit.unset_confirmation_tag();
 
         let err = group_alice
             .apply_commit(&commit, &[&bob_add_proposal], &[], None)
@@ -436,8 +436,8 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     assert_eq!(decoded_commit.encode_detached().unwrap(), original_encoded_commit);
 
     // Remove membership tag.
-    let good_membership_tag = commit.membership_tag.clone();
-    commit.membership_tag = None;
+    let good_membership_tag = commit.membership_tag().clone();
+    commit.unset_membership_tag();
     let membership_error = commit.verify_membership(
         group_alice.context().serialized(),
         group_alice.epoch_secrets().membership_key())
@@ -452,7 +452,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .clone()
         .expect("There should have been a membership tag.");
     modified_membership_tag.0.mac_value[0] ^= 0xFF;
-    commit.membership_tag = Some(modified_membership_tag);
+    commit.set_membership_tag_test(modified_membership_tag);
     let membership_error = commit.verify_membership(
         group_alice.context().serialized(),
         group_alice.epoch_secrets().membership_key())
@@ -463,10 +463,10 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         MlsPlaintextError::VerificationError(VerificationError::InvalidMembershipTag));
 
     // Tamper with signature.
-    let good_signature = commit.signature.clone();
-    let mut modified_signature = commit.signature.as_slice().to_vec();
+    let good_signature = commit.signature().clone();
+    let mut modified_signature = commit.signature().as_slice().to_vec();
     modified_signature[0] ^= 0xFF;
-    commit.signature.modify(&modified_signature);
+    commit.signature_mut().modify(&modified_signature);
     let encoded_commit = commit.encode_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::decode_detached(&encoded_commit).unwrap();
     let decoded_commit = group_alice.verify(input_commit);
@@ -475,12 +475,12 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         MlsCiphertextError::PlaintextError(MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)));
 
     // Fix commit
-    commit.signature = good_signature;
-    commit.membership_tag = good_membership_tag;
+    commit.set_signature(good_signature);
+    commit.set_membership_tag_test(good_membership_tag.unwrap());
 
     // Remove confirmation tag.
-    let good_confirmation_tag = commit.confirmation_tag.clone();
-    commit.confirmation_tag = None;
+    let good_confirmation_tag = commit.confirmation_tag().cloned();
+    commit.unset_confirmation_tag();
     let error = group_alice
         .apply_commit(&commit, &[&bob_add_proposal], &[], None)
         .err()
@@ -494,7 +494,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .clone()
         .expect("There should have been a membership tag.");
     modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
-    commit.confirmation_tag = Some(modified_confirmation_tag);
+    commit.set_confirmation_tag(modified_confirmation_tag);
     let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
     let error = group_alice
         .apply_commit(&commit, &[&bob_add_proposal], &[], None)
@@ -507,7 +507,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     assert_eq!(serialized_group_before, serialized_group_after);
 
     // Fix commit again and apply it.
-    commit.confirmation_tag = good_confirmation_tag;
+    commit.set_confirmation_tag(good_confirmation_tag.unwrap());
     let encoded_commit = commit.encode_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::decode_detached(&encoded_commit).unwrap();
     let decoded_commit = group_alice.verify(input_commit).expect("Error verifying commit");

@@ -279,7 +279,7 @@ fn read_test_vectors() {
         }
     }
 
-    // FIXME: change test vector spec
+    // FIXME: change test vector spec. See https://github.com/mlswg/mls-implementations/pull/47
     // // mlspp test vectors
     // let tv_files = [
     //     "test_vectors/mlspp/mlspp_transcript_1.json",

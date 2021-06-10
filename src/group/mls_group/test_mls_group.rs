@@ -286,8 +286,6 @@ fn test_update_path() {
             path: Some(broken_path),
         };
 
-        // let broken_commit_content = MlsPlaintextContentType::Commit(broken_commit);
-
         let mut broken_plaintext = MlsPlaintext::new_commit(
             mls_plaintext_commit.sender_index(),
             &mls_plaintext_commit.authenticated_data(),

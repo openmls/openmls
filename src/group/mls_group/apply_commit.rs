@@ -36,7 +36,7 @@ impl MlsGroup {
             ciphersuite,
             &commit.proposals,
             proposals_by_reference,
-            mls_plaintext.sender().clone(),
+            *mls_plaintext.sender(),
         ) {
             Ok(proposal_queue) => proposal_queue,
             Err(_) => return Err(ApplyCommitError::MissingProposal),
@@ -44,7 +44,7 @@ impl MlsGroup {
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
-        // FIXME: this is a copy of the nodes in the tree to reset the original state.
+        // FIXME: #424 this is a copy of the nodes in the tree to reset the original state.
         let original_nodes = provisional_tree.nodes.clone();
         let apply_proposals_values =
             match provisional_tree.apply_proposals(proposal_queue, own_key_packages) {

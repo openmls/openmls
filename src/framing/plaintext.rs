@@ -57,15 +57,56 @@ use std::convert::TryFrom;
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct MlsPlaintext {
-    pub(super) group_id: GroupId,
-    pub(super) epoch: GroupEpoch,
-    pub(super) sender: Sender,
-    pub(super) authenticated_data: Vec<u8>,
-    pub(super) content_type: ContentType,
-    pub(super) content: MlsPlaintextContentType,
-    pub(super) signature: Signature,
-    pub(super) confirmation_tag: Option<ConfirmationTag>,
-    pub(super) membership_tag: Option<MembershipTag>,
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    sender: Sender,
+    authenticated_data: Vec<u8>,
+    content_type: ContentType,
+    content: MlsPlaintextContentType,
+    signature: Signature,
+    confirmation_tag: Option<ConfirmationTag>,
+    membership_tag: Option<MembershipTag>,
+}
+
+// This block only has pub(super) getters.
+impl MlsPlaintext {
+    pub(super) fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    pub(super) fn membership_tag(&self) -> &Option<MembershipTag> {
+        &self.membership_tag
+    }
+
+    #[cfg(test)]
+    pub(super) fn signature_mut(&mut self) -> &mut Signature {
+        &mut self.signature
+    }
+
+    #[cfg(test)]
+    pub(super) fn unset_confirmation_tag(&mut self) {
+        self.confirmation_tag = None;
+    }
+
+    #[cfg(test)]
+    pub(super) fn unset_membership_tag(&mut self) {
+        self.membership_tag = None;
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_content(&mut self, content: MlsPlaintextContentType) {
+        self.content = content;
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_signature(&mut self, signature: Signature) {
+        self.signature = signature;
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
+        self.membership_tag = Some(tag);
+    }
 }
 
 impl MlsPlaintext {
@@ -421,6 +462,22 @@ pub struct VerifiableMlsPlaintext<'a> {
 }
 
 impl<'a> VerifiableMlsPlaintext<'a> {
+    /// Create a new [`VerifiableMlsPlaintext`] from a [`MlsPlaintextTbs`] and
+    /// a [`Signature`].
+    pub fn new(
+        tbs: MlsPlaintextTbs<'a>,
+        signature: Signature,
+        confirmation_tag: impl Into<Option<ConfirmationTag>>,
+        membership_tag: impl Into<Option<MembershipTag>>,
+    ) -> Self {
+        Self {
+            tbs,
+            signature,
+            confirmation_tag: confirmation_tag.into(),
+            membership_tag: membership_tag.into(),
+        }
+    }
+
     /// Create a [`VerifiableMlsPlaintext`] from an [`MlsPlaintext`] and the
     /// serialized context.
     pub fn from_plaintext(

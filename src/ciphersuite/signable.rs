@@ -59,7 +59,9 @@ pub trait Verifiable: Sized {
     /// A reference to the signature to be verified.
     fn signature(&self) -> &Signature;
 
-    /// Verifies the payload against the given `credential` and `signature`.
+    /// Verifies the payload against the given `credential`.
+    /// The signature is fetched via the [`Verifiable::signature()`] function and
+    /// the payload via [`Verifiable::unsigned_payload()`].
     ///
     /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
@@ -72,7 +74,9 @@ pub trait Verifiable: Sized {
         Ok(T::from_verifiable(self))
     }
 
-    /// Verifies the payload against the given `credential` and `signature`.
+    /// Verifies the payload against the given `credential`.
+    /// The signature is fetched via the [`Verifiable::signature()`] function and
+    /// the payload via [`Verifiable::unsigned_payload()`].
     ///
     /// Returns `Ok(())` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.

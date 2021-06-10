@@ -181,7 +181,7 @@ impl<'a> QueuedProposal<'a> {
         Ok(Self {
             proposal,
             proposal_reference,
-            sender: mls_plaintext.sender().clone(),
+            sender: *mls_plaintext.sender(),
             proposal_or_ref_type: ProposalOrRefType::Reference,
         })
     }

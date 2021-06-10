@@ -3,15 +3,15 @@ use std::convert::TryFrom;
 
 impl Encode for MlsPlaintext {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.sender.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        self.content_type.encode(buffer)?;
-        self.content.encode(buffer)?;
-        self.signature.encode(buffer)?;
-        self.confirmation_tag.encode(buffer)?;
-        self.membership_tag.encode(buffer)?;
+        self.group_id().encode(buffer)?;
+        self.epoch().encode(buffer)?;
+        self.sender().encode(buffer)?;
+        encode_vec(VecSize::VecU32, buffer, self.authenticated_data())?;
+        self.content_type().encode(buffer)?;
+        self.content().encode(buffer)?;
+        self.signature().encode(buffer)?;
+        self.confirmation_tag().encode(buffer)?;
+        self.membership_tag().encode(buffer)?;
         Ok(())
     }
 }
@@ -29,19 +29,22 @@ impl<'a> Decode for VerifiableMlsPlaintext<'a> {
         let confirmation_tag = Option::<ConfirmationTag>::decode(cursor)?;
         let membership_tag = Option::<MembershipTag>::decode(cursor)?;
 
-        let mls_plaintext = MlsPlaintext {
-            group_id,
-            epoch,
-            sender,
-            authenticated_data,
-            content_type,
-            content,
+        let verifiable = VerifiableMlsPlaintext::new(
+            MlsPlaintextTbs::new(
+                None,
+                group_id,
+                epoch,
+                sender,
+                authenticated_data,
+                content_type,
+                content,
+            ),
             signature,
             confirmation_tag,
             membership_tag,
-        };
+        );
 
-        Ok(VerifiableMlsPlaintext::from_plaintext(mls_plaintext, None))
+        Ok(verifiable)
     }
 }
 

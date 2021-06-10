@@ -49,7 +49,7 @@ pub struct RatchetTree {
     /// All nodes in the tree.
     /// Note that these only hold public values.
     /// Private values are stored in the `private_tree`.
-    /// FIXME: this must not be public
+    /// FIXME: this must not be public and will be fixed in #423.
     pub nodes: Vec<Node>,
 
     /// This holds all private values in the tree.
