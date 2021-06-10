@@ -43,7 +43,7 @@ impl<T> ABinaryTree<T> {
     fn unsafe_parent(&self, index: NodeIndex) -> Result<NodeIndex, FLBBinaryTreeError> {
         self.node_in_tree(index)?;
         let n = self.leaf_count();
-        if index == root(size) {
+        if index == self.root() {
             return Err(TreeMathError::RootHasNoParent);
         }
         let mut p = parent_step(x);

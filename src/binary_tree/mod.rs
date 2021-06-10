@@ -29,6 +29,13 @@ trait FLBBinaryTree<Node> {
     fn co_path(&self, start_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError>;
 }
 
+// Questions:
+
+// * This layer of abstraction relies on the indices of the array-based
+// representation. Should it provide treemath functions for index calculations
+// directly? Should treemath be detached?
+// * What should the type of NodeIndex be?
+
 implement_error! {
     pub enum FLBBinaryTreeError {
         OutOfRange = "The given index is outside of the tree.",
