@@ -30,6 +30,7 @@ pub mod error;
 #[cfg(any(feature = "expose-test-vectors", test))]
 #[macro_use]
 pub mod test_util;
+pub mod binary_tree;
 
 mod ciphersuite;
 mod codec;
