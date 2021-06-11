@@ -1,6 +1,7 @@
 pub(crate) mod array_representation;
+pub(crate) mod treemath;
 
-type NodeIndex = usize;
+type NodeIndex = u32;
 
 /// A trait for a full, left-balanced binary tree. It uses the indices of the
 /// array-based representation of such a tree for indexing of nodes.
@@ -13,12 +14,19 @@ trait FLBBinaryTree<Node> {
     /// Returns an error if the index is outside of the tree.
     fn node_mut(&mut self, node_index: NodeIndex) -> Result<&mut Node, FLBBinaryTreeError>;
 
-    /// Add two nodes to the right side of the tree. Nodes can only be
-    /// added in pairs to keep the tree full.
+    /// Add two nodes to the right side of the tree. Nodes can only be added in
+    /// pairs to keep the tree full. Returns an error if the number of nodes
+    /// exceeds the range of `NodeIndex`.
     fn add(&mut self, node_1: Node, node_2: Node) -> Result<(), FLBBinaryTreeError>;
 
     /// Remove the two rightmost nodes of the tree.
     fn remove(&mut self) -> Result<(), FLBBinaryTreeError>;
+
+    /// Return the number of nodes in the tree.
+    fn size(&self) -> NodeIndex;
+
+    /// Return the number of leaves in the tree.
+    fn leaf_count(&self) -> NodeIndex;
 
     /// Compute the direct path from the node with the given index to the root
     /// node and return the vector of indices of the nodes on the direct path.
@@ -38,6 +46,7 @@ trait FLBBinaryTree<Node> {
 
 implement_error! {
     pub enum FLBBinaryTreeError {
-        OutOfRange = "The given index is outside of the tree.",
+        OutOfBounds = "The given index is outside of the tree.",
+        OutOfRange = "Adding nodes exceeds the maximum possible size of the tree.",
     }
 }
