@@ -239,7 +239,6 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
 #[test]
 fn read_test_vector() {
-    let _ = pretty_env_logger::try_init();
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {

@@ -79,7 +79,6 @@ fn lifetime() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
-    let _ = pretty_env_logger::try_init();
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
