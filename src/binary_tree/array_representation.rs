@@ -10,25 +10,19 @@ pub(crate) struct ABinaryTree<T> {
 impl<T> ABinaryTree<T> {
     /// Check if a given index is still within the tree.
     fn node_in_tree(&self, node_index: NodeIndex) -> Result<(), FLBBinaryTreeError> {
-        if node_index as usize >= self.nodes.len() {
-            Err(FLBBinaryTreeError::OutOfBounds)
-        } else {
-            Ok(())
-        }
+        Ok(node_in_tree(node_index, self.size())?)
     }
 }
 
 impl<T> FLBBinaryTree<T> for ABinaryTree<T> {
     fn node(&self, node_index: NodeIndex) -> Result<&T, FLBBinaryTreeError> {
-        self.nodes
-            .get(node_index as usize)
-            .ok_or(FLBBinaryTreeError::OutOfBounds)
+        self.node_in_tree(node_index)?;
+        Ok(self.nodes.get(node_index as usize).unwrap())
     }
 
-    fn node_mut(&mut self, node_index: NodeIndex) -> Result<&mut T, super::FLBBinaryTreeError> {
-        self.nodes
-            .get_mut(node_index as usize)
-            .ok_or(FLBBinaryTreeError::OutOfBounds)
+    fn node_mut(&mut self, node_index: NodeIndex) -> Result<&mut T, FLBBinaryTreeError> {
+        self.node_in_tree(node_index)?;
+        Ok(self.nodes.get_mut(node_index as usize).unwrap())
     }
 
     fn add(&mut self, node_1: T, node_2: T) -> Result<(), FLBBinaryTreeError> {
@@ -51,17 +45,11 @@ impl<T> FLBBinaryTree<T> for ABinaryTree<T> {
         self.nodes.len() as u32
     }
 
-    fn leaf_count(&self) -> NodeIndex {
-        node_width(self.nodes.len()) as u32
-    }
-
     fn direct_path(&self, node_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError> {
-        self.node_in_tree(node_index)?;
-
-        leaf_direct_path(leaf_index, size)
+        Ok(direct_path(node_index, self.size())?)
     }
 
-    fn co_path(&self, start_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError> {
-        todo!()
+    fn co_path(&self, node_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError> {
+        Ok(copath(node_index, self.size())?)
     }
 }
