@@ -6,4 +6,4 @@ edition = "2018"
 description = "Types to interact with the OpenMLS DS."
 
 [dependencies]
-openmls = { path = "../../" }
+openmls = { path = "../../openmls" }
