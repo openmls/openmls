@@ -4,8 +4,6 @@ use super::{Ciphersuite, Secret};
 
 #[test]
 fn secret_init() {
-    pretty_env_logger::init();
-
     let csuite = Ciphersuite::default();
 
     // These two secrets must be incompatible

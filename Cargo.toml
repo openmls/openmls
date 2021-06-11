@@ -48,8 +48,7 @@ content-debug = [] # ☣️ Enable logging of sensitive message content
 
 [dev-dependencies]
 criterion = "^0.3"
-flexi_logger = "0.17"
-pretty_env_logger = "0.4.0"
+flexi_logger = "0.18"
 itertools = "0.10"
 test_macros = { path = "test_macros" }
 openmls = { path = ".", features = ["expose-test-vectors"] }
