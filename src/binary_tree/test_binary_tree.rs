@@ -22,11 +22,16 @@ fn test_tree_creation() {
     assert_eq!(tree1, tree2);
 
     // Test tree creation: Too many nodes.
-    //let nodes = vec![0; NodeIndex::max_value() as usize + 2];
-    //assert_eq!(
-    //    ABinaryTree::new(nodes).expect_err("No error while creating too large tree."),
-    //    FLBBinaryTreeError::OutOfRange
-    //)
+    unsafe {
+        let len = NodeIndex::max_value() as usize + 2;
+        let mut nodes: Vec<u32> = Vec::new();
+        nodes.set_len(len);
+
+        assert_eq!(
+            ABinaryTree::new(nodes).expect_err("No error while creating too large tree."),
+            FLBBinaryTreeError::OutOfRange
+        )
+    }
 }
 
 #[test]
@@ -37,15 +42,19 @@ fn test_node_addition() {
         .expect("error when adding nodes to small enough tree");
 
     // Test node addition: Exceeding max number of nodes.
-    //let nodes = vec![0; NodeIndex::max_value() as usize];
-    //let mut large_tree = ABinaryTree::new(nodes).expect("Error while creating large tree.");
+    unsafe {
+        let len = NodeIndex::max_value() as usize;
+        let mut nodes: Vec<u32> = Vec::new();
+        nodes.set_len(len);
+        let mut large_tree = ABinaryTree::new(nodes).expect("Error while creating large tree.");
 
-    //assert_eq!(
-    //    large_tree
-    //        .add(0, 0)
-    //        .expect_err("No error while adding nodes when exceeding max tree size."),
-    //    FLBBinaryTreeError::OutOfRange
-    //)
+        assert_eq!(
+            large_tree
+                .add(0, 0)
+                .expect_err("No error while adding nodes when exceeding max tree size."),
+            FLBBinaryTreeError::OutOfRange
+        )
+    }
 }
 
 #[test]
