@@ -4,10 +4,6 @@ pub(crate) mod treemath;
 #[cfg(test)]
 mod test_binary_tree;
 
-use treemath::TreeMathError;
-
-use self::treemath::leaf_count;
-
 pub(crate) type NodeIndex = u32;
 
 /// A trait for a full, left-balanced binary tree. It uses the indices of the
@@ -66,7 +62,7 @@ pub(crate) trait FLBBinaryTree<Node> {
 
     /// Return the number of leaves in the tree.
     fn leaf_count(&self) -> NodeIndex {
-        leaf_count(self.size())
+        (self.size() + 1) / 2
     }
 
     /// Compute the direct path from the node with the given index to the root
