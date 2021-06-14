@@ -92,6 +92,13 @@ fn test_node_access() {
         FLBBinaryTreeError::OutOfBounds
     );
 
+    // Test mutable node access: Positive case.
+    let mut tree = ABinaryTree::new(vec![0, 1, 2]).expect("Error when creating a tree.");
+    *tree
+        .node_mut(1)
+        .expect("Error when accessing node mutably.") = 5;
+    assert_eq!(tree.node(1).expect("Error when accessing node."), &5);
+
     // Test leaf access: Positive case.
     assert_eq!(tree.leaf(0).expect("Error when accessing leaf."), &0);
 
@@ -106,6 +113,13 @@ fn test_node_access() {
         tree.leaf(4).expect_err("Given index is not a leaf index"),
         FLBBinaryTreeError::OutOfBounds
     );
+
+    // Test mutable leaf access: Positive case.
+    let mut tree = ABinaryTree::new(vec![0, 1, 2]).expect("Error when creating a tree.");
+    *tree
+        .leaf_mut(0)
+        .expect("Error when accessing node mutably.") = 9;
+    assert_eq!(tree.leaf(0).expect("Error when accessing node."), &9);
 }
 
 #[test]
