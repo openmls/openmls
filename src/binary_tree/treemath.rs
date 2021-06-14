@@ -113,8 +113,8 @@ pub(crate) fn node_in_tree(node_index: NodeIndex, size: NodeIndex) -> Result<(),
     }
 }
 
-/// Direct path from a leaf node to the root.
-/// Does not include the leaf node but includes the root.
+/// Direct path from a node to the root.
+/// Does not include the node itself.
 pub(crate) fn direct_path(
     node_index: NodeIndex,
     size: NodeIndex,
@@ -123,7 +123,7 @@ pub(crate) fn direct_path(
     let node_index = node_index;
     let r = root(size);
     if node_index == r {
-        return Ok(vec![r]);
+        return Ok(vec![]);
     }
 
     let mut d = vec![];
@@ -135,8 +135,8 @@ pub(crate) fn direct_path(
     Ok(d)
 }
 
-/// Copath of a leaf.
-/// Ordered from leaf to root.
+/// Copath of a node.
+/// Ordered from starting node to root.
 pub(crate) fn copath(
     node_index: NodeIndex,
     size: NodeIndex,
