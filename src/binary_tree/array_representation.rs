@@ -69,4 +69,14 @@ impl<T> FLBBinaryTree<T> for ABinaryTree<T> {
     fn copath(&self, node_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError> {
         copath(node_index, self.size()).map_err(|_| FLBBinaryTreeError::OutOfBounds)
     }
+
+    fn lowest_common_ancestor(
+        &self,
+        node_index_1: NodeIndex,
+        node_index_2: NodeIndex,
+    ) -> Result<NodeIndex, FLBBinaryTreeError> {
+        self.node_in_tree(node_index_1)?;
+        self.node_in_tree(node_index_2)?;
+        Ok(lowest_common_ancestor(node_index_1, node_index_2))
+    }
 }

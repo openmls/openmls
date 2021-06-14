@@ -170,3 +170,49 @@ fn test_copath() {
     let copath = tree.copath(8).expect("Error when computing copath.");
     assert_eq!(copath, vec![10, 3]);
 }
+
+#[test]
+fn test_lowest_common_ancestor() {
+    let mut tree =
+        ABinaryTree::new(vec![0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
+
+    // Test lowest common ancestor: Out of bounds.
+    assert_eq!(
+        tree.lowest_common_ancestor(10, 0)
+            .expect_err("No error when computing lowest common ancestor out of bounds."),
+        FLBBinaryTreeError::OutOfBounds
+    );
+    assert_eq!(
+        tree.lowest_common_ancestor(0, 10)
+            .expect_err("No error when computing lowest common ancestor out of bounds."),
+        FLBBinaryTreeError::OutOfBounds
+    );
+
+    // Test direct path: Positive case.
+    let lowest_common_ancestor = tree
+        .lowest_common_ancestor(0, 2)
+        .expect("Error when computing lowest common ancestor.");
+    assert_eq!(lowest_common_ancestor, 1);
+
+    let lowest_common_ancestor = tree
+        .lowest_common_ancestor(0, 1)
+        .expect("Error when computing lowest common ancestor.");
+    assert_eq!(lowest_common_ancestor, 1);
+
+    let lowest_common_ancestor = tree
+        .lowest_common_ancestor(8, 4)
+        .expect("Error when computing lowest common ancestor.");
+    assert_eq!(lowest_common_ancestor, 7);
+
+    let lowest_common_ancestor = tree
+        .lowest_common_ancestor(4, 1)
+        .expect("Error when computing lowest common ancestor.");
+    assert_eq!(lowest_common_ancestor, 3);
+
+    tree.add(9, 10).expect("error when adding nodes");
+
+    let lowest_common_ancestor = tree
+        .lowest_common_ancestor(10, 4)
+        .expect("Error when computing lowest common ancestor.");
+    assert_eq!(lowest_common_ancestor, 7);
+}

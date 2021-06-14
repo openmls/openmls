@@ -1,4 +1,8 @@
 pub(crate) mod array_representation;
+
+#[allow(dead_code)]
+/// There's some dead code in treemath that will be used in treesync in the
+/// future.
 pub(crate) mod treemath;
 
 #[cfg(test)]
@@ -72,6 +76,15 @@ pub(crate) trait FLBBinaryTree<Node> {
     /// Compute the copath path from the node with the given index to the root
     /// node and return the vector of indices of the nodes on the copath.
     fn copath(&self, start_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError>;
+
+    /// Compute the lowest common ancestor of the nodes with the given indices.
+    /// Returns an `OutOfBounds` error if either of the indices is out of the
+    /// bounds of the tree.
+    fn lowest_common_ancestor(
+        &self,
+        index_1: NodeIndex,
+        index_2: NodeIndex,
+    ) -> Result<NodeIndex, FLBBinaryTreeError>;
 }
 
 implement_error! {

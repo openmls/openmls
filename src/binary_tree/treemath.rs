@@ -159,7 +159,7 @@ pub(crate) fn copath(
         .collect()
 }
 
-pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
+pub(crate) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     let (lx, ly) = (level(x) + 1, level(y) + 1);
     if (lx <= ly) && (x >> ly == y >> ly) {
         return y;
