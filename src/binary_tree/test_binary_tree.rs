@@ -252,4 +252,12 @@ fn test_lowest_common_ancestor() {
         .lowest_common_ancestor(10, 4)
         .expect("Error when computing lowest common ancestor.");
     assert_eq!(lowest_common_ancestor, 7);
+
+    // Test for a very small tree.
+    let tree = ABinaryTree::new(vec![1]).expect("Error when creating a tree.");
+
+    let lowest_common_ancestor = tree
+        .lowest_common_ancestor(0, 0)
+        .expect("Error when computing lowest common ancestor.");
+    assert_eq!(lowest_common_ancestor, 0);
 }
