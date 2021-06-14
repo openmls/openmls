@@ -35,7 +35,7 @@ pub(crate) trait FLBBinaryTree<Node> {
     /// the node at the index is not a leaf.
     fn leaf(&self, node_index: NodeIndex) -> Result<&Node, FLBBinaryTreeError> {
         if node_index % 2 == 0 {
-            self.node(node_index);
+            self.node(node_index)
         } else {
             Err(FLBBinaryTreeError::IndexError)
         }
@@ -46,7 +46,7 @@ pub(crate) trait FLBBinaryTree<Node> {
     /// the node at the index is not a leaf.
     fn leaf_mut(&mut self, node_index: NodeIndex) -> Result<&mut Node, FLBBinaryTreeError> {
         if node_index % 2 == 0 {
-            self.node_mut(node_index);
+            self.node_mut(node_index)
         } else {
             Err(FLBBinaryTreeError::IndexError)
         }
