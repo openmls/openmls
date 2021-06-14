@@ -161,6 +161,14 @@ fn test_direct_path() {
         .direct_path(8)
         .expect("Error when computing direct path.");
     assert_eq!(direct_path, vec![9, 7]);
+
+    // Test for a very small tree.
+    let tree = ABinaryTree::new(vec![1]).expect("Error when creating a tree.");
+
+    let direct_path = tree
+        .direct_path(0)
+        .expect("Error when computing direct path.");
+    assert_eq!(direct_path, Vec::<u32>::new());
 }
 
 #[test]
@@ -192,6 +200,12 @@ fn test_copath() {
 
     let copath = tree.copath(8).expect("Error when computing copath.");
     assert_eq!(copath, vec![10, 3]);
+
+    // Test for a very small tree.
+    let tree = ABinaryTree::new(vec![1]).expect("Error when creating a tree.");
+
+    let copath = tree.copath(0).expect("Error when computing copath.");
+    assert_eq!(copath, Vec::<u32>::new());
 }
 
 #[test]
