@@ -373,7 +373,6 @@ fn confirmation_tag_presence() {
 }
 
 ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: CiphersuiteName) {
-    let _ = pretty_env_logger::try_init();
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let group_aad = b"Alice's test group";
