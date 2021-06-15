@@ -6,3 +6,4 @@ delivery-service/ds/target
 Cargo.lock
 *.code-workspace
 /test_vectors/
+/openmls/target
