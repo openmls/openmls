@@ -11,6 +11,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+defaults:
+  run:
+    working-directory: cli
+
 jobs:
   tests:
     strategy:
@@ -25,4 +29,4 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Build cli
-        run: cargo build --verbose -p cli
+        run: cargo build --verbose

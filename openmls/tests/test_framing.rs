@@ -4,8 +4,6 @@ use utils::mls_utils::*;
 
 #[test]
 fn padding() {
-    pretty_env_logger::init_timed();
-
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {

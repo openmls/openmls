@@ -2,5 +2,5 @@ ignore:
   - "delivery-service/**/*"  # ignore PoC DS server and lib
   - "cli/**/*"  # ignore PoC cli
   # ignore test frameworks
-  - "tests/utils/managed_utils/*"
-  - "tests/utils/mls_utils/*"
+  - "openmls/tests/utils/managed_utils/*"
+  - "openmls/tests/utils/mls_utils/*"
