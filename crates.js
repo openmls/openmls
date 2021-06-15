@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["openmls","test_macros","tls_codec"];
+window.ALL_CRATES = ["openmls"];

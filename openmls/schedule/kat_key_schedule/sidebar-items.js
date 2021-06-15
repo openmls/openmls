@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["generate",""],["generate_test_vector",""],["run_test_vector",""]],"struct":[["Epoch",""],["KeyScheduleTestVector",""]]});
+initSidebarItems({"fn":[["generate_test_vector",""],["run_test_vector",""]],"struct":[["KeyScheduleTestVector",""]]});

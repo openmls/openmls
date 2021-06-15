@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["__init16518203259712514104",""]],"static":[["__init16518203259712514104___rust_ctor___ctor",""]],"struct":[["CapabilitiesExtension",""]]});

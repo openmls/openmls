@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["EncTestVectorError",""]],"fn":[["build_application_messages",""],["build_handshake_messages",""],["generate_test_vector",""],["group",""],["receiver_group",""],["run_test_vector",""]],"struct":[["EncryptionTestVector",""],["LeafSequence",""],["RatchetStep",""],["SenderDataInfo",""]]});
+initSidebarItems({"enum":[["EncTestVectorError",""]],"fn":[["generate_test_vector",""],["run_test_vector",""]],"struct":[["EncryptionTestVector",""]]});

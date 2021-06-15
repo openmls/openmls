@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["SecretTreeError",""],["SecretType",""]],"fn":[["derive_tree_secret","Derives secrets for inner nodes of a SecretTree"]],"struct":[["SecretTree",""],["SecretTreeNode",""],["TreeContext",""]]});

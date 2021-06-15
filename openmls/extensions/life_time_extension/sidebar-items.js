@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["__init6011765713567273734",""]],"static":[["__init6011765713567273734___rust_ctor___ctor",""]],"struct":[["LifetimeExtension","The lifetime extension holds a not before and a not after time measured in seconds since the Unix epoch (1970-01-01T00:00:00Z)."]]});
