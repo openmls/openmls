@@ -19,5 +19,5 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 clap = "2.33"
 base64 = "0.13"
 
-openmls = { path = "../../" }
+openmls = { path = "../../openmls" }
 ds-lib = { path = "../ds-lib/" }
