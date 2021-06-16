@@ -16,6 +16,9 @@ pub(crate) type NodeIndex = u32;
 /// A trait for a full, left-balanced binary tree. It uses the indices of the
 /// array-based representation of such a tree for indexing of nodes.
 pub(crate) trait FLBBinaryTree<Node> {
+    /// Error type for FLBBinaryTree functions.
+    type FLBBinaryTreeError;
+
     /// Create a tree from the given vector of nodes. The nodes are ordered in
     /// the array-representation. Throws a `InvalidNumberOfNodes` error if the
     /// number of nodes does not allow the creation of a full, left-balanced
@@ -88,14 +91,4 @@ pub(crate) trait FLBBinaryTree<Node> {
         index_1: NodeIndex,
         index_2: NodeIndex,
     ) -> Result<NodeIndex, FLBBinaryTreeError>;
-}
-
-implement_error! {
-    pub enum FLBBinaryTreeError {
-        OutOfRange = "Adding nodes exceeds the maximum possible size of the tree.",
-        NotEnoughNodes = "Not enough nodes to remove.",
-        IndexError = "The given index is not a leaf index.",
-        InvalidNumberOfNodes = "The given number of nodes does not allow the creation of a full, left-balanced binary tree.",
-        OutOfBounds = "The given index is outside of the tree.",
-    }
 }
