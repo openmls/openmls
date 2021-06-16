@@ -1,6 +1,6 @@
 use crate::binary_tree::NodeIndex;
 
-pub(crate) trait TreeSyncNode {
+pub(crate) trait TreeSyncable {
     /// Return the value of the node relevant for the parent hash and tree hash.
     /// In case of MLS, this would be the node's HPKEPublicKey. TreeSync
     /// can then gather everything necessary to build the `ParentHashInput`,

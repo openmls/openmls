@@ -1,27 +1,39 @@
 use hpke::HpkePublicKey;
 
-use super::treesyncnode::{TreeSyncNode, TreeSyncNodeError};
+use super::treesyncable::{TreeSyncNodeError, TreeSyncable};
 
 use crate::{
     binary_tree::NodeIndex,
+    ciphersuite::signable::{Signable, SignedStruct},
     extensions::{ExtensionType::ParentHash, ParentHashExtension},
     key_packages::KeyPackage,
+    prelude::KeyPackagePayload,
 };
 
-struct ParentNode {
+pub(crate) struct ParentNode {
     public_key: HpkePublicKey,
     unmerged_leaves: Vec<NodeIndex>,
     parent_hash: Vec<u8>,
     tree_hash: Vec<u8>,
 }
 
-struct LeafNode {
+pub(crate) struct LeafNode {
     // For caching the tree hash of the leaf node.
     tree_hash: Vec<u8>,
     key_package: KeyPackage,
 }
 
-impl TreeSyncNode for LeafNode {
+impl SignedStruct<KeyPackagePayload> for LeafNode {
+    fn from_payload(payload: KeyPackagePayload, signature: crate::ciphersuite::Signature) -> Self {
+        let key_package = KeyPackage::from_payload(payload, signature);
+        Self {
+            tree_hash: vec![],
+            key_package,
+        }
+    }
+}
+
+impl TreeSyncable for LeafNode {
     fn node_content(&self) -> &[u8] {
         &self.key_package.hpke_init_key().as_slice()
     }
@@ -72,7 +84,7 @@ impl TreeSyncNode for LeafNode {
     }
 }
 
-impl TreeSyncNode for ParentNode {
+impl TreeSyncable for ParentNode {
     fn node_content(&self) -> &[u8] {
         self.public_key.as_slice()
     }

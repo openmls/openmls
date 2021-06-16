@@ -99,3 +99,7 @@ implement_error! {
         OutOfBounds = "The given index is outside of the tree.",
     }
 }
+
+// TODO:
+// * Error as associated type
+// * NodeIndex as well if we can hide everything that requires index handling under the abstraction layer

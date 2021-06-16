@@ -31,6 +31,7 @@ pub mod error;
 #[macro_use]
 pub mod test_util;
 pub mod binary_tree;
+pub mod treesync;
 
 pub mod ciphersuite;
 mod codec;
