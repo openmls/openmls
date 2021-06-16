@@ -4,6 +4,8 @@ use super::FLBBinaryTreeError;
 use super::NodeIndex;
 
 #[derive(Clone, Debug, PartialEq)]
+/// A representation of a full, left-balanced binary tree that uses a simple
+/// vector to store nodes.
 pub(crate) struct ABinaryTree<T> {
     nodes: Vec<T>,
 }
