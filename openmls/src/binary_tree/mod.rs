@@ -99,7 +99,3 @@ implement_error! {
         OutOfBounds = "The given index is outside of the tree.",
     }
 }
-
-// Questions:
-// * Should I try to do the checking in the trait already? Almost all of the
-// error cases can be checked here.
