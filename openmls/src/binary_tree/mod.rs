@@ -8,6 +8,9 @@ pub(crate) mod treemath;
 #[cfg(test)]
 mod test_binary_tree;
 
+#[cfg(any(feature = "expose-test-vectors", test))]
+pub mod kat_treemath;
+
 pub(crate) type NodeIndex = u32;
 
 /// A trait for a full, left-balanced binary tree. It uses the indices of the
