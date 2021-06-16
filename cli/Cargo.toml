@@ -12,5 +12,5 @@ log = "0.4"
 pretty_env_logger = "0.4"
 termion = "1.5"
 
-openmls = { path = "../" }
+openmls = { path = "../openmls" }
 ds-lib = { path = "../delivery-service/ds-lib" }
