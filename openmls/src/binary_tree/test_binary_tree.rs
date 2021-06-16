@@ -1,6 +1,6 @@
 use crate::binary_tree::NodeIndex;
 
-use super::{array_representation::*, FLBBinaryTree, FLBBinaryTreeError};
+use super::{array_representation::*, FLBBinaryTree};
 
 #[test]
 fn test_tree_creation() {
@@ -9,7 +9,7 @@ fn test_tree_creation() {
     assert_eq!(
         ABinaryTree::new(nodes.clone())
             .expect_err("No error when creating a non-full binary tree."),
-        FLBBinaryTreeError::InvalidNumberOfNodes
+        ABinaryTreeError::InvalidNumberOfNodes
     );
     nodes.push(2);
 
@@ -33,7 +33,7 @@ fn test_tree_creation() {
 
         assert_eq!(
             ABinaryTree::new(nodes).expect_err("No error while creating too large tree."),
-            FLBBinaryTreeError::OutOfRange
+            ABinaryTreeError::OutOfRange
         )
     }
 }
@@ -56,7 +56,7 @@ fn test_node_addition() {
             large_tree
                 .add(0, 0)
                 .expect_err("No error while adding nodes when exceeding max tree size."),
-            FLBBinaryTreeError::OutOfRange
+            ABinaryTreeError::OutOfRange
         )
     }
 }
@@ -79,7 +79,7 @@ fn test_node_removal() {
     assert_eq!(
         tree.remove()
             .expect_err("No error when trying to remove nodes from too small tree."),
-        FLBBinaryTreeError::NotEnoughNodes
+        ABinaryTreeError::NotEnoughNodes
     )
 }
 
@@ -93,7 +93,7 @@ fn test_node_access() {
     assert_eq!(
         tree.node(3)
             .expect_err("No error when accessing node outside of the tree."),
-        FLBBinaryTreeError::OutOfBounds
+        ABinaryTreeError::OutOfBounds
     );
 
     // Test mutable node access: Positive case.
@@ -102,35 +102,6 @@ fn test_node_access() {
         .node_mut(1)
         .expect("Error when accessing node mutably.") = 5;
     assert_eq!(tree.node(1).expect("Error when accessing node."), &5);
-
-    // Test leaf access: Positive case.
-    assert_eq!(tree.leaf(0).expect("Error when accessing leaf."), &0);
-
-    // Test leaf access: Not a leaf.
-    assert_eq!(
-        tree.leaf(1).expect_err("Given index is not a leaf index"),
-        FLBBinaryTreeError::IndexError
-    );
-
-    // Test leaf access: Out of bounds.
-    assert_eq!(
-        tree.leaf(4).expect_err("Given index is not a leaf index"),
-        FLBBinaryTreeError::OutOfBounds
-    );
-
-    // Test mutable leaf access: Positive case.
-    let mut tree = ABinaryTree::new(vec![0, 1, 2]).expect("Error when creating a tree.");
-    *tree
-        .leaf_mut(0)
-        .expect("Error when accessing node mutably.") = 9;
-    assert_eq!(tree.leaf(0).expect("Error when accessing node."), &9);
-
-    // Test mutable leaf access: Not a leaf.
-    assert_eq!(
-        tree.leaf_mut(1)
-            .expect_err("Given index is not a leaf index"),
-        FLBBinaryTreeError::IndexError
-    );
 }
 
 #[test]
@@ -142,7 +113,7 @@ fn test_direct_path() {
     assert_eq!(
         tree.direct_path(10)
             .expect_err("No error when computing direct path out of bounds."),
-        FLBBinaryTreeError::OutOfBounds
+        ABinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
@@ -191,7 +162,7 @@ fn test_copath() {
     assert_eq!(
         tree.copath(10)
             .expect_err("No error when computing copath out of bounds."),
-        FLBBinaryTreeError::OutOfBounds
+        ABinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
@@ -228,12 +199,12 @@ fn test_lowest_common_ancestor() {
     assert_eq!(
         tree.lowest_common_ancestor(10, 0)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
-        FLBBinaryTreeError::OutOfBounds
+        ABinaryTreeError::OutOfBounds
     );
     assert_eq!(
         tree.lowest_common_ancestor(0, 10)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
-        FLBBinaryTreeError::OutOfBounds
+        ABinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.

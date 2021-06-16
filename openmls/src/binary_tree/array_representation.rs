@@ -91,7 +91,6 @@ implement_error! {
     pub enum ABinaryTreeError {
         OutOfRange = "Adding nodes exceeds the maximum possible size of the tree.",
         NotEnoughNodes = "Not enough nodes to remove.",
-        IndexError = "The given index is not a leaf index.",
         InvalidNumberOfNodes = "The given number of nodes does not allow the creation of a full, left-balanced binary tree.",
         OutOfBounds = "The given index is outside of the tree.",
     }

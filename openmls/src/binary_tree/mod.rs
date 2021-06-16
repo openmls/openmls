@@ -24,48 +24,26 @@ pub(crate) trait FLBBinaryTree<Node> {
     /// number of nodes does not allow the creation of a full, left-balanced
     /// binary tree and an `OutOfRange` error if the number of given nodes
     /// exceeds the range of `NodeIndex`.
-    fn new(nodes: Vec<Node>) -> Result<Self, FLBBinaryTreeError>
+    fn new(nodes: Vec<Node>) -> Result<Self, Self::FLBBinaryTreeError>
     where
         Self: Sized;
 
     /// Obtain a reference to the data contained in the `Node` at index `node_index`.
     /// Returns an error if the index is outside of the tree.
-    fn node(&self, node_index: NodeIndex) -> Result<&Node, FLBBinaryTreeError>;
+    fn node(&self, node_index: NodeIndex) -> Result<&Node, Self::FLBBinaryTreeError>;
 
     /// Obtain a mutable reference to the data contained in the `Node` at index `node_index`.
     /// Returns an error if the index is outside of the tree.
-    fn node_mut(&mut self, node_index: NodeIndex) -> Result<&mut Node, FLBBinaryTreeError>;
-
-    /// Obtain a reference to the data contained in the leaf node at index
-    /// `node_index`. Returns an error if the index is outside of the tree or if
-    /// the node at the index is not a leaf.
-    fn leaf(&self, node_index: NodeIndex) -> Result<&Node, FLBBinaryTreeError> {
-        if node_index % 2 == 0 {
-            self.node(node_index)
-        } else {
-            Err(FLBBinaryTreeError::IndexError)
-        }
-    }
-
-    /// Obtain a mutable reference to the data contained in the leaf node at index
-    /// `node_index`. Returns an error if the index is outside of the tree or if
-    /// the node at the index is not a leaf.
-    fn leaf_mut(&mut self, node_index: NodeIndex) -> Result<&mut Node, FLBBinaryTreeError> {
-        if node_index % 2 == 0 {
-            self.node_mut(node_index)
-        } else {
-            Err(FLBBinaryTreeError::IndexError)
-        }
-    }
+    fn node_mut(&mut self, node_index: NodeIndex) -> Result<&mut Node, Self::FLBBinaryTreeError>;
 
     /// Add two nodes to the right side of the tree. Nodes can only be added in
     /// pairs to keep the tree full. Returns an `OutOfRange` error if the number
     /// of nodes exceeds the range of `NodeIndex`.
-    fn add(&mut self, node_1: Node, node_2: Node) -> Result<(), FLBBinaryTreeError>;
+    fn add(&mut self, node_1: Node, node_2: Node) -> Result<(), Self::FLBBinaryTreeError>;
 
     /// Remove the two rightmost nodes of the tree. This will throw a
     /// `NotEnoughNodes` error if there are not enough nodes to remove.
-    fn remove(&mut self) -> Result<(), FLBBinaryTreeError>;
+    fn remove(&mut self) -> Result<(), Self::FLBBinaryTreeError>;
 
     /// Return the number of nodes in the tree.
     fn size(&self) -> NodeIndex;
@@ -77,11 +55,14 @@ pub(crate) trait FLBBinaryTree<Node> {
 
     /// Compute the direct path from the node with the given index to the root
     /// node and return the vector of indices of the nodes on the direct path.
-    fn direct_path(&self, start_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError>;
+    fn direct_path(
+        &self,
+        start_index: NodeIndex,
+    ) -> Result<Vec<NodeIndex>, Self::FLBBinaryTreeError>;
 
     /// Compute the copath path from the node with the given index to the root
     /// node and return the vector of indices of the nodes on the copath.
-    fn copath(&self, start_index: NodeIndex) -> Result<Vec<NodeIndex>, FLBBinaryTreeError>;
+    fn copath(&self, start_index: NodeIndex) -> Result<Vec<NodeIndex>, Self::FLBBinaryTreeError>;
 
     /// Compute the lowest common ancestor of the nodes with the given indices.
     /// Returns an `OutOfBounds` error if either of the indices is out of the
@@ -90,5 +71,5 @@ pub(crate) trait FLBBinaryTree<Node> {
         &self,
         index_1: NodeIndex,
         index_2: NodeIndex,
-    ) -> Result<NodeIndex, FLBBinaryTreeError>;
+    ) -> Result<NodeIndex, Self::FLBBinaryTreeError>;
 }
