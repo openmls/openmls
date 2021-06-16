@@ -21,6 +21,10 @@ fn test_tree_creation() {
         .expect("error when adding nodes to small enough tree");
     assert_eq!(tree1, tree2);
 
+    // Test size reporting
+    assert_eq!(tree1.size(), 3);
+    assert_eq!(tree1.leaf_count(), 2);
+
     // Test tree creation: Too many nodes.
     unsafe {
         let len = NodeIndex::max_value() as usize + 2;
@@ -120,6 +124,13 @@ fn test_node_access() {
         .leaf_mut(0)
         .expect("Error when accessing node mutably.") = 9;
     assert_eq!(tree.leaf(0).expect("Error when accessing node."), &9);
+
+    // Test mutable leaf access: Not a leaf.
+    assert_eq!(
+        tree.leaf_mut(1)
+            .expect_err("Given index is not a leaf index"),
+        FLBBinaryTreeError::IndexError
+    );
 }
 
 #[test]
