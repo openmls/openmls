@@ -26,6 +26,8 @@ mod utils;
 
 #[macro_use]
 pub mod error;
+#[macro_use]
+mod codec;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 #[macro_use]
@@ -34,7 +36,6 @@ pub mod binary_tree;
 pub mod treesync;
 
 pub mod ciphersuite;
-mod codec;
 pub mod config;
 mod credentials;
 mod extensions;

@@ -4,10 +4,7 @@
 
 use super::*;
 
-use crate::{
-    codec::{Codec, Cursor},
-    prelude::*,
-};
+use crate::{codec::Cursor, prelude::*};
 
 #[test]
 fn capabilities() {

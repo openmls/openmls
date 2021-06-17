@@ -1,6 +1,8 @@
 use super::*;
+use crate::codec::{Cursor, Decode, Encode};
 
-impl Codec for ProtocolVersion {
+implement_codec! {
+    ProtocolVersion,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)?;
         Ok(())

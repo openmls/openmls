@@ -43,7 +43,10 @@ impl GroupId {
             value: bytes.to_vec(),
         }
     }
-    pub fn as_slice(&self) -> Vec<u8> {
+    pub fn as_slice(&self) -> &[u8] {
+        &self.value
+    }
+    pub fn to_vec(&self) -> Vec<u8> {
         self.value.clone()
     }
 }

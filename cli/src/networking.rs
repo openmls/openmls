@@ -5,7 +5,7 @@ use openmls::prelude::*;
 
 // TODO: return objects not bytes.
 
-pub fn post(url: &Url, msg: &impl Codec) -> Result<Vec<u8>, String> {
+pub fn post(url: &Url, msg: &impl Encode) -> Result<Vec<u8>, String> {
     let serialized_msg = msg.encode_detached().unwrap();
     log::debug!("Post {:?}", url);
     log::trace!("Payload: {:?}", serialized_msg);

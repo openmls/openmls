@@ -48,9 +48,9 @@ mod test;
 /// The DS state.
 /// It holds a list of clients and their information.
 #[derive(Default, Debug)]
-pub struct DsData {
+pub struct DsData<'a> {
     // (ClientIdentity, ClientInfo)
-    clients: HashMap<Vec<u8>, ClientInfo>,
+    clients: HashMap<Vec<u8>, ClientInfo<'a>>,
 
     // (group_id, epoch)
     groups: HashMap<Vec<u8>, u64>,
@@ -81,7 +81,10 @@ macro_rules! unwrap_data {
 /// An HTTP conflict (409) is returned if a client with this name exists
 /// already.
 #[post("/clients/register")]
-async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn register_client<'a>(
+    mut body: Payload,
+    data: web::Data<Mutex<DsData<'a>>>,
+) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -107,7 +110,7 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
 
 /// Returns a list of clients with their names and IDs.
 #[get("/clients/list")]
-async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn list_clients<'a>(_req: HttpRequest, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
     log::debug!("Listing clients");
     let data = unwrap_data!(data.lock());
 
@@ -122,7 +125,7 @@ async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl
 
 /// Resets the server state.
 #[get("/reset")]
-async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn reset<'a>(_req: HttpRequest, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
     log::debug!("Resetting server");
     let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();
@@ -135,9 +138,9 @@ async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Respon
 /// This returns a serialised vector of `ClientKeyPackages` (see the `ds-lib`
 /// for details).
 #[get("/clients/key_packages/{id}")]
-async fn get_key_packages(
+async fn get_key_packages<'a>(
     web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData>>,
+    data: web::Data<Mutex<DsData<'a>>>,
 ) -> impl Responder {
     let data = unwrap_data!(data.lock());
 
@@ -160,7 +163,7 @@ async fn get_key_packages(
 /// This takes a serialised `Welcome` message and stores the message for all
 /// clients in the welcome message.
 #[post("/send/welcome")]
-async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn send_welcome<'a>(mut body: Payload, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -189,7 +192,7 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
 /// handshake message this DS has seen, a 409 is returned and the message is not
 /// processed.
 #[post("/send/message")]
-async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn msg_send<'a>(mut body: Payload, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -207,18 +210,18 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     if group_msg.msg.is_handshake_message() {
         let epoch = group_msg.epoch();
         let group_id = group_msg.group_id();
-        if let Some(&group_epoch) = data.groups.get(&group_id) {
+        if let Some(&group_epoch) = data.groups.get(group_id) {
             if group_epoch > epoch {
                 return actix_web::HttpResponse::Conflict().finish();
             }
             // Update server state to the latest epoch.
-            let old_value = data.groups.insert(group_id, epoch);
+            let old_value = data.groups.insert(group_id.to_vec(), epoch);
             if old_value.is_none() {
                 return actix_web::HttpResponse::InternalServerError().finish();
             }
         } else {
             // We haven't seen this group_id yet. Store it.
-            let old_value = data.groups.insert(group_id, epoch);
+            let old_value = data.groups.insert(group_id.to_vec(), epoch);
             if old_value.is_some() {
                 return actix_web::HttpResponse::InternalServerError().finish();
             }
@@ -240,9 +243,9 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
 /// details) the DS has stored for the given client.
 /// The messages are deleted on the DS when sent out.
 #[get("/recv/{id}")]
-async fn msg_recv(
+async fn msg_recv<'a>(
     web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData>>,
+    data: web::Data<Mutex<DsData<'a>>>,
 ) -> impl Responder {
     let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();

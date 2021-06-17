@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName},
-    codec::Codec,
+    codec::Encode,
     config::{Config, ProtocolVersion},
     group::{GroupContext, GroupEpoch, GroupId},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},

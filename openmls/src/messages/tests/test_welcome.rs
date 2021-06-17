@@ -2,7 +2,7 @@
 
 use crate::{
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, CiphersuiteName, Mac, Secret},
-    codec::{Codec, Cursor},
+    codec::{Cursor, Decode, Encode},
     config::Config,
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},

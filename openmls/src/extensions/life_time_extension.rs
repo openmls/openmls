@@ -22,7 +22,7 @@ use super::{
     Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError,
     Serialize,
 };
-use crate::codec::{Codec, Cursor};
+use crate::codec::{Codec, CodecError, Cursor, Decode, Encode};
 use crate::config::Config;
 
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -106,14 +106,15 @@ impl Extension for LifetimeExtension {
     }
 }
 
-impl Codec for LifetimeExtension {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), crate::codec::CodecError> {
+implement_codec! {
+    LifetimeExtension,
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.not_before.encode(buffer).unwrap();
         self.not_after.encode(buffer).unwrap();
         Ok(())
     }
 
-    fn decode(mut cursor: &mut Cursor) -> Result<Self, crate::codec::CodecError> {
+    fn decode(mut cursor: &mut Cursor) -> Result<Self, CodecError> {
         let not_before = u64::decode(&mut cursor)?;
         let not_after = u64::decode(&mut cursor)?;
         Ok(Self {

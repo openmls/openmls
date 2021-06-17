@@ -78,7 +78,7 @@
 //! section of the specification.
 
 use crate::{
-    ciphersuite::{Ciphersuite, Signature},
+    ciphersuite::Ciphersuite,
     codec::*,
     config::{Config, ProtocolVersion},
     credentials::{CredentialBundle, CredentialType},
@@ -86,7 +86,7 @@ use crate::{
     group::*,
     key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
-    schedule::{EncryptionSecret, SenderDataSecret},
+    schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
     test_util::*,
     tree::index::LeafIndex,
     tree::secret_tree::{SecretTree, SecretType},
@@ -131,7 +131,7 @@ pub struct EncryptionTestVector {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
+fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
@@ -141,15 +141,18 @@ fn group(ciphersuite: &Ciphersuite) -> MlsGroup {
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
     let group_id = [1, 2, 3, 4];
-    MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        key_package_bundle,
-        GroupConfig::default(),
-        None, /* Initial PSK */
-        ProtocolVersion::Mls10,
+    (
+        MlsGroup::new(
+            &group_id,
+            ciphersuite.name(),
+            key_package_bundle,
+            GroupConfig::default(),
+            None, /* Initial PSK */
+            ProtocolVersion::Mls10,
+        )
+        .unwrap(),
+        credential_bundle,
     )
-    .unwrap()
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
@@ -175,24 +178,27 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
 
 // XXX: we could be more creative in generating these messages.
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn build_handshake_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, Vec<u8>) {
-    let sender = Sender {
-        sender_type: SenderType::Member,
-        sender: leaf,
-    };
+fn build_handshake_messages(
+    leaf: LeafIndex,
+    group: &mut MlsGroup,
+    credential_bundle: &CredentialBundle,
+) -> (Vec<u8>, Vec<u8>) {
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
-    let plaintext = MlsPlaintext {
-        group_id: group.group_id().clone(),
-        epoch,
-        sender,
-        authenticated_data: vec![1, 2, 3, 4],
-        content_type: ContentType::Proposal,
-        content: MlsPlaintextContentType::Proposal(Proposal::Remove(RemoveProposal { removed: 0 })),
-        signature: Signature::new_empty(),
-        confirmation_tag: None,
-        membership_tag: None,
-    };
+    let membership_key = MembershipKey::from_secret(Secret::random(
+        group.ciphersuite(),
+        None, /* MLS version */
+    ));
+    let mut plaintext = MlsPlaintext::new_proposal(
+        leaf,
+        &[1, 2, 3, 4],
+        Proposal::Remove(RemoveProposal { removed: 0 }),
+        &credential_bundle,
+        group.context(),
+        &membership_key,
+    )
+    .unwrap();
+    plaintext.remove_membership_tag();
     let ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         group.ciphersuite(),
@@ -210,24 +216,27 @@ fn build_handshake_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, 
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-fn build_application_messages(leaf: LeafIndex, group: &mut MlsGroup) -> (Vec<u8>, Vec<u8>) {
-    let sender = Sender {
-        sender_type: SenderType::Member,
-        sender: leaf,
-    };
+fn build_application_messages(
+    leaf: LeafIndex,
+    group: &mut MlsGroup,
+    credential_bundle: &CredentialBundle,
+) -> (Vec<u8>, Vec<u8>) {
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
-    let plaintext = MlsPlaintext {
-        group_id: group.group_id().clone(),
-        epoch,
-        sender,
-        authenticated_data: vec![1, 2, 3],
-        content_type: ContentType::Application,
-        content: MlsPlaintextContentType::Application(vec![4, 5, 6]),
-        signature: Signature::new_empty(),
-        confirmation_tag: None,
-        membership_tag: None,
-    };
+    let membership_key = MembershipKey::from_secret(Secret::random(
+        group.ciphersuite(),
+        None, /* MLS version */
+    ));
+    let mut plaintext = MlsPlaintext::new_application(
+        leaf,
+        &[1, 2, 3],
+        &[4, 5, 6],
+        &credential_bundle,
+        group.context(),
+        &membership_key,
+    )
+    .unwrap();
+    plaintext.remove_membership_tag();
     let ciphertext = match MlsCiphertext::try_from_plaintext(
         &plaintext,
         group.ciphersuite(),
@@ -275,7 +284,7 @@ pub fn generate_test_vector(
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let mut group = group(ciphersuite);
+    let (mut group, credential_bundle) = group(ciphersuite);
     *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
         sender_data_secret_bytes,
         ProtocolVersion::default(),
@@ -296,7 +305,8 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
-                build_application_messages(leaf, &mut group);
+                build_application_messages(leaf, &mut group, &credential_bundle);
+            println!("Sender Group: {:?}", group);
             application.push(RatchetStep {
                 key: application_key_string,
                 nonce: application_nonce_string,
@@ -312,7 +322,8 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) =
-                build_handshake_messages(leaf, &mut group);
+                build_handshake_messages(leaf, &mut group, &credential_bundle);
+
             handshake.push(RatchetStep {
                 key: handshake_key_string,
                 nonce: handshake_nonce_string,
@@ -470,6 +481,10 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 ciphersuite,
             );
 
+            // Note that we can't actually get an MlsPlaintext because we don't
+            // have enough information. We encode the VerifiableMlsPlaintext
+            // and compare it to the plaintext in the test vector instead.
+
             // Decrypt and check application message
             let mls_plaintext_application = mls_ciphertext_application
                 .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
@@ -511,7 +526,6 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let mls_ciphertext_handshake =
                 MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
                     .expect("Error parsing MlsCiphertext");
-            let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
                 ProtocolVersion::default(),

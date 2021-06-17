@@ -1,6 +1,7 @@
 use super::*;
 
-impl Codec for CredentialType {
+implement_codec! {
+    CredentialType,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u16).encode(buffer)?;
         Ok(())
@@ -14,7 +15,8 @@ impl Codec for CredentialType {
     }
 }
 
-impl Codec for Credential {
+implement_codec! {
+    Credential,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match &self.credential {
             MlsCredentialType::Basic(basic_credential) => {
@@ -40,7 +42,8 @@ impl Codec for Credential {
     }
 }
 
-impl Codec for BasicCredential {
+implement_codec! {
+    BasicCredential,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.identity)?;
         self.signature_scheme.encode(buffer)?;
