@@ -1,58 +1,76 @@
-use crate::ciphersuite::{
-    signable::{Signable, SignedStruct, Verifiable},
-    Signature,
+use crate::{
+    ciphersuite::{
+        signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+        Signature,
+    },
+    codec::CodecError,
 };
 
-use super::treesync_node::TreeSyncable;
+use super::treesyncable::TreeSyncable;
 
-pub(crate) struct TreeSyncUpdate<P: TreeSyncable, L: TreeSyncable + Verifiable + SignedStruct> {
-    leaf_payload: L,
-    signature: Signature,
-    encoded: Vec<u8>,
+/// This is what the receiver receives from the wire.
+pub(crate) struct UnverifiedTreeSyncUpdate<P: TreeSyncable, UL: Verifiable> {
+    unverified_leaf: UL,
     path: Vec<P>,
 }
 
-pub(crate) struct TreeSyncUpdatePayload<P: TreeSyncable, LP: TreeSyncable + Signable> {
-    unsigned_leaf_node: LP,
+/// This is what treesync will accept for processing an update.
+pub(crate) struct TreeSyncUpdate<
+    P: TreeSyncable,
+    UL: Verifiable,
+    L: TreeSyncable + VerifiedStruct<UL>,
+> {
+    leaf: L,
     path: Vec<P>,
 }
 
-impl<P: TreeSyncable, L: TreeSyncable + Verifiable + SignedStruct, LP: TreeSyncable + Signable>
-    Signable for TreeSyncUpdatePayload<P, LP>
-{
-    type SignedOutput = TreeSyncUpdate;
-
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
-        self.leaf_node.encode_detached()
-    }
+/// This is what treesync requires to prepare an update.
+pub(crate) struct TreeSyncUpdatePayload<P: TreeSyncable, LP: Signable> {
+    unsigned_leaf: LP,
+    path: Vec<P>,
 }
 
-impl<P, LP, L> SignedStruct<TreeSyncUpdatePayload<P, LP>> for TreeSyncUpdate<P, L>
-where
-    P: TreeSyncable,
-    LP: TreeSyncable + Signable,
-    L: TreeSyncable + Verifiable + SignedStruct,
-{
-    fn from_payload(payload: TreeSyncUpdatePayload<P, LP>, signature: Signature) -> Self {
-        TreeSyncUpdate {
-            leaf_payload: payload.unsigned_leaf_node,
-            signature,
-            encoded: payload.unsigned_payload().unwrap(),
-            path: payload.path,
-        }
-    }
+/// This is what create_update outputs and what goes over the wire to the
+/// receiver.
+pub(crate) struct SignedTreeSyncUpdate<P: TreeSyncable, LP: Signable, SL: SignedStruct<LP>> {
+    leaf: SL,
+    path: Vec<P>,
 }
 
-impl<P, L> Verifiable for TreeSyncUpdate<P, L>
+impl<P, UL> Verifiable for UnverifiedTreeSyncUpdate<P, UL>
 where
     P: TreeSyncable,
-    L: TreeSyncable + Verifiable + SignedStruct,
+    UL: Verifiable,
 {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
         Ok(self.leaf_payload.encoded.clone())
     }
 
     fn signature(&self) -> &Signature {
         &self.signature
+    }
+}
+
+impl<P: TreeSyncable, LP: Signable, SL: SignedStruct<LP>> Signable
+    for TreeSyncUpdatePayload<P, LP>
+{
+    type SignedOutput = SignedTreeSyncUpdate<P, LP, SL>;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.leaf_node.encode_detached()
+    }
+}
+
+impl<P, LP, SL> SignedStruct<TreeSyncUpdatePayload<P, LP>> for SignedTreeSyncUpdate<P, LP, SL>
+where
+    P: TreeSyncable,
+    LP: Signable,
+    SL: SignedStruct<LP>,
+{
+    fn from_payload(payload: TreeSyncUpdatePayload<P, LP>, signature: Signature) -> Self {
+        SignedTreeSyncUpdate {
+            leaf: payload.unsigned_leaf,
+            path: payload.path,
+        }
     }
 }
