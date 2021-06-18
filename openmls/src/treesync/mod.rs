@@ -4,7 +4,7 @@ use crate::binary_tree::{FLBBinaryTree, NodeIndex};
 
 use self::{
     treesync_update::{TreeSyncUpdate, UnsignedTreeSyncUpdate},
-    treesyncable::{TreeSyncLeaf, TreeSyncParent, TreeSyncableMut},
+    treesyncable::{TreeSyncLeaf, TreeSyncParent},
 };
 
 pub(crate) mod mls_node;
@@ -65,7 +65,7 @@ struct TreeSyncDiff<
     P: TreeSyncParent,
     L: TreeSyncLeaf,
 {
-    nodes: HashMap<NodeIndex, Option<TreeSyncNode<dyn TreeSyncableMut<P>, L::UnsignedLeaf>>>,
+    nodes: HashMap<NodeIndex, Option<TreeSyncNode<P::TreeSyncParentMut, L::UnsignedLeaf>>>,
 }
 
 impl<P: TreeSyncParent, L: TreeSyncLeaf> TreeSyncDiff<P, L> {
