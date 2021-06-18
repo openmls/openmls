@@ -49,7 +49,8 @@ impl TryFrom<i32> for TestVectorType {
 }
 
 pub struct MlsClientImpl {
-    client: Mutex<ManagedClient>,
+    key_store: Mutex<KeyStore>,
+    groups: Mutex<HashMap<GroupId, ManagedGroup>>,
     state_id_map: Mutex<HashMap<u32, GroupId>>,
     transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>,
 }
@@ -57,18 +58,16 @@ pub struct MlsClientImpl {
 impl MlsClientImpl {
     fn new() -> Self {
         MlsClientImpl {
-            client: Mutex::new(ManagedClient::new(
-                "OpenMLS Client".as_bytes().to_vec(),
-                ManagedClientConfig::default_tests(),
-            )),
+            key_store: Mutex::new(KeyStore::default()),
+            groups: Mutex::new(HashMap::new()),
             state_id_map: Mutex::new(HashMap::new()),
             transaction_id_map: Mutex::new(HashMap::new()),
         }
     }
 }
 
-fn to_status(e: ManagedClientError) -> Status {
-    let message = "client error ".to_string() + &e.to_string();
+fn to_status(e: ManagedGroupError) -> Status {
+    let message = "managed group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }
 
@@ -382,15 +381,27 @@ impl MlsClient for MlsClientImpl {
             ManagedGroupCallbacks::default(),
         );
         let group_id = GroupId::from_slice(&create_group_request.group_id);
-        self.client
-            .lock()
-            .unwrap()
-            .create_group(
-                group_id.clone(),
-                Some(&managed_group_config),
-                Some(CiphersuiteName::try_from(create_group_request.cipher_suite as u16).unwrap()),
+        let ciphersuite =
+            CiphersuiteName::try_from(create_group_request.cipher_suite as u16).unwrap();
+        let key_store = self.key_store.lock().unwrap();
+        let credential = key_store
+            .generate_credential(
+                "OpenMLS".bytes().collect(),
+                CredentialType::Basic,
+                SignatureScheme::from(ciphersuite),
             )
-            .map_err(|e| to_status(e))?;
+            .unwrap();
+        let key_package = key_store
+            .generate_key_package(&[ciphersuite], &credential, vec![])
+            .unwrap();
+        let group = ManagedGroup::new(
+            &key_store,
+            &managed_group_config,
+            group_id.clone(),
+            &key_package.hash(),
+        )
+        .map_err(|e| to_status(e))?;
+        self.groups.lock().unwrap().insert(group_id.clone(), group);
         let mut state_id_map = self.state_id_map.lock().unwrap();
         let state_id = state_id_map.len() as u32;
         state_id_map.insert(state_id, group_id);
@@ -404,12 +415,17 @@ impl MlsClient for MlsClientImpl {
         let create_kp_request = request.get_ref();
 
         let ciphersuite = to_ciphersuite(create_kp_request.cipher_suite)?;
-        let key_package = self
-            .client
-            .lock()
-            .unwrap()
-            .generate_key_package(&[ciphersuite.name()])
-            .map_err(|e| to_status(e))?;
+        let key_store = self.key_store.lock().unwrap();
+        let credential = key_store
+            .generate_credential(
+                "OpenMLS".bytes().collect(),
+                CredentialType::Basic,
+                SignatureScheme::from(ciphersuite.name()),
+            )
+            .unwrap();
+        let key_package = key_store
+            .generate_key_package(&[ciphersuite.name()], &credential, vec![])
+            .unwrap();
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
         transaction_id_map.insert(transaction_id, key_package.hash());
@@ -439,20 +455,23 @@ impl MlsClient for MlsClientImpl {
             ManagedGroupCallbacks::default(),
         );
 
-        let group_id = self
-            .client
-            .lock()
-            .unwrap()
-            .process_welcome(
-                Some(&managed_group_config),
-                Welcome::decode_detached(&join_group_request.welcome).unwrap(),
-                None,
-            )
-            .map_err(|e| to_status(e))?;
+        let key_store = self.key_store.lock().unwrap();
+        let group = ManagedGroup::new_from_welcome(
+            &key_store,
+            &managed_group_config,
+            Welcome::decode_detached(&join_group_request.welcome).unwrap(),
+            None,
+        )
+        .map_err(|e| to_status(e))?;
 
         let mut state_id_map = self.state_id_map.lock().unwrap();
         let state_id = state_id_map.len() as u32;
-        state_id_map.insert(state_id, group_id);
+        state_id_map.insert(state_id, group.group_id().clone());
+
+        self.groups
+            .lock()
+            .unwrap()
+            .insert(group.group_id().clone(), group);
 
         Ok(Response::new(JoinGroupResponse { state_id }))
     }
@@ -496,12 +515,14 @@ impl MlsClient for MlsClientImpl {
             ))?
             // Cloning here to avoid potential poisoning of the state_id_map.
             .clone();
+
         let state_auth_secret = self
-            .client
+            .groups
             .lock()
             .unwrap()
-            .authentication_secret(&group_id)
-            .map_err(|e| to_status(e))?;
+            .get(&group_id)
+            .unwrap()
+            .authentication_secret();
 
         Ok(Response::new(StateAuthResponse { state_auth_secret }))
     }
@@ -524,11 +545,12 @@ impl MlsClient for MlsClientImpl {
             // Cloning here to avoid potential poisoning of the state_id_map.
             .clone();
         let exported_secret = self
-            .client
+            .groups
             .lock()
             .unwrap()
+            .get(&group_id)
+            .unwrap()
             .export_secret(
-                &group_id,
                 &export_request.label,
                 &export_request.context,
                 export_request.key_length as usize,
@@ -555,11 +577,15 @@ impl MlsClient for MlsClientImpl {
             ))?
             // Cloning here to avoid potential poisoning of the state_id_map.
             .clone();
+
+        let key_store = self.key_store.lock().unwrap();
         let ciphertext = self
-            .client
+            .groups
             .lock()
             .unwrap()
-            .create_message(&group_id, &protect_request.application_data)
+            .get_mut(&group_id)
+            .unwrap()
+            .create_message(&key_store, &protect_request.application_data)
             .map_err(|e| to_status(e))?
             .tls_serialize_detached()
             .map_err(|_| Status::aborted("failed to serialize ciphertext"))?;
@@ -586,10 +612,12 @@ impl MlsClient for MlsClientImpl {
         let message = MLSCiphertext::decode_detached(&unprotect_request.ciphertext)
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
         let events = self
-            .client
+            .groups
             .lock()
             .unwrap()
-            .process_messages(&group_id, vec![message.into()])
+            .get_mut(&group_id)
+            .unwrap()
+            .process_messages(vec![message.into()])
             .map_err(|e| to_status(e))?;
         let application_data = match events.last().unwrap() {
             GroupEvent::ApplicationMessage(application_message) => application_message.message(),
@@ -632,11 +660,14 @@ impl MlsClient for MlsClientImpl {
 
         let key_package = KeyPackage::decode_detached(&add_proposal_request.key_package)
             .map_err(|_| Status::aborted("failed to deserialize key package"))?;
+        let key_store = self.key_store.lock().unwrap();
         let proposal = self
-            .client
+            .groups
             .lock()
             .unwrap()
-            .propose_add_members(&group_id, &[key_package])
+            .get_mut(&group_id)
+            .unwrap()
+            .propose_add_members(&key_store, &[key_package])
             .map_err(|e| to_status(e))?
             .first()
             .unwrap()
@@ -664,11 +695,14 @@ impl MlsClient for MlsClientImpl {
             // Cloning here to avoid potential poisoning of the state_id_map.
             .clone();
 
+        let key_store = self.key_store.lock().unwrap();
         let proposal = self
-            .client
+            .groups
             .lock()
             .unwrap()
-            .propose_self_update(&group_id, None)
+            .get_mut(&group_id)
+            .unwrap()
+            .propose_self_update(&key_store, None)
             .map_err(|e| to_status(e))?
             .first()
             .unwrap()
@@ -696,11 +730,14 @@ impl MlsClient for MlsClientImpl {
             // Cloning here to avoid potential poisoning of the state_id_map.
             .clone();
 
+        let key_store = self.key_store.lock().unwrap();
         let proposal = self
-            .client
+            .groups
             .lock()
             .unwrap()
-            .propose_remove_members(&group_id, &[remove_proposal_request.removed as usize])
+            .get_mut(&group_id)
+            .unwrap()
+            .propose_remove_members(&key_store, &[remove_proposal_request.removed as usize])
             .map_err(|e| to_status(e))?
             .first()
             .unwrap()
@@ -757,10 +794,13 @@ impl MlsClient for MlsClientImpl {
                 .map_err(|_| Status::aborted("failed to deserialize plaintext"))?;
             proposals_by_reference.push(MLSMessage::Plaintext(pt))
         }
-        self.client
+        let key_store = self.key_store.lock().unwrap();
+        self.groups
             .lock()
             .unwrap()
-            .process_messages(&group_id, proposals_by_reference)
+            .get_mut(&group_id)
+            .unwrap()
+            .process_messages(proposals_by_reference)
             .expect("error processing proposals");
 
         let mut proposals_by_value = Vec::new();
@@ -778,10 +818,12 @@ impl MlsClient for MlsClientImpl {
         }
 
         let (messages, welcome_option) = self
-            .client
+            .groups
             .lock()
             .unwrap()
-            .process_pending_proposals(&group_id, &proposals_by_value)
+            .get_mut(&group_id)
+            .unwrap()
+            .process_pending_proposals(&proposals_by_value, &key_store)
             .map_err(|e| to_status(e))?;
         let commit = messages
             .first()
@@ -823,19 +865,23 @@ impl MlsClient for MlsClientImpl {
             proposals.push(MLSMessage::Plaintext(pt))
         }
 
-        self.client
+        self.groups
             .lock()
             .unwrap()
-            .process_messages(&group_id, proposals)
+            .get_mut(&group_id)
+            .unwrap()
+            .process_messages(proposals)
             .expect("error processing proposals");
 
         // Then feed the commit into the group.
         let commit = MLSPlaintext::decode_detached(&handle_commit_request.commit)
             .map_err(|_| Status::aborted("failed to deserialize plaintext"))?;
-        self.client
+        self.groups
             .lock()
             .unwrap()
-            .process_messages(&group_id, vec![MLSMessage::Plaintext(commit)])
+            .get_mut(&group_id)
+            .unwrap()
+            .process_messages(vec![MLSMessage::Plaintext(commit)])
             .expect("error processing proposals");
 
         Ok(Response::new(HandleCommitResponse {
