@@ -1,13 +1,10 @@
 use std::collections::HashMap;
 
-use crate::{
-    binary_tree::{FLBBinaryTree, NodeIndex},
-    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-};
+use crate::binary_tree::{FLBBinaryTree, NodeIndex};
 
 use self::{
-    treesync_update::{TreeSyncUpdate, TreeSyncUpdatePayload},
-    treesyncable::TreeSyncable,
+    treesync_update::{TreeSyncUpdate, UnsignedTreeSyncUpdate},
+    treesyncable::{TreeSyncLeaf, TreeSyncParent, TreeSyncableMut},
 };
 
 pub(crate) mod mls_node;
@@ -20,28 +17,21 @@ pub(crate) enum TreeSyncNode<P, L> {
 }
 
 struct TreeSync<
-    P,  // Parent Node
-    L,  // (Verified) Leaf (lives in the tree)
-    LP, // Leaf Payload (unsigned)
-    SP, // Signed Leaf
-    UL, // Unverified Leaf (signed)
+    P, // Parent Node
+    L, // (Verified) Leaf (lives in the tree)
+       //LP, // Leaf Payload (unsigned)
+       //SL, // Signed Leaf
 > where
-    P: TreeSyncable,
-    L: TreeSyncable + VerifiedStruct<UL>,
-    LP: Signable,
-    SP: SignedStruct<LP>,
-    UL: Verifiable,
+    P: TreeSyncParent,
+    L: TreeSyncLeaf,
 {
     tree: dyn FLBBinaryTree<Option<TreeSyncNode<P, L>>>,
 }
 
-impl<P, L, LP, SP, UL> TreeSync<P, L, LP, SP, UL>
+impl<P, L> TreeSync<P, L>
 where
-    P: TreeSyncable,
-    L: TreeSyncable + VerifiedStruct<UL>,
-    LP: Signable,
-    SP: SignedStruct<LP>,
-    UL: Verifiable,
+    P: TreeSyncParent,
+    L: TreeSyncLeaf,
 {
     /// Return the tree hash of the root node.
     fn tree_hash(&self) -> Vec<u8> {
@@ -57,44 +47,28 @@ where
     /// re-computes all necessary tree hashes.
     /// Note, that the private values corresponding to the ones in the
     /// TreeSync should be committed at the same time.
-    fn merge_diff(
-        &mut self,
-        tree_sync_diff: TreeSyncDiff<P, L, LP, SP, UL>,
-    ) -> Result<(), TreeSyncError> {
+    fn merge_diff(&mut self, tree_sync_diff: TreeSyncDiff<P, L>) -> Result<(), TreeSyncError> {
         todo!()
     }
 
     /// Create an empty diff based on this TreeSync instance all operations
     /// are created based on an initial, empty diff.
-    fn empty_diff(&self) -> TreeSyncDiff<P, L, LP, SP, UL> {
+    fn empty_diff(&self) -> TreeSyncDiff<P, L> {
         todo!()
     }
 }
 
 struct TreeSyncDiff<
-    P,  // Parent Node
-    L,  // (Verified) Leaf (lives in the tree)
-    LP, // Leaf Payload (unsigned)
-    SP, // Signed Leaf
-    UL, // Unverified Leaf (signed)
+    P, // Parent Node
+    L, // (Verified) Leaf (lives in the tree)
 > where
-    P: TreeSyncable,
-    L: TreeSyncable + VerifiedStruct<UL>,
-    LP: Signable,
-    SP: SignedStruct<LP>,
-    UL: Verifiable,
+    P: TreeSyncParent,
+    L: TreeSyncLeaf,
 {
-    nodes: HashMap<NodeIndex, Option<TreeSyncNode<P, L>>>,
+    nodes: HashMap<NodeIndex, Option<TreeSyncNode<dyn TreeSyncableMut<P>, L::UnsignedLeaf>>>,
 }
 
-impl<
-        P: TreeSyncable,
-        L: TreeSyncable + VerifiedStruct<UL>,
-        LP: Signable,
-        SP: SignedStruct<LP>,
-        UL: Verifiable,
-    > TreeSyncDiff<P, L, LP, SP, UL>
-{
+impl<P: TreeSyncParent, L: TreeSyncLeaf> TreeSyncDiff<P, L> {
     /// Update a leaf node and blank the nodes in the updated leaf's direct path.
     fn update_leaf(&mut self, leaf_node: L, leaf_index: NodeIndex) -> Self {
         todo!()
@@ -119,7 +93,7 @@ impl<
     ///   the the ones in `path` and
     /// * computes the `parent_hash` of all nodes in the path and compares it to
     ///   the one in the `leaf_node`.
-    fn process_update_path(&mut self, update: TreeSyncUpdate<P, UL, L>) -> Self {
+    fn process_update_path(&mut self, update: TreeSyncUpdate<P, L>) -> Self {
         todo!()
     }
 
@@ -131,8 +105,8 @@ impl<
     /// * and returns a `TreeSyncUpdate`.
     fn create_update_path(
         &mut self,
-        update: TreeSyncUpdatePayload<P, LP>,
-    ) -> Result<(Self, TreeSyncUpdatePayload<P, LP>), TreeSyncError> {
+        update: UnsignedTreeSyncUpdate<P, L>,
+    ) -> Result<(Self, TreeSyncUpdate<P, L>), TreeSyncError> {
         todo!()
     }
 

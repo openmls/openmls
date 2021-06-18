@@ -6,70 +6,80 @@ use crate::{
     codec::CodecError,
 };
 
-use super::treesyncable::TreeSyncable;
+use super::treesyncable::{TreeSyncLeaf, TreeSyncParent};
 
 /// This is what the receiver receives from the wire.
-pub(crate) struct UnverifiedTreeSyncUpdate<P: TreeSyncable, UL: Verifiable> {
-    unverified_leaf: UL,
+pub(crate) struct UnverifiedTreeSyncUpdate<P: TreeSyncParent, L: TreeSyncLeaf> {
+    unverified_leaf: L::UnverifiedLeaf,
     path: Vec<P>,
 }
 
 /// This is what treesync will accept for processing an update.
-pub(crate) struct TreeSyncUpdate<
-    P: TreeSyncable,
-    UL: Verifiable,
-    L: TreeSyncable + VerifiedStruct<UL>,
-> {
+pub(crate) struct TreeSyncUpdate<P: TreeSyncParent, L: TreeSyncLeaf> {
     leaf: L,
     path: Vec<P>,
 }
 
 /// This is what treesync requires to prepare an update.
-pub(crate) struct TreeSyncUpdatePayload<P: TreeSyncable, LP: Signable> {
-    unsigned_leaf: LP,
+pub(crate) struct UnsignedTreeSyncUpdate<P: TreeSyncParent, L: TreeSyncLeaf> {
+    unsigned_leaf: L::UnsignedLeaf,
     path: Vec<P>,
 }
 
 /// This is what create_update outputs and what goes over the wire to the
 /// receiver.
-pub(crate) struct SignedTreeSyncUpdate<P: TreeSyncable, LP: Signable, SL: SignedStruct<LP>> {
-    leaf: SL,
+pub(crate) struct SignedTreeSyncUpdate<P: TreeSyncParent, L: TreeSyncLeaf> {
+    leaf: L::SignedLeaf,
     path: Vec<P>,
 }
 
-impl<P, UL> Verifiable for UnverifiedTreeSyncUpdate<P, UL>
+impl<P, L> Verifiable for UnverifiedTreeSyncUpdate<P, L>
 where
-    P: TreeSyncable,
-    UL: Verifiable,
+    P: TreeSyncParent,
+    L: TreeSyncLeaf,
 {
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        Ok(self.leaf_payload.encoded.clone())
+        self.unverified_leaf.unsigned_payload()
     }
 
     fn signature(&self) -> &Signature {
-        &self.signature
+        &self.unverified_leaf.signature()
     }
 }
 
-impl<P: TreeSyncable, LP: Signable, SL: SignedStruct<LP>> Signable
-    for TreeSyncUpdatePayload<P, LP>
+impl<P, L> VerifiedStruct<UnverifiedTreeSyncUpdate<P, L>> for TreeSyncUpdate<P, L>
+where
+    P: TreeSyncParent,
+    L: TreeSyncLeaf,
 {
-    type SignedOutput = SignedTreeSyncUpdate<P, LP, SL>;
+    fn from_verifiable(verifiable: UnverifiedTreeSyncUpdate<P, L>) -> Self {
+        Self {
+            leaf: L::from_verifiable(verifiable.unverified_leaf),
+            path: verifiable.path,
+        }
+    }
+}
+
+impl<P, L> Signable for UnsignedTreeSyncUpdate<P, L>
+where
+    P: TreeSyncParent,
+    L: TreeSyncLeaf,
+{
+    type SignedOutput = SignedTreeSyncUpdate<P, L>;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        self.leaf_node.encode_detached()
+        self.unsigned_leaf.unsigned_payload()
     }
 }
 
-impl<P, LP, SL> SignedStruct<TreeSyncUpdatePayload<P, LP>> for SignedTreeSyncUpdate<P, LP, SL>
+impl<P, L> SignedStruct<UnsignedTreeSyncUpdate<P, L>> for SignedTreeSyncUpdate<P, L>
 where
-    P: TreeSyncable,
-    LP: Signable,
-    SL: SignedStruct<LP>,
+    P: TreeSyncParent,
+    L: TreeSyncLeaf,
 {
-    fn from_payload(payload: TreeSyncUpdatePayload<P, LP>, signature: Signature) -> Self {
+    fn from_payload(payload: UnsignedTreeSyncUpdate<P, L>, signature: Signature) -> Self {
         SignedTreeSyncUpdate {
-            leaf: payload.unsigned_leaf,
+            leaf: L::SignedLeaf::from_payload(payload.unsigned_leaf, signature),
             path: payload.path,
         }
     }
