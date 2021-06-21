@@ -237,7 +237,7 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update();
-        let config = GroupConfig::default();
+        let config = MlsGroupConfig::default();
         let mls_group = MlsGroup::new(
             group_id,
             CIPHERSUITE,

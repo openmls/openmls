@@ -162,7 +162,7 @@ async fn test_group() {
         group_id,
         group_ciphersuite,
         key_package_bundles.remove(0),
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
     )
