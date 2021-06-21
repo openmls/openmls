@@ -3,7 +3,7 @@ use crate::{
     codec::{Decode, Encode},
     key_packages::KeyPackageBundle,
     messages::{
-        Config, CredentialBundle, CredentialType, MlsGroupConfig, LeafIndex, MlsGroup,
+        Config, CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig,
         PublicGroupState,
     },
 };
