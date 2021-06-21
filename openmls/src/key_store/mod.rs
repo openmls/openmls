@@ -168,7 +168,7 @@ impl KeyStore {
     /// obtain an `RwLock` on the desired `CredentialBundle`. Returns an error
     /// if no `CredentialBundle` can be found corresponding to the given
     /// `SignaturePublicKey`.
-    pub(crate) fn get_credential_bundle<'key_store>(
+    pub fn get_credential_bundle<'key_store>(
         &'key_store self,
         signature_public_key: &'key_store SignaturePublicKey,
     ) -> Option<CbGuard> {

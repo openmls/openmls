@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 /// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct MlsCiphertext {
     pub group_id: GroupId,
     pub epoch: GroupEpoch,

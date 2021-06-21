@@ -1090,7 +1090,7 @@ impl ManagedGroup {
 }
 
 /// Unified message type
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Serialize)]
 pub enum MlsMessage {
     /// An OpenMLS `MlsPlaintext`.
     Plaintext(MlsPlaintext),
@@ -1133,6 +1133,15 @@ impl MlsMessage {
         match self {
             MlsMessage::Ciphertext(m) => m.is_handshake_message(),
             MlsMessage::Plaintext(m) => m.is_handshake_message(),
+        }
+    }
+}
+
+impl Codec for MlsMessage {
+    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+        match self {
+            MlsMessage::Plaintext(plaintext) => plaintext.encode(buffer),
+            MlsMessage::Ciphertext(ciphertext) => ciphertext.encode(buffer),
         }
     }
 }

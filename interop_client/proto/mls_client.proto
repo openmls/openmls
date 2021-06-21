@@ -1,0 +1,254 @@
+syntax = "proto3";
+
+option go_package = "github.com/mlswg/mls-implementations/interop/proto";
+
+package mls_client;
+
+// A wrapper around an MLS client implementation
+service MLSClient {
+  // The human-readable name of the stack
+  rpc Name(NameRequest) returns (NameResponse) {}
+
+  // List of supported ciphersuites
+  rpc SupportedCiphersuites(SupportedCiphersuitesRequest) returns (SupportedCiphersuitesResponse) {}
+
+  // Test vector generation and verification
+  rpc GenerateTestVector(GenerateTestVectorRequest) returns (GenerateTestVectorResponse) {}
+  rpc VerifyTestVector(VerifyTestVectorRequest) returns (VerifyTestVectorResponse) {}
+
+  // Ways to become a member of a group
+  rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {}
+  rpc CreateKeyPackage(CreateKeyPackageRequest) returns (CreateKeyPackageResponse) {}
+  rpc JoinGroup(JoinGroupRequest) returns (JoinGroupResponse) {}
+  rpc ExternalJoin(ExternalJoinRequest) returns (ExternalJoinResponse) {}
+
+  // Operations using a group state
+  rpc PublicGroupState(PublicGroupStateRequest) returns (PublicGroupStateResponse) {}
+  rpc StateAuth(StateAuthRequest) returns (StateAuthResponse) {}
+  rpc Export(ExportRequest) returns (ExportResponse) {}
+  rpc Protect(ProtectRequest) returns (ProtectResponse) {}
+  rpc Unprotect(UnprotectRequest) returns (UnprotectResponse) {}
+  rpc StorePSK(StorePSKRequest) returns (StorePSKResponse) {}
+
+  rpc AddProposal(AddProposalRequest) returns (ProposalResponse) {}
+  rpc UpdateProposal(UpdateProposalRequest) returns (ProposalResponse) {}
+  rpc RemoveProposal(RemoveProposalRequest) returns (ProposalResponse) {}
+  rpc PSKProposal(PSKProposalRequest) returns (ProposalResponse) {}
+  rpc ReInitProposal(ReInitProposalRequest) returns (ProposalResponse) {}
+  rpc AppAckProposal(AppAckProposalRequest) returns (ProposalResponse) {}
+
+  rpc Commit(CommitRequest) returns (CommitResponse) {}
+  rpc HandleCommit(HandleCommitRequest) returns (HandleCommitResponse) {}
+}
+
+// rpc Name
+message NameRequest {}
+
+message NameResponse {
+  string name = 1;
+}
+
+// rpc SupportedCiphersuites
+message SupportedCiphersuitesRequest {}
+
+message SupportedCiphersuitesResponse {
+  repeated uint32 ciphersuites = 1; // Actually uint16 ciphersuite values
+}
+
+// rpc GenerateTestVector
+enum TestVectorType {
+  TREE_MATH = 0;
+  ENCRYPTION = 1;
+  KEY_SCHEDULE = 2;
+  TRANSCRIPT = 3;
+  TREEKEM = 4;
+  MESSAGES = 5;
+}
+
+// Generation parameters that are not needed for a given test type are ignored
+message GenerateTestVectorRequest {
+  TestVectorType test_vector_type = 1;
+  uint32 cipher_suite = 2; // Actually uint16
+  uint32 n_leaves = 3;
+  uint32 n_generations = 4;
+  uint32 n_epochs = 5;
+}
+
+message GenerateTestVectorResponse {
+  bytes test_vector = 1;
+}
+
+// rpc VerifyTestVector
+message VerifyTestVectorRequest {
+  TestVectorType test_vector_type = 1;
+  bytes test_vector = 2;
+}
+
+message VerifyTestVectorResponse {}
+
+
+// rpc CreateGroup
+// XXX(RLB): Credential type is omitted; let's just use Basic for these tests
+message CreateGroupRequest {
+  bytes group_id = 1;
+  uint32 cipher_suite = 2; // Actually uint16
+  bool encrypt_handshake = 3;
+}
+
+message CreateGroupResponse {
+  uint32 state_id = 1;
+}
+
+// rpc CreateKeyPackage
+message CreateKeyPackageRequest {
+  uint32 cipher_suite = 1;
+}
+
+message CreateKeyPackageResponse {
+  uint32 transaction_id = 1;
+  bytes key_package = 2;
+}
+
+// rpc JoinGroup
+message JoinGroupRequest {
+  uint32 transaction_id = 1;
+  bytes welcome = 2;
+  bool encrypt_handshake = 3;
+}
+
+message JoinGroupResponse {
+  uint32 state_id = 1;
+}
+
+// rpc ExternalJoin
+message ExternalJoinRequest {
+  bytes public_group_state = 1;
+  bool encrypt_handshake = 2;
+}
+
+message ExternalJoinResponse {
+  bytes commit = 1;
+  bytes welcome = 2;
+  uint32 state_id = 3;
+}
+
+// rpc PublicGroupState
+message PublicGroupStateRequest {
+  uint32 state_id = 1;
+}
+
+message PublicGroupStateResponse {
+  bytes public_group_state = 1;
+}
+
+// rpc StateAuth
+message StateAuthRequest {
+  uint32 state_id = 1;
+}
+
+message StateAuthResponse {
+  bytes state_auth_secret = 1;
+}
+
+// rpc Export
+message ExportRequest {
+  uint32 state_id = 1;
+  string label = 2;
+  bytes context = 3;
+  uint32 key_length = 4;
+}
+
+message ExportResponse {
+  bytes exported_secret = 1;
+}
+
+// rpc Protect
+message ProtectRequest {
+  uint32 state_id = 1;
+  bytes application_data = 2;
+}
+
+message ProtectResponse {
+  bytes ciphertext = 1;
+}
+
+// rpc Unprotect
+message UnprotectRequest {
+  uint32 state_id = 1;
+  bytes ciphertext = 2;
+}
+
+message UnprotectResponse {
+  bytes application_data = 1;
+}
+
+// rpc StorePSK
+message StorePSKRequest {
+  uint32 state_id = 1;
+  bytes psk_id = 2;
+  bytes psk = 3;
+}
+
+message StorePSKResponse {}
+
+// rpc AddProposal
+message AddProposalRequest {
+  uint32 state_id = 1;
+  bytes key_package = 2;
+}
+
+message ProposalResponse {
+  bytes proposal = 1;
+}
+
+// rpc UpdateProposal
+message UpdateProposalRequest {
+  uint32 state_id = 1;
+}
+
+// rpc RemoveProposal
+message RemoveProposalRequest {
+  uint32 state_id = 1;
+  uint32 removed = 2;
+}
+
+// rpc PSKProposal
+message PSKProposalRequest {
+  uint32 state_id = 1;
+  bytes psk_id = 2;
+}
+
+// rpc ReInitProposal
+message ReInitProposalRequest {
+  uint32 state_id = 1;
+  bytes group_id = 2;
+  uint32 cipher_suite = 3; // actually uint16
+}
+
+// rpc AppAckProposal
+message AppAckProposalRequest {
+  uint32 state_id = 1;
+}
+
+// rpc Commit
+message CommitRequest {
+  uint32 state_id = 1;
+  repeated bytes by_reference = 2;
+  repeated bytes by_value = 3;
+}
+
+message CommitResponse {
+  bytes commit = 1;
+  bytes welcome = 2;
+}
+
+// rpc HandleCommit
+message HandleCommitRequest {
+  uint32 state_id = 1;
+  repeated bytes proposal = 2;
+  bytes commit = 3;
+}
+
+message HandleCommitResponse {
+  uint32 state_id = 1;
+}
