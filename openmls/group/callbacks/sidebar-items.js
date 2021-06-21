@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ManagedGroupCallbacks","Collection of callback functions that are passed to a `ManagedGroup` as part of the configurations. All callback functions are optional."]],"type":[["AutoSave",""],["ValidateAdd",""],["ValidateRemove",""]]});
+initSidebarItems({"struct":[["ManagedGroupCallbacks",""]],"type":[["AutoSave",""],["ValidateAdd",""],["ValidateRemove",""]]});

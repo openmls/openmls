@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["ciphertext",""],["codec",""],["errors","Framing errors."],["plaintext",""],["sender","Section  9. Message Framing"]]});
+initSidebarItems({"mod":[["ciphertext",""],["errors","Framing errors."],["plaintext","MlsPlaintext"],["sender","The sender of a message"]]});

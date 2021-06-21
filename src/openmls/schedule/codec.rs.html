@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/schedule/codec.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>codec.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -126,58 +126,51 @@
 <span id="123">123</span>
 <span id="124">124</span>
 <span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">psk</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::{<span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group</span>::{<span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>};
 
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PskType</span> {
+<span class="macro">implement_codec!</span> {
+    <span class="ident">PskType</span>,
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         (<span class="kw-2">*</span><span class="self">self</span> <span class="kw">as</span> <span class="ident">u8</span>).<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">PskType</span>::<span class="ident">try_from</span>(<span class="ident">u8</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>) {
+        <span class="kw">match</span> <span class="ident">PskType::try_from</span>(<span class="ident">u8::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">psk_type</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">psk_type</span>),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">CodecError</span>::<span class="ident">DecodingError</span>),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">CodecError::DecodingError</span>),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">ExternalPsk</span> {
+<span class="macro">implement_codec!</span> {
+    <span class="ident">ExternalPsk</span>,
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_id</span>())<span class="question-mark">?</span>;
+        <span class="ident">encode_vec</span>(<span class="ident">VecSize::VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_id</span>())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">psk_id</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">psk_id</span>))
+        <span class="kw">let</span> <span class="ident">psk_id</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize::VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span><span class="ident">::new</span>(<span class="ident">psk_id</span>))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">ReinitPsk</span> {
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">psk_group_id</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">psk_epoch</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">psk_group_id</span> <span class="op">=</span> <span class="ident">GroupId</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">psk_epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">psk_group_id</span>,
-            <span class="ident">psk_epoch</span>,
-        })
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">BranchPsk</span> {
+<span class="macro">implement_codec!</span> {
+    <span class="ident">ReinitPsk</span>,
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">psk_group_id</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">psk_epoch</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
@@ -185,8 +178,8 @@
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">psk_group_id</span> <span class="op">=</span> <span class="ident">GroupId</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">psk_epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psk_group_id</span> <span class="op">=</span> <span class="ident">GroupId::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psk_epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">psk_group_id</span>,
             <span class="ident">psk_epoch</span>,
@@ -194,26 +187,45 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PreSharedKeyId</span> {
+<span class="macro">implement_codec!</span> {
+    <span class="ident">BranchPsk</span>,
+    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">psk_group_id</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">psk_epoch</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">psk_group_id</span> <span class="op">=</span> <span class="ident">GroupId::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psk_epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
+            <span class="ident">psk_group_id</span>,
+            <span class="ident">psk_epoch</span>,
+        })
+    }
+}
+
+<span class="macro">implement_codec!</span> {
+    <span class="ident">PreSharedKeyId</span>,
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">psk_type</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk</span> {
-            <span class="ident">Psk</span>::<span class="ident">External</span>(<span class="ident">external_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">external_psk</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>,
-            <span class="ident">Psk</span>::<span class="ident">Reinit</span>(<span class="ident">reinit_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reinit_psk</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>,
-            <span class="ident">Psk</span>::<span class="ident">Branch</span>(<span class="ident">branch_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">branch_psk</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>,
+            <span class="ident">Psk::External</span>(<span class="ident">external_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">external_psk</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>,
+            <span class="ident">Psk::Reinit</span>(<span class="ident">reinit_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reinit_psk</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>,
+            <span class="ident">Psk::Branch</span>(<span class="ident">branch_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">branch_psk</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>,
         }
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_nonce</span>)<span class="question-mark">?</span>;
+        <span class="ident">encode_vec</span>(<span class="ident">VecSize::VecU8</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_nonce</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">psktype</span> <span class="op">=</span> <span class="ident">PskType</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psktype</span> <span class="op">=</span> <span class="ident">PskType::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">psktype</span> {
-            <span class="ident">PskType</span>::<span class="ident">External</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">External</span>(<span class="ident">ExternalPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
-            <span class="ident">PskType</span>::<span class="ident">Reinit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">Reinit</span>(<span class="ident">ReinitPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
-            <span class="ident">PskType</span>::<span class="ident">Branch</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk</span>::<span class="ident">Branch</span>(<span class="ident">BranchPsk</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType::External</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk::External</span>(<span class="ident">ExternalPsk::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType::Reinit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk::Reinit</span>(<span class="ident">ReinitPsk::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType::Branch</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk::Branch</span>(<span class="ident">BranchPsk::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>),
         };
-        <span class="kw">let</span> <span class="ident">psk_nonce</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psk_nonce</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize::VecU8</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">psk_type</span>: <span class="ident">psktype</span>,
             <span class="ident">psk</span>,
@@ -222,30 +234,32 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PreSharedKeys</span> {
+<span class="macro">implement_codec!</span> {
+    <span class="ident">PreSharedKeys</span>,
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU16</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psks</span>)<span class="question-mark">?</span>;
+        <span class="ident">encode_vec</span>(<span class="ident">VecSize::VecU16</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psks</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">psks</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU16</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">psks</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize::VecU16</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">psks</span> })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">JoinerSecret</span> {
+<span class="macro">implement_codec!</span> {
+    <span class="ident">JoinerSecret</span>,
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">Secret</span>::<span class="ident">decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">Secret::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">JoinerSecret</span> { <span class="ident">secret</span> })
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Codec</span> <span class="kw">for</span> <span class="ident">PskLabel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Encode</span> <span class="kw">for</span> <span class="ident">PskLabel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">id</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">index</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
@@ -253,5 +267,5 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-js="../../../search-index.js"></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
     <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

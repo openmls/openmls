@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tree/tests/kat_encryption.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kat_encryption.rs - source</title><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../../storage.js"></script><script src="../../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+<link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../../settings.html"><img src="../../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -622,6 +622,20 @@
 <span id="619">619</span>
 <span id="620">620</span>
 <span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for encrypting to tree nodes</span>
 <span class="doccomment">//!</span>
@@ -703,25 +717,25 @@
 <span class="doccomment">//! section of the specification.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">Signature</span>},
+    <span class="ident">ciphersuite::Ciphersuite</span>,
     <span class="ident">codec</span>::<span class="kw-2">*</span>,
     <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>},
     <span class="ident">credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialType</span>},
     <span class="ident">framing</span>::<span class="kw-2">*</span>,
     <span class="ident">group</span>::<span class="kw-2">*</span>,
-    <span class="ident">key_packages</span>::<span class="ident">KeyPackageBundle</span>,
-    <span class="ident">messages</span>::<span class="ident">proposals</span>::<span class="ident">Proposal</span>,
-    <span class="ident">schedule</span>::{<span class="ident">EncryptionSecret</span>, <span class="ident">SenderDataSecret</span>},
+    <span class="ident">key_packages::KeyPackageBundle</span>,
+    <span class="ident">messages::proposals::Proposal</span>,
+    <span class="ident">schedule</span>::{<span class="ident">EncryptionSecret</span>, <span class="ident">MembershipKey</span>, <span class="ident">SenderDataSecret</span>},
     <span class="ident">test_util</span>::<span class="kw-2">*</span>,
-    <span class="ident">tree</span>::<span class="ident">index</span>::<span class="ident">LeafIndex</span>,
-    <span class="ident">tree</span>::<span class="ident">secret_tree</span>::{<span class="ident">SecretTree</span>, <span class="ident">SecretType</span>},
+    <span class="ident">tree::index::LeafIndex</span>,
+    <span class="ident">tree::secret_tree</span>::{<span class="ident">SecretTree</span>, <span class="ident">SecretType</span>},
     <span class="ident">tree</span>::<span class="kw-2">*</span>,
     <span class="ident">utils</span>::{<span class="ident">random_u64</span>, <span class="ident">randombytes</span>},
 };
 
-<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">izip</span>;
+<span class="kw">use</span> <span class="ident">itertools::izip</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">struct</span> <span class="ident">SenderDataInfo</span> {
@@ -756,69 +770,75 @@
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">fn</span> <span class="ident">group</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MlsGroup</span> {
-    <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle</span>::<span class="ident">new</span>(
+<span class="kw">fn</span> <span class="ident">group</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">MlsGroup</span>, <span class="ident">CredentialBundle</span>) {
+    <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
         <span class="string">&quot;Kreator&quot;</span>.<span class="ident">into</span>(),
-        <span class="ident">CredentialType</span>::<span class="ident">Basic</span>,
-        <span class="ident">SignatureScheme</span>::<span class="ident">from</span>(<span class="ident">ciphersuite</span>.<span class="ident">name</span>()),
+        <span class="ident">CredentialType::Basic</span>,
+        <span class="ident">SignatureScheme::from</span>(<span class="ident">ciphersuite</span>.<span class="ident">name</span>()),
     )
     .<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
-        <span class="ident">KeyPackageBundle</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite</span>.<span class="ident">name</span>()], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec</span>::<span class="ident">new</span>()).<span class="ident">unwrap</span>();
+        <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite</span>.<span class="ident">name</span>()], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>];
-    <span class="ident">MlsGroup</span>::<span class="ident">new</span>(
-        <span class="kw-2">&amp;</span><span class="ident">group_id</span>,
-        <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
-        <span class="ident">key_package_bundle</span>,
-        <span class="ident">GroupConfig</span>::<span class="ident">default</span>(),
-        <span class="prelude-val">None</span>, <span class="comment">/* Initial PSK */</span>
-        <span class="ident">ProtocolVersion</span>::<span class="ident">Mls10</span>,
+    (
+        <span class="ident">MlsGroup::new</span>(
+            <span class="kw-2">&amp;</span><span class="ident">group_id</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
+            <span class="ident">key_package_bundle</span>,
+            <span class="ident">GroupConfig::default</span>(),
+            <span class="prelude-val">None</span>, <span class="comment">/* Initial PSK */</span>
+            <span class="ident">ProtocolVersion::Mls10</span>,
+        )
+        .<span class="ident">unwrap</span>(),
+        <span class="ident">credential_bundle</span>,
     )
-    .<span class="ident">unwrap</span>()
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">group_id</span>: <span class="kw-2">&amp;</span><span class="ident">GroupId</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MlsGroup</span> {
-    <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle</span>::<span class="ident">new</span>(
+    <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
         <span class="string">&quot;Receiver&quot;</span>.<span class="ident">into</span>(),
-        <span class="ident">CredentialType</span>::<span class="ident">Basic</span>,
-        <span class="ident">SignatureScheme</span>::<span class="ident">from</span>(<span class="ident">ciphersuite</span>.<span class="ident">name</span>()),
+        <span class="ident">CredentialType::Basic</span>,
+        <span class="ident">SignatureScheme::from</span>(<span class="ident">ciphersuite</span>.<span class="ident">name</span>()),
     )
     .<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
-        <span class="ident">KeyPackageBundle</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite</span>.<span class="ident">name</span>()], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec</span>::<span class="ident">new</span>()).<span class="ident">unwrap</span>();
-    <span class="ident">MlsGroup</span>::<span class="ident">new</span>(
+        <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite</span>.<span class="ident">name</span>()], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
+    <span class="ident">MlsGroup::new</span>(
         <span class="kw-2">&amp;</span><span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
         <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
         <span class="ident">key_package_bundle</span>,
-        <span class="ident">GroupConfig</span>::<span class="ident">default</span>(),
+        <span class="ident">GroupConfig::default</span>(),
         <span class="prelude-val">None</span>, <span class="comment">/* Initial PSK */</span>
-        <span class="ident">ProtocolVersion</span>::<span class="ident">Mls10</span>,
+        <span class="ident">ProtocolVersion::Mls10</span>,
     )
     .<span class="ident">unwrap</span>()
 }
 
 <span class="comment">// XXX: we could be more creative in generating these messages.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">fn</span> <span class="ident">build_handshake_messages</span>(<span class="ident">leaf</span>: <span class="ident">LeafIndex</span>, <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-    <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
-        <span class="ident">sender_type</span>: <span class="ident">SenderType</span>::<span class="ident">Member</span>,
-        <span class="ident">sender</span>: <span class="ident">leaf</span>,
-    };
+<span class="kw">fn</span> <span class="ident">build_handshake_messages</span>(
+    <span class="ident">leaf</span>: <span class="ident">LeafIndex</span>,
+    <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>,
+    <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
+) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
     <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>(<span class="ident">random_u64</span>());
     <span class="ident">group</span>.<span class="ident">context_mut</span>().<span class="ident">set_epoch</span>(<span class="ident">epoch</span>);
-    <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span> {
-        <span class="ident">group_id</span>: <span class="ident">group</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
-        <span class="ident">epoch</span>,
-        <span class="ident">sender</span>,
-        <span class="ident">authenticated_data</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
-        <span class="ident">content_type</span>: <span class="ident">ContentType</span>::<span class="ident">Proposal</span>,
-        <span class="ident">content</span>: <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="ident">Proposal</span>::<span class="ident">Remove</span>(<span class="ident">RemoveProposal</span> { <span class="ident">removed</span>: <span class="number">0</span> })),
-        <span class="ident">signature</span>: <span class="ident">Signature</span>::<span class="ident">new_empty</span>(),
-        <span class="ident">confirmation_tag</span>: <span class="prelude-val">None</span>,
-        <span class="ident">membership_tag</span>: <span class="prelude-val">None</span>,
-    };
-    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext</span>::<span class="ident">try_from_plaintext</span>(
+    <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::from_secret</span>(<span class="ident">Secret::random</span>(
+        <span class="ident">group</span>.<span class="ident">ciphersuite</span>(),
+        <span class="prelude-val">None</span>, <span class="comment">/* MLS version */</span>
+    ));
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_proposal</span>(
+        <span class="ident">leaf</span>,
+        <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
+        <span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal</span> { <span class="ident">removed</span>: <span class="number">0</span> }),
+        <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
+        <span class="ident">group</span>.<span class="ident">context</span>(),
+        <span class="kw-2">&amp;</span><span class="ident">membership_key</span>,
+    )
+    .<span class="ident">unwrap</span>();
+    <span class="ident">plaintext</span>.<span class="ident">remove_membership_tag</span>();
+    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext::try_from_plaintext</span>(
         <span class="kw-2">&amp;</span><span class="ident">plaintext</span>,
         <span class="ident">group</span>.<span class="ident">ciphersuite</span>(),
         <span class="ident">group</span>.<span class="ident">context</span>(),
@@ -835,25 +855,28 @@
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">fn</span> <span class="ident">build_application_messages</span>(<span class="ident">leaf</span>: <span class="ident">LeafIndex</span>, <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-    <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
-        <span class="ident">sender_type</span>: <span class="ident">SenderType</span>::<span class="ident">Member</span>,
-        <span class="ident">sender</span>: <span class="ident">leaf</span>,
-    };
+<span class="kw">fn</span> <span class="ident">build_application_messages</span>(
+    <span class="ident">leaf</span>: <span class="ident">LeafIndex</span>,
+    <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>,
+    <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
+) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
     <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>(<span class="ident">random_u64</span>());
     <span class="ident">group</span>.<span class="ident">context_mut</span>().<span class="ident">set_epoch</span>(<span class="ident">epoch</span>);
-    <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span> {
-        <span class="ident">group_id</span>: <span class="ident">group</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
-        <span class="ident">epoch</span>,
-        <span class="ident">sender</span>,
-        <span class="ident">authenticated_data</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],
-        <span class="ident">content_type</span>: <span class="ident">ContentType</span>::<span class="ident">Application</span>,
-        <span class="ident">content</span>: <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Application</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]),
-        <span class="ident">signature</span>: <span class="ident">Signature</span>::<span class="ident">new_empty</span>(),
-        <span class="ident">confirmation_tag</span>: <span class="prelude-val">None</span>,
-        <span class="ident">membership_tag</span>: <span class="prelude-val">None</span>,
-    };
-    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">MlsCiphertext</span>::<span class="ident">try_from_plaintext</span>(
+    <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::from_secret</span>(<span class="ident">Secret::random</span>(
+        <span class="ident">group</span>.<span class="ident">ciphersuite</span>(),
+        <span class="prelude-val">None</span>, <span class="comment">/* MLS version */</span>
+    ));
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_application</span>(
+        <span class="ident">leaf</span>,
+        <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],
+        <span class="kw-2">&amp;</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>],
+        <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
+        <span class="ident">group</span>.<span class="ident">context</span>(),
+        <span class="kw-2">&amp;</span><span class="ident">membership_key</span>,
+    )
+    .<span class="ident">unwrap</span>();
+    <span class="ident">plaintext</span>.<span class="ident">remove_membership_tag</span>();
+    <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">MlsCiphertext::try_from_plaintext</span>(
         <span class="kw-2">&amp;</span><span class="ident">plaintext</span>,
         <span class="ident">group</span>.<span class="ident">ciphersuite</span>(),
         <span class="ident">group</span>.<span class="ident">context</span>(),
@@ -863,7 +886,7 @@
         <span class="number">0</span>,
     ) {
         <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Could not create MlsCiphertext {}&quot;</span>, <span class="ident">e</span>),
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;Could not create MlsCiphertext {}&quot;</span>, <span class="ident">e</span>),
     };
     (
         <span class="ident">plaintext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
@@ -880,14 +903,14 @@
     <span class="kw">let</span> <span class="ident">ciphersuite_name</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">name</span>();
     <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span> <span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
     <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span>
-        <span class="ident">EncryptionSecret</span>::<span class="ident">from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>[..], <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(), <span class="ident">ciphersuite</span>);
+        <span class="ident">EncryptionSecret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>[..], <span class="ident">ProtocolVersion::default</span>(), <span class="ident">ciphersuite</span>);
     <span class="kw">let</span> <span class="ident">encryption_secret_group</span> <span class="op">=</span>
-        <span class="ident">EncryptionSecret</span>::<span class="ident">from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>[..], <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(), <span class="ident">ciphersuite</span>);
+        <span class="ident">EncryptionSecret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>[..], <span class="ident">ProtocolVersion::default</span>(), <span class="ident">ciphersuite</span>);
     <span class="kw">let</span> <span class="ident">encryption_secret_bytes</span> <span class="op">=</span> <span class="ident">encryption_secret</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>();
-    <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>);
+    <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret::random</span>(<span class="ident">ciphersuite</span>);
     <span class="kw">let</span> <span class="ident">sender_data_secret_bytes</span> <span class="op">=</span> <span class="ident">sender_data_secret</span>.<span class="ident">as_slice</span>();
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">SecretTree</span>::<span class="ident">new</span>(<span class="ident">encryption_secret</span>, <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">n_leaves</span>));
-    <span class="kw">let</span> <span class="ident">group_secret_tree</span> <span class="op">=</span> <span class="ident">SecretTree</span>::<span class="ident">new</span>(<span class="ident">encryption_secret_group</span>, <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">n_leaves</span>));
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">SecretTree::new</span>(<span class="ident">encryption_secret</span>, <span class="ident">LeafIndex::from</span>(<span class="ident">n_leaves</span>));
+    <span class="kw">let</span> <span class="ident">group_secret_tree</span> <span class="op">=</span> <span class="ident">SecretTree::new</span>(<span class="ident">encryption_secret_group</span>, <span class="ident">LeafIndex::from</span>(<span class="ident">n_leaves</span>));
 
     <span class="comment">// Create sender_data_key/secret</span>
     <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">randombytes</span>(<span class="number">77</span>);
@@ -900,28 +923,29 @@
         <span class="ident">nonce</span>: <span class="ident">bytes_to_hex</span>(<span class="ident">sender_data_nonce</span>.<span class="ident">as_slice</span>()),
     };
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">group</span>(<span class="ident">ciphersuite</span>);
-    <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_slice</span>(
+    <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">group</span>, <span class="ident">credential_bundle</span>) <span class="op">=</span> <span class="ident">group</span>(<span class="ident">ciphersuite</span>);
+    <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
         <span class="ident">sender_data_secret_bytes</span>,
-        <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+        <span class="ident">ProtocolVersion::default</span>(),
         <span class="ident">ciphersuite</span>,
     );
     <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">secret_tree_mut</span>() <span class="op">=</span> <span class="ident">group_secret_tree</span>;
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
     <span class="kw">for</span> <span class="ident">leaf</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">n_leaves</span> {
-        <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">leaf</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handshake</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">application</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">LeafIndex::from</span>(<span class="ident">leaf</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handshake</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">application</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">generation</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">n_generations</span> {
             <span class="comment">// Application</span>
             <span class="kw">let</span> (<span class="ident">application_secret_key</span>, <span class="ident">application_secret_nonce</span>) <span class="op">=</span> <span class="ident">secret_tree</span>
-                .<span class="ident">secret_for_decryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">leaf</span>, <span class="ident">SecretType</span>::<span class="ident">ApplicationSecret</span>, <span class="ident">generation</span>)
+                .<span class="ident">secret_for_decryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">leaf</span>, <span class="ident">SecretType::ApplicationSecret</span>, <span class="ident">generation</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Error getting decryption secret&quot;</span>);
             <span class="kw">let</span> <span class="ident">application_key_string</span> <span class="op">=</span> <span class="ident">bytes_to_hex</span>(<span class="ident">application_secret_key</span>.<span class="ident">as_slice</span>());
             <span class="kw">let</span> <span class="ident">application_nonce_string</span> <span class="op">=</span> <span class="ident">bytes_to_hex</span>(<span class="ident">application_secret_nonce</span>.<span class="ident">as_slice</span>());
             <span class="kw">let</span> (<span class="ident">application_plaintext</span>, <span class="ident">application_ciphertext</span>) <span class="op">=</span>
-                <span class="ident">build_application_messages</span>(<span class="ident">leaf</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">group</span>);
+                <span class="ident">build_application_messages</span>(<span class="ident">leaf</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">group</span>, <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;Sender Group: {:?}&quot;</span>, <span class="ident">group</span>);
             <span class="ident">application</span>.<span class="ident">push</span>(<span class="ident">RatchetStep</span> {
                 <span class="ident">key</span>: <span class="ident">application_key_string</span>,
                 <span class="ident">nonce</span>: <span class="ident">application_nonce_string</span>,
@@ -931,13 +955,14 @@
 
             <span class="comment">// Handshake</span>
             <span class="kw">let</span> (<span class="ident">handshake_secret_key</span>, <span class="ident">handshake_secret_nonce</span>) <span class="op">=</span> <span class="ident">secret_tree</span>
-                .<span class="ident">secret_for_decryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">leaf</span>, <span class="ident">SecretType</span>::<span class="ident">HandshakeSecret</span>, <span class="ident">generation</span>)
+                .<span class="ident">secret_for_decryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">leaf</span>, <span class="ident">SecretType::HandshakeSecret</span>, <span class="ident">generation</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Error getting decryption secret&quot;</span>);
             <span class="kw">let</span> <span class="ident">handshake_key_string</span> <span class="op">=</span> <span class="ident">bytes_to_hex</span>(<span class="ident">handshake_secret_key</span>.<span class="ident">as_slice</span>());
             <span class="kw">let</span> <span class="ident">handshake_nonce_string</span> <span class="op">=</span> <span class="ident">bytes_to_hex</span>(<span class="ident">handshake_secret_nonce</span>.<span class="ident">as_slice</span>());
 
             <span class="kw">let</span> (<span class="ident">handshake_plaintext</span>, <span class="ident">handshake_ciphertext</span>) <span class="op">=</span>
-                <span class="ident">build_handshake_messages</span>(<span class="ident">leaf</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">group</span>);
+                <span class="ident">build_handshake_messages</span>(<span class="ident">leaf</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">group</span>, <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>);
+
             <span class="ident">handshake</span>.<span class="ident">push</span>(<span class="ident">RatchetStep</span> {
                 <span class="ident">key</span>: <span class="ident">handshake_key_string</span>,
                 <span class="ident">nonce</span>: <span class="ident">handshake_nonce_string</span>,
@@ -964,10 +989,10 @@
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">write_test_vectors</span>() {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tests</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tests</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
     <span class="kw">const</span> <span class="ident">NUM_GENERATIONS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">20</span>;
 
-    <span class="kw">for</span> <span class="ident">ciphersuite</span> <span class="kw">in</span> <span class="ident">Config</span>::<span class="ident">supported_ciphersuites</span>() {
+    <span class="kw">for</span> <span class="ident">ciphersuite</span> <span class="kw">in</span> <span class="ident">Config::supported_ciphersuites</span>() {
         <span class="kw">for</span> <span class="ident">n_leaves</span> <span class="kw">in</span> <span class="number">1u32</span>..<span class="number">20</span> {
             <span class="kw">let</span> <span class="ident">test</span> <span class="op">=</span> <span class="ident">generate_test_vector</span>(<span class="ident">NUM_GENERATIONS</span>, <span class="ident">n_leaves</span>, <span class="ident">ciphersuite</span>);
             <span class="ident">tests</span>.<span class="ident">push</span>(<span class="ident">test</span>);
@@ -981,34 +1006,34 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">EncryptionTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">EncTestVectorError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">n_leaves</span> <span class="op">=</span> <span class="ident">test_vector</span>.<span class="ident">n_leaves</span>;
     <span class="kw">if</span> <span class="ident">n_leaves</span> <span class="op">!</span><span class="op">=</span> <span class="ident">test_vector</span>.<span class="ident">leaves</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">LeafNumberMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::LeafNumberMismatch</span>);
     }
     <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span>
-        <span class="ident">CiphersuiteName</span>::<span class="ident">try_from</span>(<span class="ident">test_vector</span>.<span class="ident">cipher_suite</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid ciphersuite&quot;</span>);
-    <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Config</span>::<span class="ident">ciphersuite</span>(<span class="ident">ciphersuite</span>) {
+        <span class="ident">CiphersuiteName::try_from</span>(<span class="ident">test_vector</span>.<span class="ident">cipher_suite</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid ciphersuite&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Config::ciphersuite</span>(<span class="ident">ciphersuite</span>) {
         <span class="prelude-val">Ok</span>(<span class="ident">cs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cs</span>,
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="macro">println</span><span class="macro">!</span>(
+            <span class="macro">println!</span>(
                 <span class="string">&quot;Unsupported ciphersuite {} in test vector. Skipping ...&quot;</span>,
                 <span class="ident">ciphersuite</span>
             );
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
     };
-    <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Running test vector with {:?}&quot;</span>, <span class="ident">ciphersuite</span>.<span class="ident">name</span>());
+    <span class="macro">log::debug!</span>(<span class="string">&quot;Running test vector with {:?}&quot;</span>, <span class="ident">ciphersuite</span>.<span class="ident">name</span>());
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">SecretTree</span>::<span class="ident">new</span>(
-        <span class="ident">EncryptionSecret</span>::<span class="ident">from_slice</span>(
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">SecretTree::new</span>(
+        <span class="ident">EncryptionSecret::from_slice</span>(
             <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">encryption_secret</span>).<span class="ident">as_slice</span>(),
-            <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+            <span class="ident">ProtocolVersion::default</span>(),
             <span class="ident">ciphersuite</span>,
         ),
-        <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">n_leaves</span>),
+        <span class="ident">LeafIndex::from</span>(<span class="ident">n_leaves</span>),
     );
-    <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Secret tree: {:?}&quot;</span>, <span class="ident">secret_tree</span>);
-    <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_slice</span>(
+    <span class="macro">log::debug!</span>(<span class="string">&quot;Secret tree: {:?}&quot;</span>, <span class="ident">secret_tree</span>);
+    <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
         <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>).<span class="ident">as_slice</span>(),
-        <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+        <span class="ident">ProtocolVersion::default</span>(),
         <span class="ident">ciphersuite</span>,
     );
 
@@ -1019,81 +1044,85 @@
         <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_info</span>.<span class="ident">ciphertext</span>),
     );
     <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_info</span>.<span class="ident">key</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">sender_data_key</span>.<span class="ident">as_slice</span>() {
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Sender data key mismatch&quot;</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;Sender data key mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">SenderDataKeyMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::SenderDataKeyMismatch</span>);
     }
     <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_info</span>.<span class="ident">nonce</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">sender_data_nonce</span>.<span class="ident">as_slice</span>() {
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Sender data nonce mismatch&quot;</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;Sender data nonce mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">SenderDataNonceMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::SenderDataNonceMismatch</span>);
     }
 
     <span class="kw">for</span> (<span class="ident">leaf_index</span>, <span class="ident">leaf</span>) <span class="kw">in</span> <span class="ident">test_vector</span>.<span class="ident">leaves</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;Running test vector for leaf {:?}&quot;</span>, <span class="ident">leaf_index</span>);
+        <span class="macro">log::trace!</span>(<span class="string">&quot;Running test vector for leaf {:?}&quot;</span>, <span class="ident">leaf_index</span>);
         <span class="kw">if</span> <span class="ident">leaf</span>.<span class="ident">generations</span> <span class="op">!</span><span class="op">=</span> <span class="ident">leaf</span>.<span class="ident">application</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span> {
-            <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Invalid leaf sequence application&quot;</span>);
+            <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                <span class="macro">panic!</span>(<span class="string">&quot;Invalid leaf sequence application&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">InvalidLeafSequenceApplication</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::InvalidLeafSequenceApplication</span>);
         }
         <span class="kw">if</span> <span class="ident">leaf</span>.<span class="ident">generations</span> <span class="op">!</span><span class="op">=</span> <span class="ident">leaf</span>.<span class="ident">handshake</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span> {
-            <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Invalid leaf sequence handshake&quot;</span>);
+            <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                <span class="macro">panic!</span>(<span class="string">&quot;Invalid leaf sequence handshake&quot;</span>);
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">InvalidLeafSequenceHandshake</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::InvalidLeafSequenceHandshake</span>);
         }
-        <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">leaf_index</span>);
+        <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="ident">LeafIndex::from</span>(<span class="ident">leaf_index</span>);
 
         <span class="kw">for</span> (<span class="ident">generation</span>, <span class="ident">application</span>, <span class="ident">handshake</span>) <span class="kw">in</span>
-            <span class="macro">izip</span><span class="macro">!</span>((<span class="number">0</span>..<span class="ident">leaf</span>.<span class="ident">generations</span>), <span class="kw-2">&amp;</span><span class="ident">leaf</span>.<span class="ident">application</span>, <span class="kw-2">&amp;</span><span class="ident">leaf</span>.<span class="ident">handshake</span>,)
+            <span class="macro">izip!</span>((<span class="number">0</span>..<span class="ident">leaf</span>.<span class="ident">generations</span>), <span class="kw-2">&amp;</span><span class="ident">leaf</span>.<span class="ident">application</span>, <span class="kw-2">&amp;</span><span class="ident">leaf</span>.<span class="ident">handshake</span>,)
         {
             <span class="comment">// Check application keys</span>
             <span class="kw">let</span> (<span class="ident">application_secret_key</span>, <span class="ident">application_secret_nonce</span>) <span class="op">=</span> <span class="ident">secret_tree</span>
                 .<span class="ident">secret_for_decryption</span>(
                     <span class="ident">ciphersuite</span>,
                     <span class="ident">leaf_index</span>,
-                    <span class="ident">SecretType</span>::<span class="ident">ApplicationSecret</span>,
+                    <span class="ident">SecretType::ApplicationSecret</span>,
                     <span class="ident">generation</span>,
                 )
                 .<span class="ident">expect</span>(<span class="string">&quot;Error getting decryption secret&quot;</span>);
-            <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+            <span class="macro">log::debug!</span>(
                 <span class="string">&quot;  Secret tree after deriving application keys for leaf {:?} in generation {:?}&quot;</span>,
                 <span class="ident">leaf_index</span>,
                 <span class="ident">generation</span>
             );
-            <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;  {:?}&quot;</span>, <span class="ident">secret_tree</span>);
+            <span class="macro">log::debug!</span>(<span class="string">&quot;  {:?}&quot;</span>, <span class="ident">secret_tree</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">key</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">application_secret_key</span>.<span class="ident">as_slice</span>() {
-                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Application key mismatch:&quot;</span>);
-                <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Calculated: {:x?}&quot;</span>, <span class="ident">application_secret_key</span>.<span class="ident">as_slice</span>());
-                <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">key</span>));
-                <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                    <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Application secret key mismatch&quot;</span>);
+                <span class="macro">log::error!</span>(<span class="string">&quot;  Application key mismatch:&quot;</span>);
+                <span class="macro">log::debug!</span>(<span class="string">&quot;    Calculated: {:x?}&quot;</span>, <span class="ident">application_secret_key</span>.<span class="ident">as_slice</span>());
+                <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">key</span>));
+                <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                    <span class="macro">panic!</span>(<span class="string">&quot;Application secret key mismatch&quot;</span>);
                 }
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">ApplicationSecretKeyMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::ApplicationSecretKeyMismatch</span>);
             }
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">nonce</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">application_secret_nonce</span>.<span class="ident">as_slice</span>() {
-                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Application nonce mismatch&quot;</span>);
-                <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Calculated: {:x?}&quot;</span>, <span class="ident">application_secret_nonce</span>.<span class="ident">as_slice</span>());
-                <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">nonce</span>));
-                <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                    <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Application secret nonce mismatch&quot;</span>);
+                <span class="macro">log::error!</span>(<span class="string">&quot;  Application nonce mismatch&quot;</span>);
+                <span class="macro">log::debug!</span>(<span class="string">&quot;    Calculated: {:x?}&quot;</span>, <span class="ident">application_secret_nonce</span>.<span class="ident">as_slice</span>());
+                <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">nonce</span>));
+                <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                    <span class="macro">panic!</span>(<span class="string">&quot;Application secret nonce mismatch&quot;</span>);
                 }
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">ApplicationSecretNonceMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::ApplicationSecretNonceMismatch</span>);
             }
 
             <span class="comment">// Setup group</span>
             <span class="kw">let</span> <span class="ident">mls_ciphertext_application</span> <span class="op">=</span>
-                <span class="ident">MlsCiphertext</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">ciphertext</span>)))
+                <span class="ident">MlsCiphertext::decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">ciphertext</span>)))
                     .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MlsCiphertext&quot;</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_application</span>.<span class="ident">group_id</span>);
-            <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_slice</span>(
+            <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
                 <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>).<span class="ident">as_slice</span>(),
-                <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+                <span class="ident">ProtocolVersion::default</span>(),
                 <span class="ident">ciphersuite</span>,
             );
+
+            <span class="comment">// Note that we can&#39;t actually get an MlsPlaintext because we don&#39;t</span>
+            <span class="comment">// have enough information. We encode the VerifiableMlsPlaintext</span>
+            <span class="comment">// and compare it to the plaintext in the test vector instead.</span>
 
             <span class="comment">// Decrypt and check application message</span>
             <span class="kw">let</span> <span class="ident">mls_plaintext_application</span> <span class="op">=</span> <span class="ident">mls_ciphertext_application</span>
@@ -1104,10 +1133,10 @@
                     .<span class="ident">encode_detached</span>()
                     .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MlsPlaintext&quot;</span>)
             {
-                <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                    <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Decrypted application message mismatch&quot;</span>);
+                <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                    <span class="macro">panic!</span>(<span class="string">&quot;Decrypted application message mismatch&quot;</span>);
                 }
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">DecryptedApplicationMessageMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::DecryptedApplicationMessageMismatch</span>);
             }
 
             <span class="comment">// Check handshake keys</span>
@@ -1115,31 +1144,30 @@
                 .<span class="ident">secret_for_decryption</span>(
                     <span class="ident">ciphersuite</span>,
                     <span class="ident">leaf_index</span>,
-                    <span class="ident">SecretType</span>::<span class="ident">HandshakeSecret</span>,
+                    <span class="ident">SecretType::HandshakeSecret</span>,
                     <span class="ident">generation</span>,
                 )
                 .<span class="ident">expect</span>(<span class="string">&quot;Error getting decryption secret&quot;</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">key</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">handshake_secret_key</span>.<span class="ident">as_slice</span>() {
-                <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                    <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Handshake secret key mismatch&quot;</span>);
+                <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                    <span class="macro">panic!</span>(<span class="string">&quot;Handshake secret key mismatch&quot;</span>);
                 }
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">HandshakeSecretKeyMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::HandshakeSecretKeyMismatch</span>);
             }
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">nonce</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">handshake_secret_nonce</span>.<span class="ident">as_slice</span>() {
-                <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                    <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Handshake secret nonce mismatch&quot;</span>);
+                <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                    <span class="macro">panic!</span>(<span class="string">&quot;Handshake secret nonce mismatch&quot;</span>);
                 }
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">HandshakeSecretNonceMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::HandshakeSecretNonceMismatch</span>);
             }
 
             <span class="comment">// Setup group</span>
             <span class="kw">let</span> <span class="ident">mls_ciphertext_handshake</span> <span class="op">=</span>
-                <span class="ident">MlsCiphertext</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
+                <span class="ident">MlsCiphertext::decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
                     .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MlsCiphertext&quot;</span>);
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_handshake</span>.<span class="ident">group_id</span>);
-            <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_slice</span>(
+            <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
                 <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>).<span class="ident">as_slice</span>(),
-                <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+                <span class="ident">ProtocolVersion::default</span>(),
                 <span class="ident">ciphersuite</span>,
             );
 
@@ -1152,10 +1180,10 @@
                     .<span class="ident">encode_detached</span>()
                     .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MlsPlaintext&quot;</span>)
             {
-                <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-                    <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Decrypted handshake message mismatch&quot;</span>);
+                <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                    <span class="macro">panic!</span>(<span class="string">&quot;Decrypted handshake message mismatch&quot;</span>);
                 }
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">DecryptedHandshakeMessageMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::DecryptedHandshakeMessageMismatch</span>);
             }
 
             <span class="comment">// Check handshake keys</span>
@@ -1163,25 +1191,25 @@
                 .<span class="ident">secret_for_decryption</span>(
                     <span class="ident">ciphersuite</span>,
                     <span class="ident">leaf_index</span>,
-                    <span class="ident">SecretType</span>::<span class="ident">HandshakeSecret</span>,
+                    <span class="ident">SecretType::HandshakeSecret</span>,
                     <span class="ident">generation</span>,
                 )
                 .<span class="ident">expect</span>(<span class="string">&quot;Error getting decryption secret&quot;</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">key</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">handshake_secret_key</span>.<span class="ident">as_slice</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">HandshakeSecretKeyMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::HandshakeSecretKeyMismatch</span>);
             }
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">nonce</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">handshake_secret_nonce</span>.<span class="ident">as_slice</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">HandshakeSecretNonceMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::HandshakeSecretNonceMismatch</span>);
             }
 
             <span class="comment">// Setup group</span>
             <span class="kw">let</span> <span class="ident">mls_ciphertext_handshake</span> <span class="op">=</span>
-                <span class="ident">MlsCiphertext</span>::<span class="ident">decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
+                <span class="ident">MlsCiphertext::decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
                     .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MLSCiphertext&quot;</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_handshake</span>.<span class="ident">group_id</span>);
-            <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">from_slice</span>(
+            <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
                 <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>),
-                <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+                <span class="ident">ProtocolVersion::default</span>(),
                 <span class="ident">ciphersuite</span>,
             );
 
@@ -1194,12 +1222,12 @@
                     .<span class="ident">encode_detached</span>()
                     .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MLSPlaintext&quot;</span>)
             {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError</span>::<span class="ident">DecryptedHandshakeMessageMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::DecryptedHandshakeMessageMismatch</span>);
             }
         }
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;Finished test vector for leaf {:?}&quot;</span>, <span class="ident">leaf_index</span>);
+        <span class="macro">log::trace!</span>(<span class="string">&quot;Finished test vector for leaf {:?}&quot;</span>, <span class="ident">leaf_index</span>);
     }
-    <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;Finished test vector verification&quot;</span>);
+    <span class="macro">log::trace!</span>(<span class="string">&quot;Finished test vector verification&quot;</span>);
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1210,7 +1238,7 @@
     <span class="kw">for</span> <span class="ident">test_vector</span> <span class="kw">in</span> <span class="ident">tests</span> {
         <span class="kw">match</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>) {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Error while checking encryption test vector.\n{:?}&quot;</span>, <span class="ident">e</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;Error while checking encryption test vector.\n{:?}&quot;</span>, <span class="ident">e</span>),
         }
     }
 
@@ -1225,11 +1253,11 @@
         <span class="ident">run_test_vector</span>(<span class="ident">tv</span>).<span class="ident">expect</span>(<span class="string">&quot;Error while checking key schedule test vector.&quot;</span>);
     }
 
-    <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;Finished test vector verification&quot;</span>);
+    <span class="macro">log::trace!</span>(<span class="string">&quot;Finished test vector verification&quot;</span>);
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="macro">implement_error</span><span class="macro">!</span> {
+<span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">EncTestVectorError</span> {
         <span class="ident">LeafNumberMismatch</span> <span class="op">=</span> <span class="string">&quot;The test vector does not contain as many leaves as advertised.&quot;</span>,
         <span class="ident">SenderDataKeyMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed sender data key doesn&#39;t match the one in the test vector.&quot;</span>,
@@ -1245,5 +1273,5 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-js="../../../../search-index.js"></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>
     <script src="../../../../main.js"></script><script src="../../../../source-script.js"></script><script src="../../../../source-files.js"></script></body></html>

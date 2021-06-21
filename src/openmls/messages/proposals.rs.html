@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/messages/proposals.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>proposals.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -518,21 +518,21 @@
 <span id="515">515</span>
 <span id="516">516</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codec</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">ProtocolVersion</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">extensions</span>::<span class="ident">Extension</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">framing</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">group</span>::<span class="ident">GroupId</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">key_packages</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">schedule</span>::<span class="ident">psk</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::codec</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::config::ProtocolVersion</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::extensions::Extension</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::framing</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::GroupId</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::key_packages</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::schedule::psk</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::tree::index</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">hash_map</span>::<span class="ident">Entry</span>, <span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map::Entry</span>, <span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
+<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">errors</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::errors</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
@@ -546,13 +546,13 @@
 
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalType</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="self">Self</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="self">Self</span><span class="ident">::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Add</span>),
-            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Update</span>),
-            <span class="number">3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Remove</span>),
-            <span class="number">4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Presharedkey</span>),
-            <span class="number">5</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType</span>::<span class="ident">Reinit</span>),
+            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Add</span>),
+            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Update</span>),
+            <span class="number">3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Remove</span>),
+            <span class="number">4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Presharedkey</span>),
+            <span class="number">5</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Reinit</span>),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown proposal type.&quot;</span>),
         }
     }
@@ -587,11 +587,11 @@
 
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalOrRefType</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">ProposalOrRefTypeError</span>;
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="self">Self</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="self">Self</span><span class="ident">::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRefType</span>::<span class="ident">Proposal</span>),
-            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRefType</span>::<span class="ident">Reference</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalOrRefTypeError</span>::<span class="ident">UnknownValue</span>),
+            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRefType::Proposal</span>),
+            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRefType::Reference</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalOrRefTypeError::UnknownValue</span>),
         }
     }
 }
@@ -605,14 +605,14 @@
 <span class="kw">impl</span> <span class="ident">ProposalOrRef</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">proposal_or_ref_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProposalOrRefType</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ProposalOrRef</span>::<span class="ident">Proposal</span>(<span class="kw-2">ref</span> <span class="ident">_p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalOrRefType</span>::<span class="ident">Proposal</span>,
-            <span class="ident">ProposalOrRef</span>::<span class="ident">Reference</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalOrRefType</span>::<span class="ident">Reference</span>,
+            <span class="ident">ProposalOrRef::Proposal</span>(<span class="kw-2">ref</span> <span class="ident">_p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalOrRefType::Proposal</span>,
+            <span class="ident">ProposalOrRef::Reference</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalOrRefType::Reference</span>,
         }
     }
 }
 
 <span class="doccomment">/// Proposal</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">large_enum_variant</span>)]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Proposal</span> {
     <span class="ident">Add</span>(<span class="ident">AddProposal</span>),
@@ -625,11 +625,11 @@
 <span class="kw">impl</span> <span class="ident">Proposal</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">proposal_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProposalType</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal</span>::<span class="ident">Add</span>(<span class="kw-2">ref</span> <span class="ident">_a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Add</span>,
-            <span class="ident">Proposal</span>::<span class="ident">Update</span>(<span class="kw-2">ref</span> <span class="ident">_u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Update</span>,
-            <span class="ident">Proposal</span>::<span class="ident">Remove</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Remove</span>,
-            <span class="ident">Proposal</span>::<span class="ident">PreSharedKey</span>(<span class="kw-2">ref</span> <span class="ident">_p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Presharedkey</span>,
-            <span class="ident">Proposal</span>::<span class="ident">ReInit</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType</span>::<span class="ident">Reinit</span>,
+            <span class="ident">Proposal::Add</span>(<span class="kw-2">ref</span> <span class="ident">_a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType::Add</span>,
+            <span class="ident">Proposal::Update</span>(<span class="kw-2">ref</span> <span class="ident">_u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType::Update</span>,
+            <span class="ident">Proposal::Remove</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType::Remove</span>,
+            <span class="ident">Proposal::PreSharedKey</span>(<span class="kw-2">ref</span> <span class="ident">_p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType::Presharedkey</span>,
+            <span class="ident">Proposal::ReInit</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ProposalType::Reinit</span>,
         }
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">proposal_type</span>: <span class="ident">ProposalType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -637,25 +637,25 @@
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">AddProposal</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal</span>::<span class="ident">Add</span>(<span class="ident">add_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">add_proposal</span>.<span class="ident">clone</span>()),
+            <span class="ident">Proposal::Add</span>(<span class="ident">add_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">add_proposal</span>.<span class="ident">clone</span>()),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         }
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_update</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdateProposal</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal</span>::<span class="ident">Update</span>(<span class="ident">update_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">update_proposal</span>.<span class="ident">clone</span>()),
+            <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">update_proposal</span>.<span class="ident">clone</span>()),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         }
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_remove</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RemoveProposal</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal</span>::<span class="ident">Remove</span>(<span class="ident">remove_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">remove_proposal</span>.<span class="ident">clone</span>()),
+            <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">remove_proposal</span>.<span class="ident">clone</span>()),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         }
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_presharedkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PreSharedKeyProposal</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal</span>::<span class="ident">PreSharedKey</span>(<span class="ident">psk_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">psk_proposal</span>.<span class="ident">clone</span>()),
+            <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">psk_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">psk_proposal</span>.<span class="ident">clone</span>()),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         }
     }
@@ -692,17 +692,17 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">MlsPlaintext</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">QueuedProposalError</span><span class="op">&gt;</span> {
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">mls_plaintext</span>.<span class="ident">content_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ContentType</span>::<span class="ident">Proposal</span>);
-        <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">content</span> {
-            <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Proposal</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">QueuedProposalError</span>::<span class="ident">WrongContentType</span>),
+        <span class="macro">debug_assert!</span>(<span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>() <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ContentType::Proposal</span>);
+        <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mls_plaintext</span>.<span class="ident">content</span>() {
+            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>,
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">QueuedProposalError::WrongContentType</span>),
         };
-        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference</span>::<span class="ident">from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">proposal</span>);
+        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference::from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">proposal</span>);
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">proposal</span>,
             <span class="ident">proposal_reference</span>,
-            <span class="ident">sender</span>: <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>,
-            <span class="ident">proposal_or_ref_type</span>: <span class="ident">ProposalOrRefType</span>::<span class="ident">Reference</span>,
+            <span class="ident">sender</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">sender</span>(),
+            <span class="ident">proposal_or_ref_type</span>: <span class="ident">ProposalOrRefType::Reference</span>,
         })
     }
     <span class="doccomment">/// Creates a new `QueuedProposal` from a `Proposal` and `Sender`</span>
@@ -711,12 +711,12 @@
         <span class="ident">proposal</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Proposal</span>,
         <span class="ident">sender</span>: <span class="ident">Sender</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference</span>::<span class="ident">from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">proposal</span>);
+        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference::from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">proposal</span>);
         <span class="self">Self</span> {
             <span class="ident">proposal</span>,
             <span class="ident">proposal_reference</span>,
             <span class="ident">sender</span>,
-            <span class="ident">proposal_or_ref_type</span>: <span class="ident">ProposalOrRefType</span>::<span class="ident">Proposal</span>,
+            <span class="ident">proposal_or_ref_type</span>: <span class="ident">ProposalOrRefType::Proposal</span>,
         }
     }
     <span class="doccomment">/// Returns the `Proposal` as a reference</span>
@@ -755,12 +755,12 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">proposals</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue::default</span>();
         <span class="kw">for</span> <span class="ident">mls_plaintext</span> <span class="kw">in</span> <span class="ident">proposals</span> {
             <span class="comment">// It is safe to unwrap here, because we checked that only proposals can end up</span>
             <span class="comment">// here.</span>
             <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span>
-                <span class="ident">QueuedProposal</span>::<span class="ident">from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>();
+                <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>();
             <span class="ident">proposal_queue</span>.<span class="ident">add</span>(<span class="ident">queued_proposal</span>);
         }
         <span class="ident">proposal_queue</span>
@@ -776,26 +776,26 @@
         <span class="comment">// Feed the `proposals_by_reference` in a `HashMap` so that we can easily</span>
         <span class="comment">// extract then by reference later</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposals_by_reference_queue</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ProposalReference</span>, <span class="ident">QueuedProposal</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">HashMap</span>::<span class="ident">new</span>();
+            <span class="ident">HashMap::new</span>();
         <span class="kw">for</span> <span class="ident">mls_plaintext</span> <span class="kw">in</span> <span class="ident">proposals_by_reference</span> {
-            <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="ident">QueuedProposal</span>::<span class="ident">from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>)<span class="question-mark">?</span>;
             <span class="ident">proposals_by_reference_queue</span>
                 .<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
         }
 
         <span class="comment">// Build the actual queue</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue::default</span>();
 
         <span class="comment">// Iterate over the committed proposals and insert the proposals in the queue</span>
         <span class="kw">for</span> <span class="ident">proposal_or_ref</span> <span class="kw">in</span> <span class="ident">committed_proposals</span>.<span class="ident">iter</span>() {
             <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">proposal_or_ref</span> {
-                <span class="ident">ProposalOrRef</span>::<span class="ident">Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">QueuedProposal</span>::<span class="ident">from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">proposal</span>, <span class="ident">sender</span>)
+                <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">QueuedProposal::from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">proposal</span>, <span class="ident">sender</span>)
                 }
-                <span class="ident">ProposalOrRef</span>::<span class="ident">Reference</span>(<span class="ident">proposal_reference</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">proposal_reference</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">match</span> <span class="ident">proposals_by_reference_queue</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>) {
                         <span class="prelude-val">Some</span>(<span class="ident">queued_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">queued_proposal</span>.<span class="ident">clone</span>(),
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalQueueError</span>::<span class="ident">ProposalNotFound</span>),
+                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalQueueError::ProposalNotFound</span>),
                     }
                 }
             };
@@ -836,20 +836,20 @@
             <span class="ident">updates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,
             <span class="ident">removes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Member</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Member</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
             <span class="ident">Member</span> {
-                <span class="ident">updates</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-                <span class="ident">removes</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+                <span class="ident">updates</span>: <span class="macro">vec!</span>[],
+                <span class="ident">removes</span>: <span class="macro">vec!</span>[],
             };
             <span class="ident">tree_size</span>.<span class="ident">as_usize</span>()
         ];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">adds</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ProposalReference</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">valid_proposals</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ProposalReference</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_pool</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ProposalReference</span>, <span class="ident">QueuedProposal</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">adds</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ProposalReference</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">valid_proposals</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ProposalReference</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_pool</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ProposalReference</span>, <span class="ident">QueuedProposal</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">contains_own_updates</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
-            <span class="ident">sender_type</span>: <span class="ident">SenderType</span>::<span class="ident">Member</span>,
+            <span class="ident">sender_type</span>: <span class="ident">SenderType::Member</span>,
             <span class="ident">sender</span>: <span class="ident">own_index</span>,
         };
 
@@ -859,14 +859,14 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">queued_proposal_list</span> <span class="op">=</span> <span class="ident">proposals_by_reference</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">mls_plaintext</span><span class="op">|</span> {
-                <span class="ident">QueuedProposal</span>::<span class="ident">from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>()
+                <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>()
             })
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="ident">queued_proposal_list</span>.<span class="ident">extend</span>(
             <span class="ident">proposals_by_value</span>
                 .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">QueuedProposal</span>::<span class="ident">from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">p</span>, <span class="ident">sender</span>))
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">QueuedProposal::from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">p</span>, <span class="ident">sender</span>))
                 .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span><span class="op">&gt;</span>()
                 .<span class="ident">into_iter</span>(),
         );
@@ -874,11 +874,11 @@
         <span class="comment">// Parse proposals and build adds and member list</span>
         <span class="kw">for</span> <span class="ident">queued_proposal</span> <span class="kw">in</span> <span class="ident">queued_proposal_list</span> {
             <span class="kw">match</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">proposal_type</span>() {
-                <span class="ident">ProposalType</span>::<span class="ident">Add</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ProposalType::Add</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">adds</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>());
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType</span>::<span class="ident">Update</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ProposalType::Update</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">sender</span>.<span class="ident">sender</span>.<span class="ident">as_usize</span>();
                     <span class="kw">if</span> <span class="ident">sender_index</span> <span class="op">!</span><span class="op">=</span> <span class="ident">own_index</span>.<span class="ident">as_usize</span>() {
                         <span class="ident">members</span>[<span class="ident">sender_index</span>].<span class="ident">updates</span>.<span class="ident">push</span>(<span class="ident">queued_proposal</span>.<span class="ident">clone</span>());
@@ -888,7 +888,7 @@
                     <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>();
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">proposal_reference</span>, <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType</span>::<span class="ident">Remove</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ProposalType::Remove</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">removed_index</span> <span class="op">=</span>
                         <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">as_remove</span>().<span class="ident">unwrap</span>().<span class="ident">removed</span> <span class="kw">as</span> <span class="ident">usize</span>;
                     <span class="kw">if</span> <span class="ident">removed_index</span> <span class="op">&lt;</span> <span class="ident">tree_size</span>.<span class="ident">as_usize</span>() {
@@ -897,11 +897,11 @@
                     <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>();
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">proposal_reference</span>, <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType</span>::<span class="ident">Presharedkey</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ProposalType::Presharedkey</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>());
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType</span>::<span class="ident">Reinit</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ProposalType::Reinit</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// TODO #141: Only keep one ReInit</span>
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
@@ -912,7 +912,7 @@
             <span class="comment">// Check if there are Removes</span>
             <span class="kw">if</span> <span class="op">!</span><span class="ident">member</span>.<span class="ident">removes</span>.<span class="ident">is_empty</span>() {
                 <span class="comment">// Delete all Updates when a Remove is found</span>
-                <span class="ident">member</span>.<span class="ident">updates</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+                <span class="ident">member</span>.<span class="ident">updates</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
                 <span class="comment">// Only keep the last Remove</span>
                 <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">member</span>.<span class="ident">removes</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>().<span class="ident">proposal_reference</span>());
             }
@@ -922,11 +922,11 @@
             }
         }
         <span class="comment">// Only retain `adds` and `valid_proposals`</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue::default</span>();
         <span class="kw">for</span> <span class="ident">proposal_reference</span> <span class="kw">in</span> <span class="ident">adds</span>.<span class="ident">iter</span>().<span class="ident">chain</span>(<span class="ident">valid_proposals</span>.<span class="ident">iter</span>()) {
             <span class="ident">proposal_queue</span>.<span class="ident">add</span>(<span class="kw">match</span> <span class="ident">proposal_pool</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>) {
                 <span class="prelude-val">Some</span>(<span class="ident">queued_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">queued_proposal</span>.<span class="ident">clone</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalQueueError</span>::<span class="ident">ProposalNotFound</span>),
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalQueueError::ProposalNotFound</span>),
             });
         }
         <span class="prelude-val">Ok</span>((<span class="ident">proposal_queue</span>, <span class="ident">contains_own_updates</span>))
@@ -950,7 +950,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">queued_proposal</span>: <span class="ident">QueuedProposal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>();
         <span class="comment">// Only add the proposal if it&#39;s not already there</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry</span>::<span class="ident">Vacant</span>(<span class="ident">entry</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">queued_proposals</span>.<span class="ident">entry</span>(<span class="ident">proposal_reference</span>.<span class="ident">clone</span>()) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry::Vacant</span>(<span class="ident">entry</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">queued_proposals</span>.<span class="ident">entry</span>(<span class="ident">proposal_reference</span>.<span class="ident">clone</span>()) {
             <span class="comment">// Add the proposal reference to ensure the correct order</span>
             <span class="self">self</span>.<span class="ident">proposal_references</span>.<span class="ident">push</span>(<span class="ident">proposal_reference</span>);
             <span class="comment">// Add the proposal to the queue</span>
@@ -967,11 +967,11 @@
                 <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">queued_proposals</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>).<span class="ident">unwrap</span>();
                 <span class="comment">// Differentiate the type of proposal</span>
                 <span class="kw">match</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_or_ref_type</span> {
-                    <span class="ident">ProposalOrRefType</span>::<span class="ident">Proposal</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">ProposalOrRef</span>::<span class="ident">Proposal</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">clone</span>())
+                    <span class="ident">ProposalOrRefType::Proposal</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">clone</span>())
                     }
-                    <span class="ident">ProposalOrRefType</span>::<span class="ident">Reference</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">ProposalOrRef</span>::<span class="ident">Reference</span>(<span class="ident">proposal_reference</span>.<span class="ident">clone</span>())
+                    <span class="ident">ProposalOrRefType::Reference</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">proposal_reference</span>.<span class="ident">clone</span>())
                     }
                 }
             })
@@ -1035,5 +1035,5 @@
     <span class="kw">pub</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-js="../../../search-index.js"></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
     <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

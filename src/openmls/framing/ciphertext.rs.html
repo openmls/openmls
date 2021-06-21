@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -301,10 +301,18 @@
 <span id="298">298</span>
 <span id="299">299</span>
 <span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 
 <span class="doccomment">/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.</span>
 <span class="doccomment">/// This message format is meant to be sent to and received from the Delivery</span>
@@ -330,29 +338,29 @@
         <span class="ident">secret_tree</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SecretTree</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, <span class="ident">ciphersuite</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
+        <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, <span class="ident">ciphersuite</span>);
         <span class="comment">// Serialize the content AAD</span>
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
-            <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>,
-            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>.<span class="ident">to_vec</span>(),
+            <span class="ident">content_type</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
+            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">to_vec</span>(),
         };
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_ciphertext_content_aad</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
         <span class="comment">// Extract generation and key material for encryption</span>
-        <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType</span>::<span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError</span>::<span class="ident">InvalidContentType</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::try_from</span>(<span class="ident">mls_plaintext</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::InvalidContentType</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>)) <span class="op">=</span>
             <span class="ident">secret_tree</span>.<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">sender</span>, <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.</span>
-        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard</span>::<span class="ident">from_random</span>();
+        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard::from_random</span>();
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
         <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
         <span class="comment">// Encrypt the payload</span>
         <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ratchet_key</span>
             .<span class="ident">aead_seal</span>(
-                <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">encode_padded_ciphertext_content_detached</span>(
+                <span class="kw-2">&amp;</span><span class="self">Self</span><span class="ident">::encode_padded_ciphertext_content_detached</span>(
                     <span class="ident">mls_plaintext</span>,
                     <span class="ident">padding_size</span>,
                     <span class="ident">ciphersuite</span>.<span class="ident">mac_length</span>(),
@@ -361,8 +369,8 @@
                 <span class="kw-2">&amp;</span><span class="ident">ratchet_nonce</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext encryption error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">MlsCiphertextError</span>::<span class="ident">EncryptionError</span>
+                <span class="macro">log::error!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext encryption error {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">MlsCiphertextError::EncryptionError</span>
             })<span class="question-mark">?</span>;
         <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.</span>
         <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
@@ -374,14 +382,14 @@
             .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>);
         <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule</span>
         <span class="comment">// nonce as per spec.</span>
-        <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span> <span class="ident">MlsSenderDataAad</span>::<span class="ident">new</span>(
+        <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span> <span class="ident">MlsSenderDataAad::new</span>(
             <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">context</span>.<span class="ident">epoch</span>(),
-            <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>,
+            <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
         );
         <span class="comment">// Serialize the sender data AAD</span>
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData</span>::<span class="ident">new</span>(<span class="ident">mls_plaintext</span>.<span class="ident">sender</span>.<span class="ident">sender</span>, <span class="ident">generation</span>, <span class="ident">reuse_guard</span>);
+        <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData::new</span>(<span class="ident">mls_plaintext</span>.<span class="ident">sender_index</span>(), <span class="ident">generation</span>, <span class="ident">reuse_guard</span>);
         <span class="comment">// Encrypt the sender data</span>
         <span class="kw">let</span> <span class="ident">encrypted_sender_data</span> <span class="op">=</span> <span class="ident">sender_data_key</span>
             .<span class="ident">aead_seal</span>(
@@ -390,26 +398,28 @@
                 <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext encryption error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">MlsCiphertextError</span>::<span class="ident">EncryptionError</span>
+                <span class="macro">log::error!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext encryption error {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">MlsCiphertextError::EncryptionError</span>
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">MlsCiphertext</span> {
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
-            <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>,
-            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>.<span class="ident">to_vec</span>(),
+            <span class="ident">content_type</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
+            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">to_vec</span>(),
             <span class="ident">encrypted_sender_data</span>,
             <span class="ident">ciphertext</span>: <span class="ident">ciphertext</span>.<span class="ident">to_vec</span>(),
         })
     }
 
+    <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].</span>
+    <span class="doccomment">/// In order to get an [`MlsPlaintext`] the result must be verified.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_plaintext</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">epoch_secrets</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecrets</span>,
         <span class="ident">secret_tree</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SecretTree</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
+        <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
         <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
             .<span class="ident">sender_data_secret</span>()
@@ -420,7 +430,7 @@
             .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>);
         <span class="comment">// Serialize sender data AAD</span>
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span>
-            <span class="ident">MlsSenderDataAad</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">epoch</span>, <span class="self">self</span>.<span class="ident">content_type</span>);
+            <span class="ident">MlsSenderDataAad::new</span>(<span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">epoch</span>, <span class="self">self</span>.<span class="ident">content_type</span>);
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
         <span class="comment">// Decrypt sender data</span>
         <span class="kw">let</span> <span class="ident">sender_data_bytes</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">sender_data_key</span>
@@ -430,13 +440,13 @@
                 <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Sender data decryption error&quot;</span>);
-                <span class="ident">MlsCiphertextError</span>::<span class="ident">DecryptionError</span>
+                <span class="macro">log::error!</span>(<span class="string">&quot;Sender data decryption error&quot;</span>);
+                <span class="ident">MlsCiphertextError::DecryptionError</span>
             })<span class="question-mark">?</span>;
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;  Successfully decrypted sender data.&quot;</span>);
-        <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data_bytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType</span>::<span class="ident">try_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_type</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError</span>::<span class="ident">InvalidContentType</span>)<span class="question-mark">?</span>;
+        <span class="macro">log::trace!</span>(<span class="string">&quot;  Successfully decrypted sender data.&quot;</span>);
+        <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data_bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::try_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_type</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::InvalidContentType</span>)<span class="question-mark">?</span>;
         <span class="comment">// Extract generation and key material for encryption</span>
         <span class="kw">let</span> (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>) <span class="op">=</span> <span class="ident">secret_tree</span>
             .<span class="ident">secret_for_decryption</span>(
@@ -446,8 +456,8 @@
                 <span class="ident">sender_data</span>.<span class="ident">generation</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Ciphertext generation out of bounds&quot;</span>);
-                <span class="ident">MlsCiphertextError</span>::<span class="ident">GenerationOutOfBound</span>
+                <span class="macro">log::error!</span>(<span class="string">&quot;  Ciphertext generation out of bounds&quot;</span>);
+                <span class="ident">MlsCiphertextError::GenerationOutOfBound</span>
             })<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
         <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">reuse_guard</span>);
@@ -467,38 +477,44 @@
                 <span class="kw-2">&amp;</span><span class="ident">ratchet_nonce</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Ciphertext decryption error&quot;</span>);
-                <span class="ident">MlsCiphertextError</span>::<span class="ident">DecryptionError</span>
+                <span class="macro">log::error!</span>(<span class="string">&quot;  Ciphertext decryption error&quot;</span>);
+                <span class="ident">MlsCiphertextError::DecryptionError</span>
             })<span class="question-mark">?</span>;
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
+        <span class="macro">log_content!</span>(
+            <span class="ident">trace</span>,
             <span class="string">&quot;  Successfully decrypted MlsPlaintext bytes: {:x?}&quot;</span>,
             <span class="ident">mls_ciphertext_content_bytes</span>
         );
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content</span> <span class="op">=</span> <span class="ident">MlsCiphertextContent</span>::<span class="ident">decode</span>(
+        <span class="kw">let</span> <span class="ident">mls_ciphertext_content</span> <span class="op">=</span> <span class="ident">MlsCiphertextContent::decode</span>(
             <span class="self">self</span>.<span class="ident">content_type</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_bytes</span>),
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_bytes</span>),
         )<span class="question-mark">?</span>;
         <span class="comment">// Extract sender. The sender type is always of type Member for MlsCiphertext.</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
-            <span class="ident">sender_type</span>: <span class="ident">SenderType</span>::<span class="ident">Member</span>,
+            <span class="ident">sender_type</span>: <span class="ident">SenderType::Member</span>,
             <span class="ident">sender</span>: <span class="ident">sender_data</span>.<span class="ident">sender</span>,
         };
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
+        <span class="macro">log_content!</span>(
+            <span class="ident">trace</span>,
             <span class="string">&quot;  Successfully decoded MlsPlaintext with: {:x?}&quot;</span>,
             <span class="ident">mls_ciphertext_content</span>.<span class="ident">content</span>
         );
-        <span class="comment">// Return the MlsPlaintext</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">MlsPlaintext</span> {
-            <span class="ident">group_id</span>: <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
-            <span class="ident">epoch</span>: <span class="self">self</span>.<span class="ident">epoch</span>,
-            <span class="ident">sender</span>,
-            <span class="ident">authenticated_data</span>: <span class="self">self</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>(),
-            <span class="ident">content_type</span>: <span class="self">self</span>.<span class="ident">content_type</span>,
-            <span class="ident">content</span>: <span class="ident">mls_ciphertext_content</span>.<span class="ident">content</span>,
-            <span class="ident">signature</span>: <span class="ident">mls_ciphertext_content</span>.<span class="ident">signature</span>,
-            <span class="ident">confirmation_tag</span>: <span class="ident">mls_ciphertext_content</span>.<span class="ident">confirmation_tag</span>,
-            <span class="ident">membership_tag</span>: <span class="prelude-val">None</span>,
-        })
+
+        <span class="kw">let</span> <span class="ident">verifiable</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::new</span>(
+            <span class="ident">MlsPlaintextTbs::new</span>(
+                <span class="prelude-val">None</span>,
+                <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
+                <span class="self">self</span>.<span class="ident">epoch</span>,
+                <span class="ident">sender</span>,
+                <span class="self">self</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>(),
+                <span class="self">self</span>.<span class="ident">content_type</span>,
+                <span class="ident">mls_ciphertext_content</span>.<span class="ident">content</span>,
+            ),
+            <span class="ident">mls_ciphertext_content</span>.<span class="ident">signature</span>,
+            <span class="ident">mls_ciphertext_content</span>.<span class="ident">confirmation_tag</span>,
+            <span class="prelude-val">None</span>, <span class="comment">/* MlsCiphertexts don&#39;t carry along the membership tag. */</span>
+        );
+        <span class="prelude-val">Ok</span>(<span class="ident">verifiable</span>)
     }
 
     <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
@@ -531,10 +547,10 @@
         <span class="ident">mac_len</span>: <span class="ident">usize</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
         <span class="comment">// Persist all initial fields manually (avoids cloning them)</span>
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="ident">mls_plaintext</span>.<span class="ident">content</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec::new</span>();
+        <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="comment">// Add padding if needed</span>
         <span class="kw">let</span> <span class="ident">padding_length</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">padding_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="comment">// Calculate padding block size</span>
@@ -545,8 +561,8 @@
         } <span class="kw">else</span> {
             <span class="number">0</span>
         };
-        <span class="kw">let</span> <span class="ident">padding_block</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="number">0u8</span>; <span class="ident">padding_length</span>];
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU16</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="ident">padding_block</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">padding_block</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">padding_length</span>];
+        <span class="ident">encode_vec</span>(<span class="ident">VecSize::VecU16</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="ident">padding_block</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">to_vec</span>())
     }
 }
@@ -603,5 +619,5 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">authenticated_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-js="../../../search-index.js"></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
     <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

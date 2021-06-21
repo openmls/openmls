@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/schedule/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -1077,18 +1077,18 @@
 <span class="doccomment">//! | `resumption_secret`     | &quot;resumption&quot;    |</span>
 <span class="doccomment">//! ```</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">index</span>::<span class="ident">LeafIndex</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">tree</span>::<span class="ident">secret_tree</span>::<span class="ident">SecretTree</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite</span>::<span class="ident">Mac</span>, <span class="ident">group</span>::<span class="ident">GroupContext</span>, <span class="ident">prelude</span>::<span class="ident">MembershipTag</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::tree::index::LeafIndex</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::tree::secret_tree::SecretTree</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::Mac</span>, <span class="ident">group::GroupContext</span>, <span class="ident">prelude::MembershipTag</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkeKeyPair</span>, <span class="ident">Secret</span>},
-    <span class="ident">config</span>::<span class="ident">ProtocolVersion</span>,
-    <span class="ident">messages</span>::<span class="ident">ConfirmationTag</span>,
+    <span class="ident">config::ProtocolVersion</span>,
+    <span class="ident">messages::ConfirmationTag</span>,
 };
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">codec</span>::<span class="kw-2">*</span>, <span class="ident">prelude</span>::<span class="ident">MlsPlaintextTbmPayload</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">codec</span>::<span class="kw-2">*</span>, <span class="ident">prelude::MlsPlaintextTbmPayload</span>};
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
+<span class="kw">use</span> <span class="ident">std::cell::RefCell</span>;
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
@@ -1109,7 +1109,7 @@
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CommitSecret</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">CommitSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">default</span>(),
+            <span class="ident">secret</span>: <span class="ident">Secret::default</span>(),
         }
     }
 }
@@ -1125,14 +1125,14 @@
     <span class="doccomment">/// `hash_length`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">zero_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">CommitSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">zero</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::zero</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
         }
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
         }
     }
 
@@ -1158,14 +1158,14 @@
     <span class="doccomment">/// Derive an `InitSecret` from an `EpochSecret`.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="string">&quot;init&quot;</span>);
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;Init secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Init secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
         <span class="ident">InitSecret</span> { <span class="ident">secret</span> }
     }
 
     <span class="doccomment">/// Sample a fresh, random `InitSecret` for the creation of a new group.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">InitSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
         }
     }
 
@@ -1205,7 +1205,7 @@
             .<span class="ident">secret</span>
             .<span class="ident">hkdf_extract</span>(<span class="ident">commit_secret_option</span>.<span class="ident">into</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">cs</span>.<span class="ident">secret</span>));
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>.<span class="ident">derive_secret</span>(<span class="string">&quot;joiner&quot;</span>);
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;Joiner secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Joiner secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
         <span class="ident">JoinerSecret</span> { <span class="ident">secret</span> }
     }
 
@@ -1233,7 +1233,7 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">version</span>),
         }
     }
 }
@@ -1259,35 +1259,35 @@
         <span class="ident">joiner_secret</span>: <span class="ident">JoinerSecret</span>,
         <span class="ident">psk</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+        <span class="macro">log::debug!</span>(
             <span class="string">&quot;Initializing the key schedule with {:?} ...&quot;</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">name</span>()
         );
-        <span class="macro">log_crypto</span><span class="macro">!</span>(
+        <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;  joiner_secret: {:x?}&quot;</span>,
             <span class="ident">joiner_secret</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
         );
         <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="ident">psk</span>.<span class="ident">into</span>();
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  {}&quot;</span>, <span class="kw">if</span> <span class="ident">psk</span>.<span class="ident">is_some</span>() { <span class="string">&quot;with PSK&quot;</span> } <span class="kw">else</span> { <span class="string">&quot;&quot;</span> });
-        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>, <span class="ident">psk</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  {}&quot;</span>, <span class="kw">if</span> <span class="ident">psk</span>.<span class="ident">is_some</span>() { <span class="string">&quot;with PSK&quot;</span> } <span class="kw">else</span> { <span class="string">&quot;&quot;</span> });
+        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret::new</span>(<span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>, <span class="ident">psk</span>);
         <span class="self">Self</span> {
             <span class="ident">ciphersuite</span>,
             <span class="ident">intermediate_secret</span>: <span class="prelude-val">Some</span>(<span class="ident">intermediate_secret</span>),
             <span class="ident">epoch_secret</span>: <span class="prelude-val">None</span>,
-            <span class="ident">state</span>: <span class="ident">State</span>::<span class="ident">Initial</span>,
+            <span class="ident">state</span>: <span class="ident">State::Initial</span>,
         }
     }
 
     <span class="doccomment">/// Derive the welcome secret.</span>
     <span class="doccomment">/// Note that this has to be called before the context is added.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">welcome</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WelcomeSecret</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State</span>::<span class="ident">Initial</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">is_none</span>() {
-            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Trying to derive a welcome secret while not in the initial state.&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError</span>::<span class="ident">InvalidState</span>(<span class="ident">ErrorState</span>::<span class="ident">NotInit</span>));
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Initial</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">is_none</span>() {
+            <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive a welcome secret while not in the initial state.&quot;</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotInit</span>));
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">WelcomeSecret</span>::<span class="ident">new</span>(
+        <span class="prelude-val">Ok</span>(<span class="ident">WelcomeSecret::new</span>(
             <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
         ))
     }
@@ -1297,21 +1297,21 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;Adding context to key schedule. {:?}&quot;</span>, <span class="ident">group_context</span>);
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State</span>::<span class="ident">Initial</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">is_none</span>() {
-            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(
+        <span class="macro">log::trace!</span>(<span class="string">&quot;Adding context to key schedule. {:?}&quot;</span>, <span class="ident">group_context</span>);
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Initial</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">is_none</span>() {
+            <span class="macro">log::error!</span>(
                 <span class="string">&quot;Trying to add context to the key schedule while not in the initial state.&quot;</span>
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError</span>::<span class="ident">InvalidState</span>(<span class="ident">ErrorState</span>::<span class="ident">NotInit</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotInit</span>));
         }
-        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State</span>::<span class="ident">Context</span>;
-        <span class="macro">log_crypto</span><span class="macro">!</span>(
+        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Context</span>;
+        <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;  intermediate_secret: {:x?}&quot;</span>,
             <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">secret</span>.<span class="ident">as_slice</span>()
         );
 
-        <span class="self">self</span>.<span class="ident">epoch_secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">EpochSecret</span>::<span class="ident">new</span>(
+        <span class="self">self</span>.<span class="ident">epoch_secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">EpochSecret::new</span>(
             <span class="self">self</span>.<span class="ident">ciphersuite</span>,
             <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>(),
             <span class="ident">group_context</span>,
@@ -1327,13 +1327,13 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">init_secret</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">EpochSecrets</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State</span>::<span class="ident">Context</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">is_none</span>() {
-            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Trying to derive the epoch secrets while not in the right state.&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError</span>::<span class="ident">InvalidState</span>(<span class="ident">ErrorState</span>::<span class="ident">NotContext</span>));
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Context</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">is_none</span>() {
+            <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive the epoch secrets while not in the right state.&quot;</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotContext</span>));
         }
-        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State</span>::<span class="ident">Done</span>;
+        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Done</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets</span>::<span class="ident">new</span>(
+        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets::new</span>(
             <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>(),
             <span class="ident">init_secret</span>,
         ))
@@ -1350,11 +1350,11 @@
     <span class="doccomment">/// Derive an `IntermediateSecret` from a `JoinerSecret` and an optional</span>
     <span class="doccomment">/// PSK.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">joiner_secret</span>: <span class="kw-2">&amp;</span><span class="ident">JoinerSecret</span>, <span class="ident">psk</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;PSK input: {:x?}&quot;</span>, <span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>()));
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;PSK input: {:x?}&quot;</span>, <span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>()));
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">joiner_secret</span>
             .<span class="ident">secret</span>
             .<span class="ident">hkdf_extract</span>(<span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>()));
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;Intermediate secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Intermediate secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
         <span class="self">Self</span> { <span class="ident">secret</span> }
     }
 }
@@ -1368,7 +1368,7 @@
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">intermediate_secret</span>: <span class="kw-2">&amp;</span><span class="ident">IntermediateSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="comment">// Unwrapping here is safe, because we know the key is not empty</span>
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="string">&quot;welcome&quot;</span>);
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;Welcome secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Welcome secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
         <span class="ident">WelcomeSecret</span> { <span class="ident">secret</span> }
     }
 
@@ -1382,7 +1382,7 @@
 
     <span class="doccomment">/// Derive a new AEAD key from a `WelcomeSecret`.</span>
     <span class="kw">fn</span> <span class="ident">derive_aead_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadKey</span> {
-        <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(
+        <span class="macro">log::trace!</span>(
             <span class="string">&quot;WelcomeSecret.derive_aead_key with {}&quot;</span>,
             <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>()
         );
@@ -1390,7 +1390,7 @@
             .<span class="ident">secret</span>
             .<span class="ident">hkdf_expand</span>(<span class="string">b&quot;key&quot;</span>, <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_key_length</span>())
             .<span class="ident">unwrap</span>();
-        <span class="ident">AeadKey</span>::<span class="ident">from_secret</span>(<span class="ident">aead_secret</span>)
+        <span class="ident">AeadKey::from_secret</span>(<span class="ident">aead_secret</span>)
     }
 
     <span class="doccomment">/// Derive a new AEAD nonce from a `WelcomeSecret`.</span>
@@ -1399,7 +1399,7 @@
             .<span class="ident">secret</span>
             .<span class="ident">hkdf_expand</span>(<span class="string">b&quot;nonce&quot;</span>, <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_nonce_length</span>())
             .<span class="ident">unwrap</span>();
-        <span class="ident">AeadNonce</span>::<span class="ident">from_secret</span>(<span class="ident">nonce_secret</span>)
+        <span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce_secret</span>)
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1427,7 +1427,7 @@
             <span class="kw-2">&amp;</span><span class="ident">group_context</span>.<span class="ident">serialized</span>(),
             <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
         );
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;Epoch secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Epoch secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
         <span class="ident">EpochSecret</span> { <span class="ident">secret</span> }
     }
 }
@@ -1450,7 +1450,7 @@
     <span class="doccomment">/// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the</span>
     <span class="doccomment">/// process, allowing us to achieve FS.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_secret_tree</span>(<span class="self">self</span>, <span class="ident">treesize</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SecretTree</span> {
-        <span class="ident">SecretTree</span>::<span class="ident">new</span>(<span class="self">self</span>, <span class="ident">treesize</span>)
+        <span class="ident">SecretTree::new</span>(<span class="self">self</span>, <span class="ident">treesize</span>)
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">consume_secret</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
@@ -1462,7 +1462,7 @@
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">EncryptionSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
         }
     }
 
@@ -1480,7 +1480,7 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">from_slice</span>(<span class="ident">bytes</span>, <span class="ident">mls_version</span>, <span class="ident">ciphersuite</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::from_slice</span>(<span class="ident">bytes</span>, <span class="ident">mls_version</span>, <span class="ident">ciphersuite</span>),
         }
     }
 }
@@ -1584,8 +1584,8 @@
 <span class="kw">impl</span> <span class="ident">ConfirmationKey</span> {
     <span class="doccomment">/// Derive an `ConfirmationKey` from an `EpochSecret`.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Computing confirmation key.&quot;</span>);
-        <span class="macro">log_crypto</span><span class="macro">!</span>(
+        <span class="macro">log::debug!</span>(<span class="string">&quot;Computing confirmation key.&quot;</span>);
+        <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;  epoch_secret {:x?}&quot;</span>,
             <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
@@ -1603,10 +1603,10 @@
     <span class="doccomment">///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">confirmed_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ConfirmationTag</span> {
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Computing confirmation tag.&quot;</span>);
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  confirmation key {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>());
-        <span class="macro">log_crypto</span><span class="macro">!</span>(<span class="ident">trace</span>, <span class="string">&quot;  transcript hash  {:x?}&quot;</span>, <span class="ident">confirmed_transcript_hash</span>);
-        <span class="ident">ConfirmationTag</span>(<span class="ident">Mac</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>, <span class="ident">confirmed_transcript_hash</span>))
+        <span class="macro">log::debug!</span>(<span class="string">&quot;Computing confirmation tag.&quot;</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  confirmation key {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>());
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  transcript hash  {:x?}&quot;</span>, <span class="ident">confirmed_transcript_hash</span>);
+        <span class="ident">ConfirmationTag</span>(<span class="ident">Mac::new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>, <span class="ident">confirmed_transcript_hash</span>))
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1645,7 +1645,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">tbm_payload</span>: <span class="ident">MlsPlaintextTbmPayload</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MembershipTag</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">MembershipTag</span>(<span class="ident">Mac</span>::<span class="ident">new</span>(
+        <span class="prelude-val">Ok</span>(<span class="ident">MembershipTag</span>(<span class="ident">Mac::new</span>(
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>,
             <span class="kw-2">&amp;</span><span class="ident">tbm_payload</span>.<span class="ident">into_bytes</span>()<span class="question-mark">?</span>,
         )))
@@ -1685,7 +1685,7 @@
 <span class="comment">// Get a ciphertext sample of `hash_length` from the ciphertext.</span>
 <span class="kw">fn</span> <span class="ident">ciphertext_sample</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>] {
     <span class="kw">let</span> <span class="ident">sample_length</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>();
-    <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Getting ciphertext sample of length {:?}&quot;</span>, <span class="ident">sample_length</span>);
+    <span class="macro">log::debug!</span>(<span class="string">&quot;Getting ciphertext sample of length {:?}&quot;</span>, <span class="ident">sample_length</span>);
     <span class="kw">if</span> <span class="ident">ciphertext</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">sample_length</span> {
         <span class="ident">ciphertext</span>
     } <span class="kw">else</span> {
@@ -1710,7 +1710,7 @@
     <span class="doccomment">/// Derive a new AEAD key from a `SenderDataSecret`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_aead_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadKey</span> {
         <span class="kw">let</span> <span class="ident">ciphertext_sample</span> <span class="op">=</span> <span class="ident">ciphertext_sample</span>(<span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>(), <span class="ident">ciphertext</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+        <span class="macro">log::debug!</span>(
             <span class="string">&quot;SenderDataSecret::derive_aead_key ciphertext sample: {:x?}&quot;</span>,
             <span class="ident">ciphertext_sample</span>
         );
@@ -1719,7 +1719,7 @@
             <span class="kw-2">&amp;</span><span class="ident">ciphertext_sample</span>,
             <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_key_length</span>(),
         );
-        <span class="ident">AeadKey</span>::<span class="ident">from_secret</span>(<span class="ident">secret</span>)
+        <span class="ident">AeadKey::from_secret</span>(<span class="ident">secret</span>)
     }
 
     <span class="doccomment">/// Derive a new AEAD nonce from a `SenderDataSecret`.</span>
@@ -1729,7 +1729,7 @@
         <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadNonce</span> {
         <span class="kw">let</span> <span class="ident">ciphertext_sample</span> <span class="op">=</span> <span class="ident">ciphertext_sample</span>(<span class="ident">ciphersuite</span>, <span class="ident">ciphertext</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+        <span class="macro">log::debug!</span>(
             <span class="string">&quot;SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}&quot;</span>,
             <span class="ident">ciphertext_sample</span>
         );
@@ -1738,14 +1738,14 @@
             <span class="kw-2">&amp;</span><span class="ident">ciphertext_sample</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
         );
-        <span class="ident">AeadNonce</span>::<span class="ident">from_secret</span>(<span class="ident">nonce_secret</span>)
+        <span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce_secret</span>)
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
         }
     }
 
@@ -1763,7 +1763,7 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret</span>::<span class="ident">from_slice</span>(<span class="ident">bytes</span>, <span class="ident">mls_version</span>, <span class="ident">ciphersuite</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::from_slice</span>(<span class="ident">bytes</span>, <span class="ident">mls_version</span>, <span class="ident">ciphersuite</span>),
         }
     }
 }
@@ -1796,8 +1796,8 @@
     <span class="ident">resumption_secret</span>: <span class="ident">ResumptionSecret</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">EpochSecrets</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">EpochSecrets</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="string">&quot;EpochSecrets { *** }&quot;</span>)
     }
 }
@@ -1876,27 +1876,27 @@
     <span class="doccomment">/// If the `init_secret` argument is `true`, the init secret is derived and</span>
     <span class="doccomment">/// part of the `EpochSecrets`. Otherwise not.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>, <span class="ident">init_secret</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(
+        <span class="macro">log::debug!</span>(
             <span class="string">&quot;Computing EpochSecrets from epoch secret with {}&quot;</span>,
             <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>()
         );
-        <span class="macro">log_crypto</span><span class="macro">!</span>(
+        <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;  epoch_secret: {:x?}&quot;</span>,
             <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
         );
-        <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">authentication_secret</span> <span class="op">=</span> <span class="ident">AuthenticationSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">external_secret</span> <span class="op">=</span> <span class="ident">ExternalSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">ConfirmationKey</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">resumption_secret</span> <span class="op">=</span> <span class="ident">ResumptionSecret</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">authentication_secret</span> <span class="op">=</span> <span class="ident">AuthenticationSecret::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">external_secret</span> <span class="op">=</span> <span class="ident">ExternalSecret::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">ConfirmationKey::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">resumption_secret</span> <span class="op">=</span> <span class="ident">ResumptionSecret::new</span>(<span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
 
         <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">init_secret</span> {
-            <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
-            <span class="prelude-val">Some</span>(<span class="ident">InitSecret</span>::<span class="ident">new</span>(<span class="ident">epoch_secret</span>))
+            <span class="macro">log::trace!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
+            <span class="prelude-val">Some</span>(<span class="ident">InitSecret::new</span>(<span class="ident">epoch_secret</span>))
         } <span class="kw">else</span> {
             <span class="prelude-val">None</span>
         };
@@ -1904,7 +1904,7 @@
         <span class="ident">EpochSecrets</span> {
             <span class="ident">init_secret</span>,
             <span class="ident">sender_data_secret</span>,
-            <span class="ident">encryption_secret</span>: <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">encryption_secret</span>),
+            <span class="ident">encryption_secret</span>: <span class="ident">RefCell::new</span>(<span class="ident">encryption_secret</span>),
             <span class="ident">exporter_secret</span>,
             <span class="ident">authentication_secret</span>,
             <span class="ident">external_secret</span>,
@@ -1921,5 +1921,5 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-js="../../../search-index.js"></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
     <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

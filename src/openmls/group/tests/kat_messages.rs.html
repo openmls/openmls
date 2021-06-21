@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/tests/kat_messages.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kat_messages.rs - source</title><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../../storage.js"></script><script src="../../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+<link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../../../settings.html"><img src="../../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -525,6 +525,8 @@
 <span id="522">522</span>
 <span id="523">523</span>
 <span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for the encoding and decoding of various structs of the</span>
 <span class="doccomment">//! MLS spec</span>
@@ -533,16 +535,16 @@
 <span class="doccomment">//! for more description on the test vectors.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::<span class="ident">signable</span>::<span class="ident">Signable</span>,
-    <span class="ident">group</span>::<span class="ident">GroupEpoch</span>,
+    <span class="ident">ciphersuite::signable::Signable</span>,
+    <span class="ident">group::GroupEpoch</span>,
     <span class="ident">messages</span>::{<span class="ident">Commit</span>, <span class="ident">GroupInfo</span>, <span class="ident">GroupSecrets</span>, <span class="ident">PublicGroupState</span>},
     <span class="ident">messages</span>::{<span class="ident">ConfirmationTag</span>, <span class="ident">GroupInfoPayload</span>},
-    <span class="ident">node</span>::<span class="ident">Node</span>,
+    <span class="ident">node::Node</span>,
     <span class="ident">prelude</span>::<span class="kw-2">*</span>,
     <span class="ident">test_util</span>::<span class="kw-2">*</span>,
     <span class="ident">utils</span>::<span class="kw-2">*</span>,
 };
-<span class="kw">use</span> <span class="ident">evercrypt</span>::<span class="ident">prelude</span>::<span class="ident">random_vec</span>;
+<span class="kw">use</span> <span class="ident">evercrypt::prelude::random_vec</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
@@ -577,51 +579,51 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_test_vector</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MessagesTestVector</span> {
     <span class="kw">let</span> <span class="ident">ciphersuite_name</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">name</span>();
-    <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle</span>::<span class="ident">new</span>(
+    <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
         <span class="string">b&quot;OpenMLS rocks&quot;</span>.<span class="ident">to_vec</span>(),
-        <span class="ident">CredentialType</span>::<span class="ident">Basic</span>,
-        <span class="ident">SignatureScheme</span>::<span class="ident">from</span>(<span class="ident">ciphersuite_name</span>),
+        <span class="ident">CredentialType::Basic</span>,
+        <span class="ident">SignatureScheme::from</span>(<span class="ident">ciphersuite_name</span>),
     )
     .<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
-        <span class="ident">KeyPackageBundle</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec</span>::<span class="ident">new</span>()).<span class="ident">unwrap</span>();
-    <span class="kw">let</span> <span class="ident">capabilities</span> <span class="op">=</span> <span class="ident">CapabilitiesExtension</span>::<span class="ident">default</span>();
-    <span class="kw">let</span> <span class="ident">lifetime</span> <span class="op">=</span> <span class="ident">LifetimeExtension</span>::<span class="ident">default</span>();
+        <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">capabilities</span> <span class="op">=</span> <span class="ident">CapabilitiesExtension::default</span>();
+    <span class="kw">let</span> <span class="ident">lifetime</span> <span class="op">=</span> <span class="ident">LifetimeExtension::default</span>();
 
     <span class="comment">// Let&#39;s create a group</span>
-    <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId</span>::<span class="ident">random</span>();
-    <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">GroupConfig</span>::<span class="ident">default</span>();
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup</span>::<span class="ident">new</span>(
+    <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::random</span>();
+    <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">GroupConfig::default</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new</span>(
         <span class="kw-2">&amp;</span><span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
         <span class="ident">ciphersuite_name</span>,
         <span class="ident">key_package_bundle</span>,
         <span class="ident">config</span>,
         <span class="prelude-val">None</span>,
-        <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>(),
+        <span class="ident">ProtocolVersion::default</span>(),
     )
     .<span class="ident">unwrap</span>();
 
     <span class="kw">let</span> <span class="ident">ratchet_tree</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">public_key_tree_copy</span>();
 
     <span class="comment">// We can&#39;t easily get a &quot;natural&quot; GroupInfo, so we just create one here.</span>
-    <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfoPayload</span>::<span class="ident">new</span>(
+    <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfoPayload::new</span>(
         <span class="ident">group_id</span>.<span class="ident">clone</span>(),
         <span class="ident">GroupEpoch</span>(<span class="number">0</span>),
         <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
         <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
-        <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RatchetTreeExtension</span>::<span class="ident">new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">clone</span>()))],
+        <span class="macro">vec!</span>[<span class="ident">Box::new</span>(<span class="ident">RatchetTreeExtension::new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">clone</span>()))],
         <span class="ident">ConfirmationTag</span>(<span class="ident">Mac</span> {
             <span class="ident">mac_value</span>: <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
         }),
-        <span class="ident">LeafIndex</span>::<span class="ident">from</span>(<span class="ident">random_u32</span>()),
+        <span class="ident">LeafIndex::from</span>(<span class="ident">random_u32</span>()),
     );
     <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="op">&amp;&amp;</span><span class="ident">credential_bundle</span>).<span class="ident">unwrap</span>();
-    <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">random_encoded</span>(<span class="ident">ciphersuite</span>, <span class="ident">ProtocolVersion</span>::<span class="ident">default</span>());
+    <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets::random_encoded</span>(<span class="ident">ciphersuite</span>, <span class="ident">ProtocolVersion::default</span>());
     <span class="kw">let</span> <span class="ident">public_group_state</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">export_public_group_state</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>).<span class="ident">unwrap</span>();
 
     <span class="comment">// Create some proposals</span>
     <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
-        <span class="ident">KeyPackageBundle</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec</span>::<span class="ident">new</span>()).<span class="ident">unwrap</span>();
+        <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>();
 
     <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal</span> {
@@ -634,25 +636,25 @@
         <span class="ident">removed</span>: <span class="ident">random_u32</span>(),
     };
 
-    <span class="kw">let</span> <span class="ident">psk_id</span> <span class="op">=</span> <span class="ident">PreSharedKeyId</span>::<span class="ident">new</span>(
-        <span class="ident">PskType</span>::<span class="ident">External</span>,
-        <span class="ident">Psk</span>::<span class="ident">External</span>(<span class="ident">ExternalPsk</span>::<span class="ident">new</span>(<span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()))),
+    <span class="kw">let</span> <span class="ident">psk_id</span> <span class="op">=</span> <span class="ident">PreSharedKeyId::new</span>(
+        <span class="ident">PskType::External</span>,
+        <span class="ident">Psk::External</span>(<span class="ident">ExternalPsk::new</span>(<span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()))),
         <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
     );
 
     <span class="kw">let</span> <span class="ident">psk_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal</span> { <span class="ident">psk</span>: <span class="ident">psk_id</span> };
     <span class="kw">let</span> <span class="ident">reinit_proposal</span> <span class="op">=</span> <span class="ident">ReInitProposal</span> {
         <span class="ident">group_id</span>,
-        <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>::<span class="ident">Mls10</span>,
+        <span class="ident">version</span>: <span class="ident">ProtocolVersion::Mls10</span>,
         <span class="ident">ciphersuite</span>: <span class="ident">ciphersuite_name</span>,
-        <span class="ident">extensions</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RatchetTreeExtension</span>::<span class="ident">new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">clone</span>()))],
+        <span class="ident">extensions</span>: <span class="macro">vec!</span>[<span class="ident">Box::new</span>(<span class="ident">RatchetTreeExtension::new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">clone</span>()))],
     };
     <span class="comment">// We don&#39;t support external init proposals yet.</span>
-    <span class="kw">let</span> <span class="ident">external_init_proposal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
+    <span class="kw">let</span> <span class="ident">external_init_proposal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="comment">// We don&#39;t support app ack proposals yet.</span>
-    <span class="kw">let</span> <span class="ident">app_ack_proposal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
+    <span class="kw">let</span> <span class="ident">app_ack_proposal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">let</span> <span class="ident">joiner_key_package_bundle</span> <span class="op">=</span>
-        <span class="ident">KeyPackageBundle</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec</span>::<span class="ident">new</span>()).<span class="ident">unwrap</span>();
+        <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
 
     <span class="kw">let</span> <span class="ident">add_proposal_pt</span> <span class="op">=</span> <span class="ident">group</span>
         .<span class="ident">create_add_proposal</span>(
@@ -671,10 +673,10 @@
             <span class="prelude-val">None</span>,
         )
         .<span class="ident">unwrap</span>();
-    <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsPlaintextContentType</span>::<span class="ident">Commit</span>(<span class="ident">commit</span>) <span class="op">=</span> <span class="ident">commit_pt</span>.<span class="ident">content</span>() {
+    <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span> <span class="ident">commit_pt</span>.<span class="ident">content</span>() {
         <span class="ident">commit</span>.<span class="ident">clone</span>()
     } <span class="kw">else</span> {
-        <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Wrong content of MLS plaintext&quot;</span>);
+        <span class="macro">panic!</span>(<span class="string">&quot;Wrong content of MLS plaintext&quot;</span>);
     };
     <span class="kw">let</span> <span class="ident">welcome</span> <span class="op">=</span> <span class="ident">welcome_option</span>.<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">mls_ciphertext_application</span> <span class="op">=</span> <span class="ident">group</span>
@@ -686,7 +688,7 @@
         <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">commit_pt</span>.<span class="ident">clone</span>(),
         <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">add_proposal_pt</span>.<span class="ident">clone</span>(),
         <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">mls_plaintext_application</span>.<span class="ident">clone</span>(),
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Modulo 3 of u32 shouldn&#39;t give us anything larger than 2&quot;</span>),
+        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;Modulo 3 of u32 shouldn&#39;t give us anything larger than 2&quot;</span>),
     };
 
     <span class="kw">let</span> <span class="ident">mls_ciphertext</span> <span class="op">=</span> <span class="ident">group</span>
@@ -726,10 +728,10 @@
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">write_test_vectors</span>() {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tests</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tests</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
     <span class="kw">const</span> <span class="ident">NUM_TESTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">100</span>;
 
-    <span class="kw">for</span> <span class="ident">ciphersuite</span> <span class="kw">in</span> <span class="ident">Config</span>::<span class="ident">supported_ciphersuites</span>() {
+    <span class="kw">for</span> <span class="ident">ciphersuite</span> <span class="kw">in</span> <span class="ident">Config::supported_ciphersuites</span>() {
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">NUM_TESTS</span> {
             <span class="kw">let</span> <span class="ident">test</span> <span class="op">=</span> <span class="ident">generate_test_vector</span>(<span class="ident">ciphersuite</span>);
             <span class="ident">tests</span>.<span class="ident">push</span>(<span class="ident">test</span>);
@@ -742,277 +744,279 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">tv</span>: <span class="ident">MessagesTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MessagesTestVectorError</span><span class="op">&gt;</span> {
     <span class="comment">// KeyPackage</span>
     <span class="kw">let</span> <span class="ident">tv_key_package</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">key_package</span>);
-    <span class="kw">let</span> <span class="ident">my_key_package</span> <span class="op">=</span> <span class="ident">KeyPackage</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_key_package</span>)
+    <span class="kw">let</span> <span class="ident">my_key_package</span> <span class="op">=</span> <span class="ident">KeyPackage::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_key_package</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_key_package</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_key_package</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  KeyPackage encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_key_package</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_key_package</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;KeyPackage encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  KeyPackage encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_key_package</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_key_package</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;KeyPackage encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">KeyPackageEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::KeyPackageEncodingMismatch</span>);
     }
 
     <span class="comment">// Capabilities</span>
     <span class="kw">let</span> <span class="ident">tv_capabilities</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">capabilities</span>);
-    <span class="kw">let</span> <span class="ident">my_capabilities</span> <span class="op">=</span> <span class="ident">CapabilitiesExtension</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_capabilities</span>)
+    <span class="kw">let</span> <span class="ident">my_capabilities</span> <span class="op">=</span> <span class="ident">CapabilitiesExtension::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_capabilities</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_capabilities</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_capabilities</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Capabilities encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_capabilities</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_capabilities</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Capabilities encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  Capabilities encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_capabilities</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_capabilities</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;Capabilities encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">CapabilitiesEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::CapabilitiesEncodingMismatch</span>);
     }
 
     <span class="comment">// Lifetime</span>
     <span class="kw">let</span> <span class="ident">tv_lifetime</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">lifetime</span>);
-    <span class="kw">let</span> <span class="ident">my_lifetime</span> <span class="op">=</span> <span class="ident">LifetimeExtension</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_lifetime</span>)
+    <span class="kw">let</span> <span class="ident">my_lifetime</span> <span class="op">=</span> <span class="ident">LifetimeExtension::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_lifetime</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_lifetime</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_lifetime</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Lifetime encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_lifetime</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_lifetime</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Lifetime encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  Lifetime encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_lifetime</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_lifetime</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;Lifetime encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">LifetimeEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::LifetimeEncodingMismatch</span>);
     }
 
     <span class="comment">// RatchetTree</span>
     <span class="kw">let</span> <span class="ident">tv_ratchet_tree</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">ratchet_tree</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="ident">tv_ratchet_tree</span>);
-    <span class="kw">let</span> <span class="ident">dec_ratchet_tree</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize</span>::<span class="ident">VecU32</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">cursor</span>).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="ident">Cursor::new</span>(<span class="ident">tv_ratchet_tree</span>);
+    <span class="kw">let</span> <span class="ident">dec_ratchet_tree</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize::VecU32</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">cursor</span>).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">my_ratchet_tree</span> <span class="op">=</span> <span class="ident">dec_ratchet_tree</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_ratchet_tree</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_ratchet_tree</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  RatchetTree encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_ratchet_tree</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_ratchet_tree</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;RatchetTree encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  RatchetTree encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_ratchet_tree</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_ratchet_tree</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;RatchetTree encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">RatchetTreeEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::RatchetTreeEncodingMismatch</span>);
     }
 
     <span class="comment">// GroupInfo</span>
     <span class="kw">let</span> <span class="ident">tv_group_info</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">group_info</span>);
-    <span class="kw">let</span> <span class="ident">my_group_info</span> <span class="op">=</span> <span class="ident">GroupInfo</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_group_info</span>)
+    <span class="kw">let</span> <span class="ident">my_group_info</span> <span class="op">=</span> <span class="ident">GroupInfo::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_group_info</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_group_info</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_group_info</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  GroupInfo encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_group_info</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_group_info</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;GroupInfo encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  GroupInfo encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_group_info</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_group_info</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;GroupInfo encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">GroupInfoEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::GroupInfoEncodingMismatch</span>);
     }
 
     <span class="comment">// GroupSecrets</span>
     <span class="kw">let</span> <span class="ident">tv_group_secrets</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">group_secrets</span>);
-    <span class="kw">let</span> <span class="ident">gs</span> <span class="op">=</span> <span class="ident">GroupSecrets</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_group_secrets</span>).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">gs</span> <span class="op">=</span> <span class="ident">GroupSecrets::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_group_secrets</span>).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">my_group_secrets</span> <span class="op">=</span>
-        <span class="ident">GroupSecrets</span>::<span class="ident">new_encoded</span>(<span class="kw-2">&amp;</span><span class="ident">gs</span>.<span class="ident">joiner_secret</span>, <span class="ident">gs</span>.<span class="ident">path_secret</span>.<span class="ident">as_ref</span>(), <span class="ident">gs</span>.<span class="ident">psks</span>.<span class="ident">as_ref</span>())
+        <span class="ident">GroupSecrets::new_encoded</span>(<span class="kw-2">&amp;</span><span class="ident">gs</span>.<span class="ident">joiner_secret</span>, <span class="ident">gs</span>.<span class="ident">path_secret</span>.<span class="ident">as_ref</span>(), <span class="ident">gs</span>.<span class="ident">psks</span>.<span class="ident">as_ref</span>())
             .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_group_secrets</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_group_secrets</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  GroupSecrets encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_group_secrets</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_group_secrets</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;GroupSecrets encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  GroupSecrets encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_group_secrets</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_group_secrets</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;GroupSecrets encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">GroupSecretsEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::GroupSecretsEncodingMismatch</span>);
     }
 
     <span class="comment">// Welcome</span>
     <span class="kw">let</span> <span class="ident">tv_welcome</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">welcome</span>);
-    <span class="kw">let</span> <span class="ident">my_welcome</span> <span class="op">=</span> <span class="ident">Welcome</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_welcome</span>)
+    <span class="kw">let</span> <span class="ident">my_welcome</span> <span class="op">=</span> <span class="ident">Welcome::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_welcome</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_welcome</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_welcome</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Welcome encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_welcome</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_welcome</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Welcome encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  Welcome encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_welcome</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_welcome</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;Welcome encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">WelcomeEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::WelcomeEncodingMismatch</span>);
     }
 
     <span class="comment">// PublicGroupState</span>
     <span class="kw">let</span> <span class="ident">tv_public_group_state</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">public_group_state</span>);
-    <span class="kw">let</span> <span class="ident">my_public_group_state</span> <span class="op">=</span> <span class="ident">PublicGroupState</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_public_group_state</span>)
+    <span class="kw">let</span> <span class="ident">my_public_group_state</span> <span class="op">=</span> <span class="ident">PublicGroupState::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_public_group_state</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_public_group_state</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_public_group_state</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  PublicGroupState encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_public_group_state</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_public_group_state</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;PublicGroupState encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  PublicGroupState encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_public_group_state</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_public_group_state</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;PublicGroupState encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">PublicGroupStateEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::PublicGroupStateEncodingMismatch</span>);
     }
 
     <span class="comment">// AddProposal</span>
     <span class="kw">let</span> <span class="ident">tv_add_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">add_proposal</span>);
-    <span class="kw">let</span> <span class="ident">my_add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_add_proposal</span>)
+    <span class="kw">let</span> <span class="ident">my_add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_add_proposal</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_add_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_add_proposal</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  AddProposal encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_add_proposal</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_add_proposal</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;AddProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  AddProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_add_proposal</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_add_proposal</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;AddProposal encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">AddProposalEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::AddProposalEncodingMismatch</span>);
     }
 
     <span class="comment">//update_proposal: String,         /* serialized Update */</span>
     <span class="comment">// UpdateProposal</span>
     <span class="kw">let</span> <span class="ident">tv_update_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">update_proposal</span>);
-    <span class="kw">let</span> <span class="ident">my_update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_update_proposal</span>)
+    <span class="kw">let</span> <span class="ident">my_update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_update_proposal</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_update_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_update_proposal</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  UpdateProposal encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_update_proposal</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_update_proposal</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;UpdateProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  UpdateProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_update_proposal</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_update_proposal</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;UpdateProposal encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">UpdateProposalEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::UpdateProposalEncodingMismatch</span>);
     }
     <span class="comment">//remove_proposal: String,         /* serialized Remove */</span>
     <span class="comment">// RemoveProposal</span>
     <span class="kw">let</span> <span class="ident">tv_remove_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">remove_proposal</span>);
-    <span class="kw">let</span> <span class="ident">my_remove_proposal</span> <span class="op">=</span> <span class="ident">RemoveProposal</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_remove_proposal</span>)
+    <span class="kw">let</span> <span class="ident">my_remove_proposal</span> <span class="op">=</span> <span class="ident">RemoveProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_remove_proposal</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_remove_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_remove_proposal</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  RemoveProposal encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_remove_proposal</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_remove_proposal</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;RemoveProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  RemoveProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_remove_proposal</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_remove_proposal</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;RemoveProposal encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">RemoveProposalEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::RemoveProposalEncodingMismatch</span>);
     }
 
     <span class="comment">// PreSharedKeyProposal</span>
     <span class="kw">let</span> <span class="ident">tv_pre_shared_key_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">pre_shared_key_proposal</span>);
     <span class="kw">let</span> <span class="ident">my_pre_shared_key_proposal</span> <span class="op">=</span>
-        <span class="ident">PreSharedKeyProposal</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_pre_shared_key_proposal</span>)
+        <span class="ident">PreSharedKeyProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_pre_shared_key_proposal</span>)
             .<span class="ident">unwrap</span>()
             .<span class="ident">encode_detached</span>()
             .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_pre_shared_key_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_pre_shared_key_proposal</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  PreSharedKeyProposal encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_pre_shared_key_proposal</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_pre_shared_key_proposal</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;PreSharedKeyProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  PreSharedKeyProposal encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_pre_shared_key_proposal</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_pre_shared_key_proposal</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;PreSharedKeyProposal encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">PreSharedKeyProposalEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::PreSharedKeyProposalEncodingMismatch</span>);
     }
 
     <span class="comment">// Re-Init, External Init and App-Ack Proposals go here...</span>
 
     <span class="comment">// Commit</span>
     <span class="kw">let</span> <span class="ident">tv_commit</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">commit</span>);
-    <span class="kw">let</span> <span class="ident">my_commit</span> <span class="op">=</span> <span class="ident">Commit</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_commit</span>)
+    <span class="kw">let</span> <span class="ident">my_commit</span> <span class="op">=</span> <span class="ident">Commit::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_commit</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_commit</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_commit</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  Commit encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_commit</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_commit</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Commit encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  Commit encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_commit</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_commit</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;Commit encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">CommitEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::CommitEncodingMismatch</span>);
     }
 
     <span class="comment">// MlsPlaintextApplication</span>
     <span class="kw">let</span> <span class="ident">tv_mls_plaintext_application</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_application</span>);
-    <span class="kw">let</span> <span class="ident">my_mls_plaintext_application</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_application</span>)
-        .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
-        .<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">my_mls_plaintext_application</span> <span class="op">=</span>
+        <span class="ident">VerifiableMlsPlaintext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_application</span>)
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">encode_detached</span>()
+            .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_mls_plaintext_application</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_plaintext_application</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  MlsPlaintextApplication encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_application</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_application</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;MlsPlaintextApplication encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  MlsPlaintextApplication encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_application</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_application</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;MlsPlaintextApplication encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">MlsPlaintextApplicationEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::MlsPlaintextApplicationEncodingMismatch</span>);
     }
 
     <span class="comment">// MlsPlaintext(Proposal)</span>
     <span class="kw">let</span> <span class="ident">tv_mls_plaintext_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_proposal</span>);
-    <span class="kw">let</span> <span class="ident">my_mls_plaintext_proposal</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_proposal</span>)
-        .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
-        .<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">my_mls_plaintext_proposal</span> <span class="op">=</span>
+        <span class="ident">VerifiableMlsPlaintext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_proposal</span>)
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">encode_detached</span>()
+            .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_mls_plaintext_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_plaintext_proposal</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  MlsPlaintext(Proposal) encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_proposal</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_proposal</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;MlsPlaintext(Proposal) encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  MlsPlaintext(Proposal) encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_proposal</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_proposal</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;MlsPlaintext(Proposal) encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">MlsPlaintextProposalEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::MlsPlaintextProposalEncodingMismatch</span>);
     }
 
     <span class="comment">// MlsPlaintext(Commit)</span>
     <span class="kw">let</span> <span class="ident">tv_mls_plaintext_commit</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_commit</span>);
-    <span class="kw">let</span> <span class="ident">my_mls_plaintext_commit</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_commit</span>)
+    <span class="kw">let</span> <span class="ident">my_mls_plaintext_commit</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_commit</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_mls_plaintext_commit</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_plaintext_commit</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  MlsPlaintext(Commit) encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_commit</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_commit</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;MlsPlaintext(Commit) encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  MlsPlaintext(Commit) encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_commit</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_commit</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;MlsPlaintext(Commit) encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">MlsPlaintextCommitEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::MlsPlaintextCommitEncodingMismatch</span>);
     }
 
     <span class="comment">// MlsCiphertext</span>
     <span class="kw">let</span> <span class="ident">tv_mls_ciphertext</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_ciphertext</span>);
-    <span class="kw">let</span> <span class="ident">my_mls_ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext</span>::<span class="ident">decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_ciphertext</span>)
+    <span class="kw">let</span> <span class="ident">my_mls_ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_ciphertext</span>)
         .<span class="ident">unwrap</span>()
         .<span class="ident">encode_detached</span>()
         .<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_mls_ciphertext</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_ciphertext</span> {
-        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;  MlsCiphertext encoding mismatch&quot;</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_ciphertext</span>);
-        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_ciphertext</span>);
-        <span class="kw">if</span> <span class="macro">cfg</span><span class="macro">!</span>(<span class="ident">test</span>) {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;MlsCiphertext encoding mismatch&quot;</span>);
+        <span class="macro">log::error!</span>(<span class="string">&quot;  MlsCiphertext encoding mismatch&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_ciphertext</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_ciphertext</span>);
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="macro">panic!</span>(<span class="string">&quot;MlsCiphertext encoding mismatch&quot;</span>);
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError</span>::<span class="ident">MlsCiphertextEncodingMismatch</span>);
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessagesTestVectorError::MlsCiphertextEncodingMismatch</span>);
     }
     <span class="prelude-val">Ok</span>(())
 }
@@ -1024,12 +1028,12 @@
     <span class="kw">for</span> <span class="ident">test_vector</span> <span class="kw">in</span> <span class="ident">tests</span> {
         <span class="kw">match</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>) {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Error while checking messages test vector.\n{:?}&quot;</span>, <span class="ident">e</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;Error while checking messages test vector.\n{:?}&quot;</span>, <span class="ident">e</span>),
         }
     }
 }
 
-<span class="macro">implement_error</span><span class="macro">!</span> {
+<span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MessagesTestVectorError</span> {
         <span class="ident">LifetimeEncodingMismatch</span> <span class="op">=</span> <span class="string">&quot;Lifetime encodings don&#39;t match.&quot;</span>,
         <span class="ident">RatchetTreeEncodingMismatch</span> <span class="op">=</span> <span class="string">&quot;RatchetTree encodings don&#39;t match.&quot;</span>,
@@ -1051,5 +1055,5 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-js="../../../../search-index.js"></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>
     <script src="../../../../main.js"></script><script src="../../../../source-script.js"></script><script src="../../../../source-files.js"></script></body></html>
