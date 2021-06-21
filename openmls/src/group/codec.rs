@@ -1,6 +1,7 @@
 use super::*;
 
-impl Codec for GroupId {
+implement_codec! {
+    GroupId,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.value)?;
         Ok(())
@@ -11,7 +12,8 @@ impl Codec for GroupId {
     }
 }
 
-impl Codec for GroupEpoch {
+implement_codec! {
+    GroupEpoch,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)?;
         Ok(())
@@ -22,7 +24,7 @@ impl Codec for GroupEpoch {
     }
 }
 
-impl Codec for GroupContext {
+impl Encode for GroupContext {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;

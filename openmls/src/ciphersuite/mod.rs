@@ -485,6 +485,16 @@ pub struct Signature {
     value: Vec<u8>,
 }
 
+#[cfg(test)]
+impl Signature {
+    pub(crate) fn modify(&mut self, value: &[u8]) {
+        self.value = value.to_vec();
+    }
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        &self.value
+    }
+}
+
 impl<T> SignedStruct<T> for Signature {
     fn from_payload(_payload: T, signature: Signature) -> Self {
         signature
@@ -777,12 +787,6 @@ impl AeadNonce {
             self.value[i] ^= reuse_guard.value[i]
         }
         log_crypto!(trace, "    = {:x?}", self.value);
-    }
-}
-
-impl Signature {
-    pub(crate) fn new_empty() -> Signature {
-        Signature { value: vec![] }
     }
 }
 

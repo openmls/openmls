@@ -5,7 +5,8 @@ use std::convert::TryFrom;
 
 // Nodes
 
-impl Codec for NodeType {
+implement_codec! {
+    NodeType,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)?;
         Ok(())
@@ -18,7 +19,8 @@ impl Codec for NodeType {
     }
 }
 
-impl Codec for Node {
+implement_codec! {
+    Node,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.node_type.encode(buffer)?;
         match self.node_type {
@@ -45,7 +47,8 @@ impl Codec for Node {
     }
 }
 
-impl Codec for ParentNode {
+implement_codec! {
+    ParentNode,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.unmerged_leaves)?;
@@ -75,7 +78,8 @@ impl tls_codec::TlsSize for ParentNode {
     }
 }
 
-impl Codec for UpdatePathNode {
+implement_codec! {
+    UpdatePathNode,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.public_key.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.encrypted_path_secret)?;
@@ -91,7 +95,8 @@ impl Codec for UpdatePathNode {
     }
 }
 
-impl Codec for UpdatePath {
+implement_codec! {
+    UpdatePath,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.leaf_key_package.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.nodes)?;
@@ -109,7 +114,7 @@ impl Codec for UpdatePath {
 
 // ASTree Codecs
 
-impl Codec for SecretTreeNode {
+impl Encode for SecretTreeNode {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.secret.encode(buffer)?;
         Ok(())
@@ -196,7 +201,8 @@ impl<'a> tls_codec::TlsSize for LeafNodeHashInput<'a> {
 
 // Index
 
-impl Codec for LeafIndex {
+implement_codec! {
+    LeafIndex,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)
     }
@@ -208,7 +214,7 @@ impl Codec for LeafIndex {
 
 // Secret tree
 
-impl Codec for TreeContext {
+impl Encode for TreeContext {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.node.encode(buffer)?;
         self.generation.encode(buffer)?;

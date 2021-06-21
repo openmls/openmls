@@ -1,6 +1,7 @@
 use crate::{
+    codec::{Decode, Encode},
     group::{GroupEpoch, GroupId},
-    messages::{Codec, Config, PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
+    messages::{Config, PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
     schedule::psk::{BranchPsk, ExternalPsk, PreSharedKeyId, Psk, PskType, ReinitPsk},
 };
 

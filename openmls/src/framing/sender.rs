@@ -1,3 +1,5 @@
+//! # The sender of a message
+//!
 //! Section  9. Message Framing
 //!
 //! ```text

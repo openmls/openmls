@@ -9,18 +9,18 @@ use std::convert::TryFrom;
 use crate::test_util::{read, write};
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName, Secret, Signature},
-    codec::Codec,
+    ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret, SignatureScheme},
+    codec::{Decode, Encode},
     config::{Config, ProtocolVersion},
+    credentials::{Credential, CredentialBundle, CredentialType},
     group::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
         GroupId,
     },
     messages::Commit,
     prelude::{
-        random_u32, random_u64, randombytes, sender::SenderType, ContentType, LeafIndex,
-        MlsPlaintext, MlsPlaintextCommitAuthData, MlsPlaintextCommitContent,
-        MlsPlaintextContentType, Sender,
+        random_u32, random_u64, randombytes, LeafIndex, MlsPlaintext, MlsPlaintextCommitAuthData,
+        MlsPlaintextCommitContent, VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
     test_util::{bytes_to_hex, hex_to_bytes},
@@ -36,6 +36,7 @@ pub struct TranscriptTestVector {
     tree_hash_before: String,
     confirmed_transcript_hash_before: String,
     interim_transcript_hash_before: String,
+    credential: String,
     membership_key: String,
     confirmation_key: String,
     commit: String, // TLS serialized MlsPlaintext(Commit)
@@ -58,23 +59,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         ConfirmationKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
 
     // Build plaintext commit message.
-    let mut commit = MlsPlaintext {
-        group_id: group_id.clone(),
-        epoch: GroupEpoch(epoch),
-        sender: Sender {
-            sender_type: SenderType::Member,
-            sender: LeafIndex::from(random_u32()),
-        },
-        authenticated_data: randombytes(48),
-        content_type: ContentType::Commit,
-        content: MlsPlaintextContentType::Commit(Commit {
-            proposals: vec![],
-            path: None,
-        }),
-        signature: Signature::new_empty(),
-        confirmation_tag: None,
-        membership_tag: None,
-    };
+    let credential_bundle = CredentialBundle::new(
+        b"client".to_vec(),
+        CredentialType::Basic,
+        SignatureScheme::from(ciphersuite.name()),
+    )
+    .unwrap();
     let context = GroupContext::new(
         group_id.clone(),
         GroupEpoch(epoch),
@@ -83,6 +73,17 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &[], // extensions
     )
     .expect("Error creating group context");
+    let mut commit = MlsPlaintext::new_commit(
+        LeafIndex::from(random_u32()),
+        &randombytes(48),
+        Commit {
+            proposals: vec![],
+            path: None,
+        },
+        &credential_bundle,
+        &context,
+    )
+    .unwrap();
 
     let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
@@ -91,7 +92,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     )
     .expect("Error updating confirmed transcript hash");
     let confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_after);
-    commit.confirmation_tag = Some(confirmation_tag);
+    commit.set_confirmation_tag(confirmation_tag);
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
         &ciphersuite,
@@ -100,8 +101,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     )
     .expect("Error updating interim transcript hash");
     commit
-        .add_membership_tag(context.serialized(), &membership_key)
+        .set_membership_tag(context.serialized(), &membership_key)
         .expect("Error adding membership tag");
+    let credential = credential_bundle.credential().encode_detached().unwrap();
 
     TranscriptTestVector {
         cipher_suite: ciphersuite.name() as u16,
@@ -110,6 +112,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         tree_hash_before: bytes_to_hex(&tree_hash_before),
         confirmed_transcript_hash_before: bytes_to_hex(&confirmed_transcript_hash_before),
         interim_transcript_hash_before: bytes_to_hex(&interim_transcript_hash_before),
+        credential: bytes_to_hex(&credential),
         membership_key: bytes_to_hex(membership_key.as_slice()),
         confirmation_key: bytes_to_hex(confirmation_key.as_slice()),
         commit: bytes_to_hex(&commit.encode_detached().expect("Error encoding commit")),
@@ -170,9 +173,10 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         ProtocolVersion::default(),
         ciphersuite,
     ));
+    let credential = Credential::decode_detached(&hex_to_bytes(&test_vector.credential)).unwrap();
 
     // Check membership and confirmation tags.
-    let commit = MlsPlaintext::decode_detached(&hex_to_bytes(&test_vector.commit))
+    let commit = VerifiableMlsPlaintext::decode_detached(&hex_to_bytes(&test_vector.commit))
         .expect("Error decoding commit");
     let context = GroupContext::new(
         group_id,
@@ -192,9 +196,13 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         }
         return Err(TranscriptTestVectorError::GroupContextMismatch);
     }
+    let commit: MlsPlaintext = commit
+        .set_context(context.serialized())
+        .verify(&credential)
+        .expect("Invalid signature on MlsPlaintext commit");
 
     if commit
-        .verify_membership_tag(ciphersuite, context.serialized(), &membership_key)
+        .verify_membership(context.serialized(), &membership_key)
         .is_err()
     {
         if cfg!(test) {
@@ -210,16 +218,12 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_after);
     if &my_confirmation_tag
         != commit
-            .confirmation_tag
-            .as_ref()
+            .confirmation_tag()
             .expect("Confirmation tag is missing")
     {
         log::error!("  Confirmation tag mismatch");
         log::debug!("    Computed: {:x?}", my_confirmation_tag);
-        log::debug!(
-            "    Expected: {:x?}",
-            commit.confirmation_tag.as_ref().unwrap()
-        );
+        log::debug!("    Expected: {:x?}", commit.confirmation_tag().unwrap());
         if cfg!(test) {
             panic!("Invalid confirmation tag");
         }
@@ -275,16 +279,17 @@ fn read_test_vectors() {
         }
     }
 
-    // mlspp test vectors
-    let tv_files = [
-        "test_vectors/mlspp/mlspp_transcript_1.json",
-        "test_vectors/mlspp/mlspp_transcript_2.json",
-        "test_vectors/mlspp/mlspp_transcript_3.json",
-    ];
-    for &tv_file in tv_files.iter() {
-        let tv: TranscriptTestVector = read(tv_file);
-        run_test_vector(tv).expect("Error while checking key schedule test vector.");
-    }
+    // FIXME: change test vector spec. See https://github.com/mlswg/mls-implementations/pull/47
+    // // mlspp test vectors
+    // let tv_files = [
+    //     "test_vectors/mlspp/mlspp_transcript_1.json",
+    //     "test_vectors/mlspp/mlspp_transcript_2.json",
+    //     "test_vectors/mlspp/mlspp_transcript_3.json",
+    // ];
+    // for &tv_file in tv_files.iter() {
+    //     let tv: TranscriptTestVector = read(tv_file);
+    //     run_test_vector(tv).expect("Error while checking key schedule test vector.");
+    // }
 }
 
 implement_error! {

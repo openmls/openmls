@@ -46,6 +46,9 @@ impl GroupId {
     pub fn as_slice(&self) -> &[u8] {
         &self.value
     }
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.value.clone()
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]

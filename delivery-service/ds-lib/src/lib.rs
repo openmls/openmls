@@ -5,17 +5,17 @@
 //!
 //! Clients are represented by the `ClientInfo` struct.
 
-use openmls::prelude::*;
+use openmls::{framing::VerifiableMlsPlaintext, prelude::*};
 
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to
 /// `/clients/register`.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct ClientInfo {
+#[derive(Debug, Default, Clone)]
+pub struct ClientInfo<'a> {
     pub client_name: String,
     pub key_packages: ClientKeyPackages,
     pub id: Vec<u8>,
-    pub msgs: Vec<MlsMessage>,
+    pub msgs: Vec<DsMlsMessage<'a>>,
     pub welcome_queue: Vec<Welcome>,
 }
 
@@ -26,7 +26,7 @@ pub struct ClientInfo {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ClientKeyPackages(pub Vec<(Vec<u8>, KeyPackage)>);
 
-impl ClientInfo {
+impl<'a> ClientInfo<'a> {
     /// Create a new `ClientInfo` struct for a given client name and vector of
     /// key packages with corresponding hashes.
     pub fn new(client_name: String, key_packages: Vec<(Vec<u8>, KeyPackage)>) -> Self {
@@ -46,13 +46,50 @@ impl ClientInfo {
     }
 }
 
+/// Unified message type similar to the one in the managed group.
+/// But this version only operates on [`VerifiableMlsPlaintext`].
+#[derive(Debug, Clone)]
+pub enum DsMlsMessage<'a> {
+    /// An OpenMLS `MlsPlaintext`.
+    Plaintext(VerifiableMlsPlaintext<'a>),
+
+    /// An OpenMLS `MlsCiphertext`.
+    Ciphertext(MlsCiphertext),
+}
+
+impl<'a> DsMlsMessage<'a> {
+    /// Get the group id.
+    pub fn group_id(&self) -> &[u8] {
+        match self {
+            DsMlsMessage::Plaintext(p) => p.payload().group_id(),
+            DsMlsMessage::Ciphertext(c) => c.group_id.as_slice(),
+        }
+    }
+
+    /// Get the epoch as plain u64.
+    pub fn epoch(&self) -> u64 {
+        match self {
+            DsMlsMessage::Ciphertext(m) => m.epoch.0,
+            DsMlsMessage::Plaintext(m) => m.payload().epoch().0,
+        }
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        match self {
+            DsMlsMessage::Ciphertext(m) => m.is_handshake_message(),
+            DsMlsMessage::Plaintext(m) => m.payload().is_handshake_message(),
+        }
+    }
+}
+
 /// The DS returns a list of messages on `/recv/{name}`, which is a
 /// `Vec<Message>`. A `Message` is either an `MLSMessage` or a `Welcome` message
 /// (see OpenMLS) for details.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Message {
+#[derive(Debug)]
+pub enum Message<'a> {
     /// An `MLSMessage` is either an OpenMLS `MlsCiphertext` or `MlsPlaintext`.
-    MlsMessage(MlsMessage),
+    MlsMessage(DsMlsMessage<'a>),
 
     /// An OpenMLS `Welcome` message.
     Welcome(Welcome),
@@ -76,23 +113,23 @@ pub enum MessageType {
 /// This is an `MLSMessage` plus the list of recipients as a vector of client
 /// names.
 #[derive(Debug)]
-pub struct GroupMessage {
-    pub msg: MlsMessage,
+pub struct GroupMessage<'a> {
+    pub msg: DsMlsMessage<'a>,
     pub recipients: Vec<Vec<u8>>,
 }
 
-impl GroupMessage {
-    /// Create a new `GroupMessage` taking an `MLSMessage` and slice of
+impl<'a> GroupMessage<'a> {
+    /// Create a new `GroupMessage` taking an `DsMlsMessage` and slice of
     /// recipient names.
-    pub fn new(msg: MlsMessage, recipients: &[Vec<u8>]) -> Self {
+    pub fn new(msg: DsMlsMessage<'a>, recipients: &[Vec<u8>]) -> Self {
         Self {
             msg,
             recipients: recipients.to_vec(),
         }
     }
 
-    /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> Vec<u8> {
+    /// Get the group ID as plain byte slice.
+    pub fn group_id(&self) -> &[u8] {
         self.msg.group_id()
     }
 
@@ -107,23 +144,27 @@ impl GroupMessage {
     }
 }
 
-impl Codec for ClientKeyPackages {
+impl Encode for ClientKeyPackages {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)
     }
+}
 
+impl Decode for ClientKeyPackages {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let key_packages = Vec::<(Vec<u8>, KeyPackage)>::decode(cursor)?;
         Ok(ClientKeyPackages(key_packages))
     }
 }
 
-impl Codec for ClientInfo {
+impl<'a> Encode for ClientInfo<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.client_name.encode(buffer)?;
         self.key_packages.encode(buffer)
     }
+}
 
+impl<'a> Decode for ClientInfo<'a> {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let client_name = String::decode(cursor)?;
         let key_packages = Vec::<(Vec<u8>, KeyPackage)>::decode(cursor)?;
@@ -131,10 +172,12 @@ impl Codec for ClientInfo {
     }
 }
 
-impl Codec for MessageType {
+impl Encode for MessageType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)
     }
+}
+impl Decode for MessageType {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let value = u8::decode(cursor)?;
         match value {
@@ -146,15 +189,15 @@ impl Codec for MessageType {
     }
 }
 
-impl Codec for Message {
+impl<'a> Encode for Message<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
             Message::MlsMessage(m) => match m {
-                MlsMessage::Ciphertext(m) => {
+                DsMlsMessage::Ciphertext(m) => {
                     MessageType::MlsCiphertext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
-                MlsMessage::Plaintext(m) => {
+                DsMlsMessage::Plaintext(m) => {
                     MessageType::MlsPlaintext.encode(buffer)?;
                     m.encode(buffer)?;
                 }
@@ -166,42 +209,48 @@ impl Codec for Message {
         }
         Ok(())
     }
+}
 
+impl<'a> Decode for Message<'a> {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let msg_type = MessageType::decode(cursor)?;
         let msg = match msg_type {
             MessageType::MlsCiphertext => {
-                Message::MlsMessage(MlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?))
+                Message::MlsMessage(DsMlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?))
             }
-            MessageType::MlsPlaintext => {
-                Message::MlsMessage(MlsMessage::Plaintext(MlsPlaintext::decode(cursor)?))
-            }
+            MessageType::MlsPlaintext => Message::MlsMessage(DsMlsMessage::Plaintext(
+                VerifiableMlsPlaintext::decode(cursor)?,
+            )),
             MessageType::Welcome => Message::Welcome(Welcome::decode(cursor)?),
         };
         Ok(msg)
     }
 }
 
-impl Codec for GroupMessage {
+impl<'a> Encode for GroupMessage<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match &self.msg {
-            MlsMessage::Ciphertext(m) => {
+            DsMlsMessage::Ciphertext(m) => {
                 MessageType::MlsCiphertext.encode(buffer)?;
                 m.encode(buffer)?;
             }
-            MlsMessage::Plaintext(m) => {
+            DsMlsMessage::Plaintext(m) => {
                 MessageType::MlsPlaintext.encode(buffer)?;
                 m.encode(buffer)?;
             }
         }
         self.recipients.encode(buffer)
     }
+}
 
+impl<'a> Decode for GroupMessage<'a> {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let msg_type = MessageType::decode(cursor)?;
         let msg = match msg_type {
-            MessageType::MlsCiphertext => MlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?),
-            MessageType::MlsPlaintext => MlsMessage::Plaintext(MlsPlaintext::decode(cursor)?),
+            MessageType::MlsCiphertext => DsMlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?),
+            MessageType::MlsPlaintext => {
+                DsMlsMessage::Plaintext(VerifiableMlsPlaintext::decode(cursor)?)
+            }
             _ => return Err(CodecError::DecodingError),
         };
 

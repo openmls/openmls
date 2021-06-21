@@ -1,5 +1,6 @@
 use crate::{
-    ciphersuite::Secret,
+    ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
+    codec::{Cursor, Decode, Encode},
     config::Config,
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, LifetimeExtension},
@@ -93,7 +94,7 @@ fn proposal_queue_functions() {
         assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
         // Frame proposals in MlsPlaintext
-        let mls_plaintext_add_alice1 = MlsPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
             LeafIndex::from(0u32),
             &[],
             proposal_add_alice1,
@@ -102,7 +103,7 @@ fn proposal_queue_functions() {
             &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create proposal.");
-        let mls_plaintext_add_alice2 = MlsPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_alice2 = MlsPlaintext::new_proposal(
             LeafIndex::from(1u32),
             &[],
             proposal_add_alice2,
@@ -111,7 +112,7 @@ fn proposal_queue_functions() {
             &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create proposal.");
-        let _mls_plaintext_add_bob1 = MlsPlaintext::new_from_proposal_member(
+        let _mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
             LeafIndex::from(1u32),
             &[],
             proposal_add_bob1,
@@ -195,7 +196,7 @@ fn proposal_queue_order() {
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
         // Frame proposals in MlsPlaintext
-        let mls_plaintext_add_alice1 = MlsPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
             LeafIndex::from(0u32),
             &[],
             proposal_add_alice1.clone(),
@@ -204,7 +205,7 @@ fn proposal_queue_order() {
             &MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */)),
         )
         .expect("Could not create proposal.");
-        let mls_plaintext_add_bob1 = MlsPlaintext::new_from_proposal_member(
+        let mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
             LeafIndex::from(1u32),
             &[],
             proposal_add_bob1.clone(),
@@ -259,9 +260,6 @@ fn proposal_queue_order() {
 /// decoded values are the same as the original
 #[test]
 fn proposals_codec() {
-    use crate::ciphersuite::*;
-    use crate::codec::{Codec, Cursor};
-
     let ciphersuite =
         &Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap();
 

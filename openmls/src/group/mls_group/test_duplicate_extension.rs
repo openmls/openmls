@@ -2,12 +2,7 @@
 
 use super::*;
 
-use crate::{
-    codec::{Codec, CodecError},
-    messages::GroupSecrets,
-    prelude::*,
-    schedule::KeySchedule,
-};
+use crate::{codec::CodecError, messages::GroupSecrets, prelude::*, schedule::KeySchedule};
 
 // This tests the ratchet tree extension to test if the duplicate detection works
 ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {

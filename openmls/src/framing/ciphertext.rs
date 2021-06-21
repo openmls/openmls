@@ -32,8 +32,8 @@ impl MlsCiphertext {
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
-            content_type: mls_plaintext.content_type,
-            authenticated_data: mls_plaintext.authenticated_data.to_vec(),
+            content_type: *mls_plaintext.content_type(),
+            authenticated_data: mls_plaintext.authenticated_data().to_vec(),
         };
         let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad.encode_detached()?;
         // Extract generation and key material for encryption
@@ -73,11 +73,11 @@ impl MlsCiphertext {
         let mls_sender_data_aad = MlsSenderDataAad::new(
             context.group_id().clone(),
             context.epoch(),
-            mls_plaintext.content_type,
+            *mls_plaintext.content_type(),
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad.encode_detached()?;
-        let sender_data = MlsSenderData::new(mls_plaintext.sender.sender, generation, reuse_guard);
+        let sender_data = MlsSenderData::new(mls_plaintext.sender_index(), generation, reuse_guard);
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
@@ -92,19 +92,21 @@ impl MlsCiphertext {
         Ok(MlsCiphertext {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
-            content_type: mls_plaintext.content_type,
-            authenticated_data: mls_plaintext.authenticated_data.to_vec(),
+            content_type: *mls_plaintext.content_type(),
+            authenticated_data: mls_plaintext.authenticated_data().to_vec(),
             encrypted_sender_data,
             ciphertext: ciphertext.to_vec(),
         })
     }
 
+    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
+    /// In order to get an [`MlsPlaintext`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
-    ) -> Result<MlsPlaintext, MlsCiphertextError> {
+    ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
@@ -166,7 +168,8 @@ impl MlsCiphertext {
                 log::error!("  Ciphertext decryption error");
                 MlsCiphertextError::DecryptionError
             })?;
-        log::trace!(
+        log_content!(
+            trace,
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
@@ -179,22 +182,27 @@ impl MlsCiphertext {
             sender_type: SenderType::Member,
             sender: sender_data.sender,
         };
-        log::trace!(
+        log_content!(
+            trace,
             "  Successfully decoded MlsPlaintext with: {:x?}",
             mls_ciphertext_content.content
         );
-        // Return the MlsPlaintext
-        Ok(MlsPlaintext {
-            group_id: self.group_id.clone(),
-            epoch: self.epoch,
-            sender,
-            authenticated_data: self.authenticated_data.clone(),
-            content_type: self.content_type,
-            content: mls_ciphertext_content.content,
-            signature: mls_ciphertext_content.signature,
-            confirmation_tag: mls_ciphertext_content.confirmation_tag,
-            membership_tag: None,
-        })
+
+        let verifiable = VerifiableMlsPlaintext::new(
+            MlsPlaintextTbs::new(
+                None,
+                self.group_id.clone(),
+                self.epoch,
+                sender,
+                self.authenticated_data.clone(),
+                self.content_type,
+                mls_ciphertext_content.content,
+            ),
+            mls_ciphertext_content.signature,
+            mls_ciphertext_content.confirmation_tag,
+            None, /* MlsCiphertexts don't carry along the membership tag. */
+        );
+        Ok(verifiable)
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
@@ -228,9 +236,9 @@ impl MlsCiphertext {
     ) -> Result<Vec<u8>, CodecError> {
         // Persist all initial fields manually (avoids cloning them)
         let buffer = &mut Vec::new();
-        mls_plaintext.content.encode(buffer)?;
-        mls_plaintext.signature.encode(buffer)?;
-        mls_plaintext.confirmation_tag.encode(buffer)?;
+        mls_plaintext.content().encode(buffer)?;
+        mls_plaintext.signature().encode(buffer)?;
+        mls_plaintext.confirmation_tag().encode(buffer)?;
         // Add padding if needed
         let padding_length = if padding_size > 0 {
             // Calculate padding block size

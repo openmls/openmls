@@ -1,8 +1,9 @@
 use crate::{
     ciphersuite::signable::Verifiable,
+    codec::{Decode, Encode},
     key_packages::KeyPackageBundle,
     messages::{
-        Codec, Config, CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig,
+        Config, CredentialBundle, CredentialType, MlsGroupConfig, LeafIndex, MlsGroup,
         PublicGroupState,
     },
 };
@@ -83,7 +84,9 @@ fn test_pgs() {
         assert_eq!(pgs.signer_index, LeafIndex::from(0u32));
 
         // Verify the signature
-        assert!(pgs.verify(alice_credential_bundle.credential()).is_ok());
+        assert!(pgs
+            .verify_no_out(alice_credential_bundle.credential())
+            .is_ok());
 
         // Test codec
         let encoded = pgs.encode_detached().expect("Could not encode");
