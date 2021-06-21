@@ -109,9 +109,9 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = GroupConfig {
+    let config = MlsGroupConfig {
         add_ratchet_tree_extension: true,
-        ..GroupConfig::default()
+        ..MlsGroupConfig::default()
     };
 
     // === Alice creates a group with the ratchet tree extension ===
@@ -178,9 +178,9 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = GroupConfig {
+    let config = MlsGroupConfig {
         add_ratchet_tree_extension: false,
-        ..GroupConfig::default()
+        ..MlsGroupConfig::default()
     };
 
     let group_id = [5, 6, 7, 8];
@@ -225,6 +225,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     // We expect an error because the ratchet tree is missing
     assert_eq!(
         error.expect("We expected an error"),
-        GroupError::WelcomeError(WelcomeError::MissingRatchetTree)
+        MlsGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
     );
 });

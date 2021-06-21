@@ -166,7 +166,7 @@ fn unknown_sender() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -286,7 +286,7 @@ fn unknown_sender() {
         let received_message = group_charlie.decrypt(&enc_message);
         assert_eq!(
             received_message.unwrap_err(),
-            MlsCiphertextError::PlaintextError(MlsPlaintextError::UnknownSender)
+            MlsGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
         );
 
         // Alice sends a message with a sender that is outside of the group
@@ -321,7 +321,7 @@ fn unknown_sender() {
         let received_message = group_charlie.decrypt(&enc_message);
         assert_eq!(
             received_message.unwrap_err(),
-            MlsCiphertextError::GenerationOutOfBound
+            MlsGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
         );
     }
 }
@@ -365,7 +365,7 @@ fn confirmation_tag_presence() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -395,7 +395,7 @@ fn confirmation_tag_presence() {
 
         assert_eq!(
             err,
-            GroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing)
+            MlsGroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing)
         );
     }
 }

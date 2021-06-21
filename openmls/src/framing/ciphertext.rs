@@ -245,6 +245,11 @@ impl MlsCiphertext {
         encode_vec(VecSize::VecU16, buffer, &padding_block)?;
         Ok(buffer.to_vec())
     }
+
+    /// Returns the `group_id` in the `MlsCiphertext`.
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_id
+    }
 }
 
 // === Helper structs ===
