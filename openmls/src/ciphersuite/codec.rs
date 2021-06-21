@@ -6,7 +6,8 @@ use crate::codec::*;
 
 use super::REUSE_GUARD_BYTES;
 
-impl Codec for CiphersuiteName {
+implement_codec! {
+    CiphersuiteName,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         u16::from(self).encode(buffer)?;
         Ok(())
@@ -16,7 +17,8 @@ impl Codec for CiphersuiteName {
     }
 }
 
-impl Codec for SignatureScheme {
+implement_codec! {
+    SignatureScheme,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u16).encode(buffer)?;
         Ok(())
@@ -30,14 +32,15 @@ impl Codec for SignatureScheme {
     }
 }
 
-impl Codec for SignaturePublicKey {
+impl Encode for SignaturePublicKey {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.value)?;
         Ok(())
     }
 }
 
-impl Codec for Signature {
+implement_codec! {
+    Signature,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.value)?;
         Ok(())
@@ -55,7 +58,8 @@ impl tls_codec::TlsSize for Signature {
     }
 }
 
-impl Codec for HpkePublicKey {
+implement_codec! {
+    HpkePublicKey,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, self.as_slice())?;
         Ok(())
@@ -66,7 +70,8 @@ impl Codec for HpkePublicKey {
     }
 }
 
-impl Codec for HpkeCiphertext {
+implement_codec! {
+    HpkeCiphertext,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU16, buffer, &self.kem_output)?;
         encode_vec(VecSize::VecU16, buffer, &self.ciphertext)?;
@@ -82,7 +87,8 @@ impl Codec for HpkeCiphertext {
     }
 }
 
-impl Codec for ReuseGuard {
+implement_codec! {
+    ReuseGuard,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         u32::from_be_bytes(self.value).encode(buffer)?;
         Ok(())
@@ -94,7 +100,8 @@ impl Codec for ReuseGuard {
     }
 }
 
-impl Codec for Secret {
+implement_codec! {
+    Secret,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.value)?;
         Ok(())
@@ -110,7 +117,7 @@ impl Codec for Secret {
     }
 }
 
-impl Codec for KdfLabel {
+impl Encode for KdfLabel {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (self.length as u16).encode(buffer)?;
         encode_vec(VecSize::VecU8, buffer, self.label.as_bytes())?;

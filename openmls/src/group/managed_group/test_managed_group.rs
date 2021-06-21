@@ -138,14 +138,14 @@ fn remover() {
     .unwrap();
 
     // === Alice adds Bob ===
-    let (queued_messages, welcome) = match alice_group.add_members(&key_store, &[bob_key_package]) {
+    let (queued_message, welcome) = match alice_group.add_members(&key_store, &[bob_key_package]) {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
     alice_group
-        .process_message(queued_messages)
-        .expect("The group is no longer active");
+        .process_message(queued_message)
+        .expect("Process message error");
 
     let mut bob_group = ManagedGroup::new_from_welcome(
         &key_store,

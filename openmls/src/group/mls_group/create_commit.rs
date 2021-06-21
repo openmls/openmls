@@ -67,23 +67,14 @@ impl MlsGroup {
         provisional_epoch.increment();
 
         // Build MlsPlaintext
-        let content = MlsPlaintextContentType::Commit(commit);
-        let sender = Sender::member(sender_index);
-        let mut mls_plaintext = MlsPlaintext {
-            group_id: self.context().group_id.clone(),
-            epoch: self.context().epoch,
-            sender,
-            authenticated_data: aad.to_vec(),
-            content_type: ContentType::from(&content),
-            content,
-            signature: Signature::new_empty(),
-            confirmation_tag: None,
-            membership_tag: None,
-        };
-
-        // Add signature and membership tag to the MlsPlaintext
         let serialized_context = self.group_context.serialized();
-        mls_plaintext.sign_from_member(credential_bundle, serialized_context)?;
+        let mut mls_plaintext = MlsPlaintext::new_commit(
+            sender_index,
+            aad,
+            commit,
+            credential_bundle,
+            &self.group_context,
+        )?;
 
         // Calculate the confirmed transcript hash
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
@@ -146,11 +137,11 @@ impl MlsGroup {
             .tag(&confirmed_transcript_hash);
 
         // Set the confirmation tag
-        mls_plaintext.confirmation_tag = Some(confirmation_tag.clone());
+        mls_plaintext.set_confirmation_tag(confirmation_tag.clone());
 
         // Add membership tag
         mls_plaintext
-            .add_membership_tag(serialized_context, self.epoch_secrets().membership_key())?;
+            .set_membership_tag(serialized_context, self.epoch_secrets().membership_key())?;
 
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {

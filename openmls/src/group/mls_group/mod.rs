@@ -9,6 +9,7 @@ mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
 
+use crate::ciphersuite::signable::Verifiable;
 use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
@@ -148,7 +149,7 @@ impl MlsGroup {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -171,7 +172,7 @@ impl MlsGroup {
     ) -> Result<MlsPlaintext, GroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -196,7 +197,7 @@ impl MlsGroup {
             removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -219,7 +220,7 @@ impl MlsGroup {
     ) -> Result<MlsPlaintext, GroupError> {
         let presharedkey_proposal = PreSharedKeyProposal { psk };
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -282,7 +283,7 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         padding_size: usize,
     ) -> Result<MlsCiphertext, GroupError> {
-        let mls_plaintext = MlsPlaintext::new_from_application(
+        let mls_plaintext = MlsPlaintext::new_application(
             self.sender_index(),
             aad,
             msg,
@@ -299,6 +300,7 @@ impl MlsGroup {
         mls_plaintext: MlsPlaintext,
         padding_size: usize,
     ) -> Result<MlsCiphertext, GroupError> {
+        log::trace!("{:?}", mls_plaintext.confirmation_tag());
         MlsCiphertext::try_from_plaintext(
             &mls_plaintext,
             &self.ciphersuite,
@@ -321,30 +323,31 @@ impl MlsGroup {
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
         )?;
-
-        // Verify the signature. MlsCiphertext messages don't have a membership tag, so
-        // we don't have to verify that.
-        self.verify_signature(&mls_plaintext)?;
-
-        Ok(mls_plaintext)
+        self.verify(mls_plaintext)
     }
 
-    /// Verify the signature of an MlsPlaintext
-    pub fn verify_signature(&self, mls_plaintext: &MlsPlaintext) -> Result<(), MlsPlaintextError> {
+    /// Verify a [`VerifiableMlsPlaintext`] and get the [`MlsPlaintext`].
+    pub fn verify(
+        &self,
+        verifiable: VerifiableMlsPlaintext,
+    ) -> Result<MlsPlaintext, MlsCiphertextError> {
+        // Verify the signature on the plaintext.
         let tree = self.tree();
 
-        let node = &tree.nodes[mls_plaintext.sender()];
+        let node = &tree.nodes[verifiable.sender_index()];
         let credential = if let Some(kp) = node.key_package.as_ref() {
             kp.credential()
         } else {
-            return Err(MlsPlaintextError::UnknownSender);
+            return Err(MlsPlaintextError::UnknownSender.into());
         };
 
         let serialized_context = self.context().serialized();
 
-        mls_plaintext
-            .verify_signature(serialized_context, credential)
-            .map_err(|_| MlsPlaintextError::InvalidSignature)
+        // TODO: what about the tags?
+        verifiable
+            .set_context(serialized_context)
+            .verify(credential)
+            .map_err(|e| MlsPlaintextError::from(e).into())
     }
 
     /// Verify the membership tag an MlsPlaintext
@@ -355,11 +358,7 @@ impl MlsGroup {
         let serialized_context = self.context().serialized();
 
         mls_plaintext
-            .verify_membership_tag(
-                self.ciphersuite,
-                serialized_context,
-                self.epoch_secrets().membership_key(),
-            )
+            .verify_membership(serialized_context, self.epoch_secrets().membership_key())
             .map_err(|_| MlsPlaintextError::InvalidSignature)
     }
 
