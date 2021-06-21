@@ -299,7 +299,6 @@ impl MlsGroup {
         &mut self,
         mls_plaintext: MlsPlaintext,
         padding_size: usize,
-
     ) -> Result<MlsCiphertext, MlsGroupError> {
         log::trace!("{:?}", mls_plaintext.confirmation_tag());
         MlsCiphertext::try_from_plaintext(
@@ -331,7 +330,7 @@ impl MlsGroup {
     pub fn verify(
         &self,
         verifiable: VerifiableMlsPlaintext,
-    ) -> Result<MlsPlaintext, MlsCiphertextError> {
+    ) -> Result<MlsPlaintext, MlsGroupError> {
         // Verify the signature on the plaintext.
         let tree = self.tree();
 
@@ -352,15 +351,12 @@ impl MlsGroup {
     }
 
     /// Verify the membership tag an MlsPlaintext
-    pub fn verify_membership_tag(
-        &self,
-        mls_plaintext: &MlsPlaintext,
-    ) -> Result<(), MlsPlaintextError> {
+    pub fn verify_membership_tag(&self, mls_plaintext: &MlsPlaintext) -> Result<(), MlsGroupError> {
         let serialized_context = self.context().serialized();
 
         mls_plaintext
             .verify_membership(serialized_context, self.epoch_secrets().membership_key())
-            .map_err(|_| MlsPlaintextError::InvalidSignature)
+            .map_err(|_| MlsPlaintextError::InvalidSignature.into())
     }
 
     /// Exporter
