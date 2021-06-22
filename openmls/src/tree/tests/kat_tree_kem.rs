@@ -72,6 +72,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
 
+    println!("tree: {:x?}", test_vector.ratchet_tree_before);
     let tree_extension_before =
         RatchetTreeExtension::new_from_bytes(&hex_to_bytes(&test_vector.ratchet_tree_before))
             .expect("Error decoding ratchet tree");

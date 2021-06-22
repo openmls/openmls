@@ -17,6 +17,7 @@ use crate::{
 use evercrypt::prelude::random_vec;
 
 use serde::{self, Deserialize, Serialize};
+use tls_codec::Serialize as TlsSerialize;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct MessagesTestVector {
@@ -120,9 +121,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         extensions: vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
     };
     // We don't support external init proposals yet.
-    let external_init_proposal: Vec<u8> = vec![];
+    let external_init_proposal = tls_codec::TlsVecU16::<u8>::new(Vec::new());
     // We don't support app ack proposals yet.
-    let app_ack_proposal: Vec<u8> = vec![];
+    let app_ack_proposal = tls_codec::TlsVecU32::<u8>::new(Vec::new());
     let joiner_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
 
@@ -182,8 +183,10 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         remove_proposal: bytes_to_hex(&remove_proposal.encode_detached().unwrap()), /* serialized Remove */
         pre_shared_key_proposal: bytes_to_hex(&psk_proposal.encode_detached().unwrap()), /* serialized PreSharedKey */
         re_init_proposal: bytes_to_hex(&reinit_proposal.encode_detached().unwrap()), /* serialized ReInit */
-        external_init_proposal: bytes_to_hex(&external_init_proposal.encode_detached().unwrap()), /* serialized ExternalInit */
-        app_ack_proposal: bytes_to_hex(&app_ack_proposal.encode_detached().unwrap()), /* serialized AppAck */
+        external_init_proposal: bytes_to_hex(
+            &external_init_proposal.tls_serialize_detached().unwrap(),
+        ), /* serialized ExternalInit */
+        app_ack_proposal: bytes_to_hex(&app_ack_proposal.tls_serialize_detached().unwrap()), /* serialized AppAck */
 
         commit: bytes_to_hex(&commit.encode_detached().unwrap()), /* serialized Commit */
 

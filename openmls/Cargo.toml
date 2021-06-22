@@ -22,6 +22,7 @@ typetag = "0.1"
 hpke = { version = "0.0.8", package = "hpke-rs", features = ["hazmat", "serialization"] }
 evercrypt = { version = "0.0.9", features = ["serialization"] }
 itertools = {version = "0.10", optional = true}
+backtrace = "0.3"
 
 [features]
 default = ["rust-crypto"]

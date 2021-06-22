@@ -126,6 +126,7 @@ impl MlsCiphertext {
                 &sender_data_nonce,
             )
             .map_err(|_| {
+                log::error!("{:?}", backtrace::Backtrace::new());
                 log::error!("Sender data decryption error");
                 MlsCiphertextError::DecryptionError
             })?;
