@@ -54,17 +54,15 @@ pub struct InteropGroup {
 }
 
 pub struct MlsClientImpl {
-    groups: Mutex<HashMap<GroupId, InteropGroup>>,
+    groups: Mutex<Vec<InteropGroup>>,
     pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackageBundle, CredentialBundle)>>,
-    state_id_map: Mutex<HashMap<u32, GroupId>>,
     transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>,
 }
 
 impl MlsClientImpl {
     fn new() -> Self {
         MlsClientImpl {
-            groups: Mutex::new(HashMap::new()),
-            state_id_map: Mutex::new(HashMap::new()),
+            groups: Mutex::new(Vec::new()),
             pending_key_packages: Mutex::new(HashMap::new()),
             transaction_id_map: Mutex::new(HashMap::new()),
         }
@@ -373,7 +371,6 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<CreateGroupResponse>, tonic::Status> {
         let create_group_request = request.get_ref();
 
-        let group_id = GroupId::from_slice(&create_group_request.group_id);
         let ciphersuite =
             CiphersuiteName::try_from(create_group_request.cipher_suite as u16).unwrap();
         let credential_bundle = CredentialBundle::new(
@@ -396,17 +393,17 @@ impl MlsClient for MlsClientImpl {
         )
         .map_err(|e| to_status(e))?;
 
-        let group = InteropGroup {
+        let interop_group = InteropGroup {
             credential_bundle,
             encrypt_handshake_messages: create_group_request.encrypt_handshake,
             group,
             own_kpbs: Vec::new(),
         };
 
-        self.groups.lock().unwrap().insert(group_id.clone(), group);
-        let mut state_id_map = self.state_id_map.lock().unwrap();
-        let state_id = state_id_map.len() as u32;
-        state_id_map.insert(state_id, group_id);
+        let mut groups = self.groups.lock().unwrap();
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
+
         Ok(Response::new(CreateGroupResponse { state_id }))
     }
 
@@ -460,7 +457,6 @@ impl MlsClient for MlsClientImpl {
         let group =
             MlsGroup::new_from_welcome(welcome, None, kpb, None).map_err(|e| to_status(e))?;
 
-        let group_id = group.group_id().clone();
         let interop_group = InteropGroup {
             credential_bundle,
             encrypt_handshake_messages: join_group_request.encrypt_handshake,
@@ -468,11 +464,9 @@ impl MlsClient for MlsClientImpl {
             own_kpbs: Vec::new(),
         };
 
-        let mut state_id_map = self.state_id_map.lock().unwrap();
-        let state_id = state_id_map.len() as u32;
-        state_id_map.insert(state_id, group_id.clone());
-
-        self.groups.lock().unwrap().insert(group_id, interop_group);
+        let mut groups = self.groups.lock().unwrap();
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
 
         Ok(Response::new(JoinGroupResponse { state_id }))
     }
@@ -505,26 +499,16 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<StateAuthResponse>, tonic::Status> {
         let state_auth_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&state_auth_request.state_id)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
+        let groups = self.groups.lock().unwrap();
+        let interop_group =
+            groups
+                .get(state_auth_request.state_id as usize)
+                .ok_or(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "unknown state_id",
+                ))?;
 
-        let state_auth_secret = self
-            .groups
-            .lock()
-            .unwrap()
-            .get(&group_id)
-            .unwrap()
-            .group
-            .authentication_secret();
+        let state_auth_secret = interop_group.group.authentication_secret();
 
         Ok(Response::new(StateAuthResponse { state_auth_secret }))
     }
@@ -535,23 +519,15 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<ExportResponse>, tonic::Status> {
         let export_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&export_request.state_id)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
-        let exported_secret = self
-            .groups
-            .lock()
-            .unwrap()
-            .get(&group_id)
-            .unwrap()
+        let groups = self.groups.lock().unwrap();
+        let interop_group =
+            groups
+                .get(export_request.state_id as usize)
+                .ok_or(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "unknown state_id",
+                ))?;
+        let exported_secret = interop_group
             .group
             .export_secret(
                 &export_request.label,
@@ -569,20 +545,15 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<ProtectResponse>, tonic::Status> {
         let protect_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&protect_request.state_id)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
-
         let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups.get_mut(&group_id).unwrap();
+        let interop_group =
+            groups
+                .get_mut(protect_request.state_id as usize)
+                .ok_or(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "unknown state_id",
+                ))?;
+
         //let credential_bundle = key_store.get_credential_bundle(group.cre)
         let ciphertext = interop_group
             .group
@@ -604,21 +575,17 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
         let unprotect_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&unprotect_request.state_id)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group =
+            groups
+                .get_mut(unprotect_request.state_id as usize)
+                .ok_or(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "unknown state_id",
+                ))?;
+
         let message = MlsCiphertext::decode_detached(&unprotect_request.ciphertext)
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-        let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups.get_mut(&group_id).unwrap();
         let application_data = interop_group
             .group
             .decrypt(&message)
@@ -644,22 +611,16 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         let add_proposal_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&add_proposal_request.state_id)
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(add_proposal_request.state_id as usize)
             .ok_or(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
+            ))?;
 
         let key_package = KeyPackage::decode_detached(&add_proposal_request.key_package)
             .map_err(|_| Status::aborted("failed to deserialize key package"))?;
-        let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups.get_mut(&group_id).unwrap();
         let proposal = interop_group
             .group
             .create_add_proposal(&[], &interop_group.credential_bundle, key_package)
@@ -687,20 +648,13 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         let update_proposal_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&update_proposal_request.state_id)
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(update_proposal_request.state_id as usize)
             .ok_or(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
-
-        let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups.get_mut(&group_id).unwrap();
+            ))?;
         let key_package_bundle = KeyPackageBundle::new(
             &[interop_group.group.ciphersuite().name()],
             &interop_group.credential_bundle,
@@ -740,20 +694,14 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         let remove_proposal_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&remove_proposal_request.state_id)
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(remove_proposal_request.state_id as usize)
             .ok_or(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
+            ))?;
 
-        let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups.get_mut(&group_id).unwrap();
         let proposal = interop_group
             .group
             .create_remove_proposal(
@@ -806,20 +754,14 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
         let commit_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&commit_request.state_id)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
-
         let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups.get_mut(&group_id).unwrap();
+        let interop_group =
+            groups
+                .get_mut(commit_request.state_id as usize)
+                .ok_or(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "unknown state_id",
+                ))?;
 
         let mut proposal_plaintexts = Vec::new();
         for bytes in &commit_request.by_reference {
@@ -910,20 +852,13 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
         let handle_commit_request = request.get_ref();
 
-        let group_id = self
-            .state_id_map
-            .lock()
-            .unwrap()
-            .get(&handle_commit_request.state_id)
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(handle_commit_request.state_id as usize)
             .ok_or(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 "unknown state_id",
-            ))?
-            // Cloning here to avoid potential poisoning of the state_id_map.
-            .clone();
-
-        let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups.get_mut(&group_id).unwrap();
+            ))?;
 
         let commit = if interop_group.encrypt_handshake_messages {
             let ct = MlsCiphertext::decode_detached(&handle_commit_request.commit)
