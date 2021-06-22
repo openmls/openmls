@@ -26,7 +26,7 @@ fn create_encoding_test_setup() -> TestSetup {
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: GroupConfig {
+            config: MlsGroupConfig {
                 add_ratchet_tree_extension: true,
                 padding_block_size: 10,
                 additional_as_epochs: 0,

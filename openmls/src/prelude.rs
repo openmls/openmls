@@ -1,15 +1,15 @@
 //! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
-pub use crate::group::GroupConfig;
 pub use crate::group::MlsGroup;
+pub use crate::group::MlsGroupConfig;
 pub use crate::group::{
     GroupEvent, HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,
     ManagedGroupConfig, ManagedGroupError, MlsMessage, Removal, UpdatePolicy,
 };
 // Errors
 pub use crate::error::ErrorString;
-pub use crate::group::errors::{ApplyCommitError, CreateCommitError, GroupError, WelcomeError};
+pub use crate::group::errors::{ApplyCommitError, CreateCommitError, MlsGroupError, WelcomeError};
 
 // Indexes
 pub use crate::tree::index::LeafIndex;

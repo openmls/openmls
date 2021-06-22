@@ -8,7 +8,7 @@ use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
-use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, GroupError};
+use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError};
 
 use crate::key_store::KeyStoreError;
 
@@ -26,7 +26,7 @@ implement_error! {
                 "See [`CodecError`](`crate::codec::CodecError`) for details",
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
-            Group(GroupError) =
+            Group(MlsGroupError) =
                 "See [`GroupError`](`crate::group::GroupError`) for details",
             CreateCommit(CreateCommitError) =
                 "See [`CreateCommitError`](`crate::group::CreateCommitError`) for details",
@@ -79,7 +79,7 @@ implement_error! {
                 "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
             CommitError(ApplyCommitError) =
                 "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
-            GroupError(GroupError) =
+            GroupError(MlsGroupError) =
                 "See [`GroupError`](`crate::group::GroupError`) for details",
         }
     }

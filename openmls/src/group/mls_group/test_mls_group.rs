@@ -31,7 +31,7 @@ fn test_mls_group_persistence() {
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -176,7 +176,7 @@ fn test_update_path() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -313,7 +313,7 @@ fn test_update_path() {
             alice_group
                 .apply_commit(&broken_plaintext, &[&update_proposal_bob], &[], None)
                 .expect_err("Successful processing of a broken commit."),
-            GroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
+            MlsGroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))
         );
@@ -390,7 +390,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         Some(initial_psk),
         None, /* MLS version */
     )

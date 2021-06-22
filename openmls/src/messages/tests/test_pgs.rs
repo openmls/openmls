@@ -3,7 +3,7 @@ use crate::{
     codec::{Decode, Encode},
     key_packages::KeyPackageBundle,
     messages::{
-        Config, CredentialBundle, CredentialType, GroupConfig, LeafIndex, MlsGroup,
+        Config, CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig,
         PublicGroupState,
     },
 };
@@ -45,7 +45,7 @@ fn test_pgs() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )

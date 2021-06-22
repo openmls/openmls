@@ -142,7 +142,7 @@ fn unknown_sender() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -262,7 +262,7 @@ fn unknown_sender() {
         let received_message = group_charlie.decrypt(&enc_message);
         assert_eq!(
             received_message.unwrap_err(),
-            MlsCiphertextError::PlaintextError(MlsPlaintextError::UnknownSender)
+            MlsGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
         );
 
         // Alice sends a message with a sender that is outside of the group
@@ -297,7 +297,7 @@ fn unknown_sender() {
         let received_message = group_charlie.decrypt(&enc_message);
         assert_eq!(
             received_message.unwrap_err(),
-            MlsCiphertextError::GenerationOutOfBound
+            MlsGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
         );
     }
 }
@@ -337,7 +337,7 @@ fn confirmation_tag_presence() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -367,7 +367,7 @@ fn confirmation_tag_presence() {
 
         assert_eq!(
             err,
-            GroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing)
+            MlsGroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing)
         );
     }
 }
@@ -407,7 +407,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -471,7 +471,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let decoded_commit = group_alice.verify(input_commit);
     assert_eq!(
         decoded_commit.err().expect("group.verify() should have returned an error"),
-        MlsCiphertextError::PlaintextError(MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)));
+        MlsGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)));
 
     // Fix commit
     commit.set_signature(good_signature);
@@ -486,7 +486,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .expect("Applying commit should have yielded an error.");
     assert_eq!(
         error,
-        GroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing));
+        MlsGroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing));
 
     // Tamper with confirmation tag.
     let mut modified_confirmation_tag = good_confirmation_tag
@@ -501,7 +501,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .expect("Applying commit should have yielded an error.");
     assert_eq!(
         error,
-        GroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMismatch));
+        MlsGroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMismatch));
     let serialized_group_after = serde_json::to_string(&group_alice).unwrap();
     assert_eq!(serialized_group_before, serialized_group_after);
 
