@@ -530,9 +530,6 @@
 <span id="527">527</span>
 <span id="528">528</span>
 <span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
@@ -568,10 +565,10 @@
 
 <span class="kw">use</span> <span class="ident">std::cell::RefMut</span>;
 
-<span class="kw">use</span> <span class="kw">super</span><span class="ident">::errors</span>::{<span class="ident">ExporterError</span>, <span class="ident">PskError</span>};
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::errors</span>::{<span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">PskError</span>};
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">CreateCommitResult</span> <span class="op">=</span>
-    <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>), <span class="ident">GroupError</span><span class="op">&gt;</span>;
+    <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>), <span class="ident">MlsGroupError</span><span class="op">&gt;</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
@@ -607,10 +604,10 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">ciphersuite_name</span>: <span class="ident">CiphersuiteName</span>,
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
-        <span class="ident">config</span>: <span class="ident">GroupConfig</span>,
+        <span class="ident">config</span>: <span class="ident">MlsGroupConfig</span>,
         <span class="ident">psk_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">version</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="macro">debug!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, <span class="ident">id</span>);
         <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, <span class="ident">ciphersuite_name</span>, <span class="ident">config</span>);
         <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId</span> { <span class="ident">value</span>: <span class="ident">id</span>.<span class="ident">to_vec</span>() };
@@ -659,7 +656,7 @@
         <span class="ident">nodes_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">Self</span><span class="ident">::new_from_welcome_internal</span>(
             <span class="ident">welcome</span>,
             <span class="ident">nodes_option</span>,
@@ -680,7 +677,7 @@
         <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">joiner_key_package</span>: <span class="ident">KeyPackage</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal</span> {
             <span class="ident">key_package</span>: <span class="ident">joiner_key_package</span>,
         };
@@ -705,7 +702,7 @@
         <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal</span> { <span class="ident">key_package</span> };
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>);
         <span class="ident">MlsPlaintext::new_proposal</span>(
@@ -728,7 +725,7 @@
         <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">removed_index</span>: <span class="ident">LeafIndex</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="ident">RemoveProposal</span> {
             <span class="ident">removed</span>: <span class="ident">removed_index</span>.<span class="ident">into</span>(),
         };
@@ -753,7 +750,7 @@
         <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">presharedkey_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal</span> { <span class="ident">psk</span> };
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">presharedkey_proposal</span>);
         <span class="ident">MlsPlaintext::new_proposal</span>(
@@ -802,7 +799,7 @@
         <span class="ident">proposals</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>],
         <span class="ident">own_key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
         <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">apply_commit_internal</span>(
             <span class="ident">mls_plaintext</span>,
             <span class="ident">proposals</span>,
@@ -818,7 +815,7 @@
         <span class="ident">msg</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_application</span>(
             <span class="self">self</span>.<span class="ident">sender_index</span>(),
             <span class="ident">aad</span>,
@@ -835,7 +832,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">mls_plaintext</span>: <span class="ident">MlsPlaintext</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="macro">log::trace!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>());
         <span class="ident">MlsCiphertext::try_from_plaintext</span>(
             <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>,
@@ -846,14 +843,14 @@
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">secret_tree_mut</span>(),
             <span class="ident">padding_size</span>,
         )
-        .<span class="ident">map_err</span>(<span class="ident">GroupError::MlsCiphertextError</span>)
+        .<span class="ident">map_err</span>(<span class="ident">MlsGroupError::MlsCiphertextError</span>)
     }
 
     <span class="doccomment">/// Decrypt an MlsCiphertext into an MlsPlaintext</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">decrypt</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">mls_ciphertext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsCiphertext</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">mls_ciphertext</span>.<span class="ident">to_plaintext</span>(
             <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch_secrets</span>,
@@ -866,7 +863,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">verifiable</span>: <span class="ident">VerifiableMlsPlaintext</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Verify the signature on the plaintext.</span>
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>();
 
@@ -887,15 +884,12 @@
     }
 
     <span class="doccomment">/// Verify the membership tag an MlsPlaintext</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_membership_tag</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_membership_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">serialized</span>();
 
         <span class="ident">mls_plaintext</span>
             .<span class="ident">verify_membership</span>(<span class="ident">serialized_context</span>, <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsPlaintextError::InvalidSignature</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsPlaintextError::InvalidSignature</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Exporter</span>
@@ -904,7 +898,7 @@
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">GroupError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">key_length</span> <span class="op">&gt;</span> <span class="ident">u16::MAX</span>.<span class="ident">into</span>() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Got a key that is larger than u16::MAX&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExporterError::KeyLengthTooLong</span>.<span class="ident">into</span>());

@@ -47,15 +47,15 @@
 <span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::GroupConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::MlsGroup</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::MlsGroupConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group</span>::{
     <span class="ident">GroupEvent</span>, <span class="ident">HandshakeMessageFormat</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">ManagedGroup</span>, <span class="ident">ManagedGroupCallbacks</span>,
     <span class="ident">ManagedGroupConfig</span>, <span class="ident">ManagedGroupError</span>, <span class="ident">MlsMessage</span>, <span class="ident">Removal</span>, <span class="ident">UpdatePolicy</span>,
 };
 <span class="comment">// Errors</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::error::ErrorString</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::errors</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">GroupError</span>, <span class="ident">WelcomeError</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::errors</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">WelcomeError</span>};
 
 <span class="comment">// Indexes</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::tree::index::LeafIndex</span>;

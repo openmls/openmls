@@ -1132,11 +1132,6 @@
 <span id="1129">1129</span>
 <span id="1130">1130</span>
 <span id="1131">1131</span>
-<span id="1132">1132</span>
-<span id="1133">1133</span>
-<span id="1134">1134</span>
-<span id="1135">1135</span>
-<span id="1136">1136</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -1249,7 +1244,7 @@
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
             .<span class="ident">take_key_package_bundle</span>(<span class="ident">key_package_hash</span>)
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingKeyPackageBundle</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">group_config</span> <span class="op">=</span> <span class="ident">GroupConfig</span> {
+        <span class="kw">let</span> <span class="ident">group_config</span> <span class="op">=</span> <span class="ident">MlsGroupConfig</span> {
             <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">managed_group_config</span>.<span class="ident">use_ratchet_tree_extension</span>,
             ..<span class="ident">Default::default</span>()
         };
@@ -1579,12 +1574,7 @@
             <span class="comment">// If it is a ciphertext we decrypt it and return the plaintext message</span>
             <span class="ident">MlsMessage::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">aad</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>();
-                (
-                    <span class="self">self</span>.<span class="ident">group</span>
-                        .<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>)
-                        .<span class="ident">map_err</span>(<span class="ident">InvalidMessageError::InvalidCiphertext</span>)<span class="question-mark">?</span>,
-                    <span class="prelude-val">Some</span>(<span class="ident">aad</span>),
-                )
+                (<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>)<span class="question-mark">?</span>, <span class="prelude-val">Some</span>(<span class="ident">aad</span>))
             }
             <span class="comment">// If it is a plaintext message we just return it</span>
             <span class="ident">MlsMessage::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -1669,7 +1659,7 @@
                         <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">clear</span>();
                     }
                     <span class="prelude-val">Err</span>(<span class="ident">apply_commit_error</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">apply_commit_error</span> {
-                        <span class="ident">GroupError::ApplyCommitError</span>(<span class="ident">ApplyCommitError::SelfRemoved</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">MlsGroupError::ApplyCommitError</span>(<span class="ident">ApplyCommitError::SelfRemoved</span>) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="comment">// Prepare events</span>
                             <span class="ident">events</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">prepare_events</span>(
                                 <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
@@ -1680,7 +1670,7 @@
                             <span class="comment">// The group is no longer active</span>
                             <span class="self">self</span>.<span class="ident">active</span> <span class="op">=</span> <span class="bool-val">false</span>;
                         }
-                        <span class="ident">GroupError::ApplyCommitError</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">MlsGroupError::ApplyCommitError</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::InvalidMessage</span>(
                                 <span class="ident">InvalidMessageError::CommitError</span>(<span class="ident">e</span>),
                             ))
@@ -2251,10 +2241,10 @@
 
 <span class="kw">impl</span> <span class="ident">MlsMessage</span> {
     <span class="doccomment">/// Get the group ID as plain byte vector.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MlsMessage::Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>.<span class="ident">to_vec</span>(),
-            <span class="ident">MlsMessage::Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>().<span class="ident">to_vec</span>(),
+            <span class="ident">MlsMessage::Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>().<span class="ident">as_slice</span>(),
+            <span class="ident">MlsMessage::Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>().<span class="ident">as_slice</span>(),
         }
     }
 

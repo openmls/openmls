@@ -592,7 +592,7 @@
 
     <span class="comment">// Let&#39;s create a group</span>
     <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::random</span>();
-    <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">GroupConfig::default</span>();
+    <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">MlsGroupConfig::default</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new</span>(
         <span class="kw-2">&amp;</span><span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
         <span class="ident">ciphersuite_name</span>,
