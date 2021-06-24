@@ -15,7 +15,7 @@
 use openmls::{prelude::*, test_util::*, tree::tests::kat_tree_kem::TreeKemTestVector};
 
 mod utils;
-use utils::managed_utils::*;
+use test_utils::*;
 
 #[test]
 fn test_tree_kem_kat() {
