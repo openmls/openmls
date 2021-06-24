@@ -140,7 +140,7 @@ fn test_direct_path() {
     let direct_path = tree
         .direct_path(8)
         .expect("Error when computing direct path.");
-    assert_eq!(direct_path, vec![0, 7]);
+    assert_eq!(direct_path, vec![9, 7]);
 
     // Test for a very small tree.
     let tree = ABinaryTree::new(&[1]).expect("Error when creating a tree.");
