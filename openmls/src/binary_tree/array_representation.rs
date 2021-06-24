@@ -20,10 +20,10 @@ impl<T: Default + Clone> FLBBinaryTree<T> for ABinaryTree<T> {
     type FLBBinaryTreeError = ABinaryTreeError;
 
     fn new(nodes: &[T]) -> Result<Self, Self::FLBBinaryTreeError> {
-        if nodes.len() % 2 != 1 {
-            Err(Self::FLBBinaryTreeError::InvalidNumberOfNodes)
-        } else if nodes.len() > NodeIndex::max_value() as usize {
+        if nodes.len() > NodeIndex::max_value() as usize {
             Err(Self::FLBBinaryTreeError::OutOfRange)
+        } else if nodes.len() % 2 != 1 {
+            Err(Self::FLBBinaryTreeError::InvalidNumberOfNodes)
         } else {
             Ok(ABinaryTree {
                 nodes: nodes.to_vec(),
