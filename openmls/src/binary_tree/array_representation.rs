@@ -5,47 +5,47 @@ use super::NodeIndex;
 #[derive(Clone, Debug, PartialEq)]
 /// A representation of a full, left-balanced binary tree that uses a simple
 /// vector to store nodes.
-pub(crate) struct ABinaryTree<T> {
+pub(crate) struct ABinaryTree<T: Default + Clone> {
     nodes: Vec<T>,
 }
 
-impl<T> ABinaryTree<T> {
+impl<T: Default + Clone> ABinaryTree<T> {
     /// Check if a given index is still within the tree.
     fn node_in_tree(&self, node_index: NodeIndex) -> Result<(), ABinaryTreeError> {
         node_in_tree(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)
     }
 }
 
-impl<T> FLBBinaryTree<T> for ABinaryTree<T> {
+impl<T: Default + Clone> FLBBinaryTree<T> for ABinaryTree<T> {
     type FLBBinaryTreeError = ABinaryTreeError;
 
-    fn new(nodes: Vec<T>) -> Result<Self, Self::FLBBinaryTreeError> {
+    fn new(nodes: &[T]) -> Result<Self, Self::FLBBinaryTreeError> {
         if nodes.len() % 2 != 1 {
             Err(Self::FLBBinaryTreeError::InvalidNumberOfNodes)
         } else if nodes.len() > NodeIndex::max_value() as usize {
             Err(Self::FLBBinaryTreeError::OutOfRange)
         } else {
-            Ok(ABinaryTree { nodes })
+            Ok(ABinaryTree {
+                nodes: nodes.to_vec(),
+            })
         }
     }
 
-    fn node(&self, node_index: NodeIndex) -> Result<&T, Self::FLBBinaryTreeError> {
-        self.node_in_tree(node_index)?;
-        Ok(self.nodes.get(node_index as usize).unwrap())
+    fn node(&self, node_index: NodeIndex) -> std::option::Option<&T> {
+        self.nodes.get(node_index as usize)
     }
 
-    fn node_mut(&mut self, node_index: NodeIndex) -> Result<&mut T, Self::FLBBinaryTreeError> {
-        self.node_in_tree(node_index)?;
-        Ok(self.nodes.get_mut(node_index as usize).unwrap())
+    fn node_mut(&mut self, node_index: NodeIndex) -> std::option::Option<&mut T> {
+        self.nodes.get_mut(node_index as usize)
     }
 
-    fn add(&mut self, node_1: T, node_2: T) -> Result<(), Self::FLBBinaryTreeError> {
+    fn add_leaf(&mut self, node: T) -> Result<(), Self::FLBBinaryTreeError> {
         // Prevent the tree from becoming too large.
-        if self.nodes.len() + 2 > NodeIndex::max_value() as usize {
+        if self.nodes.len() > NodeIndex::max_value() as usize - 2 {
             Err(Self::FLBBinaryTreeError::OutOfRange)
         } else {
-            self.nodes.push(node_1);
-            self.nodes.push(node_2);
+            self.nodes.push(T::default());
+            self.nodes.push(node);
             Ok(())
         }
     }
@@ -62,6 +62,8 @@ impl<T> FLBBinaryTree<T> for ABinaryTree<T> {
     }
 
     fn size(&self) -> NodeIndex {
+        let len = self.nodes.len();
+        debug_assert!(len <= u32::MAX as usize);
         self.nodes.len() as u32
     }
 
