@@ -31,7 +31,7 @@ fn test_mls_group_persistence() {
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -176,7 +176,7 @@ fn test_update_path() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -208,7 +208,7 @@ fn test_update_path() {
 
         println!(
             " *** Confirmation tag: {:?}",
-            mls_plaintext_commit.confirmation_tag
+            mls_plaintext_commit.confirmation_tag()
         );
 
         alice_group
@@ -250,7 +250,7 @@ fn test_update_path() {
         // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
         // apart the commit, manipulating the ciphertexts and the piecing it
         // back together.
-        let commit = match &mls_plaintext_commit.content {
+        let commit = match mls_plaintext_commit.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!("Bob created a commit, which does not contain an actual commit."),
         };
@@ -286,35 +286,34 @@ fn test_update_path() {
             path: Some(broken_path),
         };
 
-        let broken_commit_content = MlsPlaintextContentType::Commit(broken_commit);
-
-        let mut broken_plaintext = MlsPlaintext::new_from_member(
-            mls_plaintext_commit.sender.to_leaf_index(),
-            &mls_plaintext_commit.authenticated_data,
-            broken_commit_content,
+        let mut broken_plaintext = MlsPlaintext::new_commit(
+            mls_plaintext_commit.sender_index(),
+            &mls_plaintext_commit.authenticated_data(),
+            broken_commit,
             &bob_credential_bundle,
             group_bob.context(),
         )
         .expect("Could not create plaintext.");
 
-        broken_plaintext.confirmation_tag = mls_plaintext_commit.confirmation_tag;
+        broken_plaintext
+            .set_confirmation_tag(mls_plaintext_commit.confirmation_tag().cloned().unwrap());
 
-        println!("Confirmation tag: {:?}", broken_plaintext.confirmation_tag);
+        println!(
+            "Confirmation tag: {:?}",
+            broken_plaintext.confirmation_tag()
+        );
 
         let serialized_context = group_bob.group_context.serialized();
 
         broken_plaintext
-            .sign_from_member(&bob_credential_bundle, serialized_context)
-            .expect("Could not sign plaintext.");
-        broken_plaintext
-            .add_membership_tag(serialized_context, group_bob.epoch_secrets.membership_key())
+            .set_membership_tag(serialized_context, group_bob.epoch_secrets.membership_key())
             .expect("Could not add membership key");
 
         assert_eq!(
             alice_group
                 .apply_commit(&broken_plaintext, &[&update_proposal_bob], &[], None)
                 .expect_err("Successful processing of a broken commit."),
-            GroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
+            MlsGroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))
         );
@@ -391,7 +390,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         &group_id,
         ciphersuite.name(),
         alice_key_package_bundle,
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         Some(initial_psk),
         None, /* MLS version */
     )

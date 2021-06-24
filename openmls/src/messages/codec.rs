@@ -6,7 +6,8 @@ use crate::{key_packages::KeyPackage, schedule::psk::PreSharedKeyId};
 
 use std::convert::TryFrom;
 
-impl Codec for Commit {
+implement_codec! {
+    Commit,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU32, buffer, &self.proposals)?;
         self.path.encode(buffer)?;
@@ -19,7 +20,8 @@ impl Codec for Commit {
     }
 }
 
-impl Codec for ConfirmationTag {
+implement_codec! {
+    ConfirmationTag,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.0.encode(buffer)?;
         Ok(())
@@ -30,7 +32,8 @@ impl Codec for ConfirmationTag {
     }
 }
 
-impl Codec for GroupInfo {
+implement_codec! {
+    GroupInfo,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.append(&mut self.payload.unsigned_payload()?);
         self.signature.encode(buffer)?;
@@ -60,7 +63,8 @@ impl Codec for GroupInfo {
     }
 }
 
-impl Codec for PathSecret {
+implement_codec! {
+    PathSecret,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.path_secret.encode(buffer)?;
         Ok(())
@@ -71,7 +75,8 @@ impl Codec for PathSecret {
     }
 }
 
-impl Codec for EncryptedGroupSecrets {
+implement_codec! {
+    EncryptedGroupSecrets,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.key_package_hash)?;
         self.encrypted_group_secrets.encode(buffer)?;
@@ -87,7 +92,8 @@ impl Codec for EncryptedGroupSecrets {
     }
 }
 
-impl Codec for Welcome {
+implement_codec! {
+    Welcome,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.version.encode(buffer)?;
         self.cipher_suite.name().encode(buffer)?;
@@ -109,7 +115,7 @@ impl Codec for Welcome {
     }
 }
 
-impl Codec for GroupSecrets {
+impl Decode for GroupSecrets {
     fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
         let joiner_secret = JoinerSecret::decode(cursor)?;
         let path_secret = Option::<PathSecret>::decode(cursor)?;
@@ -124,21 +130,22 @@ impl Codec for GroupSecrets {
 
 // === Proposals ===
 
-impl Codec for ProposalType {
+impl Encode for ProposalType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)?;
         Ok(())
     }
 }
 
-impl Codec for ProposalOrRefType {
+impl Encode for ProposalOrRefType {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u8).encode(buffer)?;
         Ok(())
     }
 }
 
-impl Codec for ProposalOrRef {
+implement_codec! {
+    ProposalOrRef,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.proposal_or_ref_type().encode(buffer)?;
         match self {
@@ -161,7 +168,8 @@ impl Codec for ProposalOrRef {
     }
 }
 
-impl Codec for Proposal {
+implement_codec! {
+    Proposal,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         match self {
             Proposal::Add(add) => {
@@ -204,7 +212,8 @@ impl Codec for Proposal {
     }
 }
 
-impl Codec for ProposalReference {
+implement_codec! {
+    ProposalReference,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         encode_vec(VecSize::VecU8, buffer, &self.value)?;
         Ok(())
@@ -215,7 +224,8 @@ impl Codec for ProposalReference {
     }
 }
 
-impl Codec for AddProposal {
+implement_codec! {
+    AddProposal,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.key_package.encode(buffer)?;
         Ok(())
@@ -226,7 +236,8 @@ impl Codec for AddProposal {
     }
 }
 
-impl Codec for UpdateProposal {
+implement_codec! {
+    UpdateProposal,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.key_package.encode(buffer)?;
         Ok(())
@@ -237,7 +248,8 @@ impl Codec for UpdateProposal {
     }
 }
 
-impl Codec for RemoveProposal {
+implement_codec! {
+    RemoveProposal,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.removed.encode(buffer)?;
         Ok(())
@@ -248,7 +260,8 @@ impl Codec for RemoveProposal {
     }
 }
 
-impl Codec for PreSharedKeyProposal {
+implement_codec! {
+    PreSharedKeyProposal,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.psk.encode(buffer)?;
         Ok(())
@@ -259,7 +272,8 @@ impl Codec for PreSharedKeyProposal {
     }
 }
 
-impl Codec for ReInitProposal {
+implement_codec! {
+    ReInitProposal,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.version.encode(buffer)?;
@@ -281,7 +295,8 @@ impl Codec for ReInitProposal {
     }
 }
 
-impl Codec for PublicGroupState {
+implement_codec! {
+    PublicGroupState,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.ciphersuite.encode(buffer)?;
         self.group_id.encode(buffer)?;
@@ -318,7 +333,7 @@ impl Codec for PublicGroupState {
     }
 }
 
-impl<'a> Codec for PublicGroupStateTbs<'a> {
+impl<'a> Encode for PublicGroupStateTbs<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.group_id.encode(buffer)?;
         self.epoch.encode(buffer)?;

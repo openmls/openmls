@@ -9,6 +9,7 @@ mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
 
+use crate::ciphersuite::signable::Verifiable;
 use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
@@ -31,10 +32,10 @@ use std::io::{Error, Read, Write};
 
 use std::cell::RefMut;
 
-use super::errors::{ExporterError, PskError};
+use super::errors::{ExporterError, MlsGroupError, PskError};
 
 pub type CreateCommitResult =
-    Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), GroupError>;
+    Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), MlsGroupError>;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -70,10 +71,10 @@ impl MlsGroup {
         id: &[u8],
         ciphersuite_name: CiphersuiteName,
         key_package_bundle: KeyPackageBundle,
-        config: GroupConfig,
+        config: MlsGroupConfig,
         psk_option: impl Into<Option<PskSecret>>,
         version: impl Into<Option<ProtocolVersion>>,
-    ) -> Result<Self, GroupError> {
+    ) -> Result<Self, MlsGroupError> {
         debug!("Created group {:x?}", id);
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.to_vec() };
@@ -122,7 +123,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
-    ) -> Result<Self, GroupError> {
+    ) -> Result<Self, MlsGroupError> {
         Ok(Self::new_from_welcome_internal(
             welcome,
             nodes_option,
@@ -143,12 +144,12 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
-    ) -> Result<MlsPlaintext, GroupError> {
+    ) -> Result<MlsPlaintext, MlsGroupError> {
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -168,10 +169,10 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
-    ) -> Result<MlsPlaintext, GroupError> {
+    ) -> Result<MlsPlaintext, MlsGroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -191,12 +192,12 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
-    ) -> Result<MlsPlaintext, GroupError> {
+    ) -> Result<MlsPlaintext, MlsGroupError> {
         let remove_proposal = RemoveProposal {
             removed: removed_index.into(),
         };
         let proposal = Proposal::Remove(remove_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -216,10 +217,10 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
-    ) -> Result<MlsPlaintext, GroupError> {
+    ) -> Result<MlsPlaintext, MlsGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal { psk };
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
-        MlsPlaintext::new_from_proposal_member(
+        MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
@@ -265,7 +266,7 @@ impl MlsGroup {
         proposals: &[&MlsPlaintext],
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
-    ) -> Result<(), GroupError> {
+    ) -> Result<(), MlsGroupError> {
         Ok(self.apply_commit_internal(
             mls_plaintext,
             proposals,
@@ -281,8 +282,8 @@ impl MlsGroup {
         msg: &[u8],
         credential_bundle: &CredentialBundle,
         padding_size: usize,
-    ) -> Result<MlsCiphertext, GroupError> {
-        let mls_plaintext = MlsPlaintext::new_from_application(
+    ) -> Result<MlsCiphertext, MlsGroupError> {
+        let mls_plaintext = MlsPlaintext::new_application(
             self.sender_index(),
             aad,
             msg,
@@ -298,7 +299,8 @@ impl MlsGroup {
         &mut self,
         mls_plaintext: MlsPlaintext,
         padding_size: usize,
-    ) -> Result<MlsCiphertext, GroupError> {
+    ) -> Result<MlsCiphertext, MlsGroupError> {
+        log::trace!("{:?}", mls_plaintext.confirmation_tag());
         MlsCiphertext::try_from_plaintext(
             &mls_plaintext,
             &self.ciphersuite,
@@ -308,59 +310,53 @@ impl MlsGroup {
             &mut self.secret_tree_mut(),
             padding_size,
         )
-        .map_err(GroupError::MlsCiphertextError)
+        .map_err(MlsGroupError::MlsCiphertextError)
     }
 
     /// Decrypt an MlsCiphertext into an MlsPlaintext
     pub fn decrypt(
         &mut self,
         mls_ciphertext: &MlsCiphertext,
-    ) -> Result<MlsPlaintext, MlsCiphertextError> {
+    ) -> Result<MlsPlaintext, MlsGroupError> {
         let mls_plaintext = mls_ciphertext.to_plaintext(
             self.ciphersuite(),
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
         )?;
-
-        // Verify the signature. MlsCiphertext messages don't have a membership tag, so
-        // we don't have to verify that.
-        self.verify_signature(&mls_plaintext)?;
-
-        Ok(mls_plaintext)
+        self.verify(mls_plaintext)
     }
 
-    /// Verify the signature of an MlsPlaintext
-    pub fn verify_signature(&self, mls_plaintext: &MlsPlaintext) -> Result<(), MlsPlaintextError> {
+    /// Verify a [`VerifiableMlsPlaintext`] and get the [`MlsPlaintext`].
+    pub fn verify(
+        &self,
+        verifiable: VerifiableMlsPlaintext,
+    ) -> Result<MlsPlaintext, MlsGroupError> {
+        // Verify the signature on the plaintext.
         let tree = self.tree();
 
-        let node = &tree.nodes[mls_plaintext.sender()];
+        let node = &tree.nodes[verifiable.sender_index()];
         let credential = if let Some(kp) = node.key_package.as_ref() {
             kp.credential()
         } else {
-            return Err(MlsPlaintextError::UnknownSender);
+            return Err(MlsPlaintextError::UnknownSender.into());
         };
 
         let serialized_context = self.context().serialized();
 
-        mls_plaintext
-            .verify_signature(serialized_context, credential)
-            .map_err(|_| MlsPlaintextError::InvalidSignature)
+        // TODO: what about the tags?
+        verifiable
+            .set_context(serialized_context)
+            .verify(credential)
+            .map_err(|e| MlsPlaintextError::from(e).into())
     }
 
     /// Verify the membership tag an MlsPlaintext
-    pub fn verify_membership_tag(
-        &self,
-        mls_plaintext: &MlsPlaintext,
-    ) -> Result<(), MlsPlaintextError> {
+    pub fn verify_membership_tag(&self, mls_plaintext: &MlsPlaintext) -> Result<(), MlsGroupError> {
         let serialized_context = self.context().serialized();
 
         mls_plaintext
-            .verify_membership_tag(
-                self.ciphersuite,
-                serialized_context,
-                self.epoch_secrets().membership_key(),
-            )
-            .map_err(|_| MlsPlaintextError::InvalidSignature)
+            .verify_membership(serialized_context, self.epoch_secrets().membership_key())
+            .map_err(|_| MlsPlaintextError::InvalidSignature.into())
     }
 
     /// Exporter
@@ -369,7 +365,7 @@ impl MlsGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, GroupError> {
+    ) -> Result<Vec<u8>, MlsGroupError> {
         if key_length > u16::MAX.into() {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExporterError::KeyLengthTooLong.into());

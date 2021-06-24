@@ -1,6 +1,6 @@
 use std::{any::Any, convert::TryFrom, fmt::Debug};
 
-use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, VecSize};
+use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, Decode, Encode, VecSize};
 pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
@@ -61,7 +61,8 @@ impl TryFrom<u16> for ExtensionType {
     }
 }
 
-impl Codec for ExtensionType {
+implement_codec! {
+    ExtensionType,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         (*self as u16).encode(buffer)?;
         Ok(())
@@ -110,7 +111,8 @@ impl<'a> ExtensionStruct {
     }
 }
 
-impl Codec for ExtensionStruct {
+implement_codec! {
+    ExtensionStruct,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         self.extension_type.encode(buffer)?;
         encode_vec(VecSize::VecU32, buffer, &self.extension_data)?;

@@ -13,7 +13,7 @@ use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
 
 implement_error! {
-    pub enum GroupError {
+    pub enum MlsGroupError {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
