@@ -4,7 +4,7 @@ use openmls::prelude::*;
 #[macro_use]
 mod utils;
 
-use utils::managed_utils::*;
+use test_utils::*;
 
 ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);

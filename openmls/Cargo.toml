@@ -35,6 +35,7 @@ criterion = "^0.3"
 flexi_logger = "0.18"
 itertools = "0.10"
 test_macros = { path = "../test_macros" }
+test_utils = { path = "../test_utils" }
 openmls = { path = ".", features = ["expose-test-vectors"] }
 
 [[bench]]

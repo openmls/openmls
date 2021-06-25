@@ -1,7 +1,7 @@
-//! This module provides a framework to set up clients and groups using the
-//! managed_group API. To use the framework, start by creating a new `TestSetup`
-//! with a number of clients. After that, `create_clients` has to be called
-//! before the the `TestSetup` can be used.
+//! This crate provides a framework to set up clients and groups using the
+//! OpenMLS managed_group API. To use the framework, start by creating a new
+//! `TestSetup` with a number of clients. After that, `create_clients` has to be
+//! called before the the `TestSetup` can be used.
 //!
 //! Note that due to lifetime issues, no new clients can be created after
 //! initialization.
