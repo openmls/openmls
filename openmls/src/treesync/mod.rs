@@ -8,6 +8,7 @@ use self::{
 };
 
 pub(crate) mod mls_node;
+//pub(crate) mod mls_treesync;
 pub(crate) mod treesync_update;
 pub(crate) mod treesyncable;
 
@@ -35,12 +36,7 @@ where
 {
     /// Return the tree hash of the root node.
     fn tree_hash(&self) -> Vec<u8> {
-        todo!()
-    }
-
-    /// Verify the parent hash of every parent node in the tree.
-    fn verify_parent_hashes(&self) -> Result<(), TreeSyncError> {
-        todo!()
+        self.tree.node(node_index)
     }
 
     /// Merge the given diff into the `TreeSync` instance. This operation

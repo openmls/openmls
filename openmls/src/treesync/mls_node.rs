@@ -1,6 +1,6 @@
 use hpke::HpkePublicKey;
 
-use super::treesyncable::{TreeSyncLeaf, TreeSyncable, TreeSyncableMut};
+use super::treesyncable::{TreeSyncLeaf, TreeSyncParent, TreeSyncable, TreeSyncableMut};
 
 use crate::{
     binary_tree::NodeIndex,
@@ -10,11 +10,29 @@ use crate::{
     prelude::KeyPackagePayload,
 };
 
+pub(crate) enum MlsNode {
+    Parent(ParentNode),
+    Leaf(LeafNode),
+}
+
 pub(crate) struct ParentNode {
     public_key: HpkePublicKey,
     unmerged_leaves: Vec<NodeIndex>,
     parent_hash: Vec<u8>,
     tree_hash: Vec<u8>,
+}
+
+// TODO: Do we really need the mutable/immutable distinction for ParentNode?
+impl TreeSyncParent for ParentNode {
+    type TreeSyncParentMut = ParentNode;
+
+    fn to_mut(self) -> Self::TreeSyncParentMut {
+        self
+    }
+
+    fn to_immut(tsp_mut: Self::TreeSyncParentMut) -> Self {
+        tsp_mut
+    }
 }
 
 pub(crate) struct UnverifiedLeafNode {

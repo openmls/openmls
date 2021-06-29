@@ -1,3 +1,5 @@
+use self::treemath::root;
+
 pub(crate) mod array_representation;
 
 #[allow(dead_code)]
@@ -24,6 +26,10 @@ pub(crate) trait FLBBinaryTree<Node> {
     fn new(nodes: Vec<Node>) -> Result<Self, FLBBinaryTreeError>
     where
         Self: Sized;
+
+    fn root(&self) -> &Node {
+        self.node(root(self.size()))
+    }
 
     /// Obtain a reference to the data contained in the `Node` at index `node_index`.
     /// Returns an error if the index is outside of the tree.
