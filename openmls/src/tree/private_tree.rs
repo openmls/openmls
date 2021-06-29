@@ -12,7 +12,7 @@ pub(crate) type PathSecrets = Vec<PathSecret>;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct PrivateTree {
+pub struct PrivateTree {
     // The index of the node corresponding to this leaf information.
     leaf_index: LeafIndex,
 
@@ -141,7 +141,7 @@ impl PrivateTree {
     /// ```
     ///
     /// Note that this overrides the `path_secrets`.
-    pub(crate) fn continue_path_secrets(
+    pub fn continue_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
         start_secret: PathSecret,

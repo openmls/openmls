@@ -3,8 +3,6 @@
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub mod kat_encryption;
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub mod kat_tree_kem;
-#[cfg(any(feature = "expose-test-vectors", test))]
 pub mod kat_treemath;
 
 #[cfg(test)]

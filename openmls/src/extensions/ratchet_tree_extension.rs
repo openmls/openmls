@@ -41,7 +41,7 @@ impl RatchetTreeExtension {
         RatchetTreeExtension { tree }
     }
 
-    pub(crate) fn into_vector(self) -> Vec<Option<Node>> {
+    pub fn into_vector(self) -> Vec<Option<Node>> {
         self.tree
     }
 }
