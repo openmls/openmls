@@ -17,6 +17,21 @@ pub(crate) struct ParentNode {
     tree_hash: Vec<u8>,
 }
 
+pub(crate) struct UnverifiedLeafNode {
+    tree_hash: Vec<u8>,
+    key_package: KeyPackage,
+}
+
+impl Verifiable for UnverifiedLeafNode {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
+        self.key_package.unsigned_payload()
+    }
+
+    fn signature(&self) -> &crate::ciphersuite::Signature {
+        self.key_package.signature()
+    }
+}
+
 pub(crate) struct LeafNode {
     // For caching the tree hash of the leaf node.
     tree_hash: Vec<u8>,
@@ -59,12 +74,6 @@ impl TreeSyncable for LeafNode {
         &self.tree_hash
     }
 
-    fn verify(&self) -> Result<(), Self::TreeSyncableError> {
-        self.key_package
-            .verify(self.key_package.credential())
-            .map_err(|_| Self::TreeSyncableError::NodeVerificationError)
-    }
-
     type TreeSyncableError = MlsNodeError;
 }
 
@@ -74,20 +83,20 @@ pub(crate) struct LeafNodeMut {
     key_package: KeyPackagePayload,
 }
 
-impl TreeSyncableMut for KeyPackagePayload {
+impl TreeSyncableMut for LeafNodeMut {
     fn set_tree_hash(&mut self, tree_hash: Vec<u8>) {
         self.tree_hash = tree_hash
     }
 
     fn clear_unmerged_leaves(&mut self) -> Result<(), Self::TreeSyncableMutError> {
-        Err(Self::TreeSyncableError::NodeTypeError)
+        Err(Self::TreeSyncableMutError::NodeTypeError)
     }
 
     fn add_unmerged_leaf(
         &mut self,
         _node_index: NodeIndex,
     ) -> Result<(), Self::TreeSyncableMutError> {
-        Err(Self::TreeSyncableError::NodeTypeError)
+        Err(Self::TreeSyncableMutError::NodeTypeError)
     }
 
     fn set_parent_hash(&mut self, parent_hash: Vec<u8>) {
@@ -99,9 +108,21 @@ impl TreeSyncableMut for KeyPackagePayload {
     type TreeSyncableMutError = MlsNodeError;
 }
 
-pub(crate) struct UnverifiedLeafNode {
-    tree_hash: Vec<u8>,
-    key_package: KeyPackage,
+impl Signable for LeafNodeMut {
+    type SignedOutput = LeafNode;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
+        self.key_package.unsigned_payload()
+    }
+}
+
+impl SignedStruct<LeafNodeMut> for LeafNode {
+    fn from_payload(payload: LeafNodeMut, signature: crate::ciphersuite::Signature) -> Self {
+        Self {
+            tree_hash: payload.tree_hash,
+            key_package: KeyPackage::from_payload(payload.key_package, signature),
+        }
+    }
 }
 
 impl TreeSyncLeaf for LeafNode {
@@ -112,25 +133,11 @@ impl TreeSyncLeaf for LeafNode {
     type SignedLeaf = LeafNode;
 }
 
-impl Verifiable for LeafNodeMut {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
-        self.key_package.unsigned_payload()
-    }
-
-    fn signature(&self) -> &crate::ciphersuite::Signature {
-        self.key_package
-    }
-}
-
 impl VerifiedStruct<UnverifiedLeafNode> for LeafNode {
-    fn from_verifiable(verifiable: LeafNodeMut) -> Self {
+    fn from_verifiable(verifiable: UnverifiedLeafNode) -> Self {
         Self {
             tree_hash: verifiable.tree_hash,
-            key_package: KeyPackage {
-                payload: verifiable.key_package,
-                signature: verifiable.signature(),
-                encoded: verifiable.unsigned_payload(),
-            },
+            key_package: KeyPackage::from_verifiable(verifiable.key_package),
         }
     }
 }
@@ -151,10 +158,6 @@ impl TreeSyncable for ParentNode {
 
     fn tree_hash(&self) -> &[u8] {
         &self.tree_hash
-    }
-
-    fn verify(&self) -> Result<(), Self::TreeSyncableError> {
-        Err(Self::TreeSyncableError::NodeTypeError)
     }
 }
 

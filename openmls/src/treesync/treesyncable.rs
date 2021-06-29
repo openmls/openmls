@@ -21,11 +21,6 @@ pub(crate) trait TreeSyncable: Sized {
 
     /// Get the tree hash value for the given node.
     fn tree_hash(&self) -> &[u8];
-
-    /// Verify the signature on a given leaf node. Returns an `NodeTypeError` if
-    /// called on a non-leaf node and a `NodeVerificationError` if the
-    /// verification fails.
-    fn verify(&self) -> Result<(), Self::TreeSyncableError>;
 }
 
 pub(crate) trait TreeSyncableMut {
