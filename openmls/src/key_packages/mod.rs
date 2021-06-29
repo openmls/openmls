@@ -3,6 +3,7 @@ use log::error;
 use crate::ciphersuite::signable::Signable;
 use crate::ciphersuite::signable::SignedStruct;
 use crate::ciphersuite::signable::Verifiable;
+use crate::ciphersuite::signable::VerifiedStruct;
 use crate::ciphersuite::*;
 use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
@@ -122,6 +123,13 @@ impl Verifiable for KeyPackage {
 
     fn signature(&self) -> &Signature {
         &self.signature
+    }
+}
+
+// FIXME: There should be distinct types for verified and unverified keypackage.
+impl VerifiedStruct<KeyPackage> for KeyPackage {
+    fn from_verifiable(verifiable: KeyPackage) -> Self {
+        verifiable
     }
 }
 
