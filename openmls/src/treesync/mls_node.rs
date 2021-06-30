@@ -1,6 +1,10 @@
+use std::option::Option;
+
 use hpke::HpkePublicKey;
 
-use super::treesyncable::{TreeSyncLeaf, TreeSyncParent, TreeSyncable, TreeSyncableMut};
+use super::treesyncable::{
+    TreeSyncLeaf, TreeSyncNode, TreeSyncParent, TreeSyncParentMut, TreeSyncable, TreeSyncableMut,
+};
 
 use crate::{
     binary_tree::NodeIndex,
@@ -10,16 +14,49 @@ use crate::{
     prelude::KeyPackagePayload,
 };
 
-pub(crate) enum MlsNode {
+pub(crate) enum MlsNodeContent {
     Parent(ParentNode),
     Leaf(LeafNode),
+}
+
+pub(crate) struct MlsNode {
+    node_content: Option<MlsNodeContent>,
+    tree_hash: Vec<u8>,
+}
+
+impl Default for MlsNode {
+    fn default() -> Self {
+        Self {
+            node_content: None,
+            tree_hash: vec![],
+        }
+    }
+}
+
+impl TreeSyncNode for MlsNode {
+    fn tree_hash(&self) -> &[u8] {
+        &self.tree_hash
+    }
+
+    fn node_content(&self) -> Option<&dyn TreeSyncable> {
+        match &self.node_content {
+            Some(content) => match content {
+                MlsNodeContent::Parent(parent) => Some(parent),
+                MlsNodeContent::Leaf(leaf) => Some(leaf),
+            },
+            None => None,
+        }
+    }
+
+    fn set_tree_hash(&mut self, tree_hash: Vec<u8>) {
+        self.tree_hash = tree_hash
+    }
 }
 
 pub(crate) struct ParentNode {
     public_key: HpkePublicKey,
     unmerged_leaves: Vec<NodeIndex>,
     parent_hash: Vec<u8>,
-    tree_hash: Vec<u8>,
 }
 
 // TODO: Do we really need the mutable/immutable distinction for ParentNode?
@@ -33,46 +70,50 @@ impl TreeSyncParent for ParentNode {
     fn to_immut(tsp_mut: Self::TreeSyncParentMut) -> Self {
         tsp_mut
     }
+
+    fn unmerged_leaves(&self) -> &[NodeIndex] {
+        &self.unmerged_leaves
+    }
 }
 
-pub(crate) struct UnverifiedLeafNode {
-    tree_hash: Vec<u8>,
-    key_package: KeyPackage,
-}
-
-impl Verifiable for UnverifiedLeafNode {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
-        self.key_package.unsigned_payload()
+impl TreeSyncParentMut for ParentNode {
+    fn clear_unmerged_leaves(&mut self) {
+        self.unmerged_leaves = vec![]
     }
 
-    fn signature(&self) -> &crate::ciphersuite::Signature {
-        self.key_package.signature()
+    fn add_unmerged_leaf(&mut self, node_index: NodeIndex) {
+        self.unmerged_leaves.push(node_index)
     }
 }
 
 pub(crate) struct LeafNode {
-    // For caching the tree hash of the leaf node.
-    tree_hash: Vec<u8>,
     key_package: KeyPackage,
+}
+
+pub(crate) struct UnverifiedLeafNode {
+    unverified_key_package: KeyPackage,
+}
+
+impl Verifiable for UnverifiedLeafNode {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
+        self.unverified_key_package.unsigned_payload()
+    }
+
+    fn signature(&self) -> &crate::ciphersuite::Signature {
+        self.unverified_key_package.signature()
+    }
 }
 
 impl SignedStruct<KeyPackagePayload> for LeafNode {
     fn from_payload(payload: KeyPackagePayload, signature: crate::ciphersuite::Signature) -> Self {
         let key_package = KeyPackage::from_payload(payload, signature);
-        Self {
-            tree_hash: vec![],
-            key_package,
-        }
+        Self { key_package }
     }
 }
 
 impl TreeSyncable for LeafNode {
     fn node_content(&self) -> &[u8] {
         &self.key_package.hpke_init_key().as_slice()
-    }
-
-    fn unmerged_leaves(&self) -> Result<&[NodeIndex], Self::TreeSyncableError> {
-        Err(Self::TreeSyncableError::NodeTypeError)
     }
 
     fn parent_hash(&self) -> &[u8] {
@@ -87,43 +128,18 @@ impl TreeSyncable for LeafNode {
             .unwrap()
             .parent_hash()
     }
-
-    fn tree_hash(&self) -> &[u8] {
-        &self.tree_hash
-    }
-
-    type TreeSyncableError = MlsNodeError;
 }
 
 pub(crate) struct LeafNodeMut {
-    // For caching the tree hash of the leaf node.
-    tree_hash: Vec<u8>,
     key_package: KeyPackagePayload,
 }
 
 impl TreeSyncableMut for LeafNodeMut {
-    fn set_tree_hash(&mut self, tree_hash: Vec<u8>) {
-        self.tree_hash = tree_hash
-    }
-
-    fn clear_unmerged_leaves(&mut self) -> Result<(), Self::TreeSyncableMutError> {
-        Err(Self::TreeSyncableMutError::NodeTypeError)
-    }
-
-    fn add_unmerged_leaf(
-        &mut self,
-        _node_index: NodeIndex,
-    ) -> Result<(), Self::TreeSyncableMutError> {
-        Err(Self::TreeSyncableMutError::NodeTypeError)
-    }
-
     fn set_parent_hash(&mut self, parent_hash: Vec<u8>) {
         let parent_hash_extension = ParentHashExtension::new(&parent_hash);
         self.key_package
             .add_extension(Box::new(parent_hash_extension));
     }
-
-    type TreeSyncableMutError = MlsNodeError;
 }
 
 impl Signable for LeafNodeMut {
@@ -137,7 +153,6 @@ impl Signable for LeafNodeMut {
 impl SignedStruct<LeafNodeMut> for LeafNode {
     fn from_payload(payload: LeafNodeMut, signature: crate::ciphersuite::Signature) -> Self {
         Self {
-            tree_hash: payload.tree_hash,
             key_package: KeyPackage::from_payload(payload.key_package, signature),
         }
     }
@@ -154,52 +169,25 @@ impl TreeSyncLeaf for LeafNode {
 impl VerifiedStruct<UnverifiedLeafNode> for LeafNode {
     fn from_verifiable(verifiable: UnverifiedLeafNode) -> Self {
         Self {
-            tree_hash: verifiable.tree_hash,
-            key_package: KeyPackage::from_verifiable(verifiable.key_package),
+            key_package: KeyPackage::from_verifiable(verifiable.unverified_key_package),
         }
     }
 }
 
 impl TreeSyncable for ParentNode {
-    type TreeSyncableError = MlsNodeError;
     fn node_content(&self) -> &[u8] {
         self.public_key.as_slice()
-    }
-
-    fn unmerged_leaves(&self) -> Result<&[NodeIndex], Self::TreeSyncableError> {
-        Ok(&self.unmerged_leaves)
     }
 
     fn parent_hash(&self) -> &[u8] {
         &self.parent_hash
     }
-
-    fn tree_hash(&self) -> &[u8] {
-        &self.tree_hash
-    }
 }
 
 impl TreeSyncableMut for ParentNode {
-    fn clear_unmerged_leaves(&mut self) -> Result<(), Self::TreeSyncableMutError> {
-        Ok(self.unmerged_leaves = vec![])
-    }
-
-    fn add_unmerged_leaf(
-        &mut self,
-        node_index: NodeIndex,
-    ) -> Result<(), Self::TreeSyncableMutError> {
-        Ok(self.unmerged_leaves.push(node_index))
-    }
-
     fn set_parent_hash(&mut self, parent_hash: Vec<u8>) {
         self.parent_hash = parent_hash
     }
-
-    fn set_tree_hash(&mut self, tree_hash: Vec<u8>) {
-        self.parent_hash = tree_hash
-    }
-
-    type TreeSyncableMutError = MlsNodeError;
 }
 
 implement_error! {
