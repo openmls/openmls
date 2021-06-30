@@ -62,7 +62,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     // Let's create a group
     let group_id = GroupId::random();
-    let config = GroupConfig::default();
+    let config = MlsGroupConfig::default();
     let mut group = MlsGroup::new(
         &group_id.as_slice(),
         ciphersuite_name,

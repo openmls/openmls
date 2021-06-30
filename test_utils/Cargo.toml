@@ -1,0 +1,9 @@
+[package]
+name = "test_utils"
+version = "0.1.0"
+authors = ["Konrad Kohbrok <konrad.kohbrok@datashrine.de>"]
+edition = "2018"
+
+[dependencies]
+openmls = { path = "../openmls" }
+rand = "^0.8"

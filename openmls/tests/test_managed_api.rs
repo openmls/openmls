@@ -2,7 +2,7 @@ use openmls::prelude::*;
 
 mod utils;
 
-use utils::managed_utils::*;
+use test_utils::*;
 
 #[test]
 fn test_managed_api() {

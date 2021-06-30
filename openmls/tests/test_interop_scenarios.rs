@@ -3,7 +3,7 @@ use openmls::prelude::*;
 #[macro_use]
 mod utils;
 
-use utils::managed_utils::*;
+use test_utils::*;
 
 // The following tests correspond to the interop test scenarios detailed here:
 // https://github.com/mlswg/mls-implementations/blob/master/test-scenarios.md

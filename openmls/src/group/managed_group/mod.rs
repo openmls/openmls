@@ -109,7 +109,7 @@ impl ManagedGroup {
         let key_package_bundle = key_store
             .take_key_package_bundle(key_package_hash)
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
-        let group_config = GroupConfig {
+        let group_config = MlsGroupConfig {
             add_ratchet_tree_extension: managed_group_config.use_ratchet_tree_extension,
             ..Default::default()
         };
@@ -439,12 +439,7 @@ impl ManagedGroup {
             // If it is a ciphertext we decrypt it and return the plaintext message
             MlsMessage::Ciphertext(ciphertext) => {
                 let aad = ciphertext.authenticated_data.clone();
-                (
-                    self.group
-                        .decrypt(&ciphertext)
-                        .map_err(InvalidMessageError::InvalidCiphertext)?,
-                    Some(aad),
-                )
+                (self.group.decrypt(&ciphertext)?, Some(aad))
             }
             // If it is a plaintext message we just return it
             MlsMessage::Plaintext(plaintext) => {
@@ -529,7 +524,7 @@ impl ManagedGroup {
                         self.own_kpbs.clear();
                     }
                     Err(apply_commit_error) => match apply_commit_error {
-                        GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
+                        MlsGroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
                             // Prepare events
                             events.append(&mut self.prepare_events(
                                 self.ciphersuite(),
@@ -540,7 +535,7 @@ impl ManagedGroup {
                             // The group is no longer active
                             self.active = false;
                         }
-                        GroupError::ApplyCommitError(e) => {
+                        MlsGroupError::ApplyCommitError(e) => {
                             return Err(ManagedGroupError::InvalidMessage(
                                 InvalidMessageError::CommitError(e),
                             ))
@@ -1111,10 +1106,10 @@ impl From<MlsCiphertext> for MlsMessage {
 
 impl MlsMessage {
     /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> Vec<u8> {
+    pub fn group_id(&self) -> &[u8] {
         match self {
-            MlsMessage::Ciphertext(m) => m.group_id.to_vec(),
-            MlsMessage::Plaintext(m) => m.group_id().to_vec(),
+            MlsMessage::Ciphertext(m) => m.group_id().as_slice(),
+            MlsMessage::Plaintext(m) => m.group_id().as_slice(),
         }
     }
 

@@ -569,7 +569,7 @@ fn managed_group_operations() {
             // Should fail because you cannot remove yourself from a group
             assert_eq!(
                 bob_group.process_pending_proposals(&key_store,),
-                Err(ManagedGroupError::Group(GroupError::CreateCommitError(
+                Err(ManagedGroupError::Group(MlsGroupError::CreateCommitError(
                     CreateCommitError::CannotRemoveSelf
                 )))
             );
@@ -870,7 +870,7 @@ fn managed_group_ratchet_tree_extension() {
 
             assert_eq!(
                 error,
-                ManagedGroupError::Group(GroupError::WelcomeError(
+                ManagedGroupError::Group(MlsGroupError::WelcomeError(
                     WelcomeError::MissingRatchetTree
                 ))
             );

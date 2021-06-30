@@ -23,7 +23,7 @@ pub(crate) struct TestClientConfig {
 /// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
     pub(crate) ciphersuite: CiphersuiteName,
-    pub(crate) config: GroupConfig,
+    pub(crate) config: MlsGroupConfig,
     pub(crate) members: Vec<TestClientConfig>,
 }
 
@@ -285,7 +285,7 @@ fn test_setup() {
         name: "TestClientConfigB",
         ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
-    let group_config = GroupConfig::default();
+    let group_config = MlsGroupConfig::default();
     let test_group_config = TestGroupConfig {
         ciphersuite: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         config: group_config,

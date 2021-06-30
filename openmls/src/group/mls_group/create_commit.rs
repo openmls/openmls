@@ -104,7 +104,7 @@ impl MlsGroup {
             provisional_tree.commit_secret(),
             self.epoch_secrets()
                 .init_secret()
-                .ok_or(GroupError::InitSecretNotFound)?,
+                .ok_or(MlsGroupError::InitSecretNotFound)?,
         );
 
         // Create group secrets for later use, so we can afterwards consume the
@@ -221,7 +221,7 @@ impl PlaintextSecret {
         invited_members: Vec<(LeafIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
         presharedkeys: &PreSharedKeys,
-    ) -> Result<Vec<Self>, GroupError> {
+    ) -> Result<Vec<Self>, MlsGroupError> {
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;

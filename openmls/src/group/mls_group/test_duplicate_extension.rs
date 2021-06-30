@@ -36,9 +36,9 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = GroupConfig {
+    let config = MlsGroupConfig {
         add_ratchet_tree_extension: true,
-        ..GroupConfig::default()
+        ..MlsGroupConfig::default()
     };
 
     let group_id = [5, 6, 7, 8];
@@ -141,6 +141,6 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     // We expect an error because the ratchet tree is duplicated
     assert_eq!(
         error.expect("We expected an error"),
-        GroupError::WelcomeError(WelcomeError::CodecError(CodecError::DecodingError))
+        MlsGroupError::WelcomeError(WelcomeError::CodecError(CodecError::DecodingError))
     );
 });
