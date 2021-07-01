@@ -5,6 +5,8 @@ use self::{
     treesyncable::{TreeSyncLeaf, TreeSyncParent},
 };
 
+use std::fmt::Debug;
+
 pub(crate) mod mls_node;
 pub(crate) mod mls_treesync;
 pub(crate) mod treesync_update;
@@ -32,6 +34,9 @@ where
     P: TreeSyncParent,
     L: TreeSyncLeaf,
 {
+    type TreeSyncError: Debug;
+    type TreeSyncDiff<'a>: TreeSyncDiff<P, L>;
+
     /// Return the tree hash of the root node.
     fn tree_hash(&self) -> &[u8];
 
@@ -39,14 +44,12 @@ where
     /// re-computes all necessary tree hashes.
     /// Note, that the private values corresponding to the ones in the
     /// TreeSync should be committed at the same time.
-    fn merge_diff(
-        &mut self,
-        tree_sync_diff: Box<dyn TreeSyncDiff<P, L>>,
-    ) -> Result<(), TreeSyncError>;
+    fn merge_diff(&mut self, tree_sync_diff: Self::TreeSyncDiff)
+        -> Result<(), Self::TreeSyncError>;
 
     /// Create an empty diff based on this TreeSync instance all operations
     /// are created based on an initial, empty diff.
-    fn empty_diff(&self) -> Box<dyn TreeSyncDiff<P, L>>;
+    fn empty_diff(&self) -> Self::TreeSyncDiff;
 }
 
 //struct TreeSyncDiff<
@@ -64,23 +67,24 @@ where
     P: TreeSyncParent + Sized,
     L: TreeSyncLeaf + Sized,
 {
-    /// Update a leaf node and blank the nodes in the updated leaf's direct path.
-    fn update_leaf(&mut self, leaf_node: L, leaf_index: NodeIndex) -> Self
-    where
-        Self: Sized;
+    type TreeSyncDiffError;
+
+    /// Update a leaf node and blank the nodes in the updated leaf's direct
+    /// path.
+    fn update_leaf(
+        &mut self,
+        leaf_node: L,
+        leaf_index: NodeIndex,
+    ) -> Result<(), Self::TreeSyncDiffError>;
 
     /// Adds a new leaf to the tree either by filling a blank leaf or by
     /// creating a new leaf, inserting intermediate blanks as necessary. This
     /// also adds the leaf_index of the new leaf to the `unmerged_leaves` state
     /// of the parent nodes in its direct path.
-    fn add_leaf(&mut self, leaf_node: L) -> Result<Self, TreeSyncError>
-    where
-        Self: Sized;
+    fn add_leaf(&mut self, leaf_node: L) -> Result<(), Self::TreeSyncDiffError>;
 
     /// Remove a group member by blanking the target leaf and its direct path.
-    fn remove_leaf(&mut self, leaf_index: NodeIndex) -> Result<Self, TreeSyncError>
-    where
-        Self: Sized;
+    fn remove_leaf(&mut self, leaf_index: NodeIndex) -> Result<(), Self::TreeSyncDiffError>;
 
     /// Process a given update path, consisting of a vector of `Node`. This
     /// function
@@ -88,9 +92,7 @@ where
     ///   the the ones in `path` and
     /// * computes the `parent_hash` of all nodes in the path and compares it to
     ///   the one in the `leaf_node`.
-    fn process_update_path(&mut self, update: TreeSyncUpdate<P, L>) -> Self
-    where
-        Self: Sized;
+    fn process_update_path(&mut self, update: TreeSyncUpdate<P, L>);
 
     /// Take a given path and leaf node and integrate them into the tree. This
     /// function
@@ -101,18 +103,9 @@ where
     fn create_update_path(
         &mut self,
         update: UnsignedTreeSyncUpdate<P, L>,
-    ) -> Result<(Self, TreeSyncUpdate<P, L>), TreeSyncError>
-    where
-        Self: Sized;
+    ) -> Result<TreeSyncUpdate<P, L>, Self::TreeSyncDiffError>;
 
     /// Compute the tree hash of the TreeSync instance we would get when merging
     /// the diff.
     fn tree_hash(&self) -> Vec<u8>;
-}
-
-implement_error! {
-    pub enum TreeSyncError {
-        NodeVerificationError = "Could not verify this node.",
-        NodeTypeError = "The given node is of the wrong type.",
-    }
 }

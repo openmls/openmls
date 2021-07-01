@@ -113,8 +113,8 @@ pub(crate) fn node_in_tree(node_index: NodeIndex, size: NodeIndex) -> Result<(),
     }
 }
 
-/// Direct path from a node to the root.
-/// Does not include the node itself.
+/// Direct path from a node to the root. Does not include the node itself.
+/// Returns an error if the given node index is not within the tree.
 pub(crate) fn direct_path(
     node_index: NodeIndex,
     size: NodeIndex,

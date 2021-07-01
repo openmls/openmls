@@ -24,6 +24,27 @@ pub(crate) struct MlsNode {
     tree_hash: Vec<u8>,
 }
 
+impl From<MlsNodeContent> for MlsNode {
+    fn from(mls_node_content: MlsNodeContent) -> Self {
+        MlsNode {
+            node_content: Some(mls_node_content),
+            tree_hash: vec![],
+        }
+    }
+}
+
+impl From<LeafNode> for MlsNode {
+    fn from(leaf_node: LeafNode) -> Self {
+        MlsNode::from(MlsNodeContent::Leaf(leaf_node))
+    }
+}
+
+impl From<ParentNode> for MlsNode {
+    fn from(parent_node: ParentNode) -> Self {
+        MlsNode::from(MlsNodeContent::Parent(parent_node))
+    }
+}
+
 impl Default for MlsNode {
     fn default() -> Self {
         Self {
