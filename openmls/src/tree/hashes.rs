@@ -273,7 +273,7 @@ impl RatchetTree {
     // === Tree hash ===
 
     /// Computes and returns the tree hash
-    pub fn tree_hash(&self) -> Vec<u8> {
+    pub(crate) fn tree_hash(&self) -> Vec<u8> {
         // Recursive helper function to the tree hashes for a node
         fn node_hash(tree: &RatchetTree, index: NodeIndex) -> Vec<u8> {
             let node = &tree.nodes[index];

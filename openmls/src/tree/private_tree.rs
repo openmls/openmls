@@ -141,7 +141,7 @@ impl PrivateTree {
     /// ```
     ///
     /// Note that this overrides the `path_secrets`.
-    pub fn continue_path_secrets(
+    pub(crate) fn continue_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
         start_secret: PathSecret,

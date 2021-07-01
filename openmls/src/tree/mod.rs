@@ -93,7 +93,7 @@ impl RatchetTree {
     /// Generate a new `RatchetTree` from `Node`s with the client's key package
     /// bundle `kpb`. The client's node must be in the list of nodes and the list
     /// of nodes must contain all nodes of the tree, including intermediates.
-    pub fn new_from_nodes(
+    pub(crate) fn new_from_nodes(
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
     ) -> Result<RatchetTree, TreeError> {
@@ -131,11 +131,6 @@ impl RatchetTree {
     /// Return a mutable reference to the `PrivateTree`.
     pub(crate) fn private_tree_mut(&mut self) -> &mut PrivateTree {
         &mut self.private_tree
-    }
-
-    #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn private_tree_mut_test(&mut self) -> &mut PrivateTree {
-        self.private_tree_mut()
     }
 
     /// Return a reference to the `PrivateTree`.
@@ -214,7 +209,7 @@ impl RatchetTree {
     }
 
     /// Get the index of the own node.
-    pub fn own_node_index(&self) -> LeafIndex {
+    pub(crate) fn own_node_index(&self) -> LeafIndex {
         self.private_tree.leaf_index()
     }
 
@@ -263,7 +258,7 @@ impl RatchetTree {
     /// > intermediate nodes in the path above the leaf. The path is ordered
     /// > from the closest node to the leaf to the root; each node MUST be the
     /// > parent of its predecessor.
-    pub fn update_path(
+    pub(crate) fn update_path(
         &mut self,
         sender: LeafIndex,
         update_path: &UpdatePath,
@@ -805,11 +800,6 @@ impl RatchetTree {
     /// Get a reference to the commit secret.
     pub(crate) fn commit_secret(&self) -> Option<&CommitSecret> {
         self.private_tree.commit_secret()
-    }
-
-    #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn path_secret_test(&self, index: NodeIndex) -> Option<&PathSecret> {
-        self.path_secret(index)
     }
 
     /// Get the path secret for a given target node. Returns `None` if the given

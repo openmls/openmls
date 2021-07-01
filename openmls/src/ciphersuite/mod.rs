@@ -305,15 +305,6 @@ impl Secret {
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
-    pub fn from_slice_test(
-        bytes: &[u8],
-        mls_version: ProtocolVersion,
-        ciphersuite: &'static Ciphersuite,
-    ) -> Self {
-        Self::from_slice(bytes, mls_version, ciphersuite)
-    }
-
     /// HKDF extract where `self` is `salt`.
     pub(crate) fn hkdf_extract<'a>(&self, ikm_option: impl Into<Option<&'a Secret>>) -> Self {
         log::trace!("HKDF extract with {:?}", self.ciphersuite.name);

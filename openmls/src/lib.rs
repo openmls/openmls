@@ -39,6 +39,8 @@ mod credentials;
 mod extensions;
 pub mod framing;
 pub mod group;
+#[cfg(any(feature = "expose-test-vectors", test))]
+pub mod kat_generation_api;
 mod key_packages;
 pub mod key_store;
 pub mod messages;
