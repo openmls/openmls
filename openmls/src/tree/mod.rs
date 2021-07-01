@@ -16,7 +16,7 @@ pub(crate) mod path_keys;
 pub(crate) mod private_tree;
 pub(crate) mod secret_tree;
 pub(crate) mod sender_ratchet;
-pub mod treemath;
+pub(crate) mod treemath;
 
 pub(crate) use errors::*;
 pub use hashes::*;

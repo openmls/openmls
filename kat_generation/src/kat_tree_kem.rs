@@ -17,27 +17,11 @@ use openmls::kat_generation_api::*;
 use openmls::prelude::*;
 #[cfg(test)]
 use openmls::test_util::read;
-//{
-//    ciphersuite::signable::Signable,
-//    codec::Decode,
-//    credentials::{CredentialBundle, CredentialType},
-//    prelude::KeyPackageBundlePayload,
-//    test_util::hex_to_bytes,
-//};
-//use openmls::{
-//    ciphersuite::Secret,
-//    config::Config,
-//    config::ProtocolVersion,
-//    error::*,
-//    extensions::{Extension, RatchetTreeExtension},
-//    key_packages::KeyPackage,
-//    messages::PathSecret,
-//    tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
-//};
 
 use openmls::messages::PathSecret;
 use openmls::test_util::hex_to_bytes;
-use openmls::tree::{NodeIndex, RatchetTree, UpdatePath};
+use openmls::tree::NodeIndex;
+use openmls::tree::{RatchetTree, UpdatePath};
 use std::collections::HashSet;
 
 use serde::{self, Deserialize, Serialize};
