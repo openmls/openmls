@@ -6,7 +6,7 @@ use evercrypt::prelude::*;
 #[cfg(any(feature = "expose-test-vectors", test))]
 use rand::{rngs::OsRng, RngCore};
 
-pub(crate) fn randombytes(n: usize) -> Vec<u8> {
+pub fn randombytes(n: usize) -> Vec<u8> {
     random_vec(n)
 }
 
@@ -16,7 +16,7 @@ pub(crate) fn random_u32() -> u32 {
 }
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub(crate) fn random_u64() -> u64 {
+pub fn random_u64() -> u64 {
     OsRng.next_u64()
 }
 

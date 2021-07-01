@@ -689,12 +689,12 @@ impl MembershipKey {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn from_secret(secret: Secret) -> Self {
+    pub fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 }
@@ -787,14 +787,14 @@ impl SenderDataSecret {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
     #[doc(hidden)]
     /// Create a new secret from a byte vector.
-    pub(crate) fn from_slice(
+    pub fn from_slice(
         bytes: &[u8],
         mls_version: ProtocolVersion,
         ciphersuite: &'static Ciphersuite,

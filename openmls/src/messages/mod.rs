@@ -18,6 +18,7 @@ pub(crate) mod proposals;
 
 pub use codec::*;
 pub use errors::*;
+pub use proposals::Proposal;
 use proposals::*;
 
 #[cfg(test)]

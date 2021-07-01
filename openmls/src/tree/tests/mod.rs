@@ -1,8 +1,6 @@
 //! Tree unit tests.
 
 #[cfg(any(feature = "expose-test-vectors", test))]
-pub mod kat_encryption;
-#[cfg(any(feature = "expose-test-vectors", test))]
 pub mod kat_treemath;
 
 #[cfg(test)]

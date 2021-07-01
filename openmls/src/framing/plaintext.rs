@@ -257,7 +257,7 @@ impl MlsPlaintext {
 
     /// Remove the membership tag for testing.
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn remove_membership_tag(&mut self) {
+    pub fn remove_membership_tag(&mut self) {
         self.membership_tag = None;
     }
 

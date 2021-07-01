@@ -5,9 +5,13 @@ use hpke::HpkePublicKey;
 use crate::{
     ciphersuite::{Ciphersuite, Secret},
     extensions::RatchetTreeExtension,
+    group::{GroupEpoch, MlsGroup},
     messages::PathSecret,
     node::Node,
-    prelude::{KeyPackageBundle, LeafIndex, ProtocolVersion},
+    prelude::{
+        KeyPackageBundle, LeafIndex, MlsCiphertext, MlsCiphertextError, MlsPlaintext,
+        ProtocolVersion,
+    },
     tree::{
         treemath::{common_ancestor_index, parent_direct_path, root, TreeMathError},
         NodeIndex, RatchetTree, TreeError, UpdatePath,
@@ -68,6 +72,13 @@ impl Secret {
     ) -> Self {
         Self::from_slice(bytes, mls_version, ciphersuite)
     }
+
+    pub fn random_test(
+        ciphersuite: &'static Ciphersuite,
+        version: impl Into<Option<ProtocolVersion>>,
+    ) -> Self {
+        Self::random(ciphersuite, version)
+    }
 }
 
 impl RatchetTreeExtension {
@@ -89,4 +100,29 @@ pub fn parent_direct_path_test(
 
 pub fn root_test(size: LeafIndex) -> NodeIndex {
     root(size)
+}
+
+impl MlsGroup {
+    pub fn set_epoch(&mut self, epoch: GroupEpoch) {
+        self.context.set_epoch(epoch)
+    }
+}
+
+impl MlsCiphertext {
+    pub fn try_from_plaintext_test(
+        mls_plaintext: &MlsPlaintext,
+        group: &MlsGroup,
+        sender: LeafIndex,
+        padding_size: usize,
+    ) -> Result<MlsCiphertext, MlsCiphertextError> {
+        MlsCiphertext::try_from_plaintext(
+            mls_plaintext,
+            group.ciphersuite(),
+            group.context(),
+            sender,
+            group.epoch_secrets(),
+            &mut group.secret_tree_mut(),
+            padding_size,
+        )
+    }
 }

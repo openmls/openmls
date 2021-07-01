@@ -468,7 +468,7 @@ impl MlsGroup {
     }
 
     #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+    pub fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
 }
