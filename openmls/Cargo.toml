@@ -36,6 +36,7 @@ flexi_logger = "0.18"
 itertools = "0.10"
 test_macros = { path = "../test_macros" }
 test_utils = { path = "../test_utils" }
+kat_generation = { path = "../kat_generation" }
 openmls = { path = ".", features = ["expose-test-vectors"] }
 
 [[bench]]

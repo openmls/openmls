@@ -1,1 +1,1 @@
-mod kat_tree_kem;
+pub mod kat_tree_kem;
