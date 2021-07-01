@@ -14,11 +14,11 @@ use super::{errors::ClientError, ActionType};
 /// generated `KeyPackageBundle`s that are waiting to be used for new groups.
 pub struct Client {
     /// Name of the client.
-    pub(crate) identity: Vec<u8>,
+    pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub(crate) credentials: HashMap<CiphersuiteName, Credential>,
-    pub(crate) key_store: KeyStore,
-    pub(crate) groups: RefCell<HashMap<GroupId, ManagedGroup>>,
+    pub credentials: HashMap<CiphersuiteName, Credential>,
+    pub key_store: KeyStore,
+    pub groups: RefCell<HashMap<GroupId, ManagedGroup>>,
 }
 
 impl Client {

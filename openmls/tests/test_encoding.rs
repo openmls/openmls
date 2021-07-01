@@ -1,4 +1,4 @@
-use openmls::prelude::*;
+use openmls::{ciphersuite::signable::Verifiable, prelude::*};
 pub mod utils;
 use utils::mls_utils::*;
 
@@ -26,7 +26,7 @@ fn create_encoding_test_setup() -> TestSetup {
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: GroupConfig {
+            config: MlsGroupConfig {
                 add_ratchet_tree_extension: true,
                 padding_block_size: 10,
                 additional_as_epochs: 0,
@@ -116,10 +116,13 @@ fn test_update_proposal_encoding() {
         let update_encoded = update
             .encode_detached()
             .expect("Could not encode proposal.");
-        let update_decoded = match MlsPlaintext::decode_detached(&update_encoded) {
+        let update_decoded = match VerifiableMlsPlaintext::decode_detached(&update_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
-        };
+        }
+        .set_context(group_state.context().serialized())
+        .verify(credential_bundle.credential())
+        .expect("Error verifying MlsPlaintext");
 
         assert_eq!(update, update_decoded);
     }
@@ -163,10 +166,13 @@ fn test_add_proposal_encoding() {
             )
             .expect("Could not create proposal.");
         let add_encoded = add.encode_detached().expect("Could not encode proposal.");
-        let add_decoded = match MlsPlaintext::decode_detached(&add_encoded) {
+        let add_decoded = match VerifiableMlsPlaintext::decode_detached(&add_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
-        };
+        }
+        .set_context(group_state.context().serialized())
+        .verify(credential_bundle.credential())
+        .expect("Error verifying MlsPlaintext");
 
         assert_eq!(add, add_decoded);
     }
@@ -191,10 +197,13 @@ fn test_remove_proposal_encoding() {
         let remove_encoded = remove
             .encode_detached()
             .expect("Could not encode proposal.");
-        let remove_decoded = match MlsPlaintext::decode_detached(&remove_encoded) {
+        let remove_decoded = match VerifiableMlsPlaintext::decode_detached(&remove_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
-        };
+        }
+        .set_context(group_state.context().serialized())
+        .verify(credential_bundle.credential())
+        .expect("Error verifying MlsPlaintext");
 
         assert_eq!(remove, remove_decoded);
     }
@@ -262,10 +271,13 @@ fn test_commit_encoding() {
             .create_commit(&[], alice_credential_bundle, proposals, &[], true, None)
             .unwrap();
         let commit_encoded = commit.encode_detached().unwrap();
-        let commit_decoded = match MlsPlaintext::decode_detached(&commit_encoded) {
+        let commit_decoded = match VerifiableMlsPlaintext::decode_detached(&commit_encoded) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
-        };
+        }
+        .set_context(group_state.context().serialized())
+        .verify(alice_credential_bundle.credential())
+        .expect("Error verifying MlsPlaintext");
 
         assert_eq!(commit, commit_decoded);
     }

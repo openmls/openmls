@@ -17,7 +17,7 @@ fn padding() {
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: GroupConfig::default(),
+            config: MlsGroupConfig::default(),
             members: vec![alice_config.clone()],
         };
         test_group_configs.push(test_group);

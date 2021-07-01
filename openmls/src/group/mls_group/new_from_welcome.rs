@@ -134,7 +134,7 @@ impl MlsGroup {
             .key_package
             .ok_or(WelcomeError::MissingKeyPackage)?;
         group_info
-            .verify(signer_key_package.credential())
+            .verify_no_out(signer_key_package.credential())
             .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
 
         // Compute path secrets

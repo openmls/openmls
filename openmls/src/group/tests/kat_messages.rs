@@ -63,7 +63,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     // Let's create a group
     let group_id = GroupId::random();
-    let config = GroupConfig::default();
+    let config = MlsGroupConfig::default();
     let mut group = MlsGroup::new(
         &group_id.as_slice(),
         ciphersuite_name,
@@ -428,10 +428,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // MlsPlaintextApplication
     let tv_mls_plaintext_application = &hex_to_bytes(&tv.mls_plaintext_application);
-    let my_mls_plaintext_application = MlsPlaintext::decode_detached(&tv_mls_plaintext_application)
-        .unwrap()
-        .encode_detached()
-        .unwrap();
+    let my_mls_plaintext_application =
+        VerifiableMlsPlaintext::decode_detached(&tv_mls_plaintext_application)
+            .unwrap()
+            .encode_detached()
+            .unwrap();
     if tv_mls_plaintext_application != &my_mls_plaintext_application {
         log::error!("  MlsPlaintextApplication encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_application);
@@ -444,10 +445,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // MlsPlaintext(Proposal)
     let tv_mls_plaintext_proposal = &hex_to_bytes(&tv.mls_plaintext_proposal);
-    let my_mls_plaintext_proposal = MlsPlaintext::decode_detached(&tv_mls_plaintext_proposal)
-        .unwrap()
-        .encode_detached()
-        .unwrap();
+    let my_mls_plaintext_proposal =
+        VerifiableMlsPlaintext::decode_detached(&tv_mls_plaintext_proposal)
+            .unwrap()
+            .encode_detached()
+            .unwrap();
     if tv_mls_plaintext_proposal != &my_mls_plaintext_proposal {
         log::error!("  MlsPlaintext(Proposal) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_proposal);
@@ -460,7 +462,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // MlsPlaintext(Commit)
     let tv_mls_plaintext_commit = &hex_to_bytes(&tv.mls_plaintext_commit);
-    let my_mls_plaintext_commit = MlsPlaintext::decode_detached(&tv_mls_plaintext_commit)
+    let my_mls_plaintext_commit = VerifiableMlsPlaintext::decode_detached(&tv_mls_plaintext_commit)
         .unwrap()
         .encode_detached()
         .unwrap();

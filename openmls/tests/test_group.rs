@@ -54,7 +54,7 @@ fn create_commit_optional_path() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -210,7 +210,7 @@ fn basic_group_setup() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -297,7 +297,7 @@ fn group_operations() {
             &group_id,
             ciphersuite.name(),
             alice_key_package_bundle,
-            GroupConfig::default(),
+            MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
         )
@@ -731,7 +731,7 @@ fn group_operations() {
                     None, /* PSK fetcher */
                 )
                 .unwrap_err()
-                == GroupError::ApplyCommitError(ApplyCommitError::SelfRemoved)
+                == MlsGroupError::ApplyCommitError(ApplyCommitError::SelfRemoved)
         );
         group_charlie
             .apply_commit(

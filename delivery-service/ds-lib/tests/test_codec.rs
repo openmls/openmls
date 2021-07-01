@@ -20,8 +20,9 @@ fn test_client_info() {
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package);
 
     let encoded_client_data = client_data.encode_detached().unwrap();
-    assert_eq!(
-        client_data,
-        ClientInfo::decode(&mut Cursor::new(&encoded_client_data)).unwrap()
-    );
+    let client_data2 = ClientInfo::decode(&mut Cursor::new(&encoded_client_data))
+        .unwrap()
+        .encode_detached()
+        .unwrap();
+    assert_eq!(client_data.encode_detached().unwrap(), client_data2);
 }

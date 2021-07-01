@@ -12,8 +12,16 @@
 //! Some more points
 //! * update path with empty exclusion list.
 
+use crate::ciphersuite::Ciphersuite;
 #[cfg(test)]
 use crate::test_util::{read, write};
+use crate::{
+    ciphersuite::signable::Signable,
+    codec::Decode,
+    credentials::{CredentialBundle, CredentialType},
+    prelude::KeyPackageBundlePayload,
+    test_util::hex_to_bytes,
+};
 use crate::{
     ciphersuite::Secret,
     config::Config,
@@ -24,19 +32,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::PathSecret,
-    prelude::MlsPlaintextContentType,
-    test_util::bytes_to_hex,
-    tree::{
-        tests::managed_utils::{ActionType, ManagedTestSetup},
-        treemath::*,
-        CiphersuiteName, Codec, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath,
-    },
-};
-use crate::{
-    ciphersuite::{signable::Signable, Ciphersuite},
-    credentials::{CredentialBundle, CredentialType},
-    prelude::KeyPackageBundlePayload,
-    test_util::hex_to_bytes,
+    tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 
 use serde::{self, Deserialize, Serialize};
@@ -272,6 +268,13 @@ fn test_tree_kem_kat() {
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
+    use crate::{
+        codec::Encode,
+        prelude::MlsPlaintextContentType,
+        test_util::bytes_to_hex,
+        tree::tests::managed_utils::{ActionType, ManagedTestSetup},
+    };
+
     // The test really only makes sense with two or more leaves
     if n_leaves <= 1 {
         panic!("test vector can only be generated with two or more members")

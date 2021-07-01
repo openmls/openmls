@@ -2,7 +2,8 @@ use crate::config::{Config, ProtocolVersion};
 use crate::extensions::*;
 use crate::key_packages::*;
 
-impl Codec for KeyPackage {
+implement_codec! {
+    KeyPackage,
     fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
         buffer.extend_from_slice(&self.encoded);
         self.signature.encode(buffer)?;
@@ -30,7 +31,7 @@ impl Codec for KeyPackage {
             encoded,
         };
 
-        if kp.verify().is_err() {
+        if KeyPackage::verify(&kp).is_err() {
             log::error!("Error verifying a key package after decoding\n{:?}", kp);
             return Err(CodecError::DecodingError);
         }

@@ -38,9 +38,9 @@ pub enum ClientError {
     NoMatchingGroup,
     NoCiphersuite,
     FailedToJoinGroup(WelcomeError),
-    InvalidMessage(GroupError),
+    InvalidMessage(MlsGroupError),
     ManagedGroupError(ManagedGroupError),
-    GroupError(GroupError),
+    GroupError(MlsGroupError),
     ErrorEvent(ErrorEvent),
     Unknown,
 }
@@ -57,8 +57,8 @@ impl From<ManagedGroupError> for ClientError {
     }
 }
 
-impl From<GroupError> for ClientError {
-    fn from(e: GroupError) -> Self {
+impl From<MlsGroupError> for ClientError {
+    fn from(e: MlsGroupError) -> Self {
         ClientError::GroupError(e)
     }
 }

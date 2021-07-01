@@ -29,7 +29,10 @@ async fn test_list_clients() {
         }
         _ => panic!("Unexpected server response."),
     };
-    assert_eq!(response_body, expected);
+    assert_eq!(
+        response_body.encode_detached().unwrap(),
+        expected.encode_detached().unwrap()
+    );
 
     // Add a client.
     let client_name = "Client1";
@@ -74,7 +77,10 @@ async fn test_list_clients() {
         }
         _ => panic!("Unexpected server response."),
     };
-    assert_eq!(response_body, expected);
+    assert_eq!(
+        response_body.encode_detached().unwrap(),
+        expected.encode_detached().unwrap()
+    );
 
     // Get Client1 key packages.
     let path =
@@ -156,7 +162,7 @@ async fn test_group() {
         group_id,
         group_ciphersuite,
         key_package_bundles.remove(0),
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -266,7 +272,7 @@ async fn test_group() {
         .unwrap();
 
     // Send mls_ciphertext to the group
-    let msg = GroupMessage::new(MlsMessage::Ciphertext(mls_ciphertext), &client_ids);
+    let msg = GroupMessage::new(DsMlsMessage::Ciphertext(mls_ciphertext), &client_ids);
     let req = test::TestRequest::post()
         .uri("/send/message")
         .set_payload(Bytes::copy_from_slice(&msg.encode_detached().unwrap()))
@@ -295,7 +301,7 @@ async fn test_group() {
         .expect("Didn't get an MLS application message from the server.");
     let mls_ciphertext = match messages.remove(mls_ciphertext) {
         Message::MlsMessage(m) => match m {
-            MlsMessage::Ciphertext(m) => m,
+            DsMlsMessage::Ciphertext(m) => m,
             _ => panic!("This is not an MlsCiphertext but an MlsPlaintext (or something else)."),
         },
         _ => panic!("This is not an MLS message."),
