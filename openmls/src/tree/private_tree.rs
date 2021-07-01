@@ -12,7 +12,7 @@ pub(crate) type PathSecrets = Vec<PathSecret>;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct PrivateTree {
+pub(crate) struct PrivateTree {
     // The index of the node corresponding to this leaf information.
     leaf_index: LeafIndex,
 
