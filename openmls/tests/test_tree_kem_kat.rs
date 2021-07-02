@@ -116,11 +116,19 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     // We add the test client manually, so that we can get a hold of the leaf secret.
     let addee = clients.get(&addee_id).unwrap().borrow();
 
-    let my_key_package = setup
-        .get_fresh_key_package(&addee, &group.ciphersuite)
+    // Manually generate a fresh key package so we can get hold of the leaf secret.
+    let addee_credential = addee.credentials.get(&group.ciphersuite.name()).unwrap();
+    let (my_key_package, my_leaf_secret) = addee
+        .key_store
+        .generate_key_package_bundle_with_secret(
+            &[group.ciphersuite.name()],
+            addee_credential,
+            vec![],
+        )
         .unwrap();
-
-    let my_leaf_secret = addee.key_store.get_leaf_secret(&my_key_package.hash());
+    let mut init_key_packages = setup.waiting_for_welcome.borrow_mut();
+    init_key_packages.insert(my_key_package.hash(), addee.identity.clone());
+    drop(init_key_packages);
 
     let (messages, welcome) = adder
         .add_members(

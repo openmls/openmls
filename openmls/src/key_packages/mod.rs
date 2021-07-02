@@ -11,6 +11,7 @@ use crate::extensions::{
     encode_extensions, CapabilitiesExtension, Extension, ExtensionError, ExtensionType,
     LifetimeExtension, ParentHashExtension,
 };
+use crate::messages::PathSecret;
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -275,7 +276,7 @@ impl KeyPackage {
 pub struct KeyPackageBundlePayload {
     key_package_payload: KeyPackagePayload,
     private_key: HpkePrivateKey,
-    leaf_secret: Secret,
+    path_secret: PathSecret,
 }
 
 impl KeyPackageBundlePayload {
@@ -296,11 +297,12 @@ impl KeyPackageBundlePayload {
             .ciphersuite()
             .derive_hpke_keypair(&leaf_node_secret)
             .into_keys();
+        let leaf_path_secret = derive_leaf_path_secret(&leaf_secret);
         let key_package_payload = KeyPackagePayload::from_key_package(key_package, public_key);
         Self {
             key_package_payload,
             private_key,
-            leaf_secret,
+            path_secret: leaf_path_secret,
         }
     }
 
@@ -332,7 +334,7 @@ impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
         Self {
             key_package,
             private_key: payload.private_key,
-            leaf_secret: payload.leaf_secret,
+            path_secret: payload.path_secret,
         }
     }
 }
@@ -342,7 +344,7 @@ impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HpkePrivateKey,
-    pub(crate) leaf_secret: Secret,
+    pub(crate) path_secret: PathSecret,
 }
 
 impl From<KeyPackageBundle> for KeyPackageBundlePayload {
@@ -350,7 +352,7 @@ impl From<KeyPackageBundle> for KeyPackageBundlePayload {
         Self {
             key_package_payload: kpb.key_package.into(),
             private_key: kpb.private_key,
-            leaf_secret: kpb.leaf_secret,
+            path_secret: kpb.path_secret,
         }
     }
 }
@@ -419,7 +421,7 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         mut extensions: Vec<Box<dyn Extension>>,
         key_pair: HpkeKeyPair,
-        leaf_secret: Secret,
+        path_secret: PathSecret,
     ) -> Result<Self, KeyPackageError> {
         if ciphersuites.is_empty() {
             let error = KeyPackageError::NoCiphersuitesSupplied;
@@ -488,7 +490,7 @@ impl KeyPackageBundle {
         Ok(KeyPackageBundle {
             key_package,
             private_key,
-            leaf_secret,
+            path_secret,
         })
     }
 
@@ -500,6 +502,32 @@ impl KeyPackageBundle {
     /// Get the unsigned payload version of this key package bundle for modificaiton.
     pub fn unsigned(self) -> KeyPackageBundlePayload {
         self.into()
+    }
+
+    #[cfg(any(feature = "expose-test-vectors", test))]
+    pub fn new_and_leaf_secret(
+        ciphersuites: &[CiphersuiteName],
+        credential_bundle: &CredentialBundle,
+        extensions: Vec<Box<dyn Extension>>,
+    ) -> Result<(Self, Secret), KeyPackageError> {
+        if ciphersuites.is_empty() {
+            let error = KeyPackageError::NoCiphersuitesSupplied;
+            error!(
+                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                error
+            );
+            return Err(error);
+        }
+
+        let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
+        let leaf_secret = Secret::random(ciphersuite, ProtocolVersion::default());
+        let kpb = Self::new_from_leaf_secret(
+            ciphersuites,
+            credential_bundle,
+            extensions,
+            leaf_secret.clone(),
+        )?;
+        Ok((kpb, leaf_secret))
     }
 }
 
@@ -523,12 +551,13 @@ impl KeyPackageBundle {
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret);
         let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
+        let leaf_path_secret = derive_leaf_path_secret(&leaf_secret);
         Self::new_with_keypair(
             ciphersuites,
             credential_bundle,
             extensions,
             keypair,
-            leaf_secret,
+            leaf_path_secret,
         )
     }
 }
@@ -546,8 +575,8 @@ impl KeyPackageBundle {
     }
 
     /// Get a reference to the `leaf_secret`.
-    pub fn leaf_secret(&self) -> &Secret {
-        &self.leaf_secret
+    pub fn path_secret(&self) -> &PathSecret {
+        &self.path_secret
     }
 }
 
@@ -555,4 +584,10 @@ impl KeyPackageBundle {
 /// described in 5.4 Ratchet Tree Evolution
 pub(crate) fn derive_leaf_node_secret(leaf_secret: &Secret) -> Secret {
     leaf_secret.derive_secret("node")
+}
+
+/// This function derives the leaf_node_secret from the leaf_secret as
+/// described in 5.4 Ratchet Tree Evolution
+pub(crate) fn derive_leaf_path_secret(leaf_secret: &Secret) -> PathSecret {
+    leaf_secret.derive_secret("path").into()
 }

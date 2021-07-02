@@ -229,8 +229,24 @@ impl KeyStore {
     #[cfg(any(feature = "expose-test-vectors", test))]
     /// This function allows us to get hold of the next `leaf_secret` in the
     /// TreeKEM test vector.
-    pub fn get_leaf_secret(&self, kp_hash: &[u8]) -> Secret {
-        let kpbs = self.init_key_package_bundles.read().unwrap();
-        kpbs.get(kp_hash).unwrap().leaf_secret().clone()
+    pub fn generate_key_package_bundle_with_secret(
+        &self,
+        ciphersuites: &[CiphersuiteName],
+        credential: &Credential,
+        extensions: Vec<Box<dyn Extension>>,
+    ) -> Result<(KeyPackage, Secret), KeyStoreError> {
+        let credential_bundle = self
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
+        let (kpb, leaf_secret) =
+            KeyPackageBundle::new_and_leaf_secret(ciphersuites, &credential_bundle, extensions)?;
+        let kp = kpb.key_package().clone();
+        // We unwrap here, because the two functions claiming write locks on
+        // `init_key_package_bundles` (this one and `take_key_package_bundle`)
+        // only hold the lock very briefly and should not panic during that
+        // period.
+        let mut kpbs = self.init_key_package_bundles.write().unwrap();
+        kpbs.insert(kp.hash(), kpb);
+        Ok((kp, leaf_secret))
     }
 }

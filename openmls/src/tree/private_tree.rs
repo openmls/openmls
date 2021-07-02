@@ -2,7 +2,6 @@
 //! belongs to the current client.
 
 use super::{index::NodeIndex, path_keys::PathKeys, *};
-use crate::prelude::Secret;
 use crate::{
     ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
     messages::PathSecret,
@@ -51,18 +50,13 @@ impl PrivateTree {
     /// leaf secret. Further secrets like path secrets and keypairs
     /// will only be derived in a further step. The HPKE private key is
     /// derived from the leaf secret contained in the KeyPackageBundle.
-    pub(crate) fn from_leaf_secret(leaf_index: LeafIndex, leaf_secret: &Secret) -> Self {
-        // let leaf_secret = key_package_bundle.leaf_secret();
-        // let ciphersuite = key_package_bundle.key_package.ciphersuite();
-        let leaf_node_secret = derive_leaf_node_secret(leaf_secret);
-        let keypair = leaf_secret
-            .ciphersuite()
-            .derive_hpke_keypair(&leaf_node_secret);
-        let (private_key, _) = keypair.into_keys();
-
+    pub(crate) fn from_key_package_bundle(
+        leaf_index: LeafIndex,
+        key_package_bundle: &KeyPackageBundle,
+    ) -> Self {
         Self {
             leaf_index,
-            hpke_private_key: Some(private_key),
+            hpke_private_key: Some(key_package_bundle.private_key().clone()),
             path_keys: PathKeys::default(),
             commit_secret: None,
             path_secrets: Vec::default(),
@@ -74,13 +68,14 @@ impl PrivateTree {
     pub(crate) fn new_with_keys(
         ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
-        leaf_secret: &Secret,
+        key_package_bundle: &KeyPackageBundle,
         path: &[NodeIndex],
     ) -> (Self, Vec<HpkePublicKey>) {
-        let mut private_tree = PrivateTree::from_leaf_secret(leaf_index, leaf_secret);
+        let mut private_tree = PrivateTree::from_key_package_bundle(leaf_index, key_package_bundle);
 
         // Compute path secrets and generate keypairs
-        let public_keys = private_tree.generate_path_secrets(ciphersuite, leaf_secret, path);
+        let public_keys =
+            private_tree.generate_path_secrets(ciphersuite, key_package_bundle.path_secret(), path);
 
         (private_tree, public_keys)
     }
@@ -106,7 +101,7 @@ impl PrivateTree {
         &self.path_secrets
     }
 
-    /// Generate `n` path secrets with the given `leaf_secret`.
+    /// Generate `n` path secrets with the given `path_secret`.
     ///
     /// From 5.4. Ratchet Tree Evolution:
     /// ```text
@@ -118,15 +113,13 @@ impl PrivateTree {
     pub(crate) fn generate_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
-        leaf_secret: &Secret,
+        path_secret: &PathSecret,
         path: &[NodeIndex],
     ) -> Vec<HpkePublicKey> {
         let path_secrets = if path.is_empty() {
             vec![]
         } else {
-            vec![PathSecret {
-                path_secret: leaf_secret.kdf_expand_label("path", &[], ciphersuite.hash_length()),
-            }]
+            vec![path_secret.clone()]
         };
 
         self.derive_path_secrets(ciphersuite, path_secrets, path)

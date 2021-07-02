@@ -58,13 +58,12 @@ fn create_private_tree_from_secret() {
     for ciphersuite in Config::supported_ciphersuites() {
         let (key_package_bundle, own_index, direct_path) = setup(ciphersuite, PATH_LENGTH);
 
-        let mut private_tree =
-            PrivateTree::from_leaf_secret(own_index, key_package_bundle.leaf_secret());
+        let mut private_tree = PrivateTree::from_key_package_bundle(own_index, &key_package_bundle);
 
         // Compute path secrets from the leaf and generate keypairs
         let public_keys = private_tree.generate_path_secrets(
             &ciphersuite,
-            key_package_bundle.leaf_secret(),
+            key_package_bundle.path_secret(),
             &direct_path,
         );
 

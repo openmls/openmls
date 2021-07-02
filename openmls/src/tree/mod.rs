@@ -71,7 +71,7 @@ impl RatchetTree {
         };
         // Add our own node
         let (index, _credential) = tree.add_node(kpb.key_package());
-        tree.private_tree = PrivateTree::from_leaf_secret(index, kpb.leaf_secret());
+        tree.private_tree = PrivateTree::from_key_package_bundle(index, &kpb);
         tree
     }
 
@@ -118,11 +118,11 @@ impl RatchetTree {
         }
 
         let own_node_index = own_node_index.ok_or(TreeError::InvalidArguments)?;
-        let private_tree = PrivateTree::from_leaf_secret(own_node_index, kpb.leaf_secret());
+        let private_tree = PrivateTree::from_key_package_bundle(own_node_index, &kpb);
 
         Ok(Self {
-            ciphersuite: kpb.leaf_secret().ciphersuite(),
-            mls_version: kpb.leaf_secret().version(),
+            ciphersuite: kpb.key_package().ciphersuite(),
+            mls_version: kpb.key_package().protocol_version(),
             nodes,
             private_tree,
         })
@@ -398,8 +398,7 @@ impl RatchetTree {
         group_context: &[u8],
     ) -> Option<&CommitSecret> {
         let _path_option = self.replace_private_tree_(
-            key_package_bundle.leaf_secret(),
-            key_package_bundle.key_package(),
+            key_package_bundle,
             group_context,
             None, /* without update path */
         );
@@ -431,7 +430,7 @@ impl RatchetTree {
         self.nodes[own_index] = Node::new_leaf(Some(key_package_bundle.key_package().clone()));
         let path_nodes = self
             .replace_private_tree_path_(
-                key_package_bundle.leaf_secret(),
+                &key_package_bundle,
                 group_context,
                 Some(new_leaves_indexes), /* with update path */
             )
@@ -457,24 +456,27 @@ impl RatchetTree {
     /// `key_package` and `leaf_secret`.
     fn replace_private_tree_(
         &mut self,
-        leaf_secret: &Secret,
-        key_package: &KeyPackage,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
     ) -> Option<UpdatePath> {
         let own_index = self.own_node_index();
         // Update own leaf node with the new values
-        self.nodes[own_index] = Node::new_leaf(Some(key_package.clone()));
-        let update_path_nodes =
-            self.replace_private_tree_path_(leaf_secret, group_context, new_leaves_indexes_option);
-        update_path_nodes.map(|nodes| UpdatePath::new(key_package.clone(), nodes))
+        self.nodes[own_index] = Node::new_leaf(Some(key_package_bundle.key_package().clone()));
+        let update_path_nodes = self.replace_private_tree_path_(
+            key_package_bundle,
+            group_context,
+            new_leaves_indexes_option,
+        );
+        update_path_nodes
+            .map(|nodes| UpdatePath::new(key_package_bundle.key_package().clone(), nodes))
     }
 
     /// Replace the private tree with a new one based on the
     /// `leaf_secret` only.
     fn replace_private_tree_path_(
         &mut self,
-        leaf_secret: &Secret,
+        key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
         new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
     ) -> Option<Vec<UpdatePathNode>> {
@@ -483,8 +485,12 @@ impl RatchetTree {
         let direct_path_root = treemath::leaf_direct_path(own_index, self.leaf_count())
             .expect("replace_private_tree: Error when computing direct path.");
         // Update private tree and merge corresponding public keys.
-        let (private_tree, new_public_keys) =
-            PrivateTree::new_with_keys(self.ciphersuite, own_index, leaf_secret, &direct_path_root);
+        let (private_tree, new_public_keys) = PrivateTree::new_with_keys(
+            self.ciphersuite,
+            own_index,
+            key_package_bundle,
+            &direct_path_root,
+        );
         self.private_tree = private_tree;
 
         self.merge_public_keys(&new_public_keys, &direct_path_root)
@@ -719,8 +725,7 @@ impl RatchetTree {
                     None => return Err(TreeError::InvalidArguments),
                 };
                 // Update the private tree with new values
-                self.private_tree =
-                    PrivateTree::from_leaf_secret(sender_index, own_kpb.leaf_secret());
+                self.private_tree = PrivateTree::from_key_package_bundle(sender_index, own_kpb);
             }
         }
 
