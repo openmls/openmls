@@ -10,8 +10,10 @@
 //! * `ParentHashError`
 //! * `RatchetTreeError`
 
+use crate::config::ConfigError;
 use crate::error::ErrorString;
-use crate::{codec::CodecError, config::ConfigError};
+
+use tls_codec::Error as TlsError;
 
 implement_error! {
     pub enum ExtensionError {
@@ -27,7 +29,7 @@ implement_error! {
             "Parent hash extension error. See `ParentHashError` for details.",
         RatchetTree(RatchetTreeError) =
             "Ratchet tree extension error. See `RatchetTreeError` for details.",
-        CodecError(CodecError) =
+        CodecError(TlsError) =
             "Error decoding or encoding an extension.",
         ConfigError(ConfigError) =
             "Configuration error. See `ConfigError` for details.",

@@ -21,13 +21,17 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
+// TODO: add group_context.serialized again
+// TODO: how to deserialize cipher suite
+// TODO: use derive wherever possible
+// TODO: clean up tls_codec
+// TODO: clean up extensions and (de)serialization
+
 #[macro_use]
 mod utils;
 
 #[macro_use]
 pub mod error;
-#[macro_use]
-mod codec;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 #[macro_use]

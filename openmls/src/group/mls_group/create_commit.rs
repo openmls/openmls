@@ -1,5 +1,4 @@
 use crate::ciphersuite::signable::Signable;
-use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::CredentialBundle;
 use crate::framing::*;
@@ -42,12 +41,13 @@ impl MlsGroup {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
 
+        let serialized_group_context = self.group_context.tls_serialize_detached()?;
         let (path_option, kpb_option) =
             if apply_proposals_values.path_required || contains_own_updates || force_self_update {
                 // If path is needed, compute path values
                 let (path, key_package_bundle) = provisional_tree.refresh_private_tree(
                     credential_bundle,
-                    &self.group_context.serialized(),
+                    &serialized_group_context,
                     apply_proposals_values.exclusion_list(),
                 )?;
                 (Some(path), Some(key_package_bundle))
@@ -58,7 +58,7 @@ impl MlsGroup {
 
         // Create commit message
         let commit = Commit {
-            proposals: proposal_reference_list,
+            proposals: proposal_reference_list.into(),
             path: path_option,
         };
 
@@ -67,7 +67,6 @@ impl MlsGroup {
         provisional_epoch.increment();
 
         // Build MlsPlaintext
-        let serialized_context = self.group_context.serialized();
         let mut mls_plaintext = MlsPlaintext::new_commit(
             sender_index,
             aad,
@@ -78,7 +77,7 @@ impl MlsGroup {
 
         // Calculate the confirmed transcript hash
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
-            &ciphersuite,
+            ciphersuite,
             // It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a
             // Commit
             &MlsPlaintextCommitContent::try_from(&mls_plaintext).unwrap(),
@@ -89,7 +88,7 @@ impl MlsGroup {
         let tree_hash = provisional_tree.tree_hash();
 
         // TODO #186: Implement extensions
-        let extensions: Vec<Box<dyn Extension>> = Vec::new();
+        let extensions: Vec<Extension> = Vec::new();
 
         // Calculate group context
         let provisional_group_context = GroupContext::new(
@@ -140,14 +139,16 @@ impl MlsGroup {
         mls_plaintext.set_confirmation_tag(confirmation_tag.clone());
 
         // Add membership tag
-        mls_plaintext
-            .set_membership_tag(serialized_context, self.epoch_secrets().membership_key())?;
+        mls_plaintext.set_membership_tag(
+            &serialized_group_context,
+            self.epoch_secrets().membership_key(),
+        )?;
 
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
-            let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
-                vec![Box::new(RatchetTreeExtension::new(
+            let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
+                vec![Extension::RatchetTree(RatchetTreeExtension::new(
                     provisional_tree.public_key_tree_copy(),
                 ))]
             } else {
@@ -168,7 +169,7 @@ impl MlsGroup {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce();
             let encrypted_group_info = welcome_key
-                .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
+                .aead_seal(&group_info.tls_serialize_detached()?, &[], &welcome_nonce)
                 .unwrap();
             // Encrypt group secrets
             let secrets = plaintext_secrets
@@ -182,7 +183,7 @@ impl MlsGroup {
                         let encrypted_group_secrets =
                             ciphersuite.hpke_seal(public_key, &[], &[], group_secrets_bytes);
                         EncryptedGroupSecrets {
-                            key_package_hash: key_package_hash.clone(),
+                            key_package_hash: key_package_hash.clone().into(),
                             encrypted_group_secrets,
                         }
                     },

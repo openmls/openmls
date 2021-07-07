@@ -10,7 +10,6 @@ use crate::test_util::{read, write};
 
 use crate::{
     ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret, SignatureScheme},
-    codec::{Decode, Encode},
     config::{Config, ProtocolVersion},
     credentials::{Credential, CredentialBundle, CredentialType},
     group::{
@@ -27,6 +26,7 @@ use crate::{
 };
 
 use serde::{self, Deserialize, Serialize};
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TranscriptTestVector {
@@ -77,7 +77,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         LeafIndex::from(random_u32()),
         &randombytes(48),
         Commit {
-            proposals: vec![],
+            proposals: vec![].into(),
             path: None,
         },
         &credential_bundle,
@@ -95,19 +95,22 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     commit.set_confirmation_tag(confirmation_tag);
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
-        &ciphersuite,
+        ciphersuite,
         &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
     commit
-        .set_membership_tag(context.serialized(), &membership_key)
+        .set_membership_tag(&context.tls_serialize_detached().unwrap(), &membership_key)
         .expect("Error adding membership tag");
-    let credential = credential_bundle.credential().encode_detached().unwrap();
+    let credential = credential_bundle
+        .credential()
+        .tls_serialize_detached()
+        .unwrap();
 
     TranscriptTestVector {
         cipher_suite: ciphersuite.name() as u16,
-        group_id: bytes_to_hex(&group_id.as_slice()),
+        group_id: bytes_to_hex(group_id.as_slice()),
         epoch,
         tree_hash_before: bytes_to_hex(&tree_hash_before),
         confirmed_transcript_hash_before: bytes_to_hex(&confirmed_transcript_hash_before),
@@ -115,9 +118,13 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         credential: bytes_to_hex(&credential),
         membership_key: bytes_to_hex(membership_key.as_slice()),
         confirmation_key: bytes_to_hex(confirmation_key.as_slice()),
-        commit: bytes_to_hex(&commit.encode_detached().expect("Error encoding commit")),
+        commit: bytes_to_hex(
+            &commit
+                .tls_serialize_detached()
+                .expect("Error encoding commit"),
+        ),
 
-        group_context: bytes_to_hex(&context.serialized()),
+        group_context: bytes_to_hex(&context.tls_serialize_detached().unwrap()),
         confirmed_transcript_hash_after: bytes_to_hex(&confirmed_transcript_hash_after),
         interim_transcript_hash_after: bytes_to_hex(&interim_transcript_hash_after),
     }
@@ -156,7 +163,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
 
     // Read input values.
     let group_id = GroupId {
-        value: hex_to_bytes(&test_vector.group_id),
+        value: hex_to_bytes(&test_vector.group_id).into(),
     };
     let epoch = test_vector.epoch;
     let tree_hash_before = hex_to_bytes(&test_vector.tree_hash_before);
@@ -173,10 +180,12 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         ProtocolVersion::default(),
         ciphersuite,
     ));
-    let credential = Credential::decode_detached(&hex_to_bytes(&test_vector.credential)).unwrap();
+    let credential =
+        Credential::tls_deserialize(&mut hex_to_bytes(&test_vector.credential).as_slice()).unwrap();
 
     // Check membership and confirmation tags.
-    let commit = VerifiableMlsPlaintext::decode_detached(&hex_to_bytes(&test_vector.commit))
+    let commit_bytes = hex_to_bytes(&test_vector.commit);
+    let commit = VerifiableMlsPlaintext::tls_deserialize(&mut commit_bytes.as_slice())
         .expect("Error decoding commit");
     let context = GroupContext::new(
         group_id,
@@ -187,9 +196,12 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     )
     .expect("Error creating group context");
     let expected_group_context = hex_to_bytes(&test_vector.group_context);
-    if context.serialized() != expected_group_context {
+    if context.tls_serialize_detached().unwrap() != expected_group_context {
         log::error!("  Group context mismatch");
-        log::debug!("    Computed: {:x?}", context.serialized());
+        log::debug!(
+            "    Computed: {:x?}",
+            context.tls_serialize_detached().unwrap()
+        );
         log::debug!("    Expected: {:x?}", expected_group_context);
         if cfg!(test) {
             panic!("Group context mismatch");
@@ -197,12 +209,12 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         return Err(TranscriptTestVectorError::GroupContextMismatch);
     }
     let commit: MlsPlaintext = commit
-        .set_context(context.serialized())
+        .set_context(&context.tls_serialize_detached().unwrap())
         .verify(&credential)
         .expect("Invalid signature on MlsPlaintext commit");
 
     if commit
-        .verify_membership(context.serialized(), &membership_key)
+        .verify_membership(&context.tls_serialize_detached().unwrap(), &membership_key)
         .is_err()
     {
         if cfg!(test) {
@@ -250,7 +262,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     let interim_transcript_hash_after = hex_to_bytes(&test_vector.interim_transcript_hash_after);
 
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
-        &ciphersuite,
+        ciphersuite,
         &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &my_confirmed_transcript_hash_after,
     )

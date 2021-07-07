@@ -1,7 +1,12 @@
 use openmls::{group::EmptyInputError, prelude::*};
 
+use lazy_static::lazy_static;
 use std::fs::File;
-use std::path::Path;
+
+lazy_static! {
+    static ref TEMP_DIR: tempfile::TempDir =
+        tempfile::tempdir().expect("Error creating temp directory");
+}
 
 /// Validator function for AddProposals
 /// `(managed_group: &ManagedGroup, sender: &Credential, added_member:
@@ -26,7 +31,7 @@ fn validate_remove(
 
 fn own_identity(managed_group: &ManagedGroup) -> Vec<u8> {
     match managed_group.credential() {
-        Ok(credential) => credential.identity().clone(),
+        Ok(credential) => credential.identity().to_vec(),
         Err(_) => "us".as_bytes().to_vec(),
     }
 }
@@ -37,9 +42,10 @@ fn auto_save(managed_group: &ManagedGroup) {
     let name = String::from_utf8(own_identity(managed_group))
         .expect("Could not create name from identity")
         .to_lowercase();
-    let filename = format!("target/test_managed_group_{}.json", &name);
-    let path = Path::new(&filename);
-    let out_file = &mut File::create(&path).expect("Could not create file");
+    let path = TEMP_DIR
+        .path()
+        .join(format!("test_managed_group_{}.json", &name));
+    let out_file = &mut File::create(path).expect("Could not create file");
     managed_group
         .save(out_file)
         .expect("Could not write group state to file");
@@ -662,8 +668,8 @@ fn managed_group_operations() {
             );
 
             // Re-load Bob's state from file
-            let path = Path::new("target/test_managed_group_bob.json");
-            let file = File::open(&path).expect("Could not open file");
+            let path = TEMP_DIR.path().join("test_managed_group_bob.json");
+            let file = File::open(path).expect("Could not open file");
             let bob_group = ManagedGroup::load(file, managed_group_config.callbacks())
                 .expect("Could not load group from file");
 

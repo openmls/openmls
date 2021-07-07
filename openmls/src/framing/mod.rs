@@ -5,7 +5,6 @@
 //! See [`MlsPlaintext`] and [`MlsCiphertext`] for details.
 
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::credentials::*;
 use crate::group::*;
 use crate::messages::{proposals::*, *};

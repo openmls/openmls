@@ -2,8 +2,6 @@ use crate::prelude::*;
 
 #[test]
 fn test_managed_group_persistence() {
-    use std::fs::File;
-    use std::path::Path;
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -45,15 +43,15 @@ fn test_managed_group_persistence() {
     )
     .unwrap();
 
-    let path = Path::new("target/test_managed_group_serialization.json");
-    let out_file = &mut File::create(&path).expect("Could not create file");
+    let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
-        .save(out_file)
+        .save(&mut file_out)
         .expect("Could not write group state to file");
 
-    let in_file = File::open(&path).expect("Could not open file");
-
-    let alice_group_deserialized = ManagedGroup::load(in_file, &ManagedGroupCallbacks::default())
+    let file_in = file_out
+        .reopen()
+        .expect("Error re-opening serialized group state file");
+    let alice_group_deserialized = ManagedGroup::load(file_in, &ManagedGroupCallbacks::default())
         .expect("Could not deserialize managed group");
 
     assert_eq!(

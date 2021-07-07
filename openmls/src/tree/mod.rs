@@ -3,11 +3,10 @@ use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::key_packages::*;
 use crate::messages::proposals::*;
+use crate::messages::PathSecret;
 use crate::{ciphersuite::*, prelude::PreSharedKeyId};
-use crate::{codec::*, messages::PathSecret};
 
 // Tree modules
-pub(crate) mod codec;
 pub mod errors;
 pub(crate) mod hashes;
 pub mod index;
@@ -23,6 +22,7 @@ pub use hashes::*;
 use index::*;
 use node::*;
 use private_tree::PrivateTree;
+use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::schedule::{CommitSecret, PreSharedKeys};
 pub(crate) use serde::{
@@ -354,13 +354,13 @@ impl RatchetTree {
         // Decrypt the secret and derive path secrets
         let secret_bytes =
             self.ciphersuite
-                .hpke_open(hpke_ciphertext, &private_key, &[], group_context)?;
+                .hpke_open(hpke_ciphertext, private_key, &[], group_context)?;
         let path_secret =
             Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
         let new_path_public_keys =
             self.private_tree
-                .continue_path_secrets(&self.ciphersuite, path_secret, &common_path);
+                .continue_path_secrets(self.ciphersuite, path_secret, &common_path);
 
         // Extract public keys from UpdatePath
         let update_path_public_keys: Vec<HpkePublicKey> = update_path
@@ -534,7 +534,7 @@ impl RatchetTree {
                 .map(|&index| {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
                     self.ciphersuite.hpke_seal_secret(
-                        &pk,
+                        pk,
                         &[],
                         group_context,
                         &path_secret.path_secret,
@@ -549,7 +549,7 @@ impl RatchetTree {
             direct_path_nodes.push(UpdatePathNode {
                 // TODO: don't clone ...
                 public_key: public_key.clone(),
-                encrypted_path_secret: node_ciphertexts.clone(),
+                encrypted_path_secret: node_ciphertexts.clone().into(),
             });
         }
         Ok(direct_path_nodes)
@@ -669,7 +669,7 @@ impl RatchetTree {
                     // We can unwrap here, because we just checked that the node
                     // is not blank.
                     let mut parent_node = node.node.take().unwrap();
-                    if !parent_node.unmerged_leaves().contains(&leaf_index) {
+                    if !parent_node.unmerged_leaves().contains(leaf_index) {
                         parent_node.add_unmerged_leaf(leaf_index.to_owned());
                     }
                     self.nodes[d].node = Some(parent_node);
@@ -703,7 +703,7 @@ impl RatchetTree {
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
             let sender_index = queued_proposal.sender().to_leaf_index();
             // Prepare leaf node
-            let leaf_node = Node::new_leaf(Some(update_proposal.key_package.clone()));
+            let leaf_node = Node::new_leaf(Some(update_proposal.key_package().clone()));
             // Blank the direct path of that leaf node
             self.blank_member(sender_index);
             // Replace the leaf node
@@ -712,7 +712,7 @@ impl RatchetTree {
             if sender_index == self.own_node_index() {
                 let own_kpb = match updates_key_package_bundles
                     .iter()
-                    .find(|kpb| kpb.key_package() == &update_proposal.key_package)
+                    .find(|&kpb| kpb.key_package() == update_proposal.key_package())
                 {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
@@ -729,7 +729,7 @@ impl RatchetTree {
             has_removes = true;
             // Unwrapping here is safe because we know the proposal type
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
-            let removed = LeafIndex::from(remove_proposal.removed);
+            let removed = LeafIndex::from(remove_proposal.removed());
             // Check if we got removed from the group
             if removed == self.own_node_index() {
                 self_removed = true;
@@ -749,7 +749,8 @@ impl RatchetTree {
             .collect();
         let has_adds = !add_proposals.is_empty();
         // Extract KeyPackages from proposals
-        let key_packages: Vec<&KeyPackage> = add_proposals.iter().map(|a| &a.key_package).collect();
+        let key_packages: Vec<&KeyPackage> =
+            add_proposals.iter().map(|a| a.key_package()).collect();
         // Add new members to tree
         let added_members = self.add_nodes(&key_packages);
 
@@ -763,13 +764,14 @@ impl RatchetTree {
         let psks: Vec<PreSharedKeyId> = proposal_queue
             .filtered_by_type(ProposalType::Presharedkey)
             .map(|queued_proposal| {
+                // FIXME: remove unwrap
                 // Unwrapping here is safe because we know the proposal type
                 let psk_proposal = queued_proposal.proposal().as_presharedkey().unwrap();
-                psk_proposal.psk
+                psk_proposal.into_psk_id()
             })
             .collect();
 
-        let presharedkeys = PreSharedKeys { psks };
+        let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         // Determine if Commit needs a path field
         let path_required = has_updates || has_removes || !has_adds;
@@ -858,10 +860,12 @@ impl ApplyProposalsValues {
 ///     HPKECiphertext encrypted_path_secret<0..2^32-1>;
 /// } UpdatePathNode;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct UpdatePathNode {
-    pub public_key: HpkePublicKey,
-    pub encrypted_path_secret: Vec<HpkeCiphertext>,
+    pub(crate) public_key: HpkePublicKey,
+    pub(crate) encrypted_path_secret: TlsVecU32<HpkeCiphertext>,
 }
 
 /// 7.7. Update Paths
@@ -872,10 +876,12 @@ pub struct UpdatePathNode {
 ///     UpdatePathNode nodes<0..2^32-1>;
 /// } UpdatePath;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct UpdatePath {
-    pub leaf_key_package: KeyPackage,
-    pub nodes: Vec<UpdatePathNode>,
+    pub(crate) leaf_key_package: KeyPackage,
+    pub(crate) nodes: TlsVecU32<UpdatePathNode>,
 }
 
 impl UpdatePath {
@@ -883,7 +889,7 @@ impl UpdatePath {
     fn new(leaf_key_package: KeyPackage, nodes: Vec<UpdatePathNode>) -> Self {
         Self {
             leaf_key_package,
-            nodes,
+            nodes: nodes.into(),
         }
     }
 }

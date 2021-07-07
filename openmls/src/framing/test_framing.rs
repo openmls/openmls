@@ -1,9 +1,12 @@
-use crate::ciphersuite::signable::Signable;
-use crate::ciphersuite::signable::Verifiable;
-use crate::config::*;
+use tls_codec::{Deserialize, Serialize};
+
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
 use crate::prelude::_print_tree;
+use crate::{
+    ciphersuite::signable::{Signable, Verifiable},
+    config::*,
+};
 
 /// This tests serializing/deserializing MlsPlaintext
 #[test]
@@ -22,25 +25,25 @@ fn codec() {
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
 
-        let serialized_context = group_context.serialized();
+        let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
-            serialized_context,
+            serialized_context.as_slice(),
             GroupId::random(),
             GroupEpoch(1u64),
             sender,
-            vec![1, 2, 3],
+            vec![1, 2, 3].into(),
             ContentType::Application,
-            MlsPlaintextContentType::Application(vec![4, 5, 6]),
+            MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
         );
         let orig: MlsPlaintext = signature_input
             .sign(&credential_bundle)
             .expect("Signing failed.")
             .into();
 
-        let enc = orig.encode_detached().unwrap();
-        let copy = VerifiableMlsPlaintext::decode(&mut Cursor::new(&enc)).unwrap();
+        let enc = orig.tls_serialize_detached().unwrap();
+        let copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice()).unwrap();
         let copy = copy
-            .set_context(serialized_context)
+            .set_context(&serialized_context)
             .verify(credential_bundle.credential())
             .unwrap();
         assert_eq!(orig, copy);
@@ -71,7 +74,7 @@ fn membership_tag() {
         )
         .unwrap();
 
-        let serialized_context = group_context.serialized();
+        let serialized_context = &group_context.tls_serialize_detached().unwrap() as &[u8];
 
         println!(
             "Membership tag error: {:?}",
@@ -84,7 +87,7 @@ fn membership_tag() {
             .is_ok());
 
         // Change the content of the plaintext message
-        mls_plaintext.set_content(MlsPlaintextContentType::Application(vec![7, 8, 9]));
+        mls_plaintext.set_content(MlsPlaintextContentType::Application(vec![7, 8, 9].into()));
 
         // Expect the signature & membership tag verification to fail
         assert!(mls_plaintext
@@ -429,16 +432,16 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         )
         .expect("Error creating Commit");
 
-    let original_encoded_commit = commit.encode_detached().unwrap();
-    let input_commit = VerifiableMlsPlaintext::decode_detached(&original_encoded_commit).unwrap();
+    let original_encoded_commit = commit.tls_serialize_detached().unwrap();
+    let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut original_encoded_commit.as_slice()).unwrap();
     let decoded_commit = group_alice.verify(input_commit).expect("Error verifying valid commit message");
-    assert_eq!(decoded_commit.encode_detached().unwrap(), original_encoded_commit);
+    assert_eq!(decoded_commit.tls_serialize_detached().unwrap(), original_encoded_commit);
 
     // Remove membership tag.
     let good_membership_tag = commit.membership_tag().clone();
     commit.unset_membership_tag();
     let membership_error = commit.verify_membership(
-        group_alice.context().serialized(),
+        &group_alice.context().tls_serialize_detached().unwrap(),
         group_alice.epoch_secrets().membership_key())
         .err()
         .expect("Membership verification should have returned an error");
@@ -453,7 +456,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     modified_membership_tag.0.mac_value[0] ^= 0xFF;
     commit.set_membership_tag_test(modified_membership_tag);
     let membership_error = commit.verify_membership(
-        group_alice.context().serialized(),
+        &group_alice.context().tls_serialize_detached().unwrap(),
         group_alice.epoch_secrets().membership_key())
         .err()
         .expect("Membership verification should have returned an error");
@@ -466,8 +469,8 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let mut modified_signature = commit.signature().as_slice().to_vec();
     modified_signature[0] ^= 0xFF;
     commit.signature_mut().modify(&modified_signature);
-    let encoded_commit = commit.encode_detached().unwrap();
-    let input_commit = VerifiableMlsPlaintext::decode_detached(&encoded_commit).unwrap();
+    let encoded_commit = commit.tls_serialize_detached().unwrap();
+    let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
     let decoded_commit = group_alice.verify(input_commit);
     assert_eq!(
         decoded_commit.err().expect("group.verify() should have returned an error"),
@@ -507,10 +510,10 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
 
     // Fix commit again and apply it.
     commit.set_confirmation_tag(good_confirmation_tag.unwrap());
-    let encoded_commit = commit.encode_detached().unwrap();
-    let input_commit = VerifiableMlsPlaintext::decode_detached(&encoded_commit).unwrap();
+    let encoded_commit = commit.tls_serialize_detached().unwrap();
+    let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
     let decoded_commit = group_alice.verify(input_commit).expect("Error verifying commit");
-    assert_eq!(original_encoded_commit, decoded_commit.encode_detached().unwrap());
+    assert_eq!(original_encoded_commit, decoded_commit.tls_serialize_detached().unwrap());
     group_alice
         .apply_commit(&decoded_commit, &[&bob_add_proposal], &[], None)
         .expect("Alice: Error applying commit.");

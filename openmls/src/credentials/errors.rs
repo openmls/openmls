@@ -1,6 +1,6 @@
 use crate::ciphersuite::*;
-use crate::codec::CodecError;
 use crate::config::ConfigError;
+use tls_codec::Error as TlsError;
 
 implement_error! {
     pub enum CredentialError {
@@ -12,7 +12,7 @@ implement_error! {
         Complex {
             ConfigError(ConfigError) = "See `ConfigError` for details.",
             CryptoError(CryptoError) = "See `CryptoError` for details.",
-            CodecError(CodecError) = "See `CodecError` for details.",
+            CodecError(TlsError) = "See [`tls_codec::Error`] for details.",
         }
     }
 }

@@ -18,7 +18,6 @@ pub use crate::tree::index::LeafIndex;
 pub use crate::schedule::psk::ExternalPskBundle;
 
 pub use crate::ciphersuite::*;
-pub use crate::codec::*;
 pub use crate::config::*;
 pub use crate::credentials::*;
 pub use crate::extensions::*;

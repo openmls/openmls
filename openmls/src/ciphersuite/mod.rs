@@ -5,6 +5,7 @@
 
 use log::error;
 
+use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 use evercrypt::prelude::*;
 use hpke::prelude::*;
 pub(crate) use serde::{
@@ -13,6 +14,7 @@ pub(crate) use serde::{
     Deserialize, Deserializer, Serialize,
 };
 use std::hash::Hash;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
@@ -24,10 +26,7 @@ pub mod signable;
 
 mod ser;
 
-use crate::{
-    codec::*,
-    config::{Config, ConfigError, ProtocolVersion},
-};
+use crate::config::{Config, ConfigError, ProtocolVersion};
 
 use ciphersuites::*;
 pub(crate) use errors::*;
@@ -44,7 +43,19 @@ pub(crate) const REUSE_GUARD_BYTES: usize = 4;
 
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u16)]
 pub enum CiphersuiteName {
     MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
@@ -60,7 +71,19 @@ implement_enum_display!(CiphersuiteName);
 /// SignatureScheme according to IANA TLS parameters
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Copy, Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Hash,
+    Eq,
+    PartialEq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u16)]
 pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
@@ -156,10 +179,12 @@ impl TryFrom<SignatureScheme> for DigestMode {
 ///     opaque ciphertext<0..2^16-1>;
 /// } HPKECiphertext;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct HpkeCiphertext {
-    kem_output: Vec<u8>,
-    ciphertext: Vec<u8>,
+    kem_output: TlsByteVecU16,
+    ciphertext: TlsByteVecU16,
 }
 
 #[cfg(test)]
@@ -174,20 +199,28 @@ impl HpkeCiphertext {
 
 /// `KdfLabel` is later serialized and used in the `label` field of
 /// `kdf_expand_label`.
+#[derive(TlsSerialize, TlsSize)]
 struct KdfLabel {
     length: u16,
-    label: String,
-    context: Vec<u8>,
+    label: TlsByteVecU8,
+    context: TlsByteVecU32,
 }
 
 impl KdfLabel {
-    fn serialized_label(context: &[u8], label: String, length: usize) -> Vec<u8> {
-        // TODO: This should throw an error. Generally, keys length should be
+    fn serialized_label(
+        context: &[u8],
+        label: String,
+        length: usize,
+    ) -> Result<Vec<u8>, CryptoError> {
         // checked. (see #228).
         if length > u16::MAX.into() {
-            panic!("Library error: Trying to derive a key with a too large length field!")
+            debug_assert!(
+                false,
+                "Library error: Trying to derive a key with a too large length field!"
+            );
+            return Err(CryptoError::KdfLabelTooLarge);
         }
-        log::debug!(
+        log::trace!(
             "KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}",
             length as u16,
             label,
@@ -195,16 +228,19 @@ impl KdfLabel {
         );
         let kdf_label = KdfLabel {
             length: length as u16,
-            label,
-            context: context.to_vec(),
+            label: label.as_bytes().into(),
+            context: context.into(),
         };
         // It is ok to use unwrap() here, because the context is already serialized
-        kdf_label.encode_detached().unwrap()
+        kdf_label
+            .tls_serialize_detached()
+            .map_err(|_| CryptoError::KdfSerializationError)
     }
 }
 
 /// Compare two byte slices in a way that's hopefully not optimised out by the
 /// compiler.
+#[inline(always)]
 fn equal_ct(a: &[u8], b: &[u8]) -> bool {
     let mut diff = 0u8;
     for (l, r) in a.iter().zip(b.iter()) {
@@ -246,16 +282,18 @@ impl PartialEq for Secret {
         {
             log::error!("Incompatible secrets");
             log::trace!(
-                "  {} {} {}",
+                "  {} {} {} {}",
                 self.ciphersuite.name,
                 self.mls_version,
-                self.value.len()
+                self.value.len(),
+                crate::test_util::bytes_to_hex(&self.value)
             );
             log::trace!(
-                "  {} {} {}",
+                "  {} {} {} {}",
                 other.ciphersuite.name,
                 other.mls_version,
-                other.value.len()
+                other.value.len(),
+                crate::test_util::bytes_to_hex(&other.value)
             );
             return false;
         }
@@ -355,7 +393,12 @@ impl Secret {
 
     /// Expand a `Secret` to a new `Secret` of length `length` including a
     /// `label` and a `context`.
-    pub(crate) fn kdf_expand_label(&self, label: &str, context: &[u8], length: usize) -> Secret {
+    pub(crate) fn kdf_expand_label(
+        &self,
+        label: &str,
+        context: &[u8],
+        length: usize,
+    ) -> Result<Secret, CryptoError> {
         let full_label = format!("{} {}", self.mls_version, label);
         log::trace!(
             "KDF expand with label \"{}\" and {:?} with context {:x?}",
@@ -363,15 +406,15 @@ impl Secret {
             self.ciphersuite.name(),
             context
         );
-        let info = KdfLabel::serialized_label(context, full_label, length);
+        let info = KdfLabel::serialized_label(context, full_label, length)?;
         log::trace!("  serialized context: {:x?}", info);
         log_crypto!(trace, "  secret: {:x?}", self.value);
-        self.hkdf_expand(&info, length).unwrap()
+        self.hkdf_expand(&info, length).map_err(|e| e.into())
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
-    pub(crate) fn derive_secret(&self, label: &str) -> Secret {
+    pub(crate) fn derive_secret(&self, label: &str) -> Result<Secret, CryptoError> {
         log_crypto!(
             trace,
             "derive secret from {:x?} with label {} and {:?}",
@@ -427,15 +470,15 @@ impl From<&[u8]> for Secret {
 /// struct {
 ///     opaque mac_value<0..255>;
 /// } MAC;
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct Mac {
-    pub(crate) mac_value: Vec<u8>,
+    pub(crate) mac_value: TlsByteVecU8,
 }
 
 impl PartialEq for Mac {
     // Constant time comparison.
     fn eq(&self, other: &Mac) -> bool {
-        equal_ct(&self.mac_value, &other.mac_value)
+        equal_ct(self.mac_value.as_slice(), other.mac_value.as_slice())
     }
 }
 
@@ -447,7 +490,8 @@ impl Mac {
         Mac {
             mac_value: salt
                 .hkdf_extract(&Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite))
-                .value,
+                .value
+                .into(),
         }
     }
 }
@@ -460,7 +504,7 @@ pub struct AeadKey {
     mac_len: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ReuseGuard {
     value: [u8; REUSE_GUARD_BYTES],
@@ -480,18 +524,20 @@ pub struct AeadNonce {
     value: [u8; NONCE_BYTES],
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct Signature {
-    value: Vec<u8>,
+    value: TlsByteVecU16,
 }
 
 #[cfg(test)]
 impl Signature {
     pub(crate) fn modify(&mut self, value: &[u8]) {
-        self.value = value.to_vec();
+        self.value = value.to_vec().into();
     }
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
+        self.value.as_slice()
     }
 }
 
@@ -630,11 +676,11 @@ impl Ciphersuite {
     ) -> HpkeCiphertext {
         let (kem_output, ciphertext) = self
             .hpke
-            .seal(&pk_r, info, aad, ptxt, None, None, None)
+            .seal(pk_r, info, aad, ptxt, None, None, None)
             .unwrap();
         HpkeCiphertext {
-            kem_output,
-            ciphertext,
+            kem_output: kem_output.into(),
+            ciphertext: ciphertext.into(),
         }
     }
 
@@ -661,11 +707,11 @@ impl Ciphersuite {
     ) -> Result<Vec<u8>, CryptoError> {
         self.hpke
             .open(
-                &input.kem_output,
-                &sk_r,
+                input.kem_output.as_slice(),
+                sk_r,
                 info,
                 aad,
-                &input.ciphertext,
+                input.ciphertext.as_slice(),
                 None,
                 None,
                 None,
@@ -716,7 +762,7 @@ impl AeadKey {
     ) -> Result<Vec<u8>, AeadError> {
         let (ct, tag) = aead_encrypt(
             self.aead_mode,
-            &self.value.as_slice(),
+            self.value.as_slice(),
             msg,
             &nonce.value,
             aad,
@@ -794,7 +840,7 @@ impl SignatureKeypair {
     /// Sign the `payload` byte slice with this signature key.
     /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
-        self.private_key.sign(&payload)
+        self.private_key.sign(payload)
     }
 
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
@@ -860,7 +906,7 @@ impl SignaturePublicKey {
             SignatureMode::try_from(self.signature_scheme).unwrap(),
             Some(DigestMode::try_from(self.signature_scheme).unwrap()),
             &self.value,
-            &signature.value,
+            signature.value.as_slice(),
             payload,
         )
         .unwrap()
@@ -876,9 +922,8 @@ impl SignaturePrivateKey {
     /// Sign the `payload` byte slice with this signature key.
     /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(&self, payload: &[u8]) -> Result<Signature, SignatureError> {
-        // It's ok to use `unwrap()` here, since we checked the signature scheme is
-        // supported when the public key was created.
-        let signature_mode = SignatureMode::try_from(self.signature_scheme).unwrap();
+        let signature_mode = SignatureMode::try_from(self.signature_scheme)
+            .map_err(|_| SignatureError::UnknownAlgorithm)?;
         let (hash, nonce) = match signature_mode {
             SignatureMode::Ed25519 => (None, None),
             SignatureMode::P256 => (
@@ -887,7 +932,7 @@ impl SignaturePrivateKey {
             ),
         };
         match sign(signature_mode, hash, &self.value, payload, nonce.as_ref()) {
-            Ok(s) => Ok(Signature { value: s }),
+            Ok(s) => Ok(Signature { value: s.into() }),
             Err(e) => Err(e),
         }
     }
