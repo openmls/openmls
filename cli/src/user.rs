@@ -170,7 +170,7 @@ impl User {
                     match msg.content() {
                         MlsPlaintextContentType::Application(application_message) => {
                             let application_message =
-                                String::from_utf8(application_message.to_vec()).unwrap();
+                                String::from_utf8(application_message.as_slice().to_vec()).unwrap();
                             if group_name.is_none()
                                 || group_name.clone().unwrap() == group.group_name
                             {
