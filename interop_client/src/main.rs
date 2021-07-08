@@ -5,6 +5,7 @@
 
 use clap::Clap;
 use openmls::{
+    ciphersuite::signable::VerifiedStruct,
     group::tests::kat_messages::{self, MessagesTestVector},
     group::tests::kat_transcripts::{self, TranscriptTestVector},
     prelude::*,
@@ -69,7 +70,7 @@ impl MlsClientImpl {
     }
 }
 
-fn to_status(e: GroupError) -> Status {
+fn to_status(e: MlsGroupError) -> Status {
     let message = "managed group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }
@@ -289,6 +290,7 @@ impl MlsClient for MlsClientImpl {
                     match serde_json::from_slice(&obj.test_vector) {
                         Ok(test_vector) => test_vector,
                         Err(_) => {
+                            println!("{}", String::from_utf8_lossy(&obj.test_vector));
                             return Err(tonic::Status::new(
                                 tonic::Code::InvalidArgument,
                                 "Couldn't decode transcript test vector.",
@@ -381,7 +383,7 @@ impl MlsClient for MlsClientImpl {
         .unwrap();
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &credential_bundle, vec![]).unwrap();
-        let mut config = GroupConfig::default();
+        let mut config = MlsGroupConfig::default();
         config.add_ratchet_tree_extension = true;
         let group = MlsGroup::new(
             &create_group_request.group_id,
@@ -773,8 +775,10 @@ impl MlsClient for MlsClientImpl {
                     .decrypt(&ct)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             } else {
-                MlsPlaintext::decode_detached(&bytes)
-                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                MlsPlaintext::from_verifiable(
+                    VerifiableMlsPlaintext::decode_detached(&bytes)
+                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
+                )
             };
             proposal_plaintexts.push(pt);
         }
@@ -793,8 +797,10 @@ impl MlsClient for MlsClientImpl {
                     .decrypt(&ct)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             } else {
-                MlsPlaintext::decode_detached(&bytes)
-                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                MlsPlaintext::from_verifiable(
+                    VerifiableMlsPlaintext::decode_detached(&bytes)
+                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
+                )
             };
             plaintexts.push(pt);
         }
@@ -868,8 +874,10 @@ impl MlsClient for MlsClientImpl {
                 .decrypt(&ct)
                 .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
         } else {
-            MlsPlaintext::decode_detached(&handle_commit_request.commit)
-                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+            MlsPlaintext::from_verifiable(
+                VerifiableMlsPlaintext::decode_detached(&handle_commit_request.commit)
+                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
+            )
         };
 
         let mut proposal_plaintexts = Vec::new();
@@ -882,8 +890,10 @@ impl MlsClient for MlsClientImpl {
                     .decrypt(&ct)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             } else {
-                MlsPlaintext::decode_detached(&bytes)
-                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                MlsPlaintext::from_verifiable(
+                    VerifiableMlsPlaintext::decode_detached(&bytes)
+                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
+                )
             };
             proposal_plaintexts.push(pt);
         }
