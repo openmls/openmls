@@ -560,7 +560,7 @@ impl ManagedGroup {
                             ))?
                             .into(),
                         indexed_members[&plaintext.sender_index()].clone(),
-                        app_message.to_vec(),
+                        app_message.as_slice().to_vec(),
                     ),
                 ));
             }

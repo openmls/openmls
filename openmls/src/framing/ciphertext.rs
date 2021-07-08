@@ -273,6 +273,11 @@ impl MlsCiphertext {
     pub fn ciphertext(&self) -> &[u8] {
         self.ciphertext.as_slice()
     }
+
+    /// Returns the `epoch` in the `MlsCiphertext`.
+    pub fn epoch(&self) -> &GroupEpoch {
+        &self.epoch
+    }
 }
 
 // === Helper structs ===

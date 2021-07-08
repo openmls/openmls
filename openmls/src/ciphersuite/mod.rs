@@ -282,18 +282,16 @@ impl PartialEq for Secret {
         {
             log::error!("Incompatible secrets");
             log::trace!(
-                "  {} {} {} {}",
+                "  {} {} {}",
                 self.ciphersuite.name,
                 self.mls_version,
-                self.value.len(),
-                crate::test_util::bytes_to_hex(&self.value)
+                self.value.len()
             );
             log::trace!(
-                "  {} {} {} {}",
+                "  {} {} {}",
                 other.ciphersuite.name,
                 other.mls_version,
-                other.value.len(),
-                crate::test_util::bytes_to_hex(&other.value)
+                other.value.len()
             );
             return false;
         }
