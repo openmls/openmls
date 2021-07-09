@@ -39,3 +39,8 @@ pub use crate::utils::*;
 // Things we need for fuzzing (but not otherwise)
 #[cfg(fuzzing)]
 pub use crate::messages::proposals::Proposal;
+
+// TLS codec traits
+pub use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size as TlsSizeTrait,
+};

@@ -899,16 +899,16 @@ impl SignaturePublicKey {
     /// public key.
     pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), SignatureError> {
         if verify(
-            // It's ok to use `unwrap()` here, since we checked the signature scheme is supported
-            // when the public key was created.
-            SignatureMode::try_from(self.signature_scheme).unwrap(),
-            Some(DigestMode::try_from(self.signature_scheme).unwrap()),
+            SignatureMode::try_from(self.signature_scheme)
+                .map_err(|_| SignatureError::UnknownAlgorithm)?,
+            Some(
+                DigestMode::try_from(self.signature_scheme)
+                    .map_err(|_| SignatureError::UnknownAlgorithm)?,
+            ),
             &self.value,
             signature.value.as_slice(),
             payload,
-        )
-        .unwrap()
-        {
+        )? {
             Ok(())
         } else {
             Err(SignatureError::InvalidSignature)
