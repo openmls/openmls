@@ -33,10 +33,7 @@ impl GroupContext {
             extensions,
         )
     }
-    // /// Return the serialized group context
-    // pub fn serialized(&self) -> &[u8] {
-    //     self.serialized.as_slice()
-    // }
+
     /// Return the group ID
     pub fn group_id(&self) -> &GroupId {
         &self.group_id

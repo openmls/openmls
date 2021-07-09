@@ -133,7 +133,7 @@ impl tls_codec::Serialize for Extension {
         let written = self.extension_type().tls_serialize(writer)?;
 
         // Now serialize the extension into a separate byte vector.
-        let extension_data_len = self.tls_serialized_len() - 6;
+        let extension_data_len = self.tls_serialized_len() - 6 /* extension type length and u32 length */;
         let mut extension_data = Vec::with_capacity(extension_data_len);
 
         let extension_data_written = match self {

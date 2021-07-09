@@ -277,7 +277,6 @@ async fn msg_recv<'a>(
     let mut msgs: Vec<Message> = client.msgs.drain(..).map(Message::MlsMessage).collect();
     out.append(&mut msgs);
 
-    // let mut out_bytes = Vec::new();
     match TlsSliceU16(&out).tls_serialize_detached() {
         Ok(out) => actix_web::HttpResponse::Ok().body(Body::from_slice(&out)),
         Err(_) => actix_web::HttpResponse::InternalServerError().finish(),

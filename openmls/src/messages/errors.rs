@@ -1,4 +1,4 @@
-use tls_codec::Error as TlsError;
+use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum ProposalQueueError {
@@ -29,7 +29,7 @@ implement_error! {
             WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
         }
         Complex {
-            TlsCodecError(TlsError) = "Error serializing",
+            TlsCodecError(TlsCodecError) = "Error serializing",
         }
     }
 }

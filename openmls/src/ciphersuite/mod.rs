@@ -207,12 +207,14 @@ struct KdfLabel {
 }
 
 impl KdfLabel {
+    /// Serialize this label.
+    /// Returns the serialized label as byte vector or returns a [`CryptoError`]
+    /// if the parameters are invalid.
     fn serialized_label(
         context: &[u8],
         label: String,
         length: usize,
     ) -> Result<Vec<u8>, CryptoError> {
-        // checked. (see #228).
         if length > u16::MAX.into() {
             debug_assert!(
                 false,
@@ -231,7 +233,6 @@ impl KdfLabel {
             label: label.as_bytes().into(),
             context: context.into(),
         };
-        // It is ok to use unwrap() here, because the context is already serialized
         kdf_label
             .tls_serialize_detached()
             .map_err(|_| CryptoError::KdfSerializationError)

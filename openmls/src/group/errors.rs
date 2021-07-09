@@ -10,7 +10,7 @@ use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, Verification
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
-use tls_codec::Error as TlsError;
+use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum MlsGroupError {
@@ -35,7 +35,7 @@ implement_error! {
                 "See [`ExporterError`](`ExporterError`) for details.",
             ProposalQueueError(ProposalQueueError) =
                 "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
-            CodecError(TlsError) =
+            CodecError(TlsCodecError) =
                 "Tls (de)serialization occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
@@ -86,7 +86,7 @@ implement_error! {
                 "The parent hash verification failed.",
             GroupSecretsDecryptionFailure(CryptoError) =
                 "Unable to decrypt the EncryptedGroupSecrets.",
-            CodecError(TlsError) =
+            CodecError(TlsCodecError) =
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
@@ -131,7 +131,7 @@ implement_error! {
                 "MlsPlaintext signature is invalid.",
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
-            CodecError(TlsError) =
+            CodecError(TlsCodecError) =
                 "Tls (de)serialization occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",

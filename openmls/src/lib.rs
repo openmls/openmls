@@ -21,12 +21,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
-// TODO: add group_context.serialized again
-// TODO: how to deserialize cipher suite
-// TODO: use derive wherever possible
-// TODO: clean up tls_codec
-// TODO: clean up extensions and (de)serialization
-
 #[macro_use]
 mod utils;
 
