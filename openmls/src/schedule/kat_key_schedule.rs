@@ -13,12 +13,12 @@ use crate::{
     config::{Config, ProtocolVersion},
     group::{GroupContext, GroupEpoch, GroupId},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
-    test_util::{bytes_to_hex, hex_to_bytes},
+    test_utils::{bytes_to_hex, hex_to_bytes},
     utils::randombytes,
 };
 
 #[cfg(test)]
-use crate::test_util::{read, write};
+use crate::test_utils::{read, write};
 
 use hpke::HpkeKeyPair;
 use serde::{self, Deserialize, Serialize};

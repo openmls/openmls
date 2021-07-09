@@ -11,7 +11,7 @@ use crate::{
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
     prelude::*,
-    test_util::*,
+    test_utils::*,
     utils::*,
 };
 use evercrypt::prelude::random_vec;

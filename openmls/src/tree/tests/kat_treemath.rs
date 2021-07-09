@@ -34,7 +34,7 @@
 //!   in a tree with `n_leaves` leaves
 
 #[cfg(test)]
-use crate::test_util::*;
+use crate::test_utils::*;
 
 use crate::tree::{index::*, treemath::*};
 

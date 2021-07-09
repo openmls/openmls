@@ -87,7 +87,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
     schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
-    test_util::*,
+    test_utils::*,
     tree::index::LeafIndex,
     tree::secret_tree::{SecretTree, SecretType},
     tree::*,

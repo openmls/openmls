@@ -31,7 +31,7 @@ mod codec;
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 #[macro_use]
-pub mod test_util;
+pub mod test_utils;
 
 pub mod ciphersuite;
 pub mod config;
