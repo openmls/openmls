@@ -284,8 +284,8 @@ impl SignedStruct<GroupInfoPayload> for GroupInfo {
 ///   opaque path_secret<1..255>;
 /// } PathSecret;
 /// ```
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq, Clone))]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq))]
 pub struct PathSecret {
     pub path_secret: Secret,
 }
