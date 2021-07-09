@@ -21,7 +21,7 @@ typetag = "0.1"
 itertools = {version = "0.10", optional = true}
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
 hpke = { version = "0.0.9", package = "hpke-rs", features = ["hazmat", "serialization"] }
-evercrypt = { version = "0.0.9", features = ["serialization"] }
+evercrypt = { version = "0.0.10", features = ["serialization"] }
 
 [features]
 default = ["rust-crypto"]
