@@ -27,6 +27,7 @@ itertools = {version = "0.10", optional = true}
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
 expose-test-vectors = ["itertools"]
+test_utils = []
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 

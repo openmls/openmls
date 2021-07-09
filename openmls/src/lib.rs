@@ -29,7 +29,7 @@ pub mod error;
 #[macro_use]
 mod codec;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", feature = "expose-test-vectors", test))]
 #[macro_use]
 pub mod test_utils;
 
