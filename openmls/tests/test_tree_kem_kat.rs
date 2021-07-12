@@ -35,6 +35,8 @@ fn test_tree_kem_kat() {
 
 #[cfg(any(feature = "expose-test-vectors", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
+    use tls_codec::{Serialize, TlsSliceU32};
+
     // The test really only makes sense with two or more leaves
     if n_leaves <= 1 {
         panic!("test vector can only be generated with two or more members")
@@ -147,9 +149,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     drop(path_secrets);
 
-    let ratchet_tree_extension_before =
-        RatchetTreeExtension::new(addee_group.export_ratchet_tree()).to_extension_struct();
-    let ratchet_tree_before = ratchet_tree_extension_before.extension_data();
+    let ratchet_tree_before = TlsSliceU32(&addee_group.export_ratchet_tree())
+        .tls_serialize_detached()
+        .unwrap();
 
     let tree_hash_before = addee_group.tree_hash();
 
@@ -171,7 +173,10 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let updater = clients.get(&updater_id).unwrap().borrow();
     let mut updater_groups = updater.groups.borrow_mut();
     let updater_group = updater_groups.get_mut(&group_id).unwrap();
-    let group_context = updater_group.export_group_context().serialized().to_vec();
+    let group_context = updater_group
+        .export_group_context()
+        .tls_serialize_detached()
+        .unwrap();
 
     let (message, _) = updater_group.self_update(&updater.key_store, None).unwrap();
 
@@ -222,9 +227,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let path_secrets_after_update = addee_group.export_path_secrets();
     let root_secret_after_update = path_secrets_after_update.last().unwrap();
 
-    let ratchet_tree_extension_after =
-        RatchetTreeExtension::new(addee_group.export_ratchet_tree()).to_extension_struct();
-    let ratchet_tree_after = ratchet_tree_extension_after.extension_data();
+    let ratchet_tree_after = TlsSliceU32(&addee_group.export_ratchet_tree())
+        .tls_serialize_detached()
+        .unwrap();
     let tree_hash_after = addee_group.tree_hash();
 
     TreeKemTestVector {
@@ -236,16 +241,20 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         add_sender: adder_index as u32,
         my_leaf_secret: bytes_to_hex(&my_leaf_secret.as_slice()),
 
-        my_key_package: bytes_to_hex(&my_key_package.encode_detached().unwrap()),
-        my_path_secret: bytes_to_hex(&my_path_secret.path_secret.as_slice()),
+        my_key_package: bytes_to_hex(&my_key_package.tls_serialize_detached().unwrap()),
+        my_path_secret: bytes_to_hex(&my_path_secret.tls_serialize_detached().unwrap()),
 
         // Computed values
         update_sender: updater_index as u32,
-        update_path: bytes_to_hex(&update_path.encode_detached().unwrap()),
+        update_path: bytes_to_hex(&update_path.tls_serialize_detached().unwrap()),
         update_group_context: bytes_to_hex(&group_context),
         tree_hash_before: bytes_to_hex(&tree_hash_before),
-        root_secret_after_add: bytes_to_hex(&root_secret_after_add.path_secret.as_slice()),
-        root_secret_after_update: bytes_to_hex(&root_secret_after_update.path_secret.as_slice()),
+        root_secret_after_add: bytes_to_hex(
+            &root_secret_after_add.tls_serialize_detached().unwrap(),
+        ),
+        root_secret_after_update: bytes_to_hex(
+            &root_secret_after_update.tls_serialize_detached().unwrap(),
+        ),
         ratchet_tree_after: bytes_to_hex(&ratchet_tree_after),
         tree_hash_after: bytes_to_hex(&tree_hash_after),
     }

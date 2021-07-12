@@ -87,10 +87,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
-                let capabilities_extension =
-                    Box::new(CapabilitiesExtension::new(None, Some(&[ciphersuite]), None));
-                let lifetime_extension = Box::new(LifetimeExtension::new(60));
-                let mandatory_extensions: Vec<Box<dyn Extension>> =
+                let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
+                    None,
+                    Some(&[ciphersuite]),
+                    None,
+                ));
+                let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+                let mandatory_extensions: Vec<Extension> =
                     vec![capabilities_extension, lifetime_extension];
                 let key_package_bundle: KeyPackageBundle =
                     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, mandatory_extensions)
@@ -223,14 +226,16 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .any(|y| y.key_package().hash() == x.key_package_hash)
+                            .any(|y| &y.key_package().hash() == x.key_package_hash.as_slice())
                     })
                     .unwrap();
                 let kpb_position = new_group_member
                     .key_package_bundles
                     .borrow()
                     .iter()
-                    .position(|y| y.key_package().hash() == member_secret.key_package_hash)
+                    .position(|y| {
+                        &y.key_package().hash() == member_secret.key_package_hash.as_slice()
+                    })
                     .unwrap();
                 let key_package_bundle = new_group_member
                     .key_package_bundles

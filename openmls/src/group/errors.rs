@@ -4,13 +4,13 @@
 //! `CreateCommitError`.
 
 use crate::ciphersuite::CryptoError;
-use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
+use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum MlsGroupError {
@@ -35,8 +35,8 @@ implement_error! {
                 "See [`ExporterError`](`ExporterError`) for details.",
             ProposalQueueError(ProposalQueueError) =
                 "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
-            CodecError(CodecError) =
-                "Codec error occurred.",
+            CodecError(TlsCodecError) =
+                "Tls (de)serialization occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
             MathError(TreeMathError) =
@@ -76,16 +76,18 @@ implement_error! {
                 "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
-        }
+            }
         Complex {
+            ConfigError(ConfigError) =
+                "See [`ConfigError`](`crate::config::ConfigError`) for details.",
             InvalidRatchetTree(TreeError) =
                 "Invalid ratchet tree in Welcome message.",
             ParentHashMismatch(ParentHashError) =
                 "The parent hash verification failed.",
             GroupSecretsDecryptionFailure(CryptoError) =
                 "Unable to decrypt the EncryptedGroupSecrets.",
-            CodecError(CodecError) =
-                "Codec error occurred.",
+            CodecError(TlsCodecError) =
+                "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
             PskError(PskError) =
@@ -129,12 +131,12 @@ implement_error! {
                 "MlsPlaintext signature is invalid.",
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
-            CodecError(CodecError) =
-                "Codec error occurred.",
+            CodecError(TlsCodecError) =
+                "Tls (de)serialization occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
             PskError(PskError) =
-                "A PSK error occured.",
+                "A PSK error occurred.",
         }
     }
 }

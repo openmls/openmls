@@ -3,10 +3,7 @@
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s and
 //! `KeyPackageBundle`s.
 
-use crate::{
-    codec::CodecError, config::ConfigError, credentials::CredentialError,
-    extensions::ExtensionError,
-};
+use crate::{config::ConfigError, credentials::CredentialError, extensions::ExtensionError};
 
 implement_error! {
     pub enum KeyPackageError {
@@ -27,8 +24,6 @@ implement_error! {
                 "See [`ExtensionError`](crate::extensions::ExtensionError`) for details.",
             ConfigError(ConfigError) =
                 "See [`ConfigError`](crate::config::ConfigError`) for details.",
-            CodecError(CodecError) =
-                "See [`CodecError`](crate::codec::CodecError`) for details.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError`) for details.",
         }

@@ -2,13 +2,14 @@
 
 use crate::{
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, CiphersuiteName, Mac, Secret},
-    codec::{Cursor, Decode, Encode},
     config::Config,
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
     tree::index::LeafIndex,
 };
+
+use tls_codec::{Deserialize, Serialize};
 
 macro_rules! test_welcome_msg {
     ($name:ident, $ciphersuite:expr, $version:expr) => {
@@ -22,7 +23,7 @@ macro_rules! test_welcome_msg {
                 vec![1, 1, 1],
                 Vec::new(),
                 ConfirmationTag(Mac {
-                    mac_value: vec![1, 2, 3, 4, 5],
+                    mac_value: vec![1, 2, 3, 4, 5].into(),
                 }),
                 LeafIndex::from(8u32),
             );
@@ -50,7 +51,7 @@ macro_rules! test_welcome_msg {
             let hpke_input = b"these should be the group secrets";
             let key_package_hash = vec![0, 0, 0, 0];
             let secrets = vec![EncryptedGroupSecrets {
-                key_package_hash: key_package_hash.clone(),
+                key_package_hash: key_package_hash.clone().into(),
                 encrypted_group_secrets: $ciphersuite.hpke_seal(
                     receiver_key_pair.public_key(),
                     hpke_info,
@@ -61,7 +62,11 @@ macro_rules! test_welcome_msg {
 
             // Encrypt the group info.
             let encrypted_group_info = welcome_key
-                .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
+                .aead_seal(
+                    &group_info.tls_serialize_detached().unwrap(),
+                    &[],
+                    &welcome_nonce,
+                )
                 .unwrap();
 
             // Now build the welcome message.
@@ -73,16 +78,18 @@ macro_rules! test_welcome_msg {
             );
 
             // Encode, decode and re-assemble
-            let msg_encoded = msg.encode_detached().unwrap();
+            let msg_encoded = msg.tls_serialize_detached().unwrap();
             println!("encoded msg: {:?}", msg_encoded);
-            let mut cursor = Cursor::new(&msg_encoded);
-            let msg_decoded = Welcome::decode(&mut cursor).unwrap();
+            let msg_decoded = Welcome::tls_deserialize(&mut msg_encoded.as_slice()).unwrap();
 
             // Check that the welcome message is the same
             assert_eq!(msg_decoded.version, $version);
-            assert_eq!(msg_decoded.cipher_suite, $ciphersuite);
-            for secret in msg_decoded.secrets {
-                assert_eq!(key_package_hash, secret.key_package_hash);
+            assert_eq!(msg_decoded.cipher_suite, $ciphersuite.name());
+            for secret in msg_decoded.secrets.iter() {
+                assert_eq!(
+                    key_package_hash.as_slice(),
+                    secret.key_package_hash.as_slice()
+                );
                 let ptxt = $ciphersuite
                     .hpke_open(
                         &secret.encrypted_group_secrets,
@@ -93,7 +100,10 @@ macro_rules! test_welcome_msg {
                     .expect("Error decrypting valid ciphertext in Welcome message test.");
                 assert_eq!(&hpke_input[..], &ptxt[..]);
             }
-            assert_eq!(msg_decoded.encrypted_group_info, encrypted_group_info);
+            assert_eq!(
+                msg_decoded.encrypted_group_info.as_slice(),
+                encrypted_group_info.as_slice()
+            );
         }
     };
 }
@@ -120,8 +130,8 @@ test_welcome_msg!(
 #[test]
 fn invalid_welcomes() {
     // An almost good welcome message.
-    let bytes = [
-        2, 0, 2, 0, 0, 0, 90, 4, 0, 0, 0, 0, 0, 32, 183, 76, 159, 248, 180, 5, 79, 86, 242, 165,
+    let mut bytes = &[
+        2u8, 0, 2, 0, 0, 0, 90, 4, 0, 0, 0, 0, 0, 32, 183, 76, 159, 248, 180, 5, 79, 86, 242, 165,
         206, 103, 47, 8, 110, 250, 81, 48, 206, 185, 186, 104, 220, 181, 245, 106, 134, 32, 97,
         233, 141, 26, 0, 49, 13, 203, 68, 119, 97, 90, 172, 36, 170, 239, 80, 191, 63, 146, 177,
         211, 151, 152, 93, 117, 192, 136, 96, 22, 168, 213, 67, 165, 244, 165, 183, 228, 88, 62,
@@ -130,8 +140,7 @@ fn invalid_welcomes() {
         118, 228, 188, 12, 134, 23, 216, 51, 20, 138, 215, 232, 62, 216, 119, 242, 93, 164, 250,
         100, 223, 214, 94, 85, 139, 159, 205, 193, 153, 181, 243, 139, 12, 78, 253, 200, 47, 207,
         79, 86, 82, 63, 217, 126, 204, 178, 24, 199, 49,
-    ];
-    let mut cursor = Cursor::new(&bytes);
-    let msg = Welcome::decode(&mut cursor);
+    ] as &[u8];
+    let msg = Welcome::tls_deserialize(&mut bytes);
     assert!(msg.is_err());
 }

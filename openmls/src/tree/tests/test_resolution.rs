@@ -152,7 +152,7 @@ fn test_original_child_resolution() {
         let new_root_node = Node {
             node_type: NodeType::Parent,
             node: Some(ParentNode {
-                parent_hash: vec![],
+                parent_hash: vec![].into(),
                 public_key,
                 unmerged_leaves: ROOT_UNMERGED_LEAVES
                     .iter()

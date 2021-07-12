@@ -1,6 +1,7 @@
+use tls_codec::{Deserialize, Serialize};
+
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
-    codec::{Cursor, Decode, Encode},
     config::Config,
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, LifetimeExtension},
@@ -37,8 +38,8 @@ fn proposal_queue_functions() {
         .unwrap();
 
         // Mandatory extensions, will be fixed in #164
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Box<dyn Extension>> = vec![lifetime_extension];
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let mandatory_extensions = vec![lifetime_extension];
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -80,13 +81,13 @@ fn proposal_queue_functions() {
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
         let proposal_reference_add_alice1 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1).unwrap();
         let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
         let proposal_reference_add_alice2 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice2);
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice2).unwrap();
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
         let proposal_reference_add_bob1 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_bob1);
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_bob1).unwrap();
 
         // Test proposal types
         assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -192,7 +193,7 @@ fn proposal_queue_order() {
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
         let proposal_reference_add_alice1 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1);
+            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1).unwrap();
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
         // Frame proposals in MlsPlaintext
@@ -268,17 +269,17 @@ fn proposals_codec() {
     let remove_proposal = RemoveProposal { removed: 123 };
     let proposal = Proposal::Remove(remove_proposal);
     let proposal_or_ref = ProposalOrRef::Proposal(proposal.clone());
-    let encoded = proposal_or_ref.encode_detached().unwrap();
-    let decoded = ProposalOrRef::decode(&mut Cursor::new(&encoded)).unwrap();
+    let encoded = proposal_or_ref.tls_serialize_detached().unwrap();
+    let decoded = ProposalOrRef::tls_deserialize(&mut encoded.as_slice()).unwrap();
 
     assert_eq!(proposal_or_ref, decoded);
 
     // Reference
 
-    let reference = ProposalReference::from_proposal(ciphersuite, &proposal);
+    let reference = ProposalReference::from_proposal(ciphersuite, &proposal).unwrap();
     let proposal_or_ref = ProposalOrRef::Reference(reference);
-    let encoded = proposal_or_ref.encode_detached().unwrap();
-    let decoded = ProposalOrRef::decode(&mut Cursor::new(&encoded)).unwrap();
+    let encoded = proposal_or_ref.tls_serialize_detached().unwrap();
+    let decoded = ProposalOrRef::tls_deserialize(&mut encoded.as_slice()).unwrap();
 
     assert_eq!(proposal_or_ref, decoded);
 }

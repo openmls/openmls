@@ -23,8 +23,9 @@
 
 use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
 
-use super::{codec::encode_plaintext_tbs, *};
+use super::*;
 use std::convert::TryFrom;
+use tls_codec::{Serialize, Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
 /// `MLSPlaintext` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -50,17 +51,17 @@ use std::convert::TryFrom;
 ///             Commit commit;
 ///     }
 ///
-/// opaque signature<0..2^16-1>;
-/// optional<MAC> confirmation_tag;
-/// optional<MAC> membership_tag;
+///     opaque signature<0..2^16-1>;
+///     optional<MAC> confirmation_tag;
+///     optional<MAC> membership_tag;
 /// } MLSPlaintext;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct MlsPlaintext {
     group_id: GroupId,
     epoch: GroupEpoch,
     sender: Sender,
-    authenticated_data: Vec<u8>,
+    authenticated_data: TlsByteVecU32,
     content_type: ContentType,
     content: MlsPlaintextContentType,
     signature: Signature,
@@ -74,6 +75,7 @@ impl MlsPlaintext {
         &self.signature
     }
 
+    #[cfg(test)]
     pub(super) fn membership_tag(&self) -> &Option<MembershipTag> {
         &self.membership_tag
     }
@@ -120,13 +122,13 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
     ) -> Result<Self, MlsPlaintextError> {
-        let serialized_context = context.serialized();
+        let serialized_context = context.tls_serialize_detached()?;
         let mls_plaintext = MlsPlaintextTbs::new(
-            serialized_context,
+            serialized_context.as_slice(),
             context.group_id().clone(),
             context.epoch(),
             Sender::member(sender_index),
-            authenticated_data.to_vec(),
+            authenticated_data.into(),
             content_type,
             payload,
         );
@@ -152,7 +154,7 @@ impl MlsPlaintext {
             credential_bundle,
             context,
         )?;
-        mls_plaintext.set_membership_tag(context.serialized(), membership_key)?;
+        mls_plaintext.set_membership_tag(&context.tls_serialize_detached()?, membership_key)?;
         Ok(mls_plaintext)
     }
 
@@ -209,7 +211,7 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             sender_index,
             authenticated_data,
-            MlsPlaintextContentType::Application(application_message.to_vec()),
+            MlsPlaintextContentType::Application(application_message.into()),
             ContentType::Application,
             credential_bundle,
             context,
@@ -246,7 +248,7 @@ impl MlsPlaintext {
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), MlsPlaintextError> {
-        let tbs_payload = encode_tbs(&self, serialized_context)?;
+        let tbs_payload = encode_tbs(self, serialized_context)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
         let membership_tag = membership_key.tag(tbm_payload)?;
@@ -273,7 +275,7 @@ impl MlsPlaintext {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = encode_tbs(&self, serialized_context)?;
+        let tbs_payload = encode_tbs(self, serialized_context)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
         let expected_membership_tag = &membership_key.tag(tbm_payload)?;
@@ -295,7 +297,7 @@ impl MlsPlaintext {
     /// contained something other than an application message.
     pub fn as_application_message(&self) -> Result<&[u8], MlsPlaintextError> {
         match &self.content {
-            MlsPlaintextContentType::Application(message) => Ok(message),
+            MlsPlaintextContentType::Application(message) => Ok(message.as_slice()),
             _ => Err(MlsPlaintextError::NotAnApplicationMessage),
         }
     }
@@ -331,13 +333,15 @@ impl MlsPlaintext {
 
     /// The the authenticated data of this MlsPlaintext as byte slice.
     pub fn authenticated_data(&self) -> &[u8] {
-        &self.authenticated_data
+        self.authenticated_data.as_slice()
     }
 }
 
 // === Helper structs ===
 
-#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 #[repr(u8)]
 pub enum ContentType {
     Application = 1,
@@ -346,13 +350,17 @@ pub enum ContentType {
 }
 
 impl TryFrom<u8> for ContentType {
-    type Error = CodecError;
-    fn try_from(value: u8) -> Result<Self, CodecError> {
+    type Error = tls_codec::Error;
+    fn try_from(value: u8) -> Result<Self, tls_codec::Error> {
         match value {
             1 => Ok(ContentType::Application),
             2 => Ok(ContentType::Proposal),
             3 => Ok(ContentType::Commit),
-            _ => Err(CodecError::DecodingError),
+            _ => Err(tls_codec::Error::DecodingError(format!(
+                "{} is not a valid content type",
+                value
+            ))
+            .into()),
         }
     }
 }
@@ -379,7 +387,7 @@ impl ContentType {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MlsPlaintextContentType {
-    Application(Vec<u8>),
+    Application(TlsByteVecU32),
     Proposal(Proposal),
     Commit(Commit),
 }
@@ -412,16 +420,18 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
             confirmation_tag,
         })
     }
-    pub(crate) fn into_bytes(self) -> Result<Vec<u8>, CodecError> {
+    pub(crate) fn into_bytes(self) -> Result<Vec<u8>, tls_codec::Error> {
         let mut buffer = self.tbs_payload.to_vec();
-        buffer.extend(self.signature.encode_detached()?.iter());
-        buffer.extend(self.confirmation_tag.encode_detached()?.iter());
+        self.signature.tls_serialize(&mut buffer)?;
+        self.confirmation_tag.tls_serialize(&mut buffer)?;
         Ok(buffer)
     }
 }
 
 /// Wrapper around a `Mac` used for type safety.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct MembershipTag(pub(crate) Mac);
 
 #[derive(Debug, Clone)]
@@ -430,7 +440,7 @@ pub struct MlsPlaintextTbs<'a> {
     pub(super) group_id: GroupId,
     pub(super) epoch: GroupEpoch,
     pub(super) sender: Sender,
-    pub(super) authenticated_data: Vec<u8>,
+    pub(super) authenticated_data: TlsByteVecU32,
     pub(super) content_type: ContentType,
     pub(super) payload: MlsPlaintextContentType,
 }
@@ -438,9 +448,9 @@ pub struct MlsPlaintextTbs<'a> {
 fn encode_tbs<'a>(
     plaintext: &MlsPlaintext,
     serialized_context: impl Into<Option<&'a [u8]>>,
-) -> Result<Vec<u8>, CodecError> {
+) -> Result<Vec<u8>, tls_codec::Error> {
     let mut out = Vec::new();
-    encode_plaintext_tbs(
+    codec::serialize_plaintext_tbs(
         serialized_context,
         &plaintext.group_id,
         &plaintext.epoch,
@@ -515,8 +525,8 @@ impl<'a> VerifiableMlsPlaintext<'a> {
 impl<'a> Signable for MlsPlaintextTbs<'a> {
     type SignedOutput = MlsPlaintext;
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        self.encode_detached()
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tls_serialize_detached()
     }
 }
 
@@ -526,7 +536,7 @@ impl<'a> MlsPlaintextTbs<'a> {
         group_id: GroupId,
         epoch: GroupEpoch,
         sender: Sender,
-        authenticated_data: Vec<u8>,
+        authenticated_data: TlsByteVecU32,
         content_type: ContentType,
         payload: MlsPlaintextContentType,
     ) -> Self {
@@ -576,8 +586,8 @@ impl<'a> MlsPlaintextTbs<'a> {
 }
 
 impl<'a> Verifiable for VerifiableMlsPlaintext<'a> {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        self.tbs.encode_detached()
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tbs.tls_serialize_detached()
     }
 
     fn signature(&self) -> &Signature {
@@ -630,11 +640,12 @@ impl<'a> SignedStruct<MlsPlaintextTbs<'a>> for MlsPlaintext {
     }
 }
 
+#[derive(TlsSerialize, TlsSize)]
 pub(crate) struct MlsPlaintextCommitContent<'a> {
     pub(super) group_id: &'a GroupId,
     pub(super) epoch: GroupEpoch,
     pub(super) sender: &'a Sender,
-    pub(super) authenticated_data: &'a [u8],
+    pub(super) authenticated_data: &'a TlsByteVecU32,
     pub(super) content_type: ContentType,
     pub(super) commit: &'a Commit,
     pub(super) signature: &'a Signature,
@@ -660,6 +671,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
     }
 }
 
+#[derive(TlsSerialize, TlsSize)]
 pub(crate) struct MlsPlaintextCommitAuthData<'a> {
     pub(crate) confirmation_tag: Option<&'a ConfirmationTag>,
 }

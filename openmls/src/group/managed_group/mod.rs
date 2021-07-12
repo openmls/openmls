@@ -114,7 +114,7 @@ impl ManagedGroup {
             ..Default::default()
         };
         let group = MlsGroup::new(
-            &group_id.as_slice(),
+            group_id.as_slice(),
             key_package_bundle.key_package().ciphersuite_name(),
             key_package_bundle,
             group_config,
@@ -153,7 +153,7 @@ impl ManagedGroup {
         let key_package_bundle = welcome
             .secrets()
             .iter()
-            .find_map(|egs| key_store.take_key_package_bundle(&egs.key_package_hash))
+            .find_map(|egs| key_store.take_key_package_bundle(egs.key_package_hash.as_slice()))
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141
         let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None)?;
@@ -476,7 +476,7 @@ impl ManagedGroup {
             MlsPlaintextContentType::Commit(ref commit) => {
                 // Validate inline proposals
                 if !self.validate_inline_proposals(
-                    &commit.proposals,
+                    commit.proposals.as_slice(),
                     plaintext.sender_index(),
                     &indexed_members,
                 ) {
@@ -500,7 +500,7 @@ impl ManagedGroup {
                         // all proposals from the Commit and generate events
                         events.append(&mut self.prepare_events(
                             self.ciphersuite(),
-                            &commit.proposals,
+                            commit.proposals.as_slice(),
                             plaintext.sender_index(),
                             &indexed_members,
                         ));
@@ -509,7 +509,7 @@ impl ManagedGroup {
                         // like a commited UpdateProposal.
                         if commit.has_path() {
                             events.push(GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
-                                aad_option.unwrap_or_default(),
+                                aad_option.unwrap_or_default().into(),
                                 indexed_members[&plaintext.sender_index()].clone(),
                             )));
                         }
@@ -528,7 +528,7 @@ impl ManagedGroup {
                             // Prepare events
                             events.append(&mut self.prepare_events(
                                 self.ciphersuite(),
-                                &commit.proposals,
+                                commit.proposals.as_slice(),
                                 plaintext.sender_index(),
                                 &indexed_members,
                             ));
@@ -554,9 +554,13 @@ impl ManagedGroup {
                 // Save the application message as an event
                 events.push(GroupEvent::ApplicationMessage(
                     ApplicationMessageEvent::new(
-                        aad_option.unwrap(),
+                        aad_option
+                            .ok_or(ManagedGroupError::InvalidMessage(
+                                InvalidMessageError::InvalidApplicationMessage,
+                            ))?
+                            .into(),
                         indexed_members[&plaintext.sender_index()].clone(),
-                        app_message.to_vec(),
+                        app_message.as_slice().to_vec(),
                     ),
                 ));
             }
@@ -931,7 +935,7 @@ impl ManagedGroup {
             // Validate add proposals
             Proposal::Add(add_proposal) => {
                 if let Some(validate_add) = self.managed_group_config.callbacks.validate_add {
-                    if !validate_add(&self, sender, add_proposal.key_package.credential()) {
+                    if !validate_add(self, sender, add_proposal.key_package.credential()) {
                         return false;
                     }
                 }
@@ -940,7 +944,7 @@ impl ManagedGroup {
             Proposal::Remove(remove_proposal) => {
                 if let Some(validate_remove) = self.managed_group_config.callbacks.validate_remove {
                     if !validate_remove(
-                        &self,
+                        self,
                         sender,
                         &indexed_members[&LeafIndex::from(remove_proposal.removed)],
                     ) {
@@ -1048,7 +1052,7 @@ impl ManagedGroup {
             }
             // PSK proposals
             Proposal::PreSharedKey(psk_proposal) => {
-                let psk_id = psk_proposal.psk.clone();
+                let psk_id = psk_proposal.psk().clone();
 
                 GroupEvent::PskReceived(PskReceivedEvent::new(self.aad.to_vec(), psk_id))
             }
@@ -1062,7 +1066,7 @@ impl ManagedGroup {
     /// Auto-save function
     fn auto_save(&self) {
         if let Some(auto_save) = self.managed_group_config.callbacks.auto_save {
-            auto_save(&self);
+            auto_save(self);
         }
     }
 

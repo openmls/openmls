@@ -1,3 +1,5 @@
+use tls_codec::Serialize;
+
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
     group::GroupEpoch,
@@ -9,8 +11,6 @@ use crate::{
 
 #[test]
 fn test_mls_group_persistence() {
-    use std::fs::File;
-    use std::path::Path;
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
     // Define credential bundles
@@ -37,16 +37,16 @@ fn test_mls_group_persistence() {
     )
     .unwrap();
 
-    let path = Path::new("target/test_mls_group_serialization.json");
-    let out_file = &mut File::create(&path).expect("Could not create file");
+    let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
-        .save(out_file)
+        .save(&mut file_out)
         .expect("Could not write group state to file");
 
-    let in_file = File::open(&path).expect("Could not open file");
-
+    let file_in = file_out
+        .reopen()
+        .expect("Error re-opening serialized group state file");
     let alice_group_deserialized =
-        MlsGroup::load(in_file).expect("Could not deserialize managed group");
+        MlsGroup::load(file_in).expect("Could not deserialize managed group");
 
     assert_eq!(alice_group, alice_group_deserialized);
 }
@@ -61,7 +61,7 @@ fn test_failed_groupinfo_decryption() {
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
             let confirmation_tag = ConfirmationTag(Mac {
-                mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
             });
             let signer_index = LeafIndex::from(8u32);
             let group_info = GroupInfoPayload::new(
@@ -109,13 +109,17 @@ fn test_failed_groupinfo_decryption() {
             encrypted_group_secrets.flip_last_byte();
 
             let broken_secrets = vec![EncryptedGroupSecrets {
-                key_package_hash: key_package_bundle.key_package.hash(),
+                key_package_hash: key_package_bundle.key_package.hash().into(),
                 encrypted_group_secrets,
             }];
 
             // Encrypt the group info.
             let encrypted_group_info = welcome_key
-                .aead_seal(&group_info.encode_detached().unwrap(), &[], &welcome_nonce)
+                .aead_seal(
+                    &group_info.tls_serialize_detached().unwrap(),
+                    &[],
+                    &welcome_nonce,
+                )
                 .unwrap();
 
             // Now build the welcome message.
@@ -261,23 +265,23 @@ fn test_update_path() {
 
         // For simplicity, let's just break all the ciphertexts.
         let mut new_nodes = Vec::new();
-        for node in path.nodes {
+        for node in path.nodes.iter() {
             let mut new_eps = Vec::new();
-            for c in node.encrypted_path_secret {
+            for c in node.encrypted_path_secret.iter() {
                 let mut c_copy = c.clone();
                 c_copy.flip_last_byte();
                 new_eps.push(c_copy);
             }
             let node = UpdatePathNode {
                 public_key: node.public_key.clone(),
-                encrypted_path_secret: new_eps,
+                encrypted_path_secret: new_eps.into(),
             };
             new_nodes.push(node);
         }
 
         let broken_path = UpdatePath {
             leaf_key_package: path.leaf_key_package.clone(),
-            nodes: new_nodes,
+            nodes: new_nodes.into(),
         };
 
         // Now let's create a new commit from out broken update path.
@@ -303,7 +307,8 @@ fn test_update_path() {
             broken_plaintext.confirmation_tag()
         );
 
-        let serialized_context = group_bob.group_context.serialized();
+        let serialized_context =
+            &group_bob.group_context.tls_serialize_detached().unwrap() as &[u8];
 
         broken_plaintext
             .set_membership_tag(serialized_context, group_bob.epoch_secrets.membership_key())

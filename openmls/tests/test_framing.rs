@@ -45,11 +45,10 @@ fn padding() {
             for _ in 0..10 {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
-                let encrypted_message = group_state
+                let mls_ciphertext = group_state
                     .create_application_message(&aad, &message, &credential_bundle, padding_size)
-                    .unwrap()
-                    .ciphertext;
-                let ciphertext = encrypted_message.as_slice();
+                    .unwrap();
+                let ciphertext = mls_ciphertext.ciphertext();
                 let length = ciphertext.len();
                 let overflow = if padding_size > 0 {
                     length % padding_size

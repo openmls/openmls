@@ -16,8 +16,8 @@
 use crate::test_util::read;
 use crate::{
     ciphersuite::signable::Signable,
-    codec::Decode,
     credentials::{CredentialBundle, CredentialType},
+    node::Node,
     prelude::KeyPackageBundlePayload,
     test_util::hex_to_bytes,
 };
@@ -25,7 +25,6 @@ use crate::{
     ciphersuite::Secret,
     config::Config,
     config::ProtocolVersion,
-    extensions::{Extension, RatchetTreeExtension},
     key_packages::KeyPackage,
     messages::PathSecret,
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
@@ -33,6 +32,7 @@ use crate::{
 
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, TlsVecU32};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TreeKemTestVector {
@@ -60,14 +60,16 @@ pub struct TreeKemTestVector {
 
 pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
     log::debug!("Running TreeKEM test vector");
+    log::trace!("{:?}", test_vector);
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
 
-    let tree_extension_before =
-        RatchetTreeExtension::new_from_bytes(&hex_to_bytes(&test_vector.ratchet_tree_before))
+    log::trace!("ratchet tree before: {}", test_vector.ratchet_tree_before);
+    let ratchet_tree_before_bytes = hex_to_bytes(&test_vector.ratchet_tree_before);
+    let ratchet_tree_before =
+        TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_before_bytes.as_slice())
             .expect("Error decoding ratchet tree");
-    let ratchet_tree_before = tree_extension_before.into_vector();
 
     let my_leaf_secret = Secret::from_slice(
         &hex_to_bytes(&test_vector.my_leaf_secret),
@@ -75,8 +77,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         ciphersuite,
     );
 
-    let my_key_package = KeyPackage::decode_detached(&hex_to_bytes(&test_vector.my_key_package))
-        .expect("failed to decode my_key_package from test vector.");
+    let my_key_package =
+        KeyPackage::tls_deserialize(&mut hex_to_bytes(&test_vector.my_key_package).as_slice())
+            .expect("failed to decode my_key_package from test vector.");
 
     // We clone the leaf secret here, because we need it later to re-create the
     // KeyPackageBundle.
@@ -95,7 +98,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     // Check tree hashes.
     let mut tree_before =
-        RatchetTree::new_from_nodes(my_key_package_bundle, &ratchet_tree_before).unwrap();
+        RatchetTree::new_from_nodes(my_key_package_bundle, ratchet_tree_before.as_slice()).unwrap();
     crate::utils::_print_tree(&tree_before, "Tree before");
 
     if hex_to_bytes(&test_vector.tree_hash_before) != tree_before.tree_hash() {
@@ -105,17 +108,17 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         return Err(TreeKemTestVectorError::BeforeTreeHashMismatch);
     }
 
-    let tree_extension_after =
-        RatchetTreeExtension::new_from_bytes(&hex_to_bytes(&test_vector.ratchet_tree_after))
+    let ratchet_tree_after_bytes = hex_to_bytes(&test_vector.ratchet_tree_after);
+    let ratchet_tree_after =
+        TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_after_bytes.as_slice())
             .expect("Error decoding ratchet tree");
-    let ratchet_tree_after = tree_extension_after.into_vector();
 
     let my_key_package_bundle =
         KeyPackageBundlePayload::from_key_package_and_leaf_secret(my_leaf_secret, &my_key_package)
             .sign(&credential_bundle)
             .unwrap();
     let tree_after =
-        RatchetTree::new_from_nodes(my_key_package_bundle, &ratchet_tree_after).unwrap();
+        RatchetTree::new_from_nodes(my_key_package_bundle, ratchet_tree_after.as_slice()).unwrap();
     crate::utils::_print_tree(&tree_after, "Tree after");
 
     if hex_to_bytes(&test_vector.tree_hash_after) != tree_after.tree_hash() {
@@ -160,25 +163,22 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     log::trace!("Common ancestor: {:?}", common_ancestor);
     let path = parent_direct_path(common_ancestor, tree_before.leaf_count()).unwrap();
     log::trace!("path: {:?}", path);
-    let start_secret = Secret::from_slice(
-        &hex_to_bytes(&test_vector.my_path_secret),
-        ProtocolVersion::default(),
-        ciphersuite,
-    )
-    .into();
+    let mut start_secret =
+        PathSecret::tls_deserialize(&mut hex_to_bytes(&test_vector.my_path_secret).as_slice())
+            .expect("Error deserializing path secret.");
+    start_secret.config(ciphersuite, ProtocolVersion::default());
     tree_before
         .private_tree_mut()
         .continue_path_secrets(ciphersuite, start_secret, &path);
 
     // Check if the root secrets match up.
-    let root_secret_after_add: &PathSecret = &Secret::from_slice(
-        &hex_to_bytes(&test_vector.root_secret_after_add),
-        ProtocolVersion::default(),
-        ciphersuite,
+    let mut root_secret_after_add = PathSecret::tls_deserialize(
+        &mut hex_to_bytes(&test_vector.root_secret_after_add).as_slice(),
     )
-    .into();
+    .expect("Error deserializing path secret.");
+    root_secret_after_add.config(ciphersuite, ProtocolVersion::default());
 
-    if root_secret_after_add
+    if &root_secret_after_add
         != tree_before
             .path_secret(root(tree_before.leaf_count()))
             .unwrap()
@@ -190,7 +190,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     }
 
     // Apply the update path
-    let update_path = UpdatePath::decode_detached(&hex_to_bytes(&test_vector.update_path)).unwrap();
+    let update_path =
+        UpdatePath::tls_deserialize(&mut hex_to_bytes(&test_vector.update_path).as_slice())
+            .unwrap();
     log::trace!("UpdatePath: {:?}", update_path);
     let group_context = hex_to_bytes(&test_vector.update_group_context);
     let _commit_secret = tree_before
@@ -205,26 +207,35 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     // Rename to avoid confusion.
     let tree_after = tree_before;
     let root_secret_after = tree_after.private_tree().path_secrets().last().unwrap();
-    let root_secret_after_update: &PathSecret = &Secret::from_slice(
-        &hex_to_bytes(&test_vector.root_secret_after_update),
-        ProtocolVersion::default(),
-        ciphersuite,
+    let mut root_secret_after_update = PathSecret::tls_deserialize(
+        &mut hex_to_bytes(&test_vector.root_secret_after_update).as_slice(),
     )
-    .into();
+    .expect("Error deserializing path secret.");
+    root_secret_after_update.config(ciphersuite, ProtocolVersion::default());
 
-    if root_secret_after_update != root_secret_after {
+    if &root_secret_after_update != root_secret_after {
         if cfg!(test) {
+            log::error!(
+                "expected root secret: {}",
+                test_vector.root_secret_after_update
+            );
+            log::error!(
+                "got root secret:      {}",
+                crate::test_util::bytes_to_hex(
+                    &root_secret_after.tls_serialize_detached().unwrap()
+                )
+            );
             panic!("Root secret mismatch in the 'after' tree.");
         }
         return Err(TreeKemTestVectorError::AfterRootSecretMismatch);
     }
 
-    let tree_extension_after =
-        RatchetTreeExtension::new_from_bytes(&hex_to_bytes(&test_vector.ratchet_tree_after))
+    let ratchet_tree_after_bytes = hex_to_bytes(&test_vector.ratchet_tree_after);
+    let ratchet_tree_after =
+        TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_after_bytes.as_slice())
             .expect("Error decoding ratchet tree");
-    let ratchet_tree_after = tree_extension_after.into_vector();
 
-    if tree_after.public_key_tree_copy() != ratchet_tree_after {
+    if tree_after.public_key_tree_copy() != ratchet_tree_after.as_slice() {
         if cfg!(test) {
             panic!("Ratchet tree mismatch in the after the update.");
         }
@@ -238,6 +249,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
 #[test]
 fn read_test_vector() {
+    let _ = pretty_env_logger::try_init();
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {
