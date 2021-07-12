@@ -1,6 +1,5 @@
 use crate::{
     ciphersuite::Signature,
-    codec::CodecError,
     credentials::{Credential, CredentialBundle, CredentialError},
 };
 
@@ -23,7 +22,7 @@ pub trait Signable: Sized {
     type SignedOutput;
 
     /// Return the unsigned, serialized payload that should be signed.
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError>;
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error>;
 
     /// Sign the payload with the given `id`.
     ///
@@ -54,7 +53,7 @@ pub trait Signable: Sized {
 /// `unsigned_payload` function.
 pub trait Verifiable: Sized {
     /// Return the unsigned, serialized payload that should be verified.
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError>;
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error>;
 
     /// A reference to the signature to be verified.
     fn signature(&self) -> &Signature;

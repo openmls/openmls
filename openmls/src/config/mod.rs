@@ -3,14 +3,12 @@
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, env, fmt, fs::File, io::BufReader};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
-use crate::codec::{Codec, CodecError};
 use crate::extensions::ExtensionType;
 
-pub mod codec;
 pub mod errors;
-pub use codec::*;
 pub use errors::ConfigError;
 
 /// This value is used as the default lifetime of `KeyPackage`s if no default
@@ -161,7 +159,20 @@ impl Config {
 ///     (255)
 /// } ProtocolVersion;
 /// ```
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u8)]
 pub enum ProtocolVersion {
     Reserved = 0,

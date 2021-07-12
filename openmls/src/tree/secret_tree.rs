@@ -1,5 +1,6 @@
+use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
+
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::framing::*;
 use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
@@ -54,17 +55,20 @@ pub(crate) fn derive_tree_secret(
     let tree_context = TreeContext { node, generation };
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
     log_crypto!(trace, "Tree context {:?}", tree_context);
-    let serialized_tree_context = tree_context.encode_detached().unwrap();
-    secret.kdf_expand_label(label, &serialized_tree_context, length)
+    // FIXME: remove unwraps
+    let serialized_tree_context = tree_context.tls_serialize_detached().unwrap();
+    secret
+        .kdf_expand_label(label, &serialized_tree_context, length)
+        .unwrap()
 }
 
-#[derive(Debug)]
+#[derive(Debug, TlsSerialize, TlsSize)]
 pub struct TreeContext {
     pub(crate) node: u32,
     pub(crate) generation: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct SecretTreeNode {
     pub(crate) secret: Secret,
@@ -283,10 +287,9 @@ impl SecretTree {
             left(index_in_tree).expect("derive_down: Error while computing left child.");
         let right_index = right(index_in_tree, self.size)
             .expect("derive_down: Error while computing right child.");
-        let left_secret =
-            derive_tree_secret(&node_secret, "tree", left_index.as_u32(), 0, hash_len);
+        let left_secret = derive_tree_secret(node_secret, "tree", left_index.as_u32(), 0, hash_len);
         let right_secret =
-            derive_tree_secret(&node_secret, "tree", right_index.as_u32(), 0, hash_len);
+            derive_tree_secret(node_secret, "tree", right_index.as_u32(), 0, hash_len);
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",

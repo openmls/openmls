@@ -47,3 +47,8 @@ name = "proposal_decode"
 path = "fuzz_targets/proposal_decode.rs"
 test = false
 doc = false
+
+# Override these dependencies as they might not be up to date.
+[patch.crates-io]
+tls_codec = { git = "https://github.com/openmls/tls-codec" }
+tls_codec_derive = { git = "https://github.com/openmls/tls-codec" }

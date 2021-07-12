@@ -1,5 +1,6 @@
 use openmls::{ciphersuite::signable::Verifiable, prelude::*};
 pub mod utils;
+use tls_codec::{Deserialize, Serialize};
 use utils::mls_utils::*;
 
 /// Creates a simple test setup for various encoding tests.
@@ -66,9 +67,9 @@ fn test_application_message_encoding() {
             let encrypted_message = group_state
                 .create_application_message(&aad, &message, &credential_bundle, 0)
                 .unwrap();
-            let encrypted_message_bytes = encrypted_message.encode_detached().unwrap();
+            let encrypted_message_bytes = encrypted_message.tls_serialize_detached().unwrap();
             let encrypted_message_decoded =
-                match MlsCiphertext::decode(&mut Cursor::new(&encrypted_message_bytes)) {
+                match MlsCiphertext::tls_deserialize(&mut encrypted_message_bytes.as_slice()) {
                     Ok(a) => a,
                     Err(err) => panic!("Error decoding MlsCiphertext: {:?}", err),
                 };
@@ -90,14 +91,13 @@ fn test_update_proposal_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+        let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
             None,
         ));
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Box<dyn Extension>> =
-            vec![capabilities_extension, lifetime_extension];
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
@@ -114,15 +114,16 @@ fn test_update_proposal_encoding() {
             )
             .expect("Could not create proposal.");
         let update_encoded = update
-            .encode_detached()
+            .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let update_decoded = match VerifiableMlsPlaintext::decode_detached(&update_encoded) {
-            Ok(a) => a,
-            Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
-        }
-        .set_context(group_state.context().serialized())
-        .verify(credential_bundle.credential())
-        .expect("Error verifying MlsPlaintext");
+        let update_decoded =
+            match VerifiableMlsPlaintext::tls_deserialize(&mut update_encoded.as_slice()) {
+                Ok(a) => a,
+                Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
+            }
+            .set_context(&group_state.context().tls_serialize_detached().unwrap())
+            .verify(credential_bundle.credential())
+            .expect("Error verifying MlsPlaintext");
 
         assert_eq!(update, update_decoded);
     }
@@ -141,14 +142,13 @@ fn test_add_proposal_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+        let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
             None,
         ));
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Box<dyn Extension>> =
-            vec![capabilities_extension, lifetime_extension];
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
@@ -165,14 +165,17 @@ fn test_add_proposal_encoding() {
                 key_package_bundle.key_package().clone(),
             )
             .expect("Could not create proposal.");
-        let add_encoded = add.encode_detached().expect("Could not encode proposal.");
-        let add_decoded = match VerifiableMlsPlaintext::decode_detached(&add_encoded) {
-            Ok(a) => a,
-            Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
-        }
-        .set_context(group_state.context().serialized())
-        .verify(credential_bundle.credential())
-        .expect("Error verifying MlsPlaintext");
+        let add_encoded = add
+            .tls_serialize_detached()
+            .expect("Could not encode proposal.");
+        let add_decoded =
+            match VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice()) {
+                Ok(a) => a,
+                Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
+            }
+            .set_context(&group_state.context().tls_serialize_detached().unwrap())
+            .verify(credential_bundle.credential())
+            .expect("Error verifying MlsPlaintext");
 
         assert_eq!(add, add_decoded);
     }
@@ -195,15 +198,16 @@ fn test_remove_proposal_encoding() {
             .create_remove_proposal(&[], credential_bundle, LeafIndex::from(1u32))
             .expect("Could not create proposal.");
         let remove_encoded = remove
-            .encode_detached()
+            .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let remove_decoded = match VerifiableMlsPlaintext::decode_detached(&remove_encoded) {
-            Ok(a) => a,
-            Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
-        }
-        .set_context(group_state.context().serialized())
-        .verify(credential_bundle.credential())
-        .expect("Error verifying MlsPlaintext");
+        let remove_decoded =
+            match VerifiableMlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice()) {
+                Ok(a) => a,
+                Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
+            }
+            .set_context(&group_state.context().tls_serialize_detached().unwrap())
+            .verify(credential_bundle.credential())
+            .expect("Error verifying MlsPlaintext");
 
         assert_eq!(remove, remove_decoded);
     }
@@ -222,14 +226,13 @@ fn test_commit_encoding() {
             .get(&group_state.ciphersuite().name())
             .unwrap();
 
-        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+        let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
             None,
         ));
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Box<dyn Extension>> =
-            vec![capabilities_extension, lifetime_extension];
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
@@ -270,14 +273,15 @@ fn test_commit_encoding() {
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
             .create_commit(&[], alice_credential_bundle, proposals, &[], true, None)
             .unwrap();
-        let commit_encoded = commit.encode_detached().unwrap();
-        let commit_decoded = match VerifiableMlsPlaintext::decode_detached(&commit_encoded) {
-            Ok(a) => a,
-            Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
-        }
-        .set_context(group_state.context().serialized())
-        .verify(alice_credential_bundle.credential())
-        .expect("Error verifying MlsPlaintext");
+        let commit_encoded = commit.tls_serialize_detached().unwrap();
+        let commit_decoded =
+            match VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice()) {
+                Ok(a) => a,
+                Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
+            }
+            .set_context(&group_state.context().tls_serialize_detached().unwrap())
+            .verify(alice_credential_bundle.credential())
+            .expect("Error verifying MlsPlaintext");
 
         assert_eq!(commit, commit_decoded);
     }
@@ -327,8 +331,8 @@ fn test_welcome_message_encoding() {
 
         let welcome = welcome_option.unwrap();
 
-        let welcome_encoded = welcome.encode_detached().unwrap();
-        let welcome_decoded = match Welcome::decode(&mut Cursor::new(&welcome_encoded)) {
+        let welcome_encoded = welcome.tls_serialize_detached().unwrap();
+        let welcome_decoded = match Welcome::tls_deserialize(&mut welcome_encoded.as_slice()) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding Welcome message: {:?}", err),
         };

@@ -1,5 +1,4 @@
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::config::ProtocolVersion;
 use crate::extensions::Extension;
 use crate::framing::*;
@@ -11,10 +10,14 @@ use crate::tree::index::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::convert::TryFrom;
+use tls_codec::{
+    Serialize as TlsSerializeTrait, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize,
+    TlsVecU32,
+};
 
 use super::errors::*;
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub enum ProposalType {
     Add = 1,
@@ -58,7 +61,7 @@ impl TryFrom<u8> for ProposalType {
 /// Type of Proposal, either by value or by reference
 /// We only implement the values (1, 2), other values are not valid
 /// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub enum ProposalOrRefType {
     Proposal = 1,
@@ -143,16 +146,21 @@ impl Proposal {
 
 /// Reference to a Proposal. This can be used in Commit messages to reference
 /// proposals that have already been sent
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct ProposalReference {
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: TlsByteVecU8,
 }
 
 impl ProposalReference {
-    pub(crate) fn from_proposal(ciphersuite: &Ciphersuite, proposal: &Proposal) -> Self {
-        let encoded = proposal.encode_detached().unwrap();
-        let value = ciphersuite.hash(&encoded);
-        Self { value }
+    pub(crate) fn from_proposal(
+        ciphersuite: &Ciphersuite,
+        proposal: &Proposal,
+    ) -> Result<Self, tls_codec::Error> {
+        let encoded = proposal.tls_serialize_detached()?;
+        let value = ciphersuite.hash(&encoded).into();
+        Ok(Self { value })
     }
 }
 
@@ -177,7 +185,7 @@ impl<'a> QueuedProposal<'a> {
             MlsPlaintextContentType::Proposal(p) => p,
             _ => return Err(QueuedProposalError::WrongContentType),
         };
-        let proposal_reference = ProposalReference::from_proposal(ciphersuite, &proposal);
+        let proposal_reference = ProposalReference::from_proposal(ciphersuite, proposal)?;
         Ok(Self {
             proposal,
             proposal_reference,
@@ -190,18 +198,18 @@ impl<'a> QueuedProposal<'a> {
         ciphersuite: &Ciphersuite,
         proposal: &'a Proposal,
         sender: Sender,
-    ) -> Self {
-        let proposal_reference = ProposalReference::from_proposal(ciphersuite, &proposal);
-        Self {
+    ) -> Result<Self, QueuedProposalError> {
+        let proposal_reference = ProposalReference::from_proposal(ciphersuite, proposal)?;
+        Ok(Self {
             proposal,
             proposal_reference,
             sender,
             proposal_or_ref_type: ProposalOrRefType::Proposal,
-        }
+        })
     }
     /// Returns the `Proposal` as a reference
     pub(crate) fn proposal(&self) -> &Proposal {
-        &self.proposal
+        self.proposal
     }
     /// Returns the `ProposalReference` as a reference
     pub(crate) fn proposal_reference(&self) -> ProposalReference {
@@ -240,7 +248,7 @@ impl<'a> ProposalQueue<'a> {
             // It is safe to unwrap here, because we checked that only proposals can end up
             // here.
             let queued_proposal =
-                QueuedProposal::from_mls_plaintext(ciphersuite, &mls_plaintext).unwrap();
+                QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext).unwrap();
             proposal_queue.add(queued_proposal);
         }
         proposal_queue
@@ -270,7 +278,7 @@ impl<'a> ProposalQueue<'a> {
         for proposal_or_ref in committed_proposals.iter() {
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
-                    QueuedProposal::from_proposal_and_sender(ciphersuite, proposal, sender)
+                    QueuedProposal::from_proposal_and_sender(ciphersuite, proposal, sender)?
                 }
                 ProposalOrRef::Reference(proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
@@ -334,20 +342,17 @@ impl<'a> ProposalQueue<'a> {
         };
 
         // Aggregate both proposal types to a common iterator
-        // It is safe to unwrap here, because we checked eralier that only proposals can
-        // end up here
+        // We checked earlier that only proposals can end up here
         let mut queued_proposal_list = proposals_by_reference
             .iter()
-            .map(|mls_plaintext| {
-                QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext).unwrap()
-            })
-            .collect::<Vec<QueuedProposal>>();
+            .map(|&mls_plaintext| QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext))
+            .collect::<Result<Vec<QueuedProposal>, _>>()?;
 
         queued_proposal_list.extend(
             proposals_by_value
                 .iter()
-                .map(|p| QueuedProposal::from_proposal_and_sender(ciphersuite, p, sender))
-                .collect::<Vec<QueuedProposal>>()
+                .map(|&p| QueuedProposal::from_proposal_and_sender(ciphersuite, p, sender))
+                .collect::<Result<Vec<QueuedProposal>, _>>()?
                 .into_iter(),
         );
 
@@ -474,19 +479,46 @@ impl<'a> ProposalQueue<'a> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct AddProposal {
-    pub key_package: KeyPackage,
+    pub(crate) key_package: KeyPackage,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+impl AddProposal {
+    /// Get a reference to the key package in the proposal.
+    pub(crate) fn key_package(&self) -> &KeyPackage {
+        &self.key_package
+    }
+}
+
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct UpdateProposal {
-    pub key_package: KeyPackage,
+    pub(crate) key_package: KeyPackage,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+impl UpdateProposal {
+    /// Get a reference to the key package in the proposal.
+    pub(crate) fn key_package(&self) -> &KeyPackage {
+        &self.key_package
+    }
+}
+
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct RemoveProposal {
-    pub removed: u32,
+    pub(crate) removed: u32,
+}
+
+impl RemoveProposal {
+    /// Get the `u32` index in this proposal.
+    pub(crate) fn removed(&self) -> u32 {
+        self.removed
+    }
 }
 
 /// Preshared Key proposal
@@ -494,9 +526,28 @@ pub struct RemoveProposal {
 /// struct {
 ///     PreSharedKeyID psk;
 /// } PreSharedKey;
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct PreSharedKeyProposal {
-    pub psk: PreSharedKeyId,
+    psk: PreSharedKeyId,
+}
+
+impl PreSharedKeyProposal {
+    /// Create a new PSK proposal
+    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
+        Self { psk }
+    }
+
+    /// Get a reference to the [`PreSharedKeyId`] in this proposal.
+    pub(crate) fn psk(&self) -> &PreSharedKeyId {
+        &self.psk
+    }
+
+    /// Get the [`PreSharedKeyId`] and consume this proposal.
+    pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
+        self.psk
+    }
 }
 
 /// ReInit proposal
@@ -507,10 +558,12 @@ pub struct PreSharedKeyProposal {
 ///     CipherSuite cipher_suite;
 ///     Extension extensions<0..2^32-1>;
 /// } ReInit;
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct ReInitProposal {
-    pub group_id: GroupId,
-    pub version: ProtocolVersion,
-    pub ciphersuite: CiphersuiteName,
-    pub extensions: Vec<Box<dyn Extension>>,
+    pub(crate) group_id: GroupId,
+    pub(crate) version: ProtocolVersion,
+    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) extensions: TlsVecU32<Extension>,
 }

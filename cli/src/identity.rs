@@ -34,7 +34,7 @@ impl Identity {
     }
 
     /// Get the plain credential as byte vector.
-    pub fn credential(&self) -> &Vec<u8> {
+    pub fn credential(&self) -> &[u8] {
         self.credential.credential().identity()
     }
 }

@@ -1,5 +1,4 @@
 use super::*;
-use crate::codec::CodecError;
 
 pub(crate) use std::convert::TryFrom;
 
@@ -10,7 +9,7 @@ impl From<&CiphersuiteName> for u16 {
 }
 
 impl TryFrom<u16> for CiphersuiteName {
-    type Error = CodecError;
+    type Error = tls_codec::Error;
 
     fn try_from(v: u16) -> Result<Self, Self::Error> {
         match v {
@@ -20,7 +19,10 @@ impl TryFrom<u16> for CiphersuiteName {
             0x0004 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448),
             0x0005 => Ok(CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521),
             0x0006 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
-            _ => Err(CodecError::DecodingError),
+            _ => Err(Self::Error::DecodingError(format!(
+                "{} is not a valid cipher suite value",
+                v
+            ))),
         }
     }
 }

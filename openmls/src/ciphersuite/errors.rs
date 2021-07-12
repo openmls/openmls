@@ -13,5 +13,16 @@ implement_error! {
         CryptoLibraryError = "Unrecoverable error in the crypto library.",
         HpkeDecryptionError = "Error while decrypting an HPKE ciphertext.",
         UnsupportedSignatureScheme = "This SignatureScheme is not supported.",
+        KdfLabelTooLarge = "The requested Kdf label length is too large.",
+        KdfSerializationError = "Serialization of the Kdf label failed.",
+        HkdfOutputLengthInvalid = "The requested HKDF output length is invalid",
+    }
+}
+
+impl From<HkdfError> for CryptoError {
+    fn from(e: HkdfError) -> Self {
+        match e {
+            HkdfError::InvalidLength => Self::HkdfOutputLengthInvalid,
+        }
     }
 }
