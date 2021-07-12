@@ -13,8 +13,27 @@ pub trait SignedStruct<T> {
 /// This trait must be implemented by all structs that contain a verified
 /// self-signature.
 pub trait VerifiedStruct<T> {
-    /// Build a verified struct version from the payload struct.
-    fn from_verifiable(verifiable: T) -> Self;
+    /// This type is used to prevent users of the trait from bypassing `verify`
+    /// by simply calling `from_verifiable`. `Seal` should be a dummy type
+    /// defined in a private module as follows:
+    /// ```
+    /// mod private_mod {
+    ///     pub struct Seal;
+    ///
+    ///     impl Default for Seal {
+    ///         fn default() -> Self {
+    ///             Seal {}
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    type SealingType: Default;
+
+    /// Build a verified struct version from the payload struct. This function
+    /// is only meant to be called by the implementation of the `Verifiable`
+    /// trait corresponding to this `VerifiedStruct`.
+    #[doc(hidden)]
+    fn from_verifiable(verifiable: T, _seal: Self::SealingType) -> Self;
 }
 
 /// The `Signable` trait is implemented by all struct that are being signed.
@@ -71,7 +90,7 @@ pub trait Verifiable: Sized {
     {
         let payload = self.unsigned_payload()?;
         credential.verify(&payload, self.signature())?;
-        Ok(T::from_verifiable(self))
+        Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
     /// Verifies the payload against the given `credential`.
