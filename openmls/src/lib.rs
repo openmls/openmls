@@ -26,8 +26,6 @@ mod utils;
 
 #[macro_use]
 pub mod error;
-#[macro_use]
-mod codec;
 
 #[cfg(any(feature = "test-utils", test))]
 #[macro_use]

@@ -7,3 +7,4 @@ description = "Types to interact with the OpenMLS DS."
 
 [dependencies]
 openmls = { path = "../../openmls" }
+tls_codec = "0.1.4"

@@ -1,3 +1,8 @@
+use tls_codec::{
+    Deserialize, Serialize, Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8,
+    TlsDeserialize, TlsSerialize, TlsSize,
+};
+
 use super::*;
 
 use std::convert::TryFrom;
@@ -5,14 +10,14 @@ use std::convert::TryFrom;
 /// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 pub struct MlsCiphertext {
-    pub group_id: GroupId,
-    pub epoch: GroupEpoch,
-    pub content_type: ContentType,
-    pub authenticated_data: Vec<u8>,
-    pub encrypted_sender_data: Vec<u8>,
-    pub ciphertext: Vec<u8>,
+    pub(crate) group_id: GroupId,
+    pub(crate) epoch: GroupEpoch,
+    pub(crate) content_type: ContentType,
+    pub(crate) authenticated_data: TlsByteVecU32,
+    pub(crate) encrypted_sender_data: TlsByteVecU8,
+    pub(crate) ciphertext: TlsByteVecU32,
 }
 
 impl MlsCiphertext {
@@ -33,9 +38,10 @@ impl MlsCiphertext {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
             content_type: *mls_plaintext.content_type(),
-            authenticated_data: mls_plaintext.authenticated_data().to_vec(),
+            authenticated_data: mls_plaintext.authenticated_data().into(),
         };
-        let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad.encode_detached()?;
+        let mls_ciphertext_content_aad_bytes =
+            mls_ciphertext_content_aad.tls_serialize_detached()?;
         // Extract generation and key material for encryption
         let secret_type = SecretType::try_from(mls_plaintext)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
@@ -76,12 +82,12 @@ impl MlsCiphertext {
             *mls_plaintext.content_type(),
         );
         // Serialize the sender data AAD
-        let mls_sender_data_aad_bytes = mls_sender_data_aad.encode_detached()?;
+        let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
         let sender_data = MlsSenderData::new(mls_plaintext.sender_index(), generation, reuse_guard);
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
-                &sender_data.encode_detached()?,
+                &sender_data.tls_serialize_detached()?,
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
@@ -93,9 +99,9 @@ impl MlsCiphertext {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
             content_type: *mls_plaintext.content_type(),
-            authenticated_data: mls_plaintext.authenticated_data().to_vec(),
-            encrypted_sender_data,
-            ciphertext: ciphertext.to_vec(),
+            authenticated_data: mls_plaintext.authenticated_data().into(),
+            encrypted_sender_data: encrypted_sender_data.into(),
+            ciphertext: ciphertext.into(),
         })
     }
 
@@ -111,19 +117,19 @@ impl MlsCiphertext {
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(&self.ciphertext);
+            .derive_aead_key(self.ciphertext.as_slice());
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = epoch_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, &self.ciphertext);
+            .derive_aead_nonce(ciphersuite, self.ciphertext.as_slice());
         // Serialize sender data AAD
         let mls_sender_data_aad =
             MlsSenderDataAad::new(self.group_id.clone(), self.epoch, self.content_type);
-        let mls_sender_data_aad_bytes = mls_sender_data_aad.encode_detached()?;
+        let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
         // Decrypt sender data
-        let sender_data_bytes = &sender_data_key
+        let sender_data_bytes = sender_data_key
             .aead_open(
-                &self.encrypted_sender_data,
+                self.encrypted_sender_data.as_slice(),
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
@@ -132,7 +138,7 @@ impl MlsCiphertext {
                 MlsCiphertextError::DecryptionError
             })?;
         log::trace!("  Successfully decrypted sender data.");
-        let sender_data = MlsSenderData::decode_detached(&sender_data_bytes)?;
+        let sender_data = MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())?;
         let secret_type = SecretType::try_from(&self.content_type)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         // Extract generation and key material for encryption
@@ -156,11 +162,12 @@ impl MlsCiphertext {
             content_type: self.content_type,
             authenticated_data: self.authenticated_data.clone(),
         };
-        let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad.encode_detached()?;
+        let mls_ciphertext_content_aad_bytes =
+            mls_ciphertext_content_aad.tls_serialize_detached()?;
         // Decrypt payload
         let mls_ciphertext_content_bytes = ratchet_key
             .aead_open(
-                &self.ciphertext,
+                self.ciphertext.as_slice(),
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_nonce,
             )
@@ -173,9 +180,9 @@ impl MlsCiphertext {
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        let mls_ciphertext_content = MlsCiphertextContent::decode(
+        let mls_ciphertext_content = MlsCiphertextContent::deserialize(
             self.content_type,
-            &mut Cursor::new(&mls_ciphertext_content_bytes),
+            &mut mls_ciphertext_content_bytes.as_slice(),
         )?;
         // Extract sender. The sender type is always of type Member for MlsCiphertext.
         let sender = Sender {
@@ -211,7 +218,7 @@ impl MlsCiphertext {
     }
 
     /// Encodes the `MLSCiphertextContent` struct with padding
-    /// ```c
+    /// ```text
     /// struct {
     ///     select (MLSCiphertext.content_type) {
     ///         case application:
@@ -222,23 +229,27 @@ impl MlsCiphertext {
     ///
     ///         case commit:
     ///             Commit commit;
-    /// }
+    ///     }
     ///
-    /// opaque signature<0..2^16-1>;
-    /// optional<MAC> confirmation_tag;
-    /// opaque padding<0..2^16-1>;
+    ///     opaque signature<0..2^16-1>;
+    ///     optional<MAC> confirmation_tag;
+    ///     opaque padding<0..2^16-1>;
     /// } MLSCiphertextContent;
     /// ```
     fn encode_padded_ciphertext_content_detached(
         mls_plaintext: &MlsPlaintext,
         padding_size: usize,
         mac_len: usize,
-    ) -> Result<Vec<u8>, CodecError> {
+    ) -> Result<Vec<u8>, tls_codec::Error> {
         // Persist all initial fields manually (avoids cloning them)
-        let buffer = &mut Vec::new();
-        mls_plaintext.content().encode(buffer)?;
-        mls_plaintext.signature().encode(buffer)?;
-        mls_plaintext.confirmation_tag().encode(buffer)?;
+        let buffer = &mut Vec::with_capacity(
+            mls_plaintext.content().tls_serialized_len()
+                + mls_plaintext.signature().tls_serialized_len()
+                + mls_plaintext.confirmation_tag().tls_serialized_len(),
+        );
+        mls_plaintext.content().tls_serialize(buffer)?;
+        mls_plaintext.signature().tls_serialize(buffer)?;
+        mls_plaintext.confirmation_tag().tls_serialize(buffer)?;
         // Add padding if needed
         let padding_length = if padding_size > 0 {
             // Calculate padding block size
@@ -249,8 +260,7 @@ impl MlsCiphertext {
         } else {
             0
         };
-        let padding_block = vec![0u8; padding_length];
-        encode_vec(VecSize::VecU16, buffer, &padding_block)?;
+        TlsByteSliceU16(&vec![0u8; padding_length]).tls_serialize(buffer)?;
         Ok(buffer.to_vec())
     }
 
@@ -258,11 +268,21 @@ impl MlsCiphertext {
     pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
+
+    /// Get the cipher text bytes as slice.
+    pub fn ciphertext(&self) -> &[u8] {
+        self.ciphertext.as_slice()
+    }
+
+    /// Returns the `epoch` in the `MlsCiphertext`.
+    pub fn epoch(&self) -> &GroupEpoch {
+        &self.epoch
+    }
 }
 
 // === Helper structs ===
 
-#[derive(Clone)]
+#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct MlsSenderData {
     pub(crate) sender: LeafIndex,
     pub(crate) generation: u32,
@@ -279,7 +299,7 @@ impl MlsSenderData {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct MlsSenderDataAad {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
@@ -296,18 +316,18 @@ impl MlsSenderDataAad {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct MlsCiphertextContent {
     pub(crate) content: MlsPlaintextContentType,
     pub(crate) signature: Signature,
     pub(crate) confirmation_tag: Option<ConfirmationTag>,
-    pub(crate) padding: Vec<u8>,
+    pub(crate) padding: TlsByteVecU16,
 }
 
-#[derive(Clone)]
+#[derive(Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 pub(crate) struct MlsCiphertextContentAad {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,
-    pub(crate) authenticated_data: Vec<u8>,
+    pub(crate) authenticated_data: TlsByteVecU32,
 }

@@ -1,3 +1,5 @@
+use tls_codec::Deserialize;
+
 use crate::config::*;
 use crate::{extensions::*, key_packages::*};
 
@@ -12,7 +14,7 @@ fn generate_key_package() {
         .unwrap();
 
         // Generate a valid KeyPackage.
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
@@ -23,7 +25,7 @@ fn generate_key_package() {
         assert!(kpb.key_package().verify().is_ok());
 
         // Now we add an invalid lifetime.
-        let lifetime_extension = Box::new(LifetimeExtension::new(0));
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(0));
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
@@ -34,7 +36,7 @@ fn generate_key_package() {
         assert!(kpb.key_package().verify().is_err());
 
         // Now with two lifetime extensions, the key package should be invalid.
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
@@ -54,12 +56,12 @@ fn test_codec() {
             .unwrap()
             .unsigned();
 
-        kpb.add_extension(Box::new(LifetimeExtension::new(60)));
+        kpb.add_extension(Extension::LifeTime(LifetimeExtension::new(60)));
         let kpb = kpb.sign(&credential_bundle).unwrap();
-        let enc = kpb.key_package().encode_detached().unwrap();
+        let enc = kpb.key_package().tls_serialize_detached().unwrap();
 
         // Now it's valid.
-        let kp = KeyPackage::decode(&mut Cursor::new(&enc)).unwrap();
+        let kp = KeyPackage::tls_deserialize(&mut enc.as_slice()).unwrap();
         assert_eq!(kpb.key_package, kp);
     }
 }
@@ -73,7 +75,7 @@ fn key_package_id_extension() {
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
-            vec![Box::new(LifetimeExtension::new(60))],
+            vec![Extension::LifeTime(LifetimeExtension::new(60))],
         )
         .unwrap();
         assert!(kpb.key_package().verify().is_ok());
@@ -81,7 +83,7 @@ fn key_package_id_extension() {
 
         // Add an ID to the key package.
         let id = [1, 2, 3, 4];
-        kpb.add_extension(Box::new(KeyIdExtension::new(&id)));
+        kpb.add_extension(Extension::KeyPackageId(KeyIdExtension::new(&id)));
 
         // Sign it to make it valid.
         let kpb = kpb.sign(&credential_bundle).unwrap();

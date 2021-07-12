@@ -79,7 +79,6 @@
 
 use crate::{
     ciphersuite::Ciphersuite,
-    codec::*,
     config::{Config, ProtocolVersion},
     credentials::{CredentialBundle, CredentialType},
     framing::*,
@@ -166,7 +165,7 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
     MlsGroup::new(
-        &group_id.as_slice(),
+        group_id.as_slice(),
         ciphersuite.name(),
         key_package_bundle,
         MlsGroupConfig::default(),
@@ -183,6 +182,8 @@ fn build_handshake_messages(
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
 ) -> (Vec<u8>, Vec<u8>) {
+    use tls_codec::Serialize;
+
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
@@ -193,7 +194,7 @@ fn build_handshake_messages(
         leaf,
         &[1, 2, 3, 4],
         Proposal::Remove(RemoveProposal { removed: 0 }),
-        &credential_bundle,
+        credential_bundle,
         group.context(),
         &membership_key,
     )
@@ -210,8 +211,8 @@ fn build_handshake_messages(
     )
     .expect("Could not create MlsCiphertext");
     (
-        plaintext.encode_detached().unwrap(),
-        ciphertext.encode_detached().unwrap(),
+        plaintext.tls_serialize_detached().unwrap(),
+        ciphertext.tls_serialize_detached().unwrap(),
     )
 }
 
@@ -221,6 +222,8 @@ fn build_application_messages(
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
 ) -> (Vec<u8>, Vec<u8>) {
+    use tls_codec::Serialize;
+
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
@@ -231,7 +234,7 @@ fn build_application_messages(
         leaf,
         &[1, 2, 3],
         &[4, 5, 6],
-        &credential_bundle,
+        credential_bundle,
         group.context(),
         &membership_key,
     )
@@ -250,8 +253,8 @@ fn build_application_messages(
         Err(e) => panic!("Could not create MlsCiphertext {}", e),
     };
     (
-        plaintext.encode_detached().unwrap(),
-        ciphertext.encode_detached().unwrap(),
+        plaintext.tls_serialize_detached().unwrap(),
+        ciphertext.tls_serialize_detached().unwrap(),
     )
 }
 
@@ -365,6 +368,8 @@ fn write_test_vectors() {
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
+    use tls_codec::{Deserialize, Serialize};
+
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);
@@ -471,8 +476,9 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             }
 
             // Setup group
+            let ctxt_bytes = hex_to_bytes(&application.ciphertext);
             let mls_ciphertext_application =
-                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.ciphertext)))
+                MlsCiphertext::tls_deserialize(&mut ctxt_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_application.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
@@ -491,7 +497,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
-                    .encode_detached()
+                    .tls_serialize_detached()
                     .expect("Error encoding MlsPlaintext")
             {
                 if cfg!(test) {
@@ -523,8 +529,9 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             }
 
             // Setup group
+            let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
+                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -538,7 +545,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
-                    .encode_detached()
+                    .tls_serialize_detached()
                     .expect("Error encoding MlsPlaintext")
             {
                 if cfg!(test) {
@@ -564,8 +571,9 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             }
 
             // Setup group
+            let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
+                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MLSCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
@@ -580,7 +588,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .expect("Error decrypting MLSCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
-                    .encode_detached()
+                    .tls_serialize_detached()
                     .expect("Error encoding MLSPlaintext")
             {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);

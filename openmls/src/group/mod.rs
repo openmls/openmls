@@ -5,7 +5,6 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `ManagedGroup`.
 
-mod codec;
 pub mod errors;
 mod group_context;
 mod managed_group;
@@ -15,43 +14,48 @@ mod mls_group;
 pub mod tests;
 
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::extensions::*;
 use crate::utils::*;
 
 pub(crate) use serde::{Deserialize, Serialize};
 
-pub use codec::*;
 pub use errors::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError, WelcomeError};
 pub use group_context::*;
 pub use managed_group::*;
 pub use mls_group::*;
 
-#[derive(Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize)]
+use tls_codec::TlsVecU32;
+use tls_codec::{Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
+
+#[derive(
+    Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct GroupId {
-    pub value: Vec<u8>,
+    value: TlsByteVecU8,
 }
 
 impl GroupId {
     pub fn random() -> Self {
         Self {
-            value: randombytes(16),
+            value: randombytes(16).into(),
         }
     }
     pub fn from_slice(bytes: &[u8]) -> Self {
         GroupId {
-            value: bytes.to_vec(),
+            value: bytes.into(),
         }
     }
     pub fn as_slice(&self) -> &[u8] {
-        &self.value
+        self.value.as_slice()
     }
     pub fn to_vec(&self) -> Vec<u8> {
-        self.value.clone()
+        self.value.clone().into()
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Copy, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct GroupEpoch(pub u64);
 
 impl GroupEpoch {
@@ -60,15 +64,15 @@ impl GroupEpoch {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct GroupContext {
     group_id: GroupId,
     epoch: GroupEpoch,
-    tree_hash: Vec<u8>,
-    confirmed_transcript_hash: Vec<u8>,
-    extensions: Vec<Box<dyn Extension>>,
-    // The group context in serialized form for efficiency. This field is not encoded.
-    serialized: Vec<u8>,
+    tree_hash: TlsByteVecU8,
+    confirmed_transcript_hash: TlsByteVecU8,
+    extensions: TlsVecU32<Extension>,
 }
 
 #[cfg(any(feature = "test-utils", test))]

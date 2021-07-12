@@ -1,6 +1,28 @@
-use std::{any::Any, convert::TryFrom, fmt::Debug};
+//! # Extensions
+//!
+//! ## Extension struct
+//!
+//! An extension has an `ExtensionType` and an opaque payload (byte vector).
+//! This isn't used in OpenMLS at all but part of the (de)serialization process
+//! of each extension.
+//!
+//! See IANA registry for registered values
+//!
+//! ```text
+//! uint16 ExtensionType;
+//!
+//! struct {
+//!     ExtensionType extension_type;
+//!     opaque extension_data<0..2^32-1>;
+//! } Extension;
+//! ```
 
-use crate::codec::{decode_vec, encode_vec, Codec, CodecError, Cursor, Decode, Encode, VecSize};
+use std::{
+    convert::TryFrom,
+    fmt::Debug,
+    io::{Read, Write},
+};
+
 pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
@@ -9,6 +31,7 @@ mod key_package_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
+use tls_codec::{Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU32};
 
 pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;
@@ -23,7 +46,21 @@ mod test_extensions;
 /// # Extension types
 ///
 /// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Ord,
+    PartialOrd,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+)]
 #[repr(u16)]
 pub enum ExtensionType {
     Reserved = 0,
@@ -34,20 +71,12 @@ pub enum ExtensionType {
     RatchetTree = 5,
 }
 
-/// The default extension type is invalid.
-/// This has to be set explicitly.
-impl Default for ExtensionType {
-    fn default() -> Self {
-        ExtensionType::Reserved
-    }
-}
-
 impl TryFrom<u16> for ExtensionType {
-    type Error = CodecError;
+    type Error = tls_codec::Error;
 
-    /// Get the `ExtensionType` from a u16.
+    /// Get the [`ExtensionType`] from a u16.
     /// Returns an error if the extension type is not known.
-    /// Note that this returns a [`CodecError`](`crate::codec::CodecError`).
+    /// Note that this returns a [`tls_codec::Error`](`tls_codec::Error`).
     fn try_from(a: u16) -> Result<Self, Self::Error> {
         match a {
             0 => Ok(ExtensionType::Reserved),
@@ -56,179 +85,117 @@ impl TryFrom<u16> for ExtensionType {
             3 => Ok(ExtensionType::KeyId),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
-            _ => Err(CodecError::DecodingError),
+            _ => Err(tls_codec::Error::DecodingError(format!(
+                "{} is an unkown extension type",
+                a
+            ))),
         }
     }
 }
 
-implement_codec! {
-    ExtensionType,
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u16).encode(buffer)?;
-        Ok(())
-    }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// An extension can be one of the following elements.
+pub enum Extension {
+    /// A [`CapabilitiesExtension`]
+    Capabilities(CapabilitiesExtension),
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = u16::decode(cursor)?;
-        Self::try_from(value)
-    }
+    /// A [`KeyIdExtension`]
+    KeyPackageId(KeyIdExtension),
+
+    /// A [`LifetimeExtension`]
+    LifeTime(LifetimeExtension),
+
+    /// A [`ParentHashExtension`]
+    ParentHash(ParentHashExtension),
+
+    /// A [`RatchetTreeExtension`]
+    RatchetTree(RatchetTreeExtension),
 }
 
-/// # Extension struct
-///
-/// An extension has an `ExtensionType` and an opaque payload (byte vector).
-/// This is only used for encoding and decoding.
-///
-/// See IANA registry for registered values
-///
-/// ```text
-/// uint16 ExtensionType;
-///
-/// struct {
-///     ExtensionType extension_type;
-///     opaque extension_data<0..2^32-1>;
-/// } Extension;
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ExtensionStruct {
-    extension_type: ExtensionType,
-    extension_data: Vec<u8>,
-}
-
-impl<'a> ExtensionStruct {
-    /// Build a new `ExtensionStruct`.
-    pub(crate) fn new(extension_type: ExtensionType, extension_data: Vec<u8>) -> Self {
-        Self {
-            extension_type,
-            extension_data,
+impl tls_codec::Size for Extension {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        2 /* extension type len */
+        + 4 /* u32 len */ +
+        match self {
+            Extension::Capabilities(e) => e.tls_serialized_len(),
+            Extension::KeyPackageId(e) => e.tls_serialized_len(),
+            Extension::LifeTime(e) => e.tls_serialized_len(),
+            Extension::ParentHash(e) => e.tls_serialized_len(),
+            Extension::RatchetTree(e) => e.tls_serialized_len(),
         }
     }
+}
 
-    /// Get the data of this extension struct.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn extension_data(&'a self) -> &'a [u8] {
-        &self.extension_data
+impl tls_codec::Serialize for Extension {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        // First write the extension type.
+        let written = self.extension_type().tls_serialize(writer)?;
+
+        // Now serialize the extension into a separate byte vector.
+        let extension_data_len = self.tls_serialized_len() - 6 /* extension type length and u32 length */;
+        let mut extension_data = Vec::with_capacity(extension_data_len);
+
+        let extension_data_written = match self {
+            Extension::Capabilities(e) => e.tls_serialize(&mut extension_data),
+            Extension::KeyPackageId(e) => e.tls_serialize(&mut extension_data),
+            Extension::LifeTime(e) => e.tls_serialize(&mut extension_data),
+            Extension::ParentHash(e) => e.tls_serialize(&mut extension_data),
+            Extension::RatchetTree(e) => e.tls_serialize(&mut extension_data),
+        }?;
+        debug_assert_eq!(extension_data_written, extension_data_len);
+        debug_assert_eq!(extension_data_written, extension_data.len());
+
+        // Write the serialized extension out.
+        TlsSliceU32(&extension_data)
+            .tls_serialize(writer)
+            .map(|l| l + written)
     }
 }
 
-implement_codec! {
-    ExtensionStruct,
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.extension_type.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.extension_data)?;
-        Ok(())
-    }
+impl tls_codec::Deserialize for Extension {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        // Read the extension type and extension data.
+        let extension_type = ExtensionType::tls_deserialize(bytes)?;
+        let extension_data = TlsByteVecU32::tls_deserialize(bytes)?;
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let extension_type = ExtensionType::decode(cursor)?;
-        let extension_data = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(Self {
-            extension_type,
-            extension_data,
+        // Now deserialize the extension itself from the extension data.
+        let mut extension_data = extension_data.as_slice();
+        Ok(match extension_type {
+            ExtensionType::Capabilities => Extension::Capabilities(
+                CapabilitiesExtension::tls_deserialize(&mut extension_data)?,
+            ),
+            ExtensionType::KeyId => {
+                Extension::KeyPackageId(KeyIdExtension::tls_deserialize(&mut extension_data)?)
+            }
+            ExtensionType::Lifetime => {
+                Extension::LifeTime(LifetimeExtension::tls_deserialize(&mut extension_data)?)
+            }
+            ExtensionType::ParentHash => {
+                Extension::ParentHash(ParentHashExtension::tls_deserialize(&mut extension_data)?)
+            }
+            ExtensionType::RatchetTree => {
+                Extension::RatchetTree(RatchetTreeExtension::tls_deserialize(&mut extension_data)?)
+            }
+            ExtensionType::Reserved => {
+                return Err(tls_codec::Error::DecodingError(format!(
+                    "{:?} is not a valid extension type",
+                    extension_type
+                )))
+            }
         })
     }
 }
 
-/// Build a new extension of the given type from a byte slice.
-fn from_bytes(ext_type: ExtensionType, bytes: &[u8]) -> Result<Box<dyn Extension>, ExtensionError> {
-    match ext_type {
-        ExtensionType::Capabilities => Ok(Box::new(CapabilitiesExtension::new_from_bytes(bytes)?)),
-        ExtensionType::KeyId => Ok(Box::new(KeyIdExtension::new_from_bytes(bytes)?)),
-        ExtensionType::Lifetime => Ok(Box::new(LifetimeExtension::new_from_bytes(bytes)?)),
-        ExtensionType::ParentHash => Ok(Box::new(ParentHashExtension::new_from_bytes(bytes)?)),
-        ExtensionType::RatchetTree => Ok(Box::new(RatchetTreeExtension::new_from_bytes(bytes)?)),
-        _ => Err(ExtensionError::InvalidExtensionType(
-            format!("Invalid extension type {:?}.", ext_type).into(),
-        )),
-    }
-}
-
-/// Encode extensions with TLS encoding. This is used whenever a struct contains
-/// extensions.
-pub(crate) fn encode_extensions(
-    extensions: &[Box<dyn Extension>],
-    buffer: &mut Vec<u8>,
-) -> Result<(), CodecError> {
-    let encoded_extensions: Vec<ExtensionStruct> =
-        extensions.iter().map(|e| e.to_extension_struct()).collect();
-    encode_vec(VecSize::VecU32, buffer, &encoded_extensions)?;
-    Ok(())
-}
-
-/// Read a list of extensions from a `Cursor` into a vector of `Extension`s.
-///
-/// Note that this function returns a `CodecError` instead of an
-/// `ExtensionError` because it's only used in decoding functions.
-pub(crate) fn extensions_vec_from_cursor(
-    cursor: &mut Cursor,
-) -> Result<Vec<Box<dyn Extension>>, CodecError> {
-    // First parse the extension bytes into the `ExtensionStruct`.
-    let extension_struct_vec: Vec<ExtensionStruct> = decode_vec(VecSize::VecU32, cursor)?;
-
-    // Now create the result vector of `Extension`s.
-    let mut result: Vec<Box<dyn Extension>> = Vec::new();
-    for extension in extension_struct_vec.iter() {
-        // Make sure there are no duplicate extensions.
-        if result
-            .iter()
-            .any(|e| e.extension_type() == extension.extension_type)
-        {
-            return Err(CodecError::DecodingError);
-        }
-        let ext = match from_bytes(extension.extension_type, &extension.extension_data) {
-            Ok(r) => r,
-            Err(_) => return Err(CodecError::DecodingError),
-        };
-        result.push(ext);
-    }
-
-    Ok(result)
-}
-
-/// # Extension
-///
-/// This trait defines functions to interact with an extension.
-#[typetag::serde(tag = "type")]
-pub trait Extension: Debug + ExtensionHelper + Send + Sync {
-    /// Build a new extension from a byte slice.
-    ///
-    /// Note that all implementations of this trait are not public such that
-    /// this function can't be used outside of the library.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
-    where
-        Self: Sized;
-
-    /// Each extension has an extension type.
-    /// This should be an associated constant really.
-    /// See <https://github.com/rust-lang/rust/issues/46969> for reference.
-    fn extension_type(&self) -> ExtensionType;
-
-    /// Get the extension as `ExtensionStruct` for encoding.
-    fn to_extension_struct(&self) -> ExtensionStruct;
-
-    /// Get a generic trait object for downcasting.
-    fn as_any(&self) -> &dyn Any;
-
-    /// Get a reference to the `ParentHashExtension`.
+impl Extension {
+    /// Get a reference to the `RatchetTreeExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `ParentHashExtension`.
-    fn to_parent_hash_extension(&self) -> Result<&ParentHashExtension, ExtensionError> {
-        match self.as_any().downcast_ref::<ParentHashExtension>() {
-            Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType(
-                "This is not a ParentHashExtension".into(),
-            )),
-        }
-    }
-
-    /// Get a reference to the `CapabilitiesExtension`.
-    /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `CapabilitiesExtension`.
-    fn to_capabilities_extension(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
-        match self.as_any().downcast_ref::<CapabilitiesExtension>() {
-            Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType(
-                "This is not a CapabilitiesExtension".into(),
+    /// that's not a `RatchetTreeExtension`.
+    pub fn as_ratchet_tree_extension(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
+        match self {
+            Self::RatchetTree(rte) => Ok(rte),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not a RatchetTreeExtension".into(),
             )),
         }
     }
@@ -236,10 +203,10 @@ pub trait Extension: Debug + ExtensionHelper + Send + Sync {
     /// Get a reference to the `LifetimeExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `LifetimeExtension`.
-    fn to_lifetime_extension(&self) -> Result<&LifetimeExtension, ExtensionError> {
-        match self.as_any().downcast_ref::<LifetimeExtension>() {
-            Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType(
+    pub fn as_lifetime_extension(&self) -> Result<&LifetimeExtension, ExtensionError> {
+        match self {
+            Self::LifeTime(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
                 "This is not a LifetimeExtension".into(),
             )),
         }
@@ -248,72 +215,60 @@ pub trait Extension: Debug + ExtensionHelper + Send + Sync {
     /// Get a reference to the `KeyIDExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `KeyIDExtension`.
-    fn to_key_id_extension(&self) -> Result<&KeyIdExtension, ExtensionError> {
-        match self.as_any().downcast_ref::<KeyIdExtension>() {
-            Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType(
+    pub fn as_key_id_extension(&self) -> Result<&KeyIdExtension, ExtensionError> {
+        match self {
+            Self::KeyPackageId(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
                 "This is not a KeyIDExtension".into(),
             )),
         }
     }
 
-    /// Get a reference to the `RatchetTreeExtension`.
+    /// Get a reference to the `CapabilitiesExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `RatchetTreeExtension`.
-    fn as_ratchet_tree_extension(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
-        match self.as_any().downcast_ref::<RatchetTreeExtension>() {
-            Some(e) => Ok(e),
-            None => Err(ExtensionError::InvalidExtensionType(
-                "This is not a RatchetTreeExtension".into(),
+    /// that's not a `CapabilitiesExtension`.
+    pub fn as_capabilities_extension(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
+        match self {
+            Self::Capabilities(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not a CapabilitiesExtension".into(),
             )),
         }
     }
-}
 
-// A slightly hacky work around to make `Extensions` clonable.
-pub trait ExtensionHelper {
-    fn clone_it(&self) -> Box<dyn Extension>;
-}
-
-impl<T> ExtensionHelper for T
-where
-    T: 'static + Extension + Clone + Default,
-{
-    fn clone_it(&self) -> Box<dyn Extension> {
-        Box::new(self.clone())
-    }
-}
-
-// Implement necessary traits (Clone, PartialEq) that we can't derive.
-
-impl Clone for Box<dyn Extension> {
-    fn clone(&self) -> Box<dyn Extension>
-    where
-        Self: Sized,
-    {
-        self.clone_it()
-    }
-}
-
-impl PartialEq for dyn Extension {
-    fn eq(&self, other: &Self) -> bool {
-        if self.extension_type() != other.extension_type() {
-            return false;
+    /// Get a reference to the `ParentHashExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `ParentHashExtension`.
+    pub fn as_parent_hash_extension(&self) -> Result<&ParentHashExtension, ExtensionError> {
+        match self {
+            Self::ParentHash(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not a ParentHashExtension".into(),
+            )),
         }
+    }
 
-        self.to_extension_struct() == other.to_extension_struct()
+    #[inline]
+    pub const fn extension_type(&self) -> ExtensionType {
+        match self {
+            Extension::Capabilities(_) => ExtensionType::Capabilities,
+            Extension::KeyPackageId(_) => ExtensionType::KeyId,
+            Extension::LifeTime(_) => ExtensionType::Lifetime,
+            Extension::ParentHash(_) => ExtensionType::ParentHash,
+            Extension::RatchetTree(_) => ExtensionType::RatchetTree,
+        }
     }
 }
 
-impl Eq for dyn Extension {}
+impl Eq for Extension {}
 
-impl PartialOrd for dyn Extension {
+impl PartialOrd for Extension {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.extension_type().partial_cmp(&other.extension_type())
     }
 }
 
-impl Ord for dyn Extension {
+impl Ord for Extension {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.extension_type().cmp(&other.extension_type())
     }

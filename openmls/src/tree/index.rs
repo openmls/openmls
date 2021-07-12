@@ -1,11 +1,25 @@
 use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
+use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::*;
 
 /// NodeIndex is an index to the nodes of a tree, both parent and leaf nodes.
 #[derive(
-    Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash, Default, Serialize, Deserialize,
+    Debug,
+    Ord,
+    PartialOrd,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    Hash,
+    Default,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
 )]
 pub struct NodeIndex(u32);
 
@@ -44,7 +58,20 @@ impl From<LeafIndex> for NodeIndex {
 
 /// LeafIndex is an index to the leaves of a tree.
 #[derive(
-    Debug, Default, Ord, PartialOrd, Hash, Eq, PartialEq, Copy, Clone, Serialize, Deserialize,
+    Debug,
+    Default,
+    Ord,
+    PartialOrd,
+    Hash,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct LeafIndex(pub(crate) u32);
 

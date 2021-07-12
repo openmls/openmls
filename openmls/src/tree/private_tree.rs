@@ -124,8 +124,11 @@ impl PrivateTree {
         let path_secrets = if path.is_empty() {
             vec![]
         } else {
+            // FIXME: remove unwrap
             vec![PathSecret {
-                path_secret: leaf_secret.kdf_expand_label("path", &[], ciphersuite.hash_length()),
+                path_secret: leaf_secret
+                    .kdf_expand_label("path", &[], ciphersuite.hash_length())
+                    .unwrap(),
             }]
         };
 
@@ -164,10 +167,11 @@ impl PrivateTree {
         let mut path_secrets = path_secrets;
 
         for i in 1..path.len() {
-            let path_secret =
-                path_secrets[i - 1]
-                    .path_secret
-                    .kdf_expand_label("path", &[], hash_len);
+            // FIXME: remove unwrap
+            let path_secret = path_secrets[i - 1]
+                .path_secret
+                .kdf_expand_label("path", &[], hash_len)
+                .unwrap();
             path_secrets.push(PathSecret { path_secret });
         }
         self.path_secrets = path_secrets;
@@ -216,9 +220,11 @@ impl PrivateTree {
 
         // Derive key pairs for all nodes in the direct path.
         for path_secret in self.path_secrets.iter() {
+            // FIXME: remove unwrap
             let node_secret = path_secret
                 .path_secret
-                .kdf_expand_label("node", &[], hash_len);
+                .kdf_expand_label("node", &[], hash_len)
+                .unwrap();
             let keypair = ciphersuite.derive_hpke_keypair(&node_secret);
             let (private_key, public_key) = keypair.into_keys();
             public_keys.push(public_key);
@@ -226,7 +232,7 @@ impl PrivateTree {
         }
 
         // Store private keys.
-        self.path_keys.add(private_keys, &path);
+        self.path_keys.add(private_keys, path);
 
         // Return public keys.
         public_keys

@@ -3,7 +3,6 @@
 //! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
@@ -22,8 +21,6 @@ implement_error! {
         Complex {
             LibraryError(ErrorString) =
                 "An internal library error occurred. Additional detail is provided.",
-            Codec(CodecError) =
-                "See [`CodecError`](`crate::codec::CodecError`) for details",
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
             Group(MlsGroupError) =
@@ -73,6 +70,8 @@ implement_error! {
                 "The given proposal is invalid.",
             CommitWithInvalidProposals =
                 "A commit contained an invalid proposal.",
+            InvalidApplicationMessage =
+                "The application message is invalid.",
         }
         Complex {
             InvalidCiphertext(MlsCiphertextError) =

@@ -191,7 +191,7 @@ impl KeyStore {
         &self,
         ciphersuites: &[CiphersuiteName],
         credential: &Credential,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<Extension>,
     ) -> Result<KeyPackage, KeyStoreError> {
         let credential_bundle = self
             .get_credential_bundle(credential.signature_key())

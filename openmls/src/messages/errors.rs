@@ -1,4 +1,4 @@
-use crate::codec::*;
+use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum ProposalQueueError {
@@ -17,14 +17,19 @@ implement_error! {
     }
 }
 
-impl From<ProposalOrRefTypeError> for CodecError {
-    fn from(_: ProposalOrRefTypeError) -> Self {
-        CodecError::DecodingError
+impl From<ProposalOrRefTypeError> for tls_codec::Error {
+    fn from(e: ProposalOrRefTypeError) -> Self {
+        tls_codec::Error::DecodingError(format!("{:?}", e)).into()
     }
 }
 
 implement_error! {
     pub enum QueuedProposalError {
-        WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
+        Simple {
+            WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
+        }
+        Complex {
+            TlsCodecError(TlsCodecError) = "Error serializing",
+        }
     }
 }
