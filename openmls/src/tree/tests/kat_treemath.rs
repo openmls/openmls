@@ -60,7 +60,7 @@ macro_rules! convert {
     };
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let leaves = LeafIndex::from(n_leaves);
     let n_nodes = node_width(leaves.as_usize()) as u32;
@@ -105,7 +105,7 @@ fn write_test_vectors() {
     write("test_vectors/kat_treemath_openmls-new.json", &tests);
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVectorError> {
     let n_leaves = test_vector.n_leaves as usize;
     let n_nodes = node_width(n_leaves);
@@ -151,7 +151,7 @@ fn read_test_vectors() {
     run_test_vector(tv).expect("Error while checking key schedule test vector.");
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 implement_error! {
     pub enum TmTestVectorError {
         TreeSizeMismatch = "The computed tree size doesn't match the one in the test vector.",

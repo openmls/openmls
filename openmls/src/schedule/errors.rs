@@ -20,7 +20,7 @@ implement_error! {
     }
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 implement_error! {
     pub enum KsTestVectorError {
         JoinerSecretMismatch = "The computed joiner secret doesn't match the one in the test vector.",

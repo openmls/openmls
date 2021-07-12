@@ -26,8 +26,7 @@ itertools = {version = "0.10", optional = true}
 [features]
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
-expose-test-vectors = ["itertools"]
-test-utils = []
+test-utils = ["itertools"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 
@@ -36,7 +35,7 @@ criterion = "^0.3"
 flexi_logger = "0.18"
 itertools = "0.10"
 test_macros = { path = "../test_macros" }
-openmls = { path = ".", features = ["expose-test-vectors"] }
+openmls = { path = ".", features = ["test-utils"] }
 
 [[bench]]
 name = "benchmark"

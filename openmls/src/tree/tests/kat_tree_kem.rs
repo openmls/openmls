@@ -272,7 +272,7 @@ fn write_test_vector() {
     write("test_vectors/kat_tree_kem_openmls-new.json", &tests);
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
     // The test really only makes sense with two or more leaves
     if n_leaves <= 1 {

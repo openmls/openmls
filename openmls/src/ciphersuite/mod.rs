@@ -410,7 +410,7 @@ impl Secret {
     }
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 impl From<&[u8]> for Secret {
     fn from(bytes: &[u8]) -> Self {
         log::trace!("Secret from slice");
@@ -701,7 +701,7 @@ impl AeadKey {
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
@@ -770,7 +770,7 @@ impl AeadNonce {
     }
 
     /// Get a slice to the nonce value.
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }

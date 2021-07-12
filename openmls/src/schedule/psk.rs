@@ -284,26 +284,26 @@ impl PskSecret {
         &self.secret
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(ciphersuite: &'static Ciphersuite) -> Self {
         Self {
             secret: Secret::random(ciphersuite, None /* MLS version */),
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }
