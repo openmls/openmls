@@ -216,20 +216,29 @@
 <span id="213">213</span>
 <span id="214">214</span>
 <span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This config contains all structs, enums and functions to configure MLS.</span>
 
 <span class="kw">use</span> <span class="ident">lazy_static::lazy_static</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryFrom</span>, <span class="ident">env</span>, <span class="ident">fmt</span>, <span class="ident">fs::File</span>, <span class="ident">io::BufReader</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">CiphersuiteName</span>};
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::codec</span>::{<span class="ident">Codec</span>, <span class="ident">CodecError</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::extensions::ExtensionType</span>;
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors::ConfigError</span>;
 
 <span class="doccomment">/// This value is used as the default lifetime of `KeyPackage`s if no default</span>
@@ -380,7 +389,20 @@
 <span class="doccomment">///     (255)</span>
 <span class="doccomment">/// } ProtocolVersion;</span>
 <span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>,
+    <span class="ident">Copy</span>,
+    <span class="ident">Clone</span>,
+    <span class="ident">PartialEq</span>,
+    <span class="ident">Eq</span>,
+    <span class="ident">PartialOrd</span>,
+    <span class="ident">Ord</span>,
+    <span class="ident">Serialize</span>,
+    <span class="ident">Deserialize</span>,
+    <span class="ident">TlsDeserialize</span>,
+    <span class="ident">TlsSerialize</span>,
+    <span class="ident">TlsSize</span>,
+)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolVersion</span> {
     <span class="ident">Reserved</span> <span class="op">=</span> <span class="number">0</span>,

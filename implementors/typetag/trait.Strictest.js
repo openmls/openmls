@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["openmls"] = [{"text":"impl Strictest for dyn <a class=\"trait\" href=\"openmls/prelude/trait.Extension.html\" title=\"trait openmls::prelude::Extension\">Extension</a>","synthetic":false,"types":["openmls::extensions::Extension"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

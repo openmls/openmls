@@ -517,9 +517,61 @@
 <span id="514">514</span>
 <span id="515">515</span>
 <span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::config::ProtocolVersion</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::extensions::Extension</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::framing</span>::<span class="kw-2">*</span>;
@@ -531,10 +583,14 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map::Entry</span>, <span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{
+    <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">Size</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+    <span class="ident">TlsVecU32</span>,
+};
 
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::errors</span>::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalType</span> {
     <span class="ident">Add</span> <span class="op">=</span> <span class="number">1</span>,
@@ -578,7 +634,7 @@
 <span class="doccomment">/// Type of Proposal, either by value or by reference</span>
 <span class="doccomment">/// We only implement the values (1, 2), other values are not valid</span>
 <span class="doccomment">/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalOrRefType</span> {
     <span class="ident">Proposal</span> <span class="op">=</span> <span class="number">1</span>,
@@ -663,16 +719,21 @@
 
 <span class="doccomment">/// Reference to a Proposal. This can be used in Commit messages to reference</span>
 <span class="doccomment">/// proposals that have already been sent</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProposalReference</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">value</span>: <span class="ident">TlsByteVecU8</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ProposalReference</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_proposal</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">proposal</span>: <span class="kw-2">&amp;</span><span class="ident">Proposal</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>);
-        <span class="self">Self</span> { <span class="ident">value</span> }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_proposal</span>(
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">proposal</span>: <span class="kw-2">&amp;</span><span class="ident">Proposal</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">proposal</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>).<span class="ident">into</span>();
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">value</span> })
     }
 }
 
@@ -697,7 +758,7 @@
             <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>,
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">QueuedProposalError::WrongContentType</span>),
         };
-        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference::from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">proposal</span>);
+        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference::from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="ident">proposal</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">proposal</span>,
             <span class="ident">proposal_reference</span>,
@@ -710,18 +771,18 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">proposal</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Proposal</span>,
         <span class="ident">sender</span>: <span class="ident">Sender</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference::from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">proposal</span>);
-        <span class="self">Self</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">QueuedProposalError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">ProposalReference::from_proposal</span>(<span class="ident">ciphersuite</span>, <span class="ident">proposal</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">proposal</span>,
             <span class="ident">proposal_reference</span>,
             <span class="ident">sender</span>,
             <span class="ident">proposal_or_ref_type</span>: <span class="ident">ProposalOrRefType::Proposal</span>,
-        }
+        })
     }
     <span class="doccomment">/// Returns the `Proposal` as a reference</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">proposal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Proposal</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal</span>
+        <span class="self">self</span>.<span class="ident">proposal</span>
     }
     <span class="doccomment">/// Returns the `ProposalReference` as a reference</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">proposal_reference</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProposalReference</span> {
@@ -760,7 +821,7 @@
             <span class="comment">// It is safe to unwrap here, because we checked that only proposals can end up</span>
             <span class="comment">// here.</span>
             <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span>
-                <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>();
+                <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>();
             <span class="ident">proposal_queue</span>.<span class="ident">add</span>(<span class="ident">queued_proposal</span>);
         }
         <span class="ident">proposal_queue</span>
@@ -790,7 +851,7 @@
         <span class="kw">for</span> <span class="ident">proposal_or_ref</span> <span class="kw">in</span> <span class="ident">committed_proposals</span>.<span class="ident">iter</span>() {
             <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">proposal_or_ref</span> {
                 <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">QueuedProposal::from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">proposal</span>, <span class="ident">sender</span>)
+                    <span class="ident">QueuedProposal::from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">proposal</span>, <span class="ident">sender</span>)<span class="question-mark">?</span>
                 }
                 <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">proposal_reference</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">match</span> <span class="ident">proposals_by_reference_queue</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>) {
@@ -854,20 +915,17 @@
         };
 
         <span class="comment">// Aggregate both proposal types to a common iterator</span>
-        <span class="comment">// It is safe to unwrap here, because we checked eralier that only proposals can</span>
-        <span class="comment">// end up here</span>
+        <span class="comment">// We checked earlier that only proposals can end up here</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">queued_proposal_list</span> <span class="op">=</span> <span class="ident">proposals_by_reference</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">mls_plaintext</span><span class="op">|</span> {
-                <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>()
-            })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span><span class="op">|</span> <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_plaintext</span>))
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
 
         <span class="ident">queued_proposal_list</span>.<span class="ident">extend</span>(
             <span class="ident">proposals_by_value</span>
                 .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">QueuedProposal::from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">p</span>, <span class="ident">sender</span>))
-                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span><span class="op">&gt;</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> <span class="ident">QueuedProposal::from_proposal_and_sender</span>(<span class="ident">ciphersuite</span>, <span class="ident">p</span>, <span class="ident">sender</span>))
+                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>
                 .<span class="ident">into_iter</span>(),
         );
 
@@ -994,19 +1052,46 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddProposal</span> {
-    <span class="kw">pub</span> <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">impl</span> <span class="ident">AddProposal</span> {
+    <span class="doccomment">/// Get a reference to the key package in the proposal.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
+    }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UpdateProposal</span> {
-    <span class="kw">pub</span> <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">impl</span> <span class="ident">UpdateProposal</span> {
+    <span class="doccomment">/// Get a reference to the key package in the proposal.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
+    }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RemoveProposal</span> {
-    <span class="kw">pub</span> <span class="ident">removed</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">removed</span>: <span class="ident">u32</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">RemoveProposal</span> {
+    <span class="doccomment">/// Get the `u32` index in this proposal.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">removed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
+        <span class="self">self</span>.<span class="ident">removed</span>
+    }
 }
 
 <span class="doccomment">/// Preshared Key proposal</span>
@@ -1014,9 +1099,28 @@
 <span class="doccomment">/// struct {</span>
 <span class="doccomment">///     PreSharedKeyID psk;</span>
 <span class="doccomment">/// } PreSharedKey;</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PreSharedKeyProposal</span> {
-    <span class="kw">pub</span> <span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>,
+    <span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">PreSharedKeyProposal</span> {
+    <span class="doccomment">/// Create a new PSK proposal</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> { <span class="ident">psk</span> }
+    }
+
+    <span class="doccomment">/// Get a reference to the [`PreSharedKeyId`] in this proposal.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">psk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">PreSharedKeyId</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk</span>
+    }
+
+    <span class="doccomment">/// Get the [`PreSharedKeyId`] and consume this proposal.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_psk_id</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PreSharedKeyId</span> {
+        <span class="self">self</span>.<span class="ident">psk</span>
+    }
 }
 
 <span class="doccomment">/// ReInit proposal</span>
@@ -1027,12 +1131,14 @@
 <span class="doccomment">///     CipherSuite cipher_suite;</span>
 <span class="doccomment">///     Extension extensions&lt;0..2^32-1&gt;;</span>
 <span class="doccomment">/// } ReInit;</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReInitProposal</span> {
-    <span class="kw">pub</span> <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-    <span class="kw">pub</span> <span class="ident">ciphersuite</span>: <span class="ident">CiphersuiteName</span>,
-    <span class="kw">pub</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">CiphersuiteName</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

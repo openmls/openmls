@@ -314,7 +314,32 @@
 <span id="311">311</span>
 <span id="312">312</span>
 <span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{
+    <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteSliceU16</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>,
+    <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+};
+
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
@@ -322,14 +347,14 @@
 <span class="doccomment">/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.</span>
 <span class="doccomment">/// This message format is meant to be sent to and received from the Delivery</span>
 <span class="doccomment">/// Service.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsCiphertext</span> {
-    <span class="kw">pub</span> <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="kw">pub</span> <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    <span class="kw">pub</span> <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
-    <span class="kw">pub</span> <span class="ident">authenticated_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">encrypted_sender_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">authenticated_data</span>: <span class="ident">TlsByteVecU32</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">encrypted_sender_data</span>: <span class="ident">TlsByteVecU8</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphertext</span>: <span class="ident">TlsByteVecU32</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">MlsCiphertext</span> {
@@ -350,9 +375,10 @@
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
             <span class="ident">content_type</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
-            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">to_vec</span>(),
+            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">into</span>(),
         };
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_ciphertext_content_aad</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span>
+            <span class="ident">mls_ciphertext_content_aad</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="comment">// Extract generation and key material for encryption</span>
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::try_from</span>(<span class="ident">mls_plaintext</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::InvalidContentType</span>)<span class="question-mark">?</span>;
@@ -393,12 +419,12 @@
             <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
         );
         <span class="comment">// Serialize the sender data AAD</span>
-        <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData::new</span>(<span class="ident">mls_plaintext</span>.<span class="ident">sender_index</span>(), <span class="ident">generation</span>, <span class="ident">reuse_guard</span>);
         <span class="comment">// Encrypt the sender data</span>
         <span class="kw">let</span> <span class="ident">encrypted_sender_data</span> <span class="op">=</span> <span class="ident">sender_data_key</span>
             .<span class="ident">aead_seal</span>(
-                <span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>,
+                <span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>,
                 <span class="kw-2">&amp;</span><span class="ident">mls_sender_data_aad_bytes</span>,
                 <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
             )
@@ -410,9 +436,9 @@
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
             <span class="ident">content_type</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
-            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">to_vec</span>(),
-            <span class="ident">encrypted_sender_data</span>,
-            <span class="ident">ciphertext</span>: <span class="ident">ciphertext</span>.<span class="ident">to_vec</span>(),
+            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">into</span>(),
+            <span class="ident">encrypted_sender_data</span>: <span class="ident">encrypted_sender_data</span>.<span class="ident">into</span>(),
+            <span class="ident">ciphertext</span>: <span class="ident">ciphertext</span>.<span class="ident">into</span>(),
         })
     }
 
@@ -428,19 +454,19 @@
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
         <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
             .<span class="ident">sender_data_secret</span>()
-            .<span class="ident">derive_aead_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>);
+            .<span class="ident">derive_aead_key</span>(<span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>());
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
         <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
             .<span class="ident">sender_data_secret</span>()
-            .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>);
+            .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>());
         <span class="comment">// Serialize sender data AAD</span>
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span>
             <span class="ident">MlsSenderDataAad::new</span>(<span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">epoch</span>, <span class="self">self</span>.<span class="ident">content_type</span>);
-        <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="comment">// Decrypt sender data</span>
-        <span class="kw">let</span> <span class="ident">sender_data_bytes</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">sender_data_key</span>
+        <span class="kw">let</span> <span class="ident">sender_data_bytes</span> <span class="op">=</span> <span class="ident">sender_data_key</span>
             .<span class="ident">aead_open</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encrypted_sender_data</span>,
+                <span class="self">self</span>.<span class="ident">encrypted_sender_data</span>.<span class="ident">as_slice</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">mls_sender_data_aad_bytes</span>,
                 <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
             )
@@ -449,7 +475,7 @@
                 <span class="ident">MlsCiphertextError::DecryptionError</span>
             })<span class="question-mark">?</span>;
         <span class="macro">log::trace!</span>(<span class="string">&quot;  Successfully decrypted sender data.&quot;</span>);
-        <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data_bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sender_data_bytes</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::try_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_type</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::InvalidContentType</span>)<span class="question-mark">?</span>;
         <span class="comment">// Extract generation and key material for encryption</span>
@@ -473,11 +499,12 @@
             <span class="ident">content_type</span>: <span class="self">self</span>.<span class="ident">content_type</span>,
             <span class="ident">authenticated_data</span>: <span class="self">self</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>(),
         };
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_ciphertext_content_aad</span>.<span class="ident">encode_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span>
+            <span class="ident">mls_ciphertext_content_aad</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="comment">// Decrypt payload</span>
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_bytes</span> <span class="op">=</span> <span class="ident">ratchet_key</span>
             .<span class="ident">aead_open</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphertext</span>,
+                <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_aad_bytes</span>,
                 <span class="kw-2">&amp;</span><span class="ident">ratchet_nonce</span>,
             )
@@ -490,9 +517,9 @@
             <span class="string">&quot;  Successfully decrypted MlsPlaintext bytes: {:x?}&quot;</span>,
             <span class="ident">mls_ciphertext_content_bytes</span>
         );
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content</span> <span class="op">=</span> <span class="ident">MlsCiphertextContent::decode</span>(
+        <span class="kw">let</span> <span class="ident">mls_ciphertext_content</span> <span class="op">=</span> <span class="ident">MlsCiphertextContent::deserialize</span>(
             <span class="self">self</span>.<span class="ident">content_type</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_bytes</span>),
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mls_ciphertext_content_bytes</span>.<span class="ident">as_slice</span>(),
         )<span class="question-mark">?</span>;
         <span class="comment">// Extract sender. The sender type is always of type Member for MlsCiphertext.</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
@@ -528,7 +555,7 @@
     }
 
     <span class="doccomment">/// Encodes the `MLSCiphertextContent` struct with padding</span>
-    <span class="doccomment">/// ```c</span>
+    <span class="doccomment">/// ```text</span>
     <span class="doccomment">/// struct {</span>
     <span class="doccomment">///     select (MLSCiphertext.content_type) {</span>
     <span class="doccomment">///         case application:</span>
@@ -539,23 +566,27 @@
     <span class="doccomment">///</span>
     <span class="doccomment">///         case commit:</span>
     <span class="doccomment">///             Commit commit;</span>
-    <span class="doccomment">/// }</span>
+    <span class="doccomment">///     }</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// opaque signature&lt;0..2^16-1&gt;;</span>
-    <span class="doccomment">/// optional&lt;MAC&gt; confirmation_tag;</span>
-    <span class="doccomment">/// opaque padding&lt;0..2^16-1&gt;;</span>
+    <span class="doccomment">///     opaque signature&lt;0..2^16-1&gt;;</span>
+    <span class="doccomment">///     optional&lt;MAC&gt; confirmation_tag;</span>
+    <span class="doccomment">///     opaque padding&lt;0..2^16-1&gt;;</span>
     <span class="doccomment">/// } MLSCiphertextContent;</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">encode_padded_ciphertext_content_detached</span>(
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
         <span class="ident">mac_len</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="comment">// Persist all initial fields manually (avoids cloning them)</span>
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec::new</span>();
-        <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec::with_capacity</span>(
+            <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialized_len</span>()
+                <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialized_len</span>()
+                <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialized_len</span>(),
+        );
+        <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="comment">// Add padding if needed</span>
         <span class="kw">let</span> <span class="ident">padding_length</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">padding_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="comment">// Calculate padding block size</span>
@@ -566,8 +597,7 @@
         } <span class="kw">else</span> {
             <span class="number">0</span>
         };
-        <span class="kw">let</span> <span class="ident">padding_block</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">padding_length</span>];
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize::VecU16</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="ident">padding_block</span>)<span class="question-mark">?</span>;
+        <span class="ident">TlsByteSliceU16</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">padding_length</span>]).<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">to_vec</span>())
     }
 
@@ -575,11 +605,21 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_id</span>
     }
+
+    <span class="doccomment">/// Get the cipher text bytes as slice.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphertext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+        <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>()
+    }
+
+    <span class="doccomment">/// Returns the `epoch` in the `MlsCiphertext`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupEpoch</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch</span>
+    }
 }
 
 <span class="comment">// === Helper structs ===</span>
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsSenderData</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">generation</span>: <span class="ident">u32</span>,
@@ -596,7 +636,7 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsSenderDataAad</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
@@ -613,20 +653,20 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsCiphertextContent</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content</span>: <span class="ident">MlsPlaintextContentType</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signature</span>: <span class="ident">Signature</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">confirmation_tag</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">padding</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">padding</span>: <span class="ident">TlsByteVecU16</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsCiphertextContentAad</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">authenticated_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">authenticated_data</span>: <span class="ident">TlsByteVecU32</span>,
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

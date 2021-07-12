@@ -527,6 +527,20 @@
 <span id="524">524</span>
 <span id="525">525</span>
 <span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for the encoding and decoding of various structs of the</span>
 <span class="doccomment">//! MLS spec</span>
@@ -547,6 +561,7 @@
 <span class="kw">use</span> <span class="ident">evercrypt::prelude::random_vec</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span> <span class="kw">as</span> <span class="ident">TlsDeserialize</span>, <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerialize</span>, <span class="ident">TlsSliceU32</span>, <span class="ident">TlsVecU32</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MessagesTestVector</span> {
@@ -594,7 +609,7 @@
     <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::random</span>();
     <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">MlsGroupConfig::default</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new</span>(
-        <span class="kw-2">&amp;</span><span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
+        <span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
         <span class="ident">ciphersuite_name</span>,
         <span class="ident">key_package_bundle</span>,
         <span class="ident">config</span>,
@@ -611,13 +626,15 @@
         <span class="ident">GroupEpoch</span>(<span class="number">0</span>),
         <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
         <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
-        <span class="macro">vec!</span>[<span class="ident">Box::new</span>(<span class="ident">RatchetTreeExtension::new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">clone</span>()))],
+        <span class="macro">vec!</span>[<span class="ident">Extension::RatchetTree</span>(<span class="ident">RatchetTreeExtension::new</span>(
+            <span class="ident">ratchet_tree</span>.<span class="ident">clone</span>(),
+        ))],
         <span class="ident">ConfirmationTag</span>(<span class="ident">Mac</span> {
-            <span class="ident">mac_value</span>: <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+            <span class="ident">mac_value</span>: <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()).<span class="ident">into</span>(),
         }),
         <span class="ident">LeafIndex::from</span>(<span class="ident">random_u32</span>()),
     );
-    <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="op">&amp;&amp;</span><span class="ident">credential_bundle</span>).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">group_secrets</span> <span class="op">=</span> <span class="ident">GroupSecrets::random_encoded</span>(<span class="ident">ciphersuite</span>, <span class="ident">ProtocolVersion::default</span>());
     <span class="kw">let</span> <span class="ident">public_group_state</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">export_public_group_state</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>).<span class="ident">unwrap</span>();
 
@@ -642,17 +659,20 @@
         <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
     );
 
-    <span class="kw">let</span> <span class="ident">psk_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal</span> { <span class="ident">psk</span>: <span class="ident">psk_id</span> };
+    <span class="kw">let</span> <span class="ident">psk_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal::new</span>(<span class="ident">psk_id</span>);
     <span class="kw">let</span> <span class="ident">reinit_proposal</span> <span class="op">=</span> <span class="ident">ReInitProposal</span> {
         <span class="ident">group_id</span>,
         <span class="ident">version</span>: <span class="ident">ProtocolVersion::Mls10</span>,
         <span class="ident">ciphersuite</span>: <span class="ident">ciphersuite_name</span>,
-        <span class="ident">extensions</span>: <span class="macro">vec!</span>[<span class="ident">Box::new</span>(<span class="ident">RatchetTreeExtension::new</span>(<span class="ident">ratchet_tree</span>.<span class="ident">clone</span>()))],
+        <span class="ident">extensions</span>: <span class="macro">vec!</span>[<span class="ident">Extension::RatchetTree</span>(<span class="ident">RatchetTreeExtension::new</span>(
+            <span class="ident">ratchet_tree</span>.<span class="ident">clone</span>(),
+        ))]
+        .<span class="ident">into</span>(),
     };
     <span class="comment">// We don&#39;t support external init proposals yet.</span>
-    <span class="kw">let</span> <span class="ident">external_init_proposal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="kw">let</span> <span class="ident">external_init_proposal</span> <span class="op">=</span> <span class="ident">tls_codec::TlsByteVecU16::new</span>(<span class="ident">Vec::new</span>());
     <span class="comment">// We don&#39;t support app ack proposals yet.</span>
-    <span class="kw">let</span> <span class="ident">app_ack_proposal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="kw">let</span> <span class="ident">app_ack_proposal</span> <span class="op">=</span> <span class="ident">tls_codec::TlsByteVecU32::new</span>(<span class="ident">Vec::new</span>());
     <span class="kw">let</span> <span class="ident">joiner_key_package_bundle</span> <span class="op">=</span>
         <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
 
@@ -696,33 +716,35 @@
         .<span class="ident">unwrap</span>();
 
     <span class="ident">MessagesTestVector</span> {
-        <span class="ident">key_package</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">key_package</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">// serialized KeyPackage,</span>
-        <span class="ident">capabilities</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">capabilities</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">// serialized Capabilities,</span>
-        <span class="ident">lifetime</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">lifetime</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">// serialized {uint64 not_before; uint64 not_after;},</span>
-        <span class="ident">ratchet_tree</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">ratchet_tree</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized optional&lt;Node&gt; ratchet_tree&lt;1..2^32-1&gt;; */</span>
+        <span class="ident">key_package</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">key_package</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">// serialized KeyPackage,</span>
+        <span class="ident">capabilities</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">capabilities</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">// serialized Capabilities,</span>
+        <span class="ident">lifetime</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">lifetime</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">// serialized {uint64 not_before; uint64 not_after;},</span>
+        <span class="ident">ratchet_tree</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">TlsSliceU32</span>(<span class="kw-2">&amp;</span><span class="ident">ratchet_tree</span>).<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized optional&lt;Node&gt; ratchet_tree&lt;1..2^32-1&gt;; */</span>
 
-        <span class="ident">group_info</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">group_info</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized GroupInfo */</span>
+        <span class="ident">group_info</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">group_info</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized GroupInfo */</span>
         <span class="ident">group_secrets</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">group_secrets</span>.<span class="ident">unwrap</span>()), <span class="comment">/* serialized GroupSecrets */</span>
-        <span class="ident">welcome</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">welcome</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Welcome */</span>
+        <span class="ident">welcome</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">welcome</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Welcome */</span>
 
-        <span class="ident">public_group_state</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">public_group_state</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized PublicGroupState */</span>
+        <span class="ident">public_group_state</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">public_group_state</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized PublicGroupState */</span>
 
-        <span class="ident">add_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">add_proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Add */</span>
-        <span class="ident">update_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">update_proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Update */</span>
-        <span class="ident">remove_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">remove_proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Remove */</span>
-        <span class="ident">pre_shared_key_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">psk_proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized PreSharedKey */</span>
-        <span class="ident">re_init_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">reinit_proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized ReInit */</span>
-        <span class="ident">external_init_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">external_init_proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized ExternalInit */</span>
-        <span class="ident">app_ack_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">app_ack_proposal</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized AppAck */</span>
+        <span class="ident">add_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">add_proposal</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Add */</span>
+        <span class="ident">update_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">update_proposal</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Update */</span>
+        <span class="ident">remove_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">remove_proposal</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Remove */</span>
+        <span class="ident">pre_shared_key_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">psk_proposal</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized PreSharedKey */</span>
+        <span class="ident">re_init_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">reinit_proposal</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized ReInit */</span>
+        <span class="ident">external_init_proposal</span>: <span class="ident">bytes_to_hex</span>(
+            <span class="kw-2">&amp;</span><span class="ident">external_init_proposal</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
+        ), <span class="comment">/* serialized ExternalInit */</span>
+        <span class="ident">app_ack_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">app_ack_proposal</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized AppAck */</span>
 
-        <span class="ident">commit</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Commit */</span>
+        <span class="ident">commit</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized Commit */</span>
 
         <span class="ident">mls_plaintext_application</span>: <span class="ident">bytes_to_hex</span>(
-            <span class="kw-2">&amp;</span><span class="ident">mls_plaintext_application</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
+            <span class="kw-2">&amp;</span><span class="ident">mls_plaintext_application</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
         ), <span class="comment">/* serialized MLSPlaintext(ApplicationData) */</span>
-        <span class="ident">mls_plaintext_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">add_proposal_pt</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized MLSPlaintext(Proposal(*)) */</span>
-        <span class="ident">mls_plaintext_commit</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">commit_pt</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized MLSPlaintext(Commit) */</span>
-        <span class="ident">mls_ciphertext</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">mls_ciphertext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized MLSCiphertext */</span>
+        <span class="ident">mls_plaintext_proposal</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">add_proposal_pt</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized MLSPlaintext(Proposal(*)) */</span>
+        <span class="ident">mls_plaintext_commit</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">commit_pt</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized MLSPlaintext(Commit) */</span>
+        <span class="ident">mls_ciphertext</span>: <span class="ident">bytes_to_hex</span>(<span class="kw-2">&amp;</span><span class="ident">mls_ciphertext</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>()), <span class="comment">/* serialized MLSCiphertext */</span>
     }
 }
 
@@ -743,12 +765,13 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">tv</span>: <span class="ident">MessagesTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MessagesTestVectorError</span><span class="op">&gt;</span> {
     <span class="comment">// KeyPackage</span>
-    <span class="kw">let</span> <span class="ident">tv_key_package</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">key_package</span>);
-    <span class="kw">let</span> <span class="ident">my_key_package</span> <span class="op">=</span> <span class="ident">KeyPackage::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_key_package</span>)
+    <span class="kw">let</span> <span class="ident">tv_key_package</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">key_package</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tv_key_package_slice</span> <span class="op">=</span> <span class="ident">tv_key_package</span>.<span class="ident">as_slice</span>();
+    <span class="kw">let</span> <span class="ident">my_key_package</span> <span class="op">=</span> <span class="ident">KeyPackage::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_key_package_slice</span>)
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_key_package</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_key_package</span> {
+    <span class="kw">if</span> <span class="ident">tv_key_package</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_key_package</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  KeyPackage encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_key_package</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_key_package</span>);
@@ -759,12 +782,13 @@
     }
 
     <span class="comment">// Capabilities</span>
-    <span class="kw">let</span> <span class="ident">tv_capabilities</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">capabilities</span>);
-    <span class="kw">let</span> <span class="ident">my_capabilities</span> <span class="op">=</span> <span class="ident">CapabilitiesExtension::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_capabilities</span>)
+    <span class="macro">log::debug!</span>(<span class="string">&quot;Capabilities tv: {}&quot;</span>, <span class="ident">tv</span>.<span class="ident">capabilities</span>);
+    <span class="kw">let</span> <span class="ident">tv_capabilities</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">capabilities</span>);
+    <span class="kw">let</span> <span class="ident">my_capabilities</span> <span class="op">=</span> <span class="ident">CapabilitiesExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_capabilities</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_capabilities</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_capabilities</span> {
+    <span class="kw">if</span> <span class="ident">tv_capabilities</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_capabilities</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  Capabilities encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_capabilities</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_capabilities</span>);
@@ -775,12 +799,12 @@
     }
 
     <span class="comment">// Lifetime</span>
-    <span class="kw">let</span> <span class="ident">tv_lifetime</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">lifetime</span>);
-    <span class="kw">let</span> <span class="ident">my_lifetime</span> <span class="op">=</span> <span class="ident">LifetimeExtension::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_lifetime</span>)
+    <span class="kw">let</span> <span class="ident">tv_lifetime</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">lifetime</span>);
+    <span class="kw">let</span> <span class="ident">my_lifetime</span> <span class="op">=</span> <span class="ident">LifetimeExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_lifetime</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_lifetime</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_lifetime</span> {
+    <span class="kw">if</span> <span class="ident">tv_lifetime</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_lifetime</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  Lifetime encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_lifetime</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_lifetime</span>);
@@ -791,11 +815,12 @@
     }
 
     <span class="comment">// RatchetTree</span>
-    <span class="kw">let</span> <span class="ident">tv_ratchet_tree</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">ratchet_tree</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="ident">Cursor::new</span>(<span class="ident">tv_ratchet_tree</span>);
-    <span class="kw">let</span> <span class="ident">dec_ratchet_tree</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize::VecU32</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">cursor</span>).<span class="ident">unwrap</span>();
-    <span class="kw">let</span> <span class="ident">my_ratchet_tree</span> <span class="op">=</span> <span class="ident">dec_ratchet_tree</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_ratchet_tree</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_ratchet_tree</span> {
+    <span class="macro">log::trace!</span>(<span class="string">&quot;  Serialized ratchet tree: {}&quot;</span>, <span class="ident">tv</span>.<span class="ident">ratchet_tree</span>);
+    <span class="kw">let</span> <span class="ident">tv_ratchet_tree</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">ratchet_tree</span>);
+    <span class="kw">let</span> <span class="ident">dec_ratchet_tree</span> <span class="op">=</span>
+        <span class="ident">TlsVecU32</span>::<span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_ratchet_tree</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">my_ratchet_tree</span> <span class="op">=</span> <span class="ident">dec_ratchet_tree</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>();
+    <span class="kw">if</span> <span class="ident">tv_ratchet_tree</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_ratchet_tree</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  RatchetTree encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_ratchet_tree</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_ratchet_tree</span>);
@@ -806,12 +831,12 @@
     }
 
     <span class="comment">// GroupInfo</span>
-    <span class="kw">let</span> <span class="ident">tv_group_info</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">group_info</span>);
-    <span class="kw">let</span> <span class="ident">my_group_info</span> <span class="op">=</span> <span class="ident">GroupInfo::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_group_info</span>)
+    <span class="kw">let</span> <span class="ident">tv_group_info</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">group_info</span>);
+    <span class="kw">let</span> <span class="ident">my_group_info</span> <span class="op">=</span> <span class="ident">GroupInfo::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_group_info</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_group_info</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_group_info</span> {
+    <span class="kw">if</span> <span class="ident">tv_group_info</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_group_info</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  GroupInfo encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_group_info</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_group_info</span>);
@@ -822,12 +847,12 @@
     }
 
     <span class="comment">// GroupSecrets</span>
-    <span class="kw">let</span> <span class="ident">tv_group_secrets</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">group_secrets</span>);
-    <span class="kw">let</span> <span class="ident">gs</span> <span class="op">=</span> <span class="ident">GroupSecrets::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_group_secrets</span>).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">tv_group_secrets</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">group_secrets</span>);
+    <span class="kw">let</span> <span class="ident">gs</span> <span class="op">=</span> <span class="ident">GroupSecrets::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_group_secrets</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">my_group_secrets</span> <span class="op">=</span>
         <span class="ident">GroupSecrets::new_encoded</span>(<span class="kw-2">&amp;</span><span class="ident">gs</span>.<span class="ident">joiner_secret</span>, <span class="ident">gs</span>.<span class="ident">path_secret</span>.<span class="ident">as_ref</span>(), <span class="ident">gs</span>.<span class="ident">psks</span>.<span class="ident">as_ref</span>())
             .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_group_secrets</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_group_secrets</span> {
+    <span class="kw">if</span> <span class="ident">tv_group_secrets</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_group_secrets</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  GroupSecrets encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_group_secrets</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_group_secrets</span>);
@@ -838,12 +863,12 @@
     }
 
     <span class="comment">// Welcome</span>
-    <span class="kw">let</span> <span class="ident">tv_welcome</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">welcome</span>);
-    <span class="kw">let</span> <span class="ident">my_welcome</span> <span class="op">=</span> <span class="ident">Welcome::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_welcome</span>)
+    <span class="kw">let</span> <span class="ident">tv_welcome</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">welcome</span>);
+    <span class="kw">let</span> <span class="ident">my_welcome</span> <span class="op">=</span> <span class="ident">Welcome::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_welcome</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_welcome</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_welcome</span> {
+    <span class="kw">if</span> <span class="ident">tv_welcome</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_welcome</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  Welcome encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_welcome</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_welcome</span>);
@@ -854,12 +879,13 @@
     }
 
     <span class="comment">// PublicGroupState</span>
-    <span class="kw">let</span> <span class="ident">tv_public_group_state</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">public_group_state</span>);
-    <span class="kw">let</span> <span class="ident">my_public_group_state</span> <span class="op">=</span> <span class="ident">PublicGroupState::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_public_group_state</span>)
-        .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
-        .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_public_group_state</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_public_group_state</span> {
+    <span class="kw">let</span> <span class="ident">tv_public_group_state</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">public_group_state</span>);
+    <span class="kw">let</span> <span class="ident">my_public_group_state</span> <span class="op">=</span>
+        <span class="ident">PublicGroupState::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_public_group_state</span>.<span class="ident">as_slice</span>())
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">unwrap</span>();
+    <span class="kw">if</span> <span class="ident">tv_public_group_state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_public_group_state</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  PublicGroupState encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_public_group_state</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_public_group_state</span>);
@@ -870,12 +896,12 @@
     }
 
     <span class="comment">// AddProposal</span>
-    <span class="kw">let</span> <span class="ident">tv_add_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">add_proposal</span>);
-    <span class="kw">let</span> <span class="ident">my_add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_add_proposal</span>)
+    <span class="kw">let</span> <span class="ident">tv_add_proposal</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">add_proposal</span>);
+    <span class="kw">let</span> <span class="ident">my_add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_add_proposal</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_add_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_add_proposal</span> {
+    <span class="kw">if</span> <span class="ident">tv_add_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_add_proposal</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  AddProposal encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_add_proposal</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_add_proposal</span>);
@@ -887,12 +913,12 @@
 
     <span class="comment">//update_proposal: String,         /* serialized Update */</span>
     <span class="comment">// UpdateProposal</span>
-    <span class="kw">let</span> <span class="ident">tv_update_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">update_proposal</span>);
-    <span class="kw">let</span> <span class="ident">my_update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_update_proposal</span>)
+    <span class="kw">let</span> <span class="ident">tv_update_proposal</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">update_proposal</span>);
+    <span class="kw">let</span> <span class="ident">my_update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_update_proposal</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_update_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_update_proposal</span> {
+    <span class="kw">if</span> <span class="ident">tv_update_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_update_proposal</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  UpdateProposal encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_update_proposal</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_update_proposal</span>);
@@ -903,12 +929,12 @@
     }
     <span class="comment">//remove_proposal: String,         /* serialized Remove */</span>
     <span class="comment">// RemoveProposal</span>
-    <span class="kw">let</span> <span class="ident">tv_remove_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">remove_proposal</span>);
-    <span class="kw">let</span> <span class="ident">my_remove_proposal</span> <span class="op">=</span> <span class="ident">RemoveProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_remove_proposal</span>)
+    <span class="kw">let</span> <span class="ident">tv_remove_proposal</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">remove_proposal</span>);
+    <span class="kw">let</span> <span class="ident">my_remove_proposal</span> <span class="op">=</span> <span class="ident">RemoveProposal::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_remove_proposal</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_remove_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_remove_proposal</span> {
+    <span class="kw">if</span> <span class="ident">tv_remove_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_remove_proposal</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  RemoveProposal encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_remove_proposal</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_remove_proposal</span>);
@@ -919,13 +945,13 @@
     }
 
     <span class="comment">// PreSharedKeyProposal</span>
-    <span class="kw">let</span> <span class="ident">tv_pre_shared_key_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">pre_shared_key_proposal</span>);
+    <span class="kw">let</span> <span class="ident">tv_pre_shared_key_proposal</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">pre_shared_key_proposal</span>);
     <span class="kw">let</span> <span class="ident">my_pre_shared_key_proposal</span> <span class="op">=</span>
-        <span class="ident">PreSharedKeyProposal::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_pre_shared_key_proposal</span>)
+        <span class="ident">PreSharedKeyProposal::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_pre_shared_key_proposal</span>.<span class="ident">as_slice</span>())
             .<span class="ident">unwrap</span>()
-            .<span class="ident">encode_detached</span>()
+            .<span class="ident">tls_serialize_detached</span>()
             .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_pre_shared_key_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_pre_shared_key_proposal</span> {
+    <span class="kw">if</span> <span class="ident">tv_pre_shared_key_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_pre_shared_key_proposal</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  PreSharedKeyProposal encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_pre_shared_key_proposal</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_pre_shared_key_proposal</span>);
@@ -938,12 +964,12 @@
     <span class="comment">// Re-Init, External Init and App-Ack Proposals go here...</span>
 
     <span class="comment">// Commit</span>
-    <span class="kw">let</span> <span class="ident">tv_commit</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">commit</span>);
-    <span class="kw">let</span> <span class="ident">my_commit</span> <span class="op">=</span> <span class="ident">Commit::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_commit</span>)
+    <span class="kw">let</span> <span class="ident">tv_commit</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">commit</span>);
+    <span class="kw">let</span> <span class="ident">my_commit</span> <span class="op">=</span> <span class="ident">Commit::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_commit</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_commit</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_commit</span> {
+    <span class="kw">if</span> <span class="ident">tv_commit</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_commit</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  Commit encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_commit</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_commit</span>);
@@ -954,13 +980,13 @@
     }
 
     <span class="comment">// MlsPlaintextApplication</span>
-    <span class="kw">let</span> <span class="ident">tv_mls_plaintext_application</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_application</span>);
+    <span class="kw">let</span> <span class="ident">tv_mls_plaintext_application</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_application</span>);
     <span class="kw">let</span> <span class="ident">my_mls_plaintext_application</span> <span class="op">=</span>
-        <span class="ident">VerifiableMlsPlaintext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_application</span>)
+        <span class="ident">VerifiableMlsPlaintext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_mls_plaintext_application</span>.<span class="ident">as_slice</span>())
             .<span class="ident">unwrap</span>()
-            .<span class="ident">encode_detached</span>()
+            .<span class="ident">tls_serialize_detached</span>()
             .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_mls_plaintext_application</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_plaintext_application</span> {
+    <span class="kw">if</span> <span class="ident">tv_mls_plaintext_application</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_mls_plaintext_application</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  MlsPlaintextApplication encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_application</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_application</span>);
@@ -971,13 +997,13 @@
     }
 
     <span class="comment">// MlsPlaintext(Proposal)</span>
-    <span class="kw">let</span> <span class="ident">tv_mls_plaintext_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_proposal</span>);
+    <span class="kw">let</span> <span class="ident">tv_mls_plaintext_proposal</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_proposal</span>);
     <span class="kw">let</span> <span class="ident">my_mls_plaintext_proposal</span> <span class="op">=</span>
-        <span class="ident">VerifiableMlsPlaintext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_proposal</span>)
+        <span class="ident">VerifiableMlsPlaintext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_mls_plaintext_proposal</span>.<span class="ident">as_slice</span>())
             .<span class="ident">unwrap</span>()
-            .<span class="ident">encode_detached</span>()
+            .<span class="ident">tls_serialize_detached</span>()
             .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_mls_plaintext_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_plaintext_proposal</span> {
+    <span class="kw">if</span> <span class="ident">tv_mls_plaintext_proposal</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_mls_plaintext_proposal</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  MlsPlaintext(Proposal) encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_proposal</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_proposal</span>);
@@ -988,12 +1014,13 @@
     }
 
     <span class="comment">// MlsPlaintext(Commit)</span>
-    <span class="kw">let</span> <span class="ident">tv_mls_plaintext_commit</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_commit</span>);
-    <span class="kw">let</span> <span class="ident">my_mls_plaintext_commit</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_plaintext_commit</span>)
-        .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
-        .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_mls_plaintext_commit</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_plaintext_commit</span> {
+    <span class="kw">let</span> <span class="ident">tv_mls_plaintext_commit</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_plaintext_commit</span>);
+    <span class="kw">let</span> <span class="ident">my_mls_plaintext_commit</span> <span class="op">=</span>
+        <span class="ident">VerifiableMlsPlaintext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_mls_plaintext_commit</span>.<span class="ident">as_slice</span>())
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">unwrap</span>();
+    <span class="kw">if</span> <span class="ident">tv_mls_plaintext_commit</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_mls_plaintext_commit</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  MlsPlaintext(Commit) encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_plaintext_commit</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_plaintext_commit</span>);
@@ -1004,12 +1031,12 @@
     }
 
     <span class="comment">// MlsCiphertext</span>
-    <span class="kw">let</span> <span class="ident">tv_mls_ciphertext</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_ciphertext</span>);
-    <span class="kw">let</span> <span class="ident">my_mls_ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext::decode_detached</span>(<span class="kw-2">&amp;</span><span class="ident">tv_mls_ciphertext</span>)
+    <span class="kw">let</span> <span class="ident">tv_mls_ciphertext</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">mls_ciphertext</span>);
+    <span class="kw">let</span> <span class="ident">my_mls_ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_mls_ciphertext</span>.<span class="ident">as_slice</span>())
         .<span class="ident">unwrap</span>()
-        .<span class="ident">encode_detached</span>()
+        .<span class="ident">tls_serialize_detached</span>()
         .<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">tv_mls_ciphertext</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">my_mls_ciphertext</span> {
+    <span class="kw">if</span> <span class="ident">tv_mls_ciphertext</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_mls_ciphertext</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  MlsCiphertext encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_mls_ciphertext</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Expected: {:x?}&quot;</span>, <span class="ident">tv_mls_ciphertext</span>);
@@ -1023,6 +1050,7 @@
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">read_test_vectors</span>() {
+    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">pretty_env_logger::try_init</span>();
     <span class="kw">let</span> <span class="ident">tests</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MessagesTestVector</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">read</span>(<span class="string">&quot;test_vectors/kat_messages.json&quot;</span>);
 
     <span class="kw">for</span> <span class="ident">test_vector</span> <span class="kw">in</span> <span class="ident">tests</span> {

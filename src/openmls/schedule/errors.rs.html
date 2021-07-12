@@ -41,6 +41,7 @@
 <span id="38">38</span>
 <span id="39">39</span>
 <span id="40">40</span>
+<span id="41">41</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ErrorState</span> {
@@ -61,6 +62,7 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskSecretError</span> {
         <span class="ident">TooManyKeys</span> <span class="op">=</span> <span class="string">&quot;More than 2^16 PSKS were provided.&quot;</span>,
         <span class="ident">DifferentLength</span> <span class="op">=</span> <span class="string">&quot;The IDs and secrets vectors have different lengths.&quot;</span>,
+        <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;Error serializing the PSK label.&quot;</span>,
     }
 }
 

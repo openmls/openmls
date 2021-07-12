@@ -172,6 +172,8 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
@@ -179,13 +181,13 @@
 <span class="doccomment">//! `CreateCommitError`.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite::CryptoError</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::codec::CodecError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::config::ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credentials::CredentialError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::framing::errors</span>::{<span class="ident">MlsCiphertextError</span>, <span class="ident">MlsPlaintextError</span>, <span class="ident">VerificationError</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::messages::errors::ProposalQueueError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::schedule::errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::tree</span>::{<span class="ident">treemath::TreeMathError</span>, <span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
+<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupError</span> {
@@ -210,8 +212,8 @@
                 <span class="string">&quot;See [`ExporterError`](`ExporterError`) for details.&quot;</span>,
             <span class="ident">ProposalQueueError</span>(<span class="ident">ProposalQueueError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.&quot;</span>,
-            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
-                <span class="string">&quot;Codec error occurred.&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;Tls (de)serialization occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
             <span class="ident">MathError</span>(<span class="ident">TreeMathError</span>) <span class="op">=</span>
@@ -251,16 +253,18 @@
                 <span class="string">&quot;The sender key package is missing.&quot;</span>,
             <span class="ident">UnknownError</span> <span class="op">=</span>
                 <span class="string">&quot;An unknown error occurred.&quot;</span>,
-        }
+            }
         <span class="ident">Complex</span> {
+            <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
             <span class="ident">InvalidRatchetTree</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
                 <span class="string">&quot;Invalid ratchet tree in Welcome message.&quot;</span>,
             <span class="ident">ParentHashMismatch</span>(<span class="ident">ParentHashError</span>) <span class="op">=</span>
                 <span class="string">&quot;The parent hash verification failed.&quot;</span>,
             <span class="ident">GroupSecretsDecryptionFailure</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;Unable to decrypt the EncryptedGroupSecrets.&quot;</span>,
-            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
-                <span class="string">&quot;Codec error occurred.&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
             <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
@@ -304,12 +308,12 @@
                 <span class="string">&quot;MlsPlaintext signature is invalid.&quot;</span>,
             <span class="ident">DecryptionFailure</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
                 <span class="string">&quot;A matching EncryptedPathSecret failed to decrypt.&quot;</span>,
-            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
-                <span class="string">&quot;Codec error occurred.&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;Tls (de)serialization occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
             <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
-                <span class="string">&quot;A PSK error occured.&quot;</span>,
+                <span class="string">&quot;A PSK error occurred.&quot;</span>,
         }
     }
 }

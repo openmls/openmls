@@ -311,6 +311,22 @@
 <span id="308">308</span>
 <span id="309">309</span>
 <span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
@@ -349,6 +365,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::utils::randombytes</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsVecU16</span>};
 
 <span class="doccomment">/// Type of PSK.</span>
 <span class="doccomment">/// ```text</span>
@@ -360,7 +377,9 @@
 <span class="doccomment">///   (255)</span>
 <span class="doccomment">/// } PSKType;</span>
 <span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskType</span> {
     <span class="ident">External</span> <span class="op">=</span> <span class="number">1</span>,
@@ -381,19 +400,23 @@
 }
 
 <span class="doccomment">/// External PSK.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExternalPsk</span> {
-    <span class="ident">psk_id</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">psk_id</span>: <span class="ident">TlsByteVecU8</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ExternalPsk</span> {
     <span class="doccomment">/// Create a new `ExternalPsk` from a PSK ID</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">psk_id</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">psk_id</span> }
+        <span class="self">Self</span> {
+            <span class="ident">psk_id</span>: <span class="ident">psk_id</span>.<span class="ident">into</span>(),
+        }
     }
     <span class="doccomment">/// Return the PSK ID</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psk_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_id</span>
+        <span class="self">self</span>.<span class="ident">psk_id</span>.<span class="ident">as_slice</span>()
     }
 }
 
@@ -411,7 +434,9 @@
         <span class="self">Self</span> {
             <span class="ident">secret</span>,
             <span class="ident">nonce</span>: <span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
-            <span class="ident">external_psk</span>: <span class="ident">ExternalPsk</span> { <span class="ident">psk_id</span> },
+            <span class="ident">external_psk</span>: <span class="ident">ExternalPsk</span> {
+                <span class="ident">psk_id</span>: <span class="ident">psk_id</span>.<span class="ident">into</span>(),
+            },
         }
     }
     <span class="doccomment">/// Return the `PreSharedKeyID`</span>
@@ -419,7 +444,7 @@
         <span class="ident">PreSharedKeyId</span> {
             <span class="ident">psk_type</span>: <span class="ident">PskType::External</span>,
             <span class="ident">psk</span>: <span class="ident">Psk::External</span>(<span class="self">self</span>.<span class="ident">external_psk</span>.<span class="ident">clone</span>()),
-            <span class="ident">psk_nonce</span>: <span class="self">self</span>.<span class="ident">nonce</span>.<span class="ident">clone</span>(),
+            <span class="ident">psk_nonce</span>: <span class="self">self</span>.<span class="ident">nonce</span>.<span class="ident">clone</span>().<span class="ident">into</span>(),
         }
     }
     <span class="doccomment">/// Return the secret</span>
@@ -428,7 +453,9 @@
     }
 }
 <span class="doccomment">/// ReInit PSK.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReinitPsk</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_epoch</span>: <span class="ident">GroupEpoch</span>,
@@ -446,7 +473,9 @@
 }
 
 <span class="doccomment">/// Branch PSK</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BranchPsk</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_epoch</span>: <span class="ident">GroupEpoch</span>,
@@ -495,7 +524,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PreSharedKeyId</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_type</span>: <span class="ident">PskType</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk</span>: <span class="ident">Psk</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_nonce</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_nonce</span>: <span class="ident">TlsByteVecU8</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PreSharedKeyId</span> {
@@ -504,7 +533,7 @@
         <span class="self">Self</span> {
             <span class="ident">psk_type</span>,
             <span class="ident">psk</span>,
-            <span class="ident">psk_nonce</span>,
+            <span class="ident">psk_nonce</span>: <span class="ident">psk_nonce</span>.<span class="ident">into</span>(),
         }
     }
     <span class="doccomment">/// Return the type of the PSK</span>
@@ -517,7 +546,7 @@
     }
     <span class="doccomment">/// Return the PSK nonce</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psk_nonce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_nonce</span>
+        <span class="self">self</span>.<span class="ident">psk_nonce</span>.<span class="ident">as_slice</span>()
     }
 }
 
@@ -525,14 +554,15 @@
 <span class="doccomment">/// struct {</span>
 <span class="doccomment">///     PreSharedKeyID psks&lt;0..2^16-1&gt;;</span>
 <span class="doccomment">/// } PreSharedKeys;</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PreSharedKeys</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psks</span>: <span class="ident">TlsVecU16</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PreSharedKeys</span> {
     <span class="doccomment">/// Return the `PreSharedKeyID`s</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psks</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">PreSharedKeyId</span>] {
+        <span class="self">self</span>.<span class="ident">psks</span>.<span class="ident">as_slice</span>()
     }
 }
 
@@ -542,6 +572,7 @@
 <span class="doccomment">///     uint16 index;</span>
 <span class="doccomment">///     uint16 count;</span>
 <span class="doccomment">/// } PSKLabel;</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PskLabel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PreSharedKeyId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">index</span>: <span class="ident">u16</span>,
@@ -580,12 +611,13 @@
             <span class="kw">let</span> <span class="ident">zero_secret</span> <span class="op">=</span> <span class="ident">Secret::zero</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_version</span>);
             <span class="kw">let</span> <span class="ident">psk_input</span> <span class="op">=</span> <span class="ident">zero_secret</span>.<span class="ident">hkdf_extract</span>(<span class="ident">psk</span>);
             <span class="kw">let</span> <span class="ident">psk_label</span> <span class="op">=</span> <span class="ident">PskLabel::new</span>(<span class="kw-2">&amp;</span><span class="ident">psk_ids</span>[<span class="ident">index</span>], <span class="ident">index</span> <span class="kw">as</span> <span class="ident">u16</span>, <span class="ident">psks</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u16</span>)
-                .<span class="ident">encode_detached</span>()
-                <span class="comment">// It is safe to unwrap here, because the struct contains no vectors</span>
-                .<span class="ident">unwrap</span>();
+                .<span class="ident">tls_serialize_detached</span>()
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PskSecretError::EncodingError</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span>
-                <span class="ident">psk_input</span>.<span class="ident">kdf_expand_label</span>(<span class="string">&quot;derived psk&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">psk_label</span>, <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
+            <span class="comment">// FIXME: remove unwrap</span>
+            <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">psk_input</span>
+                .<span class="ident">kdf_expand_label</span>(<span class="string">&quot;derived psk&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">psk_label</span>, <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())
+                .<span class="ident">unwrap</span>();
             <span class="ident">secret</span>.<span class="ident">extend_from_slice</span>(<span class="ident">psk_secret</span>.<span class="ident">as_slice</span>());
         }
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {

@@ -107,6 +107,10 @@
 <span id="104">104</span>
 <span id="105">105</span>
 <span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Group APIs for MLS</span>
 <span class="doccomment">//!</span>
@@ -115,7 +119,6 @@
 <span class="doccomment">//! The low-level standard API is described in the `Api` trait.\</span>
 <span class="doccomment">//! The high-level API is exposed in `ManagedGroup`.</span>
 
-<span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">mod</span> <span class="ident">group_context</span>;
 <span class="kw">mod</span> <span class="ident">managed_group</span>;
@@ -125,43 +128,48 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::codec</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::utils</span>::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">WelcomeError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">group_context</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">managed_group</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mls_group</span>::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">use</span> <span class="ident">tls_codec::TlsVecU32</span>;
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Size</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupId</span> {
-    <span class="kw">pub</span> <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">value</span>: <span class="ident">TlsByteVecU8</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">GroupId</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">value</span>: <span class="ident">randombytes</span>(<span class="number">16</span>),
+            <span class="ident">value</span>: <span class="ident">randombytes</span>(<span class="number">16</span>).<span class="ident">into</span>(),
         }
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_slice</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">GroupId</span> {
-            <span class="ident">value</span>: <span class="ident">bytes</span>.<span class="ident">to_vec</span>(),
+            <span class="ident">value</span>: <span class="ident">bytes</span>.<span class="ident">into</span>(),
         }
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
+        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_vec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">clone</span>()
+        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">clone</span>().<span class="ident">into</span>()
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupEpoch</span>(<span class="kw">pub</span> <span class="ident">u64</span>);
 
 <span class="kw">impl</span> <span class="ident">GroupEpoch</span> {
@@ -170,15 +178,15 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupContext</span> {
     <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    <span class="ident">tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">confirmed_transcript_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// The group context in serialized form for efficiency. This field is not encoded.</span>
-    <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">tree_hash</span>: <span class="ident">TlsByteVecU8</span>,
+    <span class="ident">confirmed_transcript_hash</span>: <span class="ident">TlsByteVecU8</span>,
+    <span class="ident">extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>

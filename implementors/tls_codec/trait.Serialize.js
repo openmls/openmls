@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["openmls"] = [{"text":"impl&lt;'a&gt; Serialize for <a class=\"struct\" href=\"openmls/tree/struct.ParentNodeTreeHashInput.html\" title=\"struct openmls::tree::ParentNodeTreeHashInput\">ParentNodeTreeHashInput</a>&lt;'a&gt;","synthetic":false,"types":["openmls::tree::hashes::ParentNodeTreeHashInput"]},{"text":"impl&lt;'a&gt; Serialize for <a class=\"struct\" href=\"openmls/tree/struct.LeafNodeHashInput.html\" title=\"struct openmls::tree::LeafNodeHashInput\">LeafNodeHashInput</a>&lt;'a&gt;","synthetic":false,"types":["openmls::tree::hashes::LeafNodeHashInput"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

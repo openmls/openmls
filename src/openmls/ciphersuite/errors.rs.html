@@ -18,6 +18,17 @@
 <span id="15">15</span>
 <span id="16">16</span>
 <span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Crypto errors</span>
 <span class="doccomment">//!</span>
@@ -34,6 +45,17 @@
         <span class="ident">CryptoLibraryError</span> <span class="op">=</span> <span class="string">&quot;Unrecoverable error in the crypto library.&quot;</span>,
         <span class="ident">HpkeDecryptionError</span> <span class="op">=</span> <span class="string">&quot;Error while decrypting an HPKE ciphertext.&quot;</span>,
         <span class="ident">UnsupportedSignatureScheme</span> <span class="op">=</span> <span class="string">&quot;This SignatureScheme is not supported.&quot;</span>,
+        <span class="ident">KdfLabelTooLarge</span> <span class="op">=</span> <span class="string">&quot;The requested Kdf label length is too large.&quot;</span>,
+        <span class="ident">KdfSerializationError</span> <span class="op">=</span> <span class="string">&quot;Serialization of the Kdf label failed.&quot;</span>,
+        <span class="ident">HkdfOutputLengthInvalid</span> <span class="op">=</span> <span class="string">&quot;The requested HKDF output length is invalid&quot;</span>,
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">HkdfError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CryptoError</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">HkdfError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">match</span> <span class="ident">e</span> {
+            <span class="ident">HkdfError::InvalidLength</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span><span class="ident">::HkdfOutputLengthInvalid</span>,
+        }
     }
 }
 </pre></div>

@@ -53,16 +53,15 @@
 <span id="50">50</span>
 <span id="51">51</span>
 <span id="52">52</span>
-<span id="53">53</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
 <span class="doccomment">//! handling `MlsPlaintext` and `MlsCiphertext`.</span>
 
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::codec::CodecError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credentials::CredentialError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::tree::secret_tree::SecretTreeError</span>;
+<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsPlaintextError</span> {
@@ -73,7 +72,7 @@
             <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is invalid&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS Codec error&quot;</span>,
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details.&quot;</span>,
             <span class="ident">VerificationError</span>(<span class="ident">VerificationError</span>) <span class="op">=</span> <span class="string">&quot;See [`VerificationError`](`VerificationError`) for details.&quot;</span>,
         }
@@ -91,7 +90,7 @@
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;MlsPlaintext error&quot;</span>,
             <span class="ident">SecretTreeError</span>(<span class="ident">SecretTreeError</span>) <span class="op">=</span> <span class="string">&quot;SecretTree error&quot;</span>,
-            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS codec error&quot;</span>,
         }
     }
 }
@@ -103,7 +102,6 @@
             <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is invalid&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span> <span class="string">&quot;Codec error&quot;</span>,
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;Credential error&quot;</span>,
         }
     }

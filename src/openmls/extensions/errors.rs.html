@@ -77,6 +77,8 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Extension errors.</span>
 <span class="doccomment">//!</span>
@@ -90,8 +92,10 @@
 <span class="doccomment">//! * `ParentHashError`</span>
 <span class="doccomment">//! * `RatchetTreeError`</span>
 
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::config::ConfigError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::error::ErrorString</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">codec::CodecError</span>, <span class="ident">config::ConfigError</span>};
+
+<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExtensionError</span> {
@@ -107,7 +111,7 @@
             <span class="string">&quot;Parent hash extension error. See `ParentHashError` for details.&quot;</span>,
         <span class="ident">RatchetTree</span>(<span class="ident">RatchetTreeError</span>) <span class="op">=</span>
             <span class="string">&quot;Ratchet tree extension error. See `RatchetTreeError` for details.&quot;</span>,
-        <span class="ident">CodecError</span>(<span class="ident">CodecError</span>) <span class="op">=</span>
+        <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
             <span class="string">&quot;Error decoding or encoding an extension.&quot;</span>,
         <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
             <span class="string">&quot;Configuration error. See `ConfigError` for details.&quot;</span>,

@@ -915,6 +915,50 @@
 <span id="912">912</span>
 <span id="913">913</span>
 <span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
@@ -923,6 +967,7 @@
 
 <span class="kw">use</span> <span class="ident">log::error</span>;
 
+<span class="kw">use</span> <span class="ident">::tls_codec</span>::{<span class="ident">Size</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 <span class="kw">use</span> <span class="ident">evercrypt::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">hpke::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{
@@ -931,6 +976,7 @@
     <span class="ident">Deserialize</span>, <span class="ident">Deserializer</span>, <span class="ident">Serialize</span>,
 };
 <span class="kw">use</span> <span class="ident">std::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>};
 
 <span class="comment">// re-export for other parts of the library when we can use it</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::{<span class="ident">HpkeKeyPair</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>};
@@ -942,10 +988,7 @@
 
 <span class="kw">mod</span> <span class="ident">ser</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">codec</span>::<span class="kw-2">*</span>,
-    <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>, <span class="ident">ProtocolVersion</span>},
-};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>, <span class="ident">ProtocolVersion</span>};
 
 <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
@@ -962,7 +1005,19 @@
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::upper_case_acronyms</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>,
+    <span class="ident">Clone</span>,
+    <span class="ident">Copy</span>,
+    <span class="ident">PartialEq</span>,
+    <span class="ident">Eq</span>,
+    <span class="ident">Hash</span>,
+    <span class="ident">Serialize</span>,
+    <span class="ident">Deserialize</span>,
+    <span class="ident">TlsDeserialize</span>,
+    <span class="ident">TlsSerialize</span>,
+    <span class="ident">TlsSize</span>,
+)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CiphersuiteName</span> {
     <span class="ident">MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span> <span class="op">=</span> <span class="number">0x0001</span>,
@@ -978,7 +1033,19 @@
 <span class="doccomment">/// SignatureScheme according to IANA TLS parameters</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::upper_case_acronyms</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Copy</span>,
+    <span class="ident">Hash</span>,
+    <span class="ident">Eq</span>,
+    <span class="ident">PartialEq</span>,
+    <span class="ident">Clone</span>,
+    <span class="ident">Debug</span>,
+    <span class="ident">Serialize</span>,
+    <span class="ident">Deserialize</span>,
+    <span class="ident">TlsDeserialize</span>,
+    <span class="ident">TlsSerialize</span>,
+    <span class="ident">TlsSize</span>,
+)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SignatureScheme</span> {
     <span class="doccomment">/// ECDSA_SECP256R1_SHA256</span>
@@ -1074,10 +1141,12 @@
 <span class="doccomment">///     opaque ciphertext&lt;0..2^16-1&gt;;</span>
 <span class="doccomment">/// } HPKECiphertext;</span>
 <span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HpkeCiphertext</span> {
-    <span class="ident">kem_output</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">kem_output</span>: <span class="ident">TlsByteVecU16</span>,
+    <span class="ident">ciphertext</span>: <span class="ident">TlsByteVecU16</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -1092,20 +1161,30 @@
 
 <span class="doccomment">/// `KdfLabel` is later serialized and used in the `label` field of</span>
 <span class="doccomment">/// `kdf_expand_label`.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">struct</span> <span class="ident">KdfLabel</span> {
     <span class="ident">length</span>: <span class="ident">u16</span>,
-    <span class="ident">label</span>: <span class="ident">String</span>,
-    <span class="ident">context</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">label</span>: <span class="ident">TlsByteVecU8</span>,
+    <span class="ident">context</span>: <span class="ident">TlsByteVecU32</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">KdfLabel</span> {
-    <span class="kw">fn</span> <span class="ident">serialized_label</span>(<span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">label</span>: <span class="ident">String</span>, <span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="comment">// TODO: This should throw an error. Generally, keys length should be</span>
-        <span class="comment">// checked. (see #228).</span>
+    <span class="doccomment">/// Serialize this label.</span>
+    <span class="doccomment">/// Returns the serialized label as byte vector or returns a [`CryptoError`]</span>
+    <span class="doccomment">/// if the parameters are invalid.</span>
+    <span class="kw">fn</span> <span class="ident">serialized_label</span>(
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">label</span>: <span class="ident">String</span>,
+        <span class="ident">length</span>: <span class="ident">usize</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">length</span> <span class="op">&gt;</span> <span class="ident">u16::MAX</span>.<span class="ident">into</span>() {
-            <span class="macro">panic!</span>(<span class="string">&quot;Library error: Trying to derive a key with a too large length field!&quot;</span>)
+            <span class="macro">debug_assert!</span>(
+                <span class="bool-val">false</span>,
+                <span class="string">&quot;Library error: Trying to derive a key with a too large length field!&quot;</span>
+            );
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CryptoError::KdfLabelTooLarge</span>);
         }
-        <span class="macro">log::debug!</span>(
+        <span class="macro">log::trace!</span>(
             <span class="string">&quot;KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}&quot;</span>,
             <span class="ident">length</span> <span class="kw">as</span> <span class="ident">u16</span>,
             <span class="ident">label</span>,
@@ -1113,16 +1192,18 @@
         );
         <span class="kw">let</span> <span class="ident">kdf_label</span> <span class="op">=</span> <span class="ident">KdfLabel</span> {
             <span class="ident">length</span>: <span class="ident">length</span> <span class="kw">as</span> <span class="ident">u16</span>,
-            <span class="ident">label</span>,
-            <span class="ident">context</span>: <span class="ident">context</span>.<span class="ident">to_vec</span>(),
+            <span class="ident">label</span>: <span class="ident">label</span>.<span class="ident">as_bytes</span>().<span class="ident">into</span>(),
+            <span class="ident">context</span>: <span class="ident">context</span>.<span class="ident">into</span>(),
         };
-        <span class="comment">// It is ok to use unwrap() here, because the context is already serialized</span>
-        <span class="ident">kdf_label</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>()
+        <span class="ident">kdf_label</span>
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::KdfSerializationError</span>)
     }
 }
 
 <span class="doccomment">/// Compare two byte slices in a way that&#39;s hopefully not optimised out by the</span>
 <span class="doccomment">/// compiler.</span>
+<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
 <span class="kw">fn</span> <span class="ident">equal_ct</span>(<span class="ident">a</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">b</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="number">0u8</span>;
     <span class="kw">for</span> (<span class="ident">l</span>, <span class="ident">r</span>) <span class="kw">in</span> <span class="ident">a</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">b</span>.<span class="ident">iter</span>()) {
@@ -1273,7 +1354,12 @@
 
     <span class="doccomment">/// Expand a `Secret` to a new `Secret` of length `length` including a</span>
     <span class="doccomment">/// `label` and a `context`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">kdf_expand_label</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">kdf_expand_label</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">length</span>: <span class="ident">usize</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Secret</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">full_label</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{} {}&quot;</span>, <span class="self">self</span>.<span class="ident">mls_version</span>, <span class="ident">label</span>);
         <span class="macro">log::trace!</span>(
             <span class="string">&quot;KDF expand with label \&quot;{}\&quot; and {:?} with context {:x?}&quot;</span>,
@@ -1281,15 +1367,15 @@
             <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
             <span class="ident">context</span>
         );
-        <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">KdfLabel::serialized_label</span>(<span class="ident">context</span>, <span class="ident">full_label</span>, <span class="ident">length</span>);
+        <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">KdfLabel::serialized_label</span>(<span class="ident">context</span>, <span class="ident">full_label</span>, <span class="ident">length</span>)<span class="question-mark">?</span>;
         <span class="macro">log::trace!</span>(<span class="string">&quot;  serialized context: {:x?}&quot;</span>, <span class="ident">info</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  secret: {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">value</span>);
-        <span class="self">self</span>.<span class="ident">hkdf_expand</span>(<span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">length</span>).<span class="ident">unwrap</span>()
+        <span class="self">self</span>.<span class="ident">hkdf_expand</span>(<span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">length</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Derive a new `Secret` from the this one by expanding it with the given</span>
     <span class="doccomment">/// `label` and an empty `context`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Secret</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;derive secret from {:x?} with label {} and {:?}&quot;</span>,
@@ -1345,15 +1431,15 @@
 <span class="doccomment">/// struct {</span>
 <span class="doccomment">///     opaque mac_value&lt;0..255&gt;;</span>
 <span class="doccomment">/// } MAC;</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Mac</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">mac_value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">mac_value</span>: <span class="ident">TlsByteVecU8</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Mac</span> {
     <span class="comment">// Constant time comparison.</span>
     <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Mac</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="ident">equal_ct</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">mac_value</span>, <span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">mac_value</span>)
+        <span class="ident">equal_ct</span>(<span class="self">self</span>.<span class="ident">mac_value</span>.<span class="ident">as_slice</span>(), <span class="ident">other</span>.<span class="ident">mac_value</span>.<span class="ident">as_slice</span>())
     }
 }
 
@@ -1365,7 +1451,8 @@
         <span class="ident">Mac</span> {
             <span class="ident">mac_value</span>: <span class="ident">salt</span>
                 .<span class="ident">hkdf_extract</span>(<span class="kw-2">&amp;</span><span class="ident">Secret::from_slice</span>(<span class="ident">ikm</span>, <span class="ident">salt</span>.<span class="ident">mls_version</span>, <span class="ident">salt</span>.<span class="ident">ciphersuite</span>))
-                .<span class="ident">value</span>,
+                .<span class="ident">value</span>
+                .<span class="ident">into</span>(),
         }
     }
 }
@@ -1378,7 +1465,7 @@
     <span class="ident">mac_len</span>: <span class="ident">usize</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReuseGuard</span> {
     <span class="ident">value</span>: [<span class="ident">u8</span>; <span class="ident">REUSE_GUARD_BYTES</span>],
@@ -1398,18 +1485,20 @@
     <span class="ident">value</span>: [<span class="ident">u8</span>; <span class="ident">NONCE_BYTES</span>],
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span> {
-    <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">value</span>: <span class="ident">TlsByteVecU16</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">impl</span> <span class="ident">Signature</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) {
-        <span class="self">self</span>.<span class="ident">value</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">to_vec</span>();
+        <span class="self">self</span>.<span class="ident">value</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">to_vec</span>().<span class="ident">into</span>();
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
+        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()
     }
 }
 
@@ -1548,11 +1637,11 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HpkeCiphertext</span> {
         <span class="kw">let</span> (<span class="ident">kem_output</span>, <span class="ident">ciphertext</span>) <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">hpke</span>
-            .<span class="ident">seal</span>(<span class="kw-2">&amp;</span><span class="ident">pk_r</span>, <span class="ident">info</span>, <span class="ident">aad</span>, <span class="ident">ptxt</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+            .<span class="ident">seal</span>(<span class="ident">pk_r</span>, <span class="ident">info</span>, <span class="ident">aad</span>, <span class="ident">ptxt</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
             .<span class="ident">unwrap</span>();
         <span class="ident">HpkeCiphertext</span> {
-            <span class="ident">kem_output</span>,
-            <span class="ident">ciphertext</span>,
+            <span class="ident">kem_output</span>: <span class="ident">kem_output</span>.<span class="ident">into</span>(),
+            <span class="ident">ciphertext</span>: <span class="ident">ciphertext</span>.<span class="ident">into</span>(),
         }
     }
 
@@ -1579,11 +1668,11 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">hpke</span>
             .<span class="ident">open</span>(
-                <span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">kem_output</span>,
-                <span class="kw-2">&amp;</span><span class="ident">sk_r</span>,
+                <span class="ident">input</span>.<span class="ident">kem_output</span>.<span class="ident">as_slice</span>(),
+                <span class="ident">sk_r</span>,
                 <span class="ident">info</span>,
                 <span class="ident">aad</span>,
-                <span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">ciphertext</span>,
+                <span class="ident">input</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>(),
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
@@ -1634,7 +1723,7 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">AeadError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">ct</span>, <span class="ident">tag</span>) <span class="op">=</span> <span class="ident">aead_encrypt</span>(
             <span class="self">self</span>.<span class="ident">aead_mode</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
+            <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
             <span class="ident">msg</span>,
             <span class="kw-2">&amp;</span><span class="ident">nonce</span>.<span class="ident">value</span>,
             <span class="ident">aad</span>,
@@ -1712,7 +1801,7 @@
     <span class="doccomment">/// Sign the `payload` byte slice with this signature key.</span>
     <span class="doccomment">/// Returns a `Result` with a `Signature` or a `SignatureError`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">SignatureError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>)
+        <span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">sign</span>(<span class="ident">payload</span>)
     }
 
     <span class="doccomment">/// Verify a `Signature` on the `payload` byte slice with the key pair&#39;s</span>
@@ -1773,16 +1862,16 @@
     <span class="doccomment">/// public key.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>, <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SignatureError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">verify</span>(
-            <span class="comment">// It&#39;s ok to use `unwrap()` here, since we checked the signature scheme is supported</span>
-            <span class="comment">// when the public key was created.</span>
-            <span class="ident">SignatureMode::try_from</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>).<span class="ident">unwrap</span>(),
-            <span class="prelude-val">Some</span>(<span class="ident">DigestMode::try_from</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>).<span class="ident">unwrap</span>()),
+            <span class="ident">SignatureMode::try_from</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">SignatureError::UnknownAlgorithm</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">Some</span>(
+                <span class="ident">DigestMode::try_from</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">SignatureError::UnknownAlgorithm</span>)<span class="question-mark">?</span>,
+            ),
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>,
-            <span class="kw-2">&amp;</span><span class="ident">signature</span>.<span class="ident">value</span>,
+            <span class="ident">signature</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
             <span class="ident">payload</span>,
-        )
-        .<span class="ident">unwrap</span>()
-        {
+        )<span class="question-mark">?</span> {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">SignatureError::InvalidSignature</span>)
@@ -1794,9 +1883,8 @@
     <span class="doccomment">/// Sign the `payload` byte slice with this signature key.</span>
     <span class="doccomment">/// Returns a `Result` with a `Signature` or a `SignatureError`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">SignatureError</span><span class="op">&gt;</span> {
-        <span class="comment">// It&#39;s ok to use `unwrap()` here, since we checked the signature scheme is</span>
-        <span class="comment">// supported when the public key was created.</span>
-        <span class="kw">let</span> <span class="ident">signature_mode</span> <span class="op">=</span> <span class="ident">SignatureMode::try_from</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">signature_mode</span> <span class="op">=</span> <span class="ident">SignatureMode::try_from</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">SignatureError::UnknownAlgorithm</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> (<span class="ident">hash</span>, <span class="ident">nonce</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">signature_mode</span> {
             <span class="ident">SignatureMode::Ed25519</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
             <span class="ident">SignatureMode::P256</span> <span class="op">=</span><span class="op">&gt;</span> (
@@ -1805,7 +1893,7 @@
             ),
         };
         <span class="kw">match</span> <span class="ident">sign</span>(<span class="ident">signature_mode</span>, <span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>, <span class="ident">payload</span>, <span class="ident">nonce</span>.<span class="ident">as_ref</span>()) {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Signature</span> { <span class="ident">value</span>: <span class="ident">s</span> }),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Signature</span> { <span class="ident">value</span>: <span class="ident">s</span>.<span class="ident">into</span>() }),
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }

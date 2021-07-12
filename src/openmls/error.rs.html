@@ -327,7 +327,7 @@
                 <span class="macro">as_expr!</span> {
                     <span class="kw">match</span> <span class="self">self</span> {
                         $(
-                            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">var_name</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">description</span>, <span class="ident">e</span>.<span class="ident">_description</span>()),
+                            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">var_name</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">description</span>, <span class="ident">e</span>),
                         )<span class="op">*</span>
                         $(
                             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">var_name_simple</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">description_simple</span>),

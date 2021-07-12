@@ -636,6 +636,14 @@
 <span id="633">633</span>
 <span id="634">634</span>
 <span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for encrypting to tree nodes</span>
 <span class="doccomment">//!</span>
@@ -718,7 +726,6 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::Ciphersuite</span>,
-    <span class="ident">codec</span>::<span class="kw-2">*</span>,
     <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>},
     <span class="ident">credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialType</span>},
     <span class="ident">framing</span>::<span class="kw-2">*</span>,
@@ -805,7 +812,7 @@
     <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
         <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite</span>.<span class="ident">name</span>()], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
     <span class="ident">MlsGroup::new</span>(
-        <span class="kw-2">&amp;</span><span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
+        <span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
         <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
         <span class="ident">key_package_bundle</span>,
         <span class="ident">MlsGroupConfig::default</span>(),
@@ -822,6 +829,8 @@
     <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>,
     <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
+    <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+
     <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>(<span class="ident">random_u64</span>());
     <span class="ident">group</span>.<span class="ident">context_mut</span>().<span class="ident">set_epoch</span>(<span class="ident">epoch</span>);
     <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::from_secret</span>(<span class="ident">Secret::random</span>(
@@ -832,7 +841,7 @@
         <span class="ident">leaf</span>,
         <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
         <span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal</span> { <span class="ident">removed</span>: <span class="number">0</span> }),
-        <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
+        <span class="ident">credential_bundle</span>,
         <span class="ident">group</span>.<span class="ident">context</span>(),
         <span class="kw-2">&amp;</span><span class="ident">membership_key</span>,
     )
@@ -849,8 +858,8 @@
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Could not create MlsCiphertext&quot;</span>);
     (
-        <span class="ident">plaintext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
-        <span class="ident">ciphertext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
+        <span class="ident">plaintext</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
+        <span class="ident">ciphertext</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
     )
 }
 
@@ -860,6 +869,8 @@
     <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>,
     <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
+    <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+
     <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch</span>(<span class="ident">random_u64</span>());
     <span class="ident">group</span>.<span class="ident">context_mut</span>().<span class="ident">set_epoch</span>(<span class="ident">epoch</span>);
     <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::from_secret</span>(<span class="ident">Secret::random</span>(
@@ -870,7 +881,7 @@
         <span class="ident">leaf</span>,
         <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],
         <span class="kw-2">&amp;</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>],
-        <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
+        <span class="ident">credential_bundle</span>,
         <span class="ident">group</span>.<span class="ident">context</span>(),
         <span class="kw-2">&amp;</span><span class="ident">membership_key</span>,
     )
@@ -889,8 +900,8 @@
         <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;Could not create MlsCiphertext {}&quot;</span>, <span class="ident">e</span>),
     };
     (
-        <span class="ident">plaintext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
-        <span class="ident">ciphertext</span>.<span class="ident">encode_detached</span>().<span class="ident">unwrap</span>(),
+        <span class="ident">plaintext</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
+        <span class="ident">ciphertext</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
     )
 }
 
@@ -1004,6 +1015,8 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">EncryptionTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">EncTestVectorError</span><span class="op">&gt;</span> {
+    <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
     <span class="kw">let</span> <span class="ident">n_leaves</span> <span class="op">=</span> <span class="ident">test_vector</span>.<span class="ident">n_leaves</span>;
     <span class="kw">if</span> <span class="ident">n_leaves</span> <span class="op">!</span><span class="op">=</span> <span class="ident">test_vector</span>.<span class="ident">leaves</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span> {
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::LeafNumberMismatch</span>);
@@ -1110,8 +1123,9 @@
             }
 
             <span class="comment">// Setup group</span>
+            <span class="kw">let</span> <span class="ident">ctxt_bytes</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">ciphertext</span>);
             <span class="kw">let</span> <span class="ident">mls_ciphertext_application</span> <span class="op">=</span>
-                <span class="ident">MlsCiphertext::decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">ciphertext</span>)))
+                <span class="ident">MlsCiphertext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ctxt_bytes</span>.<span class="ident">as_slice</span>())
                     .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MlsCiphertext&quot;</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_application</span>.<span class="ident">group_id</span>);
             <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
@@ -1130,7 +1144,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Error decrypting MlsCiphertext&quot;</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">application</span>.<span class="ident">plaintext</span>)
                 <span class="op">!</span><span class="op">=</span> <span class="ident">mls_plaintext_application</span>
-                    .<span class="ident">encode_detached</span>()
+                    .<span class="ident">tls_serialize_detached</span>()
                     .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MlsPlaintext&quot;</span>)
             {
                 <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
@@ -1162,8 +1176,9 @@
             }
 
             <span class="comment">// Setup group</span>
+            <span class="kw">let</span> <span class="ident">handshake_bytes</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>);
             <span class="kw">let</span> <span class="ident">mls_ciphertext_handshake</span> <span class="op">=</span>
-                <span class="ident">MlsCiphertext::decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
+                <span class="ident">MlsCiphertext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">handshake_bytes</span>.<span class="ident">as_slice</span>())
                     .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MlsCiphertext&quot;</span>);
             <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
                 <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">sender_data_secret</span>).<span class="ident">as_slice</span>(),
@@ -1177,7 +1192,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Error decrypting MlsCiphertext&quot;</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">plaintext</span>)
                 <span class="op">!</span><span class="op">=</span> <span class="ident">mls_plaintext_handshake</span>
-                    .<span class="ident">encode_detached</span>()
+                    .<span class="ident">tls_serialize_detached</span>()
                     .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MlsPlaintext&quot;</span>)
             {
                 <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
@@ -1203,8 +1218,9 @@
             }
 
             <span class="comment">// Setup group</span>
+            <span class="kw">let</span> <span class="ident">handshake_bytes</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>);
             <span class="kw">let</span> <span class="ident">mls_ciphertext_handshake</span> <span class="op">=</span>
-                <span class="ident">MlsCiphertext::decode</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor::new</span>(<span class="kw-2">&amp;</span><span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">ciphertext</span>)))
+                <span class="ident">MlsCiphertext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">handshake_bytes</span>.<span class="ident">as_slice</span>())
                     .<span class="ident">expect</span>(<span class="string">&quot;Error parsing MLSCiphertext&quot;</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_handshake</span>.<span class="ident">group_id</span>);
             <span class="kw-2">*</span><span class="ident">group</span>.<span class="ident">epoch_secrets_mut</span>().<span class="ident">sender_data_secret_mut</span>() <span class="op">=</span> <span class="ident">SenderDataSecret::from_slice</span>(
@@ -1219,7 +1235,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Error decrypting MLSCiphertext&quot;</span>);
             <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">handshake</span>.<span class="ident">plaintext</span>)
                 <span class="op">!</span><span class="op">=</span> <span class="ident">mls_plaintext_handshake</span>
-                    .<span class="ident">encode_detached</span>()
+                    .<span class="ident">tls_serialize_detached</span>()
                     .<span class="ident">expect</span>(<span class="string">&quot;Error encoding MLSPlaintext&quot;</span>)
             {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">EncTestVectorError::DecryptedHandshakeMessageMismatch</span>);

@@ -144,15 +144,56 @@
 <span id="141">141</span>
 <span id="142">142</span>
 <span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Index</span>, <span class="ident">IndexMut</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Size</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// NodeIndex is an index to the nodes of a tree, both parent and leaf nodes.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>,
+    <span class="ident">Debug</span>,
+    <span class="ident">Ord</span>,
+    <span class="ident">PartialOrd</span>,
+    <span class="ident">Eq</span>,
+    <span class="ident">PartialEq</span>,
+    <span class="ident">Copy</span>,
+    <span class="ident">Clone</span>,
+    <span class="ident">Hash</span>,
+    <span class="ident">Default</span>,
+    <span class="ident">Serialize</span>,
+    <span class="ident">Deserialize</span>,
+    <span class="ident">TlsSerialize</span>,
+    <span class="ident">TlsDeserialize</span>,
+    <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeIndex</span>(<span class="ident">u32</span>);
 
@@ -191,7 +232,20 @@
 
 <span class="doccomment">/// LeafIndex is an index to the leaves of a tree.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>,
+    <span class="ident">Debug</span>,
+    <span class="ident">Default</span>,
+    <span class="ident">Ord</span>,
+    <span class="ident">PartialOrd</span>,
+    <span class="ident">Hash</span>,
+    <span class="ident">Eq</span>,
+    <span class="ident">PartialEq</span>,
+    <span class="ident">Copy</span>,
+    <span class="ident">Clone</span>,
+    <span class="ident">Serialize</span>,
+    <span class="ident">Deserialize</span>,
+    <span class="ident">TlsDeserialize</span>,
+    <span class="ident">TlsSerialize</span>,
+    <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LeafIndex</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">u32</span>);
 

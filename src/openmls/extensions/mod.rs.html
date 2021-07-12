@@ -276,55 +276,32 @@
 <span id="273">273</span>
 <span id="274">274</span>
 <span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">any::Any</span>, <span class="ident">convert::TryFrom</span>, <span class="ident">fmt::Debug</span>};
+<span class="doccomment">//! # Extensions</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Extension struct</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! An extension has an `ExtensionType` and an opaque payload (byte vector).</span>
+<span class="doccomment">//! This isn&#39;t used in OpenMLS at all but part of the (de)serialization process</span>
+<span class="doccomment">//! of each extension.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! See IANA registry for registered values</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ```text</span>
+<span class="doccomment">//! uint16 ExtensionType;</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! struct {</span>
+<span class="doccomment">//!     ExtensionType extension_type;</span>
+<span class="doccomment">//!     opaque extension_data&lt;0..2^32-1&gt;;</span>
+<span class="doccomment">//! } Extension;</span>
+<span class="doccomment">//! ```</span>
 
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::codec</span>::{<span class="ident">decode_vec</span>, <span class="ident">encode_vec</span>, <span class="ident">Codec</span>, <span class="ident">CodecError</span>, <span class="ident">Cursor</span>, <span class="ident">Decode</span>, <span class="ident">Encode</span>, <span class="ident">VecSize</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">convert::TryFrom</span>,
+    <span class="ident">fmt::Debug</span>,
+    <span class="ident">io</span>::{<span class="ident">Read</span>, <span class="ident">Write</span>},
+};
+
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">mod</span> <span class="ident">capabilities_extension</span>;
@@ -333,6 +310,7 @@
 <span class="kw">mod</span> <span class="ident">life_time_extension</span>;
 <span class="kw">mod</span> <span class="ident">parent_hash_extension</span>;
 <span class="kw">mod</span> <span class="ident">ratchet_tree_extension</span>;
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Size</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSliceU32</span>};
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">capabilities_extension::CapabilitiesExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
@@ -347,7 +325,21 @@
 <span class="doccomment">/// # Extension types</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>,
+    <span class="ident">Copy</span>,
+    <span class="ident">Clone</span>,
+    <span class="ident">PartialEq</span>,
+    <span class="ident">Eq</span>,
+    <span class="ident">Hash</span>,
+    <span class="ident">Serialize</span>,
+    <span class="ident">Deserialize</span>,
+    <span class="ident">Ord</span>,
+    <span class="ident">PartialOrd</span>,
+    <span class="ident">TlsSerialize</span>,
+    <span class="ident">TlsDeserialize</span>,
+    <span class="ident">TlsSize</span>,
+)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExtensionType</span> {
     <span class="ident">Reserved</span> <span class="op">=</span> <span class="number">0</span>,
@@ -358,20 +350,12 @@
     <span class="ident">RatchetTree</span> <span class="op">=</span> <span class="number">5</span>,
 }
 
-<span class="doccomment">/// The default extension type is invalid.</span>
-<span class="doccomment">/// This has to be set explicitly.</span>
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ExtensionType</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">ExtensionType::Reserved</span>
-    }
-}
-
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExtensionType</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">CodecError</span>;
+    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">tls_codec::Error</span>;
 
-    <span class="doccomment">/// Get the `ExtensionType` from a u16.</span>
+    <span class="doccomment">/// Get the [`ExtensionType`] from a u16.</span>
     <span class="doccomment">/// Returns an error if the extension type is not known.</span>
-    <span class="doccomment">/// Note that this returns a [`CodecError`](`crate::codec::CodecError`).</span>
+    <span class="doccomment">/// Note that this returns a [`tls_codec::Error`](`tls_codec::Error`).</span>
     <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">a</span>: <span class="ident">u16</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="self">Self</span><span class="ident">::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">a</span> {
             <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::Reserved</span>),
@@ -380,179 +364,117 @@
             <span class="number">3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::KeyId</span>),
             <span class="number">4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::ParentHash</span>),
             <span class="number">5</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::RatchetTree</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">CodecError::DecodingError</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;{} is an unkown extension type&quot;</span>,
+                <span class="ident">a</span>
+            ))),
         }
     }
 }
 
-<span class="macro">implement_codec!</span> {
-    <span class="ident">ExtensionType</span>,
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        (<span class="kw-2">*</span><span class="self">self</span> <span class="kw">as</span> <span class="ident">u16</span>).<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="doccomment">/// An extension can be one of the following elements.</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Extension</span> {
+    <span class="doccomment">/// A [`CapabilitiesExtension`]</span>
+    <span class="ident">Capabilities</span>(<span class="ident">CapabilitiesExtension</span>),
 
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">u16::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="self">Self</span><span class="ident">::try_from</span>(<span class="ident">value</span>)
-    }
+    <span class="doccomment">/// A [`KeyIdExtension`]</span>
+    <span class="ident">KeyPackageId</span>(<span class="ident">KeyIdExtension</span>),
+
+    <span class="doccomment">/// A [`LifetimeExtension`]</span>
+    <span class="ident">LifeTime</span>(<span class="ident">LifetimeExtension</span>),
+
+    <span class="doccomment">/// A [`ParentHashExtension`]</span>
+    <span class="ident">ParentHash</span>(<span class="ident">ParentHashExtension</span>),
+
+    <span class="doccomment">/// A [`RatchetTreeExtension`]</span>
+    <span class="ident">RatchetTree</span>(<span class="ident">RatchetTreeExtension</span>),
 }
 
-<span class="doccomment">/// # Extension struct</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// An extension has an `ExtensionType` and an opaque payload (byte vector).</span>
-<span class="doccomment">/// This is only used for encoding and decoding.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// See IANA registry for registered values</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```text</span>
-<span class="doccomment">/// uint16 ExtensionType;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     ExtensionType extension_type;</span>
-<span class="doccomment">///     opaque extension_data&lt;0..2^32-1&gt;;</span>
-<span class="doccomment">/// } Extension;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExtensionStruct</span> {
-    <span class="ident">extension_type</span>: <span class="ident">ExtensionType</span>,
-    <span class="ident">extension_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ExtensionStruct</span> {
-    <span class="doccomment">/// Build a new `ExtensionStruct`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">extension_type</span>: <span class="ident">ExtensionType</span>, <span class="ident">extension_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">extension_type</span>,
-            <span class="ident">extension_data</span>,
+<span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">Extension</span> {
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+        <span class="number">2</span> <span class="comment">/* extension type len */</span>
+        <span class="op">+</span> <span class="number">4</span> <span class="comment">/* u32 len */</span> <span class="op">+</span>
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">Extension::Capabilities</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">Extension::KeyPackageId</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">Extension::LifeTime</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">Extension::ParentHash</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">Extension::RatchetTree</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
         }
     }
+}
 
-    <span class="doccomment">/// Get the data of this extension struct.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extension_data</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">extension_data</span>
+<span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">Extension</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+        <span class="comment">// First write the extension type.</span>
+        <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">extension_type</span>().<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
+
+        <span class="comment">// Now serialize the extension into a separate byte vector.</span>
+        <span class="kw">let</span> <span class="ident">extension_data_len</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tls_serialized_len</span>() <span class="op">-</span> <span class="number">6</span> <span class="comment">/* extension type length and u32 length */</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">extension_data</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">extension_data_len</span>);
+
+        <span class="kw">let</span> <span class="ident">extension_data_written</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">Extension::Capabilities</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
+            <span class="ident">Extension::KeyPackageId</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
+            <span class="ident">Extension::LifeTime</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
+            <span class="ident">Extension::ParentHash</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
+            <span class="ident">Extension::RatchetTree</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
+        }<span class="question-mark">?</span>;
+        <span class="macro">debug_assert_eq!</span>(<span class="ident">extension_data_written</span>, <span class="ident">extension_data_len</span>);
+        <span class="macro">debug_assert_eq!</span>(<span class="ident">extension_data_written</span>, <span class="ident">extension_data</span>.<span class="ident">len</span>());
+
+        <span class="comment">// Write the serialized extension out.</span>
+        <span class="ident">TlsSliceU32</span>(<span class="kw-2">&amp;</span><span class="ident">extension_data</span>)
+            .<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
     }
 }
 
-<span class="macro">implement_codec!</span> {
-    <span class="ident">ExtensionStruct</span>,
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">extension_type</span>.<span class="ident">encode</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">encode_vec</span>(<span class="ident">VecSize::VecU32</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">extension_data</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
+<span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">Extension</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+        <span class="comment">// Read the extension type and extension data.</span>
+        <span class="kw">let</span> <span class="ident">extension_type</span> <span class="op">=</span> <span class="ident">ExtensionType::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">extension_data</span> <span class="op">=</span> <span class="ident">TlsByteVecU32::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">extension_type</span> <span class="op">=</span> <span class="ident">ExtensionType::decode</span>(<span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">extension_data</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize::VecU32</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">extension_type</span>,
-            <span class="ident">extension_data</span>,
+        <span class="comment">// Now deserialize the extension itself from the extension data.</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">extension_data</span> <span class="op">=</span> <span class="ident">extension_data</span>.<span class="ident">as_slice</span>();
+        <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">extension_type</span> {
+            <span class="ident">ExtensionType::Capabilities</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Extension::Capabilities</span>(
+                <span class="ident">CapabilitiesExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>,
+            ),
+            <span class="ident">ExtensionType::KeyId</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Extension::KeyPackageId</span>(<span class="ident">KeyIdExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>)
+            }
+            <span class="ident">ExtensionType::Lifetime</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Extension::LifeTime</span>(<span class="ident">LifetimeExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>)
+            }
+            <span class="ident">ExtensionType::ParentHash</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Extension::ParentHash</span>(<span class="ident">ParentHashExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>)
+            }
+            <span class="ident">ExtensionType::RatchetTree</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Extension::RatchetTree</span>(<span class="ident">RatchetTreeExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>)
+            }
+            <span class="ident">ExtensionType::Reserved</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
+                    <span class="string">&quot;{:?} is not a valid extension type&quot;</span>,
+                    <span class="ident">extension_type</span>
+                )))
+            }
         })
     }
 }
 
-<span class="doccomment">/// Build a new extension of the given type from a byte slice.</span>
-<span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">ext_type</span>: <span class="ident">ExtensionType</span>, <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
-    <span class="kw">match</span> <span class="ident">ext_type</span> {
-        <span class="ident">ExtensionType::Capabilities</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">CapabilitiesExtension::new_from_bytes</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-        <span class="ident">ExtensionType::KeyId</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">KeyIdExtension::new_from_bytes</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-        <span class="ident">ExtensionType::Lifetime</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">LifetimeExtension::new_from_bytes</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-        <span class="ident">ExtensionType::ParentHash</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ParentHashExtension::new_from_bytes</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-        <span class="ident">ExtensionType::RatchetTree</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">RatchetTreeExtension::new_from_bytes</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
-            <span class="macro">format!</span>(<span class="string">&quot;Invalid extension type {:?}.&quot;</span>, <span class="ident">ext_type</span>).<span class="ident">into</span>(),
-        )),
-    }
-}
-
-<span class="doccomment">/// Encode extensions with TLS encoding. This is used whenever a struct contains</span>
-<span class="doccomment">/// extensions.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">encode_extensions</span>(
-    <span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>],
-    <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CodecError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">encoded_extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExtensionStruct</span><span class="op">&gt;</span> <span class="op">=</span>
-        <span class="ident">extensions</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_extension_struct</span>()).<span class="ident">collect</span>();
-    <span class="ident">encode_vec</span>(<span class="ident">VecSize::VecU32</span>, <span class="ident">buffer</span>, <span class="kw-2">&amp;</span><span class="ident">encoded_extensions</span>)<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="doccomment">/// Read a list of extensions from a `Cursor` into a vector of `Extension`s.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note that this function returns a `CodecError` instead of an</span>
-<span class="doccomment">/// `ExtensionError` because it&#39;s only used in decoding functions.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">extensions_vec_from_cursor</span>(
-    <span class="ident">cursor</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Cursor</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">CodecError</span><span class="op">&gt;</span> {
-    <span class="comment">// First parse the extension bytes into the `ExtensionStruct`.</span>
-    <span class="kw">let</span> <span class="ident">extension_struct_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExtensionStruct</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">decode_vec</span>(<span class="ident">VecSize::VecU32</span>, <span class="ident">cursor</span>)<span class="question-mark">?</span>;
-
-    <span class="comment">// Now create the result vector of `Extension`s.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-    <span class="kw">for</span> <span class="ident">extension</span> <span class="kw">in</span> <span class="ident">extension_struct_vec</span>.<span class="ident">iter</span>() {
-        <span class="comment">// Make sure there are no duplicate extensions.</span>
-        <span class="kw">if</span> <span class="ident">result</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>)
-        {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CodecError::DecodingError</span>);
-        }
-        <span class="kw">let</span> <span class="ident">ext</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">from_bytes</span>(<span class="ident">extension</span>.<span class="ident">extension_type</span>, <span class="kw-2">&amp;</span><span class="ident">extension</span>.<span class="ident">extension_data</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">r</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CodecError::DecodingError</span>),
-        };
-        <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">ext</span>);
-    }
-
-    <span class="prelude-val">Ok</span>(<span class="ident">result</span>)
-}
-
-<span class="doccomment">/// # Extension</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This trait defines functions to interact with an extension.</span>
-<span class="attribute">#[<span class="ident">typetag::serde</span>(<span class="ident">tag</span> <span class="op">=</span> <span class="string">&quot;type&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Extension</span>: <span class="ident">Debug</span> <span class="op">+</span> <span class="ident">ExtensionHelper</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="doccomment">/// Build a new extension from a byte slice.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that all implementations of this trait are not public such that</span>
-    <span class="doccomment">/// this function can&#39;t be used outside of the library.</span>
-    <span class="kw">fn</span> <span class="ident">new_from_bytes</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="self">Self</span>: <span class="ident">Sized</span>;
-
-    <span class="doccomment">/// Each extension has an extension type.</span>
-    <span class="doccomment">/// This should be an associated constant really.</span>
-    <span class="doccomment">/// See &lt;https://github.com/rust-lang/rust/issues/46969&gt; for reference.</span>
-    <span class="kw">fn</span> <span class="ident">extension_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ExtensionType</span>;
-
-    <span class="doccomment">/// Get the extension as `ExtensionStruct` for encoding.</span>
-    <span class="kw">fn</span> <span class="ident">to_extension_struct</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ExtensionStruct</span>;
-
-    <span class="doccomment">/// Get a generic trait object for downcasting.</span>
-    <span class="kw">fn</span> <span class="ident">as_any</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Any</span>;
-
-    <span class="doccomment">/// Get a reference to the `ParentHashExtension`.</span>
+<span class="kw">impl</span> <span class="ident">Extension</span> {
+    <span class="doccomment">/// Get a reference to the `RatchetTreeExtension`.</span>
     <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `ParentHashExtension`.</span>
-    <span class="kw">fn</span> <span class="ident">to_parent_hash_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ParentHashExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">as_any</span>().<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">ParentHashExtension</span><span class="op">&gt;</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
-                <span class="string">&quot;This is not a ParentHashExtension&quot;</span>.<span class="ident">into</span>(),
-            )),
-        }
-    }
-
-    <span class="doccomment">/// Get a reference to the `CapabilitiesExtension`.</span>
-    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `CapabilitiesExtension`.</span>
-    <span class="kw">fn</span> <span class="ident">to_capabilities_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CapabilitiesExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">as_any</span>().<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">CapabilitiesExtension</span><span class="op">&gt;</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
-                <span class="string">&quot;This is not a CapabilitiesExtension&quot;</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// that&#39;s not a `RatchetTreeExtension`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RatchetTreeExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="self">Self</span><span class="ident">::RatchetTree</span>(<span class="ident">rte</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">rte</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
+                <span class="string">&quot;This is not a RatchetTreeExtension&quot;</span>.<span class="ident">into</span>(),
             )),
         }
     }
@@ -560,10 +482,10 @@
     <span class="doccomment">/// Get a reference to the `LifetimeExtension`.</span>
     <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
     <span class="doccomment">/// that&#39;s not a `LifetimeExtension`.</span>
-    <span class="kw">fn</span> <span class="ident">to_lifetime_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LifetimeExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">as_any</span>().<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">LifetimeExtension</span><span class="op">&gt;</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_lifetime_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LifetimeExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="self">Self</span><span class="ident">::LifeTime</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
                 <span class="string">&quot;This is not a LifetimeExtension&quot;</span>.<span class="ident">into</span>(),
             )),
         }
@@ -572,72 +494,60 @@
     <span class="doccomment">/// Get a reference to the `KeyIDExtension`.</span>
     <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
     <span class="doccomment">/// that&#39;s not a `KeyIDExtension`.</span>
-    <span class="kw">fn</span> <span class="ident">to_key_id_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyIdExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">as_any</span>().<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">KeyIdExtension</span><span class="op">&gt;</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_key_id_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyIdExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="self">Self</span><span class="ident">::KeyPackageId</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
                 <span class="string">&quot;This is not a KeyIDExtension&quot;</span>.<span class="ident">into</span>(),
             )),
         }
     }
 
-    <span class="doccomment">/// Get a reference to the `RatchetTreeExtension`.</span>
+    <span class="doccomment">/// Get a reference to the `CapabilitiesExtension`.</span>
     <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `RatchetTreeExtension`.</span>
-    <span class="kw">fn</span> <span class="ident">as_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RatchetTreeExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">as_any</span>().<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">RatchetTreeExtension</span><span class="op">&gt;</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
-                <span class="string">&quot;This is not a RatchetTreeExtension&quot;</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// that&#39;s not a `CapabilitiesExtension`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_capabilities_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CapabilitiesExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="self">Self</span><span class="ident">::Capabilities</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
+                <span class="string">&quot;This is not a CapabilitiesExtension&quot;</span>.<span class="ident">into</span>(),
             )),
         }
     }
-}
 
-<span class="comment">// A slightly hacky work around to make `Extensions` clonable.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ExtensionHelper</span> {
-    <span class="kw">fn</span> <span class="ident">clone_it</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>;
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">ExtensionHelper</span> <span class="kw">for</span> <span class="ident">T</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Extension</span> <span class="op">+</span> <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Default</span>,
-{
-    <span class="kw">fn</span> <span class="ident">clone_it</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">clone</span>())
-    }
-}
-
-<span class="comment">// Implement necessary traits (Clone, PartialEq) that we can&#39;t derive.</span>
-
-<span class="kw">impl</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Extension</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="self">Self</span>: <span class="ident">Sized</span>,
-    {
-        <span class="self">self</span>.<span class="ident">clone_it</span>()
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="kw">dyn</span> <span class="ident">Extension</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">extension_type</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">extension_type</span>() {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+    <span class="doccomment">/// Get a reference to the `ParentHashExtension`.</span>
+    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
+    <span class="doccomment">/// that&#39;s not a `ParentHashExtension`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_parent_hash_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ParentHashExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="self">Self</span><span class="ident">::ParentHash</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
+                <span class="string">&quot;This is not a ParentHashExtension&quot;</span>.<span class="ident">into</span>(),
+            )),
         }
+    }
 
-        <span class="self">self</span>.<span class="ident">to_extension_struct</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">to_extension_struct</span>()
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">extension_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ExtensionType</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">Extension::Capabilities</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::Capabilities</span>,
+            <span class="ident">Extension::KeyPackageId</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::KeyId</span>,
+            <span class="ident">Extension::LifeTime</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::Lifetime</span>,
+            <span class="ident">Extension::ParentHash</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::ParentHash</span>,
+            <span class="ident">Extension::RatchetTree</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::RatchetTree</span>,
+        }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="kw">dyn</span> <span class="ident">Extension</span> {}
+<span class="kw">impl</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="ident">Extension</span> {}
 
-<span class="kw">impl</span> <span class="ident">PartialOrd</span> <span class="kw">for</span> <span class="kw">dyn</span> <span class="ident">Extension</span> {
+<span class="kw">impl</span> <span class="ident">PartialOrd</span> <span class="kw">for</span> <span class="ident">Extension</span> {
     <span class="kw">fn</span> <span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">std::cmp::Ordering</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">extension_type</span>().<span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">extension_type</span>())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Ord</span> <span class="kw">for</span> <span class="kw">dyn</span> <span class="ident">Extension</span> {
+<span class="kw">impl</span> <span class="ident">Ord</span> <span class="kw">for</span> <span class="ident">Extension</span> {
     <span class="kw">fn</span> <span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::cmp::Ordering</span> {
         <span class="self">self</span>.<span class="ident">extension_type</span>().<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">extension_type</span>())
     }

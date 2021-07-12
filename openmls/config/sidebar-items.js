@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ProtocolVersion","Protocol Version"]],"mod":[["codec",""],["errors","Config errors"]],"struct":[["Config","OpenMLS Configuration"]]});
+initSidebarItems({"enum":[["ProtocolVersion","Protocol Version"]],"mod":[["errors","Config errors"]],"struct":[["Config","OpenMLS Configuration"]]});
