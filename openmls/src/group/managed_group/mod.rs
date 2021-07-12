@@ -7,7 +7,7 @@ mod ser;
 #[cfg(test)]
 mod test_managed_group;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use crate::messages::PathSecret;
 
 use crate::{
@@ -27,7 +27,7 @@ use crate::{
 use std::collections::HashMap;
 use std::io::{Error, Read, Write};
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use std::cell::Ref;
 
 pub use callbacks::*;
@@ -880,22 +880,22 @@ impl ManagedGroup {
         self.group.tree().public_key_tree_copy()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn export_path_secrets(&self) -> Ref<[PathSecret]> {
         Ref::map(self.group.tree(), |tree| tree.private_tree().path_secrets())
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn export_group_context(&self) -> &GroupContext {
         self.group.context()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn tree_hash(&self) -> Vec<u8> {
         self.group.tree().tree_hash()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn print_tree(&self, message: &str) {
         _print_tree(&self.group.tree(), message)
     }

@@ -10,7 +10,7 @@ mod group_context;
 mod managed_group;
 mod mls_group;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub mod tests;
 
 use crate::ciphersuite::*;
@@ -75,7 +75,7 @@ pub struct GroupContext {
     extensions: TlsVecU32<Extension>,
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 impl GroupContext {
     pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;

@@ -1,4 +1,4 @@
-use openmls::{group::ErrorEvent, prelude::*};
+use crate::{group::ErrorEvent, prelude::*};
 
 #[derive(Debug)]
 pub enum SetupError {

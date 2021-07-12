@@ -3,24 +3,24 @@ use crate::tree::{index::*, node::*, *};
 
 use evercrypt::prelude::*;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use rand::{rngs::OsRng, RngCore};
 
 pub(crate) fn randombytes(n: usize) -> Vec<u8> {
     random_vec(n)
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u8() -> u8 {
     random_vec(1)[0]
 }

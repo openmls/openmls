@@ -11,7 +11,7 @@ use crate::{
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
     prelude::*,
-    test_util::*,
+    test_utils::*,
     utils::*,
 };
 use evercrypt::prelude::random_vec;
@@ -506,7 +506,6 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
 #[test]
 fn read_test_vectors() {
-    let _ = pretty_env_logger::try_init();
     let tests: Vec<MessagesTestVector> = read("test_vectors/kat_messages.json");
 
     for test_vector in tests {

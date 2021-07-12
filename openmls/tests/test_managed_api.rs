@@ -1,8 +1,9 @@
-use openmls::prelude::*;
+use openmls::{
+    prelude::*,
+    test_utils::test_framework::{ActionType, ManagedTestSetup},
+};
 
 mod utils;
-
-use test_utils::*;
 
 #[test]
 fn test_managed_api() {

@@ -26,7 +26,7 @@ evercrypt = { version = "0.0.10", features = ["serialization"] }
 [features]
 default = ["rust-crypto"]
 rust-crypto = ["evercrypt/rust-crypto-aes"]
-expose-test-vectors = ["itertools"]
+test-utils = ["itertools"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 
@@ -35,8 +35,7 @@ criterion = "^0.3"
 pretty_env_logger = "0.4"
 itertools = "0.10"
 test_macros = { path = "../test_macros" }
-test_utils = { path = "../test_utils" }
-openmls = { path = ".", features = ["expose-test-vectors"] }
+openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
 
 [[bench]]
