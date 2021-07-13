@@ -776,6 +776,11 @@ impl RatchetTree {
         // Determine if Commit needs a path field
         let path_required = has_updates || has_removes || !has_adds;
 
+        // If members were removed, truncate the tree.
+        if has_removes {
+            self.trim_tree()
+        }
+
         Ok(ApplyProposalsValues {
             path_required,
             self_removed,
