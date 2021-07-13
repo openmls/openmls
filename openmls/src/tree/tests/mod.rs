@@ -20,6 +20,8 @@ mod test_resolution;
 #[cfg(test)]
 mod test_secret_tree;
 #[cfg(test)]
+mod test_tree_truncation;
+#[cfg(test)]
 mod test_treemath;
 #[cfg(test)]
 mod test_util;
