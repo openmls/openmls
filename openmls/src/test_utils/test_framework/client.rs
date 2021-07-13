@@ -3,7 +3,7 @@
 //! that client perform certain MLS operations.
 use std::{cell::RefCell, collections::HashMap};
 
-use crate::{node::Node, prelude::*};
+use crate::{group::MlsMessageIn, node::Node, prelude::*};
 
 use super::{errors::ClientError, ActionType};
 
@@ -104,7 +104,8 @@ impl Client {
         let group_state = group_states
             .get_mut(&group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let events = group_state.process_message(message.clone())?;
+        let message_in: MlsMessageIn = message.clone().into();
+        let events = group_state.process_message(message_in)?;
         for event in events {
             match event {
                 GroupEvent::Error(e) => {

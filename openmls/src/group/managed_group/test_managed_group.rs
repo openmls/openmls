@@ -142,7 +142,7 @@ fn remover() {
     };
 
     alice_group
-        .process_message(queued_message)
+        .process_message(queued_message.into())
         .expect("Process message error");
 
     let mut bob_group = ManagedGroup::new_from_welcome(
@@ -161,10 +161,10 @@ fn remover() {
     };
 
     alice_group
-        .process_message(queued_messages.clone())
+        .process_message(queued_messages.clone().into())
         .expect("The group is no longer active");
     bob_group
-        .process_message(queued_messages)
+        .process_message(queued_messages.into())
         .expect("The group is no longer active");
 
     let charlie_callbacks = ManagedGroupCallbacks::default();
@@ -184,7 +184,7 @@ fn remover() {
         .expect("Could not propose removal");
 
     charlie_group
-        .process_message(queued_messages)
+        .process_message(queued_messages.into())
         .expect("Could not process messages");
 
     let (queued_messages, _welcome) = charlie_group
@@ -192,7 +192,7 @@ fn remover() {
         .expect("Could not commit proposal");
 
     let events = charlie_group
-        .process_message(queued_messages)
+        .process_message(queued_messages.into())
         .expect("Could not process messages");
 
     match events.first().expect("Expected an event to be returned") {
