@@ -1226,8 +1226,8 @@
 <span class="kw">impl</span> <span class="ident">JoinerSecret</span> {
     <span class="doccomment">/// Derive a `JoinerSecret` from an optional `CommitSecret` and an</span>
     <span class="doccomment">/// `EpochSecrets` object, which contains the necessary `InitSecret`. The</span>
-    <span class="doccomment">/// `CommitSecret` needs to be present if the current commit is not an</span>
-    <span class="doccomment">/// Add-only commit. TODO: For now, this takes a reference to a</span>
+    <span class="doccomment">/// `CommitSecret` needs to be present if the current commit is not a</span>
+    <span class="doccomment">/// partial commit. TODO: For now, this takes a reference to a</span>
     <span class="doccomment">/// `CommitSecret` as input. This should change with #224.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
         <span class="ident">commit_secret_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CommitSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
