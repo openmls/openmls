@@ -1109,7 +1109,7 @@ pub enum MlsMessageIn<'a> {
     Ciphertext(MlsCiphertext),
 }
 
-/// Unified message type for input to the managed API
+/// Unified message type for output by the managed API
 #[derive(PartialEq, Debug, Clone)]
 pub enum MlsMessage {
     /// An OpenMLS `MlsPlaintext`.
