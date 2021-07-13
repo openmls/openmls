@@ -66,6 +66,8 @@ implement_error! {
         Simple {
             MembershipTagMismatch =
                 "A Proposal with an invalid membership tag was received.",
+            UnknownSender =
+                "Could not retrieve credential for the given sender.",
             InvalidProposal =
                 "The given proposal is invalid.",
             CommitWithInvalidProposals =

@@ -11,7 +11,7 @@ mod test_managed_group;
 use crate::messages::PathSecret;
 
 use crate::{
-    ciphersuite::signable::Signable,
+    ciphersuite::signable::{Signable, Verifiable},
     credentials::Credential,
     error::ErrorString,
     framing::*,
@@ -39,6 +39,8 @@ pub use errors::{
 pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
+
+use tls_codec::Serialize;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
@@ -230,7 +232,7 @@ impl ManagedGroup {
             true,
             None,
         )?;
-        log::error!("plaintext (foo): {:?}", commit);
+        // log::error!("plaintext (foo): {:?}", commit);
 
         let welcome = match welcome_option {
             Some(welcome) => welcome,
@@ -428,7 +430,7 @@ impl ManagedGroup {
     /// occurred while processing messages.
     pub fn process_message(
         &mut self,
-        message: MlsMessage,
+        message: MlsMessageIn,
     ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -437,12 +439,23 @@ impl ManagedGroup {
         // Check the type of message we received
         let (plaintext, aad_option) = match message {
             // If it is a ciphertext we decrypt it and return the plaintext message
-            MlsMessage::Ciphertext(ciphertext) => {
+            MlsMessageIn::Ciphertext(ciphertext) => {
                 let aad = ciphertext.authenticated_data.clone();
                 (self.group.decrypt(&ciphertext)?, Some(aad))
             }
             // If it is a plaintext message we just return it
-            MlsMessage::Plaintext(plaintext) => {
+            MlsMessageIn::Plaintext(unverified_plaintext) => {
+                let context = self
+                    .group
+                    .context()
+                    .tls_serialize_detached()
+                    .map_err(|e| MlsGroupError::CodecError(e))?;
+                let unverified_plaintext = unverified_plaintext.set_context(&context);
+                let members = self.indexed_members();
+                let credential = members
+                    .get(&unverified_plaintext.sender_index())
+                    .ok_or(InvalidMessageError::UnknownSender)?;
+                let plaintext: MlsPlaintext = unverified_plaintext.verify(credential)?;
                 // Verify signature & membership tag
                 // TODO #106: Support external senders
                 if plaintext.is_proposal()
@@ -1086,7 +1099,17 @@ impl ManagedGroup {
     }
 }
 
-/// Unified message type
+/// Unified message type for input to the managed API
+#[derive(Debug, Clone)]
+pub enum MlsMessageIn<'a> {
+    /// An OpenMLS `MlsPlaintext`.
+    Plaintext(VerifiableMlsPlaintext<'a>),
+
+    /// An OpenMLS `MlsCiphertext`.
+    Ciphertext(MlsCiphertext),
+}
+
+/// Unified message type for output by the managed API
 #[derive(PartialEq, Debug, Clone)]
 pub enum MlsMessage {
     /// An OpenMLS `MlsPlaintext`.
@@ -1130,6 +1153,37 @@ impl MlsMessage {
         match self {
             MlsMessage::Ciphertext(m) => m.is_handshake_message(),
             MlsMessage::Plaintext(m) => m.is_handshake_message(),
+        }
+    }
+}
+
+impl tls_codec::Size for MlsMessage {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        match self {
+            MlsMessage::Plaintext(pt) => pt.tls_serialized_len(),
+            MlsMessage::Ciphertext(ct) => ct.tls_serialized_len(),
+        }
+    }
+}
+
+impl tls_codec::Serialize for MlsMessage {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        match self {
+            MlsMessage::Plaintext(pt) => pt.tls_serialize(writer),
+            MlsMessage::Ciphertext(ct) => ct.tls_serialize(writer),
+        }
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl<'a> From<MlsMessage> for MlsMessageIn<'a> {
+    fn from(message: MlsMessage) -> Self {
+        match message {
+            MlsMessage::Plaintext(pt) => {
+                MlsMessageIn::Plaintext(VerifiableMlsPlaintext::from_plaintext(pt, None))
+            }
+            MlsMessage::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
         }
     }
 }
