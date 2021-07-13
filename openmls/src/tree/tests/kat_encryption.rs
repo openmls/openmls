@@ -79,7 +79,6 @@
 
 use crate::{
     ciphersuite::Ciphersuite,
-    codec::*,
     config::{Config, ProtocolVersion},
     credentials::{CredentialBundle, CredentialType},
     framing::*,
@@ -87,7 +86,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
     schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
-    test_util::*,
+    test_utils::*,
     tree::index::LeafIndex,
     tree::secret_tree::{SecretTree, SecretType},
     tree::*,
@@ -130,7 +129,7 @@ pub struct EncryptionTestVector {
     leaves: Vec<LeafSequence>,
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
@@ -155,7 +154,7 @@ fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
     )
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
@@ -166,7 +165,7 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
     MlsGroup::new(
-        &group_id.as_slice(),
+        group_id.as_slice(),
         ciphersuite.name(),
         key_package_bundle,
         MlsGroupConfig::default(),
@@ -177,12 +176,14 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
 }
 
 // XXX: we could be more creative in generating these messages.
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
 ) -> (Vec<u8>, Vec<u8>) {
+    use tls_codec::Serialize;
+
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
@@ -193,7 +194,7 @@ fn build_handshake_messages(
         leaf,
         &[1, 2, 3, 4],
         Proposal::Remove(RemoveProposal { removed: 0 }),
-        &credential_bundle,
+        credential_bundle,
         group.context(),
         &membership_key,
     )
@@ -210,17 +211,19 @@ fn build_handshake_messages(
     )
     .expect("Could not create MlsCiphertext");
     (
-        plaintext.encode_detached().unwrap(),
-        ciphertext.encode_detached().unwrap(),
+        plaintext.tls_serialize_detached().unwrap(),
+        ciphertext.tls_serialize_detached().unwrap(),
     )
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
 ) -> (Vec<u8>, Vec<u8>) {
+    use tls_codec::Serialize;
+
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
@@ -231,7 +234,7 @@ fn build_application_messages(
         leaf,
         &[1, 2, 3],
         &[4, 5, 6],
-        &credential_bundle,
+        credential_bundle,
         group.context(),
         &membership_key,
     )
@@ -250,12 +253,12 @@ fn build_application_messages(
         Err(e) => panic!("Could not create MlsCiphertext {}", e),
     };
     (
-        plaintext.encode_detached().unwrap(),
-        ciphertext.encode_detached().unwrap(),
+        plaintext.tls_serialize_detached().unwrap(),
+        ciphertext.tls_serialize_detached().unwrap(),
     )
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
@@ -363,8 +366,10 @@ fn write_test_vectors() {
     write("test_vectors/kat_encryption_openmls-new.json", &tests);
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
+    use tls_codec::{Deserialize, Serialize};
+
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);
@@ -471,8 +476,9 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             }
 
             // Setup group
+            let ctxt_bytes = hex_to_bytes(&application.ciphertext);
             let mls_ciphertext_application =
-                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&application.ciphertext)))
+                MlsCiphertext::tls_deserialize(&mut ctxt_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_application.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
@@ -491,7 +497,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
-                    .encode_detached()
+                    .tls_serialize_detached()
                     .expect("Error encoding MlsPlaintext")
             {
                 if cfg!(test) {
@@ -523,8 +529,9 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             }
 
             // Setup group
+            let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
+                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -538,7 +545,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
-                    .encode_detached()
+                    .tls_serialize_detached()
                     .expect("Error encoding MlsPlaintext")
             {
                 if cfg!(test) {
@@ -564,8 +571,9 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             }
 
             // Setup group
+            let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::decode(&mut Cursor::new(&hex_to_bytes(&handshake.ciphertext)))
+                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MLSCiphertext");
             let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
@@ -580,7 +588,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .expect("Error decrypting MLSCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
-                    .encode_detached()
+                    .tls_serialize_detached()
                     .expect("Error encoding MLSPlaintext")
             {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
@@ -617,7 +625,7 @@ fn read_test_vectors() {
     log::trace!("Finished test vector verification");
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 implement_error! {
     pub enum EncTestVectorError {
         LeafNumberMismatch = "The test vector does not contain as many leaves as advertised.",

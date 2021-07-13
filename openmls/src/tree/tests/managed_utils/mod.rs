@@ -172,7 +172,7 @@ impl ManagedTestSetup {
             let client_id = self
                 .waiting_for_welcome
                 .borrow_mut()
-                .remove(&egs.key_package_hash)
+                .remove(egs.key_package_hash.as_slice())
                 .ok_or(SetupError::NoFreshKeyPackage)?;
             let client = clients.get(&client_id).unwrap().borrow();
             client.join_group(
@@ -208,7 +208,7 @@ impl ManagedTestSetup {
         group.members = sender
             .get_members_of_group(&group.group_id)?
             .iter()
-            .map(|(index, cred)| (*index, cred.identity().clone()))
+            .map(|(index, cred)| (*index, cred.identity().to_vec()))
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
         group.exporter_secret = sender_group.export_secret("test", &[], 32)?;
@@ -299,9 +299,7 @@ impl ManagedTestSetup {
             .to_vec();
         let group_creator = clients.get(&group_creator_id).unwrap().borrow();
         let mut groups = self.groups.borrow_mut();
-        let group_id = GroupId {
-            value: groups.len().to_string().into_bytes(),
-        };
+        let group_id = GroupId::from_slice(&groups.len().to_be_bytes());
 
         group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite)?;
         let creator_groups = group_creator.groups.borrow();

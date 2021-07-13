@@ -17,10 +17,11 @@ implement_error! {
     pub enum PskSecretError {
         TooManyKeys = "More than 2^16 PSKS were provided.",
         DifferentLength = "The IDs and secrets vectors have different lengths.",
+        EncodingError = "Error serializing the PSK label.",
     }
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 implement_error! {
     pub enum KsTestVectorError {
         JoinerSecretMismatch = "The computed joiner secret doesn't match the one in the test vector.",

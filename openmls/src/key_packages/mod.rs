@@ -1,15 +1,15 @@
 use log::error;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsSize, TlsVecU32};
 
 use crate::ciphersuite::signable::Signable;
 use crate::ciphersuite::signable::SignedStruct;
 use crate::ciphersuite::signable::Verifiable;
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
 use crate::extensions::{
-    encode_extensions, CapabilitiesExtension, Extension, ExtensionError, ExtensionType,
-    LifetimeExtension, ParentHashExtension,
+    CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
+    ParentHashExtension,
 };
 
 use serde::{
@@ -28,13 +28,23 @@ mod test_key_packages;
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
 /// signed key package.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, TlsSize)]
 pub struct KeyPackagePayload {
-    ciphersuite: &'static Ciphersuite,
     protocol_version: ProtocolVersion,
+    ciphersuite: &'static Ciphersuite,
     hpke_init_key: HpkePublicKey,
     credential: Credential,
-    extensions: Vec<Box<dyn Extension>>,
+    extensions: TlsVecU32<Extension>,
+}
+
+impl tls_codec::Serialize for KeyPackagePayload {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let mut written = self.protocol_version.tls_serialize(writer)?;
+        written += self.ciphersuite.tls_serialize(writer)?;
+        written += self.hpke_init_key.tls_serialize(writer)?;
+        written += self.credential.tls_serialize(writer)?;
+        self.extensions.tls_serialize(writer).map(|l| l + written)
+    }
 }
 
 implement_persistence!(
@@ -48,14 +58,8 @@ implement_persistence!(
 impl Signable for KeyPackagePayload {
     type SignedOutput = KeyPackage;
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        let buffer = &mut Vec::new();
-        self.protocol_version.encode(buffer)?;
-        self.ciphersuite.name().encode(buffer)?;
-        self.hpke_init_key.encode(buffer)?;
-        self.credential.encode(buffer)?;
-        encode_extensions(&self.extensions, buffer)?;
-        Ok(buffer.to_vec())
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tls_serialize_detached()
     }
 }
 
@@ -83,7 +87,7 @@ impl KeyPackagePayload {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
+    pub fn add_extension(&mut self, extension: Extension) {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
     }
@@ -116,7 +120,7 @@ impl SignedStruct<KeyPackagePayload> for KeyPackage {
 }
 
 impl Verifiable for KeyPackage {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         Ok(self.encoded.clone())
     }
 
@@ -148,7 +152,7 @@ impl KeyPackage {
             }
             // Make sure the lifetime is valid.
             if extension.extension_type() == ExtensionType::Lifetime {
-                match extension.to_lifetime_extension() {
+                match extension.as_lifetime_extension() {
                     Ok(e) => {
                         if !e.is_valid() {
                             log::error!("Invalid lifetime extension in key package.");
@@ -156,7 +160,7 @@ impl KeyPackage {
                         }
                     }
                     Err(e) => {
-                        log::error!("to_lifetime_extension failed while verifying a key package.");
+                        log::error!("as_lifetime_extension failed while verifying a key package.");
                         error!("Library error: {:?}", e);
                         return Err(KeyPackageError::LibraryError);
                     }
@@ -171,7 +175,7 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        <Self as Verifiable>::verify_no_out(&self, &self.payload.credential).map_err(|_| {
+        <Self as Verifiable>::verify_no_out(self, &self.payload.credential).map_err(|_| {
             log::error!("Key package signature is invalid.");
             log::trace!("Payload: {:x?}", self.encoded);
             KeyPackageError::InvalidSignature
@@ -180,7 +184,8 @@ impl KeyPackage {
 
     /// Compute the hash of the encoding of this key package.
     pub fn hash(&self) -> Vec<u8> {
-        let bytes = self.encode_detached().unwrap();
+        // FIXME: remove unwrap
+        let bytes = self.tls_serialize_detached().unwrap();
         self.payload.ciphersuite.hash(&bytes)
     }
 
@@ -188,7 +193,7 @@ impl KeyPackage {
     /// Returns an error if no Key ID extension is present.
     pub fn key_id(&self) -> Result<&[u8], KeyPackageError> {
         if let Some(key_id_ext) = self.extension_with_type(ExtensionType::KeyId) {
-            return Ok(key_id_ext.to_key_id_extension()?.as_slice());
+            return Ok(key_id_ext.as_key_id_extension()?.as_slice());
         }
         Err(KeyPackageError::ExtensionError(
             ExtensionError::InvalidExtensionType("Tried to get a key ID extension".into()),
@@ -196,8 +201,8 @@ impl KeyPackage {
     }
 
     /// Get a reference to the extensions of this key package.
-    pub fn extensions(&self) -> &[Box<dyn Extension>] {
-        &self.payload.extensions
+    pub fn extensions(&self) -> &[Extension] {
+        self.payload.extensions.as_slice()
     }
 
     /// Get a reference to the credential.
@@ -215,7 +220,7 @@ impl KeyPackage {
         ciphersuite_name: CiphersuiteName,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
         if SignatureScheme::from(ciphersuite_name)
             != credential_bundle.credential().signature_scheme()
@@ -228,9 +233,9 @@ impl KeyPackage {
             ciphersuite: Config::ciphersuite(ciphersuite_name)?,
             hpke_init_key,
             credential: credential_bundle.credential().clone(),
-            extensions,
+            extensions: extensions.into(),
         };
-        Ok(key_package.sign(&credential_bundle)?)
+        Ok(key_package.sign(credential_bundle)?)
     }
 }
 
@@ -239,12 +244,8 @@ impl KeyPackage {
     /// Get a reference to the extension of `extension_type`.
     /// Returns `Some(extension)` if present and `None` if the extension is not
     /// present.
-    #[allow(clippy::borrowed_box)]
-    pub(crate) fn extension_with_type(
-        &self,
-        extension_type: ExtensionType,
-    ) -> Option<&Box<dyn Extension>> {
-        for e in &self.payload.extensions {
+    pub(crate) fn extension_with_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
+        for e in self.payload.extensions.as_slice() {
             if e.extension_type() == extension_type {
                 return Some(e);
             }
@@ -309,12 +310,12 @@ impl KeyPackageBundlePayload {
     pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
         self.key_package_payload
             .remove_extension(ExtensionType::ParentHash);
-        let extension = Box::new(ParentHashExtension::new(parent_hash));
+        let extension = Extension::ParentHash(ParentHashExtension::new(parent_hash));
         self.key_package_payload.extensions.push(extension);
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub fn add_extension(&mut self, extension: Box<dyn Extension>) {
+    pub fn add_extension(&mut self, extension: Extension) {
         self.key_package_payload.add_extension(extension)
     }
 }
@@ -322,7 +323,7 @@ impl KeyPackageBundlePayload {
 impl Signable for KeyPackageBundlePayload {
     type SignedOutput = KeyPackageBundle;
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.key_package_payload.unsigned_payload()
     }
 }
@@ -367,7 +368,7 @@ impl KeyPackageBundle {
     pub fn new(
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
         Self::new_with_version(
             ProtocolVersion::default(),
@@ -389,7 +390,7 @@ impl KeyPackageBundle {
         version: ProtocolVersion,
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
         if SignatureScheme::from(ciphersuites[0])
             != credential_bundle.credential().signature_scheme()
@@ -418,7 +419,7 @@ impl KeyPackageBundle {
     pub fn new_with_keypair(
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
-        mut extensions: Vec<Box<dyn Extension>>,
+        mut extensions: Vec<Extension>,
         key_pair: HpkeKeyPair,
         leaf_secret: Secret,
     ) -> Result<Self, KeyPackageError> {
@@ -457,7 +458,7 @@ impl KeyPackageBundle {
             .find(|e| e.extension_type() == ExtensionType::Capabilities)
         {
             Some(extension) => {
-                let capabilities_extension = extension.to_capabilities_extension().unwrap();
+                let capabilities_extension = extension.as_capabilities_extension().unwrap();
                 if capabilities_extension.ciphersuites() != ciphersuites {
                     let error = KeyPackageError::CiphersuiteMismatch;
                     error!(
@@ -468,7 +469,7 @@ impl KeyPackageBundle {
                 }
             }
 
-            None => extensions.push(Box::new(CapabilitiesExtension::new(
+            None => extensions.push(Extension::Capabilities(CapabilitiesExtension::new(
                 None,
                 Some(ciphersuites),
                 None,
@@ -481,7 +482,7 @@ impl KeyPackageBundle {
             .iter()
             .any(|e| e.extension_type() == ExtensionType::Lifetime)
         {
-            extensions.push(Box::new(LifetimeExtension::default()));
+            extensions.push(Extension::LifeTime(LifetimeExtension::default()));
         }
         let (private_key, public_key) = key_pair.into_keys();
         let key_package =
@@ -509,7 +510,7 @@ impl KeyPackageBundle {
     fn new_from_leaf_secret(
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<Extension>,
         leaf_secret: Secret,
     ) -> Result<Self, KeyPackageError> {
         if ciphersuites.is_empty() {
@@ -555,5 +556,6 @@ impl KeyPackageBundle {
 /// This function derives the leaf_node_secret from the leaf_secret as
 /// described in 5.4 Ratchet Tree Evolution
 pub(crate) fn derive_leaf_node_secret(leaf_secret: &Secret) -> Secret {
-    leaf_secret.derive_secret("node")
+    // FIXME: remove unwrap
+    leaf_secret.derive_secret("node").unwrap()
 }

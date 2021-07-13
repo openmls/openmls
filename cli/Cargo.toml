@@ -11,6 +11,7 @@ base64 = "0.13"
 log = "0.4"
 pretty_env_logger = "0.4"
 termion = "1.5"
+tls_codec = "0.1.4"
 
 openmls = { path = "../openmls" }
 ds-lib = { path = "../delivery-service/ds-lib" }

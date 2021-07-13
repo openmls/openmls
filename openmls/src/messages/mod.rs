@@ -1,6 +1,4 @@
 use crate::ciphersuite::{signable::*, *};
-use crate::codec::*;
-use crate::config::Config;
 use crate::config::ProtocolVersion;
 use crate::credentials::*;
 use crate::extensions::*;
@@ -19,16 +17,20 @@ pub(crate) mod proposals;
 pub use codec::*;
 pub use errors::*;
 use proposals::*;
+use tls_codec::{
+    Serialize as TlsSerializeTrait, Size, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
+    TlsSerialize, TlsSize, TlsVecU32,
+};
 
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
     psk::{ExternalPsk, Psk, PskType::External},
     PreSharedKeyId,
 };
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use evercrypt::prelude::random_vec;
 
 /// Welcome Messages
@@ -43,12 +45,12 @@ use evercrypt::prelude::random_vec;
 ///   opaque encrypted_group_info<1..2^32-1>;
 /// } Welcome;
 /// ```
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct Welcome {
     version: ProtocolVersion,
-    cipher_suite: &'static Ciphersuite,
-    secrets: Vec<EncryptedGroupSecrets>,
-    encrypted_group_info: Vec<u8>,
+    cipher_suite: CiphersuiteName,
+    pub(crate) secrets: TlsVecU32<EncryptedGroupSecrets>,
+    pub(crate) encrypted_group_info: TlsByteVecU32,
 }
 
 /// EncryptedGroupSecrets
@@ -61,9 +63,9 @@ pub struct Welcome {
 ///   HPKECiphertext encrypted_group_secrets;
 /// } EncryptedGroupSecrets;
 /// ```
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
-    pub key_package_hash: Vec<u8>,
+    pub key_package_hash: TlsByteVecU8,
     pub encrypted_group_secrets: HpkeCiphertext,
 }
 
@@ -78,25 +80,25 @@ impl Welcome {
     ) -> Self {
         Self {
             version,
-            cipher_suite,
-            secrets,
-            encrypted_group_info,
+            cipher_suite: cipher_suite.name(),
+            secrets: secrets.into(),
+            encrypted_group_info: encrypted_group_info.into(),
         }
     }
 
     /// Get a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> CiphersuiteName {
         self.cipher_suite
     }
 
     /// Get a reference to the encrypted group secrets in this Welcome message.
     pub fn secrets(&self) -> &[EncryptedGroupSecrets] {
-        &self.secrets
+        self.secrets.as_slice()
     }
 
     /// Get a reference to the encrypted group info.
     pub(crate) fn encrypted_group_info(&self) -> &[u8] {
-        &self.encrypted_group_info
+        self.encrypted_group_info.as_slice()
     }
 
     /// Get a reference to the protocol version in the `Welcome`.
@@ -107,13 +109,15 @@ impl Welcome {
     /// Set the welcome's encrypted group info.
     #[cfg(test)]
     pub fn set_encrypted_group_info(&mut self, encrypted_group_info: Vec<u8>) {
-        self.encrypted_group_info = encrypted_group_info;
+        self.encrypted_group_info = encrypted_group_info.into();
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct Commit {
-    pub(crate) proposals: Vec<ProposalOrRef>,
+    pub(crate) proposals: TlsVecU32<ProposalOrRef>,
     pub(crate) path: Option<UpdatePath>,
 }
 
@@ -123,23 +127,26 @@ impl Commit {
         self.path.is_some()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn path(&self) -> &Option<UpdatePath> {
         &self.path
     }
 }
 
-/// Confirmation tag field of MlsPlaintext. For type saftey this is a wrapper
+/// Confirmation tag field of MlsPlaintext. For type safety this is a wrapper
 /// around a `Mac`.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct ConfirmationTag(pub(crate) Mac);
 
+#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct GroupInfoPayload {
     group_id: GroupId,
     epoch: GroupEpoch,
-    tree_hash: Vec<u8>,
-    confirmed_transcript_hash: Vec<u8>,
-    extensions: Vec<Box<dyn Extension>>,
+    tree_hash: TlsByteVecU8,
+    confirmed_transcript_hash: TlsByteVecU8,
+    extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
     signer_index: LeafIndex,
 }
@@ -151,16 +158,16 @@ impl GroupInfoPayload {
         epoch: GroupEpoch,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<Extension>,
         confirmation_tag: ConfirmationTag,
         signer_index: LeafIndex,
     ) -> Self {
         Self {
             group_id,
             epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            extensions,
+            tree_hash: tree_hash.into(),
+            confirmed_transcript_hash: confirmed_transcript_hash.into(),
+            extensions: extensions.into(),
             confirmation_tag,
             signer_index,
         }
@@ -170,16 +177,8 @@ impl GroupInfoPayload {
 impl Signable for GroupInfoPayload {
     type SignedOutput = GroupInfo;
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        let buffer = &mut vec![];
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        encode_vec(VecSize::VecU8, buffer, &self.tree_hash)?;
-        encode_vec(VecSize::VecU8, buffer, &self.confirmed_transcript_hash)?;
-        encode_extensions(&self.extensions, buffer)?;
-        self.confirmation_tag.encode(buffer)?;
-        self.signer_index.encode(buffer)?;
-        Ok(buffer.to_vec())
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tls_serialize_detached()
     }
 }
 
@@ -210,7 +209,7 @@ pub(crate) struct GroupInfo {
 impl GroupInfo {
     /// Get the tree hash as byte slice.
     pub(crate) fn tree_hash(&self) -> &[u8] {
-        &self.payload.tree_hash
+        self.payload.tree_hash.as_slice()
     }
 
     /// Get the signer index.
@@ -230,7 +229,7 @@ impl GroupInfo {
 
     /// Get the confirmed transcript hash.
     pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        &self.payload.confirmed_transcript_hash
+        self.payload.confirmed_transcript_hash.as_slice()
     }
 
     /// Get the confirmed tag.
@@ -239,14 +238,14 @@ impl GroupInfo {
     }
 
     /// Get the extensions.
-    pub(crate) fn extensions(&self) -> &[Box<dyn Extension>] {
-        &self.payload.extensions
+    pub(crate) fn extensions(&self) -> &[Extension] {
+        self.payload.extensions.as_slice()
     }
 
     /// Set the group info's extensions.
     #[cfg(test)]
-    pub(crate) fn set_extensions(&mut self, extensions: Vec<Box<dyn Extension>>) {
-        self.payload.extensions = extensions;
+    pub(crate) fn set_extensions(&mut self, extensions: Vec<Extension>) {
+        self.payload.extensions = extensions.into();
     }
 
     /// Re-sign the group info.
@@ -260,7 +259,7 @@ impl GroupInfo {
 }
 
 impl Verifiable for GroupInfo {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.payload.unsigned_payload()
     }
 
@@ -284,10 +283,24 @@ impl SignedStruct<GroupInfoPayload> for GroupInfo {
 ///   opaque path_secret<1..255>;
 /// } PathSecret;
 /// ```
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq, Clone))]
+#[derive(Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 pub struct PathSecret {
-    pub path_secret: Secret,
+    pub(crate) path_secret: Secret,
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl PathSecret {
+    /// Update the ciphersuite and MLS version of this path secret.
+    /// Ideally we wouldn't need this function but the way decoding works right
+    /// now this is the easiest for now.
+    pub(crate) fn config(
+        &mut self,
+        ciphersuite: &'static Ciphersuite,
+        mls_version: ProtocolVersion,
+    ) {
+        self.path_secret.config(ciphersuite, mls_version);
+    }
 }
 
 impl From<Secret> for PathSecret {
@@ -295,6 +308,7 @@ impl From<Secret> for PathSecret {
         Self { path_secret }
     }
 }
+
 /// GroupSecrets
 ///
 /// > 11.2.2. Welcoming New Members
@@ -306,11 +320,18 @@ impl From<Secret> for PathSecret {
 ///   optional<PreSharedKeys> psks;
 /// } GroupSecrets;
 /// ```
-
+#[derive(TlsDeserialize, TlsSize)]
 pub(crate) struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
     pub(crate) psks: Option<PreSharedKeys>,
+}
+
+#[derive(TlsSerialize, TlsSize)]
+struct EncodedGroupSecrets<'a> {
+    pub(crate) joiner_secret: &'a JoinerSecret,
+    pub(crate) path_secret: Option<&'a PathSecret>,
+    pub(crate) psks: Option<&'a PreSharedKeys>,
 }
 
 impl GroupSecrets {
@@ -318,13 +339,14 @@ impl GroupSecrets {
     pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
         path_secret: Option<&'a PathSecret>,
-        psks_option: impl Into<Option<&'a PreSharedKeys>> + Encode,
-    ) -> Result<Vec<u8>, CodecError> {
-        let buffer = &mut Vec::new();
-        joiner_secret.encode(buffer)?;
-        path_secret.encode(buffer)?;
-        psks_option.encode(buffer)?;
-        Ok(buffer.to_vec())
+        psks: impl Into<Option<&'a PreSharedKeys>>,
+    ) -> Result<Vec<u8>, tls_codec::Error> {
+        EncodedGroupSecrets {
+            joiner_secret,
+            path_secret,
+            psks: psks.into(),
+        }
+        .tls_serialize_detached()
     }
 
     /// Set the config for the secrets, i.e. cipher suite and MLS version.
@@ -340,17 +362,19 @@ impl GroupSecrets {
         self
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn random_encoded(
         ciphersuite: &'static Ciphersuite,
         version: ProtocolVersion,
-    ) -> Result<Vec<u8>, CodecError> {
+    ) -> Result<Vec<u8>, tls_codec::Error> {
         let psk_id = PreSharedKeyId::new(
             External,
             Psk::External(ExternalPsk::new(random_vec(ciphersuite.hash_length()))),
             random_vec(ciphersuite.hash_length()),
         );
-        let psks = PreSharedKeys { psks: vec![psk_id] };
+        let psks = PreSharedKeys {
+            psks: vec![psk_id].into(),
+        };
 
         GroupSecrets::new_encoded(
             &JoinerSecret::random(ciphersuite, version),
@@ -377,14 +401,14 @@ impl GroupSecrets {
 ///     opaque signature<0..2^16-1>;
 /// } PublicGroupState;
 /// ```
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
 pub struct PublicGroupState {
     pub(crate) ciphersuite: CiphersuiteName,
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) tree_hash: Vec<u8>,
-    pub(crate) interim_transcript_hash: Vec<u8>,
-    pub(crate) extensions: Vec<Box<dyn Extension>>,
+    pub(crate) tree_hash: TlsByteVecU8,
+    pub(crate) interim_transcript_hash: TlsByteVecU8,
+    pub(crate) extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
     pub(crate) signer_index: LeafIndex,
     pub(crate) signature: Signature,
@@ -406,9 +430,9 @@ impl PublicGroupState {
 
         let group_id = mls_group.group_id().clone();
         let epoch = mls_group.context().epoch();
-        let tree_hash = mls_group.tree().tree_hash();
-        let interim_transcript_hash = mls_group.interim_transcript_hash().to_vec();
-        let extensions = mls_group.extensions();
+        let tree_hash = mls_group.tree().tree_hash().into();
+        let interim_transcript_hash = mls_group.interim_transcript_hash().into();
+        let extensions = mls_group.extensions().into();
 
         let pgstbs = PublicGroupStateTbs {
             group_id: &group_id,
@@ -434,16 +458,16 @@ impl PublicGroupState {
 }
 
 impl Verifiable for PublicGroupState {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        let pgstbs = PublicGroupStateTbs {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        PublicGroupStateTbs {
             group_id: &self.group_id,
             epoch: &self.epoch,
             tree_hash: &self.tree_hash,
             interim_transcript_hash: &self.interim_transcript_hash,
             extensions: &self.extensions,
             external_pub: &self.external_pub,
-        };
-        pgstbs.encode_detached()
+        }
+        .tls_serialize_detached()
     }
 
     fn signature(&self) -> &Signature {
@@ -463,19 +487,20 @@ impl Verifiable for PublicGroupState {
 ///     HPKEPublicKey external_pub;
 /// } PublicGroupStateTBS;
 /// ```
+#[derive(TlsSerialize, TlsSize)]
 pub(crate) struct PublicGroupStateTbs<'a> {
     pub(crate) group_id: &'a GroupId,
     pub(crate) epoch: &'a GroupEpoch,
-    pub(crate) tree_hash: &'a [u8],
-    pub(crate) interim_transcript_hash: &'a [u8],
-    pub(crate) extensions: &'a [Box<dyn Extension>],
+    pub(crate) tree_hash: &'a TlsByteVecU8,
+    pub(crate) interim_transcript_hash: &'a TlsByteVecU8,
+    pub(crate) extensions: &'a TlsVecU32<Extension>,
     pub(crate) external_pub: &'a HpkePublicKey,
 }
 
 impl<'a> Signable for PublicGroupStateTbs<'a> {
     type SignedOutput = Signature;
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, crate::codec::CodecError> {
-        self.encode_detached()
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tls_serialize_detached()
     }
 }

@@ -1,9 +1,10 @@
-use openmls::prelude::*;
+use openmls::{
+    prelude::*,
+    test_utils::test_framework::{ActionType, ManagedTestSetup},
+};
 
 #[macro_use]
 mod utils;
-
-use test_utils::*;
 
 // The following tests correspond to the interop test scenarios detailed here:
 // https://github.com/mlswg/mls-implementations/blob/master/test-scenarios.md

@@ -4,6 +4,5 @@ use libfuzzer_sys::fuzz_target;
 use openmls::prelude::*;
 
 fuzz_target!(|data: &[u8]| {
-    let mut cursor = Cursor::new(data);
-    let _ = KeyPackage::decode(&mut cursor);
+    let _ = KeyPackage::tls_deserialize(&mut &data[..]);
 });

@@ -6,12 +6,16 @@ pub use errors::*;
 use evercrypt::prelude::SignatureError;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+#[cfg(test)]
+use tls_codec::Serialize as TlsSerializeTrait;
+use tls_codec::{Size, TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::*;
-use crate::codec::*;
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 #[repr(u16)]
 pub enum CredentialType {
     Basic = 1,
@@ -63,10 +67,11 @@ impl Credential {
             MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
+
     /// Get the identity of a given credential.
-    pub fn identity(&self) -> &Vec<u8> {
+    pub fn identity(&self) -> &[u8] {
         match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => &basic_credential.identity,
+            MlsCredentialType::Basic(basic_credential) => basic_credential.identity.as_slice(),
             // TODO: implement getter for identity for X509 certificates. See issue #134.
             MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
@@ -100,11 +105,11 @@ impl From<MlsCredentialType> for Credential {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct BasicCredential {
-    pub identity: Vec<u8>,
-    pub signature_scheme: SignatureScheme,
-    pub public_key: SignaturePublicKey,
+    identity: TlsByteVecU16,
+    signature_scheme: SignatureScheme,
+    public_key: SignaturePublicKey,
 }
 
 impl BasicCredential {
@@ -126,9 +131,9 @@ fn test_protocol_version() {
     use crate::config::ProtocolVersion;
     let mls10_version = ProtocolVersion::Mls10;
     let default_version = ProtocolVersion::default();
-    let mls10_e = mls10_version.encode_detached().unwrap();
+    let mls10_e = mls10_version.tls_serialize_detached().unwrap();
     assert_eq!(mls10_e[0], mls10_version as u8);
-    let default_e = default_version.encode_detached().unwrap();
+    let default_e = default_version.tls_serialize_detached().unwrap();
     assert_eq!(default_e[0], default_version as u8);
     assert_eq!(mls10_e[0], 1);
     assert_eq!(default_e[0], 1);
@@ -154,7 +159,7 @@ impl CredentialBundle {
         let (private_key, public_key) = signature_scheme.new_keypair()?.into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
-                identity,
+                identity: identity.into(),
                 signature_scheme,
                 public_key,
             },

@@ -125,7 +125,7 @@ macro_rules! implement_error {
                 as_expr! {
                     match self {
                         $(
-                            $src_name::$var_name(e) => format!("{}: {}", $description, e._description()),
+                            $src_name::$var_name(e) => format!("{}: {}", $description, e),
                         )*
                         $(
                             $src_name::$var_name_simple => format!("{}", $description_simple),

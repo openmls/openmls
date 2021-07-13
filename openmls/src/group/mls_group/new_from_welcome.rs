@@ -1,7 +1,7 @@
 use log::debug;
+use tls_codec::Deserialize;
 
 use crate::ciphersuite::signable::Verifiable;
-use crate::codec::*;
 use crate::extensions::ExtensionType;
 use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
@@ -21,7 +21,8 @@ impl MlsGroup {
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
         }
-        let ciphersuite = welcome.ciphersuite();
+        let ciphersuite_name = welcome.ciphersuite();
+        let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
@@ -32,7 +33,7 @@ impl MlsGroup {
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite.name() != key_package_bundle.key_package().ciphersuite_name() {
+        if ciphersuite_name != key_package_bundle.key_package().ciphersuite_name() {
             let e = WelcomeError::CiphersuiteMismatch;
             debug!("new_from_welcome {:?}", e);
             return Err(e);
@@ -40,19 +41,19 @@ impl MlsGroup {
 
         let group_secrets_bytes = ciphersuite.hpke_open(
             &egs.encrypted_group_secrets,
-            &key_package_bundle.private_key(),
+            key_package_bundle.private_key(),
             &[],
             &[],
         )?;
-        let group_secrets =
-            GroupSecrets::decode_detached(&group_secrets_bytes)?.config(ciphersuite, mls_version);
+        let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())?
+            .config(ciphersuite, mls_version);
         let joiner_secret = group_secrets.joiner_secret;
 
         // Create key schedule
         let presharedkeys = PreSharedKeys {
             psks: match group_secrets.psks {
                 Some(psks) => psks.psks,
-                None => vec![],
+                None => vec![].into(),
             },
         };
 
@@ -68,7 +69,7 @@ impl MlsGroup {
         let group_info_bytes = welcome_key
             .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let group_info = GroupInfo::decode_detached(&group_info_bytes)?;
+        let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())?;
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
@@ -77,7 +78,7 @@ impl MlsGroup {
             .extensions()
             .iter()
             .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-            .collect::<Vec<&Box<dyn Extension>>>();
+            .collect::<Vec<&Extension>>();
 
         let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
             None
@@ -153,7 +154,7 @@ impl MlsGroup {
             let private_tree = tree.private_tree_mut();
             // Derive path secrets and generate keypairs
             let new_public_keys =
-                private_tree.continue_path_secrets(&ciphersuite, path_secret, &common_path);
+                private_tree.continue_path_secrets(ciphersuite, path_secret, &common_path);
 
             // Validate public keys
             if tree
@@ -183,11 +184,11 @@ impl MlsGroup {
 
         let confirmation_tag = epoch_secrets
             .confirmation_key()
-            .tag(&group_context.confirmed_transcript_hash);
+            .tag(group_context.confirmed_transcript_hash.as_slice());
         let interim_transcript_hash = update_interim_transcript_hash(
-            &ciphersuite,
+            ciphersuite,
             &MlsPlaintextCommitAuthData::from(&confirmation_tag),
-            &group_context.confirmed_transcript_hash,
+            group_context.confirmed_transcript_hash.as_slice(),
         )?;
 
         // Verify confirmation tag
@@ -217,7 +218,7 @@ impl MlsGroup {
         welcome_secrets: &[EncryptedGroupSecrets],
     ) -> Option<EncryptedGroupSecrets> {
         for egs in welcome_secrets {
-            if key_package.hash() == egs.key_package_hash {
+            if key_package.hash().as_slice() == egs.key_package_hash.as_slice() {
                 return Some(egs.clone());
             }
         }

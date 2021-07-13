@@ -114,6 +114,7 @@
 //! | `resumption_secret`     | "resumption"    |
 //! ```
 
+use crate::framing::MlsPlaintextTbmPayload;
 use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
 use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
@@ -122,16 +123,16 @@ use crate::{
     config::ProtocolVersion,
     messages::ConfirmationTag,
 };
-use crate::{codec::*, prelude::MlsPlaintextTbmPayload};
 
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
+use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 pub mod codec;
 pub mod errors;
 pub(crate) mod psk;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
 pub use errors::{ErrorState, KeyScheduleError, PskSecretError};
@@ -153,7 +154,10 @@ impl Default for CommitSecret {
 
 impl CommitSecret {
     pub(crate) fn new(ciphersuite: &Ciphersuite, path_secret: &Secret) -> Self {
-        let secret = path_secret.kdf_expand_label("path", &[], ciphersuite.hash_length());
+        // FIXME: remove unwrap
+        let secret = path_secret
+            .kdf_expand_label("path", &[], ciphersuite.hash_length())
+            .unwrap();
 
         Self { secret }
     }
@@ -166,19 +170,19 @@ impl CommitSecret {
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(ciphersuite: &'static Ciphersuite) -> Self {
         Self {
             secret: Secret::random(ciphersuite, None /* MLS version */),
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }
@@ -194,7 +198,8 @@ pub(crate) struct InitSecret {
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
     fn new(epoch_secret: EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret("init");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("init").unwrap();
         log_crypto!(trace, "Init secret: {:x?}", secret);
         InitSecret { secret }
     }
@@ -206,24 +211,25 @@ impl InitSecret {
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }
 }
 
+#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct JoinerSecret {
     secret: Secret,
 }
@@ -241,7 +247,8 @@ impl JoinerSecret {
         let intermediate_secret = init_secret
             .secret
             .hkdf_extract(commit_secret_option.into().map(|cs| &cs.secret));
-        let secret = intermediate_secret.derive_secret("joiner");
+        // FIXME: remove unwrap
+        let secret = intermediate_secret.derive_secret("joiner").unwrap();
         log_crypto!(trace, "Joiner secret: {:x?}", secret);
         JoinerSecret { secret }
     }
@@ -255,19 +262,19 @@ impl JoinerSecret {
         self.secret.config(ciphersuite, mls_version);
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
         Self {
             secret: Secret::random(ciphersuite, version),
@@ -403,8 +410,8 @@ pub(crate) struct WelcomeSecret {
 impl WelcomeSecret {
     /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
     fn new(intermediate_secret: &IntermediateSecret) -> Self {
-        // Unwrapping here is safe, because we know the key is not empty
-        let secret = intermediate_secret.secret.derive_secret("welcome");
+        // FIXME: remove unwrap
+        let secret = intermediate_secret.secret.derive_secret("welcome").unwrap();
         log_crypto!(trace, "Welcome secret: {:x?}", secret);
         WelcomeSecret { secret }
     }
@@ -439,7 +446,7 @@ impl WelcomeSecret {
         AeadNonce::from_secret(nonce_secret)
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -459,11 +466,15 @@ impl EpochSecret {
         intermediate_secret: IntermediateSecret,
         group_context: &GroupContext,
     ) -> Self {
-        let secret = intermediate_secret.secret.kdf_expand_label(
-            "epoch",
-            &group_context.serialized(),
-            ciphersuite.hash_length(),
-        );
+        // FIXME: remove unwraps
+        let secret = intermediate_secret
+            .secret
+            .kdf_expand_label(
+                "epoch",
+                &group_context.tls_serialize_detached().unwrap(),
+                ciphersuite.hash_length(),
+            )
+            .unwrap();
         log_crypto!(trace, "Epoch secret: {:x?}", secret);
         EpochSecret { secret }
     }
@@ -478,8 +489,9 @@ pub(crate) struct EncryptionSecret {
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
     fn new(epoch_secret: &EpochSecret) -> Self {
+        // FIXME: remove unwrap
         EncryptionSecret {
-            secret: epoch_secret.secret.derive_secret("encryption"),
+            secret: epoch_secret.secret.derive_secret("encryption").unwrap(),
         }
     }
 
@@ -503,12 +515,12 @@ impl EncryptionSecret {
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     #[doc(hidden)]
     /// Create a new secret from a byte vector.
     pub(crate) fn from_slice(
@@ -532,11 +544,12 @@ pub(crate) struct ExporterSecret {
 impl ExporterSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
     fn new(epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret("exporter");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("exporter").unwrap();
         ExporterSecret { secret }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -552,9 +565,12 @@ impl ExporterSecret {
         key_length: usize,
     ) -> Vec<u8> {
         let context_hash = &ciphersuite.hash(context);
+        // FIXME: remove unwraps
         self.secret
             .derive_secret(label)
+            .unwrap()
             .kdf_expand_label(label, context_hash, key_length)
+            .unwrap()
             .as_slice()
             .to_vec()
     }
@@ -571,7 +587,8 @@ pub(crate) struct AuthenticationSecret {
 impl AuthenticationSecret {
     /// Derive an `AuthenticationSecret` from an `EpochSecret`.
     fn new(epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret("authentication");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("authentication").unwrap();
         Self { secret }
     }
 
@@ -580,7 +597,7 @@ impl AuthenticationSecret {
         self.secret.as_slice().to_vec()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -596,7 +613,8 @@ pub(crate) struct ExternalSecret {
 impl ExternalSecret {
     /// Derive an `ExternalSecret` from an `EpochSecret`.
     fn new(epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret("external");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("external").unwrap();
         Self { secret }
     }
 
@@ -605,7 +623,7 @@ impl ExternalSecret {
         ciphersuite.derive_hpke_keypair(&self.secret)
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -627,7 +645,8 @@ impl ConfirmationKey {
             "  epoch_secret {:x?}",
             epoch_secret.secret.as_slice()
         );
-        let secret = epoch_secret.secret.derive_secret("confirm");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("confirm").unwrap();
         Self { secret }
     }
 
@@ -646,12 +665,12 @@ impl ConfirmationKey {
         ConfirmationTag(Mac::new(&self.secret, confirmed_transcript_hash))
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -667,7 +686,8 @@ pub struct MembershipKey {
 impl MembershipKey {
     /// Derive an `MembershipKey` from an `EpochSecret`.
     fn new(epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret("membership");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("membership").unwrap();
         Self { secret }
     }
 
@@ -681,19 +701,19 @@ impl MembershipKey {
     pub(crate) fn tag(
         &self,
         tbm_payload: MlsPlaintextTbmPayload,
-    ) -> Result<MembershipTag, CodecError> {
+    ) -> Result<MembershipTag, tls_codec::Error> {
         Ok(MembershipTag(Mac::new(
             &self.secret,
             &tbm_payload.into_bytes()?,
         )))
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -709,11 +729,12 @@ pub struct ResumptionSecret {
 impl ResumptionSecret {
     /// Derive an `ResumptionSecret` from an `EpochSecret`.
     fn new(epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret("resumption");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("resumption").unwrap();
         Self { secret }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -740,7 +761,8 @@ pub(crate) struct SenderDataSecret {
 impl SenderDataSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
     fn new(epoch_secret: &EpochSecret) -> Self {
-        let secret = epoch_secret.secret.derive_secret("sender data");
+        // FIXME: remove unwrap
+        let secret = epoch_secret.secret.derive_secret("sender data").unwrap();
         SenderDataSecret { secret }
     }
 
@@ -751,11 +773,15 @@ impl SenderDataSecret {
             "SenderDataSecret::derive_aead_key ciphertext sample: {:x?}",
             ciphertext_sample
         );
-        let secret = self.secret.kdf_expand_label(
-            "key",
-            &ciphertext_sample,
-            self.secret.ciphersuite().aead_key_length(),
-        );
+        // FIXME: remove unwrap
+        let secret = self
+            .secret
+            .kdf_expand_label(
+                "key",
+                ciphertext_sample,
+                self.secret.ciphersuite().aead_key_length(),
+            )
+            .unwrap();
         AeadKey::from_secret(secret)
     }
 
@@ -770,15 +796,15 @@ impl SenderDataSecret {
             "SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}",
             ciphertext_sample
         );
-        let nonce_secret = self.secret.kdf_expand_label(
-            "nonce",
-            &ciphertext_sample,
-            ciphersuite.aead_nonce_length(),
-        );
+        // FIXME: remove unwrap
+        let nonce_secret = self
+            .secret
+            .kdf_expand_label("nonce", ciphertext_sample, ciphersuite.aead_nonce_length())
+            .unwrap();
         AeadNonce::from_secret(nonce_secret)
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     #[doc(hidden)]
     pub fn random(ciphersuite: &'static Ciphersuite) -> Self {
         Self {
@@ -786,12 +812,12 @@ impl SenderDataSecret {
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     #[doc(hidden)]
     /// Create a new secret from a byte vector.
     pub(crate) fn from_slice(
@@ -951,7 +977,7 @@ impl EpochSecrets {
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     #[doc(hidden)]
     pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret

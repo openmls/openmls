@@ -1,5 +1,6 @@
 use ds_lib::*;
 use openmls::prelude::*;
+use tls_codec::{Deserialize, Serialize};
 
 #[test]
 fn test_client_info() {
@@ -19,10 +20,10 @@ fn test_client_info() {
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package);
 
-    let encoded_client_data = client_data.encode_detached().unwrap();
-    let client_data2 = ClientInfo::decode(&mut Cursor::new(&encoded_client_data))
+    let encoded_client_data = client_data.tls_serialize_detached().unwrap();
+    let client_data2 = ClientInfo::tls_deserialize(&mut encoded_client_data.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    assert_eq!(client_data.encode_detached().unwrap(), client_data2);
+    assert_eq!(client_data.tls_serialize_detached().unwrap(), client_data2);
 }

@@ -3,24 +3,24 @@ use crate::tree::{index::*, node::*, *};
 
 use evercrypt::prelude::*;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use rand::{rngs::OsRng, RngCore};
 
 pub(crate) fn randombytes(n: usize) -> Vec<u8> {
     random_vec(n)
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u64() -> u64 {
     OsRng.next_u64()
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u8() -> u8 {
     random_vec(1)[0]
 }
@@ -238,10 +238,8 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                     };
                     let parent_hash_bytes = if let Some(kp) = &node.key_package {
                         if let Some(phe) = kp.extension_with_type(ExtensionType::ParentHash) {
-                            let parent_hash_extension: &ParentHashExtension = phe
-                                .as_any()
-                                .downcast_ref::<ParentHashExtension>()
-                                .expect("Library error");
+                            let parent_hash_extension: &ParentHashExtension =
+                                phe.as_parent_hash_extension().expect("Library error");
                             parent_hash_extension.parent_hash().to_vec()
                         } else {
                             vec![]
@@ -271,7 +269,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                 }
             };
             if !key_bytes.is_empty() {
-                print!("\tPK: {}", _bytes_to_hex(&key_bytes));
+                print!("\tPK: {}", _bytes_to_hex(key_bytes));
             } else {
                 print!("\tPK:\t\t\t");
             }

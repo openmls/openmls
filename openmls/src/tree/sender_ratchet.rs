@@ -59,7 +59,7 @@ impl SenderRatchet {
                 self.past_secrets.push(new_secret);
             }
             let secret = self.past_secrets.last().unwrap();
-            let ratchet_secrets = self.derive_key_nonce(ciphersuite, &secret, generation);
+            let ratchet_secrets = self.derive_key_nonce(ciphersuite, secret, generation);
             self.generation = generation;
             Ok(ratchet_secrets)
         }

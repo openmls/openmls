@@ -1,10 +1,11 @@
+use tls_codec::{Deserialize, Serialize};
+
 use crate::{
     ciphersuite::signable::Verifiable,
-    codec::{Decode, Encode},
+    config::Config,
     key_packages::KeyPackageBundle,
     messages::{
-        Config, CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig,
-        PublicGroupState,
+        CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
     },
 };
 
@@ -89,8 +90,9 @@ fn test_pgs() {
             .is_ok());
 
         // Test codec
-        let encoded = pgs.encode_detached().expect("Could not encode");
-        let decoded = PublicGroupState::decode_detached(&encoded).expect("Could not decode");
+        let encoded = pgs.tls_serialize_detached().expect("Could not encode");
+        let decoded =
+            PublicGroupState::tls_deserialize(&mut encoded.as_slice()).expect("Could not decode");
 
         assert_eq!(decoded, pgs);
     }

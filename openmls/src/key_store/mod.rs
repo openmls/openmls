@@ -109,7 +109,7 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
 };
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use crate::ciphersuite::Secret;
 
 pub mod errors;
@@ -191,7 +191,7 @@ impl KeyStore {
         &self,
         ciphersuites: &[CiphersuiteName],
         credential: &Credential,
-        extensions: Vec<Box<dyn Extension>>,
+        extensions: Vec<Extension>,
     ) -> Result<KeyPackage, KeyStoreError> {
         let credential_bundle = self
             .get_credential_bundle(credential.signature_key())
@@ -226,7 +226,7 @@ impl KeyStore {
         Ok(credential)
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     /// This function allows us to get hold of the next `leaf_secret` in the
     /// TreeKEM test vector.
     pub fn get_leaf_secret(&self, kp_hash: &[u8]) -> Secret {

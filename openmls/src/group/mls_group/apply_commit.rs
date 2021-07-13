@@ -17,7 +17,6 @@ impl MlsGroup {
 
         // Verify epoch
         if mls_plaintext.epoch() != &self.group_context.epoch {
-            log::error!("{:?}", backtrace::Backtrace::new());
             log::error!(
                 "Epoch mismatch. Got {:?}, expected {:?}",
                 mls_plaintext.epoch(),
@@ -40,7 +39,7 @@ impl MlsGroup {
         // of the proposals by reference locally
         let proposal_queue = match ProposalQueue::from_committed_proposals(
             ciphersuite,
-            &commit.proposals,
+            commit.proposals.as_slice(),
             proposals_by_reference,
             *mls_plaintext.sender(),
         ) {
@@ -77,7 +76,7 @@ impl MlsGroup {
             if kp.verify().is_err() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
-            let serialized_context = self.group_context.serialized();
+            let serialized_context = self.group_context.tls_serialize_detached()?;
 
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles and
@@ -127,7 +126,7 @@ impl MlsGroup {
         )?;
 
         // TODO #186: Implement extensions
-        let extensions: Vec<Box<dyn Extension>> = Vec::new();
+        let extensions: Vec<Extension> = Vec::new();
 
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
@@ -157,7 +156,7 @@ impl MlsGroup {
             })?;
 
         let interim_transcript_hash = update_interim_transcript_hash(
-            &ciphersuite,
+            ciphersuite,
             &mls_plaintext_commit_auth_data,
             &confirmed_transcript_hash,
         )?;
@@ -184,7 +183,7 @@ impl MlsGroup {
                     .extension_with_type(ExtensionType::ParentHash)
                 {
                     let parent_hash_extension =
-                        match received_parent_hash.to_parent_hash_extension() {
+                        match received_parent_hash.as_parent_hash_extension() {
                             Ok(phe) => phe,
                             Err(_) => return Err(ApplyCommitError::NoParentHashExtension),
                         };

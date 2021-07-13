@@ -10,7 +10,6 @@ mod test_duplicate_extension;
 mod test_mls_group;
 
 use crate::ciphersuite::signable::Verifiable;
-use crate::codec::*;
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
@@ -31,6 +30,7 @@ use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
 use std::cell::RefMut;
+use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::errors::{ExporterError, MlsGroupError, PskError};
 
@@ -77,11 +77,11 @@ impl MlsGroup {
     ) -> Result<Self, MlsGroupError> {
         debug!("Created group {:x?}", id);
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
-        let group_id = GroupId { value: id.to_vec() };
+        let group_id = GroupId { value: id.into() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(key_package_bundle);
         // TODO #186: Implement extensions
-        let extensions: Vec<Box<dyn Extension>> = Vec::new();
+        let extensions: Vec<Extension> = Vec::new();
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
@@ -154,7 +154,7 @@ impl MlsGroup {
             aad,
             proposal,
             credential_bundle,
-            &self.context(),
+            self.context(),
             self.epoch_secrets().membership_key(),
         )
         .map_err(|e| e.into())
@@ -177,7 +177,7 @@ impl MlsGroup {
             aad,
             proposal,
             credential_bundle,
-            &self.context(),
+            self.context(),
             self.epoch_secrets().membership_key(),
         )
         .map_err(|e| e.into())
@@ -202,7 +202,7 @@ impl MlsGroup {
             aad,
             proposal,
             credential_bundle,
-            &self.context(),
+            self.context(),
             self.epoch_secrets().membership_key(),
         )
         .map_err(|e| e.into())
@@ -218,14 +218,14 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
     ) -> Result<MlsPlaintext, MlsGroupError> {
-        let presharedkey_proposal = PreSharedKeyProposal { psk };
+        let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::new_proposal(
             self.sender_index(),
             aad,
             proposal,
             credential_bundle,
-            &self.context(),
+            self.context(),
             self.epoch_secrets().membership_key(),
         )
         .map_err(|e| e.into())
@@ -288,7 +288,7 @@ impl MlsGroup {
             aad,
             msg,
             credential_bundle,
-            &self.context(),
+            self.context(),
             self.epoch_secrets().membership_key(),
         )?;
         self.encrypt(mls_plaintext, padding_size)
@@ -303,7 +303,7 @@ impl MlsGroup {
         log::trace!("{:?}", mls_plaintext.confirmation_tag());
         MlsCiphertext::try_from_plaintext(
             &mls_plaintext,
-            &self.ciphersuite,
+            self.ciphersuite,
             self.context(),
             self.sender_index(),
             self.epoch_secrets(),
@@ -341,21 +341,21 @@ impl MlsGroup {
             return Err(MlsPlaintextError::UnknownSender.into());
         };
 
-        let serialized_context = self.context().serialized();
+        let serialized_context = self.context().tls_serialize_detached()?;
 
         // TODO: what about the tags?
         verifiable
-            .set_context(serialized_context)
+            .set_context(&serialized_context)
             .verify(credential)
             .map_err(|e| MlsPlaintextError::from(e).into())
     }
 
     /// Verify the membership tag an MlsPlaintext
     pub fn verify_membership_tag(&self, mls_plaintext: &MlsPlaintext) -> Result<(), MlsGroupError> {
-        let serialized_context = self.context().serialized();
+        let serialized_context = self.context().tls_serialize_detached()?;
 
         mls_plaintext
-            .verify_membership(serialized_context, self.epoch_secrets().membership_key())
+            .verify_membership(&serialized_context, self.epoch_secrets().membership_key())
             .map_err(|_| MlsPlaintextError::InvalidSignature.into())
     }
 
@@ -417,9 +417,9 @@ impl MlsGroup {
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
-    pub fn extensions(&self) -> Vec<Box<dyn Extension>> {
-        let extensions: Vec<Box<dyn Extension>> = if self.use_ratchet_tree_extension {
-            vec![Box::new(RatchetTreeExtension::new(
+    pub fn extensions(&self) -> Vec<Extension> {
+        let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
+            vec![Extension::RatchetTree(RatchetTreeExtension::new(
                 self.tree().public_key_tree_copy(),
             ))]
         } else {
@@ -462,12 +462,12 @@ impl MlsGroup {
         &self.interim_transcript_hash
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
         &mut self.epoch_secrets
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
@@ -488,8 +488,8 @@ pub(crate) fn update_confirmed_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
-) -> Result<Vec<u8>, CodecError> {
-    let commit_content_bytes = mls_plaintext_commit_content.encode_detached()?;
+) -> Result<Vec<u8>, tls_codec::Error> {
+    let commit_content_bytes = mls_plaintext_commit_content.tls_serialize_detached()?;
     Ok(ciphersuite.hash(&[interim_transcript_hash, &commit_content_bytes].concat()))
 }
 
@@ -497,8 +497,8 @@ pub(crate) fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
     mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
-) -> Result<Vec<u8>, CodecError> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.encode_detached()?;
+) -> Result<Vec<u8>, tls_codec::Error> {
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.tls_serialize_detached()?;
     Ok(ciphersuite.hash(&[confirmed_transcript_hash, &commit_auth_data_bytes].concat()))
 }
 
@@ -512,10 +512,11 @@ fn psk_output(
         match psk_fetcher_option {
             Some(psk_fetcher) => {
                 // Try to fetch the PSKs with the IDs
-                match psk_fetcher(&presharedkeys, ciphersuite) {
+                match psk_fetcher(presharedkeys, ciphersuite) {
                     Some(psks) => {
                         // Combine the PSKs in to a PskSecret
-                        let psk_secret = PskSecret::new(ciphersuite, &presharedkeys.psks, &psks)?;
+                        let psk_secret =
+                            PskSecret::new(ciphersuite, presharedkeys.psks.as_slice(), &psks)?;
                         Ok(Some(psk_secret))
                     }
                     None => Err(PskError::PskIdNotFound),

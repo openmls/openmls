@@ -20,8 +20,8 @@ fn create_commit_optional_path() {
         .unwrap();
 
         // Mandatory extensions, will be fixed in #164
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Box<dyn Extension>> = vec![lifetime_extension];
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -266,14 +266,13 @@ fn group_operations() {
         .unwrap();
 
         // Mandatory extensions
-        let capabilities_extension = Box::new(CapabilitiesExtension::new(
+        let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[ciphersuite.name()]),
             None,
         ));
-        let lifetime_extension = Box::new(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Box<dyn Extension>> =
-            vec![capabilities_extension, lifetime_extension];
+        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(

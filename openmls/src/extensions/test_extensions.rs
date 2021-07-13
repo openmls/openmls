@@ -2,36 +2,36 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
+use tls_codec::{Deserialize, Serialize};
+
 use super::*;
 
-use crate::{codec::Cursor, prelude::*};
+use crate::prelude::*;
 
 #[test]
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
-    let extension_bytes = [
-        0, 1, 0, 0, 0, 17, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3,
-    ];
+    let extension_bytes = &[
+        0u8, 1, 0, 0, 0, 17, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3,
+    ] as &[u8];
 
-    let ext = CapabilitiesExtension::default();
-    let ext_struct = ext.to_extension_struct();
+    let ext = Extension::Capabilities(CapabilitiesExtension::default());
 
     // Check that decoding works
-    let capabilities_extension_struct =
-        ExtensionStruct::decode(&mut Cursor::new(&extension_bytes)).unwrap();
-    assert_eq!(ext_struct, capabilities_extension_struct);
+    let capabilities_extension = Extension::tls_deserialize(&mut extension_bytes.clone()).unwrap();
+    assert_eq!(ext, capabilities_extension);
 
     // Encoding creates the expected bytes.
     assert_eq!(
         &extension_bytes[..],
-        &ext_struct.encode_detached().unwrap()[..]
+        &capabilities_extension.tls_serialize_detached().unwrap()[..]
     );
 
     // Test encoding and decoding
     let encoded = ext
-        .encode_detached()
+        .tls_serialize_detached()
         .expect("error encoding capabilities extension");
-    let ext_decoded = CapabilitiesExtension::decode_detached(&encoded)
+    let ext_decoded = Extension::tls_deserialize(&mut encoded.as_slice())
         .expect("error decoding capabilities extension");
 
     assert_eq!(ext, ext_decoded);
@@ -40,16 +40,14 @@ fn capabilities() {
 #[test]
 fn key_package_id() {
     // A key package extension with the default values for openmls.
-    let data = [0, 8, 1, 2, 3, 4, 5, 6, 6, 6];
+    let data = &[0u8, 8, 1, 2, 3, 4, 5, 6, 6, 6];
     let kpi = KeyIdExtension::new(&data[2..]);
-    assert_eq!(ExtensionType::KeyId, kpi.extension_type());
 
-    let kpi_from_bytes = KeyIdExtension::new_from_bytes(&data).unwrap();
+    let kpi_from_bytes = KeyIdExtension::tls_deserialize(&mut (data as &[u8])).unwrap();
     assert_eq!(kpi, kpi_from_bytes);
 
-    let extension_struct = kpi.to_extension_struct();
-    assert_eq!(ExtensionType::KeyId, extension_struct.extension_type);
-    assert_eq!(&data[..], &extension_struct.extension_data[..]);
+    let serialized_extension_struct = kpi.tls_serialize_detached().unwrap();
+    assert_eq!(&data[..], &serialized_extension_struct);
 }
 
 #[test]
@@ -63,14 +61,17 @@ fn lifetime() {
     std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(!ext.is_valid());
 
-    // Test encoding and decoding
-    let encoded = ext
-        .encode_detached()
-        .expect("error encoding capabilities extension");
-    let ext_decoded = LifetimeExtension::decode_detached(&encoded)
-        .expect("error decoding capabilities extension");
-
-    assert_eq!(ext, ext_decoded);
+    // Test (de)serializing invalid extension
+    let serialized = ext
+        .tls_serialize_detached()
+        .expect("error encoding life time extension");
+    let ext_deserialized = LifetimeExtension::tls_deserialize(&mut serialized.as_slice())
+        .err()
+        .expect("Didn't get an error deserializing invalid life time extension");
+    assert_eq!(
+        ext_deserialized,
+        tls_codec::Error::DecodingError("Invalid".to_string()),
+    );
 }
 
 // This tests the ratchet tree extension to deliver the public ratcheting tree

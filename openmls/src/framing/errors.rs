@@ -3,9 +3,9 @@
 //! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
-use crate::codec::CodecError;
 use crate::credentials::CredentialError;
 use crate::tree::secret_tree::SecretTreeError;
+use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum MlsPlaintextError {
@@ -16,7 +16,7 @@ implement_error! {
             InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
         }
         Complex {
-            CodecError(CodecError) = "Codec error",
+            CodecError(TlsCodecError) = "TLS Codec error",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
             VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
         }
@@ -34,7 +34,7 @@ implement_error! {
         Complex {
             PlaintextError(MlsPlaintextError) = "MlsPlaintext error",
             SecretTreeError(SecretTreeError) = "SecretTree error",
-            CodecError(CodecError) = "Codec error",
+            CodecError(TlsCodecError) = "TLS codec error",
         }
     }
 }
@@ -46,7 +46,6 @@ implement_error! {
             InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
         }
         Complex {
-            CodecError(CodecError) = "Codec error",
             CredentialError(CredentialError) = "Credential error",
         }
     }
