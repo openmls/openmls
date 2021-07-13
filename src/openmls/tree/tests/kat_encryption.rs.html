@@ -733,7 +733,7 @@
     <span class="ident">key_packages::KeyPackageBundle</span>,
     <span class="ident">messages::proposals::Proposal</span>,
     <span class="ident">schedule</span>::{<span class="ident">EncryptionSecret</span>, <span class="ident">MembershipKey</span>, <span class="ident">SenderDataSecret</span>},
-    <span class="ident">test_util</span>::<span class="kw-2">*</span>,
+    <span class="ident">test_utils</span>::<span class="kw-2">*</span>,
     <span class="ident">tree::index::LeafIndex</span>,
     <span class="ident">tree::secret_tree</span>::{<span class="ident">SecretTree</span>, <span class="ident">SecretType</span>},
     <span class="ident">tree</span>::<span class="kw-2">*</span>,
@@ -776,7 +776,7 @@
     <span class="ident">leaves</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LeafSequence</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">group</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">MlsGroup</span>, <span class="ident">CredentialBundle</span>) {
     <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
         <span class="string">&quot;Kreator&quot;</span>.<span class="ident">into</span>(),
@@ -801,7 +801,7 @@
     )
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">receiver_group</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">group_id</span>: <span class="kw-2">&amp;</span><span class="ident">GroupId</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MlsGroup</span> {
     <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
         <span class="string">&quot;Receiver&quot;</span>.<span class="ident">into</span>(),
@@ -823,7 +823,7 @@
 }
 
 <span class="comment">// XXX: we could be more creative in generating these messages.</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">build_handshake_messages</span>(
     <span class="ident">leaf</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>,
@@ -863,7 +863,7 @@
     )
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">build_application_messages</span>(
     <span class="ident">leaf</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MlsGroup</span>,
@@ -905,7 +905,7 @@
     )
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_test_vector</span>(
     <span class="ident">n_generations</span>: <span class="ident">u32</span>,
     <span class="ident">n_leaves</span>: <span class="ident">u32</span>,
@@ -1013,7 +1013,7 @@
     <span class="ident">write</span>(<span class="string">&quot;test_vectors/kat_encryption_openmls-new.json&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">tests</span>);
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">EncryptionTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">EncTestVectorError</span><span class="op">&gt;</span> {
     <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
@@ -1272,7 +1272,7 @@
     <span class="macro">log::trace!</span>(<span class="string">&quot;Finished test vector verification&quot;</span>);
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">EncTestVectorError</span> {
         <span class="ident">LeafNumberMismatch</span> <span class="op">=</span> <span class="string">&quot;The test vector does not contain as many leaves as advertised.&quot;</span>,

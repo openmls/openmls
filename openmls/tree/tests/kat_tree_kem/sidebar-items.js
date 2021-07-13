@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["TreeKemTestVectorError",""]],"fn":[["run_test_vector",""]],"struct":[["TreeKemTestVector",""]]});
+initSidebarItems({"enum":[["TreeKemTestVectorError",""]],"fn":[["generate_test_vector",""],["run_test_vector",""]],"struct":[["TreeKemTestVector",""]]});

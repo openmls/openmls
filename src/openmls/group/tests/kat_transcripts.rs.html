@@ -325,7 +325,7 @@
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_util</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utils</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{<span class="ident">signable::Verifiable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">CiphersuiteName</span>, <span class="ident">Secret</span>, <span class="ident">SignatureScheme</span>},
@@ -341,7 +341,7 @@
         <span class="ident">MlsPlaintextCommitContent</span>, <span class="ident">VerifiableMlsPlaintext</span>,
     },
     <span class="ident">schedule</span>::{<span class="ident">ConfirmationKey</span>, <span class="ident">MembershipKey</span>},
-    <span class="ident">test_util</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
+    <span class="ident">test_utils</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
 };
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};

@@ -406,12 +406,12 @@
     <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>},
     <span class="ident">group</span>::{<span class="ident">GroupContext</span>, <span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>},
     <span class="ident">schedule</span>::{<span class="ident">EpochSecrets</span>, <span class="ident">InitSecret</span>, <span class="ident">JoinerSecret</span>, <span class="ident">KeySchedule</span>, <span class="ident">WelcomeSecret</span>},
-    <span class="ident">test_util</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
+    <span class="ident">test_utils</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
     <span class="ident">utils::randombytes</span>,
 };
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_util</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utils</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
 
 <span class="kw">use</span> <span class="ident">hpke::HpkeKeyPair</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -509,7 +509,7 @@
     )
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_test_vector</span>(
     <span class="ident">n_epochs</span>: <span class="ident">u64</span>,
     <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
@@ -606,7 +606,7 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;expose-test-vectors&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">KeyScheduleTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KsTestVectorError</span><span class="op">&gt;</span> {
     <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
 

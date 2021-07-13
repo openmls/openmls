@@ -540,7 +540,6 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
-<span id="540">540</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! # Known Answer Tests for the encoding and decoding of various structs of the</span>
 <span class="doccomment">//! MLS spec</span>
@@ -555,7 +554,7 @@
     <span class="ident">messages</span>::{<span class="ident">ConfirmationTag</span>, <span class="ident">GroupInfoPayload</span>},
     <span class="ident">node::Node</span>,
     <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">test_util</span>::<span class="kw-2">*</span>,
+    <span class="ident">test_utils</span>::<span class="kw-2">*</span>,
     <span class="ident">utils</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident">evercrypt::prelude::random_vec</span>;
@@ -1050,7 +1049,6 @@
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">read_test_vectors</span>() {
-    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">pretty_env_logger::try_init</span>();
     <span class="kw">let</span> <span class="ident">tests</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MessagesTestVector</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">read</span>(<span class="string">&quot;test_vectors/kat_messages.json&quot;</span>);
 
     <span class="kw">for</span> <span class="ident">test_vector</span> <span class="kw">in</span> <span class="ident">tests</span> {
