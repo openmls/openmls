@@ -25,12 +25,12 @@ use tls_codec::{
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
     psk::{ExternalPsk, Psk, PskType::External},
     PreSharedKeyId,
 };
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 use evercrypt::prelude::random_vec;
 
 /// Welcome Messages
@@ -127,7 +127,7 @@ impl Commit {
         self.path.is_some()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn path(&self) -> &Option<UpdatePath> {
         &self.path
     }
@@ -284,12 +284,12 @@ impl SignedStruct<GroupInfoPayload> for GroupInfo {
 /// } PathSecret;
 /// ```
 #[derive(Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize)]
-#[cfg_attr(any(feature = "expose-test-vectors", test), derive(PartialEq, Clone))]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 pub struct PathSecret {
     pub(crate) path_secret: Secret,
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 impl PathSecret {
     /// Update the ciphersuite and MLS version of this path secret.
     /// Ideally we wouldn't need this function but the way decoding works right
@@ -362,7 +362,7 @@ impl GroupSecrets {
         self
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn random_encoded(
         ciphersuite: &'static Ciphersuite,
         version: ProtocolVersion,

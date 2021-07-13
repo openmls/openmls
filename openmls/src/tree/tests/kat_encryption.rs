@@ -86,7 +86,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
     schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
-    test_util::*,
+    test_utils::*,
     tree::index::LeafIndex,
     tree::secret_tree::{SecretTree, SecretType},
     tree::*,
@@ -129,7 +129,7 @@ pub struct EncryptionTestVector {
     leaves: Vec<LeafSequence>,
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
@@ -154,7 +154,7 @@ fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
     )
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
@@ -176,7 +176,7 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
 }
 
 // XXX: we could be more creative in generating these messages.
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
@@ -216,7 +216,7 @@ fn build_handshake_messages(
     )
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
@@ -258,7 +258,7 @@ fn build_application_messages(
     )
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
@@ -366,7 +366,7 @@ fn write_test_vectors() {
     write("test_vectors/kat_encryption_openmls-new.json", &tests);
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
@@ -625,7 +625,7 @@ fn read_test_vectors() {
     log::trace!("Finished test vector verification");
 }
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 implement_error! {
     pub enum EncTestVectorError {
         LeafNumberMismatch = "The test vector does not contain as many leaves as advertised.",

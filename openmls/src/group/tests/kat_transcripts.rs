@@ -6,7 +6,7 @@
 use std::convert::TryFrom;
 
 #[cfg(test)]
-use crate::test_util::{read, write};
+use crate::test_utils::{read, write};
 
 use crate::{
     ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret, SignatureScheme},
@@ -22,7 +22,7 @@ use crate::{
         MlsPlaintextCommitContent, VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
-    test_util::{bytes_to_hex, hex_to_bytes},
+    test_utils::{bytes_to_hex, hex_to_bytes},
 };
 
 use serde::{self, Deserialize, Serialize};

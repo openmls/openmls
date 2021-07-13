@@ -1,10 +1,11 @@
 //! Test decryption key index computation in larger trees.
-use openmls::prelude::*;
+use openmls::{
+    prelude::*,
+    test_utils::test_framework::{ActionType, ManagedTestSetup},
+};
 
 #[macro_use]
 mod utils;
-
-use test_utils::*;
 
 ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
