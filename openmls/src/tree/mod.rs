@@ -34,7 +34,7 @@ pub(crate) use serde::{
 use std::{collections::HashSet, convert::TryFrom};
 
 #[cfg(any(feature = "test-utils", test))]
-pub mod tests;
+pub mod tests_and_kats;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
