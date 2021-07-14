@@ -34,9 +34,7 @@ pub(crate) use errors::*;
 use self::signable::SignedStruct;
 
 #[cfg(test)]
-mod test_ciphersuite;
-#[cfg(test)]
-mod test_secrets;
+mod tests;
 
 pub(crate) const NONCE_BYTES: usize = 12;
 pub(crate) const REUSE_GUARD_BYTES: usize = 4;

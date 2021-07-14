@@ -1,6 +1,7 @@
-use crate::config::ProtocolVersion;
-
-use super::{Ciphersuite, Secret};
+use crate::{
+    ciphersuite::{Ciphersuite, Secret},
+    config::ProtocolVersion,
+};
 
 #[test]
 fn secret_init() {
@@ -25,5 +26,5 @@ fn secret_incompatible() {
     let draft_secret = Secret::random(csuite, ProtocolVersion::Mls10Draft11);
 
     // This must panic because the two secrets have incompatible MLS versions.
-    let _default_extraced = default_secret.hkdf_extract(&draft_secret);
+    let _default_extracted = default_secret.hkdf_extract(&draft_secret);
 }
