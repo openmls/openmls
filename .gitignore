@@ -1,6 +1,4 @@
 **/target
-delivery-service/ds/target
-interop_client/target
 **/*.rs.bk
 .DS_Store
 .vscode
