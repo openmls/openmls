@@ -957,8 +957,6 @@
 <span id="954">954</span>
 <span id="955">955</span>
 <span id="956">956</span>
-<span id="957">957</span>
-<span id="958">958</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
@@ -996,9 +994,7 @@
 <span class="kw">use</span> <span class="self">self</span><span class="ident">::signable::SignedStruct</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">test_ciphersuite</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">test_secrets</span>;
+<span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">NONCE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">12</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">REUSE_GUARD_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
