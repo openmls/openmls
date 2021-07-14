@@ -1,4 +1,12 @@
-use crate::{ciphersuite::Ciphersuite, credentials::{CredentialBundle, CredentialType}, group::{HandshakeMessageFormat, ManagedGroupCallbacks, ManagedGroupConfig, UpdatePolicy}, node::{Node, NodeType}, prelude::{KeyPackageBundle, LeafIndex}, test_utils::test_framework::{ActionType, ManagedTestSetup}, tree::RatchetTree};
+use crate::{
+    ciphersuite::Ciphersuite,
+    credentials::{CredentialBundle, CredentialType},
+    group::{HandshakeMessageFormat, ManagedGroupCallbacks, ManagedGroupConfig, UpdatePolicy},
+    node::{Node, NodeType},
+    prelude::{KeyPackageBundle, LeafIndex},
+    test_utils::test_framework::{ActionType, ManagedTestSetup},
+    tree::RatchetTree,
+};
 
 #[test]
 fn test_trim() {
@@ -12,7 +20,7 @@ fn test_trim() {
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-            .unwrap();
+        .unwrap();
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
 
@@ -53,7 +61,6 @@ fn test_trim() {
     tree.trim_tree();
 
     assert_eq!(size_untrimmed, tree.tree_size());
-
 }
 
 #[test]
@@ -129,7 +136,8 @@ fn test_truncation_after_update() {
         .clone();
 
     // Remove the rightmost 2 members in the tree
-    setup.self_update(ActionType::Commit, group, &updater_id, None)
+    setup
+        .self_update(ActionType::Commit, group, &updater_id, None)
         .expect("error while doing self-update");
 
     // Test if the tree was truncated. The tree's size should be ((number of
