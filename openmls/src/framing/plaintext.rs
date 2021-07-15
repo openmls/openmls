@@ -601,8 +601,18 @@ impl<'a> Verifiable for VerifiableMlsPlaintext<'a> {
     }
 }
 
+mod private_mod {
+    pub struct Seal;
+
+    impl Default for Seal {
+        fn default() -> Self {
+            Seal {}
+        }
+    }
+}
+
 impl<'a> VerifiedStruct<VerifiableMlsPlaintext<'a>> for MlsPlaintext {
-    fn from_verifiable(v: VerifiableMlsPlaintext<'a>) -> Self {
+    fn from_verifiable(v: VerifiableMlsPlaintext<'a>, _seal: Self::SealingType) -> Self {
         Self {
             group_id: v.tbs.group_id,
             epoch: v.tbs.epoch,
@@ -615,6 +625,8 @@ impl<'a> VerifiedStruct<VerifiableMlsPlaintext<'a>> for MlsPlaintext {
             membership_tag: v.membership_tag,
         }
     }
+
+    type SealingType = private_mod::Seal;
 }
 
 impl<'a> SignedStruct<MlsPlaintextTbs<'a>> for MlsPlaintext {
