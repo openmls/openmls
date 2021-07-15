@@ -42,6 +42,7 @@ pub enum ClientError {
     ManagedGroupError(ManagedGroupError),
     GroupError(MlsGroupError),
     ErrorEvent(ErrorEvent),
+    TlsCodecError(tls_codec::Error),
     Unknown,
 }
 
@@ -60,5 +61,11 @@ impl From<ManagedGroupError> for ClientError {
 impl From<MlsGroupError> for ClientError {
     fn from(e: MlsGroupError) -> Self {
         ClientError::GroupError(e)
+    }
+}
+
+impl From<tls_codec::Error> for ClientError {
+    fn from(e: tls_codec::Error) -> Self {
+        ClientError::TlsCodecError(e)
     }
 }

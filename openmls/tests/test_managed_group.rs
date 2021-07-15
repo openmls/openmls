@@ -125,6 +125,7 @@ fn managed_group_operations() {
                 0,
                 0,
                 false, // use_ratchet_tree_extension
+                false, // serialization
                 callbacks,
             );
 
@@ -712,6 +713,7 @@ fn test_empty_input_errors() {
         0,
         0,
         false, // use_ratchet_tree_extension
+        false, // serialization
         callbacks,
     );
 
@@ -789,7 +791,8 @@ fn managed_group_ratchet_tree_extension() {
                 update_policy.clone(),
                 0,
                 0,
-                true, // use_ratchet_tree_extension
+                true,  // use_ratchet_tree_extension
+                false, // serialization
                 ManagedGroupCallbacks::default(),
             );
 
@@ -850,6 +853,7 @@ fn managed_group_ratchet_tree_extension() {
                 0,
                 0,
                 false, // use_ratchet_tree_extension
+                false, // serialization
                 ManagedGroupCallbacks::default(),
             );
 

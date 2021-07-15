@@ -17,6 +17,7 @@ fn test_managed_api() {
         0,
         0,
         false, // use_ratchet_tree_extension
+        false, // serialization
         callbacks,
     );
     let number_of_clients = 20;

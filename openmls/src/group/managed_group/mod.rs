@@ -1109,6 +1109,16 @@ pub enum MlsMessageIn<'a> {
     Ciphertext(MlsCiphertext),
 }
 
+#[cfg(any(feature = "test-utils", test))]
+impl<'a> MlsMessageIn<'a> {
+    pub fn group_id(&self) -> &[u8] {
+        match self {
+            MlsMessageIn::Ciphertext(m) => m.group_id().as_slice(),
+            MlsMessageIn::Plaintext(m) => m.group_id().as_slice(),
+        }
+    }
+}
+
 /// Unified message type for output by the managed API
 #[derive(PartialEq, Debug, Clone)]
 pub enum MlsMessage {

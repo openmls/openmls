@@ -22,6 +22,7 @@
 //! group states.
 
 #![allow(dead_code)]
+use crate::group::MlsMessageIn;
 /// We allow dead code here due to the following issue:
 /// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
 /// a lot of unused code warnings.
@@ -31,6 +32,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 pub mod client;
 pub mod errors;
+pub mod messages;
 
 use self::client::*;
 use self::errors::*;
@@ -200,13 +202,21 @@ impl ManagedTestSetup {
         group: &mut Group,
         message: &MlsMessage,
     ) -> Result<(), ClientError> {
+        // Test serialization if mandated by config
+        let message = if group.group_config.use_codec {
+            let serialized_message =
+                MlsMessageIn::from(message.clone()).tls_serialize_detached()?;
+            MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
+        } else {
+            MlsMessageIn::from(message.clone())
+        };
         let clients = self.clients.borrow();
         println!("Distributing and processing messages...");
         // Distribute message to all members.
         for (index, member_id) in &group.members {
             println!("Index: {:?}, Id: {:?}", index, member_id);
             let member = clients.get(member_id).unwrap().borrow();
-            member.receive_messages_for_group(message)?;
+            member.receive_messages_for_group(&message)?;
         }
         // Get the current tree and figure out who's still in the group.
         let sender = clients.get(sender_id).unwrap().borrow();

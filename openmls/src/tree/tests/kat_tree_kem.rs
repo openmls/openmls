@@ -300,6 +300,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         0,
         0,
         false, // use_ratchet_tree_extension
+        false, // serialize/deserialize messages
         callbacks,
     );
     let setup = ManagedTestSetup::new(managed_group_config, n_leaves as usize);

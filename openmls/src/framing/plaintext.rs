@@ -510,6 +510,12 @@ impl<'a> VerifiableMlsPlaintext<'a> {
         self.tbs.sender.sender
     }
 
+    /// Get the group id as [`GroupId`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.tbs.group_id
+    }
+
     /// Set the serialized context before verifying the signature.
     pub fn set_context(mut self, serialized_context: &'a [u8]) -> Self {
         self.tbs.serialized_context = Some(serialized_context);

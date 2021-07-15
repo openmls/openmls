@@ -21,6 +21,7 @@ fn default_managed_group_config() -> ManagedGroupConfig {
         10,
         0,
         false, // use_ratchet_tree_extension
+        false, // serialization
         callbacks,
     )
 }
