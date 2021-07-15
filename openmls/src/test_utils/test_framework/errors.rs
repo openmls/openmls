@@ -30,7 +30,7 @@ pub enum SetupGroupError {
 }
 
 /// Errors that can occur when processing messages with the client.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ClientError {
     NoMatchingKeyPackage,
     NoMatchingCredential,

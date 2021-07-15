@@ -335,6 +335,18 @@ impl MlsPlaintext {
     pub fn authenticated_data(&self) -> &[u8] {
         self.authenticated_data.as_slice()
     }
+
+    #[cfg(test)]
+    pub(crate) fn tamper_with_signature(&mut self) {
+        let mut modified_signature = self.signature().as_slice().to_vec();
+        modified_signature[0] ^= 0xFF;
+        self.signature_mut().modify(&modified_signature);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_sender(&mut self, sender: Sender) {
+        self.sender = sender
+    }
 }
 
 // === Helper structs ===

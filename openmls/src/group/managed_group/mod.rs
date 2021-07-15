@@ -443,8 +443,9 @@ impl ManagedGroup {
                 let aad = ciphertext.authenticated_data.clone();
                 (self.group.decrypt(&ciphertext)?, Some(aad))
             }
-            // If it is a plaintext message we just return it
+            // If it is a plaintext message we have to verify it first
             MlsMessageIn::Plaintext(unverified_plaintext) => {
+                // Get the proper context to verify the signature on the plaintext
                 let context = self
                     .group
                     .context()
@@ -455,8 +456,9 @@ impl ManagedGroup {
                 let credential = members
                     .get(&unverified_plaintext.sender_index())
                     .ok_or(InvalidMessageError::UnknownSender)?;
+                // Verify the signature
                 let plaintext: MlsPlaintext = unverified_plaintext.verify(credential)?;
-                // Verify signature & membership tag
+                // Verify membership tag
                 // TODO #106: Support external senders
                 if plaintext.is_proposal()
                     && plaintext.sender().is_member()
