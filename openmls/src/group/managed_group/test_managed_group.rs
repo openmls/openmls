@@ -30,7 +30,6 @@ fn test_managed_group_persistence() {
         0,     // padding_size
         0,     // number_of_resumption_secrets
         false, // use_ratchet_tree_extension
-        false, // serialization
         callbacks,
     );
 
@@ -124,7 +123,6 @@ fn remover() {
         0,     // padding_size
         0,     // number_of_resumption_secrets
         false, // use_ratchet_tree_extension
-        false, // serialization
         callbacks,
     );
 
@@ -241,7 +239,6 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         0, // padding_size
         0, // number_of_resumption_secrets
         false, // use_ratchet_tree_extension
-        false, // serialization
         callbacks,
     );
 

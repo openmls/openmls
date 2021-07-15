@@ -83,6 +83,9 @@ pub struct ManagedTestSetup {
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RefCell<HashMap<Vec<u8>, Vec<u8>>>,
     pub default_mgc: ManagedGroupConfig,
+    /// Flag to indicate if messages should be serialized and de-serialized as
+    /// part of message distribution
+    pub use_codec: bool,
 }
 
 // Some notes regarding the layout of the `ManagedTestSetup` implementation
@@ -110,7 +113,7 @@ impl ManagedTestSetup {
     /// `ManagedGroupConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
-    pub fn new(default_mgc: ManagedGroupConfig, number_of_clients: usize) -> Self {
+    pub fn new(default_mgc: ManagedGroupConfig, number_of_clients: usize, use_codec: bool) -> Self {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
@@ -143,6 +146,7 @@ impl ManagedTestSetup {
             groups,
             waiting_for_welcome,
             default_mgc,
+            use_codec,
         }
     }
 
@@ -203,7 +207,7 @@ impl ManagedTestSetup {
         message: &MlsMessage,
     ) -> Result<(), ClientError> {
         // Test serialization if mandated by config
-        let message = if group.group_config.use_codec {
+        let message = if self.use_codec {
             let serialized_message =
                 MlsMessageIn::from(message.clone()).tls_serialize_detached()?;
             MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?

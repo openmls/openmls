@@ -24,9 +24,6 @@ pub struct ManagedGroupConfig {
     pub(crate) number_of_resumption_secrets: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
     pub(crate) use_ratchet_tree_extension: bool,
-    /// Flag to indicate if messages should be serialized and de-serialized as
-    /// part of message distribution
-    pub(crate) use_codec: bool,
     /// Callbacks
     #[serde(skip)]
     pub(crate) callbacks: ManagedGroupCallbacks,
@@ -39,7 +36,6 @@ impl ManagedGroupConfig {
         padding_size: usize,
         number_of_resumption_secrets: usize,
         use_ratchet_tree_extension: bool,
-        use_codec: bool,
         callbacks: ManagedGroupCallbacks,
     ) -> Self {
         ManagedGroupConfig {
@@ -48,7 +44,6 @@ impl ManagedGroupConfig {
             padding_size,
             number_of_resumption_secrets,
             use_ratchet_tree_extension,
-            use_codec,
             callbacks,
         }
     }
