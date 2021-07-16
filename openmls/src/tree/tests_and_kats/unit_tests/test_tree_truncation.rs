@@ -1,7 +1,7 @@
 use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
-    group::{HandshakeMessageFormat, ManagedGroupCallbacks, ManagedGroupConfig, UpdatePolicy},
+    group::ManagedGroupConfig,
     node::{Node, NodeType},
     prelude::{KeyPackageBundle, LeafIndex},
     test_utils::test_framework::{ActionType, ManagedTestSetup},
@@ -14,7 +14,8 @@ fn test_trim() {
     let mut nodes = vec![];
     let mut key_package_bundles = vec![];
     let ciphersuite = Ciphersuite::default();
-    for i in 0..10 {
+    let number_of_nodes = 10;
+    for i in 0..number_of_nodes {
         let credential_bundle = CredentialBundle::new(
             vec![i as u8],
             CredentialType::Basic,
@@ -33,7 +34,7 @@ fn test_trim() {
         key_package_bundles.push(key_package_bundle);
         nodes.push(Some(leaf_node));
         // We skip the last parent node (trees should always end with a leaf node)
-        if i != 9 {
+        if i != number_of_nodes {
             nodes.push(None);
         }
     }
@@ -66,17 +67,7 @@ fn test_trim() {
 #[test]
 fn test_truncation_after_removal() {
     // Set up a group with 8 members.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        handshake_message_format,
-        update_policy,
-        0,
-        0,
-        true, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::test_default();
     let setup = ManagedTestSetup::new(managed_group_config, 8);
 
     let group_id = setup
@@ -107,17 +98,7 @@ fn test_truncation_after_removal() {
 #[test]
 fn test_truncation_after_update() {
     // Set up a group with 8 members.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        handshake_message_format,
-        update_policy,
-        0,
-        0,
-        true, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::test_default();
     let setup = ManagedTestSetup::new(managed_group_config, 8);
 
     let group_id = setup
