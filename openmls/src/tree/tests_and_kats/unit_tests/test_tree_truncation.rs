@@ -68,10 +68,11 @@ fn test_trim() {
 fn test_truncation_after_removal() {
     // Set up a group with 8 members.
     let managed_group_config = ManagedGroupConfig::test_default();
-    let setup = ManagedTestSetup::new(managed_group_config, 8);
+    let number_of_clients = 8;
+    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
 
     let group_id = setup
-        .create_random_group(8, Ciphersuite::default())
+        .create_random_group(number_of_clients, Ciphersuite::default())
         .unwrap();
 
     let mut groups = setup.groups.borrow_mut();
@@ -87,22 +88,28 @@ fn test_truncation_after_removal() {
 
     // Remove the rightmost 2 members in the tree
     setup
-        .remove_clients_by_index(ActionType::Commit, group, &remover_id, &[6, 7])
+        .remove_clients_by_index(
+            ActionType::Commit,
+            group,
+            &remover_id,
+            &[number_of_clients - 2, number_of_clients - 1],
+        )
         .expect("error while removing members from group");
 
     // Test if the tree was truncated. The tree's size should be ((number of
     // members) * 2) - 1, i.e. 11 with 6 members.
-    assert_eq!(group.public_tree.len(), 11)
+    assert_eq!(group.public_tree.len(), (number_of_clients - 2) * 2 - 1)
 }
 
 #[test]
 fn test_truncation_after_update() {
     // Set up a group with 8 members.
     let managed_group_config = ManagedGroupConfig::test_default();
-    let setup = ManagedTestSetup::new(managed_group_config, 8);
+    let number_of_clients = 8;
+    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
 
     let group_id = setup
-        .create_random_group(8, Ciphersuite::default())
+        .create_random_group(number_of_clients, Ciphersuite::default())
         .unwrap();
 
     let mut groups = setup.groups.borrow_mut();
@@ -123,5 +130,5 @@ fn test_truncation_after_update() {
 
     // Test if the tree was truncated. The tree's size should be ((number of
     // members) * 2) - 1, i.e. 15 with 8 members.
-    assert_eq!(group.public_tree.len(), 15)
+    assert_eq!(group.public_tree.len(), number_of_clients * 2 - 1)
 }
