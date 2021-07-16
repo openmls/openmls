@@ -174,6 +174,15 @@ impl ManagedTestSetup {
     /// will throw an error if no key package was previously created for the
     /// client by `get_fresh_key_package`.
     pub fn deliver_welcome(&self, welcome: Welcome, group: &Group) -> Result<(), SetupError> {
+        // Serialize and de-serialize the Welcome if the bit was set.
+        if self.use_codec {
+            let serialized_welcome = welcome
+                .tls_serialize_detached()
+                .map_err(|e| ClientError::TlsCodecError(e))?;
+            let deserialized_welcome = Welcome::tls_deserialize(&mut serialized_welcome.as_slice())
+                .map_err(|e| ClientError::TlsCodecError(e))?;
+            assert_eq!(deserialized_welcome, welcome);
+        }
         let clients = self.clients.borrow();
         for egs in welcome.secrets() {
             println!(
