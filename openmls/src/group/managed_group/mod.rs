@@ -451,13 +451,14 @@ impl ManagedGroup {
                     .context()
                     .tls_serialize_detached()
                     .map_err(|e| MlsGroupError::CodecError(e))?;
-                let unverified_plaintext = unverified_plaintext.set_context(&context);
                 let members = self.indexed_members();
                 let credential = members
                     .get(&unverified_plaintext.sender_index())
                     .ok_or(InvalidMessageError::UnknownSender)?;
                 // Verify the signature
-                let plaintext: MlsPlaintext = unverified_plaintext.verify(credential)?;
+                let plaintext: MlsPlaintext = unverified_plaintext
+                    .set_context(&context)
+                    .verify(credential)?;
                 // Verify membership tag
                 // TODO #106: Support external senders
                 if plaintext.is_proposal()
