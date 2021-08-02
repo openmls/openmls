@@ -337,7 +337,7 @@ impl MlsPlaintext {
     }
 
     #[cfg(test)]
-    pub(crate) fn tamper_with_signature(&mut self) {
+    pub(crate) fn invalidate_signature(&mut self) {
         let mut modified_signature = self.signature().as_slice().to_vec();
         modified_signature[0] ^= 0xFF;
         self.signature_mut().modify(&modified_signature);
