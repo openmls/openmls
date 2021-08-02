@@ -1,7 +1,7 @@
-//! This module contains code to convert messages between the
-//! `MlsMessage`/`MlsMessageIn` formats as used by the Managed API, which the
-//! Clients are built on and the `DsMlsMessage`, which includes the message type
-//! in its serialized form.
+//! This module contains code to serialize `MlsMessage`/`MlsMessageIn` as used
+//! by the Managed API, which the Clients are built on. These
+//! serialization/deserialization functions attach an additional byte that
+//! indicates if a message is a plaintext or a ciphertext
 
 use crate::{
     group::MlsMessageIn,
