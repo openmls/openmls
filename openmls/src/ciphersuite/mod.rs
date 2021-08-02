@@ -6,6 +6,7 @@
 use log::error;
 
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
+use der::{asn1::UIntBytes, Decodable, Length};
 use evercrypt::prelude::*;
 use hpke::prelude::*;
 pub(crate) use serde::{
@@ -13,7 +14,7 @@ pub(crate) use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-use std::hash::Hash;
+use std::{convert::TryInto, hash::Hash};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 // re-export for other parts of the library when we can use it
@@ -897,15 +898,31 @@ impl SignaturePublicKey {
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
     pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), SignatureError> {
+        let signature_mode = SignatureMode::try_from(self.signature_scheme)
+            .map_err(|_| SignatureError::UnknownAlgorithm)?;
+        let mut out = Vec::with_capacity(64);
+        let signature_bytes = match signature_mode {
+            SignatureMode::Ed25519 => signature.value.as_slice(),
+            SignatureMode::P256 => {
+                // As per spec, we expect the signature to be DER encoded.
+                let (r, s) = der::Decoder::new(signature.value.as_slice())
+                    .sequence(|decoder| {
+                        Ok((UIntBytes::decode(decoder)?, UIntBytes::decode(decoder)?))
+                    })
+                    .map_err(|_| SignatureError::InvalidPoint)?;
+                out.extend_from_slice(r.as_bytes());
+                out.extend_from_slice(s.as_bytes());
+                &out
+            }
+        };
         if verify(
-            SignatureMode::try_from(self.signature_scheme)
-                .map_err(|_| SignatureError::UnknownAlgorithm)?,
+            signature_mode,
             Some(
                 DigestMode::try_from(self.signature_scheme)
                     .map_err(|_| SignatureError::UnknownAlgorithm)?,
             ),
             &self.value,
-            signature.value.as_slice(),
+            signature_bytes,
             payload,
         )? {
             Ok(())
@@ -928,9 +945,47 @@ impl SignaturePrivateKey {
                 Some(p256_ecdsa_random_nonce().unwrap()),
             ),
         };
-        match sign(signature_mode, hash, &self.value, payload, nonce.as_ref()) {
-            Ok(s) => Ok(Signature { value: s.into() }),
-            Err(e) => Err(e),
+        match (
+            sign(signature_mode, hash, &self.value, payload, nonce.as_ref()),
+            signature_mode,
+        ) {
+            (Ok(s), SignatureMode::Ed25519) => Ok(Signature { value: s.into() }),
+            (Ok(s), SignatureMode::P256) => {
+                // We DER encode the ECDSA signature as per spec, assuming that
+                // `sign` returns two concatenated values (r||s).
+                // TODO: change return type to something we control
+                let (r, s) = s.split_at(32);
+                println!("length of r: {:?}", r.len());
+                println!("length of s: {:?}", s.len());
+                let r_encoded = UIntBytes::new(r).map_err(|_| SignatureError::InvalidPoint)?;
+                println!("Done encoding r");
+                let s_encoded = UIntBytes::new(s).map_err(|_| SignatureError::InvalidPoint)?;
+                println!("Done encoding s");
+                // The maximum overhead of a DER encoded ECDSA signature is 9.
+                //let max_overhead = Length::new(9);
+                //let buffer_len = r_encoded.len() + s_encoded.len() + max_overhead;
+                //let buffer_len_usize = buffer_len
+                //    .map_err(|_| SignatureError::InvalidPoint)?
+                //    .try_into()
+                //    .map_err(|_| SignatureError::InvalidPoint)?;
+                //println!("Done determining length: {:?}", buffer_len_usize);
+                let mut bytes = [0; 73];
+                let mut encoder = der::Encoder::new(&mut bytes);
+                encoder.message(&[&r_encoded, &s_encoded]).map_err(|e| {
+                    println!("Error while encoding signature: {:?}", e);
+                    SignatureError::InvalidPoint
+                })?;
+                let der_encoded_signature =
+                    encoder.finish().map_err(|_| SignatureError::InvalidPoint)?;
+                println!(
+                    "Done encoding signature with size: {:?}",
+                    der_encoded_signature.len()
+                );
+                Ok(Signature {
+                    value: der_encoded_signature.into(),
+                })
+            }
+            (Err(e), _) => Err(e),
         }
     }
 }
