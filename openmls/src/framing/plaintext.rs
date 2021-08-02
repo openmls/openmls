@@ -81,11 +81,6 @@ impl MlsPlaintext {
     }
 
     #[cfg(test)]
-    pub(super) fn signature_mut(&mut self) -> &mut Signature {
-        &mut self.signature
-    }
-
-    #[cfg(test)]
     pub(super) fn unset_confirmation_tag(&mut self) {
         self.confirmation_tag = None;
     }
@@ -340,7 +335,7 @@ impl MlsPlaintext {
     pub(crate) fn invalidate_signature(&mut self) {
         let mut modified_signature = self.signature().as_slice().to_vec();
         modified_signature[0] ^= 0xFF;
-        self.signature_mut().modify(&modified_signature);
+        self.signature.modify(&modified_signature);
     }
 
     #[cfg(test)]
