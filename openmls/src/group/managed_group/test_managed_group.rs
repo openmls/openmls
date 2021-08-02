@@ -316,9 +316,8 @@ fn test_invalid_plaintext() {
 
     // Tamper with the message such that signature verification fails
     let mut msg_invalid_signature = mls_message.clone();
-    match &mut msg_invalid_signature {
-        MlsMessage::Plaintext(pt) => pt.tamper_with_signature(),
-        MlsMessage::Ciphertext(_) => panic!("This should be a plaintext!"),
+    if let MlsMessage::Plaintext(pt) = msg_invalid_signature {
+        pt.invalidate_signature()
     };
 
     let error = setup
