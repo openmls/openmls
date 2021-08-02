@@ -430,7 +430,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let (message, _) = updater_group.self_update(&updater.key_store, None).unwrap();
 
     let update_path = match message {
-        MlsMessage::Plaintext(ref pt) => match pt.content() {
+        MlsMessageOut::Plaintext(ref pt) => match pt.content() {
             MlsPlaintextContentType::Commit(commit) => commit.path().as_ref().unwrap().clone(),
             _ => panic!("The message should not be anything but a commit."),
         },

@@ -213,7 +213,7 @@ impl ManagedTestSetup {
         // been removed from the group.
         sender_id: &[u8],
         group: &mut Group,
-        message: &MlsMessage,
+        message: &MlsMessageOut,
     ) -> Result<(), ClientError> {
         // Test serialization if mandated by config
         let message = if self.use_codec {

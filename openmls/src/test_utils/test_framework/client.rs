@@ -148,7 +148,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(MlsMessage, Option<Welcome>), ClientError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -173,7 +173,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -205,7 +205,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         target_indices: &[usize],
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
