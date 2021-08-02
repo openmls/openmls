@@ -56,6 +56,21 @@ impl ManagedGroupConfig {
     pub(crate) fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
         self.callbacks = *callbacks;
     }
+
+    #[cfg(test)]
+    pub fn test_default() -> Self {
+        let handshake_message_format = HandshakeMessageFormat::Plaintext;
+        let update_policy = UpdatePolicy::default();
+        let callbacks = ManagedGroupCallbacks::default();
+        Self::new(
+            handshake_message_format,
+            update_policy,
+            0,
+            0,
+            true,
+            callbacks,
+        )
+    }
 }
 
 /// Specifies in which intervals the own leaf node should be updated
