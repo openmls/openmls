@@ -1,6 +1,6 @@
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, ManagedTestSetup},
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
 };
 
 mod utils;
@@ -20,7 +20,11 @@ fn test_managed_api() {
         callbacks,
     );
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, true);
+    let setup = ManagedTestSetup::new(
+        managed_group_config,
+        number_of_clients,
+        CodecUse::SerializedMessages,
+    );
 
     for ciphersuite in Config::supported_ciphersuites() {
         let group_id = setup.create_random_group(3, ciphersuite).unwrap();

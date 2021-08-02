@@ -69,6 +69,12 @@ pub enum ActionType {
     Proposal,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum CodecUse {
+    SerializedMessages,
+    StructMessages,
+}
+
 /// `ManagedTestSetup` is the main struct of the framework. It contains the
 /// state of all clients, as well as the global `KeyStore` containing the
 /// clients' `CredentialBundles`. The `waiting_for_welcome` field acts as a
@@ -85,7 +91,7 @@ pub struct ManagedTestSetup {
     pub default_mgc: ManagedGroupConfig,
     /// Flag to indicate if messages should be serialized and de-serialized as
     /// part of message distribution
-    pub use_codec: bool,
+    pub use_codec: CodecUse,
 }
 
 // Some notes regarding the layout of the `ManagedTestSetup` implementation
@@ -113,7 +119,11 @@ impl ManagedTestSetup {
     /// `ManagedGroupConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
-    pub fn new(default_mgc: ManagedGroupConfig, number_of_clients: usize, use_codec: bool) -> Self {
+    pub fn new(
+        default_mgc: ManagedGroupConfig,
+        number_of_clients: usize,
+        use_codec: CodecUse,
+    ) -> Self {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
@@ -175,14 +185,17 @@ impl ManagedTestSetup {
     /// client by `get_fresh_key_package`.
     pub fn deliver_welcome(&self, welcome: Welcome, group: &Group) -> Result<(), SetupError> {
         // Serialize and de-serialize the Welcome if the bit was set.
-        if self.use_codec {
-            let serialized_welcome = welcome
-                .tls_serialize_detached()
-                .map_err(|e| ClientError::TlsCodecError(e))?;
-            let deserialized_welcome = Welcome::tls_deserialize(&mut serialized_welcome.as_slice())
-                .map_err(|e| ClientError::TlsCodecError(e))?;
-            assert_eq!(deserialized_welcome, welcome);
-        }
+        let welcome = match self.use_codec {
+            CodecUse::SerializedMessages => {
+                let serialized_welcome = welcome
+                    .tls_serialize_detached()
+                    .map_err(|e| ClientError::TlsCodecError(e))?;
+                Welcome::tls_deserialize(&mut serialized_welcome.as_slice())
+                    .map_err(|e| ClientError::TlsCodecError(e))?
+            }
+            CodecUse::StructMessages => welcome,
+        };
+        if self.use_codec == CodecUse::SerializedMessages {}
         let clients = self.clients.borrow();
         for egs in welcome.secrets() {
             println!(
@@ -216,12 +229,13 @@ impl ManagedTestSetup {
         message: &MlsMessageOut,
     ) -> Result<(), ClientError> {
         // Test serialization if mandated by config
-        let message = if self.use_codec {
-            let serialized_message =
-                MlsMessageIn::from(message.clone()).tls_serialize_detached()?;
-            MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
-        } else {
-            MlsMessageIn::from(message.clone())
+        let message = match self.use_codec {
+            CodecUse::SerializedMessages => {
+                let serialized_message =
+                    MlsMessageIn::from(message.clone()).tls_serialize_detached()?;
+                MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
+            }
+            CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
         };
         let clients = self.clients.borrow();
         println!("Distributing and processing messages...");

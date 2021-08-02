@@ -1,6 +1,8 @@
 use crate::{
     prelude::*,
-    test_utils::test_framework::{errors::ClientError, ActionType::Commit, ManagedTestSetup},
+    test_utils::test_framework::{
+        errors::ClientError, ActionType::Commit, CodecUse, ManagedTestSetup,
+    },
 };
 
 #[test]
@@ -291,7 +293,11 @@ fn test_invalid_plaintext() {
         callbacks,
     );
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, false);
+    let setup = ManagedTestSetup::new(
+        managed_group_config,
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
     let group_id = setup.create_random_group(10, ciphersuite).unwrap();
     let mut groups = setup.groups.borrow_mut();
@@ -316,7 +322,7 @@ fn test_invalid_plaintext() {
 
     // Tamper with the message such that signature verification fails
     let mut msg_invalid_signature = mls_message.clone();
-    if let MlsMessage::Plaintext(pt) = msg_invalid_signature {
+    if let MlsMessageOut::Plaintext(ref mut pt) = msg_invalid_signature {
         pt.invalidate_signature()
     };
 
@@ -334,11 +340,11 @@ fn test_invalid_plaintext() {
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message.clone();
     match &mut msg_invalid_sender {
-        MlsMessage::Plaintext(pt) => pt.set_sender(Sender {
+        MlsMessageOut::Plaintext(pt) => pt.set_sender(Sender {
             sender_type: pt.sender().sender_type,
             sender: LeafIndex::from(group.members.len() + 1),
         }),
-        MlsMessage::Ciphertext(_) => panic!("This should be a plaintext!"),
+        MlsMessageOut::Ciphertext(_) => panic!("This should be a plaintext!"),
     };
 
     let error = setup

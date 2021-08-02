@@ -5,7 +5,7 @@ pub use crate::group::MlsGroup;
 pub use crate::group::MlsGroupConfig;
 pub use crate::group::{
     GroupEvent, HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,
-    ManagedGroupConfig, ManagedGroupError, MlsMessage, Removal, UpdatePolicy,
+    ManagedGroupConfig, ManagedGroupError, MlsMessageOut, Removal, UpdatePolicy,
 };
 // Errors
 pub use crate::error::ErrorString;
