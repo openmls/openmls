@@ -5,21 +5,22 @@
 
 use clap::Clap;
 use openmls::{
-    ciphersuite::signable::VerifiedStruct,
-    group::tests::kat_messages::{self, MessagesTestVector},
-    group::tests::kat_transcripts::{self, TranscriptTestVector},
+    ciphersuite::signable::Verifiable,
+    group::tests::{
+        kat_messages::{self, MessagesTestVector},
+        kat_transcripts::{self, TranscriptTestVector},
+    },
     prelude::*,
     schedule::kat_key_schedule::{self, KeyScheduleTestVector},
-    tree::{
-        self,
-        tests::kat_encryption::EncryptionTestVector,
-        tests::kat_tree_kem::{self, TreeKemTestVector},
+    tree::tests_and_kats::kats::{
+        kat_encryption::{self, EncryptionTestVector},
+        kat_tree_kem::{self, TreeKemTestVector},
+        kat_treemath,
     },
 };
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
-use tree::tests::{kat_encryption, kat_treemath};
 
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
 // TODO(RLB) Convert this back to more specific `use` directives
@@ -778,10 +779,11 @@ impl MlsClient for MlsClientImpl {
                     .decrypt(&ct)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             } else {
-                MlsPlaintext::from_verifiable(
-                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
-                )
+                let credential = interop_group.credential_bundle.credential();
+                VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
+                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                    .verify(credential)
+                    .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
             };
             proposal_plaintexts.push(pt);
         }
@@ -800,10 +802,11 @@ impl MlsClient for MlsClientImpl {
                     .decrypt(&ct)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             } else {
-                MlsPlaintext::from_verifiable(
-                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
-                )
+                let credential = interop_group.credential_bundle.credential();
+                VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
+                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                    .verify(credential)
+                    .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
             };
             plaintexts.push(pt);
         }
@@ -877,12 +880,11 @@ impl MlsClient for MlsClientImpl {
                 .decrypt(&ct)
                 .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
         } else {
-            MlsPlaintext::from_verifiable(
-                VerifiableMlsPlaintext::tls_deserialize(
-                    &mut handle_commit_request.commit.as_slice(),
-                )
-                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
-            )
+            let credential = interop_group.credential_bundle.credential();
+            VerifiableMlsPlaintext::tls_deserialize(&mut handle_commit_request.commit.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                .verify(credential)
+                .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
         };
 
         let mut proposal_plaintexts = Vec::new();
@@ -895,10 +897,11 @@ impl MlsClient for MlsClientImpl {
                     .decrypt(&ct)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             } else {
-                MlsPlaintext::from_verifiable(
-                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?,
-                )
+                let credential = interop_group.credential_bundle.credential();
+                VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
+                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                    .verify(credential)
+                    .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
             };
             proposal_plaintexts.push(pt);
         }
