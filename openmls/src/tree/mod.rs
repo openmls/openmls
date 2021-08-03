@@ -34,7 +34,7 @@ pub(crate) use serde::{
 use std::{collections::HashSet, convert::TryFrom};
 
 #[cfg(any(feature = "test-utils", test))]
-pub mod tests;
+pub mod tests_and_kats;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -775,6 +775,11 @@ impl RatchetTree {
 
         // Determine if Commit needs a path field
         let path_required = has_updates || has_removes || !has_adds;
+
+        // If members were removed, truncate the tree.
+        if has_removes {
+            self.trim_tree()
+        }
 
         Ok(ApplyProposalsValues {
             path_required,

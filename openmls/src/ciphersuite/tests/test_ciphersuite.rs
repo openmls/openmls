@@ -3,8 +3,6 @@
 use crate::ciphersuite::*;
 use crate::config::Config;
 
-use super::{HpkeCiphertext, Secret};
-
 // Spot test to make sure hpke seal/open work.
 #[test]
 fn test_hpke_seal_open() {
