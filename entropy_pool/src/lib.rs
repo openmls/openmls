@@ -109,7 +109,9 @@ impl EntropyPool {
     }
 
     /// Extract randomness from the pool after first injecting fresh randomness
-    /// from the OS's RNG.
+    /// from the OS's RNG. Returns an error if the serialization of the label
+    /// fails or if the given length exceeds the max length of 255 times the
+    /// length of the hash function used by the HKDF.
     pub fn extract(&mut self, length: u16) -> Result<Vec<u8>, EntropyPoolError> {
         let hash_length = tag_size(self.hkdf_mode);
 
