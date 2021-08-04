@@ -178,4 +178,8 @@ impl EntropyPool {
 
         Ok(fresh_randomness)
     }
+
+    pub fn hkdf_mode(&self) -> HkdfMode {
+        self.hkdf_mode
+    }
 }
