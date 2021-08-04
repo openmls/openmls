@@ -61,18 +61,43 @@ use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8};
 
+#[derive(Serialize, Deserialize, Copy, Clone)]
+/// The possible `HMAC` modes of the HKDF used by the pool. The mode determines
+/// the size of the pool value.
+pub enum HkdfMode {
+    Sha256,
+    Sha384,
+    Sha512,
+}
+
+impl From<HkdfMode> for HmacMode {
+    fn from(hkdf_mode: HkdfMode) -> Self {
+        match hkdf_mode {
+            HkdfMode::Sha256 => HmacMode::Sha256,
+            HkdfMode::Sha384 => HmacMode::Sha384,
+            HkdfMode::Sha512 => HmacMode::Sha512,
+        }
+    }
+}
+
+/// An array that contains all possible HKDF modes usable by a pool.
+pub const SUPPORTED_HKDF_MODES: [HkdfMode; 3] =
+    [HkdfMode::Sha256, HkdfMode::Sha384, HkdfMode::Sha512];
+
 /// This struct contains the current entropy pool value, as well as an
-/// `HmacMode`. The `HmacMode` determines what mode is used by the HKDF in the
-/// inject and extract operations.
+/// `HkdfMode`. The `HkdfMode` determines what mode is used by the HMAC used to
+/// construct the HKDF that is used in the inject and extract operations.
 ///
 /// `EntropyPool` supports serialization and deserialization such that a pool
 /// can be serialized and persisted to disk for later use.
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
 pub struct EntropyPool {
-    hkdf_mode: HmacMode,
-    pool: Vec<u8>,
+    hkdf_mode: HkdfMode,
+    value: Vec<u8>,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum EntropyPoolError {
     LengthError,
     SerializationError,
@@ -88,16 +113,16 @@ impl EntropyPool {
     /// Create a new `EntropyPool`. This should only be done if no other
     /// `EntropyPool` instance exists already. For example, it would be
     /// preferrable to load a previously saved pool from disk.
-    pub fn new(hkdf_mode: HmacMode) -> Self {
+    pub fn new(hkdf_mode: HkdfMode) -> Self {
         // We initialize the pool with fresh os randomness. This is technically
         // not necessary, as os entropy will be injected upon the first
         // "extract" query.
-        let mut initial_entropy_buffer = vec![0u8; tag_size(hkdf_mode)];
+        let mut initial_entropy_buffer = vec![0u8; tag_size(hkdf_mode.into())];
         OsRng.fill_bytes(&mut initial_entropy_buffer);
 
         EntropyPool {
             hkdf_mode,
-            pool: initial_entropy_buffer,
+            value: initial_entropy_buffer,
         }
     }
 
@@ -105,7 +130,7 @@ impl EntropyPool {
     /// the pool if the source of entropy in the added bytes is external to the
     /// OS's RNG.
     pub fn inject(&mut self, additional_entropy: &[u8]) {
-        self.pool = extract(self.hkdf_mode, &self.pool, additional_entropy);
+        self.value = extract(self.hkdf_mode.into(), &self.value, additional_entropy);
     }
 
     /// Extract randomness from the pool after first injecting fresh randomness
@@ -113,7 +138,7 @@ impl EntropyPool {
     /// fails or if the given length exceeds the max length of 255 times the
     /// length of the hash function used by the HKDF.
     pub fn extract(&mut self, length: u16) -> Result<Vec<u8>, EntropyPoolError> {
-        let hash_length = tag_size(self.hkdf_mode);
+        let hash_length = tag_size(self.hkdf_mode.into());
 
         // Check if the requested length is too big for the HKDF as specified by
         // RFC 5869. We can multiply safely here, as the max hash length is 64.
@@ -134,7 +159,12 @@ impl EntropyPool {
         }
         .tls_serialize_detached()
         .map_err(|_| EntropyPoolError::SerializationError)?;
-        let fresh_randomness = expand(self.hkdf_mode, &self.pool, &kdf_label, length as usize);
+        let fresh_randomness = expand(
+            self.hkdf_mode.into(),
+            &self.value,
+            &kdf_label,
+            length as usize,
+        );
 
         // Before we return the `fresh_randomness`, we first "ratchet the pool
         // forwards" by performing an additional expand operation.
@@ -144,7 +174,7 @@ impl EntropyPool {
         }
         .tls_serialize_detached()
         .map_err(|_| EntropyPoolError::SerializationError)?;
-        self.pool = expand(self.hkdf_mode, &self.pool, &kdf_label, hash_length);
+        self.value = expand(self.hkdf_mode.into(), &self.value, &kdf_label, hash_length);
 
         Ok(fresh_randomness)
     }
