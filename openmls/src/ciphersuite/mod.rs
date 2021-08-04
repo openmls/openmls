@@ -900,14 +900,16 @@ impl SignaturePublicKey {
     pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), SignatureError> {
         let signature_mode = SignatureMode::try_from(self.signature_scheme)
             .map_err(|_| SignatureError::UnknownAlgorithm)?;
-        let mut out = Vec::with_capacity(64);
+        let mut out = Vec::with_capacity(73);
         let signature_bytes = match signature_mode {
             SignatureMode::Ed25519 => signature.value.as_slice(),
             SignatureMode::P256 => {
                 // As per spec, we expect the signature to be DER encoded.
                 let (r, s) = der::Decoder::new(signature.value.as_slice())
                     .sequence(|decoder| {
-                        Ok((UIntBytes::decode(decoder)?, UIntBytes::decode(decoder)?))
+                        let r_decoded = UIntBytes::decode(decoder)?;
+                        let s_decoded = UIntBytes::decode(decoder)?;
+                        Ok((r_decoded, s_decoded))
                     })
                     .map_err(|_| SignatureError::InvalidPoint)?;
                 out.extend_from_slice(r.as_bytes());
