@@ -87,3 +87,20 @@ fn supported_ciphersuites() {
             .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }
+
+#[test]
+fn test_signatures() {
+    for ciphersuite in Config::supported_ciphersuites() {
+        let payload = vec![0u8];
+        let signature_scheme =
+            SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
+        let keypair =
+            SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
+        let signature = keypair.sign(&payload).expect("error creating signature");
+        println!("Done signing payload\n");
+        keypair
+            .verify(&signature, &payload)
+            .expect("error verifying signature");
+        println!("Done verifying payload\n");
+    }
+}
