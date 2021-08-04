@@ -92,7 +92,7 @@ impl EntropyPool {
         // We initialize the pool with fresh os randomness. This is technically
         // not necessary, as os entropy will be injected upon the first
         // "extract" query.
-        let mut initial_entropy_buffer = Vec::with_capacity(tag_size(hkdf_mode));
+        let mut initial_entropy_buffer = vec![0u8; tag_size(hkdf_mode)];
         OsRng.fill_bytes(&mut initial_entropy_buffer);
 
         EntropyPool {
@@ -123,7 +123,7 @@ impl EntropyPool {
 
         // Before we allow entropy to be extracted from the pool, we first
         // inject some fresh entropy from the OS's RNG.
-        let mut os_randomness_buffer = Vec::with_capacity(hash_length);
+        let mut os_randomness_buffer = vec![0u8; hash_length];
         OsRng.fill_bytes(&mut os_randomness_buffer);
         self.inject(&os_randomness_buffer);
 
