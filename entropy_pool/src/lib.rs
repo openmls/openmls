@@ -61,6 +61,9 @@ use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Serialize, Deserialize, Copy, Clone)]
 /// The possible `HMAC` modes of the HKDF used by the pool. The mode determines
 /// the size of the pool value.
