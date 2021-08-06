@@ -170,6 +170,6 @@ fn test_der_encoding() {
         keypair
             .verify(&signature, &payload)
             .expect_err("error verifying signature"),
-        SignatureError::InvalidSignature
+        SignatureError::DecodingError
     );
 }
