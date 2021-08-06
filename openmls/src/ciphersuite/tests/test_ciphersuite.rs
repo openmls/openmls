@@ -91,16 +91,80 @@ fn supported_ciphersuites() {
 #[test]
 fn test_signatures() {
     for ciphersuite in Config::supported_ciphersuites() {
+        // Test that valid signatures are properly verified.
         let payload = vec![0u8];
         let signature_scheme =
             SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
         let keypair =
             SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
-        let signature = keypair.sign(&payload).expect("error creating signature");
+        let mut signature = keypair.sign(&payload).expect("error creating signature");
         println!("Done signing payload\n");
         keypair
             .verify(&signature, &payload)
             .expect("error verifying signature");
         println!("Done verifying payload\n");
+
+        // Tamper with signature such that verification fails. We choose a byte
+        // somewhere in the middle to make the verification fail, not the DER
+        // decoding (in the case of ECDSA signatures).
+        let mut modified_signature = signature.value.as_slice().to_vec();
+        modified_signature[20] ^= 0xFF;
+        signature.modify(&modified_signature);
+
+        assert_eq!(
+            keypair
+                .verify(&signature, &payload)
+                .expect_err("error verifying signature"),
+            SignatureError::InvalidSignature
+        );
     }
+}
+
+#[test]
+fn test_der_encoding() {
+    // Choosing a ciphersuite with an ECDSA signature scheme.
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap();
+    let payload = vec![0u8];
+    let signature_scheme =
+        SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
+    let keypair =
+        SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
+    let mut signature = keypair.sign(&payload).expect("error creating signature");
+
+    // Make sure that signatures are DER encoded and can be decoded to valid signatures
+    let decoded_signature = signature
+        .der_decode()
+        .expect("Error decoding valid signature.");
+
+    verify(
+        SignatureMode::P256,
+        Some(
+            DigestMode::try_from(SignatureScheme::ECDSA_SECP256R1_SHA256)
+                .expect("Couldn't get digest mode of P256"),
+        ),
+        &keypair.public_key.value,
+        &decoded_signature,
+        &payload,
+    )
+    .expect("error while verifying der decoded signature");
+
+    // Encoding a de-coded signature should yield the same string.
+    let re_encoded_signature =
+        Signature::der_encode(&decoded_signature).expect("error encoding valid signature");
+
+    assert_eq!(re_encoded_signature, signature);
+
+    // Tamper with the signature such that the encoding is broken and
+    // verification fails due to a decoding error.
+    let mut modified_signature = signature.value.as_slice().to_vec();
+    modified_signature[0] ^= 0xFF;
+    signature.modify(&modified_signature);
+
+    assert_eq!(
+        keypair
+            .verify(&signature, &payload)
+            .expect_err("error verifying signature"),
+        SignatureError::InvalidSignature
+    );
 }
