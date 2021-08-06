@@ -189,6 +189,9 @@ fn test_original_child_resolution() {
 fn test_exclusion_for_parent_nodes() {
     // Create a large tree members.
     let managed_group_config = ManagedGroupConfig::test_default();
+
+    // We need 16 clients, such that we can create a group with 16 members. 16
+    // members means that we have two layers between the root and the leaves.
     let number_of_clients = 16;
     let setup = ManagedTestSetup::new(managed_group_config.clone(), number_of_clients);
 
@@ -199,12 +202,14 @@ fn test_exclusion_for_parent_nodes() {
 
     let (_, group_creator_id) = group.members.first().unwrap().clone();
 
-    // We add 62 members so that we have a group of 63.
+    // We add 16 - 2 = 14 members such that we have a group of 15. We add the
+    // last member manually later.
     let addees = setup
         .random_new_members_for_group(group, number_of_clients - 2)
         .unwrap();
 
-    // Have one client add all the other clients, such that the tree is very sparse.
+    // Have one client add all the other clients, such that only the direct path
+    // of the group creator is non-blank.
     setup
         .add_clients(ActionType::Commit, group, &group_creator_id, addees)
         .unwrap();
