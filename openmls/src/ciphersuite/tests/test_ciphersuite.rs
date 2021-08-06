@@ -155,6 +155,11 @@ fn test_der_encoding() {
 
     assert_eq!(re_encoded_signature, signature);
 
+    // Make sure that the signature still verifies.
+    keypair
+        .verify(&signature, &payload)
+        .expect("error verifying signature");
+
     // Tamper with the signature such that the encoding is broken and
     // verification fails due to a decoding error.
     let mut modified_signature = signature.value.as_slice().to_vec();
