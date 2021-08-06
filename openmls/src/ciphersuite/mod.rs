@@ -7,7 +7,11 @@ use log::error;
 
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 use der::{asn1::UIntBytes, Decodable};
-use evercrypt::prelude::*;
+use evercrypt::prelude::{
+    aead_decrypt, aead_encrypt, aead_key_size, aead_tag_size, digest_size, hash, hkdf_expand,
+    hkdf_extract, p256_ecdsa_random_nonce, random_array, random_vec, sign, signature_key_gen,
+    verify, AeadError, AeadMode, DigestMode, HmacMode, SignatureMode,
+};
 use hpke::prelude::*;
 pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -966,7 +970,7 @@ impl SignaturePublicKey {
             // As per spec, we expect the signature to be DER encoded.
             SignatureMode::P256 => signature
                 .der_decode()
-                .map_err(|_| SignatureError::InvalidSignature)?,
+                .map_err(|_| SignatureError::DecodingError)?,
         };
         if verify(
             signature_mode,
@@ -1004,9 +1008,9 @@ impl SignaturePrivateKey {
         ) {
             (Ok(s), SignatureMode::Ed25519) => Ok(Signature { value: s.into() }),
             (Ok(s), SignatureMode::P256) => {
-                Ok(Signature::der_encode(&s).map_err(|_| SignatureError::InvalidPoint)?)
+                Ok(Signature::der_encode(&s).map_err(|_| SignatureError::EncodingError)?)
             }
-            (Err(e), _) => Err(e),
+            (Err(e), _) => Err(e)?,
         }
     }
 }

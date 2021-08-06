@@ -3,7 +3,6 @@ mod errors;
 pub use codec::*;
 pub use errors::*;
 
-use evercrypt::prelude::SignatureError;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
