@@ -39,6 +39,9 @@ pub(crate) use errors::*;
 use self::signable::SignedStruct;
 
 #[cfg(test)]
+use evercrypt::prelude::aead_key_gen;
+
+#[cfg(test)]
 mod tests;
 
 pub(crate) const NONCE_BYTES: usize = 12;
