@@ -62,7 +62,6 @@ pub struct MlsPlaintext {
     epoch: GroupEpoch,
     sender: Sender,
     authenticated_data: TlsByteVecU32,
-    content_type: ContentType,
     content: MlsPlaintextContent,
     signature: Signature,
     confirmation_tag: Option<ConfirmationTag>,
@@ -117,7 +116,6 @@ impl MlsPlaintext {
     fn new(
         sender_index: LeafIndex,
         authenticated_data: &[u8],
-        content_type: ContentType,
         payload: MlsPlaintextContent,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
@@ -129,7 +127,6 @@ impl MlsPlaintext {
             context.epoch(),
             Sender::member(sender_index),
             authenticated_data.into(),
-            content_type,
             payload,
         );
         Ok(mls_plaintext.sign(credential_bundle)?)
@@ -140,7 +137,6 @@ impl MlsPlaintext {
     fn new_with_membership_tag(
         sender_index: LeafIndex,
         authenticated_data: &[u8],
-        content_type: ContentType,
         payload: MlsPlaintextContent,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
@@ -150,7 +146,6 @@ impl MlsPlaintext {
             sender_index,
             authenticated_data,
             payload,
-            content_type,
             credential_bundle,
             context,
         )?;
@@ -171,7 +166,6 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             sender_index,
             authenticated_data,
-            ContentType::Proposal,
             MlsPlaintextContent::Proposal(proposal),
             credential_bundle,
             context,
@@ -191,7 +185,6 @@ impl MlsPlaintext {
         Self::new(
             sender_index,
             authenticated_data,
-            ContentType::Commit,
             MlsPlaintextContent::Commit(commit),
             credential_bundle,
             context,
@@ -211,7 +204,6 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             sender_index,
             authenticated_data,
-            ContentType::Application,
             MlsPlaintextContent::Application(application_message.into()),
             credential_bundle,
             context,
@@ -455,7 +447,6 @@ pub struct MlsPlaintextTbs<'a> {
     pub(super) epoch: GroupEpoch,
     pub(super) sender: Sender,
     pub(super) authenticated_data: TlsByteVecU32,
-    pub(super) content_type: ContentType,
     pub(super) payload: MlsPlaintextContent,
 }
 
@@ -470,7 +461,6 @@ fn encode_tbs<'a>(
         &plaintext.epoch,
         &plaintext.sender,
         &plaintext.authenticated_data,
-        &plaintext.content_type,
         &plaintext.content,
         &mut out,
     )?;
@@ -551,7 +541,6 @@ impl<'a> MlsPlaintextTbs<'a> {
         epoch: GroupEpoch,
         sender: Sender,
         authenticated_data: TlsByteVecU32,
-        content_type: ContentType,
         payload: MlsPlaintextContent,
     ) -> Self {
         MlsPlaintextTbs {
@@ -560,7 +549,6 @@ impl<'a> MlsPlaintextTbs<'a> {
             epoch,
             sender,
             authenticated_data,
-            content_type,
             payload,
         }
     }
@@ -578,7 +566,6 @@ impl<'a> MlsPlaintextTbs<'a> {
             epoch: mls_plaintext.epoch,
             sender: mls_plaintext.sender,
             authenticated_data: mls_plaintext.authenticated_data,
-            content_type: mls_plaintext.content_type,
             payload: mls_plaintext.content,
         }
     }
@@ -626,7 +613,6 @@ impl<'a> VerifiedStruct<VerifiableMlsPlaintext<'a>> for MlsPlaintext {
             epoch: v.tbs.epoch,
             sender: v.tbs.sender,
             authenticated_data: v.tbs.authenticated_data,
-            content_type: v.tbs.content_type,
             content: v.tbs.payload,
             signature: v.signature,
             confirmation_tag: v.confirmation_tag,
@@ -644,7 +630,6 @@ impl<'a> SignedStruct<MlsPlaintextTbs<'a>> for MlsPlaintext {
             epoch: tbs.epoch,
             sender: tbs.sender,
             authenticated_data: tbs.authenticated_data,
-            content_type: tbs.content_type,
             content: tbs.payload,
             signature,
             // Tags must always be added after the signature
@@ -660,7 +645,6 @@ pub(crate) struct MlsPlaintextCommitContent<'a> {
     pub(super) epoch: GroupEpoch,
     pub(super) sender: &'a Sender,
     pub(super) authenticated_data: &'a TlsByteVecU32,
-    pub(super) content_type: ContentType,
     pub(super) commit: &'a Commit,
     pub(super) signature: &'a Signature,
 }
@@ -678,7 +662,6 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
             epoch: mls_plaintext.epoch,
             sender: &mls_plaintext.sender,
             authenticated_data: &mls_plaintext.authenticated_data,
-            content_type: mls_plaintext.content_type,
             commit,
             signature: &mls_plaintext.signature,
         })

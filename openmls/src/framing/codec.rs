@@ -1,4 +1,4 @@
-use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU16, TlsByteVecU32};
+use tls_codec::{Deserialize, Serialize, TlsByteVecU16, TlsByteVecU32};
 
 use super::*;
 use std::io::{Read, Write};
@@ -15,15 +15,7 @@ impl<'a> tls_codec::Deserialize for VerifiableMlsPlaintext<'a> {
         let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
 
         let verifiable = VerifiableMlsPlaintext::new(
-            MlsPlaintextTbs::new(
-                None,
-                group_id,
-                epoch,
-                sender,
-                authenticated_data,
-                content_type,
-                content,
-            ),
+            MlsPlaintextTbs::new(None, group_id, epoch, sender, authenticated_data, content),
             signature,
             confirmation_tag,
             membership_tag,
@@ -40,7 +32,6 @@ impl<'a> tls_codec::Size for VerifiableMlsPlaintext<'a> {
             + self.tbs.epoch.tls_serialized_len()
             + self.tbs.sender.tls_serialized_len()
             + self.tbs.authenticated_data.tls_serialized_len()
-            + self.tbs.content_type.tls_serialized_len()
             + self.tbs.payload.tls_serialized_len()
             + self.signature.tls_serialized_len()
             + self.confirmation_tag.tls_serialized_len()
@@ -54,7 +45,6 @@ impl<'a> tls_codec::Serialize for VerifiableMlsPlaintext<'a> {
         written += self.tbs.epoch.tls_serialize(writer)?;
         written += self.tbs.sender.tls_serialize(writer)?;
         written += self.tbs.authenticated_data.tls_serialize(writer)?;
-        written += self.tbs.content_type.tls_serialize(writer)?;
         written += self.tbs.payload.tls_serialize(writer)?;
         written += self.signature.tls_serialize(writer)?;
         written += self.confirmation_tag.tls_serialize(writer)?;
@@ -82,7 +72,6 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     written += epoch.tls_serialize(buffer)?;
     written += sender.tls_serialize(buffer)?;
     written += authenticated_data.tls_serialize(buffer)?;
-    written += content_type.tls_serialize(buffer)?;
     payload.tls_serialize(buffer).map(|l| l + written)
 }
 
@@ -99,7 +88,6 @@ impl<'a> tls_codec::Size for MlsPlaintextTbs<'a> {
             + self.epoch.tls_serialized_len()
             + self.sender.tls_serialized_len()
             + self.authenticated_data.tls_serialized_len()
-            + self.content_type.tls_serialized_len()
             + self.payload.tls_serialized_len()
     }
 }
@@ -112,7 +100,6 @@ impl<'a> tls_codec::Serialize for MlsPlaintextTbs<'a> {
             &self.epoch,
             &self.sender,
             &self.authenticated_data,
-            &self.content_type,
             &self.payload,
             writer,
         )

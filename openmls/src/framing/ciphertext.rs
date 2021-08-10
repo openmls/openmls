@@ -202,7 +202,6 @@ impl MlsCiphertext {
                 self.epoch,
                 sender,
                 self.authenticated_data.clone(),
-                self.content_type,
                 mls_ciphertext_content.content,
             ),
             mls_ciphertext_content.signature,
