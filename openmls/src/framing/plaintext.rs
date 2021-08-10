@@ -645,6 +645,7 @@ pub(crate) struct MlsPlaintextCommitContent<'a> {
     pub(super) epoch: GroupEpoch,
     pub(super) sender: &'a Sender,
     pub(super) authenticated_data: &'a TlsByteVecU32,
+    pub(super) content_type: MlsPlaintextContentType,
     pub(super) commit: &'a Commit,
     pub(super) signature: &'a Signature,
 }
@@ -662,6 +663,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
             epoch: mls_plaintext.epoch,
             sender: &mls_plaintext.sender,
             authenticated_data: &mls_plaintext.authenticated_data,
+            content_type: mls_plaintext.content_type(),
             commit,
             signature: &mls_plaintext.signature,
         })
