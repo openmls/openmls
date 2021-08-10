@@ -180,7 +180,7 @@ impl MlsCiphertext {
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        let mls_ciphertext_content = MlsCiphertextContent::deserialize(
+        let mls_ciphertext_content = MlsCiphertextContent::deserialize_without_type(
             self.content_type,
             &mut mls_ciphertext_content_bytes.as_slice(),
         )?;
@@ -244,10 +244,13 @@ impl MlsCiphertext {
         // Persist all initial fields manually (avoids cloning them)
         let buffer = &mut Vec::with_capacity(
             mls_plaintext.content().tls_serialized_len()
+            // the `MlsPlaintextContent` includes the encoding of the type, so
+            // we subtract the length of the type here.
+                - 1
                 + mls_plaintext.signature().tls_serialized_len()
                 + mls_plaintext.confirmation_tag().tls_serialized_len(),
         );
-        mls_plaintext.content().tls_serialize(buffer)?;
+        mls_plaintext.content().serialize_without_type(buffer)?;
         mls_plaintext.signature().tls_serialize(buffer)?;
         mls_plaintext.confirmation_tag().tls_serialize(buffer)?;
         // Add padding if needed
