@@ -460,7 +460,7 @@ impl ManagedGroup {
         let indexed_members = self.indexed_members();
         // See what kind of message it is
         match plaintext.content() {
-            MlsPlaintextContentType::Proposal(ref proposal) => {
+            MlsPlaintextContent::Proposal(ref proposal) => {
                 // Incoming proposals are validated against the application validation
                 // policy and then appended to the internal `pending_proposal` list.
                 // TODO #133: Semantic validation of proposals
@@ -473,7 +473,7 @@ impl ManagedGroup {
                     ));
                 }
             }
-            MlsPlaintextContentType::Commit(ref commit) => {
+            MlsPlaintextContent::Commit(ref commit) => {
                 // Validate inline proposals
                 if !self.validate_inline_proposals(
                     commit.proposals.as_slice(),
@@ -550,7 +550,7 @@ impl ManagedGroup {
                     },
                 }
             }
-            MlsPlaintextContentType::Application(ref app_message) => {
+            MlsPlaintextContent::Application(ref app_message) => {
                 // Save the application message as an event
                 events.push(GroupEvent::ApplicationMessage(
                     ApplicationMessageEvent::new(

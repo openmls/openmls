@@ -180,9 +180,9 @@ impl<'a> QueuedProposal<'a> {
         ciphersuite: &Ciphersuite,
         mls_plaintext: &'a MlsPlaintext,
     ) -> Result<Self, QueuedProposalError> {
-        debug_assert!(mls_plaintext.content_type() == &ContentType::Proposal);
+        debug_assert!(mls_plaintext.content_type() == MlsPlaintextContentType::Proposal);
         let proposal = match mls_plaintext.content() {
-            MlsPlaintextContentType::Proposal(p) => p,
+            MlsPlaintextContent::Proposal(p) => p,
             _ => return Err(QueuedProposalError::WrongContentType),
         };
         let proposal_reference = ProposalReference::from_proposal(ciphersuite, proposal)?;

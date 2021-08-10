@@ -129,7 +129,7 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     sender: &Sender,
     authenticated_data: &TlsByteVecU32,
     content_type: &ContentType,
-    payload: &MlsPlaintextContentType,
+    payload: &MlsPlaintextContent,
     buffer: &mut W,
 ) -> Result<usize, tls_codec::Error> {
     let mut written = if let Some(serialized_context) = serialized_context.into() {
@@ -184,17 +184,17 @@ impl MlsCiphertextContent {
         bytes: &mut R,
     ) -> Result<Self, tls_codec::Error> {
         let content = match content_type {
-            ContentType::Application => {
+            MlsPlaintextContentType::Application => {
                 let application_data = TlsByteVecU32::tls_deserialize(bytes)?;
-                MlsPlaintextContentType::Application(application_data)
+                MlsPlaintextContent::Application(application_data)
             }
-            ContentType::Proposal => {
+            MlsPlaintextContentType::Proposal => {
                 let proposal = Proposal::tls_deserialize(bytes)?;
-                MlsPlaintextContentType::Proposal(proposal)
+                MlsPlaintextContent::Proposal(proposal)
             }
-            ContentType::Commit => {
+            MlsPlaintextContentType::Commit => {
                 let commit = Commit::tls_deserialize(bytes)?;
-                MlsPlaintextContentType::Commit(commit)
+                MlsPlaintextContent::Commit(commit)
             }
         };
         let signature = Signature::tls_deserialize(bytes)?;

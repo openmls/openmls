@@ -21,12 +21,12 @@ pub enum SecretType {
     ApplicationSecret,
 }
 
-impl From<&ContentType> for SecretType {
-    fn from(content_type: &ContentType) -> SecretType {
+impl From<MlsPlaintextContentType> for SecretType {
+    fn from(content_type: MlsPlaintextContentType) -> SecretType {
         match content_type {
-            ContentType::Application => SecretType::ApplicationSecret,
-            ContentType::Commit => SecretType::HandshakeSecret,
-            ContentType::Proposal => SecretType::HandshakeSecret,
+            MlsPlaintextContentType::Application => SecretType::ApplicationSecret,
+            MlsPlaintextContentType::Commit => SecretType::HandshakeSecret,
+            MlsPlaintextContentType::Proposal => SecretType::HandshakeSecret,
         }
     }
 }

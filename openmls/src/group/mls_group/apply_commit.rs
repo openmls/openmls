@@ -22,7 +22,7 @@ impl MlsGroup {
 
         // Extract Commit & Confirmation Tag from MlsPlaintext
         let commit = match mls_plaintext.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => return Err(ApplyCommitError::WrongPlaintextContentType),
         };
 

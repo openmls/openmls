@@ -63,7 +63,7 @@ pub struct MlsPlaintext {
     sender: Sender,
     authenticated_data: TlsByteVecU32,
     content_type: ContentType,
-    content: MlsPlaintextContentType,
+    content: MlsPlaintextContent,
     signature: Signature,
     confirmation_tag: Option<ConfirmationTag>,
     membership_tag: Option<MembershipTag>,
@@ -96,7 +96,7 @@ impl MlsPlaintext {
     }
 
     #[cfg(test)]
-    pub(super) fn set_content(&mut self, content: MlsPlaintextContentType) {
+    pub(super) fn set_content(&mut self, content: MlsPlaintextContent) {
         self.content = content;
     }
 
@@ -117,8 +117,8 @@ impl MlsPlaintext {
     fn new(
         sender_index: LeafIndex,
         authenticated_data: &[u8],
-        payload: MlsPlaintextContentType,
         content_type: ContentType,
+        payload: MlsPlaintextContent,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
     ) -> Result<Self, MlsPlaintextError> {
@@ -140,8 +140,8 @@ impl MlsPlaintext {
     fn new_with_membership_tag(
         sender_index: LeafIndex,
         authenticated_data: &[u8],
-        payload: MlsPlaintextContentType,
         content_type: ContentType,
+        payload: MlsPlaintextContent,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
@@ -171,8 +171,8 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             sender_index,
             authenticated_data,
-            MlsPlaintextContentType::Proposal(proposal),
             ContentType::Proposal,
+            MlsPlaintextContent::Proposal(proposal),
             credential_bundle,
             context,
             membership_key,
@@ -191,8 +191,8 @@ impl MlsPlaintext {
         Self::new(
             sender_index,
             authenticated_data,
-            MlsPlaintextContentType::Commit(commit),
             ContentType::Commit,
+            MlsPlaintextContent::Commit(commit),
             credential_bundle,
             context,
         )
@@ -211,8 +211,8 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             sender_index,
             authenticated_data,
-            MlsPlaintextContentType::Application(application_message.into()),
             ContentType::Application,
+            MlsPlaintextContent::Application(application_message.into()),
             credential_bundle,
             context,
             membership_key,
@@ -220,13 +220,13 @@ impl MlsPlaintext {
     }
 
     /// Returns a reference to the `content` field.
-    pub fn content(&self) -> &MlsPlaintextContentType {
+    pub fn content(&self) -> &MlsPlaintextContent {
         &self.content
     }
 
     /// Get the content type of this message.
-    pub(crate) fn content_type(&self) -> &ContentType {
-        &self.content_type
+    pub(crate) fn content_type(&self) -> MlsPlaintextContentType {
+        self.content().into()
     }
 
     /// Get the sender of this message.
@@ -297,19 +297,19 @@ impl MlsPlaintext {
     /// contained something other than an application message.
     pub fn as_application_message(&self) -> Result<&[u8], MlsPlaintextError> {
         match &self.content {
-            MlsPlaintextContentType::Application(message) => Ok(message.as_slice()),
+            MlsPlaintextContent::Application(message) => Ok(message.as_slice()),
             _ => Err(MlsPlaintextError::NotAnApplicationMessage),
         }
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
-        self.content_type.is_handshake_message()
+        self.content().is_handshake_message()
     }
 
     /// Returns `true` if this is a proposal message and `false` otherwise.
     pub(crate) fn is_proposal(&self) -> bool {
-        self.content_type.is_proposal()
+        self.content().is_proposal()
     }
 
     /// Get the group ID.
@@ -343,19 +343,19 @@ impl MlsPlaintext {
     PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u8)]
-pub enum ContentType {
+pub enum MlsPlaintextContentType {
     Application = 1,
     Proposal = 2,
     Commit = 3,
 }
 
-impl TryFrom<u8> for ContentType {
+impl TryFrom<u8> for MlsPlaintextContentType {
     type Error = tls_codec::Error;
     fn try_from(value: u8) -> Result<Self, tls_codec::Error> {
         match value {
-            1 => Ok(ContentType::Application),
-            2 => Ok(ContentType::Proposal),
-            3 => Ok(ContentType::Commit),
+            1 => Ok(MlsPlaintextContentType::Application),
+            2 => Ok(MlsPlaintextContentType::Proposal),
+            3 => Ok(MlsPlaintextContentType::Commit),
             _ => Err(tls_codec::Error::DecodingError(format!(
                 "{} is not a valid content type",
                 value
@@ -365,31 +365,45 @@ impl TryFrom<u8> for ContentType {
     }
 }
 
-impl From<&MlsPlaintextContentType> for ContentType {
-    fn from(value: &MlsPlaintextContentType) -> Self {
+impl From<&MlsPlaintextContent> for MlsPlaintextContentType {
+    fn from(value: &MlsPlaintextContent) -> Self {
         match value {
-            MlsPlaintextContentType::Application(_) => ContentType::Application,
-            MlsPlaintextContentType::Proposal(_) => ContentType::Proposal,
-            MlsPlaintextContentType::Commit(_) => ContentType::Commit,
+            MlsPlaintextContent::Application(_) => MlsPlaintextContentType::Application,
+            MlsPlaintextContent::Proposal(_) => MlsPlaintextContentType::Proposal,
+            MlsPlaintextContent::Commit(_) => MlsPlaintextContentType::Commit,
         }
     }
 }
 
-impl ContentType {
+impl MlsPlaintextContentType {
     pub(crate) fn is_handshake_message(&self) -> bool {
-        self == &ContentType::Proposal || self == &ContentType::Commit
+        self == &MlsPlaintextContentType::Proposal || self == &MlsPlaintextContentType::Commit
     }
     pub(crate) fn is_proposal(&self) -> bool {
-        self == &ContentType::Proposal
+        self == &MlsPlaintextContentType::Proposal
     }
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub enum MlsPlaintextContentType {
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsDeserialize, TlsSerialize,
+)]
+pub enum MlsPlaintextContent {
     Application(TlsByteVecU32),
     Proposal(Proposal),
     Commit(Commit),
+}
+
+impl MlsPlaintextContent {
+    pub(crate) fn is_handshake_message(&self) -> bool {
+        let content_type: MlsPlaintextContentType = self.into();
+        content_type.is_handshake_message()
+    }
+
+    pub(crate) fn is_proposal(&self) -> bool {
+        let content_type: MlsPlaintextContentType = self.into();
+        content_type.is_proposal()
+    }
 }
 
 /// 9.1 Content Authentication
@@ -442,7 +456,7 @@ pub struct MlsPlaintextTbs<'a> {
     pub(super) sender: Sender,
     pub(super) authenticated_data: TlsByteVecU32,
     pub(super) content_type: ContentType,
-    pub(super) payload: MlsPlaintextContentType,
+    pub(super) payload: MlsPlaintextContent,
 }
 
 fn encode_tbs<'a>(
@@ -538,7 +552,7 @@ impl<'a> MlsPlaintextTbs<'a> {
         sender: Sender,
         authenticated_data: TlsByteVecU32,
         content_type: ContentType,
-        payload: MlsPlaintextContentType,
+        payload: MlsPlaintextContent,
     ) -> Self {
         MlsPlaintextTbs {
             serialized_context: serialized_context.into(),
@@ -656,7 +670,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         let commit = match &mls_plaintext.content {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
         Ok(MlsPlaintextCommitContent {

@@ -203,7 +203,7 @@ fn test_update_path() {
             .expect("Error creating commit");
 
         let commit = match mls_plaintext_commit.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -255,7 +255,7 @@ fn test_update_path() {
         // apart the commit, manipulating the ciphertexts and the piecing it
         // back together.
         let commit = match mls_plaintext_commit.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => panic!("Bob created a commit, which does not contain an actual commit."),
         };
 

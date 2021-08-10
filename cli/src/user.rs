@@ -168,7 +168,7 @@ impl User {
                         }
                     };
                     match msg.content() {
-                        MlsPlaintextContentType::Application(application_message) => {
+                        MlsPlaintextContent::Application(application_message) => {
                             let application_message =
                                 String::from_utf8(application_message.as_slice().to_vec()).unwrap();
                             if group_name.is_none()
@@ -178,12 +178,12 @@ impl User {
                             }
                             group.conversation.add(application_message);
                         }
-                        MlsPlaintextContentType::Proposal(_proposal) => {
+                        MlsPlaintextContent::Proposal(_proposal) => {
                             // Store the proposal to use later when we got a
                             // corresponding commit.
                             group.pending_proposals.push(msg);
                         }
-                        MlsPlaintextContentType::Commit(_commit) => {
+                        MlsPlaintextContent::Commit(_commit) => {
                             match group.mls_group.borrow_mut().apply_commit(
                                 &msg,
                                 &(group

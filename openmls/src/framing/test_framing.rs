@@ -32,8 +32,7 @@ fn codec() {
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
-            ContentType::Application,
-            MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            MlsPlaintextContent::Application(vec![4, 5, 6].into()),
         );
         let orig: MlsPlaintext = signature_input
             .sign(&credential_bundle)
@@ -87,7 +86,7 @@ fn membership_tag() {
             .is_ok());
 
         // Change the content of the plaintext message
-        mls_plaintext.set_content(MlsPlaintextContentType::Application(vec![7, 8, 9].into()));
+        mls_plaintext.set_content(MlsPlaintextContent::Application(vec![7, 8, 9].into()));
 
         // Expect the signature & membership tag verification to fail
         assert!(mls_plaintext

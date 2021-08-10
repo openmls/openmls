@@ -33,7 +33,7 @@ use crate::{
 };
 use crate::{
     group::{ManagedGroupCallbacks, ManagedGroupConfig, MlsMessage, UpdatePolicy},
-    prelude::MlsPlaintextContentType,
+    prelude::MlsPlaintextContent,
     test_utils::{
         bytes_to_hex,
         test_framework::{ActionType, ManagedTestSetup},
@@ -431,7 +431,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     let update_path = match message {
         MlsMessage::Plaintext(ref pt) => match pt.content() {
-            MlsPlaintextContentType::Commit(commit) => commit.path().as_ref().unwrap().clone(),
+            MlsPlaintextContent::Commit(commit) => commit.path().as_ref().unwrap().clone(),
             _ => panic!("The message should not be anything but a commit."),
         },
         _ => panic!("The message should not be a ciphertext."),

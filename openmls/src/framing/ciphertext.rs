@@ -14,7 +14,7 @@ use std::convert::TryFrom;
 pub struct MlsCiphertext {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) content_type: ContentType,
+    pub(crate) content_type: MlsPlaintextContentType,
     pub(crate) authenticated_data: TlsByteVecU32,
     pub(crate) encrypted_sender_data: TlsByteVecU8,
     pub(crate) ciphertext: TlsByteVecU32,
@@ -303,11 +303,11 @@ impl MlsSenderData {
 pub(crate) struct MlsSenderDataAad {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) content_type: ContentType,
+    pub(crate) content_type: MlsPlaintextContentType,
 }
 
 impl MlsSenderDataAad {
-    fn new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -> Self {
+    fn new(group_id: GroupId, epoch: GroupEpoch, content_type: MlsPlaintextContentType) -> Self {
         Self {
             group_id,
             epoch,
@@ -318,7 +318,7 @@ impl MlsSenderDataAad {
 
 #[derive(Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct MlsCiphertextContent {
-    pub(crate) content: MlsPlaintextContentType,
+    pub(crate) content: MlsPlaintextContent,
     pub(crate) signature: Signature,
     pub(crate) confirmation_tag: Option<ConfirmationTag>,
     pub(crate) padding: TlsByteVecU16,
@@ -328,6 +328,6 @@ pub(crate) struct MlsCiphertextContent {
 pub(crate) struct MlsCiphertextContentAad {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) content_type: ContentType,
+    pub(crate) content_type: MlsPlaintextContentType,
     pub(crate) authenticated_data: TlsByteVecU32,
 }

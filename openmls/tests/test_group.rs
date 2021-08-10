@@ -80,7 +80,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path());
@@ -107,7 +107,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match mls_plaintext_commit.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(!commit.has_path() && kpb_option.is_none());
@@ -158,7 +158,7 @@ fn create_commit_optional_path() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
         let commit = match commit_mls_plaintext.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path() && kpb_option.is_some());
@@ -318,7 +318,7 @@ fn group_operations() {
             )
             .expect("Error creating commit");
         let commit = match mls_plaintext_commit.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsPlaintextContent::Commit(commit) => commit,
             _ => panic!("Wrong content type"),
         };
         assert!(!commit.has_path() && kpb_option.is_none());

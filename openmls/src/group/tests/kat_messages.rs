@@ -149,7 +149,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             None,
         )
         .unwrap();
-    let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
+    let commit = if let MlsPlaintextContent::Commit(commit) = commit_pt.content() {
         commit.clone()
     } else {
         panic!("Wrong content of MLS plaintext");
