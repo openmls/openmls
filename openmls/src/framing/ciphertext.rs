@@ -37,7 +37,7 @@ impl MlsCiphertext {
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
-            content_type: *mls_plaintext.content_type(),
+            content_type: mls_plaintext.content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
         };
         let mls_ciphertext_content_aad_bytes =
@@ -79,7 +79,7 @@ impl MlsCiphertext {
         let mls_sender_data_aad = MlsSenderDataAad::new(
             context.group_id().clone(),
             context.epoch(),
-            *mls_plaintext.content_type(),
+            mls_plaintext.content_type(),
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
@@ -98,7 +98,7 @@ impl MlsCiphertext {
         Ok(MlsCiphertext {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
-            content_type: *mls_plaintext.content_type(),
+            content_type: mls_plaintext.content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
@@ -139,7 +139,7 @@ impl MlsCiphertext {
             })?;
         log::trace!("  Successfully decrypted sender data.");
         let sender_data = MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())?;
-        let secret_type = SecretType::try_from(&self.content_type)
+        let secret_type = SecretType::try_from(self.content_type)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         // Extract generation and key material for encryption
         let (ratchet_key, mut ratchet_nonce) = secret_tree

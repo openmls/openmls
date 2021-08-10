@@ -595,7 +595,7 @@ impl<'a> MlsPlaintextTbs<'a> {
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
-        self.content_type.is_handshake_message()
+        self.payload.is_handshake_message()
     }
 }
 
