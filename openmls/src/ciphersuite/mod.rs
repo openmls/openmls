@@ -565,8 +565,8 @@ impl Signature {
     /// bytes representing the concatenated scalars. If the decoding fails, it
     /// will throw a `der::Error`.
     pub(crate) fn der_decode(&self) -> Result<Vec<u8>, der::Error> {
-        // A small closure to decode a single scalar and padd it with zeroes
-        // until it's `SCALAR_SIZE` bytes long.
+        // A small closure to decode a single scalar and pad it with leading
+        // zeroes until it's `SCALAR_SIZE` bytes long.
         let decode_scalar = |decoder: &mut der::Decoder| -> Result<Vec<u8>, der::Error> {
             let decoded_scalar = UIntBytes::decode(decoder)?;
             let decoded_scalar_len: usize = decoded_scalar.len().try_into()?;
