@@ -546,8 +546,8 @@ impl Signature {
     }
 }
 
-// The size of the individual scalars. Since we only support P256, this
-// is 32. It would be great if evercrypt were able to return the scalar
+// The size of the individual scalars. Since we only support ECDSA with P256,
+// this is 32. It would be great if evercrypt were able to return the scalar
 // size of a given curve.
 const SCALAR_SIZE: usize = 32;
 
