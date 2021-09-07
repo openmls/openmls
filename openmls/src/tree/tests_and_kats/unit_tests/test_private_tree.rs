@@ -46,7 +46,7 @@ fn test_private_tree(
 
     let c = ciphersuite.hpke_seal(public_key, info, aad, &data);
     let m = ciphersuite
-        .hpke_open(&c, &private_key, info, aad)
+        .hpke_open(&c, private_key, info, aad)
         .expect("Error decrypting valid Secret in PrivateTree test.");
     assert_eq!(m, data);
 }
@@ -63,13 +63,13 @@ fn create_private_tree_from_secret() {
 
         // Compute path secrets from the leaf and generate keypairs
         let public_keys = private_tree.generate_path_secrets(
-            &ciphersuite,
+            ciphersuite,
             key_package_bundle.leaf_secret(),
             &direct_path,
         );
 
         assert_eq!(public_keys.len(), direct_path.len());
 
-        test_private_tree(&private_tree, &direct_path, &public_keys, &ciphersuite);
+        test_private_tree(&private_tree, &direct_path, &public_keys, ciphersuite);
     }
 }

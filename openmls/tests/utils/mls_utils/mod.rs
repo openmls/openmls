@@ -190,7 +190,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
                 .create_commit(
                     group_aad,
-                    &initial_credential_bundle,
+                    initial_credential_bundle,
                     &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                     &[],
                     true, /* Set this to true to populate the tree a little bit. */
@@ -226,7 +226,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .any(|y| &y.key_package().hash() == x.key_package_hash.as_slice())
+                            .any(|y| y.key_package().hash() == x.key_package_hash.as_slice())
                     })
                     .unwrap();
                 let kpb_position = new_group_member
@@ -234,7 +234,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .borrow()
                     .iter()
                     .position(|y| {
-                        &y.key_package().hash() == member_secret.key_package_hash.as_slice()
+                        y.key_package().hash() == member_secret.key_package_hash.as_slice()
                     })
                     .unwrap();
                 let key_package_bundle = new_group_member

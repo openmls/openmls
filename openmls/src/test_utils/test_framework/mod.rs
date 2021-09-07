@@ -419,7 +419,7 @@ impl ManagedTestSetup {
         let (messages, welcome_option) =
             adder.add_members(action_type, &group.group_id, &key_packages)?;
         for message in &messages {
-            self.distribute_to_members(&adder_id, group, &message)?;
+            self.distribute_to_members(adder_id, group, message)?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -452,9 +452,9 @@ impl ManagedTestSetup {
             return Err(SetupError::ClientNotInGroup);
         }
         let (messages, welcome_option) =
-            remover.remove_members(action_type, &group.group_id, &target_indices)?;
+            remover.remove_members(action_type, &group.group_id, target_indices)?;
         for message in &messages {
-            self.distribute_to_members(remover_id, group, &message)?;
+            self.distribute_to_members(remover_id, group, message)?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;

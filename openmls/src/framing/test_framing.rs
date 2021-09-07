@@ -37,8 +37,7 @@ fn codec() {
         );
         let orig: MlsPlaintext = signature_input
             .sign(&credential_bundle)
-            .expect("Signing failed.")
-            .into();
+            .expect("Signing failed.");
 
         let enc = orig.tls_serialize_detached().unwrap();
         let copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice()).unwrap();
@@ -68,7 +67,7 @@ fn membership_tag() {
             LeafIndex::from(2u32),
             &[1, 2, 3],
             &[4, 5, 6],
-            &&credential_bundle,
+            &credential_bundle,
             &group_context,
             &membership_key,
         )
@@ -246,7 +245,7 @@ fn unknown_sender() {
             &[],
             &[1, 2, 3],
             &alice_credential_bundle,
-            &group_alice.context(),
+            group_alice.context(),
             &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create new MlsPlaintext.");
@@ -276,7 +275,7 @@ fn unknown_sender() {
             &[],
             &[1, 2, 3],
             &alice_credential_bundle,
-            &group_alice.context(),
+            group_alice.context(),
             &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
         )
         .expect("Could not create new MlsPlaintext.");

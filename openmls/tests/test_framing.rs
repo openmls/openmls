@@ -46,7 +46,7 @@ fn padding() {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
                 let mls_ciphertext = group_state
-                    .create_application_message(&aad, &message, &credential_bundle, padding_size)
+                    .create_application_message(&aad, &message, credential_bundle, padding_size)
                     .unwrap();
                 let ciphertext = mls_ciphertext.ciphertext();
                 let length = ciphertext.len();

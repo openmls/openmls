@@ -12,20 +12,20 @@ fn test_boundaries() {
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
         let secret_type = SecretType::ApplicationSecret;
         assert!(secret_tree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 0)
             .is_ok());
         assert!(secret_tree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(1u32), secret_type, 0)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(1u32), secret_type, 0)
             .is_ok());
         assert!(secret_tree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 1)
             .is_ok());
         assert!(secret_tree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 1_000)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 1_000)
             .is_ok());
         assert_eq!(
             secret_tree.secret_for_decryption(
-                &ciphersuite,
+                ciphersuite,
                 LeafIndex::from(1u32),
                 secret_type,
                 1001
@@ -33,35 +33,30 @@ fn test_boundaries() {
             Err(SecretTreeError::TooDistantInTheFuture)
         );
         assert!(secret_tree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 996)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 996)
             .is_ok());
         assert_eq!(
-            secret_tree.secret_for_decryption(
-                &ciphersuite,
-                LeafIndex::from(0u32),
-                secret_type,
-                995
-            ),
+            secret_tree.secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 995),
             Err(SecretTreeError::TooDistantInThePast)
         );
         assert_eq!(
-            secret_tree.secret_for_decryption(&ciphersuite, LeafIndex::from(2u32), secret_type, 0),
+            secret_tree.secret_for_decryption(ciphersuite, LeafIndex::from(2u32), secret_type, 0),
             Err(SecretTreeError::IndexOutOfBounds)
         );
         let encryption_secret = EncryptionSecret::random(ciphersuite);
         let mut largetree = SecretTree::new(encryption_secret, LeafIndex::from(100_000u32));
         assert!(largetree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 0)
             .is_ok());
         assert!(largetree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 0)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(99_999u32), secret_type, 0)
             .is_ok());
         assert!(largetree
-            .secret_for_decryption(&ciphersuite, LeafIndex::from(99_999u32), secret_type, 1_000)
+            .secret_for_decryption(ciphersuite, LeafIndex::from(99_999u32), secret_type, 1_000)
             .is_ok());
         assert_eq!(
             largetree.secret_for_decryption(
-                &ciphersuite,
+                ciphersuite,
                 LeafIndex::from(100_000u32),
                 secret_type,
                 0

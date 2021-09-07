@@ -292,7 +292,7 @@ fn test_update_path() {
 
         let mut broken_plaintext = MlsPlaintext::new_commit(
             mls_plaintext_commit.sender_index(),
-            &mls_plaintext_commit.authenticated_data(),
+            mls_plaintext_commit.authenticated_data(),
             broken_commit,
             &bob_credential_bundle,
             group_bob.context(),
