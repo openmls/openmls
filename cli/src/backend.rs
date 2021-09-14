@@ -29,7 +29,7 @@ impl Backend {
     /// server.
     pub fn list_clients(&self) -> Result<Vec<ClientInfo>, String> {
         let mut url = self.ds_url.clone();
-        url.set_path(&"/clients/list");
+        url.set_path("/clients/list");
 
         let response = get(&url)?;
         match TlsVecU32::<ClientInfo>::tls_deserialize(&mut response.as_slice()) {

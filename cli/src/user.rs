@@ -115,7 +115,7 @@ impl User {
         let mut messages_out = Vec::new();
 
         // Go through the list of messages and process or store them.
-        for message in self.backend.recv_msgs(&self)?.drain(..) {
+        for message in self.backend.recv_msgs(self)?.drain(..) {
             match message {
                 Message::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
@@ -209,7 +209,7 @@ impl User {
         log::trace!("done with messages ...");
 
         for c in self.backend.list_clients()?.drain(..) {
-            if &c.id != self.identity.borrow().credential.credential().identity()
+            if c.id != self.identity.borrow().credential.credential().identity()
                 && self
                     .contacts
                     .insert(
