@@ -89,7 +89,7 @@ impl User {
         let mls_ciphertext = match group.mls_group.borrow_mut().create_application_message(
             &group.group_aad,
             msg.as_bytes(),
-            &self.identity.borrow().credential,
+            &*self.identity.borrow().credential,
             PADDING_SIZE,
         ) {
             Ok(m) => m,
@@ -289,7 +289,7 @@ impl User {
             Some(g) => g,
             None => return Err(format!("No group with name {} known.", group)),
         };
-        let credentials = &self.identity.borrow().credential;
+        let credentials = &*self.identity.borrow().credential;
         let add_proposal = group
             .mls_group
             .borrow()

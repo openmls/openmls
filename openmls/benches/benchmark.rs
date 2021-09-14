@@ -16,14 +16,10 @@ fn criterion_kp_bundle(c: &mut Criterion) {
             move |b| {
                 b.iter_with_setup(
                     || {
-                        CredentialBundle::new(
-                            vec![1, 2, 3],
-                            CredentialType::Basic,
-                            ciphersuite.signature_scheme(),
-                        )
-                        .unwrap()
+                        BasicCredentialBundle::new(vec![1, 2, 3], ciphersuite.signature_scheme())
+                            .unwrap()
                     },
-                    |credential_bundle: CredentialBundle| {
+                    |credential_bundle: BasicCredentialBundle| {
                         KeyPackageBundle::new(
                             &[ciphersuite.name()],
                             &credential_bundle,

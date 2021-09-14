@@ -38,9 +38,8 @@ async fn test_list_clients() {
     // Add a client.
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let credential_bundle = CredentialBundle::new(
+    let credential_bundle = BasicCredentialBundle::new(
         client_name.as_bytes().to_vec(),
-        CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
     )
     .unwrap();
@@ -132,9 +131,8 @@ async fn test_group() {
     let mut client_ids = Vec::new();
     for client_name in clients.iter() {
         let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-        let credential_bundle = CredentialBundle::new(
+        let credential_bundle = BasicCredentialBundle::new(
             client_name.as_bytes().to_vec(),
-            CredentialType::Basic,
             SignatureScheme::from(ciphersuite),
         )
         .unwrap();

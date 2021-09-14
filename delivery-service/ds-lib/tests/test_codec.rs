@@ -6,9 +6,8 @@ use tls_codec::{Deserialize, Serialize};
 fn test_client_info() {
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let credential_bundle = CredentialBundle::new(
+    let credential_bundle = BasicCredentialBundle::new(
         client_name.as_bytes().to_vec(),
-        CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
     )
     .unwrap();

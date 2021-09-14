@@ -4,22 +4,18 @@ use openmls::prelude::*;
 
 pub struct Identity {
     pub(crate) kpb: KeyPackageBundle,
-    pub(crate) credential: CredentialBundle,
+    pub(crate) credential: Box<dyn CredentialBundle>,
 }
 
 impl Identity {
     pub(crate) fn new(ciphersuite: CiphersuiteName, id: &[u8]) -> Self {
-        let credential_bundle = CredentialBundle::new(
-            id.to_vec(),
-            CredentialType::Basic,
-            SignatureScheme::from(ciphersuite),
-        )
-        .unwrap();
+        let credential_bundle =
+            BasicCredentialBundle::new(id.to_vec(), SignatureScheme::from(ciphersuite)).unwrap();
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &credential_bundle, vec![]).unwrap();
         Self {
             kpb: key_package_bundle,
-            credential: credential_bundle,
+            credential: Box::new(credential_bundle),
         }
     }
 
@@ -28,7 +24,7 @@ impl Identity {
     pub fn update(&mut self) -> KeyPackageBundle {
         let ciphersuite = self.kpb.key_package().ciphersuite_name();
         let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &self.credential, vec![]).unwrap();
+            KeyPackageBundle::new(&[ciphersuite], &*self.credential, vec![]).unwrap();
 
         replace(&mut self.kpb, key_package_bundle)
     }
