@@ -6,12 +6,8 @@ use crate::{extensions::*, key_packages::*};
 #[test]
 fn generate_key_package() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let credential_bundle = CredentialBundle::new(
-            vec![1, 2, 3],
-            CredentialType::Basic,
-            ciphersuite.name().into(),
-        )
-        .unwrap();
+        let credential_bundle =
+            BasicCredentialBundle::new(vec![1, 2, 3], ciphersuite.name().into()).unwrap();
 
         // Generate a valid KeyPackage.
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -50,8 +46,7 @@ fn generate_key_package() {
 fn test_codec() {
     for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
-        let credential_bundle =
-            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name().into()).unwrap();
+        let credential_bundle = BasicCredentialBundle::new(id, ciphersuite.name().into()).unwrap();
         let mut kpb = KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new())
             .unwrap()
             .unsigned();
@@ -70,8 +65,7 @@ fn test_codec() {
 fn key_package_id_extension() {
     for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
-        let credential_bundle =
-            CredentialBundle::new(id, CredentialType::Basic, ciphersuite.name().into()).unwrap();
+        let credential_bundle = BasicCredentialBundle::new(id, ciphersuite.name().into()).unwrap();
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
@@ -101,9 +95,8 @@ fn test_mismatch() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
 
-    let credential_bundle =
-        CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, signature_scheme)
-            .expect("Could not create credential bundle");
+    let credential_bundle = BasicCredentialBundle::new(vec![1, 2, 3], signature_scheme)
+        .expect("Could not create credential bundle");
 
     assert_eq!(
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![],),
@@ -115,9 +108,8 @@ fn test_mismatch() {
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let signature_scheme = SignatureScheme::ED25519;
 
-    let credential_bundle =
-        CredentialBundle::new(vec![1, 2, 3], CredentialType::Basic, signature_scheme)
-            .expect("Could not create credential bundle");
+    let credential_bundle = BasicCredentialBundle::new(vec![1, 2, 3], signature_scheme)
+        .expect("Could not create credential bundle");
 
     assert!(KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, vec![]).is_ok());
 }

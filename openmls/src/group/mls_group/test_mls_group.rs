@@ -14,12 +14,8 @@ fn test_mls_group_persistence() {
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
     // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .unwrap();
+    let alice_credential_bundle =
+        BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
@@ -91,12 +87,8 @@ fn test_failed_groupinfo_decryption() {
                 hpke_input,
             );
 
-            let alice_credential_bundle = CredentialBundle::new(
-                "Alice".into(),
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
+            let alice_credential_bundle =
+                BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
             let group_info = group_info
                 .sign(&alice_credential_bundle)
                 .expect("Error signing group info");
@@ -151,18 +143,10 @@ fn test_update_path() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Generate KeyPackages
         let alice_key_package_bundle =
@@ -353,15 +337,13 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let group_aad = b"Alice's test group";
 
     // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
+    let alice_credential_bundle = BasicCredentialBundle::new(
         "Alice".into(),
-        CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
     .unwrap();
-    let bob_credential_bundle = CredentialBundle::new(
+    let bob_credential_bundle = BasicCredentialBundle::new(
         "Bob".into(),
-        CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
     .unwrap();

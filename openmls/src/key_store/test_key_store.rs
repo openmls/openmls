@@ -1,7 +1,7 @@
 use crate::config::*;
+use crate::credentials::BasicCredentialBundle;
 use crate::{ciphersuite::*, credentials::CredentialBundle};
 
-use crate::credentials::CredentialType::Basic;
 use crate::key_packages::KeyPackageBundle;
 
 use super::{KeyStore, KeyStoreError};
@@ -15,9 +15,8 @@ ctest_ciphersuites!(key_storage, test(ciphersuite_name: CiphersuiteName) {
     let ks = KeyStore::default();
 
     let credential = ks
-        .generate_credential_bundle(
+        .generate_basic_credential_bundle(
             "Alice".as_bytes().to_vec(),
-            Basic,
             ciphersuite.signature_scheme(),
         )
         .expect("Error while creating credential.");
@@ -32,9 +31,8 @@ ctest_ciphersuites!(key_storage, test(ciphersuite_name: CiphersuiteName) {
 
     // Generate a CredentialBundle externally and then try to use it to create a
     // key package bundle in the store.
-    let cb_external = CredentialBundle::new(
+    let cb_external = BasicCredentialBundle::new(
         "Bob".as_bytes().to_vec(),
-        Basic,
         ciphersuite.signature_scheme(),
     )
         .expect("Error while creating credential.");
@@ -60,9 +58,8 @@ ctest_ciphersuites!(key_storage, test(ciphersuite_name: CiphersuiteName) {
     // Let' create some errors.
 
     // Generate a CredentialBundle externally and then try to load it from the store.
-    let cb_external = CredentialBundle::new(
+    let cb_external = BasicCredentialBundle::new(
         "Bob".as_bytes().to_vec(),
-        Basic,
         ciphersuite.signature_scheme(),
     )
     .expect("Error while creating credential.");

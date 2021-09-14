@@ -3,7 +3,7 @@
 use crate::{
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, CiphersuiteName, Mac, Secret},
     config::Config,
-    credentials::{CredentialBundle, CredentialType},
+    credentials::{BasicCredentialBundle, CredentialBundle},
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
     tree::index::LeafIndex,
@@ -29,12 +29,8 @@ macro_rules! test_welcome_msg {
             );
 
             // We need a credential bundle to sign the group info.
-            let credential_bundle = CredentialBundle::new(
-                "XXX".into(),
-                CredentialType::Basic,
-                $ciphersuite.signature_scheme(),
-            )
-            .unwrap();
+            let credential_bundle =
+                BasicCredentialBundle::new("XXX".into(), $ciphersuite.signature_scheme()).unwrap();
             let group_info = group_info
                 .sign(&credential_bundle)
                 .expect("Error signing GroupInfo");

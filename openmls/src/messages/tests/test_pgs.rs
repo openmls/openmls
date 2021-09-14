@@ -3,10 +3,9 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
+    credentials::BasicCredentialBundle,
     key_packages::KeyPackageBundle,
-    messages::{
-        CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
-    },
+    messages::{CredentialBundle, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState},
 };
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
@@ -17,18 +16,10 @@ fn test_pgs() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Generate KeyPackages
         let bob_key_package_bundle =

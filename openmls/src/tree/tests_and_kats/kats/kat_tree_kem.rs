@@ -18,7 +18,7 @@ use crate::group::HandshakeMessageFormat;
 use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
-    credentials::{CredentialBundle, CredentialType},
+    credentials::{BasicCredentialBundle, CredentialBundle},
     node::Node,
     prelude::KeyPackageBundlePayload,
     test_utils::hex_to_bytes,
@@ -93,12 +93,8 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     // We clone the leaf secret here, because we need it later to re-create the
     // KeyPackageBundle.
-    let credential_bundle = CredentialBundle::new(
-        "username".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-    )
-    .unwrap();
+    let credential_bundle =
+        BasicCredentialBundle::new("username".into(), ciphersuite.signature_scheme()).unwrap();
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
         my_leaf_secret.clone(),
         &my_key_package,

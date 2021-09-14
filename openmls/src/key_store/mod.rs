@@ -104,7 +104,7 @@ use std::{
 
 use crate::{
     ciphersuite::{CiphersuiteName, SignaturePublicKey, SignatureScheme},
-    credentials::{Credential, CredentialBundle, CredentialType},
+    credentials::{BasicCredentialBundle, Credential, CredentialBundle},
     extensions::Extension,
     key_packages::{KeyPackage, KeyPackageBundle},
 };
@@ -125,7 +125,7 @@ pub use errors::KeyStoreError;
 /// `KeyPackage` instances.
 pub struct KeyStore {
     // Map from signature public keys to credential bundles
-    credential_bundles: RwLock<HashMap<SignaturePublicKey, CredentialBundle>>,
+    credential_bundles: RwLock<HashMap<SignaturePublicKey, Box<dyn CredentialBundle>>>,
     init_key_package_bundles: RwLock<HashMap<Vec<u8>, KeyPackageBundle>>,
 }
 
@@ -133,16 +133,16 @@ pub struct KeyStore {
 /// underlying `RwLock<CredentialBundle>` can be obtained for read or write
 /// access to the credential.
 pub struct CbGuard<'a> {
-    cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, CredentialBundle>>,
+    cbs: RwLockReadGuard<'a, HashMap<SignaturePublicKey, Box<dyn CredentialBundle>>>,
     index: &'a SignaturePublicKey,
 }
 
 use std::ops::Deref;
 
 impl<'b> Deref for CbGuard<'b> {
-    type Target = CredentialBundle;
+    type Target = Box<dyn CredentialBundle>;
 
-    fn deref(&self) -> &CredentialBundle {
+    fn deref(&self) -> &Box<dyn CredentialBundle> {
         // We can unwrap here, as we checked if the entry is present before
         // creating the guard. Also, since we hold a read lock on the `HashMap`,
         // the entry can't have been removed in the meantime.
@@ -196,7 +196,7 @@ impl KeyStore {
         let credential_bundle = self
             .get_credential_bundle(credential.signature_key())
             .ok_or(KeyStoreError::NoMatchingCredentialBundle)?;
-        let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, extensions)?;
+        let kpb = KeyPackageBundle::new(ciphersuites, &**credential_bundle, extensions)?;
         let kp = kpb.key_package().clone();
         // We unwrap here, because the two functions claiming write locks on
         // `init_key_package_bundles` (this one and `take_key_package_bundle`)
@@ -207,22 +207,21 @@ impl KeyStore {
         Ok(kp)
     }
 
-    /// Generate a fresh `CredentialBundle` with the given parameters and store
+    /// Generate a fresh `BasicCredentialBundle` with the given parameters and store
     /// it in the `KeyStore`. Returns the corresponding `Credential` or an error
-    /// if the creation of the `CredentialBundle` fails.
-    pub fn generate_credential_bundle(
+    /// if the creation of the `BasicCredentialBundle` fails.
+    pub fn generate_basic_credential_bundle(
         &self,
         identity: Vec<u8>,
-        credential_type: CredentialType,
         signature_scheme: SignatureScheme,
     ) -> Result<Credential, KeyStoreError> {
-        let cb = CredentialBundle::new(identity, credential_type, signature_scheme)?;
+        let cb = BasicCredentialBundle::new(identity, signature_scheme)?;
         let credential = cb.credential().clone();
         // We unwrap here, because this is the only function claiming a write
         // lock on `credential_bundles`. It only holds the lock very briefly and
         // should not panic during that period.
         let mut cbs = self.credential_bundles.write().unwrap();
-        cbs.insert(credential.signature_key().clone(), cb);
+        cbs.insert(credential.signature_key().clone(), Box::new(cb));
         Ok(credential)
     }
 

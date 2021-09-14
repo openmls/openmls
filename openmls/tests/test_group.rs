@@ -6,18 +6,10 @@ fn create_commit_optional_path() {
         let group_aad = b"Alice's test group";
 
         // Define identities
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Mandatory extensions, will be fixed in #164
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -181,18 +173,10 @@ fn basic_group_setup() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Generate KeyPackages
         let bob_key_package_bundle =
@@ -252,18 +236,10 @@ fn group_operations() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Mandatory extensions
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
@@ -531,12 +507,8 @@ fn group_operations() {
         }
 
         // === Bob adds Charlie ===
-        let charlie_credential_bundle = CredentialBundle::new(
-            "Charlie".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let charlie_credential_bundle =
+            BasicCredentialBundle::new("Charlie".into(), ciphersuite.signature_scheme()).unwrap();
 
         let charlie_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],

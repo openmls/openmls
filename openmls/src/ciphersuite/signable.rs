@@ -48,7 +48,7 @@ pub trait Signable: Sized {
     /// Returns a `Signature`.
     fn sign(
         self,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
     ) -> Result<Self::SignedOutput, CredentialError>
     where
         Self::SignedOutput: SignedStruct<Self>,

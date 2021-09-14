@@ -9,11 +9,7 @@ fn test_managed_group_persistence() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential_bundle(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
+        .generate_basic_credential_bundle("Alice".into(), ciphersuite.signature_scheme())
         .unwrap();
 
     // Generate KeyPackages
@@ -77,27 +73,15 @@ fn remover() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential_bundle(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
+        .generate_basic_credential_bundle("Alice".into(), ciphersuite.signature_scheme())
         .unwrap();
 
     let bob_credential = key_store
-        .generate_credential_bundle(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
+        .generate_basic_credential_bundle("Bob".into(), ciphersuite.signature_scheme())
         .unwrap();
 
     let charlie_credential = key_store
-        .generate_credential_bundle(
-            "Charly".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
+        .generate_basic_credential_bundle("Charly".into(), ciphersuite.signature_scheme())
         .unwrap();
 
     // Generate KeyPackages
@@ -218,9 +202,8 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential_bundle(
+        .generate_basic_credential_bundle(
             "Alice".into(),
-            CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
         .unwrap();

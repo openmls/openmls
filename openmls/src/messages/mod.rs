@@ -419,7 +419,7 @@ impl PublicGroupState {
     /// of the group and signs it.
     pub(crate) fn new(
         mls_group: &MlsGroup,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
     ) -> Result<Self, CredentialError> {
         let ciphersuite = mls_group.ciphersuite();
         let (_external_priv, external_pub) = mls_group

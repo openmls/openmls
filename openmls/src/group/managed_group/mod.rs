@@ -216,7 +216,7 @@ impl ManagedGroup {
             .collect::<Vec<&MlsPlaintext>>();
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -224,7 +224,7 @@ impl ManagedGroup {
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &credential_bundle,
+            credential_bundle,
             proposals_by_reference,
             proposals_by_value,
             true,
@@ -296,7 +296,7 @@ impl ManagedGroup {
             .collect::<Vec<&MlsPlaintext>>();
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -304,7 +304,7 @@ impl ManagedGroup {
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &credential_bundle,
+            credential_bundle,
             proposals_by_reference,
             proposals_by_value,
             false,
@@ -341,13 +341,13 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let add_proposal =
             self.group
-                .create_add_proposal(&self.aad, &credential_bundle, key_package.clone())?;
+                .create_add_proposal(&self.aad, credential_bundle, key_package.clone())?;
 
         let mls_message = self.plaintext_to_mls_message(add_proposal)?;
 
@@ -368,13 +368,13 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
-            &credential_bundle,
+            credential_bundle,
             LeafIndex::from(member),
         )?;
 
@@ -393,13 +393,13 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
             &self.aad,
-            &credential_bundle,
+            credential_bundle,
             self.group.tree().own_node_index(),
         )?;
 
@@ -595,14 +595,14 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let ciphertext = self.group.create_application_message(
             &self.aad,
             message,
-            &credential_bundle,
+            credential_bundle,
             self.configuration().padding_size(),
         )?;
 
@@ -624,7 +624,7 @@ impl ManagedGroup {
         let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -632,7 +632,7 @@ impl ManagedGroup {
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             &self.aad,
-            &credential_bundle,
+            credential_bundle,
             &messages_to_commit,
             &[],
             true,
@@ -757,7 +757,7 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -773,7 +773,7 @@ impl ManagedGroup {
                 });
                 self.group.create_commit(
                     &self.aad,
-                    &credential_bundle,
+                    credential_bundle,
                     &messages_to_commit,
                     &[&update_proposal],
                     true, /* force_self_update */
@@ -783,7 +783,7 @@ impl ManagedGroup {
             None => {
                 self.group.create_commit(
                     &self.aad,
-                    &credential_bundle,
+                    credential_bundle,
                     &messages_to_commit,
                     &[],
                     true, /* force_self_update */
@@ -822,7 +822,7 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
+        let credential_bundle = &**key_store
             .get_credential_bundle(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -831,12 +831,12 @@ impl ManagedGroup {
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
             None => KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package)
-                .sign(&credential_bundle)?,
+                .sign(credential_bundle)?,
         };
 
         let update_proposal = self.group.create_update_proposal(
             &self.aad,
-            &credential_bundle,
+            credential_bundle,
             key_package_bundle.key_package().clone(),
         )?;
         drop(tree);

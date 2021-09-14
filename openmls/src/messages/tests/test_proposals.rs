@@ -3,7 +3,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
     config::Config,
-    credentials::{CredentialBundle, CredentialType},
+    credentials::{BasicCredentialBundle, CredentialBundle},
     extensions::{Extension, LifetimeExtension},
     framing::sender::{Sender, SenderType},
     framing::MlsPlaintext,
@@ -24,18 +24,10 @@ use crate::{
 fn proposal_queue_functions() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Define identities
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Mandatory extensions, will be fixed in #164
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -153,18 +145,12 @@ fn proposal_queue_functions() {
 fn proposal_queue_order() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Define identities
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .expect("Could not create CredentialBundle");
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .expect("Could not create CredentialBundle");
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme())
+                .expect("Could not create CredentialBundle");
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme())
+                .expect("Could not create CredentialBundle");
 
         // Generate KeyPackages
         let alice_key_package_bundle =

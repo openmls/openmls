@@ -411,7 +411,7 @@ impl RatchetTree {
     /// Returns the update path and an updated key package bundle.
     pub(crate) fn refresh_private_tree(
         &mut self,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         group_context: &[u8],
         new_leaves_indexes: HashSet<&LeafIndex>,
     ) -> Result<(UpdatePath, KeyPackageBundle), TreeError> {

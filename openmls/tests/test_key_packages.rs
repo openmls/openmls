@@ -12,7 +12,7 @@ ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteNa
 
     let id = vec![1, 2, 3];
     let credential_bundle =
-        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.signature_scheme()).unwrap();
+        BasicCredentialBundle::new(id,  ciphersuite.signature_scheme()).unwrap();
     let kpb =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
 

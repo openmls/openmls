@@ -1,6 +1,6 @@
 use crate::{
     ciphersuite::Ciphersuite,
-    credentials::{CredentialBundle, CredentialType},
+    credentials::{BasicCredentialBundle, CredentialBundle},
     group::ManagedGroupConfig,
     node::{Node, NodeType},
     prelude::{KeyPackageBundle, LeafIndex},
@@ -18,12 +18,8 @@ fn test_trim() {
     for number_of_leaves in tree_sizes {
         println!("number of leaves: {:?}", number_of_leaves);
         for i in 0..number_of_leaves {
-            let credential_bundle = CredentialBundle::new(
-                vec![i as u8],
-                CredentialType::Basic,
-                ciphersuite.signature_scheme(),
-            )
-            .unwrap();
+            let credential_bundle =
+                BasicCredentialBundle::new(vec![i as u8], ciphersuite.signature_scheme()).unwrap();
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
 

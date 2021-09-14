@@ -10,7 +10,7 @@ impl MlsGroup {
     pub(crate) fn create_commit_internal(
         &self,
         aad: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         proposals_by_reference: &[&MlsPlaintext],
         proposals_by_value: &[&Proposal],
         force_self_update: bool,

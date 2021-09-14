@@ -56,7 +56,7 @@ fn test_application_message_encoding() {
 
     // Create a message in each group and test the padding.
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_bundle = alice
+        let credential_bundle = &**alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
             .unwrap();
@@ -65,7 +65,7 @@ fn test_application_message_encoding() {
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
-                .create_application_message(&aad, &message, &credential_bundle, 0)
+                .create_application_message(&aad, &message, credential_bundle, 0)
                 .unwrap();
             let encrypted_message_bytes = encrypted_message.tls_serialize_detached().unwrap();
             let encrypted_message_decoded =
@@ -86,7 +86,7 @@ fn test_update_proposal_encoding() {
     let alice = test_clients.get("alice").unwrap().borrow();
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_bundle = alice
+        let credential_bundle = &**alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
             .unwrap();
@@ -137,7 +137,7 @@ fn test_add_proposal_encoding() {
     let alice = test_clients.get("alice").unwrap().borrow();
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_bundle = alice
+        let credential_bundle = &**alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
             .unwrap();
@@ -189,7 +189,7 @@ fn test_remove_proposal_encoding() {
     let alice = test_clients.get("alice").unwrap().borrow();
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_bundle = alice
+        let credential_bundle = &**alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
             .unwrap();
@@ -221,7 +221,7 @@ fn test_commit_encoding() {
     let alice = test_clients.get("alice").unwrap().borrow();
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let alice_credential_bundle = alice
+        let alice_credential_bundle = &**alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
             .unwrap();
@@ -294,7 +294,7 @@ fn test_welcome_message_encoding() {
     let alice = test_clients.get("alice").unwrap().borrow();
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_bundle = alice
+        let credential_bundle = &**alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
             .unwrap();

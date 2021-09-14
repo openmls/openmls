@@ -80,7 +80,7 @@
 use crate::{
     ciphersuite::Ciphersuite,
     config::{Config, ProtocolVersion},
-    credentials::{CredentialBundle, CredentialType},
+    credentials::CredentialBundle,
     framing::*,
     group::*,
     key_packages::KeyPackageBundle,
@@ -130,13 +130,10 @@ pub struct EncryptionTestVector {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
-    let credential_bundle = CredentialBundle::new(
-        "Kreator".into(),
-        CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
-    )
-    .unwrap();
+fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, BasicCredentialBundle) {
+    let credential_bundle =
+        BasicCredentialBundle::new("Kreator".into(), SignatureScheme::from(ciphersuite.name()))
+            .unwrap();
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
     let group_id = [1, 2, 3, 4];
@@ -156,12 +153,9 @@ fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
 
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
-    let credential_bundle = CredentialBundle::new(
-        "Receiver".into(),
-        CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
-    )
-    .unwrap();
+    let credential_bundle =
+        BasicCredentialBundle::new("Receiver".into(), SignatureScheme::from(ciphersuite.name()))
+            .unwrap();
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
     MlsGroup::new(
@@ -180,7 +174,7 @@ fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
 fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
-    credential_bundle: &CredentialBundle,
+    credential_bundle: &(impl CredentialBundle + ?Sized),
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -220,7 +214,7 @@ fn build_handshake_messages(
 fn build_application_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
-    credential_bundle: &CredentialBundle,
+    credential_bundle: &(impl CredentialBundle + ?Sized),
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 

@@ -36,7 +36,7 @@ pub(crate) struct TestSetupConfig {
 
 /// A client in a test setup.
 pub(crate) struct TestClient {
-    pub(crate) credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
+    pub(crate) credential_bundles: HashMap<CiphersuiteName, Box<dyn CredentialBundle>>,
     pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
     pub(crate) group_states: RefCell<HashMap<GroupId, MlsGroup>>,
 }
@@ -72,15 +72,14 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
     // Initialize the clients for which we have configurations.
     for client in config.clients {
         // Set up the client
-        let mut credential_bundles = HashMap::new();
+        let mut credential_bundles = HashMap::<CiphersuiteName, Box<dyn CredentialBundle>>::new();
         let mut key_package_bundles = Vec::new();
         // This currently creates a credential bundle per ciphersuite, (not per
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
             // Create a credential_bundle for the given ciphersuite.
-            let credential_bundle = CredentialBundle::new(
+            let credential_bundle = BasicCredentialBundle::new(
                 client.name.as_bytes().to_vec(),
-                CredentialType::Basic,
                 SignatureScheme::from(ciphersuite),
             )
             .unwrap();
@@ -104,7 +103,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // Register the freshly created KeyPackages in the KeyStore.
             key_store.insert((client.name, ciphersuite), key_packages);
             // Store the credential bundle.
-            credential_bundles.insert(ciphersuite, credential_bundle);
+            let b = Box::new(credential_bundle);
+            credential_bundles.insert(ciphersuite, b);
         }
         // Create the client.
         let test_client = TestClient {
@@ -179,7 +179,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 let add_proposal = mls_group
                     .create_add_proposal(
                         group_aad,
-                        initial_credential_bundle,
+                        &**initial_credential_bundle,
                         next_member_key_package,
                     )
                     .unwrap();
@@ -190,7 +190,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
                 .create_commit(
                     group_aad,
-                    &initial_credential_bundle,
+                    &**initial_credential_bundle,
                     &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                     &[],
                     true, /* Set this to true to populate the tree a little bit. */

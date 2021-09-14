@@ -80,27 +80,15 @@ fn managed_group_operations() {
 
             // Generate credential bundles
             let alice_credential = key_store
-                .generate_credential_bundle(
-                    "Alice".into(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_scheme(),
-                )
+                .generate_basic_credential_bundle("Alice".into(), ciphersuite.signature_scheme())
                 .unwrap();
 
             let bob_credential = key_store
-                .generate_credential_bundle(
-                    "Bob".into(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_scheme(),
-                )
+                .generate_basic_credential_bundle("Bob".into(), ciphersuite.signature_scheme())
                 .unwrap();
 
             let charlie_credential = key_store
-                .generate_credential_bundle(
-                    "Charlie".into(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_scheme(),
-                )
+                .generate_basic_credential_bundle("Charlie".into(), ciphersuite.signature_scheme())
                 .unwrap();
 
             // Generate KeyPackages
@@ -691,11 +679,7 @@ fn test_empty_input_errors() {
 
     // Generate credential bundles
     let alice_credential = key_store
-        .generate_credential_bundle(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
+        .generate_basic_credential_bundle("Alice".into(), ciphersuite.signature_scheme())
         .unwrap();
 
     // Generate KeyPackages
@@ -760,19 +744,11 @@ fn managed_group_ratchet_tree_extension() {
 
             // Generate credential bundles
             let alice_credential = key_store
-                .generate_credential_bundle(
-                    "Alice".into(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_scheme(),
-                )
+                .generate_basic_credential_bundle("Alice".into(), ciphersuite.signature_scheme())
                 .unwrap();
 
             let bob_credential = key_store
-                .generate_credential_bundle(
-                    "Bob".into(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_scheme(),
-                )
+                .generate_basic_credential_bundle("Bob".into(), ciphersuite.signature_scheme())
                 .unwrap();
 
             // Generate KeyPackages
@@ -820,19 +796,11 @@ fn managed_group_ratchet_tree_extension() {
 
             // Generate credential bundles
             let alice_credential = key_store
-                .generate_credential_bundle(
-                    "Alice".into(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_scheme(),
-                )
+                .generate_basic_credential_bundle("Alice".into(), ciphersuite.signature_scheme())
                 .unwrap();
 
             let bob_credential = key_store
-                .generate_credential_bundle(
-                    "Bob".into(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_scheme(),
-                )
+                .generate_basic_credential_bundle("Bob".into(), ciphersuite.signature_scheme())
                 .unwrap();
 
             // Generate KeyPackages

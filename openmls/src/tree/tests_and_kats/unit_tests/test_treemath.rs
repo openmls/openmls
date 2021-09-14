@@ -31,8 +31,7 @@ fn test_dir_path() {
 fn test_tree_hash() {
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
         let signature_scheme = SignatureScheme::from(ciphersuite_name);
-        let credential_bundle =
-            CredentialBundle::new(id.to_vec(), CredentialType::Basic, signature_scheme).unwrap();
+        let credential_bundle = BasicCredentialBundle::new(id.to_vec(), signature_scheme).unwrap();
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap()
     }
 

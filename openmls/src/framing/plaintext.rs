@@ -119,7 +119,7 @@ impl MlsPlaintext {
         authenticated_data: &[u8],
         payload: MlsPlaintextContentType,
         content_type: ContentType,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         context: &GroupContext,
     ) -> Result<Self, MlsPlaintextError> {
         let serialized_context = context.tls_serialize_detached()?;
@@ -142,7 +142,7 @@ impl MlsPlaintext {
         authenticated_data: &[u8],
         payload: MlsPlaintextContentType,
         content_type: ContentType,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         context: &GroupContext,
         membership_key: &MembershipKey,
     ) -> Result<Self, MlsPlaintextError> {
@@ -164,7 +164,7 @@ impl MlsPlaintext {
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         proposal: Proposal,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         context: &GroupContext,
         membership_key: &MembershipKey,
     ) -> Result<Self, MlsPlaintextError> {
@@ -185,7 +185,7 @@ impl MlsPlaintext {
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         commit: Commit,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         context: &GroupContext,
     ) -> Result<Self, MlsPlaintextError> {
         Self::new(
@@ -204,7 +204,7 @@ impl MlsPlaintext {
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         context: &GroupContext,
         membership_key: &MembershipKey,
     ) -> Result<Self, MlsPlaintextError> {

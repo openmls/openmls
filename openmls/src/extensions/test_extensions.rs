@@ -84,15 +84,13 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let group_aad = b"Alice's test group";
 
     // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
+    let alice_credential_bundle = BasicCredentialBundle::new(
         "Alice".into(),
-        CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
     .unwrap();
-    let bob_credential_bundle = CredentialBundle::new(
+    let bob_credential_bundle = BasicCredentialBundle::new(
         "Bob".into(),
-        CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
     .unwrap();

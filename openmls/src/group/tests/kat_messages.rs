@@ -50,9 +50,8 @@ pub struct MessagesTestVector {
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
     let ciphersuite_name = ciphersuite.name();
-    let credential_bundle = CredentialBundle::new(
+    let credential_bundle = BasicCredentialBundle::new(
         b"OpenMLS rocks".to_vec(),
-        CredentialType::Basic,
         SignatureScheme::from(ciphersuite_name),
     )
     .unwrap();

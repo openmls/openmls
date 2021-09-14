@@ -142,7 +142,7 @@ impl MlsGroup {
     pub fn create_add_proposal(
         &self,
         aad: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         joiner_key_package: KeyPackage,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let add_proposal = AddProposal {
@@ -167,7 +167,7 @@ impl MlsGroup {
     pub fn create_update_proposal(
         &self,
         aad: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         key_package: KeyPackage,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let update_proposal = UpdateProposal { key_package };
@@ -190,7 +190,7 @@ impl MlsGroup {
     pub fn create_remove_proposal(
         &self,
         aad: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         removed_index: LeafIndex,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let remove_proposal = RemoveProposal {
@@ -215,7 +215,7 @@ impl MlsGroup {
     pub fn create_presharedkey_proposal(
         &self,
         aad: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         psk: PreSharedKeyId,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
@@ -243,7 +243,7 @@ impl MlsGroup {
     pub fn create_commit(
         &self,
         aad: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         proposals_by_reference: &[&MlsPlaintext],
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
@@ -280,7 +280,7 @@ impl MlsGroup {
         &mut self,
         aad: &[u8],
         msg: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         padding_size: usize,
     ) -> Result<MlsCiphertext, MlsGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
@@ -431,7 +431,7 @@ impl MlsGroup {
     /// Export the `PublicGroupState`
     pub fn export_public_group_state(
         &self,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
     ) -> Result<PublicGroupState, CredentialError> {
         PublicGroupState::new(self, credential_bundle)
     }

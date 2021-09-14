@@ -11,7 +11,7 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret, SignatureScheme},
     config::{Config, ProtocolVersion},
-    credentials::{Credential, CredentialBundle, CredentialType},
+    credentials::{BasicCredentialBundle, Credential, CredentialBundle},
     group::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
         GroupId,
@@ -59,9 +59,8 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         ConfirmationKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
 
     // Build plaintext commit message.
-    let credential_bundle = CredentialBundle::new(
+    let credential_bundle = BasicCredentialBundle::new(
         b"client".to_vec(),
-        CredentialType::Basic,
         SignatureScheme::from(ciphersuite.name()),
     )
     .unwrap();

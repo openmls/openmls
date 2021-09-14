@@ -218,7 +218,7 @@ impl KeyPackage {
     fn new(
         ciphersuite_name: CiphersuiteName,
         hpke_init_key: HpkePublicKey,
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
         if SignatureScheme::from(ciphersuite_name)
@@ -366,7 +366,7 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle` or a `KeyPackageError`.
     pub fn new(
         ciphersuites: &[CiphersuiteName],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
         Self::new_with_version(
@@ -388,7 +388,7 @@ impl KeyPackageBundle {
     pub fn new_with_version(
         version: ProtocolVersion,
         ciphersuites: &[CiphersuiteName],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
         if SignatureScheme::from(ciphersuites[0])
@@ -417,7 +417,7 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuites: &[CiphersuiteName],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         mut extensions: Vec<Extension>,
         key_pair: HpkeKeyPair,
         leaf_secret: Secret,
@@ -508,7 +508,7 @@ impl KeyPackageBundle {
 impl KeyPackageBundle {
     fn new_from_leaf_secret(
         ciphersuites: &[CiphersuiteName],
-        credential_bundle: &CredentialBundle,
+        credential_bundle: &(impl CredentialBundle + ?Sized),
         extensions: Vec<Extension>,
         leaf_secret: Secret,
     ) -> Result<Self, KeyPackageError> {

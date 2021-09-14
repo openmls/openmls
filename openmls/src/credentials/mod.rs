@@ -142,12 +142,12 @@ fn test_protocol_version() {
 /// This struct contains a credential and the corresponding private key.
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct CredentialBundle {
+pub struct CredentialBundleOld {
     credential: Credential,
     signature_private_key: SignaturePrivateKey,
 }
 
-impl CredentialBundle {
+impl CredentialBundleOld {
     /// Create a new `CredentialBundle` of the given credential type for the
     /// given identity and ciphersuite. The corresponding `SignatureKeyPair` is
     /// freshly generated.
@@ -169,7 +169,7 @@ impl CredentialBundle {
             credential_type,
             credential: MlsCredentialType::Basic(mls_credential),
         };
-        Ok(CredentialBundle {
+        Ok(CredentialBundleOld {
             credential,
             signature_private_key: private_key,
         })
@@ -181,6 +181,68 @@ impl CredentialBundle {
 
     /// Sign a `msg` using the private key of the credential bundle.
     pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError> {
+        self.signature_private_key.sign(msg)
+    }
+}
+
+/// This struct contains a credential and the corresponding private key.
+pub trait CredentialBundle: core::fmt::Debug {
+    /// Create a new `CredentialBundle` of the given credential type for the
+    /// given identity and ciphersuite. The corresponding `SignatureKeyPair` is
+    /// freshly generated.
+    fn new(identity: Vec<u8>, signature_scheme: SignatureScheme) -> Result<Self, CredentialError>
+    where
+        Self: Sized;
+    /// Return the credential of the credential bundle.
+    fn credential(&self) -> &Credential;
+    /// Sign a `msg` using the private key of the credential bundle.
+    fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError>;
+}
+
+#[derive(Debug)]
+pub struct BasicCredentialBundle {
+    credential: Credential,
+    signature_private_key: SignaturePrivateKey,
+}
+
+impl BasicCredentialBundle {
+    pub fn new_from_values(
+        identity: Vec<u8>,
+        signature_scheme: SignatureScheme,
+        private_key: SignaturePrivateKey,
+        public_key: SignaturePublicKey,
+    ) -> Self {
+        let basic_credential = BasicCredential {
+            identity: identity.into(),
+            signature_scheme,
+            public_key,
+        };
+        Self {
+            credential: Credential {
+                credential_type: CredentialType::Basic,
+                credential: MlsCredentialType::Basic(basic_credential),
+            },
+            signature_private_key: private_key,
+        }
+    }
+}
+
+impl CredentialBundle for BasicCredentialBundle {
+    fn new(identity: Vec<u8>, signature_scheme: SignatureScheme) -> Result<Self, CredentialError> {
+        let (private_key, public_key) = signature_scheme.new_keypair()?.into_tuple();
+        Ok(Self::new_from_values(
+            identity,
+            signature_scheme,
+            private_key,
+            public_key,
+        ))
+    }
+
+    fn credential(&self) -> &Credential {
+        &self.credential
+    }
+
+    fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError> {
         self.signature_private_key.sign(msg)
     }
 }

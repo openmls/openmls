@@ -12,12 +12,8 @@ use crate::{
 #[test]
 fn codec() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let credential_bundle = CredentialBundle::new(
-            vec![7, 8, 9],
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let credential_bundle =
+            BasicCredentialBundle::new(vec![7, 8, 9], ciphersuite.signature_scheme()).unwrap();
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),
@@ -54,12 +50,8 @@ fn codec() {
 #[test]
 fn membership_tag() {
     for ciphersuite in Config::supported_ciphersuites() {
-        let credential_bundle = CredentialBundle::new(
-            vec![7, 8, 9],
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let credential_bundle =
+            BasicCredentialBundle::new(vec![7, 8, 9], ciphersuite.signature_scheme()).unwrap();
         let group_context =
             GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
         let membership_key =
@@ -68,7 +60,7 @@ fn membership_tag() {
             LeafIndex::from(2u32),
             &[1, 2, 3],
             &[4, 5, 6],
-            &&credential_bundle,
+            &credential_bundle,
             &group_context,
             &membership_key,
         )
@@ -102,24 +94,12 @@ fn unknown_sender() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let charlie_credential_bundle = CredentialBundle::new(
-            "Charlie".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
+        let charlie_credential_bundle =
+            BasicCredentialBundle::new("Charlie".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Generate KeyPackages
         let bob_key_package_bundle =
@@ -311,18 +291,10 @@ fn confirmation_tag_presence() {
         let group_aad = b"Alice's test group";
 
         // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+        let alice_credential_bundle =
+            BasicCredentialBundle::new("Alice".into(), ciphersuite.signature_scheme()).unwrap();
+        let bob_credential_bundle =
+            BasicCredentialBundle::new("Bob".into(), ciphersuite.signature_scheme()).unwrap();
 
         // Generate KeyPackages
         let bob_key_package_bundle =
@@ -381,15 +353,13 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let group_aad = b"Alice's test group";
 
     // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
+    let alice_credential_bundle = BasicCredentialBundle::new(
         "Alice".into(),
-        CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
     .unwrap();
-    let bob_credential_bundle = CredentialBundle::new(
+    let bob_credential_bundle = BasicCredentialBundle::new(
         "Bob".into(),
-        CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
     .unwrap();
