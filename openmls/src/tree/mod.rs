@@ -194,6 +194,7 @@ impl RatchetTree {
                 node.unwrap()
                     .unmerged_leaves()
                     .iter()
+                    .filter(|resolution_node| !exclusion_list.contains(resolution_node))
                     .map(|&n| NodeIndex::from(n)),
             );
             resolution
