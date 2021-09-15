@@ -566,6 +566,7 @@ impl Signature {
     pub(crate) fn der_decode(&self) -> Result<Vec<u8>, SignatureError> {
         // A small closure to decode a single scalar and pad it with leading
         // zeroes until it's `SCALAR_SIZE` bytes long.
+        // TODO: Use Read trait for this whole thing.
         fn decode_scalar(mut buffer: &[u8]) -> Result<Vec<u8>, SignatureError> {
             // Check header bytes of encoded scalar.
             // 1 byte INTEGER tag should be 0x02
@@ -573,7 +574,8 @@ impl Signature {
             // up to 1 byte indicating if the integer is signed should be 0x00 if the leading bit of the scalar is not zero.
             let integer_tag = buffer.get(0).ok_or(SignatureError::DecodingError)?;
             let scalar_length = buffer.get(1).ok_or(SignatureError::DecodingError)?;
-            if *integer_tag != 0x20 || !(*scalar_length >= 0x20 && *scalar_length <= 0x21) {
+            if *integer_tag != 0x02 {
+                // check that length is within range
                 return Err(SignatureError::DecodingError);
             };
             // Get the next byte. This is either the indicator byte that the
@@ -611,7 +613,10 @@ impl Signature {
 
         // Check header bytes:
         // 1 byte SEQUENCE tag should be 0x30
-        // 2 byte length field should be 0x44, 0x45 or 0x46 depending on the values of the scalars.
+        // up to 2 byte length field encoding the length of the scalars.
+
+        // either 1 byte (short form) or at least three bytes, with two bytes encoding the length of the length field plus the length field itself (long form)
+        // since we only encode two unsigned integers we will always use the short form
         let signature_bytes = self.value.as_slice();
         let sequence_tag = signature_bytes
             .get(0)
