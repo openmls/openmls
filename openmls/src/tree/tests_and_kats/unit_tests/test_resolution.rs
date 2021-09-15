@@ -183,8 +183,8 @@ fn test_original_child_resolution() {
     }
 }
 
-/// Test the `original_child_resolution` function that is used to calculate
-/// parent hashes
+/// Test if unmerged leaves are properly excluded when computing the parent hash
+/// of a parent node higher up in the tree.
 #[test]
 fn test_exclusion_for_parent_nodes() {
     // Create a large tree members.
@@ -239,9 +239,12 @@ fn test_exclusion_for_parent_nodes() {
 
     let addees = setup.random_new_members_for_group(group, 1).unwrap();
 
-    // The invalid parent hash of the right child of the root should be noticed
-    // by the added member when it verifies the Welcome message.
+    // We now add a new client to the group. Upon receiving the new message, the
+    // client will check the parent hash of all nodes in the tree as mandated by
+    // the spec and thus notice an invalid parent hash of the right child of the
+    // root. If there is an error, it will be bubbled up by the test framework,
+    // triggering the `expect` and thus failing the test.
     setup
         .add_clients(ActionType::Commit, group, &group_creator_id, addees)
-        .unwrap();
+        .expect("Error when adding new client to group.")
 }
