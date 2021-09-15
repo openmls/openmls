@@ -193,7 +193,7 @@ fn test_exclusion_for_parent_nodes() {
     // We need 16 clients, such that we can create a group with 16 members. 16
     // members means that we have two layers between the root and the leaves.
     let number_of_clients = 16;
-    let setup = ManagedTestSetup::new(managed_group_config.clone(), number_of_clients);
+    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
 
     let group_id = setup.create_group(Ciphersuite::default()).unwrap();
 
