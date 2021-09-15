@@ -6,7 +6,6 @@
 use log::error;
 
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
-use der::{asn1::UIntBytes, Decodable};
 use evercrypt::prelude::{
     aead_decrypt, aead_encrypt, aead_key_size, aead_tag_size, digest_size, hash, hkdf_expand,
     hkdf_extract, p256_ecdsa_random_nonce, random_array, random_vec, sign, signature_key_gen,
@@ -564,25 +563,84 @@ impl Signature {
     /// This function takes a DER encoded ECDSA signature and decodes it to the
     /// bytes representing the concatenated scalars. If the decoding fails, it
     /// will throw a `der::Error`.
-    pub(crate) fn der_decode(&self) -> Result<Vec<u8>, der::Error> {
+    pub(crate) fn der_decode(&self) -> Result<Vec<u8>, SignatureError> {
         // A small closure to decode a single scalar and pad it with leading
         // zeroes until it's `SCALAR_SIZE` bytes long.
-        let decode_scalar = |decoder: &mut der::Decoder| -> Result<Vec<u8>, der::Error> {
-            let decoded_scalar = UIntBytes::decode(decoder)?;
-            let decoded_scalar_len: usize = decoded_scalar.len().try_into()?;
+        fn decode_scalar(mut buffer: &[u8]) -> Result<Vec<u8>, SignatureError> {
+            // Check header bytes of encoded scalar.
+            // 1 byte INTEGER tag should be 0x02
+            // 1 byte length tag should be between 0x20 or 0x21
+            // up to 1 byte indicating if the integer is signed should be 0x00 if the leading bit of the scalar is not zero.
+            let integer_tag = buffer.get(0).ok_or(SignatureError::DecodingError)?;
+            let scalar_length = buffer.get(1).ok_or(SignatureError::DecodingError)?;
+            if *integer_tag != 0x20 || !(*scalar_length >= 0x20 && *scalar_length <= 0x21) {
+                return Err(SignatureError::DecodingError);
+            };
+            // Get the next byte. This is either the indicator byte that the
+            // scalar is signed or the first byte of the scalar itself.
+            let next_byte = buffer.get(2).ok_or(SignatureError::DecodingError)?;
+            // Check if it's an explicit indicator byte
+            let explicitly_signed = if *next_byte == 0x00 {
+                true
+            } else if next_byte & 1000u8 == 0000u8 {
+                // If that is not the case, it's the scalar's first byte and the first bit needs to be zero.
+                false
+            } else {
+                // If neither is the case, the encoding is invalid.
+                return Err(SignatureError::DecodingError);
+            };
+            // If we have an explicitly signed scalar, we ignore the signing
+            // byte to make sure the scalar is still within the 32 byte length.
+            let scalar_index = if explicitly_signed { 3 } else { 2 };
+            let scalar = buffer
+                // We can safely convert to usize here, because we checked that
+                // scalar length is between 0x20 and 0x21. This will yield an
+                // error if the given slice is not long enough.
+                .get(scalar_index..*scalar_length as usize)
+                .ok_or(SignatureError::DecodingError)?;
             // The verification algorithm expects the scalars to be 32 bytes
-            // long, buffered with zeroes.
-            let mut padded_scalar = vec![0u8; SCALAR_SIZE - decoded_scalar_len];
-            padded_scalar.extend_from_slice(decoded_scalar.as_bytes());
-            Ok(padded_scalar)
-        };
+            // long, buffered with zeroes. We can safely convert to usize here,
+            // because we checked that scalar length is between 0x20 and 0x21
+            let mut padded_scalar = vec![0u8; SCALAR_SIZE - *scalar_length as usize];
+            padded_scalar.extend_from_slice(scalar);
 
-        let mut out = Vec::with_capacity(2 * SCALAR_SIZE + MAX_DER_OVERHEAD);
-        let (r, s) = der::Decoder::new(self.value.as_slice()).sequence(|decoder| {
-            let r_decoded = decode_scalar(decoder)?;
-            let s_decoded = decode_scalar(decoder)?;
-            Ok((r_decoded, s_decoded))
-        })?;
+            // TODO: Before we return, we have to truncate the used bytes from
+            // the buffer.
+            Ok(padded_scalar)
+        }
+
+        // Check header bytes:
+        // 1 byte SEQUENCE tag should be 0x30
+        // 2 byte length field should be 0x44, 0x45 or 0x46 depending on the values of the scalars.
+        let signature_bytes = self.value.as_slice();
+        let sequence_tag = signature_bytes
+            .get(0)
+            .ok_or(SignatureError::DecodingError)?;
+        let length_bytes = signature_bytes
+            .get(1..2)
+            .ok_or(SignatureError::DecodingError)?
+            .try_into()
+            .map_err(|_| SignatureError::DecodingError)?;
+        let length = usize::from_be_bytes(length_bytes);
+        if *sequence_tag != 0x30 || !(length >= 0x44 && length <= 0x46) {
+            return Err(SignatureError::InvalidSignature);
+        };
+        // The remainaing bytes taken up by the two encoded scalars.
+        let scalar_bytes = signature_bytes
+            .get(3..)
+            .ok_or(SignatureError::DecodingError)?;
+        // Check if the overall length corresponds to the value in the length
+        // field.
+        if length != scalar_bytes.len() {
+            return Err(SignatureError::DecodingError);
+        }
+
+        //TODO: Check that the overall length fits and then pass the
+        // scalars to the scalar decoding function.
+        let r = decode_scalar(scalar_bytes)?;
+        let s = decode_scalar(scalar_bytes)?;
+
+        let mut out = Vec::with_capacity(2 * SCALAR_SIZE);
         out.extend_from_slice(&r);
         out.extend_from_slice(&s);
         Ok(out)
