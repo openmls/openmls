@@ -21,11 +21,11 @@ typetag = "0.1"
 itertools = {version = "0.10", optional = true}
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
 hpke = { version = "0.0.10", package = "hpke-rs", features = ["hazmat", "serialization"] }
-evercrypt = { version = "0.0.10", features = ["serialization"] }
+evercrypt = { version = "0.0.10", features = ["serialization"], optional = true }
 
 [features]
-default = ["rust-crypto"]
-rust-crypto = ["evercrypt/rust-crypto-aes"]
+# default = ["evercrypt"]
+# rust-crypto = ["evercrypt/rust-crypto-aes"]
 test-utils = ["itertools"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
