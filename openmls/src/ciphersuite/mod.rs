@@ -570,14 +570,19 @@ impl Signature {
             // Check header bytes of encoded scalar.
 
             // 1 byte INTEGER tag should be 0x02
-            let integer_tag = buffer.read_u8()?;
+            let integer_tag = buffer
+                .read_u8()
+                .map_err(|_| SignatureError::DecodingError)?;
             if integer_tag != INTEGER_TAG {
                 return Err(SignatureError::DecodingError);
             };
 
             // 1 byte length tag should be at most 0x21, i.e. 32 plus at most 1
             // byte indicating that the integer is unsigned.
-            let mut scalar_length = buffer.read_u8()? as usize;
+            let mut scalar_length = buffer
+                .read_u8()
+                .map_err(|_| SignatureError::DecodingError)?
+                as usize;
             if scalar_length > P256_SCALAR_LENGTH + 1 {
                 return Err(SignatureError::DecodingError);
             };
@@ -587,7 +592,11 @@ impl Signature {
             // this byte safely. If it's not 0x00, the scalar is too large not
             // thus not a valid point on the curve.
             if scalar_length == P256_SCALAR_LENGTH + 1 {
-                if buffer.read_u8()? != 0x00 {
+                if buffer
+                    .read_u8()
+                    .map_err(|_| SignatureError::DecodingError)?
+                    != 0x00
+                {
                     return Err(SignatureError::DecodingError);
                 };
                 // Since we just read that byte, we decrease the length by 1.
@@ -595,7 +604,9 @@ impl Signature {
             };
 
             let mut scalar = vec![0; scalar_length];
-            buffer.read_exact(&mut scalar)?;
+            buffer
+                .read_exact(&mut scalar)
+                .map_err(|_| SignatureError::DecodingError)?;
 
             // The scalar should have the right length.
             if scalar.len() != scalar_length {
@@ -614,7 +625,9 @@ impl Signature {
 
         // Check header bytes:
         // 1 byte SEQUENCE tag should be 0x30
-        let sequence_tag = signature_bytes.read_u8()?;
+        let sequence_tag = signature_bytes
+            .read_u8()
+            .map_err(|_| SignatureError::DecodingError)?;
         if sequence_tag != SEQUENCE_TAG {
             return Err(SignatureError::DecodingError);
         };
@@ -624,7 +637,9 @@ impl Signature {
         // expect the length not to exceed the maximum length of 70: Two times
         // at most 32 (scalar value) + 1 byte integer tag + 1 byte length tag +
         // at most 1 byte to indicating that the integer is unsigned.
-        let length = signature_bytes.read_u8()? as usize;
+        let length = signature_bytes
+            .read_u8()
+            .map_err(|_| SignatureError::DecodingError)? as usize;
         if length > 2 * (P256_SCALAR_LENGTH + 3) {
             return Err(SignatureError::DecodingError);
         }
@@ -653,26 +668,42 @@ impl Signature {
             let mut scalar_uint: Vec<u8> = Vec::with_capacity(P256_SCALAR_LENGTH + 1);
 
             // Remove prepending zeros
-            let mut msb = scalar.read_u8()?;
+            let mut msb = scalar
+                .read_u8()
+                .map_err(|_| SignatureError::EncodingError)?;
             while msb == 0x00 {
-                msb = scalar.read_u8()?;
+                msb = scalar
+                    .read_u8()
+                    .map_err(|_| SignatureError::EncodingError)?;
             }
 
             // If the most significant bit is 1, we have to prepend 0x00 to indicate
             // that the integer is unsigned.
             if msb > 0x7F {
-                scalar_uint.write_u8(0x00)?;
+                scalar_uint
+                    .write_u8(0x00)
+                    .map_err(|_| SignatureError::EncodingError)?;
             };
 
-            scalar_uint.write_u8(msb)?;
-            scalar_uint.write_all(scalar)?;
+            scalar_uint
+                .write_u8(msb)
+                .map_err(|_| SignatureError::EncodingError)?;
+            scalar_uint
+                .write_all(scalar)
+                .map_err(|_| SignatureError::EncodingError)?;
 
             let mut encoded_scalar: Vec<u8> = Vec::with_capacity(P256_SCALAR_LENGTH + 3);
             // The encoded scalar needs to start with integer tag.
-            encoded_scalar.write_u8(INTEGER_TAG)?;
+            encoded_scalar
+                .write_u8(INTEGER_TAG)
+                .map_err(|_| SignatureError::EncodingError)?;
             // This is safe, as we know that r is at most 33 bytes long.
-            encoded_scalar.write_u8(scalar_uint.len() as u8)?;
-            encoded_scalar.write_all(&scalar_uint)?;
+            encoded_scalar
+                .write_u8(scalar_uint.len() as u8)
+                .map_err(|_| SignatureError::EncodingError)?;
+            encoded_scalar
+                .write_all(&scalar_uint)
+                .map_err(|_| SignatureError::EncodingError)?;
 
             Ok(encoded_scalar)
         }
@@ -686,10 +717,18 @@ impl Signature {
 
         let total_length = r_encoded.len() + s_encoded.len();
         let mut encoded_signature: Vec<u8> = Vec::with_capacity(2 + 2 * (P256_SCALAR_LENGTH + 3));
-        encoded_signature.write_u8(SEQUENCE_TAG)?;
-        encoded_signature.write_u8(total_length as u8)?;
-        encoded_signature.write_all(&r_encoded)?;
-        encoded_signature.write_all(&s_encoded)?;
+        encoded_signature
+            .write_u8(SEQUENCE_TAG)
+            .map_err(|_| SignatureError::EncodingError)?;
+        encoded_signature
+            .write_u8(total_length as u8)
+            .map_err(|_| SignatureError::EncodingError)?;
+        encoded_signature
+            .write_all(&r_encoded)
+            .map_err(|_| SignatureError::EncodingError)?;
+        encoded_signature
+            .write_all(&s_encoded)
+            .map_err(|_| SignatureError::EncodingError)?;
 
         Ok(Signature {
             value: encoded_signature.into(),

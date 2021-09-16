@@ -54,9 +54,3 @@ impl From<EvercryptSignatureError> for SignatureError {
         }
     }
 }
-
-impl From<std::io::Error> for SignatureError {
-    fn from(_: std::io::Error) -> Self {
-        SignatureError::InvalidSignature
-    }
-}
