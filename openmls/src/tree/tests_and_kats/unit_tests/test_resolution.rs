@@ -1,4 +1,8 @@
-use crate::tree::*;
+use crate::{
+    group::ManagedGroupConfig,
+    test_utils::test_framework::{ActionType, ManagedTestSetup},
+    tree::*,
+};
 
 /// This test makes sure the filtering of the exclusion list during resolution
 /// works as intended.
@@ -177,4 +181,70 @@ fn test_original_child_resolution() {
             expected_public_keys_filtered
         );
     }
+}
+
+/// Test if unmerged leaves are properly excluded when computing the parent hash
+/// of a parent node higher up in the tree.
+#[test]
+fn test_exclusion_for_parent_nodes() {
+    // Create a large tree members.
+    let managed_group_config = ManagedGroupConfig::test_default();
+
+    // We need 16 clients, such that we can create a group with 16 members. 16
+    // members means that we have two layers between the root and the leaves.
+    let number_of_clients = 16;
+    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+
+    let group_id = setup.create_group(Ciphersuite::default()).unwrap();
+
+    let mut groups = setup.groups.borrow_mut();
+    let group = groups.get_mut(&group_id).unwrap();
+
+    let (_, group_creator_id) = group.members.first().unwrap().clone();
+
+    // We add 16 - 2 = 14 members such that we have a group of 15. We add the
+    // last member manually later.
+    let addees = setup
+        .random_new_members_for_group(group, number_of_clients - 2)
+        .unwrap();
+
+    // Have one client add all the other clients, such that only the direct path
+    // of the group creator is non-blank.
+    setup
+        .add_clients(ActionType::Commit, group, &group_creator_id, addees)
+        .unwrap();
+
+    // Now we have two clients in the right tree half do an update. This is such
+    // that the right child of the root has two children that are full nodes. It
+    // is important that the member beneath the left child of the right child of
+    // the root updates second. This is so that the left child has the parent
+    // hash of the right child of the root.
+    let (_, updater_id) = group.members[12].clone();
+
+    setup
+        .self_update(ActionType::Commit, group, &updater_id, None)
+        .unwrap();
+
+    let (_, updater_id) = group.members[8].clone();
+
+    setup
+        .self_update(ActionType::Commit, group, &updater_id, None)
+        .unwrap();
+
+    // Now we add the final group member, which should lead to an unmerged leaf
+    // being added to the right child of the right child of the root, thus
+    // invalidating the parent hash of the left child of the right child of the
+    // root if the exclusion list is not applied to parent nodes.
+    let (_, group_creator_id) = group.members.first().unwrap().clone();
+
+    let addees = setup.random_new_members_for_group(group, 1).unwrap();
+
+    // We now add a new client to the group. Upon receiving the new message, the
+    // client will check the parent hash of all nodes in the tree as mandated by
+    // the spec and thus notice an invalid parent hash of the right child of the
+    // root. If there is an error, it will be bubbled up by the test framework,
+    // triggering the `expect` and thus failing the test.
+    setup
+        .add_clients(ActionType::Commit, group, &group_creator_id, addees)
+        .expect("Error when adding new client to group.")
 }
