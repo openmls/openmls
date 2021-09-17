@@ -17,7 +17,7 @@ macro_rules! test_welcome_msg {
         fn $name() {
             // We use this dummy group info in all test cases.
             let group_info = GroupInfoPayload::new(
-                GroupId::random(),
+                GroupId::random($ciphersuite),
                 GroupEpoch(123),
                 vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 vec![1, 1, 1],
@@ -41,7 +41,7 @@ macro_rules! test_welcome_msg {
 
             // Generate key and nonce for the symmetric cipher.
             let welcome_key = AeadKey::random($ciphersuite);
-            let welcome_nonce = AeadNonce::random();
+            let welcome_nonce = AeadNonce::random($ciphersuite);
 
             // Generate receiver key pair.
             let receiver_key_pair =

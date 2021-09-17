@@ -13,7 +13,6 @@ use crate::{
     group::{GroupContext, GroupEpoch, GroupId},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
     test_utils::{bytes_to_hex, hex_to_bytes},
-    utils::randombytes,
 };
 
 #[cfg(test)]
@@ -75,7 +74,7 @@ fn generate(
     GroupContext,
     HpkeKeyPair,
 ) {
-    let tree_hash = randombytes(ciphersuite.hash_length());
+    let tree_hash = ciphersuite.randombytes(ciphersuite.hash_length());
     let commit_secret = CommitSecret::random(ciphersuite);
     let psk_secret = PskSecret::random(ciphersuite);
     let joiner_secret = JoinerSecret::new(&commit_secret, init_secret);
@@ -83,7 +82,7 @@ fn generate(
         KeySchedule::init(ciphersuite, joiner_secret.clone(), Some(psk_secret.clone()));
     let welcome_secret = key_schedule.welcome().unwrap();
 
-    let confirmed_transcript_hash = randombytes(ciphersuite.hash_length());
+    let confirmed_transcript_hash = ciphersuite.randombytes(ciphersuite.hash_length());
 
     let group_context = GroupContext::new(
         GroupId::from_slice(group_id),
@@ -125,7 +124,7 @@ pub fn generate_test_vector(
     // Set up setting.
     let mut init_secret = InitSecret::random(ciphersuite, ProtocolVersion::default());
     let initial_init_secret = init_secret.clone();
-    let group_id = randombytes(16);
+    let group_id = ciphersuite.randombytes(16);
 
     let mut epochs = Vec::new();
 

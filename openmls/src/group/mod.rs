@@ -35,9 +35,9 @@ pub struct GroupId {
 }
 
 impl GroupId {
-    pub fn random() -> Self {
+    pub fn random(ciphersuite: &Ciphersuite) -> Self {
         Self {
-            value: randombytes(16).into(),
+            value: ciphersuite.randombytes(16).into(),
         }
     }
     pub fn from_slice(bytes: &[u8]) -> Self {

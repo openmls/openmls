@@ -12,6 +12,8 @@ readme = "README.md"
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }
 rand = "^0.8"
+rand_chacha = "0.3"
+getrandom = "0.2"
 byteorder = "^1.3"
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
@@ -20,12 +22,13 @@ log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 itertools = {version = "0.10", optional = true}
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
+crypto_algorithms = { version = "0.1", git = "https://github.com/franziskuskiefer/algorithm-identifiers-rs" }
 hpke = { version = "0.0.10", package = "hpke-rs", features = ["hazmat", "serialization"] }
 evercrypt = { version = "0.0.10", features = ["serialization"], optional = true }
 
 [features]
-# default = ["evercrypt"]
-# rust-crypto = ["evercrypt/rust-crypto-aes"]
+default = ["rust-crypto"]
+rust-crypto = []
 test-utils = ["itertools"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content

@@ -9,7 +9,6 @@ use crate::{
         index::{LeafIndex, NodeIndex},
         private_tree::*,
     },
-    utils::*,
 };
 
 // Common setup for tests.
@@ -40,7 +39,7 @@ fn test_private_tree(
     let index = direct_path[path_index];
     let public_key = &public_keys[path_index];
     let private_key = private_tree.path_keys().get(index).unwrap();
-    let data = randombytes(55);
+    let data = ciphersuite.randombytes(55);
     let info = b"PrivateTree Test Info";
     let aad = b"PrivateTree Test AAD";
 
