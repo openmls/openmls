@@ -563,7 +563,7 @@ const SEQUENCE_TAG: u8 = 0x30;
 impl Signature {
     /// This function takes a DER encoded ECDSA signature and decodes it to the
     /// bytes representing the concatenated scalars. If the decoding fails, it
-    /// will throw a `der::Error`.
+    /// will throw a `SignatureError`.
     pub(crate) fn der_decode(&self) -> Result<Vec<u8>, SignatureError> {
         // A small function to DER decode a single scalar.
         fn decode_scalar<R: Read>(mut buffer: R) -> Result<Vec<u8>, SignatureError> {
@@ -608,15 +608,10 @@ impl Signature {
                 .read_exact(&mut scalar)
                 .map_err(|_| SignatureError::DecodingError)?;
 
-            // The scalar should have the right length.
-            if scalar.len() != scalar_length {
-                return Err(SignatureError::DecodingError);
-            };
-
             // The verification algorithm expects the scalars to be 32 bytes
             // long, buffered with zeroes.
             let mut padded_scalar = vec![0u8; P256_SCALAR_LENGTH - scalar_length];
-            padded_scalar.extend_from_slice(&scalar);
+            padded_scalar.append(&mut scalar);
 
             Ok(padded_scalar)
         }
@@ -649,12 +644,12 @@ impl Signature {
             return Err(SignatureError::DecodingError);
         }
 
-        let r = decode_scalar(&mut signature_bytes)?;
-        let s = decode_scalar(signature_bytes)?;
+        let mut r = decode_scalar(&mut signature_bytes)?;
+        let mut s = decode_scalar(signature_bytes)?;
 
         let mut out = Vec::with_capacity(2 * P256_SCALAR_LENGTH);
-        out.extend_from_slice(&r);
-        out.extend_from_slice(&s);
+        out.append(&mut r);
+        out.append(&mut s);
         Ok(out)
     }
 
