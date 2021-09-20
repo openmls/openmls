@@ -160,16 +160,69 @@ fn test_der_encoding() {
         .verify(&signature, &payload)
         .expect("error verifying signature");
 
-    // Tamper with the signature such that the encoding is broken and
-    // verification fails due to a decoding error.
-    let mut modified_signature = signature.value.as_slice().to_vec();
-    modified_signature[0] ^= 0xFF;
-    signature.modify(&modified_signature);
+    // Now we tamper with the original signature to make the decoding fail in
+    // various ways.
+
+    let original_bytes = signature.value.as_slice().to_vec();
+
+    // Wrong sequence tag
+    let mut wrong_sequence_tag = original_bytes.clone();
+    wrong_sequence_tag[0] ^= 0xFF;
+    signature.modify(&wrong_sequence_tag);
 
     assert_eq!(
-        keypair
-            .verify(&signature, &payload)
-            .expect_err("error verifying signature"),
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
+
+    // Too long to be valid (bytes will be left over after reading the
+    // signature.)
+    let mut too_long = original_bytes.clone();
+    too_long.extend_from_slice(&original_bytes);
+    signature.modify(&too_long);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
+
+    // Inaccurate length
+    let mut inaccurate_length = original_bytes.clone();
+    inaccurate_length[1] = 0x9F;
+    signature.modify(&inaccurate_length);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
+
+    // Wrong integer tag
+    let mut wrong_integer_tag = original_bytes.clone();
+    wrong_integer_tag[3] ^= 0xFF;
+    signature.modify(&wrong_integer_tag);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
+
+    // Scalar too long overall
+    let mut scalar_too_long = original_bytes.clone();
+    scalar_too_long[4] = 0x9F;
+    signature.modify(&scalar_too_long);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
         SignatureError::DecodingError
     );
 }
