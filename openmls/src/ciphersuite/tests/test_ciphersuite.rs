@@ -204,7 +204,7 @@ fn test_der_encoding() {
 
     // Wrong integer tag
     let mut wrong_integer_tag = original_bytes.clone();
-    wrong_integer_tag[3] ^= 0xFF;
+    wrong_integer_tag[2] ^= 0xFF;
     signature.modify(&wrong_integer_tag);
 
     assert_eq!(
@@ -216,7 +216,7 @@ fn test_der_encoding() {
 
     // Scalar too long overall
     let mut scalar_too_long = original_bytes.clone();
-    scalar_too_long[4] = 0x9F;
+    scalar_too_long[3] = 0x9F;
     signature.modify(&scalar_too_long);
 
     assert_eq!(
