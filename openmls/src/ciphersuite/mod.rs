@@ -645,7 +645,12 @@ impl Signature {
         }
 
         let mut r = decode_scalar(&mut signature_bytes)?;
-        let mut s = decode_scalar(signature_bytes)?;
+        let mut s = decode_scalar(&mut signature_bytes)?;
+
+        // After reading the whole signature, nothing should be left.
+        if !signature_bytes.is_empty() {
+            return Err(SignatureError::DecodingError);
+        }
 
         let mut out = Vec::with_capacity(2 * P256_SCALAR_LENGTH);
         out.append(&mut r);
