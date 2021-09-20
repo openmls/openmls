@@ -23,7 +23,29 @@ A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg
 
 ### Dependencies
 
+#### Cryptography
+
+OpenMLS does not implement its own cryptographic primitives.
+Instead, it relies on existing implementations of the cryptographic primitives used.
+There are two different cryptography backends supported right now.
+
+##### Evercrypt
+
+This is the default cryptography provider.
+
 OpenMLS relies on [EverCrypt](https://github.com/project-everest/hacl-star/tree/master/providers/evercrypt), a high-performance, cross-platform, formally verified modern cryptographic provider through [EverCrypt Rust bindings](https://crates.io/crates/evercrypt).
+
+Note that using this provider restricts OpenMLS usage to the following platforms
+* Linux x64
+* Linux Arm64
+* MacOS x64
+* Windows x64
+
+##### Rust Crypto
+
+This backend can be enabled by adding the `rust-crypto` feature and disabling default features with `--no-default-features` (to disable evercrypt).
+
+#### HPKE
 
 ## Development
 

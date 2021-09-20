@@ -4,28 +4,20 @@
 
 // XXX: ed25519-dalek depends on an old version of rand.
 //      https://github.com/dalek-cryptography/ed25519-dalek/issues/162
+extern crate ed25519_dalek;
 extern crate rand_07;
 
-use std::convert::TryFrom;
-
 use aes_gcm::{
-    aead::{
-        generic_array::{ArrayLength, GenericArray},
-        Aead, Payload,
-    },
+    aead::{Aead, Payload},
     Aes128Gcm, Aes256Gcm, NewAead,
 };
 use chacha20poly1305::ChaCha20Poly1305;
 use crypto_algorithms::{AeadType, HashType};
-use ed25519_dalek::{PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH};
-use generic_array::typenum::U32;
+use ed25519_dalek::Signer as DalekSigner;
 use hkdf::Hkdf;
 use p256::{
-    ecdsa::{
-        signature::{Signer, Verifier},
-        Signature, SigningKey, VerifyingKey,
-    },
-    EncodedPoint, ScalarBytes,
+    ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
+    EncodedPoint,
 };
 use rand_chacha::rand_core::OsRng;
 use sha2::{Digest, Sha256, Sha512};
@@ -131,21 +123,21 @@ pub(crate) fn aead_decrypt(
         AeadType::Aes128Gcm => {
             let aes =
                 Aes128Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-            aes.decrypt(nonce.into(), ct_tag)
+            aes.decrypt(nonce.into(), Payload { msg: ct_tag, aad })
                 .map(|r| r.as_slice().into())
                 .map_err(|_| CryptoError::AeadDecryptionError)
         }
         AeadType::Aes256Gcm => {
             let aes =
                 Aes256Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-            aes.encrypt(nonce.into(), ct_tag)
+            aes.encrypt(nonce.into(), Payload { msg: ct_tag, aad })
                 .map(|r| r.as_slice().into())
                 .map_err(|_| CryptoError::AeadDecryptionError)
         }
         AeadType::ChaCha20Poly1305 => {
             let aes = ChaCha20Poly1305::new_from_slice(key)
                 .map_err(|_| CryptoError::CryptoLibraryError)?;
-            aes.encrypt(nonce.into(), ct_tag)
+            aes.encrypt(nonce.into(), Payload { msg: ct_tag, aad })
                 .map(|r| r.as_slice().into())
                 .map_err(|_| CryptoError::AeadDecryptionError)
         }
@@ -158,17 +150,15 @@ pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8
     match alg {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => {
             let k = SigningKey::random(&mut OsRng);
-            Ok((
-                k.to_bytes().as_slice().into(),
-                k.verifying_key().to_encoded_point(false).as_bytes().into(),
-            ))
+            let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+            Ok((k.to_bytes().as_slice().into(), pk))
         }
         SignatureScheme::ED25519 => {
             let k = ed25519_dalek::Keypair::generate(&mut rand_07::rngs::OsRng).to_bytes();
-            Ok((
-                k[0..SECRET_KEY_LENGTH].into(),
-                k[SECRET_KEY_LENGTH..PUBLIC_KEY_LENGTH].into(),
-            ))
+            let pk = k[32..].to_vec();
+            // full key here because we need it to sign...
+            let sk_pk = k.into();
+            Ok((sk_pk, pk))
         }
         _ => Err(CryptoError::UnsupportedSignatureScheme),
     }
@@ -188,13 +178,7 @@ pub(crate) fn verify_signature(
             .map_err(|_| CryptoError::CryptoLibraryError)?;
             k.verify(
                 data,
-                &Signature::from_scalars(
-                    ScalarBytes::try_from(&signature[0..32])
-                        .map_err(|_| CryptoError::CryptoLibraryError)?,
-                    ScalarBytes::try_from(&signature[32..])
-                        .map_err(|_| CryptoError::CryptoLibraryError)?,
-                )
-                .map_err(|_| CryptoError::InvalidSignature)?,
+                &Signature::from_der(signature).map_err(|_| CryptoError::InvalidSignature)?,
             )
             .map_err(|_| CryptoError::InvalidSignature)
         }
@@ -218,44 +202,33 @@ pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<
         SignatureScheme::ECDSA_SECP256R1_SHA256 => {
             let k = SigningKey::from_bytes(key).map_err(|_| CryptoError::CryptoLibraryError)?;
             let signature = k.sign(data);
-            let r = signature.r();
-            let s = signature.s();
-            let mut r_bytes = [0u8; 32];
-            let mut s_bytes = [0u8; 32];
-            r_bytes.
+            Ok(signature.to_der().to_bytes().into())
         }
         SignatureScheme::ED25519 => {
-            todo!()
-            // let k = ed25519_dalek::PublicKey::from_bytes(pk)
-            //     .map_err(|_| CryptoError::CryptoLibraryError)?;
-            // if signature.len() != 64 {
-            //     return Err(CryptoError::CryptoLibraryError);
-            // }
-            // let mut sig = [0u8; 64];
-            // sig.clone_from_slice(signature);
-            // k.verify_strict(data, &ed25519_dalek::Signature::new(sig))
-            //     .map_err(|_| CryptoError::InvalidSignature)
+            let k = ed25519_dalek::Keypair::from_bytes(key)
+                .map_err(|_| CryptoError::CryptoLibraryError)?;
+            let signature = k.sign(data);
+            Ok(signature.to_bytes().into())
         }
         _ => Err(CryptoError::UnsupportedSignatureScheme),
     }
-    // let signature_mode = match SignatureMode::try_from(alg) {
-    //     Ok(signature_mode) => signature_mode,
-    //     Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
-    // };
-    // let (hash, nonce) = match signature_mode {
-    //     SignatureMode::Ed25519 => (None, None),
-    //     SignatureMode::P256 => (
-    //         Some(DigestMode::try_from(alg).unwrap()),
-    //         Some(p256_ecdsa_random_nonce().unwrap()),
-    //     ),
-    // };
-    // evercrypt::signature::sign(signature_mode, hash, key, data, nonce.as_ref())
-    //     .map_err(|_| CryptoError::CryptoLibraryError)
 }
 
 #[cfg(test)]
 pub(crate) fn aead_key_gen(alg: AeadType) -> Vec<u8> {
-    todo!()
-    // let mode = aead_from_algorithm(alg).unwrap();
-    // evercrypt::aead::key_gen(mode)
+    use rand::RngCore;
+
+    match alg {
+        AeadType::Aes128Gcm => {
+            let mut k = [0u8; 16];
+            OsRng.fill_bytes(&mut k);
+            k.into()
+        }
+        AeadType::Aes256Gcm | AeadType::ChaCha20Poly1305 => {
+            let mut k = [0u8; 32];
+            OsRng.fill_bytes(&mut k);
+            k.into()
+        }
+        AeadType::HpkeExport => vec![],
+    }
 }

@@ -17,9 +17,9 @@ use std::{hash::Hash, sync::Mutex};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 // Here we choose one of the crypto backends. This is either Evercrypt or RustCrypto
-#[cfg(feature = "evercrypt")]
+#[cfg(feature = "evercrypt-crypto")]
 mod evercrypt_provider;
-#[cfg(feature = "evercrypt")]
+#[cfg(feature = "evercrypt-crypto")]
 use evercrypt_provider::*;
 #[cfg(feature = "rust-crypto")]
 mod rust_crypto_provider;
