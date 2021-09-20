@@ -16,5 +16,6 @@ implement_error! {
         UnsupportedAeadAlgorithm = "The requested AEAD scheme is not supported",
         UnsupportedKdf = "The requested KDF algorithm is not supported",
         InvalidLength = "The HKDF output is empty.",
+        UnsupportedHashAlgorithm = "Unsupported hash algorithm",
     }
 }

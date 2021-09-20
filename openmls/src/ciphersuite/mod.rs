@@ -16,12 +16,15 @@ pub(crate) use serde::{
 use std::{hash::Hash, sync::Mutex};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
+// Here we choose one of the crypto backends. This is either Evercrypt or RustCrypto
 #[cfg(feature = "evercrypt")]
 mod evercrypt_provider;
 #[cfg(feature = "evercrypt")]
 use evercrypt_provider::*;
 #[cfg(feature = "rust-crypto")]
 mod rust_crypto_provider;
+#[cfg(feature = "rust-crypto")]
+use rust_crypto_provider::*;
 
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
@@ -661,7 +664,8 @@ impl Ciphersuite {
 
     /// Hash `payload` and return the digest.
     pub(crate) fn hash(&self, payload: &[u8]) -> Vec<u8> {
-        hash(self.hash, payload)
+        // XXX: remove unwrap
+        hash(self.hash, payload).unwrap()
     }
 
     /// Get the length of the used hash algorithm.

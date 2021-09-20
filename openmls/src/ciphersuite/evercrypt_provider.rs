@@ -41,7 +41,7 @@ impl TryFrom<SignatureScheme> for DigestMode {
     }
 }
 #[inline(always)]
-fn hash_from_algorithm(hash_type: HashType) -> Result<DigestMode, ()> {
+fn hash_from_algorithm(hash_type: HashType) -> Result<DigestMode, CryptoError> {
     Ok(match hash_type {
         HashType::Sha1 => DigestMode::Sha1,
         HashType::Sha2_224 => DigestMode::Sha224,
@@ -52,8 +52,7 @@ fn hash_from_algorithm(hash_type: HashType) -> Result<DigestMode, ()> {
         HashType::Sha3_256 => DigestMode::Sha3_256,
         HashType::Sha3_384 => DigestMode::Sha3_384,
         HashType::Sha3_512 => DigestMode::Sha3_512,
-        HashType::Shake_128 => return Err(()),
-        HashType::Shake_256 => return Err(()),
+        _ => return Err(CryptoError::UnsupportedHashAlgorithm),
     })
 }
 
@@ -107,9 +106,9 @@ pub(crate) fn hkdf_expand(
     Ok(hkdf::expand(hmac, prk, info, okm_len))
 }
 
-pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Vec<u8> {
-    let alg = hash_from_algorithm(hash_type).unwrap();
-    evercrypt::digest::hash(alg, data)
+pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    let alg = hash_from_algorithm(hash_type)?;
+    Ok(evercrypt::digest::hash(alg, data))
 }
 
 pub(crate) fn aead_encrypt(
