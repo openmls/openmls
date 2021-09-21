@@ -38,7 +38,7 @@ hkdf = { version = "0.11", optional = true }
 
 [features]
 # Default to the RustCrypto backend right now.
-default = ["rust-crypto"]
+default = ["evercrypt-crypto"]
 rust-crypto = ["sha2", "aes-gcm", "chacha20poly1305", "hmac", "ed25519-dalek", "p256", "hkdf", "rand-07"]
 evercrypt-crypto = ["evercrypt"]
 test-utils = ["itertools"]
