@@ -708,9 +708,19 @@ impl Signature {
             Ok(encoded_scalar)
         }
 
+        // Check overall length
+        if raw_signature.len() != 2 * P256_SCALAR_LENGTH {
+            return Err(SignatureError::EncodingError);
+        }
+
         // We DER encode the ECDSA signature as per spec, assuming that
         // `sign` returns two concatenated values (r||s).
-        let (r, s) = raw_signature.split_at(P256_SCALAR_LENGTH);
+        let r = raw_signature
+            .get(..P256_SCALAR_LENGTH)
+            .ok_or(SignatureError::EncodingError)?;
+        let s = raw_signature
+            .get(P256_SCALAR_LENGTH..2 * P256_SCALAR_LENGTH)
+            .ok_or(SignatureError::EncodingError)?;
 
         let r_encoded = encode_scalar(&r)?;
         let s_encoded = encode_scalar(&s)?;
@@ -1100,9 +1110,7 @@ impl SignaturePublicKey {
         let signature_bytes = match signature_mode {
             SignatureMode::Ed25519 => signature.value.as_slice().to_vec(),
             // As per spec, we expect the signature to be DER encoded.
-            SignatureMode::P256 => signature
-                .der_decode()
-                .map_err(|_| SignatureError::DecodingError)?,
+            SignatureMode::P256 => signature.der_decode()?,
         };
         if verify(
             signature_mode,
@@ -1139,9 +1147,7 @@ impl SignaturePrivateKey {
             signature_mode,
         ) {
             (Ok(s), SignatureMode::Ed25519) => Ok(Signature { value: s.into() }),
-            (Ok(s), SignatureMode::P256) => {
-                Ok(Signature::der_encode(&s).map_err(|_| SignatureError::EncodingError)?)
-            }
+            (Ok(s), SignatureMode::P256) => Ok(Signature::der_encode(&s)?),
             (Err(e), _) => Err(e)?,
         }
     }

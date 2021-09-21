@@ -121,7 +121,7 @@ fn test_signatures() {
 }
 
 #[test]
-fn test_der_encoding() {
+fn test_der_codec() {
     // Choosing a ciphersuite with an ECDSA signature scheme.
     let ciphersuite =
         Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap();
@@ -130,7 +130,7 @@ fn test_der_encoding() {
         SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
     let keypair =
         SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
-    let mut signature = keypair.sign(&payload).expect("error creating signature");
+    let signature = keypair.sign(&payload).expect("error creating signature");
 
     // Make sure that signatures are DER encoded and can be decoded to valid signatures
     let decoded_signature = signature
@@ -159,10 +159,22 @@ fn test_der_encoding() {
     keypair
         .verify(&signature, &payload)
         .expect("error verifying signature");
+}
+
+#[test]
+fn test_der_decoding() {
+    // Choosing a ciphersuite with an ECDSA signature scheme.
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap();
+    let payload = vec![0u8];
+    let signature_scheme =
+        SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
+    let keypair =
+        SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
+    let mut signature = keypair.sign(&payload).expect("error creating signature");
 
     // Now we tamper with the original signature to make the decoding fail in
     // various ways.
-
     let original_bytes = signature.value.as_slice().to_vec();
 
     // Wrong sequence tag
@@ -272,5 +284,53 @@ fn test_der_encoding() {
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
         SignatureError::DecodingError
+    );
+}
+
+#[test]
+fn test_der_encoding() {
+    // Choosing a ciphersuite with an ECDSA signature scheme.
+    let ciphersuite =
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap();
+    let payload = vec![0u8];
+    let signature_scheme =
+        SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
+    let keypair =
+        SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
+
+    // Let's obtain a valid, raw signature first.
+    let signature = keypair.sign(&payload).expect("error creating signature");
+    let raw_signature = signature
+        .der_decode()
+        .expect("error decoding a valid siganture");
+
+    // Now let's try to der encode various incomplete parts of it.
+
+    // Empty signature
+    let empty_signature = Vec::new();
+
+    assert_eq!(
+        Signature::der_encode(&empty_signature)
+            .expect_err("successfully encoded invalid raw signature"),
+        SignatureError::EncodingError
+    );
+
+    // Signature too long
+    let mut signature_too_long = raw_signature.clone();
+    signature_too_long.extend_from_slice(&raw_signature);
+
+    assert_eq!(
+        Signature::der_encode(&signature_too_long)
+            .expect_err("successfully encoded invalid raw signature"),
+        SignatureError::EncodingError
+    );
+
+    // Scalar consisting only of 0x00
+    let zero_scalar = vec![0x00; 2 * P256_SCALAR_LENGTH];
+
+    assert_eq!(
+        Signature::der_encode(&zero_scalar)
+            .expect_err("successfully encoded invalid raw signature"),
+        SignatureError::EncodingError
     );
 }
