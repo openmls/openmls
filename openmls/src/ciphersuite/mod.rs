@@ -664,10 +664,26 @@ impl Signature {
     pub(crate) fn der_encode(raw_signature: &[u8]) -> Result<Self, SignatureError> {
         // A small function to DER encode single scalar.
         fn encode_scalar(mut scalar: &[u8]) -> Result<Vec<u8>, SignatureError> {
-            // We first prepare the scalar DER encoded as a uint.
-            let mut scalar_uint: Vec<u8> = Vec::with_capacity(P256_SCALAR_LENGTH + 1);
+            // Check that the given scalar has the right length.
+            if scalar.len() != P256_SCALAR_LENGTH {
+                return Err(SignatureError::EncodingError);
+            }
 
-            // Remove prepending zeros
+            let mut encoded_scalar: Vec<u8> = Vec::with_capacity(P256_SCALAR_LENGTH + 3);
+
+            // The encoded scalar needs to start with integer tag.
+            encoded_scalar
+                .write_u8(INTEGER_TAG)
+                .map_err(|_| SignatureError::EncodingError)?;
+
+            // We now insert a placeholder byte. This is where the length will
+            // go later on. We don't know the length yet, because we first have
+            // to remove leading zeros.
+            encoded_scalar
+                .write_u8(0x00)
+                .map_err(|_| SignatureError::EncodingError)?;
+
+            // Remove prepending zeros of the given, unencoded scalar.
             let mut msb = scalar
                 .read_u8()
                 .map_err(|_| SignatureError::EncodingError)?;
@@ -677,32 +693,36 @@ impl Signature {
                     .map_err(|_| SignatureError::EncodingError)?;
             }
 
+            // The length of the scalar is what's left after removing the
+            // prepending zeroes, plus 1 for the msb which we've already read.
+            let mut scalar_length = scalar.len() + 1;
+
             // If the most significant bit is 1, we have to prepend 0x00 to indicate
             // that the integer is unsigned.
             if msb > 0x7F {
-                scalar_uint
+                encoded_scalar
                     .write_u8(0x00)
                     .map_err(|_| SignatureError::EncodingError)?;
+                // This increases the scalar length by 1.
+                scalar_length += 1;
             };
 
-            scalar_uint
+            // Now that we know the final length of the scalar, we can write the
+            // length field.
+            *encoded_scalar
+                .get_mut(1)
+                // It is safe to convert to u8, because we know that the length
+                // of the scalar is at most 33.
+                .ok_or(SignatureError::EncodingError)? = scalar_length as u8;
+
+            // Write the msb to the encoded scalar.
+            encoded_scalar
                 .write_u8(msb)
                 .map_err(|_| SignatureError::EncodingError)?;
-            scalar_uint
-                .write_all(scalar)
-                .map_err(|_| SignatureError::EncodingError)?;
 
-            let mut encoded_scalar: Vec<u8> = Vec::with_capacity(P256_SCALAR_LENGTH + 3);
-            // The encoded scalar needs to start with integer tag.
+            // Write the rest of the scalar.
             encoded_scalar
-                .write_u8(INTEGER_TAG)
-                .map_err(|_| SignatureError::EncodingError)?;
-            // This is safe, as we know that r is at most 33 bytes long.
-            encoded_scalar
-                .write_u8(scalar_uint.len() as u8)
-                .map_err(|_| SignatureError::EncodingError)?;
-            encoded_scalar
-                .write_all(&scalar_uint)
+                .write_all(scalar)
                 .map_err(|_| SignatureError::EncodingError)?;
 
             Ok(encoded_scalar)
