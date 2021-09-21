@@ -663,24 +663,15 @@ impl Signature {
     /// throw a `SignatureError`.
     pub(crate) fn der_encode(raw_signature: &[u8]) -> Result<Self, SignatureError> {
         // A small function to DER encode single scalar.
-        fn encode_scalar(mut scalar: &[u8]) -> Result<Vec<u8>, SignatureError> {
+        fn encode_scalar<W: Write>(mut scalar: &[u8], mut buffer: W) -> Result<(), SignatureError> {
             // Check that the given scalar has the right length.
             if scalar.len() != P256_SCALAR_LENGTH {
                 return Err(SignatureError::EncodingError);
             }
 
-            let mut encoded_scalar: Vec<u8> = Vec::with_capacity(P256_SCALAR_LENGTH + 3);
-
             // The encoded scalar needs to start with integer tag.
-            encoded_scalar
+            buffer
                 .write_u8(INTEGER_TAG)
-                .map_err(|_| SignatureError::EncodingError)?;
-
-            // We now insert a placeholder byte. This is where the length will
-            // go later on. We don't know the length yet, because we first have
-            // to remove leading zeros.
-            encoded_scalar
-                .write_u8(0x00)
                 .map_err(|_| SignatureError::EncodingError)?;
 
             // Remove prepending zeros of the given, unencoded scalar.
@@ -699,33 +690,38 @@ impl Signature {
 
             // If the most significant bit is 1, we have to prepend 0x00 to indicate
             // that the integer is unsigned.
-            if msb > 0x7F {
-                encoded_scalar
-                    .write_u8(0x00)
-                    .map_err(|_| SignatureError::EncodingError)?;
+            let prepend_zero = msb > 0x7F;
+
+            if prepend_zero {
                 // This increases the scalar length by 1.
                 scalar_length += 1;
             };
 
-            // Now that we know the final length of the scalar, we can write the
-            // length field.
-            *encoded_scalar
-                .get_mut(1)
+            buffer
                 // It is safe to convert to u8, because we know that the length
                 // of the scalar is at most 33.
-                .ok_or(SignatureError::EncodingError)? = scalar_length as u8;
+                .write_u8(scalar_length as u8)
+                .map_err(|_| SignatureError::EncodingError)?;
+
+            if prepend_zero {
+                // Now that we've written the length, we can actually prepend
+                // the zero.
+                buffer
+                    .write_u8(0x00)
+                    .map_err(|_| SignatureError::EncodingError)?;
+            };
 
             // Write the msb to the encoded scalar.
-            encoded_scalar
+            buffer
                 .write_u8(msb)
                 .map_err(|_| SignatureError::EncodingError)?;
 
             // Write the rest of the scalar.
-            encoded_scalar
+            buffer
                 .write_all(scalar)
                 .map_err(|_| SignatureError::EncodingError)?;
 
-            Ok(encoded_scalar)
+            Ok(())
         }
 
         // Check overall length
@@ -742,25 +738,29 @@ impl Signature {
             .get(P256_SCALAR_LENGTH..2 * P256_SCALAR_LENGTH)
             .ok_or(SignatureError::EncodingError)?;
 
-        let r_encoded = encode_scalar(&r)?;
-        let s_encoded = encode_scalar(&s)?;
-
-        let total_length = r_encoded.len() + s_encoded.len();
         let mut encoded_signature: Vec<u8> = Vec::with_capacity(2 + 2 * (P256_SCALAR_LENGTH + 3));
+
+        // Write the DER Sequence tag
         encoded_signature
             .write_u8(SEQUENCE_TAG)
             .map_err(|_| SignatureError::EncodingError)?;
+
+        // Write a placeholder byte for length. This will be overwritten once we
+        // have encoded the scalars and know the final length.
         encoded_signature
-            // This is safe to convert, because the encoded scalars will each
-            // have a length of at most 33 each.
-            .write_u8(total_length as u8)
+            .write_u8(0x00)
             .map_err(|_| SignatureError::EncodingError)?;
-        encoded_signature
-            .write_all(&r_encoded)
-            .map_err(|_| SignatureError::EncodingError)?;
-        encoded_signature
-            .write_all(&s_encoded)
-            .map_err(|_| SignatureError::EncodingError)?;
+
+        encode_scalar(&r, &mut encoded_signature)?;
+        encode_scalar(&s, &mut encoded_signature)?;
+
+        // Now we can determine the length of the scalars by taking the overall
+        // length and removing 1 for the Sequence tag and 1 for the length
+        // field. The conversion to u8 is safe, because we know that each of the
+        // scalars is at most 33 bytes long.
+        *encoded_signature
+            .get_mut(1)
+            .ok_or(SignatureError::EncodingError)? = (encoded_signature.len() - 2) as u8;
 
         Ok(Signature {
             value: encoded_signature.into(),
