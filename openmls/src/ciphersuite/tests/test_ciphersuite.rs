@@ -225,4 +225,39 @@ fn test_der_encoding() {
             .expect_err("invalid signature successfully decoded"),
         SignatureError::DecodingError
     );
+
+    // Scalar length encoding invalid
+    let mut scalar_length_encoding = original_bytes.clone();
+    scalar_length_encoding[3] = 0x21;
+    scalar_length_encoding[4] = 0xFF;
+    signature.modify(&scalar_length_encoding);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
+
+    // Empty signature
+    let empty_signature = Vec::new();
+    signature.modify(&empty_signature);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
+
+    // 1byte signature
+    let one_byte_sig = vec![0x30];
+    signature.modify(&one_byte_sig);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
 }
