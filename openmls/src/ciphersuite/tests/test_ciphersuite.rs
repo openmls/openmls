@@ -260,4 +260,17 @@ fn test_der_encoding() {
             .expect_err("invalid signature successfully decoded"),
         SignatureError::DecodingError
     );
+
+    // Another signature too long variation
+    let mut signature_too_long_2 = original_bytes.clone();
+    signature_too_long_2[1] += 0x01;
+    signature_too_long_2.extend_from_slice(&[0]);
+    signature.modify(&signature_too_long_2);
+
+    assert_eq!(
+        signature
+            .der_decode()
+            .expect_err("invalid signature successfully decoded"),
+        SignatureError::DecodingError
+    );
 }
