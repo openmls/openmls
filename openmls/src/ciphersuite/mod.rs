@@ -751,6 +751,8 @@ impl Signature {
             .write_u8(SEQUENCE_TAG)
             .map_err(|_| SignatureError::EncodingError)?;
         encoded_signature
+            // This is safe to convert, because the encoded scalars will each
+            // have a length of at most 33 each.
             .write_u8(total_length as u8)
             .map_err(|_| SignatureError::EncodingError)?;
         encoded_signature
