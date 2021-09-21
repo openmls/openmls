@@ -8,7 +8,8 @@ use crypto_algorithms::{AeadType, HashType};
 use evercrypt::prelude::*;
 use log::error;
 
-use super::{errors::CryptoError, SignatureScheme};
+use super::SignatureScheme;
+use crate::ciphersuite::errors::CryptoError;
 
 impl TryFrom<SignatureScheme> for SignatureMode {
     type Error = &'static str;
@@ -77,7 +78,7 @@ fn kdf_from_hash(hash_type: HashType) -> Result<HmacMode, CryptoError> {
     })
 }
 
-pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
+pub(crate) fn ec_support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     if SignatureMode::try_from(signature_scheme).is_err() {
         Err(CryptoError::UnsupportedSignatureScheme)
     } else if DigestMode::try_from(signature_scheme).is_err() {
@@ -87,7 +88,7 @@ pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoErr
     }
 }
 
-pub(crate) fn hkdf_extract(
+pub(crate) fn ec_hkdf_extract(
     hash_type: HashType,
     salt: &[u8],
     ikm: &[u8],
@@ -96,7 +97,7 @@ pub(crate) fn hkdf_extract(
     Ok(hkdf::extract(hmac, salt, ikm))
 }
 
-pub(crate) fn hkdf_expand(
+pub(crate) fn ec_hkdf_expand(
     hash_type: HashType,
     prk: &[u8],
     info: &[u8],
@@ -106,12 +107,12 @@ pub(crate) fn hkdf_expand(
     Ok(hkdf::expand(hmac, prk, info, okm_len))
 }
 
-pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
+pub(crate) fn ec_hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
     let alg = hash_from_algorithm(hash_type)?;
     Ok(evercrypt::digest::hash(alg, data))
 }
 
-pub(crate) fn aead_encrypt(
+pub(crate) fn ec_aead_encrypt(
     alg: AeadType,
     key: &[u8],
     data: &[u8],
@@ -122,7 +123,7 @@ pub(crate) fn aead_encrypt(
     aead::encrypt_combined(alg, key, data, nonce, aad).map_err(|_| CryptoError::CryptoLibraryError)
 }
 
-pub(crate) fn aead_decrypt(
+pub(crate) fn ec_aead_decrypt(
     alg: AeadType,
     key: &[u8],
     ct_tag: &[u8],
@@ -134,7 +135,9 @@ pub(crate) fn aead_decrypt(
 }
 
 /// Returns `(sk, pk)`
-pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+pub(crate) fn ec_signature_key_gen(
+    alg: SignatureScheme,
+) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
     let signature_mode = match SignatureMode::try_from(alg) {
         Ok(signature_mode) => signature_mode,
         Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
@@ -148,7 +151,7 @@ pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8
     }
 }
 
-pub(crate) fn verify_signature(
+pub(crate) fn ec_verify_signature(
     alg: SignatureScheme,
     data: &[u8],
     pk: &[u8],
@@ -171,7 +174,11 @@ pub(crate) fn verify_signature(
     }
 }
 
-pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
+pub(crate) fn ec_sign(
+    alg: SignatureScheme,
+    data: &[u8],
+    key: &[u8],
+) -> Result<Vec<u8>, CryptoError> {
     let signature_mode = match SignatureMode::try_from(alg) {
         Ok(signature_mode) => signature_mode,
         Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
@@ -185,10 +192,4 @@ pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<
     };
     evercrypt::signature::sign(signature_mode, hash, key, data, nonce.as_ref())
         .map_err(|_| CryptoError::CryptoLibraryError)
-}
-
-#[cfg(test)]
-pub(crate) fn aead_key_gen(alg: AeadType) -> Vec<u8> {
-    let mode = aead_from_algorithm(alg).unwrap();
-    evercrypt::aead::key_gen(mode)
 }

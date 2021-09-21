@@ -16,22 +16,12 @@ pub(crate) use serde::{
 use std::{hash::Hash, sync::Mutex};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
-// Here we choose one of the crypto backends. This is either Evercrypt or RustCrypto
-// Evercrypt is the default. But if rust-crypto is enabled, it is used.
-#[cfg(all(feature = "evercrypt-crypto", not(feature = "rust-crypto")))]
-mod evercrypt_provider;
-#[cfg(all(feature = "evercrypt-crypto", not(feature = "rust-crypto")))]
-use evercrypt_provider::*;
-#[cfg(all(feature = "rust-crypto", not(feature = "evercrypt-crypto")))]
-mod rust_crypto_provider;
-#[cfg(all(feature = "rust-crypto", not(feature = "evercrypt-crypto")))]
-use rust_crypto_provider::*;
-
 // re-export for other parts of the library when we can use it
 pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
 
 mod ciphersuites;
 mod codec;
+mod crypto;
 mod errors;
 mod rand;
 pub mod signable;
@@ -44,6 +34,7 @@ use crate::{
 };
 
 use ciphersuites::*;
+use crypto::*;
 pub(crate) use errors::*;
 
 use self::{rand::random_array, signable::SignedStruct};

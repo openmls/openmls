@@ -22,9 +22,9 @@ use p256::{
 use rand_chacha::rand_core::OsRng;
 use sha2::{Digest, Sha256, Sha512};
 
-use super::{errors::CryptoError, SignatureScheme};
+use crate::ciphersuite::{errors::CryptoError, SignatureScheme};
 
-pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
+pub(crate) fn rc_support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     match signature_scheme {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(()),
         SignatureScheme::ED25519 => Ok(()),
@@ -32,7 +32,7 @@ pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoErr
     }
 }
 
-pub(crate) fn hkdf_extract(
+pub(crate) fn rc_hkdf_extract(
     hash_type: HashType,
     salt: &[u8],
     ikm: &[u8],
@@ -44,7 +44,7 @@ pub(crate) fn hkdf_extract(
     }
 }
 
-pub(crate) fn hkdf_expand(
+pub(crate) fn rc_hkdf_expand(
     hash_type: HashType,
     prk: &[u8],
     info: &[u8],
@@ -71,7 +71,7 @@ pub(crate) fn hkdf_expand(
     }
 }
 
-pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
+pub(crate) fn rc_hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
     match hash_type {
         HashType::Sha2_256 => Ok(Sha256::digest(data).as_slice().into()),
         HashType::Sha2_512 => Ok(Sha512::digest(data).as_slice().into()),
@@ -79,7 +79,7 @@ pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoEr
     }
 }
 
-pub(crate) fn aead_encrypt(
+pub(crate) fn rc_aead_encrypt(
     alg: AeadType,
     key: &[u8],
     data: &[u8],
@@ -112,7 +112,7 @@ pub(crate) fn aead_encrypt(
     }
 }
 
-pub(crate) fn aead_decrypt(
+pub(crate) fn rc_aead_decrypt(
     alg: AeadType,
     key: &[u8],
     ct_tag: &[u8],
@@ -146,7 +146,7 @@ pub(crate) fn aead_decrypt(
 }
 
 /// Returns `(sk, pk)`
-pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+pub(crate) fn rc_signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
     match alg {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => {
             let k = SigningKey::random(&mut OsRng);
@@ -164,7 +164,7 @@ pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8
     }
 }
 
-pub(crate) fn verify_signature(
+pub(crate) fn rc_verify_signature(
     alg: SignatureScheme,
     data: &[u8],
     pk: &[u8],
@@ -197,7 +197,7 @@ pub(crate) fn verify_signature(
     }
 }
 
-pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
+pub(crate) fn rc_sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
     match alg {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => {
             let k = SigningKey::from_bytes(key).map_err(|_| CryptoError::CryptoLibraryError)?;
@@ -211,24 +211,5 @@ pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<
             Ok(signature.to_bytes().into())
         }
         _ => Err(CryptoError::UnsupportedSignatureScheme),
-    }
-}
-
-#[cfg(test)]
-pub(crate) fn aead_key_gen(alg: AeadType) -> Vec<u8> {
-    use rand::RngCore;
-
-    match alg {
-        AeadType::Aes128Gcm => {
-            let mut k = [0u8; 16];
-            OsRng.fill_bytes(&mut k);
-            k.into()
-        }
-        AeadType::Aes256Gcm | AeadType::ChaCha20Poly1305 => {
-            let mut k = [0u8; 32];
-            OsRng.fill_bytes(&mut k);
-            k.into()
-        }
-        AeadType::HpkeExport => vec![],
     }
 }
