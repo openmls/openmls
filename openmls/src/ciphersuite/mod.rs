@@ -679,7 +679,7 @@ impl Signature {
         let mut s = decode_scalar(&mut signature_bytes)?;
 
         // After reading the whole signature, nothing should be left.
-        debug_assert!(!signature_bytes.is_empty());
+        debug_assert!(signature_bytes.is_empty());
         if !signature_bytes.is_empty() {
             return Err(SignatureError::DecodingError);
         }
@@ -694,19 +694,9 @@ impl Signature {
     /// representing the concatenated scalars. If the encoding fails, it will
     /// throw a `SignatureError`.
     pub(crate) fn der_encode(raw_signature: &[u8]) -> Result<Self, SignatureError> {
-        // A small function to DER encode single scalar.
-        fn encode_scalar<W: Write>(mut scalar: &[u8], mut buffer: W) -> Result<(), SignatureError> {
-            // Check that the given scalar has the right length.
-            if scalar.len() != P256_SCALAR_LENGTH {
-                log::error!("Error while encoding scalar: Scalar too large.");
-                return Err(SignatureError::EncodingError);
-            }
-
-            // The encoded scalar needs to start with integer tag.
-            buffer
-                .write_u8(INTEGER_TAG)
-                .map_err(|_| SignatureError::EncodingError)?;
-
+        // A small helper function to determine the length of a given raw
+        // scalar.
+        fn scalar_length(mut scalar: &[u8]) -> Result<usize, SignatureError> {
             // Remove prepending zeros of the given, unencoded scalar.
             let mut msb = scalar
                 .read_u8()
@@ -723,12 +713,28 @@ impl Signature {
 
             // If the most significant bit is 1, we have to prepend 0x00 to indicate
             // that the integer is unsigned.
-            let prepend_zero = msb > 0x7F;
-
-            if prepend_zero {
+            if msb > 0x7F {
                 // This increases the scalar length by 1.
                 scalar_length += 1;
             };
+
+            Ok(scalar_length)
+        }
+        // A small function to DER encode single scalar.
+        fn encode_scalar<W: Write>(mut scalar: &[u8], mut buffer: W) -> Result<(), SignatureError> {
+            // Check that the given scalar has the right length.
+            if scalar.len() != P256_SCALAR_LENGTH {
+                log::error!("Error while encoding scalar: Scalar too large.");
+                return Err(SignatureError::EncodingError);
+            }
+
+            // The encoded scalar needs to start with integer tag.
+            buffer
+                .write_u8(INTEGER_TAG)
+                .map_err(|_| SignatureError::EncodingError)?;
+
+            // Determine the length of the scalar.
+            let scalar_length = scalar_length(scalar)?;
 
             buffer
                 // It is safe to convert to u8, because we know that the length
@@ -736,9 +742,19 @@ impl Signature {
                 .write_u8(scalar_length as u8)
                 .map_err(|_| SignatureError::EncodingError)?;
 
-            if prepend_zero {
-                // Now that we've written the length, we can actually prepend
-                // the zero.
+            // Remove prepending zeros of the given, unencoded scalar.
+            let mut msb = scalar
+                .read_u8()
+                .map_err(|_| SignatureError::EncodingError)?;
+            while msb == 0x00 {
+                msb = scalar
+                    .read_u8()
+                    .map_err(|_| SignatureError::EncodingError)?;
+            }
+
+            // If the most significant bit is 1, we have to prepend 0x00 to indicate
+            // that the integer is unsigned.
+            if msb > 0x7F {
                 buffer
                     .write_u8(0x00)
                     .map_err(|_| SignatureError::EncodingError)?;
