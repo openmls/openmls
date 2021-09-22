@@ -597,6 +597,7 @@ impl Signature {
                 .read_u8()
                 .map_err(|_| SignatureError::DecodingError)?;
             if integer_tag != INTEGER_TAG {
+                log::error!("Error while decoding scalar: Couldn't find INTEGER tag.");
                 return Err(SignatureError::DecodingError);
             };
 
@@ -607,6 +608,7 @@ impl Signature {
                 .map_err(|_| SignatureError::DecodingError)?
                 as usize;
             if scalar_length > P256_SCALAR_LENGTH + 1 {
+                log::error!("Error while decoding scalar: Scalar too long.");
                 return Err(SignatureError::DecodingError);
             };
 
@@ -620,6 +622,9 @@ impl Signature {
                     .map_err(|_| SignatureError::DecodingError)?
                     != 0x00
                 {
+                    log::error!(
+                        "Error while decoding scalar: Scalar too large or invalid encoding."
+                    );
                     return Err(SignatureError::DecodingError);
                 };
                 // Since we just read that byte, we decrease the length by 1.
@@ -647,6 +652,7 @@ impl Signature {
             .read_u8()
             .map_err(|_| SignatureError::DecodingError)?;
         if sequence_tag != SEQUENCE_TAG {
+            log::error!("Error while decoding DER encoded signature: Couldn't find SEQUENCE tag.");
             return Err(SignatureError::DecodingError);
         };
 
@@ -659,11 +665,13 @@ impl Signature {
             .read_u8()
             .map_err(|_| SignatureError::DecodingError)? as usize;
         if length > 2 * (P256_SCALAR_LENGTH + 3) {
+            log::error!("Error while decoding DER encoded signature: Signature too long.");
             return Err(SignatureError::DecodingError);
         }
 
         // The remaining bytes should be equal to the encoded length.
         if signature_bytes.len() != length {
+            log::error!("Error while decoding DER encoded signature: Encoded length inaccurate.");
             return Err(SignatureError::DecodingError);
         }
 
@@ -671,6 +679,7 @@ impl Signature {
         let mut s = decode_scalar(&mut signature_bytes)?;
 
         // After reading the whole signature, nothing should be left.
+        debug_assert!(!signature_bytes.is_empty());
         if !signature_bytes.is_empty() {
             return Err(SignatureError::DecodingError);
         }
@@ -689,6 +698,7 @@ impl Signature {
         fn encode_scalar<W: Write>(mut scalar: &[u8], mut buffer: W) -> Result<(), SignatureError> {
             // Check that the given scalar has the right length.
             if scalar.len() != P256_SCALAR_LENGTH {
+                log::error!("Error while encoding scalar: Scalar too large.");
                 return Err(SignatureError::EncodingError);
             }
 
