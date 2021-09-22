@@ -3,7 +3,6 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
-use byteorder::{ReadBytesExt, WriteBytesExt};
 use log::error;
 
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
@@ -559,6 +558,30 @@ const INTEGER_TAG: u8 = 0x02;
 
 // DER encoding SEQUENCE tag.
 const SEQUENCE_TAG: u8 = 0x30;
+
+// The following two traits (ReadU8, Writeu8)are inlined from the byteorder
+// crate to avoid a full dependency.
+impl<R: Read + ?Sized> ReadU8 for R {}
+
+pub trait ReadU8: Read {
+    /// A small helper function to read a u8 from a Reader.
+    #[inline]
+    fn read_u8(&mut self) -> std::io::Result<u8> {
+        let mut buf = [0; 1];
+        self.read_exact(&mut buf)?;
+        Ok(buf[0])
+    }
+}
+
+impl<W: Write + ?Sized> WriteU8 for W {}
+
+pub trait WriteU8: Write {
+    /// A small helper function to write a u8 to a Writer.
+    #[inline]
+    fn write_u8(&mut self, n: u8) -> std::io::Result<()> {
+        self.write_all(&[n])
+    }
+}
 
 impl Signature {
     /// This function takes a DER encoded ECDSA signature and decodes it to the
