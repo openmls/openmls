@@ -720,6 +720,7 @@ impl Signature {
 
             Ok(scalar_length)
         }
+
         // A small function to DER encode single scalar.
         fn encode_scalar<W: Write>(mut scalar: &[u8], mut buffer: W) -> Result<(), SignatureError> {
             // Check that the given scalar has the right length.
@@ -787,7 +788,16 @@ impl Signature {
             .get(P256_SCALAR_LENGTH..2 * P256_SCALAR_LENGTH)
             .ok_or(SignatureError::EncodingError)?;
 
-        let mut encoded_signature: Vec<u8> = Vec::with_capacity(2 + 2 * (P256_SCALAR_LENGTH + 3));
+        let length_r = scalar_length(&r)?;
+        let length_s = scalar_length(&s)?;
+
+        // The overall length is
+        // 1 for the sequence tag
+        // 1 for the overall length encoding
+        // 2 for the integer tags of both scalars
+        // 2 for the length encoding of both scalars
+        // plus the length of both scalars
+        let mut encoded_signature: Vec<u8> = Vec::with_capacity(6 + length_r + length_s);
 
         // Write the DER Sequence tag
         encoded_signature
@@ -797,19 +807,14 @@ impl Signature {
         // Write a placeholder byte for length. This will be overwritten once we
         // have encoded the scalars and know the final length.
         encoded_signature
-            .write_u8(0x00)
+            //The conversion to u8 is safe, because we know that each of the
+            // scalars is at most 33 bytes long plus the tags and length
+            // encodings as described above.
+            .write_u8((4 + length_r + length_s) as u8)
             .map_err(|_| SignatureError::EncodingError)?;
 
         encode_scalar(&r, &mut encoded_signature)?;
         encode_scalar(&s, &mut encoded_signature)?;
-
-        // Now we can determine the length of the scalars by taking the overall
-        // length and removing 1 for the Sequence tag and 1 for the length
-        // field. The conversion to u8 is safe, because we know that each of the
-        // scalars is at most 33 bytes long.
-        *encoded_signature
-            .get_mut(1)
-            .ok_or(SignatureError::EncodingError)? = (encoded_signature.len() - 2) as u8;
 
         Ok(Signature {
             value: encoded_signature.into(),
