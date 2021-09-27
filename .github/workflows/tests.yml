@@ -39,7 +39,8 @@ jobs:
       - name: Tests
         run: cargo test --verbose
       - name: Build w/ Evercrypt
-        run: cargo build --release --verbose --no-default-features features="evercrypt-backend"
+        if: matrix.os != 'macos-latest'
+        run: cargo build --release --verbose --no-default-features --features="evercrypt-backend"
       - name: Apple Silicon Build
         if: matrix.os == 'macos-latest'
         run: |
@@ -77,8 +78,8 @@ jobs:
           profile: minimal
           override: true
       - run: ${{ matrix.deps }}
-      - run: cargo build --target ${{ matrix.target }} --no-default-features --features="rust-crypto"
-      - run: cargo build --target ${{ matrix.target }} --release --no-default-features --features="rust-crypto"
+      - run: cargo build --target ${{ matrix.target }}
+      - run: cargo build --target ${{ matrix.target }} --release
   checks:
     runs-on: ubuntu-latest
     steps:

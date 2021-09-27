@@ -50,7 +50,7 @@ criterion = "^0.3"
 pretty_env_logger = "0.4"
 itertools = "0.10"
 test_macros = { path = "../test_macros" }
-openmls = { path = ".", features = ["test-utils"] }
+openmls = { path = ".", features = ["test-utils"], default-features = false }
 tempfile = "3"
 
 [[bench]]
