@@ -30,4 +30,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Build Release
-        run: cargo build --release --all-features --verbose
+        run: cargo build --release --verbose
+      - name: Test Release
+        run: cargo test --release --verbose
+      - name: Build Release w/ Evercrypt
+        run: cargo build --release --verbose --no-default-features features="evercrypt-backend"

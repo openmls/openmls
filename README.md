@@ -29,32 +29,28 @@ OpenMLS does not implement its own cryptographic primitives.
 Instead, it relies on existing implementations of the cryptographic primitives used.
 There are two different cryptography backends supported right now.
 
-**⚠️ There is no default. You have to specify the feature**
+##### Rust Crypto
+
+This is the default cryptographic backend, using [hkdf], [sha2], [p256], [p384], [x25519-dalek-ng], [ed25519-dalek] [chacha20poly1305], [aes-gcm].
+
 
 ##### Evercrypt
 
+[EverCrypt] provides a formally verified cryptographic backend through the through [EverCrypt Rust bindings] to OpenMLS.
+The default features have to disabled and the `evercrypt-backend` feature has to be enabled.
+
 ```
-cargo build --features="evercrypt-crypto"
+cargo build --features="evercrypt-backend" --no-default-features
 ```
 
-OpenMLS relies on [EverCrypt](https://github.com/project-everest/hacl-star/tree/master/providers/evercrypt), a high-performance, cross-platform, formally verified modern cryptographic provider through [EverCrypt Rust bindings](https://crates.io/crates/evercrypt).
-
-Note that using this provider restricts OpenMLS usage to the following platforms
+Note that using this provider restricts OpenMLS usage to the following platforms right now
 * Linux x64
 * Linux Arm64
 * MacOS x64
 * Windows x64
 
-##### Rust Crypto
-
-```
-cargo build --features="rust-crypto"
-```
-
-This backend can be enabled by adding the `rust-crypto` feature.
-It uses commonly used cryptography primitives written in Rust.
-
-#### HPKE
+⚠️ Note that using this feature tests don't work out of the box.
+You need to change the `openmls` dev-dependency in the `Cargo.toml` to use the evercrypt backend as well.
 
 ## Development
 
@@ -107,3 +103,14 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
 [rustc-image]: https://img.shields.io/badge/rustc-1.50+-blue.svg
+
+[hkdf]: https://docs.rs/hkdf/
+[sha2]: https://docs.rs/sha2
+[p256]: https://docs.rs/p256
+[p384]: https://docs.rs/p384
+[x25519-dalek-ng]: https://docs.rs/x25519-dalek-ng
+[ed25519-dalek]: https://docs.rs/ed25519-dalek
+[chacha20poly1305]: https://docs.rs/chacha20poly1305
+[aes-gcm]: https://docs.rs/aes-gcm
+[Evercrypt]: https://github.com/project-everest/hacl-star/
+[EverCrypt Rust bindings]: https://crates.io/crates/evercrypt
