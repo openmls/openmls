@@ -22,7 +22,6 @@ log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 itertools = {version = "0.10", optional = true}
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
-crypto_algorithms = { version = "0.1", git = "https://github.com/franziskuskiefer/algorithm-identifiers-rs" }
 hpke = { version = "0.0.11", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
 # Evercrypt provider
 evercrypt = { version = "0.0.10", features = ["serialization"], optional = true }

@@ -96,6 +96,6 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --manifest-path openmls/Cargo.toml
+          args: --manifest-path openmls/Cargo.toml
       - name: Cargo fmt
         run: cargo fmt -- --check

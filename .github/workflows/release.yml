@@ -34,4 +34,4 @@ jobs:
       - name: Test Release
         run: cargo test --release --verbose
       - name: Build Release w/ Evercrypt
-        run: cargo build --release --verbose --no-default-features features="evercrypt-backend"
+        run: cargo build --release --verbose --no-default-features --features="evercrypt-backend"

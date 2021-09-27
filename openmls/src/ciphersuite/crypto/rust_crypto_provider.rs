@@ -12,7 +12,6 @@ use aes_gcm::{
     Aes128Gcm, Aes256Gcm, NewAead,
 };
 use chacha20poly1305::ChaCha20Poly1305;
-use crypto_algorithms::{AeadType, HashType};
 use ed25519_dalek::Signer as DalekSigner;
 use hkdf::Hkdf;
 use p256::{
@@ -22,7 +21,7 @@ use p256::{
 use rand_chacha::rand_core::OsRng;
 use sha2::{Digest, Sha256, Sha512};
 
-use crate::ciphersuite::{errors::CryptoError, SignatureScheme};
+use crate::ciphersuite::{errors::CryptoError, SignatureScheme, AeadType, HashType};
 
 pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     match signature_scheme {

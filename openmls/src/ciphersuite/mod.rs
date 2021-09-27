@@ -3,8 +3,6 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
-use crypto_algorithms::{AeadType, HashType};
-
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 use hpke::prelude::*;
 use rand_chacha::ChaCha20Rng;
@@ -140,6 +138,91 @@ impl From<CiphersuiteName> for SignatureScheme {
             CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 SignatureScheme::ED448
             }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(u16)]
+/// AEAD types
+pub enum AeadType {
+    /// AES GCM 128
+    Aes128Gcm = 0x0001,
+
+    /// AES GCM 256
+    Aes256Gcm = 0x0002,
+
+    /// ChaCha20 Poly1305
+    ChaCha20Poly1305 = 0x0003,
+
+    /// HPKE Export-only
+    HpkeExport = 0xFFFF,
+}
+
+impl AeadType {
+    /// Get the tag size of the [`AeadType`] in bytes.
+    ///
+    /// Note that the function returns `0` for unknown lengths such as the
+    /// [`AeadType::HpkeExport`] type.
+    pub const fn tag_size(&self) -> usize {
+        match self {
+            AeadType::Aes128Gcm => 16,
+            AeadType::Aes256Gcm => 16,
+            AeadType::ChaCha20Poly1305 => 16,
+            AeadType::HpkeExport => 0,
+        }
+    }
+
+    /// Get the key size of the [`AeadType`] in bytes.
+    ///
+    /// Note that the function returns `0` for unknown lengths such as the
+    /// [`AeadType::HpkeExport`] type.
+    pub const fn key_size(&self) -> usize {
+        match self {
+            AeadType::Aes128Gcm => 16,
+            AeadType::Aes256Gcm => 32,
+            AeadType::ChaCha20Poly1305 => 32,
+            AeadType::HpkeExport => 0,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(u8)]
+#[allow(non_camel_case_types)]
+/// Hash types
+pub enum HashType {
+    Sha1 = 0x02,
+    Sha2_224 = 0x03,
+    Sha2_256 = 0x04,
+    Sha2_384 = 0x05,
+    Sha2_512 = 0x06,
+    Sha3_224 = 0x07,
+    Sha3_256 = 0x08,
+    Sha3_384 = 0x09,
+    Sha3_512 = 0x0A,
+    Shake_128 = 0x0B,
+    Shake_256 = 0x0C,
+}
+
+impl HashType {
+    /// Returns the output size of a hash by [`HashType`].
+    ///
+    /// Note that it will return `0` for variable lenght output types such as shake.
+    #[inline]
+    pub const fn size(&self) -> usize {
+        match self {
+            HashType::Sha1 => 20,
+            HashType::Sha2_224 => 28,
+            HashType::Sha2_256 => 32,
+            HashType::Sha2_384 => 48,
+            HashType::Sha2_512 => 64,
+            HashType::Sha3_224 => 28,
+            HashType::Sha3_256 => 32,
+            HashType::Sha3_384 => 48,
+            HashType::Sha3_512 => 64,
+            HashType::Shake_128 => 0,
+            HashType::Shake_256 => 0,
         }
     }
 }

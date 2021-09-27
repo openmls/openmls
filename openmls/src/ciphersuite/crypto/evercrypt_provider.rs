@@ -4,11 +4,10 @@
 
 use std::convert::TryFrom;
 
-use crypto_algorithms::{AeadType, HashType};
 use evercrypt::prelude::*;
 use log::error;
 
-use crate::ciphersuite::{errors::CryptoError, SignatureScheme};
+use crate::ciphersuite::{errors::CryptoError, AeadType, HashType, SignatureScheme};
 
 impl TryFrom<SignatureScheme> for SignatureMode {
     type Error = &'static str;
