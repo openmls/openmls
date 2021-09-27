@@ -21,7 +21,7 @@ use p256::{
 use rand_chacha::rand_core::OsRng;
 use sha2::{Digest, Sha256, Sha512};
 
-use crate::ciphersuite::{errors::CryptoError, SignatureScheme, AeadType, HashType};
+use crate::ciphersuite::{errors::CryptoError, AeadType, HashType, SignatureScheme};
 
 pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     match signature_scheme {
