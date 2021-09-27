@@ -24,7 +24,7 @@ typetag = "0.1"
 itertools = {version = "0.10", optional = true}
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
 crypto_algorithms = { version = "0.1", git = "https://github.com/franziskuskiefer/algorithm-identifiers-rs" }
-hpke = { version = "0.0.10", package = "hpke-rs", features = ["hazmat", "serialization"] }
+hpke = { version = "0.0.10", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
 # Evercrypt provider
 evercrypt = { version = "0.0.10", features = ["serialization"], optional = true }
 # RustCrypto and Dalek provider
@@ -39,9 +39,9 @@ hkdf = { version = "0.11", optional = true }
 
 [features]
 # Default to the RustCrypto backend right now.
-default = ["evercrypt-crypto"]
-rust-crypto = ["sha2", "aes-gcm", "chacha20poly1305", "hmac", "ed25519-dalek", "p256", "hkdf", "rand-07"]
-evercrypt-crypto = ["evercrypt"]
+default = ["rust-crypto"]
+rust-crypto = ["sha2", "aes-gcm", "chacha20poly1305", "hmac", "ed25519-dalek", "p256", "hkdf", "rand-07", "hpke/rust-crypto"]
+evercrypt-backend = ["evercrypt", "hpke/evercrypt-backend"]
 test-utils = ["itertools"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
