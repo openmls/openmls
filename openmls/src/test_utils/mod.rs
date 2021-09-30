@@ -1,6 +1,8 @@
 //! Test utilities
 #![allow(dead_code)]
 
+use openmls_traits::random::OpenMlsRand;
+use rand::{CryptoRng, RngCore, SeedableRng};
 use serde::{self, de::DeserializeOwned, Serialize};
 use std::{
     fs::File,
@@ -78,4 +80,37 @@ macro_rules! ctest_ciphersuites {
             }
         );
     };
+}
+
+// === Crypto object for testing === //
+
+/// RNG for tests
+pub struct OpenMlsTestRand {
+    rng: rand_chacha::ChaCha20Rng,
+}
+impl OpenMlsRand for OpenMlsTestRand {}
+impl RngCore for OpenMlsTestRand {
+    fn next_u32(&mut self) -> u32 {
+        self.rng.next_u32()
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.rng.next_u64()
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.rng.fill_bytes(dest)
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.rng.try_fill_bytes(dest)
+    }
+}
+impl CryptoRng for OpenMlsTestRand {}
+impl OpenMlsTestRand {
+    pub fn new() -> Self {
+        Self {
+            rng: rand_chacha::ChaCha20Rng::from_entropy(),
+        }
+    }
 }

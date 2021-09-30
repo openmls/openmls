@@ -24,6 +24,7 @@
 use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
 
 use super::*;
+use openmls_traits::crypto::OpenMlsCrypto;
 use std::convert::TryFrom;
 use tls_codec::{Serialize, Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -126,6 +127,7 @@ impl MlsPlaintext {
         content_type: ContentType,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Self, MlsPlaintextError> {
         let serialized_context = context.tls_serialize_detached()?;
         let mls_plaintext = MlsPlaintextTbs::new(
@@ -138,7 +140,7 @@ impl MlsPlaintext {
             payload,
         )
         .with_context(serialized_context.as_slice());
-        Ok(mls_plaintext.sign(credential_bundle)?)
+        Ok(mls_plaintext.sign(backend, credential_bundle)?)
     }
 
     /// Create message with membership tag
@@ -151,6 +153,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Self, MlsPlaintextError> {
         let mut mls_plaintext = Self::new(
             framing_parameters,
@@ -159,8 +162,13 @@ impl MlsPlaintext {
             content_type,
             credential_bundle,
             context,
+            backend,
         )?;
-        mls_plaintext.set_membership_tag(&context.tls_serialize_detached()?, membership_key)?;
+        mls_plaintext.set_membership_tag(
+            backend,
+            &context.tls_serialize_detached()?,
+            membership_key,
+        )?;
         Ok(mls_plaintext)
     }
 
@@ -173,6 +181,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Self, MlsPlaintextError> {
         Self::new_with_membership_tag(
             framing_parameters,
@@ -182,6 +191,7 @@ impl MlsPlaintext {
             credential_bundle,
             context,
             membership_key,
+            backend,
         )
     }
 
@@ -193,6 +203,7 @@ impl MlsPlaintext {
         commit: Commit,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Self, MlsPlaintextError> {
         Self::new(
             framing_parameters,
@@ -201,6 +212,7 @@ impl MlsPlaintext {
             ContentType::Commit,
             credential_bundle,
             context,
+            backend,
         )
     }
 
@@ -213,6 +225,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Self, MlsPlaintextError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
@@ -224,6 +237,7 @@ impl MlsPlaintext {
             credential_bundle,
             context,
             membership_key,
+            backend,
         )
     }
 
@@ -253,13 +267,14 @@ impl MlsPlaintext {
     /// This should be used after signing messages from group members.
     pub(crate) fn set_membership_tag(
         &mut self,
+        backend: &impl OpenMlsCrypto,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), MlsPlaintextError> {
         let tbs_payload = encode_tbs(self, serialized_context)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
-        let membership_tag = membership_key.tag(tbm_payload)?;
+        let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())
@@ -277,6 +292,7 @@ impl MlsPlaintext {
     // TODO #133: Include this in the validation
     pub fn verify_membership(
         &self,
+        backend: &impl OpenMlsCrypto,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), MlsPlaintextError> {
@@ -286,7 +302,7 @@ impl MlsPlaintext {
         let tbs_payload = encode_tbs(self, serialized_context)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
-        let expected_membership_tag = &membership_key.tag(tbm_payload)?;
+        let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {

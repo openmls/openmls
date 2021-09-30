@@ -2,22 +2,26 @@
 
 use openmls::ciphersuite::signable::Signable;
 use openmls::prelude::*;
+use openmls::test_utils::OpenMlsTestRand;
+use rust_crypto::RustCrypto;
 
 #[macro_use]
 mod utils;
 
 ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteName) {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let id = vec![1, 2, 3];
     let credential_bundle =
-        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.signature_scheme()).unwrap();
+        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.signature_scheme(), &mut rng, &crypto).unwrap();
     let kpb =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &mut rng, &crypto, Vec::new()).unwrap();
 
     // After creation, the signature should be ok.
-    assert!(kpb.key_package().verify().is_ok());
+    assert!(kpb.key_package().verify(&crypto).is_ok());
 
     {
         let extensions = kpb.key_package().extensions();
@@ -60,8 +64,8 @@ ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteNa
     kpb_unsigned.add_extension(Extension::KeyPackageId(KeyIdExtension::new(&key_id)));
 
     // After re-signing the package it is valid.
-    let kpb = kpb_unsigned.sign(&credential_bundle).unwrap();
-    assert!(kpb.key_package().verify().is_ok());
+    let kpb = kpb_unsigned.sign(&crypto, &credential_bundle).unwrap();
+    assert!(kpb.key_package().verify(&crypto).is_ok());
 
     // Get the key ID extension.
     let extensions = kpb.key_package().extensions();

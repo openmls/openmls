@@ -22,3 +22,5 @@ tls_codec = "0.1.4"
 
 openmls = { path = "../../openmls" }
 ds-lib = { path = "../ds-lib/" }
+rust_crypto = { path = "../../rust_crypto" }
+openmls_traits = { version = "0.1", path = "../../traits" }

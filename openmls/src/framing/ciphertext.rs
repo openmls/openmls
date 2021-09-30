@@ -1,3 +1,4 @@
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand};
 use tls_codec::{
     Deserialize, Serialize, Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8,
     TlsDeserialize, TlsSerialize, TlsSize,
@@ -26,6 +27,8 @@ impl MlsCiphertext {
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
         ciphersuite: &Ciphersuite,
+        rng: &mut impl OpenMlsRand,
+        backend: &impl OpenMlsCrypto,
         context: &GroupContext,
         sender: LeafIndex,
         epoch_secrets: &EpochSecrets,
@@ -51,14 +54,15 @@ impl MlsCiphertext {
         let secret_type = SecretType::try_from(mls_plaintext)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         let (generation, (ratchet_key, mut ratchet_nonce)) =
-            secret_tree.secret_for_encryption(ciphersuite, sender, secret_type)?;
+            secret_tree.secret_for_encryption(ciphersuite, backend, sender, secret_type)?;
         // Sample reuse guard uniformly at random.
-        let reuse_guard: ReuseGuard = ReuseGuard::from_random(ciphersuite);
+        let reuse_guard: ReuseGuard = ReuseGuard::from_random(rng);
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload
         let ciphertext = ratchet_key
             .aead_seal(
+                backend,
                 &Self::encode_padded_ciphertext_content_detached(
                     mls_plaintext,
                     padding_size,
@@ -74,11 +78,12 @@ impl MlsCiphertext {
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(&ciphertext);
+            .derive_aead_key(backend, &ciphertext);
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = epoch_secrets
-            .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, &ciphertext);
+        let sender_data_nonce =
+            epoch_secrets
+                .sender_data_secret()
+                .derive_aead_nonce(ciphersuite, backend, &ciphertext);
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MlsSenderDataAad::new(
@@ -92,6 +97,7 @@ impl MlsCiphertext {
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
+                backend,
                 &sender_data.tls_serialize_detached()?,
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
@@ -116,6 +122,7 @@ impl MlsCiphertext {
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCrypto,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
@@ -127,11 +134,13 @@ impl MlsCiphertext {
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(self.ciphertext.as_slice());
+            .derive_aead_key(backend, self.ciphertext.as_slice());
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = epoch_secrets
-            .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, self.ciphertext.as_slice());
+        let sender_data_nonce = epoch_secrets.sender_data_secret().derive_aead_nonce(
+            ciphersuite,
+            backend,
+            self.ciphertext.as_slice(),
+        );
         // Serialize sender data AAD
         let mls_sender_data_aad =
             MlsSenderDataAad::new(self.group_id.clone(), self.epoch, self.content_type);
@@ -139,6 +148,7 @@ impl MlsCiphertext {
         // Decrypt sender data
         let sender_data_bytes = sender_data_key
             .aead_open(
+                backend,
                 self.encrypted_sender_data.as_slice(),
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
@@ -155,6 +165,7 @@ impl MlsCiphertext {
         let (ratchet_key, mut ratchet_nonce) = secret_tree
             .secret_for_decryption(
                 ciphersuite,
+                backend,
                 sender_data.sender,
                 secret_type,
                 sender_data.generation,
@@ -177,6 +188,7 @@ impl MlsCiphertext {
         // Decrypt payload
         let mls_ciphertext_content_bytes = ratchet_key
             .aead_open(
+                backend,
                 self.ciphertext.as_slice(),
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_nonce,

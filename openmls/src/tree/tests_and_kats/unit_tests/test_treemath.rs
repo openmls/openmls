@@ -1,4 +1,8 @@
+use openmls_traits::types::SignatureScheme;
+use rust_crypto::RustCrypto;
+
 use crate::config::*;
+use crate::test_utils::OpenMlsTestRand;
 use crate::tree::index::{LeafIndex, NodeIndex};
 use crate::tree::treemath::{descendants, descendants_alt, TreeMathError};
 use crate::tree::{treemath, *};
@@ -29,19 +33,35 @@ fn test_dir_path() {
 
 #[test]
 fn test_tree_hash() {
+    let crypto = RustCrypto::default();
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
+        let mut rng = OpenMlsTestRand::new();
+        let crypto = RustCrypto::default();
         let signature_scheme = SignatureScheme::from(ciphersuite_name);
-        let credential_bundle =
-            CredentialBundle::new(id.to_vec(), CredentialType::Basic, signature_scheme).unwrap();
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap()
+        let credential_bundle = CredentialBundle::new(
+            id.to_vec(),
+            CredentialType::Basic,
+            signature_scheme,
+            &mut rng,
+            &crypto,
+        )
+        .unwrap();
+        KeyPackageBundle::new(
+            &[ciphersuite_name],
+            &credential_bundle,
+            &mut rng,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap()
     }
 
     for ciphersuite in Config::supported_ciphersuites() {
         let kbp = create_identity(b"Tree creator", ciphersuite.name());
 
         // Initialise tree
-        let mut tree = RatchetTree::new(kbp);
-        let tree_hash = tree.tree_hash();
+        let mut tree = RatchetTree::new(&crypto, kbp);
+        let tree_hash = tree.tree_hash(&crypto);
         println!("Tree hash: {:?}", tree_hash);
 
         // Add 5 nodes to the tree.
@@ -51,7 +71,7 @@ fn test_tree_hash() {
         }
         let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
         let _ = tree.add_nodes(&key_packages);
-        let tree_hash = tree.tree_hash();
+        let tree_hash = tree.tree_hash(&crypto);
         println!("Tree hash: {:?}", tree_hash);
     }
 }

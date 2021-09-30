@@ -1,3 +1,4 @@
+use rust_crypto::RustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -15,6 +16,7 @@ use crate::{
     },
     prelude::FramingParameters,
     schedule::MembershipKey,
+    test_utils::OpenMlsTestRand,
     tree::index::*,
 };
 
@@ -23,6 +25,8 @@ use crate::{
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Framing parameters
         let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
@@ -31,12 +35,16 @@ fn proposal_queue_functions() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .unwrap();
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .unwrap();
 
@@ -48,12 +56,16 @@ fn proposal_queue_functions() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
+            &mut rng,
+            &crypto,
             mandatory_extensions.clone(),
         )
         .unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
+            &mut rng,
+            &crypto,
             mandatory_extensions.clone(),
         )
         .unwrap();
@@ -61,14 +73,16 @@ fn proposal_queue_functions() {
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
+            &mut rng,
+            &crypto,
             mandatory_extensions,
         )
         .unwrap();
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
-        assert!(alice_update_key_package.verify().is_ok());
+        assert!(alice_update_key_package.verify(&crypto).is_ok());
 
         let group_context = GroupContext::new(
-            GroupId::random(ciphersuite),
+            GroupId::random(&mut rng),
             GroupEpoch(0),
             vec![],
             vec![],
@@ -89,13 +103,13 @@ fn proposal_queue_functions() {
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
         let proposal_reference_add_alice1 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice1).unwrap();
         let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
         let proposal_reference_add_alice2 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice2).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice2).unwrap();
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
         let proposal_reference_add_bob1 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_bob1).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_bob1).unwrap();
 
         // Test proposal types
         assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -109,7 +123,8 @@ fn proposal_queue_functions() {
             proposal_add_alice1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            &crypto,
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_alice2 = MlsPlaintext::new_proposal(
@@ -118,7 +133,8 @@ fn proposal_queue_functions() {
             proposal_add_alice2,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            &crypto,
         )
         .expect("Could not create proposal.");
         let _mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
@@ -127,13 +143,15 @@ fn proposal_queue_functions() {
             proposal_add_bob1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            &crypto,
         )
         .expect("Could not create proposal.");
 
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_alice2];
 
-        let proposal_queue = ProposalQueue::from_proposals_by_reference(ciphersuite, proposals);
+        let proposal_queue =
+            ProposalQueue::from_proposals_by_reference(ciphersuite, &crypto, proposals);
 
         // Test if proposals are all covered
         let valid_proposal_reference_list = &[
@@ -159,6 +177,8 @@ fn proposal_queue_functions() {
 /// Test, that we the ProposalQueue is iterated in the right order.
 #[test]
 fn proposal_queue_order() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Framing parameters
         let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
@@ -167,31 +187,50 @@ fn proposal_queue_order() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .expect("Could not create CredentialBundle");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .expect("Could not create CredentialBundle");
 
         // Generate KeyPackages
-        let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-                .unwrap();
-        let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            &mut rng,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            &mut rng,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
-        let alice_update_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-                .unwrap();
+        let alice_update_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            &mut rng,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
-        assert!(alice_update_key_package.verify().is_ok());
+        assert!(alice_update_key_package.verify(&crypto).is_ok());
 
         let group_context = GroupContext::new(
-            GroupId::random(ciphersuite),
+            GroupId::random(&mut rng),
             GroupEpoch(0),
             vec![],
             vec![],
@@ -209,7 +248,7 @@ fn proposal_queue_order() {
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
         let proposal_reference_add_alice1 =
-            ProposalReference::from_proposal(ciphersuite, &proposal_add_alice1).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice1).unwrap();
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
         // Frame proposals in MlsPlaintext
@@ -219,7 +258,12 @@ fn proposal_queue_order() {
             proposal_add_alice1.clone(),
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */)),
+            &MembershipKey::from_secret(Secret::random(
+                ciphersuite,
+                &mut rng,
+                None, /* MLS version */
+            )),
+            &crypto,
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
@@ -228,14 +272,20 @@ fn proposal_queue_order() {
             proposal_add_bob1.clone(),
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */)),
+            &MembershipKey::from_secret(Secret::random(
+                ciphersuite,
+                &mut rng,
+                None, /* MLS version */
+            )),
+            &crypto,
         )
         .expect("Could not create proposal.");
 
         // This should set the order of the proposals.
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_bob1];
 
-        let proposal_queue = ProposalQueue::from_proposals_by_reference(ciphersuite, proposals);
+        let proposal_queue =
+            ProposalQueue::from_proposals_by_reference(ciphersuite, &crypto, proposals);
 
         // Now let's iterate over the queue. This should be in order.
         let proposal_collection: Vec<&QueuedProposal> =
@@ -259,6 +309,7 @@ fn proposal_queue_order() {
         // as ProposalOrRefs.
         let proposal_queue = ProposalQueue::from_committed_proposals(
             ciphersuite,
+            &crypto,
             proposal_or_refs,
             proposals,
             sender,
@@ -277,6 +328,7 @@ fn proposal_queue_order() {
 /// decoded values are the same as the original
 #[test]
 fn proposals_codec() {
+    let crypto = RustCrypto::default();
     let ciphersuite =
         &Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap();
 
@@ -292,7 +344,7 @@ fn proposals_codec() {
 
     // Reference
 
-    let reference = ProposalReference::from_proposal(ciphersuite, &proposal).unwrap();
+    let reference = ProposalReference::from_proposal(ciphersuite, &crypto, &proposal).unwrap();
     let proposal_or_ref = ProposalOrRef::Reference(reference);
     let encoded = proposal_or_ref.tls_serialize_detached().unwrap();
     let decoded = ProposalOrRef::tls_deserialize(&mut encoded.as_slice()).unwrap();

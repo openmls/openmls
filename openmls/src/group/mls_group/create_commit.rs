@@ -1,3 +1,5 @@
+use openmls_traits::crypto::OpenMlsCrypto;
+
 use crate::ciphersuite::signable::Signable;
 use crate::config::Config;
 use crate::credentials::CredentialBundle;
@@ -15,11 +17,14 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
+        rng: &mut impl OpenMlsRand,
+        backend: &impl OpenMlsCrypto,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
+            backend,
             proposals_by_reference,
             proposals_by_value,
             self.tree().own_node_index(),
@@ -33,10 +38,11 @@ impl MlsGroup {
         let mut provisional_tree = RatchetTree::new_from_public_tree(&self.tree());
 
         // Apply proposals to tree
-        let apply_proposals_values = match provisional_tree.apply_proposals(proposal_queue, &[]) {
-            Ok(res) => res,
-            Err(_) => return Err(CreateCommitError::OwnKeyNotFound.into()),
-        };
+        let apply_proposals_values =
+            match provisional_tree.apply_proposals(backend, proposal_queue, &[]) {
+                Ok(res) => res,
+                Err(_) => return Err(CreateCommitError::OwnKeyNotFound.into()),
+            };
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
@@ -49,6 +55,8 @@ impl MlsGroup {
                     credential_bundle,
                     &serialized_group_context,
                     apply_proposals_values.exclusion_list(),
+                    rng,
+                    backend,
                 )?;
                 (Some(path), Some(key_package_bundle))
             } else {
@@ -73,11 +81,13 @@ impl MlsGroup {
             commit,
             credential_bundle,
             &self.group_context,
+            backend,
         )?;
 
         // Calculate the confirmed transcript hash
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
+            backend,
             // It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a
             // Commit
             &MlsPlaintextCommitContent::try_from(&mls_plaintext).unwrap(),
@@ -85,7 +95,7 @@ impl MlsGroup {
         )?;
 
         // Calculate tree hash
-        let tree_hash = provisional_tree.tree_hash();
+        let tree_hash = provisional_tree.tree_hash(backend);
 
         // TODO #186: Implement extensions
         let extensions: Vec<Extension> = Vec::new();
@@ -100,6 +110,7 @@ impl MlsGroup {
         )?;
 
         let joiner_secret = JoinerSecret::new(
+            backend,
             provisional_tree.commit_secret(),
             self.epoch_secrets()
                 .init_secret()
@@ -113,33 +124,36 @@ impl MlsGroup {
             apply_proposals_values.invitation_list,
             &provisional_tree,
             &apply_proposals_values.presharedkeys,
+            backend,
         )?;
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
+            backend,
             joiner_secret,
             psk_output(
-                ciphersuite,
+                ciphersuite,backend, 
                 psk_fetcher_option,
                 &apply_proposals_values.presharedkeys,
             )?,
         );
 
-        let welcome_secret = key_schedule.welcome()?;
-        key_schedule.add_context(&provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets(false)?;
+        let welcome_secret = key_schedule.welcome(backend)?;
+        key_schedule.add_context(backend, &provisional_group_context)?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend, false)?;
 
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(&confirmed_transcript_hash);
+            .tag(backend, &confirmed_transcript_hash);
 
         // Set the confirmation tag
         mls_plaintext.set_confirmation_tag(confirmation_tag.clone());
 
         // Add membership tag
         mls_plaintext.set_membership_tag(
+            backend,
             &serialized_group_context,
             self.epoch_secrets().membership_key(),
         )?;
@@ -164,12 +178,17 @@ impl MlsGroup {
                 confirmation_tag,
                 sender_index,
             );
-            let group_info = group_info.sign(credential_bundle)?;
+            let group_info = group_info.sign(backend, credential_bundle)?;
 
             // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce();
+            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(backend);
             let encrypted_group_info = welcome_key
-                .aead_seal(&group_info.tls_serialize_detached()?, &[], &welcome_nonce)
+                .aead_seal(
+                    backend,
+                    &group_info.tls_serialize_detached()?,
+                    &[],
+                    &welcome_nonce,
+                )
                 .unwrap();
             // Encrypt group secrets
             let secrets = plaintext_secrets
@@ -222,11 +241,12 @@ impl PlaintextSecret {
         invited_members: Vec<(LeafIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
         presharedkeys: &PreSharedKeys,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Vec<Self>, MlsGroupError> {
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
-            let key_package_hash = key_package.hash();
+            let key_package_hash = key_package.hash(backend);
 
             // Compute the index of the common ancestor lowest in the
             // tree of our own leaf and the given index.

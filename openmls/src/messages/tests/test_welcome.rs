@@ -6,18 +6,22 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
+    test_utils::OpenMlsTestRand,
     tree::index::LeafIndex,
 };
 
+use rust_crypto::RustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 macro_rules! test_welcome_msg {
     ($name:ident, $ciphersuite:expr, $version:expr) => {
         #[test]
         fn $name() {
+            let mut rng = OpenMlsTestRand::new();
+            let crypto = RustCrypto::default();
             // We use this dummy group info in all test cases.
             let group_info = GroupInfoPayload::new(
-                GroupId::random($ciphersuite),
+                GroupId::random(&mut rng),
                 GroupEpoch(123),
                 vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 vec![1, 1, 1],
@@ -33,19 +37,21 @@ macro_rules! test_welcome_msg {
                 "XXX".into(),
                 CredentialType::Basic,
                 $ciphersuite.signature_scheme(),
+                &mut rng,
+                &crypto,
             )
             .unwrap();
             let group_info = group_info
-                .sign(&credential_bundle)
+                .sign(&crypto, &credential_bundle)
                 .expect("Error signing GroupInfo");
 
             // Generate key and nonce for the symmetric cipher.
             let welcome_key = AeadKey::random($ciphersuite);
-            let welcome_nonce = AeadNonce::random($ciphersuite);
+            let welcome_nonce = AeadNonce::random(&mut rng);
 
             // Generate receiver key pair.
             let receiver_key_pair =
-                $ciphersuite.derive_hpke_keypair(&Secret::random($ciphersuite, None));
+                $ciphersuite.derive_hpke_keypair(&Secret::random($ciphersuite, &mut rng, None));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
@@ -63,6 +69,7 @@ macro_rules! test_welcome_msg {
             // Encrypt the group info.
             let encrypted_group_info = welcome_key
                 .aead_seal(
+                    &crypto,
                     &group_info.tls_serialize_detached().unwrap(),
                     &[],
                     &welcome_nonce,

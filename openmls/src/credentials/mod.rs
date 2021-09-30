@@ -3,6 +3,7 @@ mod errors;
 pub use codec::*;
 pub use errors::*;
 
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::SignatureScheme};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
@@ -56,11 +57,16 @@ pub struct Credential {
 impl Credential {
     /// Verify a signature of a given payload against the public key contained
     /// in a credential.
-    pub fn verify(&self, payload: &[u8], signature: &Signature) -> Result<(), CredentialError> {
+    pub fn verify(
+        &self,
+        backend: &impl OpenMlsCrypto,
+        payload: &[u8],
+        signature: &Signature,
+    ) -> Result<(), CredentialError> {
         match &self.credential {
             MlsCredentialType::Basic(basic_credential) => basic_credential
                 .public_key
-                .verify(signature, payload)
+                .verify(backend, signature, payload)
                 .map_err(|_| CredentialError::InvalidSignature),
             // TODO: implement verification for X509 certificates. See issue #134.
             MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
@@ -112,9 +118,14 @@ pub struct BasicCredential {
 }
 
 impl BasicCredential {
-    pub fn verify(&self, payload: &[u8], signature: &Signature) -> Result<(), CredentialError> {
+    pub fn verify(
+        &self,
+        backend: &impl OpenMlsCrypto,
+        payload: &[u8],
+        signature: &Signature,
+    ) -> Result<(), CredentialError> {
         self.public_key
-            .verify(signature, payload)
+            .verify(backend, signature, payload)
             .map_err(|_| CredentialError::InvalidSignature)
     }
 }
@@ -139,7 +150,7 @@ fn test_protocol_version() {
 }
 
 /// This struct contains a credential and the corresponding private key.
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct CredentialBundle {
     credential: Credential,
@@ -154,8 +165,11 @@ impl CredentialBundle {
         identity: Vec<u8>,
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,
+        rng: &mut impl OpenMlsRand,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Self, CredentialError> {
-        let (private_key, public_key) = signature_scheme.new_keypair()?.into_tuple();
+        let (private_key, public_key) =
+            SignatureKeypair::new(signature_scheme, backend, rng)?.into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity: identity.into(),
@@ -179,7 +193,11 @@ impl CredentialBundle {
     }
 
     /// Sign a `msg` using the private key of the credential bundle.
-    pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, CryptoError> {
-        self.signature_private_key.sign(msg)
+    pub(crate) fn sign(
+        &self,
+        backend: &impl OpenMlsCrypto,
+        msg: &[u8],
+    ) -> Result<Signature, CryptoError> {
+        self.signature_private_key.sign(backend, msg)
     }
 }

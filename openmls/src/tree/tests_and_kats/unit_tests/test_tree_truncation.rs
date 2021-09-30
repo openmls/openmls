@@ -1,15 +1,22 @@
+use rust_crypto::RustCrypto;
+
 use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
     group::ManagedGroupConfig,
     node::{Node, NodeType},
     prelude::{KeyPackageBundle, LeafIndex},
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    test_utils::{
+        test_framework::{ActionType, CodecUse, ManagedTestSetup},
+        OpenMlsTestRand,
+    },
     tree::RatchetTree,
 };
 
 #[test]
 fn test_trim() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
     // Build a list of nodes, for which we need credentials and key package bundles
     let mut nodes = vec![];
     let mut key_package_bundles = vec![];
@@ -22,10 +29,13 @@ fn test_trim() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
+                &mut rng,
+                &crypto,
             )
             .unwrap();
             let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &mut rng, &crypto,vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -46,7 +56,7 @@ fn test_trim() {
         println!("final number of nodes: {:?}", nodes.len());
 
         let key_package_bundle = key_package_bundles.remove(0);
-        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes).unwrap();
 
         let size_untrimmed = tree.tree_size();
         println!("size untrimmed: {:?}", size_untrimmed);
@@ -71,6 +81,8 @@ fn test_trim() {
 
 #[test]
 fn test_truncation_after_removal() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
     // Set up a group with 8 members.
     let managed_group_config = ManagedGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
@@ -79,10 +91,12 @@ fn test_truncation_after_removal() {
             managed_group_config.clone(),
             number_of_clients,
             CodecUse::SerializedMessages,
+            &mut rng,
+            &crypto,
         );
 
         let group_id = setup
-            .create_random_group(number_of_clients, Ciphersuite::default())
+            .create_random_group(number_of_clients, Ciphersuite::default(), &mut rng, &crypto)
             .unwrap();
 
         let mut groups = setup.groups.borrow_mut();
@@ -103,6 +117,8 @@ fn test_truncation_after_removal() {
                 group,
                 &remover_id,
                 &[number_of_clients - 2, number_of_clients - 1],
+                &mut rng,
+                &crypto,
             )
             .expect("error while removing members from group");
 
@@ -114,6 +130,8 @@ fn test_truncation_after_removal() {
 
 #[test]
 fn test_truncation_after_update() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
     // Set up a group with 8 members.
     let managed_group_config = ManagedGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
@@ -122,10 +140,12 @@ fn test_truncation_after_update() {
             managed_group_config.clone(),
             number_of_clients,
             CodecUse::SerializedMessages,
+            &mut rng,
+            &crypto,
         );
 
         let group_id = setup
-            .create_random_group(number_of_clients, Ciphersuite::default())
+            .create_random_group(number_of_clients, Ciphersuite::default(), &mut rng, &crypto)
             .unwrap();
 
         let mut groups = setup.groups.borrow_mut();
@@ -141,7 +161,14 @@ fn test_truncation_after_update() {
 
         // Remove the rightmost 2 members in the tree
         setup
-            .self_update(ActionType::Commit, group, &updater_id, None)
+            .self_update(
+                ActionType::Commit,
+                group,
+                &updater_id,
+                None,
+                &mut rng,
+                &crypto,
+            )
             .expect("error while doing self-update");
 
         // Test if the tree was truncated. The tree's size should be ((number of

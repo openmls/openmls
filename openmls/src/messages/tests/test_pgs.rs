@@ -1,3 +1,4 @@
+use rust_crypto::RustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -9,12 +10,15 @@ use crate::{
         CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
     },
     prelude::FramingParameters,
+    test_utils::OpenMlsTestRand,
 };
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
 /// signed
 #[test]
 fn test_pgs() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
         let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -24,30 +28,46 @@ fn test_pgs() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .unwrap();
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .unwrap();
 
         // Generate KeyPackages
-        let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            &mut rng,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
 
-        let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-                .unwrap();
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            &mut rng,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
 
         // Alice creates a group
         let group_id = [1, 2, 3, 4];
         let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
+            &mut rng,
+            &crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
             None, /* Initial PSK */
@@ -61,6 +81,7 @@ fn test_pgs() {
                 framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
+                &crypto,
             )
             .expect("Could not create proposal.");
         let (commit, _welcome_option, kpb_option) = match group_alice.create_commit(
@@ -70,6 +91,8 @@ fn test_pgs() {
             &[],
             true,
             None,
+            &mut rng,
+            &crypto,
         ) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
@@ -81,11 +104,12 @@ fn test_pgs() {
                 &[&bob_add_proposal],
                 &[kpb_option.expect("No KeyPackageBundle")],
                 None,
+                &crypto,
             )
             .expect("Could not apply Commit");
 
         let pgs = group_alice
-            .export_public_group_state(&alice_credential_bundle)
+            .export_public_group_state(&crypto, &alice_credential_bundle)
             .expect("Could not export the public group state");
 
         // Make sure Alice is the signer
@@ -93,7 +117,7 @@ fn test_pgs() {
 
         // Verify the signature
         assert!(pgs
-            .verify_no_out(alice_credential_bundle.credential())
+            .verify_no_out(&crypto, alice_credential_bundle.credential())
             .is_ok());
 
         // Test codec

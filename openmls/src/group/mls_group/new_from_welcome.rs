@@ -15,6 +15,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<Self, WelcomeError> {
         log::debug!("MlsGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
@@ -28,6 +29,7 @@ impl MlsGroup {
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
             key_package_bundle.key_package(),
             welcome.secrets(),
+            backend,
         ) {
             egs
         } else {
@@ -52,15 +54,18 @@ impl MlsGroup {
         // Create key schedule
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
+            backend,
             joiner_secret,
-            psk_output(ciphersuite, psk_fetcher_option, &group_secrets.psks)?,
+            psk_output(ciphersuite, backend, psk_fetcher_option, &group_secrets.psks)?,
         );
 
         // Derive welcome key & nonce from the key schedule
-        let (welcome_key, welcome_nonce) = key_schedule.welcome()?.derive_welcome_key_nonce();
+        let (welcome_key, welcome_nonce) = key_schedule
+            .welcome(backend)?
+            .derive_welcome_key_nonce(backend);
 
         let group_info_bytes = welcome_key
-            .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
+            .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
         let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())?;
         let path_secret_option = group_secrets.path_secret;
@@ -111,16 +116,16 @@ impl MlsGroup {
             }
         };
 
-        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes)?;
+        let mut tree = RatchetTree::new_from_nodes(backend, key_package_bundle, &nodes)?;
 
         // Verify tree hash
-        let tree_hash = tree.tree_hash();
+        let tree_hash = tree.tree_hash(backend);
         if tree_hash != group_info.tree_hash() {
             return Err(WelcomeError::TreeHashMismatch);
         }
 
         // Verify parent hashes
-        tree.verify_parent_hashes()?;
+        tree.verify_parent_hashes(backend)?;
 
         // Verify GroupInfo signature
         let signer_node = tree.nodes[group_info.signer_index()].clone();
@@ -128,7 +133,7 @@ impl MlsGroup {
             .key_package
             .ok_or(WelcomeError::MissingKeyPackage)?;
         group_info
-            .verify_no_out(signer_key_package.credential())
+            .verify_no_out(backend, signer_key_package.credential())
             .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
 
         // Compute path secrets
@@ -147,7 +152,7 @@ impl MlsGroup {
             let private_tree = tree.private_tree_mut();
             // Derive path secrets and generate keypairs
             let new_public_keys =
-                private_tree.continue_path_secrets(ciphersuite, path_secret, &common_path);
+                private_tree.continue_path_secrets(ciphersuite, backend, path_secret, &common_path);
 
             // Validate public keys
             if tree
@@ -168,8 +173,8 @@ impl MlsGroup {
             &[],
         )?;
         // TODO #141: Implement PSK
-        key_schedule.add_context(&group_context)?;
-        let epoch_secrets = key_schedule.epoch_secrets(true)?;
+        key_schedule.add_context(backend, &group_context)?;
+        let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
         let secret_tree = epoch_secrets
             .encryption_secret()
@@ -177,9 +182,10 @@ impl MlsGroup {
 
         let confirmation_tag = epoch_secrets
             .confirmation_key()
-            .tag(group_context.confirmed_transcript_hash.as_slice());
+            .tag(backend, group_context.confirmed_transcript_hash.as_slice());
         let interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
+            backend,
             &MlsPlaintextCommitAuthData::from(&confirmation_tag),
             group_context.confirmed_transcript_hash.as_slice(),
         )?;
@@ -209,9 +215,10 @@ impl MlsGroup {
     pub(crate) fn find_key_package_from_welcome_secrets(
         key_package: &KeyPackage,
         welcome_secrets: &[EncryptedGroupSecrets],
+        backend: &impl OpenMlsCrypto,
     ) -> Option<EncryptedGroupSecrets> {
         for egs in welcome_secrets {
-            if key_package.hash().as_slice() == egs.key_package_hash.as_slice() {
+            if key_package.hash(backend).as_slice() == egs.key_package_hash.as_slice() {
                 return Some(egs.clone());
             }
         }

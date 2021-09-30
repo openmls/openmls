@@ -14,6 +14,8 @@
 
 use crate::ciphersuite::Ciphersuite;
 #[cfg(test)]
+use crate::test_utils::OpenMlsTestRand;
+#[cfg(test)]
 use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
@@ -39,6 +41,8 @@ use crate::{
     },
 };
 
+use openmls_traits::random::OpenMlsRand;
+use rust_crypto::RustCrypto;
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, TlsVecU32};
@@ -67,9 +71,13 @@ pub struct TreeKemTestVector {
     pub tree_hash_after: String,
 }
 
-pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
+pub fn run_test_vector(
+    test_vector: TreeKemTestVector,
+    rng: &mut impl OpenMlsRand,
+) -> Result<(), TreeKemTestVectorError> {
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
+    let crypto = RustCrypto::default();
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
@@ -96,21 +104,28 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         "username".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        rng,
+        &crypto,
     )
     .unwrap();
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
         my_leaf_secret.clone(),
         &my_key_package,
+        &crypto,
     )
-    .sign(&credential_bundle)
+    .sign(&crypto, &credential_bundle)
     .unwrap();
 
     // Check tree hashes.
-    let mut tree_before =
-        RatchetTree::new_from_nodes(my_key_package_bundle, ratchet_tree_before.as_slice()).unwrap();
+    let mut tree_before = RatchetTree::new_from_nodes(
+        &crypto,
+        my_key_package_bundle,
+        ratchet_tree_before.as_slice(),
+    )
+    .unwrap();
     crate::utils::_print_tree(&tree_before, "Tree before");
 
-    if hex_to_bytes(&test_vector.tree_hash_before) != tree_before.tree_hash() {
+    if hex_to_bytes(&test_vector.tree_hash_before) != tree_before.tree_hash(&crypto) {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'before' tree.");
         }
@@ -122,15 +137,22 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_after_bytes.as_slice())
             .expect("Error decoding ratchet tree");
 
-    let my_key_package_bundle =
-        KeyPackageBundlePayload::from_key_package_and_leaf_secret(my_leaf_secret, &my_key_package)
-            .sign(&credential_bundle)
-            .unwrap();
-    let tree_after =
-        RatchetTree::new_from_nodes(my_key_package_bundle, ratchet_tree_after.as_slice()).unwrap();
+    let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
+        my_leaf_secret,
+        &my_key_package,
+        &crypto,
+    )
+    .sign(&crypto, &credential_bundle)
+    .unwrap();
+    let tree_after = RatchetTree::new_from_nodes(
+        &crypto,
+        my_key_package_bundle,
+        ratchet_tree_after.as_slice(),
+    )
+    .unwrap();
     crate::utils::_print_tree(&tree_after, "Tree after");
 
-    if hex_to_bytes(&test_vector.tree_hash_after) != tree_after.tree_hash() {
+    if hex_to_bytes(&test_vector.tree_hash_after) != tree_after.tree_hash(&crypto) {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'after' tree.");
         }
@@ -138,13 +160,13 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     }
 
     // Verify parent hashes
-    if tree_before.verify_parent_hashes().is_err() {
+    if tree_before.verify_parent_hashes(&crypto).is_err() {
         if cfg!(test) {
             panic!("Parent hash mismatch in the 'before' tree.");
         }
         return Err(TreeKemTestVectorError::BeforeParentHashMismatch);
     }
-    if tree_after.verify_parent_hashes().is_err() {
+    if tree_after.verify_parent_hashes(&crypto).is_err() {
         if cfg!(test) {
             panic!("Parent hash mismatch in the 'after' tree.");
         }
@@ -181,7 +203,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     tree_before
         .private_tree_mut()
-        .continue_path_secrets(ciphersuite, start_secret, &path);
+        .continue_path_secrets(ciphersuite, &crypto, start_secret, &path);
 
     // Check if the root secrets match up.
     let root_secret_after_add: PathSecret = Secret::from_slice(
@@ -210,6 +232,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     let group_context = hex_to_bytes(&test_vector.update_group_context);
     let _commit_secret = tree_before
         .update_path(
+            &crypto,
             LeafIndex::from(test_vector.update_sender),
             &update_path,
             &group_context,
@@ -263,22 +286,24 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
 #[test]
 fn read_test_vector() {
+    let mut rng = OpenMlsTestRand::new();
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {
-        run_test_vector(test_vector).expect("error while checking tree kem test vector.");
+        run_test_vector(test_vector, &mut rng).expect("error while checking tree kem test vector.");
     }
 }
 
 #[test]
 fn write_test_vector() {
+    let mut rng = OpenMlsTestRand::new();
     let mut tests = Vec::new();
     const NUM_LEAVES: u32 = 20;
 
     for ciphersuite in Config::supported_ciphersuites() {
         for n_leaves in 2..NUM_LEAVES {
             log::trace!(" Creating test vector with {:?} leaves ...", n_leaves);
-            let test = generate_test_vector(n_leaves, ciphersuite);
+            let test = generate_test_vector(n_leaves, ciphersuite, &mut rng);
             tests.push(test);
         }
     }
@@ -287,10 +312,19 @@ fn write_test_vector() {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
+pub fn generate_test_vector(
+    n_leaves: u32,
+    ciphersuite: &'static Ciphersuite,
+    rng: &mut impl OpenMlsRand,
+) -> TreeKemTestVector {
+    use openmls_traits::key_store::OpenMlsKeyStore;
+
     use crate::{
-        extensions::RatchetTreeExtension, group::WireFormat, test_utils::test_framework::CodecUse,
+        extensions::RatchetTreeExtension, group::WireFormat, prelude::KeyPackageBundle,
+        test_utils::test_framework::CodecUse,
     };
+
+    let crypto = RustCrypto::default();
 
     // The test really only makes sense with two or more leaves
     if n_leaves <= 1 {
@@ -312,6 +346,8 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         managed_group_config,
         n_leaves as usize,
         CodecUse::SerializedMessages,
+        rng,
+        &crypto,
     );
 
     // - I am the client with key package `my_key_package`
@@ -326,7 +362,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     // To reach that state, we create a group of `n_leaves` members and remove a
     // member from a random position.
     let group_id = setup
-        .create_random_group(n_leaves as usize, ciphersuite)
+        .create_random_group(n_leaves as usize, ciphersuite, rng, &crypto)
         .unwrap();
 
     let mut groups = setup.groups.borrow_mut();
@@ -352,6 +388,8 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
             group,
             &remover_id,
             &[target_index as usize],
+            rng,
+            &crypto,
         )
         .unwrap();
 
@@ -378,25 +416,30 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let addee = clients.get(&addee_id).unwrap().borrow();
 
     let my_key_package = setup
-        .get_fresh_key_package(&addee, &group.ciphersuite)
+        .get_fresh_key_package(&addee, &group.ciphersuite, rng, &crypto)
         .unwrap();
 
-    let my_leaf_secret = addee.key_store.get_leaf_secret(&my_key_package.hash());
+    let kpb: KeyPackageBundle = addee.key_store.read(&my_key_package.hash(&crypto)).unwrap();
+    let my_leaf_secret = kpb.leaf_secret();
 
     let (messages, welcome) = adder
         .add_members(
             ActionType::Commit,
             &group.group_id,
             &[my_key_package.clone()],
+            rng,
+            &crypto,
         )
         .unwrap();
 
     // It's only going to be a single message, since we only add one member.
     setup
-        .distribute_to_members(&adder.identity, group, &messages[0])
+        .distribute_to_members(&crypto, &adder.identity, group, &messages[0])
         .unwrap();
 
-    setup.deliver_welcome(welcome.unwrap(), group).unwrap();
+    setup
+        .deliver_welcome(&crypto, welcome.unwrap(), group)
+        .unwrap();
 
     let addee_groups = addee.groups.borrow();
     let addee_group = addee_groups.get(&group_id).unwrap();
@@ -412,7 +455,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .tls_serialize_detached()
         .expect("error serializing ratchet tree extension");
 
-    let tree_hash_before = addee_group.tree_hash();
+    let tree_hash_before = addee_group.tree_hash(&crypto);
 
     drop(addee_groups);
     drop(addee);
@@ -437,7 +480,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .tls_serialize_detached()
         .expect("error serializing group context");
 
-    let (message, _) = updater_group.self_update(&updater.key_store, None).unwrap();
+    let (message, _) = updater_group
+        .self_update(&updater.key_store, rng, &crypto, None)
+        .unwrap();
 
     let update_path = match message {
         MlsMessageOut::Plaintext(ref pt) => match pt.content() {
@@ -455,7 +500,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     drop(clients);
 
     setup
-        .distribute_to_members(&updater_id, group, &message)
+        .distribute_to_members(&crypto, &updater_id, group, &message)
         .unwrap();
 
     // The update was sent, now we get the right state variables again
@@ -489,7 +534,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let ratchet_tree_after = RatchetTreeExtension::new(addee_group.export_ratchet_tree())
         .tls_serialize_detached()
         .expect("error serializing ratchet tree extension");
-    let tree_hash_after = addee_group.tree_hash();
+    let tree_hash_after = addee_group.tree_hash(&crypto);
 
     TreeKemTestVector {
         cipher_suite: ciphersuite.name() as u16,

@@ -1,8 +1,10 @@
+use rust_crypto::RustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
 use crate::prelude::_print_tree;
+use crate::test_utils::OpenMlsTestRand;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
@@ -11,11 +13,16 @@ use crate::{
 /// This tests serializing/deserializing MlsPlaintext
 #[test]
 fn codec_plaintext() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
             vec![7, 8, 9],
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .unwrap();
         let sender = Sender {
@@ -23,7 +30,7 @@ fn codec_plaintext() {
             sender: LeafIndex::from(2u32),
         };
         let group_context = GroupContext::new(
-            GroupId::random(ciphersuite),
+            GroupId::random(&mut rng),
             GroupEpoch(1),
             vec![],
             vec![],
@@ -34,7 +41,7 @@ fn codec_plaintext() {
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
             WireFormat::MlsPlaintext,
-            GroupId::random(ciphersuite),
+            GroupId::random(&mut rng),
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
@@ -43,14 +50,14 @@ fn codec_plaintext() {
         )
         .with_context(serialized_context.as_slice());
         let orig: MlsPlaintext = signature_input
-            .sign(&credential_bundle)
+            .sign(&crypto, &credential_bundle)
             .expect("Signing failed.");
 
         let enc = orig.tls_serialize_detached().unwrap();
         let copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice()).unwrap();
         let copy = copy
             .set_context(&serialized_context)
-            .verify(credential_bundle.credential())
+            .verify(&crypto, credential_bundle.credential())
             .unwrap();
         assert_eq!(orig, copy);
         assert!(!orig.is_handshake_message());
@@ -60,11 +67,16 @@ fn codec_plaintext() {
 /// This tests serializing/deserializing MlsCiphertext
 #[test]
 fn codec_ciphertext() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
             vec![7, 8, 9],
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .unwrap();
         let sender = Sender {
@@ -83,7 +95,7 @@ fn codec_ciphertext() {
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
             WireFormat::MlsCiphertext,
-            GroupId::random(ciphersuite),
+            GroupId::random(&mut rng),
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
@@ -92,21 +104,22 @@ fn codec_ciphertext() {
         )
         .with_context(serialized_context.as_slice());
         let plaintext: MlsPlaintext = signature_input
-            .sign(&credential_bundle)
+            .sign(&crypto, &credential_bundle)
             .expect("Signing failed.");
 
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
-            JoinerSecret::random(ciphersuite, ProtocolVersion::default()),
+            &crypto,
+            JoinerSecret::random(ciphersuite, &mut rng, ProtocolVersion::default()),
             None, // PSK
         );
 
         key_schedule
-            .add_context(&group_context)
+            .add_context(&crypto, &group_context)
             .expect("Could not add context to key schedule");
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(false)
+            .epoch_secrets(&crypto, false)
             .expect("Could not generte epoch secrets");
 
         let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
@@ -114,6 +127,8 @@ fn codec_ciphertext() {
         let orig = MlsCiphertext::try_from_plaintext(
             &plaintext,
             ciphersuite,
+            &mut rng,
+            &crypto,
             &group_context,
             sender.to_leaf_index(),
             &epoch_secrets,
@@ -133,11 +148,16 @@ fn codec_ciphertext() {
 /// This tests the correctness of wire format checks
 #[test]
 fn wire_format_checks() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
             vec![7, 8, 9],
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            &crypto,
         )
         .unwrap();
         let sender = Sender {
@@ -156,7 +176,7 @@ fn wire_format_checks() {
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
             WireFormat::MlsCiphertext,
-            GroupId::random(ciphersuite),
+            GroupId::random(&mut rng),
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
@@ -165,21 +185,22 @@ fn wire_format_checks() {
         )
         .with_context(serialized_context.as_slice());
         let mut plaintext: MlsPlaintext = signature_input
-            .sign(&credential_bundle)
+            .sign(&crypto, &credential_bundle)
             .expect("Signing failed.");
 
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
-            JoinerSecret::random(ciphersuite, ProtocolVersion::default()),
+            &crypto,
+            JoinerSecret::random(ciphersuite, &mut rng, ProtocolVersion::default()),
             None, // PSK
         );
 
         key_schedule
-            .add_context(&group_context)
+            .add_context(&crypto, &group_context)
             .expect("Could not add context to key schedule");
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(false)
+            .epoch_secrets(&crypto, false)
             .expect("Could not generte epoch secrets");
 
         let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
@@ -187,6 +208,8 @@ fn wire_format_checks() {
         let mut ciphertext = MlsCiphertext::try_from_plaintext(
             &plaintext,
             ciphersuite,
+            &mut rng,
+            &crypto,
             &group_context,
             sender.to_leaf_index(),
             &epoch_secrets,
@@ -198,7 +221,7 @@ fn wire_format_checks() {
         // Decrypt the ciphertext and expect the correct wire format
 
         let verifiable_plaintext = ciphertext
-            .to_plaintext(ciphersuite, &epoch_secrets, &mut secret_tree)
+            .to_plaintext(ciphersuite, &crypto, &epoch_secrets, &mut secret_tree)
             .expect("Could not decrypt MlsCiphertext.");
 
         assert_eq!(
@@ -212,7 +235,7 @@ fn wire_format_checks() {
 
         assert_eq!(
             ciphertext
-                .to_plaintext(ciphersuite, &epoch_secrets, &mut secret_tree)
+                .to_plaintext(ciphersuite, &crypto, &epoch_secrets, &mut secret_tree)
                 .expect_err("Could decrypt despite wrong wire format."),
             MlsCiphertextError::WrongWireFormat
         );
@@ -225,6 +248,8 @@ fn wire_format_checks() {
             MlsCiphertext::try_from_plaintext(
                 &plaintext,
                 ciphersuite,
+                &mut rng,
+                &crypto,
                 &group_context,
                 sender.to_leaf_index(),
                 &epoch_secrets,
@@ -239,23 +264,31 @@ fn wire_format_checks() {
 
 #[test]
 fn membership_tag() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = &RustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
             vec![7, 8, 9],
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            crypto,
         )
         .unwrap();
         let group_context = GroupContext::new(
-            GroupId::random(ciphersuite),
+            GroupId::random(&mut rng),
             GroupEpoch(1),
             vec![],
             vec![],
             &[],
         )
         .unwrap();
-        let membership_key =
-            MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
+        let membership_key = MembershipKey::from_secret(Secret::random(
+            ciphersuite,
+            &mut rng,
+            None, /* MLS version */
+        ));
         let mut mls_plaintext = MlsPlaintext::new_application(
             LeafIndex::from(2u32),
             &[1, 2, 3],
@@ -263,6 +296,7 @@ fn membership_tag() {
             &credential_bundle,
             &group_context,
             &membership_key,
+            crypto,
         )
         .unwrap();
 
@@ -270,12 +304,12 @@ fn membership_tag() {
 
         println!(
             "Membership tag error: {:?}",
-            mls_plaintext.verify_membership(serialized_context, &membership_key)
+            mls_plaintext.verify_membership(crypto, serialized_context, &membership_key)
         );
 
         // Verify signature & membership tag
         assert!(mls_plaintext
-            .verify_membership(serialized_context, &membership_key)
+            .verify_membership(crypto, serialized_context, &membership_key)
             .is_ok());
 
         // Change the content of the plaintext message
@@ -283,13 +317,16 @@ fn membership_tag() {
 
         // Expect the signature & membership tag verification to fail
         assert!(mls_plaintext
-            .verify_membership(serialized_context, &membership_key)
+            .verify_membership(crypto, serialized_context, &membership_key)
             .is_err());
     }
 }
 
 #[test]
 fn unknown_sender() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = &RustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
         let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -299,44 +336,64 @@ fn unknown_sender() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            crypto,
         )
         .unwrap();
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            crypto,
         )
         .unwrap();
         let charlie_credential_bundle = CredentialBundle::new(
             "Charlie".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            crypto,
         )
         .unwrap();
 
         // Generate KeyPackages
-        let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            &mut rng,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let charlie_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &charlie_credential_bundle,
+            &mut rng,
+            crypto,
             Vec::new(),
         )
         .unwrap();
         let charlie_key_package = charlie_key_package_bundle.key_package();
 
-        let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-                .unwrap();
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            &mut rng,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
 
         // Alice creates a group
         let group_id = [1, 2, 3, 4];
         let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
+            &mut rng,
+            crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
             None, /* Initial PSK */
@@ -350,6 +407,7 @@ fn unknown_sender() {
                 framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
+                crypto,
             )
             .expect("Could not create proposal.");
 
@@ -361,11 +419,13 @@ fn unknown_sender() {
                 &[],
                 false,
                 None,
+                &mut rng,
+                crypto,
             )
             .expect("Error creating Commit");
 
         group_alice
-            .apply_commit(&commit, &[&bob_add_proposal], &[], None)
+            .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
             .expect("Could not apply Commit");
 
         // Alice adds Charlie
@@ -375,6 +435,7 @@ fn unknown_sender() {
                 framing_parameters,
                 &alice_credential_bundle,
                 charlie_key_package.clone(),
+                crypto,
             )
             .expect("Could not create proposal.");
 
@@ -386,11 +447,13 @@ fn unknown_sender() {
                 &[],
                 false,
                 None,
+                &mut rng,
+                crypto,
             )
             .expect("Error creating Commit");
 
         group_alice
-            .apply_commit(&commit, &[&charlie_add_proposal], &[], None)
+            .apply_commit(&commit, &[&charlie_add_proposal], &[], None, crypto)
             .expect("Could not apply Commit");
 
         let mut group_charlie = MlsGroup::new_from_welcome(
@@ -398,6 +461,7 @@ fn unknown_sender() {
             Some(group_alice.tree().public_key_tree_copy()),
             charlie_key_package_bundle,
             None,
+            crypto,
         )
         .expect("Charlie: Error creating group from Welcome");
 
@@ -407,6 +471,7 @@ fn unknown_sender() {
                 framing_parameters,
                 &alice_credential_bundle,
                 LeafIndex::from(1usize),
+                crypto,
             )
             .expect("Could not create proposal.");
         let (commit, _welcome_option, kpb_option) = group_alice
@@ -417,6 +482,8 @@ fn unknown_sender() {
                 &[],
                 false,
                 None,
+                &mut rng,
+                crypto,
             )
             .expect("Error creating Commit");
 
@@ -424,7 +491,7 @@ fn unknown_sender() {
         _print_tree(&group_charlie.tree(), "Charlie tree");
 
         group_charlie
-            .apply_commit(&commit, &[&bob_remove_proposal], &[], None)
+            .apply_commit(&commit, &[&bob_remove_proposal], &[], None, crypto)
             .expect("Charlie: Could not apply Commit");
         group_alice
             .apply_commit(
@@ -432,6 +499,7 @@ fn unknown_sender() {
                 &[&bob_remove_proposal],
                 &[kpb_option.unwrap()],
                 None,
+                crypto,
             )
             .expect("Alice: Could not apply Commit");
 
@@ -447,14 +515,17 @@ fn unknown_sender() {
             &[],
             &[1, 2, 3],
             &alice_credential_bundle,
-            group_alice.context(),
-            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
+            &group_alice.context(),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            crypto,
         )
         .expect("Could not create new MlsPlaintext.");
 
         let enc_message = MlsCiphertext::try_from_plaintext(
             &bogus_sender_message,
             ciphersuite,
+            &mut rng,
+            crypto,
             group_alice.context(),
             LeafIndex::from(1usize),
             group_alice.epoch_secrets(),
@@ -463,7 +534,7 @@ fn unknown_sender() {
         )
         .expect("Encryption error");
 
-        let received_message = group_charlie.decrypt(&enc_message);
+        let received_message = group_charlie.decrypt(&enc_message, crypto);
         assert_eq!(
             received_message.unwrap_err(),
             MlsGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
@@ -477,19 +548,22 @@ fn unknown_sender() {
             &[],
             &[1, 2, 3],
             &alice_credential_bundle,
-            group_alice.context(),
-            &MembershipKey::from_secret(Secret::random(ciphersuite, None)),
+            &group_alice.context(),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            crypto,
         )
         .expect("Could not create new MlsPlaintext.");
 
         let mut secret_tree = SecretTree::new(
-            EncryptionSecret::random(ciphersuite),
+            EncryptionSecret::random(ciphersuite, &mut rng),
             LeafIndex::from(100usize),
         );
 
         let enc_message = MlsCiphertext::try_from_plaintext(
             &bogus_sender_message,
             ciphersuite,
+            &mut rng,
+            crypto,
             group_alice.context(),
             LeafIndex::from(99usize),
             group_alice.epoch_secrets(),
@@ -498,7 +572,7 @@ fn unknown_sender() {
         )
         .expect("Encryption error");
 
-        let received_message = group_charlie.decrypt(&enc_message);
+        let received_message = group_charlie.decrypt(&enc_message, crypto);
         assert_eq!(
             received_message.unwrap_err(),
             MlsGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
@@ -508,6 +582,9 @@ fn unknown_sender() {
 
 #[test]
 fn confirmation_tag_presence() {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = &RustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
         let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -517,30 +594,46 @@ fn confirmation_tag_presence() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            crypto,
         )
         .unwrap();
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &mut rng,
+            crypto,
         )
         .unwrap();
 
         // Generate KeyPackages
-        let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            &mut rng,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
 
-        let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-                .unwrap();
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            &mut rng,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
 
         // Alice creates a group
         let group_id = [1, 2, 3, 4];
         let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
+            &mut rng,
+            crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
             None, /* Initial PSK */
@@ -554,6 +647,7 @@ fn confirmation_tag_presence() {
                 framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
+                crypto,
             )
             .expect("Could not create proposal.");
 
@@ -565,13 +659,15 @@ fn confirmation_tag_presence() {
                 &[],
                 false,
                 None,
+                &mut rng,
+                crypto,
             )
             .expect("Error creating Commit");
 
         commit.unset_confirmation_tag();
 
         let err = group_alice
-            .apply_commit(&commit, &[&bob_add_proposal], &[], None)
+            .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
             .expect_err("No error despite missing confirmation tag.");
 
         assert_eq!(
@@ -582,6 +678,9 @@ fn confirmation_tag_presence() {
 }
 
 ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: CiphersuiteName) {
+    let mut rng = OpenMlsTestRand::new();
+    let crypto = &RustCrypto::default();
+
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let group_aad = b"Alice's test group";
@@ -592,23 +691,27 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        &mut rng,
+        crypto,
     )
     .unwrap();
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        &mut rng,
+        crypto,
     )
     .unwrap();
 
     // Generate KeyPackages
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &mut rng, crypto, Vec::new())
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, &mut rng, crypto, Vec::new())
             .unwrap();
 
     // Alice creates a group
@@ -616,6 +719,8 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let mut group_alice = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
+        &mut rng,
+        crypto,
         alice_key_package_bundle,
         MlsGroupConfig::default(),
         None, /* Initial PSK */
@@ -628,7 +733,8 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .create_add_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            bob_key_package.clone()
+            bob_key_package.clone(),
+            crypto,
         ).expect("Could not create proposal.");
 
     let (mut commit, _welcome, _kpb_option) = group_alice
@@ -639,18 +745,21 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             &[],
             false,
             None,
+            &mut rng,
+            crypto,
         )
         .expect("Error creating Commit");
 
     let original_encoded_commit = commit.tls_serialize_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut original_encoded_commit.as_slice()).unwrap();
-    let decoded_commit = group_alice.verify(input_commit).expect("Error verifying valid commit message");
+    let decoded_commit = group_alice.verify(input_commit, crypto).expect("Error verifying valid commit message");
     assert_eq!(decoded_commit.tls_serialize_detached().unwrap(), original_encoded_commit);
 
     // Remove membership tag.
     let good_membership_tag = commit.membership_tag().clone();
     commit.unset_membership_tag();
     let membership_error = commit.verify_membership(
+        crypto,
         &group_alice.context().tls_serialize_detached().unwrap(),
         group_alice.epoch_secrets().membership_key())
         .err()
@@ -666,6 +775,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     modified_membership_tag.0.mac_value[0] ^= 0xFF;
     commit.set_membership_tag_test(modified_membership_tag);
     let membership_error = commit.verify_membership(
+        crypto,
         &group_alice.context().tls_serialize_detached().unwrap(),
         group_alice.epoch_secrets().membership_key())
         .err()
@@ -679,7 +789,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     commit.invalidate_signature();
     let encoded_commit = commit.tls_serialize_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
-    let decoded_commit = group_alice.verify(input_commit);
+    let decoded_commit = group_alice.verify(input_commit, crypto);
     assert_eq!(
         decoded_commit.err().expect("group.verify() should have returned an error"),
         MlsGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)));
@@ -692,7 +802,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let good_confirmation_tag = commit.confirmation_tag().cloned();
     commit.unset_confirmation_tag();
     let error = group_alice
-        .apply_commit(&commit, &[&bob_add_proposal], &[], None)
+        .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
         .err()
         .expect("Applying commit should have yielded an error.");
     assert_eq!(
@@ -707,7 +817,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     commit.set_confirmation_tag(modified_confirmation_tag);
     let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
     let error = group_alice
-        .apply_commit(&commit, &[&bob_add_proposal], &[], None)
+        .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
         .err()
         .expect("Applying commit should have yielded an error.");
     assert_eq!(
@@ -720,9 +830,9 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     commit.set_confirmation_tag(good_confirmation_tag.unwrap());
     let encoded_commit = commit.tls_serialize_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
-    let decoded_commit = group_alice.verify(input_commit).expect("Error verifying commit");
+    let decoded_commit = group_alice.verify(input_commit, crypto).expect("Error verifying commit");
     assert_eq!(original_encoded_commit, decoded_commit.tls_serialize_detached().unwrap());
     group_alice
-        .apply_commit(&decoded_commit, &[&bob_add_proposal], &[], None)
+        .apply_commit(&decoded_commit, &[&bob_add_proposal], &[], None, crypto)
         .expect("Alice: Error applying commit.");
 });

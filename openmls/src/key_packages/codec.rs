@@ -43,11 +43,12 @@ impl tls_codec::Deserialize for KeyPackage {
             encoded,
         };
 
-        if kp.verify_no_out(kp.credential()).is_err() {
-            let msg = format!("Error verifying a key package after decoding\n{:?}", kp);
-            log::error!("{}", msg);
-            return Err(tls_codec::Error::DecodingError(msg));
-        }
+        // FIXME: Was this necessary? If so, add verification of key packages again after deserializing.
+        // if kp.verify_no_out(kp.credential()).is_err() {
+        //     let msg = format!("Error verifying a key package after decoding\n{:?}", kp);
+        //     log::error!("{}", msg);
+        //     return Err(tls_codec::Error::DecodingError(msg));
+        // }
         Ok(kp)
     }
 }
