@@ -427,6 +427,11 @@ impl Secret {
         );
 
         Self {
+            // XXX: we unwrap here because the two crypto backends we have right
+            //      now won't throw an error here. This shouldn't be necessary
+            //      when introducing the crypto object. In that case this
+            //      module has to ensure to check that the backend supports
+            //      all required functions before doing anything.
             value: hkdf_extract(
                 self.ciphersuite.hash,
                 self.value.as_slice(),

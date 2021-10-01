@@ -4,8 +4,6 @@
 
 // XXX: ed25519-dalek depends on an old version of rand.
 //      https://github.com/dalek-cryptography/ed25519-dalek/issues/162
-// extern crate ed25519_dalek;
-extern crate rand_07;
 
 use aes_gcm::{
     aead::{Aead, Payload},
@@ -23,6 +21,7 @@ use sha2::{Digest, Sha256, Sha512};
 
 use crate::ciphersuite::{errors::CryptoError, AeadType, HashType, SignatureScheme};
 
+/// Returns an error if the `signature_scheme` is not supported by evercrypt.
 pub(crate) fn supports(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     match signature_scheme {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(()),
@@ -31,6 +30,8 @@ pub(crate) fn supports(signature_scheme: SignatureScheme) -> Result<(), CryptoEr
     }
 }
 
+/// Returns `HKDF::extract` with the given parameters or an error if the HKDF
+/// algorithm isn't supported.
 pub(crate) fn hkdf_extract(
     hash_type: HashType,
     salt: &[u8],
@@ -43,6 +44,8 @@ pub(crate) fn hkdf_extract(
     }
 }
 
+/// Returns `HKDF::expand` with the given parameters or an error if the HKDF
+/// algorithms isn't supported or the requested output length is invalid.
 pub(crate) fn hkdf_expand(
     hash_type: HashType,
     prk: &[u8],
@@ -70,6 +73,7 @@ pub(crate) fn hkdf_expand(
     }
 }
 
+/// Returns the hash of `data` or an error if the hash algorithm isn't supported.
 pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
     match hash_type {
         HashType::Sha2_256 => Ok(Sha256::digest(data).as_slice().into()),
@@ -78,6 +82,8 @@ pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoEr
     }
 }
 
+/// Returns the cipher text, tag (concatenated) or an error if the AEAD scheme
+/// is not supported or the encryption fails.
 pub(crate) fn aead_encrypt(
     alg: AeadType,
     key: &[u8],
@@ -111,6 +117,8 @@ pub(crate) fn aead_encrypt(
     }
 }
 
+/// Returns the decryption of the provided cipher text or an error if the AEAD
+/// scheme is not supported or the decryption fails.
 pub(crate) fn aead_decrypt(
     alg: AeadType,
     key: &[u8],
@@ -144,7 +152,8 @@ pub(crate) fn aead_decrypt(
     }
 }
 
-/// Returns `(sk, pk)`
+/// Returns `(sk, pk)` or an error if the signature scheme is not supported or
+/// the key generation fails.
 pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
     match alg {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => {
@@ -154,7 +163,7 @@ pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8
         }
         SignatureScheme::ED25519 => {
             let k = ed25519_dalek::Keypair::generate(&mut rand_07::rngs::OsRng).to_bytes();
-            let pk = k[32..].to_vec();
+            let pk = k[ed25519_dalek::SECRET_KEY_LENGTH..].to_vec();
             // full key here because we need it to sign...
             let sk_pk = k.into();
             Ok((sk_pk, pk))
@@ -163,6 +172,8 @@ pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8
     }
 }
 
+/// Returns an error if the signature verification fails or the requested scheme
+/// is not supported.
 pub(crate) fn verify_signature(
     alg: SignatureScheme,
     data: &[u8],
@@ -184,10 +195,10 @@ pub(crate) fn verify_signature(
         SignatureScheme::ED25519 => {
             let k = ed25519_dalek::PublicKey::from_bytes(pk)
                 .map_err(|_| CryptoError::CryptoLibraryError)?;
-            if signature.len() != 64 {
+            if signature.len() != ed25519_dalek::SIGNATURE_LENGTH {
                 return Err(CryptoError::CryptoLibraryError);
             }
-            let mut sig = [0u8; 64];
+            let mut sig = [0u8; ed25519_dalek::SIGNATURE_LENGTH];
             sig.clone_from_slice(signature);
             k.verify_strict(data, &ed25519_dalek::Signature::new(sig))
                 .map_err(|_| CryptoError::InvalidSignature)
@@ -196,6 +207,8 @@ pub(crate) fn verify_signature(
     }
 }
 
+/// Returns the signature or an error if the signature scheme is not supported
+/// or signing fails.
 pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
     match alg {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => {

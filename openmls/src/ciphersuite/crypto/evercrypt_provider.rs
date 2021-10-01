@@ -76,6 +76,7 @@ fn hmac_from_hash(hash_type: HashType) -> Result<HmacMode, CryptoError> {
     })
 }
 
+/// Returns an error if the `signature_scheme` is not supported by evercrypt.
 pub(crate) fn supports(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     if SignatureMode::try_from(signature_scheme).is_err() {
         Err(CryptoError::UnsupportedSignatureScheme)
@@ -86,6 +87,8 @@ pub(crate) fn supports(signature_scheme: SignatureScheme) -> Result<(), CryptoEr
     }
 }
 
+/// Returns `HKDF::extract` with the given parameters or an error if the HKDF
+/// algorithm isn't supported.
 pub(crate) fn hkdf_extract(
     hash_type: HashType,
     salt: &[u8],
@@ -95,6 +98,8 @@ pub(crate) fn hkdf_extract(
     Ok(hkdf::extract(hmac, salt, ikm))
 }
 
+/// Returns `HKDF::expand` with the given parameters or an error if the HKDF
+/// algorithms isn't supported or the requested output length is invalid.
 pub(crate) fn hkdf_expand(
     hash_type: HashType,
     prk: &[u8],
@@ -105,11 +110,14 @@ pub(crate) fn hkdf_expand(
     Ok(hkdf::expand(hmac, prk, info, okm_len))
 }
 
+/// Returns the hash of `data` or an error if the hash algorithm isn't supported.
 pub(crate) fn hash(hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
     let alg = hash_from_algorithm(hash_type)?;
     Ok(evercrypt::digest::hash(alg, data))
 }
 
+/// Returns the cipher text, tag (concatenated) or an error if the AEAD scheme
+/// is not supported or the encryption fails.
 pub(crate) fn aead_encrypt(
     alg: AeadType,
     key: &[u8],
@@ -121,6 +129,8 @@ pub(crate) fn aead_encrypt(
     aead::encrypt_combined(alg, key, data, nonce, aad).map_err(|_| CryptoError::CryptoLibraryError)
 }
 
+/// Returns the decryption of the provided cipher text or an error if the AEAD
+/// scheme is not supported or the decryption fails.
 pub(crate) fn aead_decrypt(
     alg: AeadType,
     key: &[u8],
@@ -132,7 +142,8 @@ pub(crate) fn aead_decrypt(
     aead_decrypt_combined(alg, key, ct_tag, nonce, aad).map_err(|_| CryptoError::CryptoLibraryError)
 }
 
-/// Returns `(sk, pk)`
+/// Returns `(sk, pk)` or an error if the signature scheme is not supported or
+/// the key generation fails.
 pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
     let signature_mode = match SignatureMode::try_from(alg) {
         Ok(signature_mode) => signature_mode,
@@ -147,6 +158,8 @@ pub(crate) fn signature_key_gen(alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8
     }
 }
 
+/// Returns an error if the signature verification fails or the requested scheme
+/// is not supported.
 pub(crate) fn verify_signature(
     alg: SignatureScheme,
     data: &[u8],
@@ -170,6 +183,8 @@ pub(crate) fn verify_signature(
     }
 }
 
+/// Returns the signature or an error if the signature scheme is not supported
+/// or signing fails.
 pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
     let signature_mode = match SignatureMode::try_from(alg) {
         Ok(signature_mode) => signature_mode,
@@ -177,10 +192,12 @@ pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<
     };
     let (hash, nonce) = match signature_mode {
         SignatureMode::Ed25519 => (None, None),
-        SignatureMode::P256 => (
-            Some(DigestMode::try_from(alg).unwrap()),
-            Some(p256_ecdsa_random_nonce().unwrap()),
-        ),
+        SignatureMode::P256 => {
+            let digest =
+                DigestMode::try_from(alg).map_err(|_| CryptoError::UnsupportedHashAlgorithm)?;
+            let nonce = p256_ecdsa_random_nonce().map_err(|_| CryptoError::CryptoLibraryError)?;
+            (Some(digest), Some(nonce))
+        }
     };
     evercrypt::signature::sign(signature_mode, hash, key, data, nonce.as_ref())
         .map_err(|_| CryptoError::CryptoLibraryError)
