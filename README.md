@@ -31,7 +31,7 @@ There are two different cryptography backends supported right now.
 
 ##### Rust Crypto
 
-This is the default cryptographic backend, using [hkdf], [sha2], [p256], [p384], [x25519-dalek-ng], [ed25519-dalek] [chacha20poly1305], [aes-gcm].
+This is the default cryptographic backend, using the following rust crates: [hkdf], [sha2], [p256], [p384], [x25519-dalek-ng], [ed25519-dalek] [chacha20poly1305], [aes-gcm].
 
 
 ##### Evercrypt
