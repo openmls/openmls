@@ -537,6 +537,7 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
+<span id="540">540</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # Known Answer Tests for the encoding and decoding of various structs of the</span>
 <span class="doccomment">//! MLS spec</span>
@@ -554,7 +555,6 @@
     <span class="ident">test_utils</span>::<span class="kw-2">*</span>,
     <span class="ident">utils</span>::<span class="kw-2">*</span>,
 };
-<span class="kw">use</span> <span class="ident">evercrypt::prelude::random_vec</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span> <span class="kw">as</span> <span class="ident">TlsDeserialize</span>, <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerialize</span>, <span class="ident">TlsSliceU32</span>, <span class="ident">TlsVecU32</span>};
@@ -602,7 +602,7 @@
     <span class="kw">let</span> <span class="ident">lifetime</span> <span class="op">=</span> <span class="ident">LifetimeExtension::default</span>();
 
     <span class="comment">// Let&#39;s create a group</span>
-    <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::random</span>();
+    <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::random</span>(<span class="ident">ciphersuite</span>);
     <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">MlsGroupConfig::default</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new</span>(
         <span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
@@ -620,13 +620,13 @@
     <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfoPayload::new</span>(
         <span class="ident">group_id</span>.<span class="ident">clone</span>(),
         <span class="ident">GroupEpoch</span>(<span class="number">0</span>),
-        <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
-        <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+        <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+        <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
         <span class="macro">vec!</span>[<span class="ident">Extension::RatchetTree</span>(<span class="ident">RatchetTreeExtension::new</span>(
             <span class="ident">ratchet_tree</span>.<span class="ident">clone</span>(),
         ))],
         <span class="ident">ConfirmationTag</span>(<span class="ident">Mac</span> {
-            <span class="ident">mac_value</span>: <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()).<span class="ident">into</span>(),
+            <span class="ident">mac_value</span>: <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()).<span class="ident">into</span>(),
         }),
         <span class="ident">LeafIndex::from</span>(<span class="ident">random_u32</span>()),
     );
@@ -651,8 +651,10 @@
 
     <span class="kw">let</span> <span class="ident">psk_id</span> <span class="op">=</span> <span class="ident">PreSharedKeyId::new</span>(
         <span class="ident">PskType::External</span>,
-        <span class="ident">Psk::External</span>(<span class="ident">ExternalPsk::new</span>(<span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()))),
-        <span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+        <span class="ident">Psk::External</span>(<span class="ident">ExternalPsk::new</span>(
+            <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+        )),
+        <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
     );
 
     <span class="kw">let</span> <span class="ident">psk_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal::new</span>(<span class="ident">psk_id</span>);

@@ -296,20 +296,14 @@
 <span id="296">296</span>
 <span id="297">297</span>
 <span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="ident">node</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="kw">use</span> <span class="ident">evercrypt::prelude</span>::<span class="kw-2">*</span>;
+<span class="comment">// === The folowing functions aren&#39;t necessarily cryptographically secure!</span>
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::OsRng</span>, <span class="ident">RngCore</span>};
-
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">randombytes</span>(<span class="ident">n</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-    <span class="ident">random_vec</span>(<span class="ident">n</span>)
-}
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u32</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
@@ -323,7 +317,9 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u8</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u8</span> {
-    <span class="ident">random_vec</span>(<span class="number">1</span>)[<span class="number">0</span>]
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">1</span>];
+    <span class="ident">OsRng</span>.<span class="ident">fill_bytes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">b</span>);
+    <span class="ident">b</span>[<span class="number">0</span>]
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {

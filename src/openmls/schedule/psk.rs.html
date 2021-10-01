@@ -323,7 +323,6 @@
 <span id="323">323</span>
 <span id="324">324</span>
 <span id="325">325</span>
-<span id="326">326</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
@@ -359,7 +358,6 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group</span>::{<span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>};
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::utils::randombytes</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsVecU16</span>};
@@ -430,7 +428,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">secret</span>: <span class="ident">Secret</span>, <span class="ident">psk_id</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>,
-            <span class="ident">nonce</span>: <span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
+            <span class="ident">nonce</span>: <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()),
             <span class="ident">external_psk</span>: <span class="ident">ExternalPsk</span> {
                 <span class="ident">psk_id</span>: <span class="ident">psk_id</span>.<span class="ident">into</span>(),
             },

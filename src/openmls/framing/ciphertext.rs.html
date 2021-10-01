@@ -382,7 +382,7 @@
         <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>)) <span class="op">=</span>
             <span class="ident">secret_tree</span>.<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">sender</span>, <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.</span>
-        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard::from_random</span>();
+        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard::from_random</span>(<span class="ident">ciphersuite</span>);
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
         <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
         <span class="comment">// Encrypt the payload</span>
