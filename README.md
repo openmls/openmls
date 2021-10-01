@@ -36,8 +36,8 @@ This is the default cryptographic backend, using [hkdf], [sha2], [p256], [p384],
 
 ##### Evercrypt
 
-[EverCrypt] provides a formally verified cryptographic backend through the through [EverCrypt Rust bindings] to OpenMLS.
-The default features have to disabled and the `evercrypt-backend` feature has to be enabled.
+[EverCrypt] provides a formally verified cryptographic backend through the [EverCrypt Rust bindings] to OpenMLS.
+The default features have to disabled and the `evercrypt-backend` feature must be enabled.
 
 ```
 cargo build --features="evercrypt-backend" --no-default-features

@@ -1,6 +1,6 @@
-//! # Evercrypt Crypto Provider
+//! # Native Rust Crypto Provider
 //!
-//! Use evercrypt for all crypto operations.
+//! Use native Rust crypto for all operations.
 
 // XXX: ed25519-dalek depends on an old version of rand.
 //      https://github.com/dalek-cryptography/ed25519-dalek/issues/162
