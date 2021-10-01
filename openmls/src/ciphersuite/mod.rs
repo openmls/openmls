@@ -984,7 +984,7 @@ impl SignatureKeypair {
 impl SignaturePublicKey {
     /// Create a new signature public key from raw key bytes.
     pub fn new(bytes: Vec<u8>, signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
-        support(signature_scheme)?;
+        supports(signature_scheme)?;
         Ok(Self {
             value: bytes,
             signature_scheme,
@@ -993,7 +993,7 @@ impl SignaturePublicKey {
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
     pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), CryptoError> {
-        support(self.signature_scheme)?;
+        supports(self.signature_scheme)?;
         verify_signature(
             self.signature_scheme,
             payload,

@@ -66,7 +66,7 @@ fn aead_from_algorithm(alg: AeadType) -> Result<AeadMode, CryptoError> {
 }
 
 #[inline(always)]
-fn kdf_from_hash(hash_type: HashType) -> Result<HmacMode, CryptoError> {
+fn hmac_from_hash(hash_type: HashType) -> Result<HmacMode, CryptoError> {
     Ok(match hash_type {
         HashType::Sha1 => HmacMode::Sha1,
         HashType::Sha2_256 => HmacMode::Sha256,
@@ -76,7 +76,7 @@ fn kdf_from_hash(hash_type: HashType) -> Result<HmacMode, CryptoError> {
     })
 }
 
-pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
+pub(crate) fn supports(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     if SignatureMode::try_from(signature_scheme).is_err() {
         Err(CryptoError::UnsupportedSignatureScheme)
     } else if DigestMode::try_from(signature_scheme).is_err() {
@@ -91,7 +91,7 @@ pub(crate) fn hkdf_extract(
     salt: &[u8],
     ikm: &[u8],
 ) -> Result<Vec<u8>, CryptoError> {
-    let hmac = kdf_from_hash(hash_type)?;
+    let hmac = hmac_from_hash(hash_type)?;
     Ok(hkdf::extract(hmac, salt, ikm))
 }
 
@@ -101,7 +101,7 @@ pub(crate) fn hkdf_expand(
     info: &[u8],
     okm_len: usize,
 ) -> Result<Vec<u8>, CryptoError> {
-    let hmac = kdf_from_hash(hash_type)?;
+    let hmac = hmac_from_hash(hash_type)?;
     Ok(hkdf::expand(hmac, prk, info, okm_len))
 }
 

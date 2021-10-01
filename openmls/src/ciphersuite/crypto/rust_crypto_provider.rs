@@ -23,7 +23,7 @@ use sha2::{Digest, Sha256, Sha512};
 
 use crate::ciphersuite::{errors::CryptoError, AeadType, HashType, SignatureScheme};
 
-pub(crate) fn support(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
+pub(crate) fn supports(signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
     match signature_scheme {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(()),
         SignatureScheme::ED25519 => Ok(()),
