@@ -11,7 +11,9 @@ readme = "README.md"
 
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }
-rand = "^0.8"
+rand = "0.8"
+rand_chacha = "0.3"
+getrandom = "0.2"
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
@@ -19,12 +21,24 @@ log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 itertools = {version = "0.10", optional = true}
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
-hpke = { version = "0.0.10", package = "hpke-rs", features = ["hazmat", "serialization"] }
-evercrypt = { version = "0.0.10", features = ["serialization"] }
+hpke = { version = "0.0.11", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
+# Evercrypt provider
+evercrypt = { version = "0.0.10", features = ["serialization"], optional = true }
+# RustCrypto and Dalek provider
+sha2 = { version = "0.9", optional = true }
+aes-gcm = { version = "0.9", optional = true }
+chacha20poly1305 = { version = "0.9", optional = true }
+hmac = { version = "0.11", optional = true }
+ed25519-dalek = { version = "1.0", optional = true }
+rand-07 = {version = "0.7", package = "rand", optional = true } # only needed because of ed25519-dalek
+p256 = { version = "0.9", optional = true }
+hkdf = { version = "0.11", optional = true }
 
 [features]
+# Default to the RustCrypto backend right now.
 default = ["rust-crypto"]
-rust-crypto = ["evercrypt/rust-crypto-aes"]
+rust-crypto = ["sha2", "aes-gcm", "chacha20poly1305", "hmac", "ed25519-dalek", "p256", "hkdf", "rand-07", "hpke/rust-crypto"]
+evercrypt-backend = ["evercrypt", "hpke/evercrypt-backend"]
 test-utils = ["itertools"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
@@ -34,7 +48,7 @@ criterion = "^0.3"
 pretty_env_logger = "0.4"
 itertools = "0.10"
 test_macros = { path = "../test_macros" }
-openmls = { path = ".", features = ["test-utils"] }
+openmls = { path = ".", features = ["test-utils"], default-features = false }
 tempfile = "3"
 
 [[bench]]

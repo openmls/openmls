@@ -1,14 +1,10 @@
 use crate::extensions::*;
 use crate::tree::{index::*, node::*, *};
 
-use evercrypt::prelude::*;
+// === The folowing functions aren't necessarily cryptographically secure!
 
 #[cfg(any(feature = "test-utils", test))]
 use rand::{rngs::OsRng, RngCore};
-
-pub(crate) fn randombytes(n: usize) -> Vec<u8> {
-    random_vec(n)
-}
 
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u32() -> u32 {
@@ -22,7 +18,9 @@ pub(crate) fn random_u64() -> u64 {
 
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) fn random_u8() -> u8 {
-    random_vec(1)[0]
+    let mut b = [0u8; 1];
+    OsRng.fill_bytes(&mut b);
+    b[0]
 }
 
 pub(crate) fn zero(length: usize) -> Vec<u8> {

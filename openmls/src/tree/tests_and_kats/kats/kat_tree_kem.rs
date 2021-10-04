@@ -173,24 +173,17 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     log::trace!("Common ancestor: {:?}", common_ancestor);
     let path = parent_direct_path(common_ancestor, tree_before.leaf_count()).unwrap();
     log::trace!("path: {:?}", path);
-    let start_secret: PathSecret = Secret::from_slice(
-        hex_to_bytes(&test_vector.my_path_secret).as_slice(),
-        ProtocolVersion::default(),
-        ciphersuite,
-    )
-    .into();
-
+    let mut start_secret: PathSecret =
+        Secret::from(hex_to_bytes(&test_vector.my_path_secret).as_slice()).into();
+    start_secret.config(ciphersuite, ProtocolVersion::default());
     tree_before
         .private_tree_mut()
         .continue_path_secrets(ciphersuite, start_secret, &path);
 
     // Check if the root secrets match up.
-    let root_secret_after_add: PathSecret = Secret::from_slice(
-        hex_to_bytes(&test_vector.root_secret_after_add).as_slice(),
-        ProtocolVersion::default(),
-        ciphersuite,
-    )
-    .into();
+    let mut root_secret_after_add: PathSecret =
+        Secret::from(hex_to_bytes(&test_vector.root_secret_after_add).as_slice()).into();
+    root_secret_after_add.config(ciphersuite, ProtocolVersion::default());
 
     if &root_secret_after_add
         != tree_before
@@ -221,12 +214,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     // Rename to avoid confusion.
     let tree_after = tree_before;
     let root_secret_after = tree_after.private_tree().path_secrets().last().unwrap();
-    let root_secret_after_update: PathSecret = Secret::from_slice(
-        hex_to_bytes(&test_vector.root_secret_after_update).as_slice(),
-        ProtocolVersion::default(),
-        ciphersuite,
-    )
-    .into();
+    let mut root_secret_after_update: PathSecret =
+        Secret::from(hex_to_bytes(&test_vector.root_secret_after_update).as_slice()).into();
+    root_secret_after_update.config(ciphersuite, ProtocolVersion::default());
 
     if &root_secret_after_update != root_secret_after {
         if cfg!(test) {

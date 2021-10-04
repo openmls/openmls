@@ -14,7 +14,6 @@ use crate::{
     test_utils::*,
     utils::*,
 };
-use evercrypt::prelude::random_vec;
 
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
@@ -62,7 +61,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let group_id = GroupId::random();
+    let group_id = GroupId::random(ciphersuite);
     let config = MlsGroupConfig::default();
     let mut group = MlsGroup::new(
         group_id.as_slice(),
@@ -80,13 +79,13 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let group_info = GroupInfoPayload::new(
         group_id.clone(),
         GroupEpoch(0),
-        random_vec(ciphersuite.hash_length()),
-        random_vec(ciphersuite.hash_length()),
+        ciphersuite.randombytes(ciphersuite.hash_length()),
+        ciphersuite.randombytes(ciphersuite.hash_length()),
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
         ))],
         ConfirmationTag(Mac {
-            mac_value: random_vec(ciphersuite.hash_length()).into(),
+            mac_value: ciphersuite.randombytes(ciphersuite.hash_length()).into(),
         }),
         LeafIndex::from(random_u32()),
     );
@@ -111,8 +110,10 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let psk_id = PreSharedKeyId::new(
         PskType::External,
-        Psk::External(ExternalPsk::new(random_vec(ciphersuite.hash_length()))),
-        random_vec(ciphersuite.hash_length()),
+        Psk::External(ExternalPsk::new(
+            ciphersuite.randombytes(ciphersuite.hash_length()),
+        )),
+        ciphersuite.randombytes(ciphersuite.hash_length()),
     );
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);

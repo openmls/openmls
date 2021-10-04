@@ -5,27 +5,20 @@
 use evercrypt::signature::Error as EvercryptSignatureError;
 
 implement_error! {
-    pub(crate) enum HkdfError {
-        InvalidLength = "The HKDF output is empty.",
-    }
-}
-
-implement_error! {
     pub enum CryptoError {
         CryptoLibraryError = "Unrecoverable error in the crypto library.",
+        AeadDecryptionError = "Error while decrypting AEAD ciphertext.",
         HpkeDecryptionError = "Error while decrypting an HPKE ciphertext.",
         UnsupportedSignatureScheme = "This SignatureScheme is not supported.",
         KdfLabelTooLarge = "The requested Kdf label length is too large.",
         KdfSerializationError = "Serialization of the Kdf label failed.",
         HkdfOutputLengthInvalid = "The requested HKDF output length is invalid",
-    }
-}
-
-impl From<HkdfError> for CryptoError {
-    fn from(e: HkdfError) -> Self {
-        match e {
-            HkdfError::InvalidLength => Self::HkdfOutputLengthInvalid,
-        }
+        InsufficientRandomness = "Error getting enough randomness",
+        InvalidSignature = "The signature could not be verified",
+        UnsupportedAeadAlgorithm = "The requested AEAD scheme is not supported",
+        UnsupportedKdf = "The requested KDF algorithm is not supported",
+        InvalidLength = "The HKDF output is empty.",
+        UnsupportedHashAlgorithm = "Unsupported hash algorithm",
     }
 }
 

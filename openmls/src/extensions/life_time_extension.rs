@@ -78,6 +78,11 @@ impl tls_codec::Deserialize for LifetimeExtension {
             not_after,
         };
         if !out.is_valid() {
+            log::trace!(
+                "Lifetime expired!\n\tnot before: {:?} - not_after: {:?}",
+                not_before,
+                not_after
+            );
             return Err(tls_codec::Error::DecodingError(format!(
                 "{:?}",
                 LifetimeExtensionError::Invalid

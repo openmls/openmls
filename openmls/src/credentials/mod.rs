@@ -179,7 +179,7 @@ impl CredentialBundle {
     }
 
     /// Sign a `msg` using the private key of the credential bundle.
-    pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError> {
+    pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, CryptoError> {
         self.signature_private_key.sign(msg)
     }
 }
