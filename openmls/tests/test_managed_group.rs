@@ -145,7 +145,7 @@ fn managed_group_operations() {
                 };
 
             let mut events = alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Check that we received the correct events
@@ -199,7 +199,7 @@ fn managed_group_operations() {
                 .create_message(&key_store, message_alice)
                 .expect("Error creating application message");
             let events = bob_group
-                .process_message(queued_message)
+                .process_message(queued_message.into())
                 .expect("The group is no longer active");
 
             // Check that we received the correct event
@@ -217,10 +217,10 @@ fn managed_group_operations() {
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
             let alice_events = alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             let bob_events = bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Check that the events are equal
@@ -258,10 +258,10 @@ fn managed_group_operations() {
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
             alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             let (queued_messages, _welcome_option) =
@@ -270,10 +270,10 @@ fn managed_group_operations() {
                     Err(e) => panic!("Error performing self-update: {:?}", e),
                 };
             let alice_events = alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             let bob_events = bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Check that the events are equel
@@ -314,10 +314,10 @@ fn managed_group_operations() {
                 };
 
             alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             let mut charlie_group = ManagedGroup::new_from_welcome(
@@ -350,10 +350,10 @@ fn managed_group_operations() {
                 .create_message(&key_store, message_charlie)
                 .expect("Error creating application message");
             alice_group
-                .process_message(queued_message.clone())
+                .process_message(queued_message.clone().into())
                 .expect("The group is no longer active");
             bob_group
-                .process_message(queued_message)
+                .process_message(queued_message.into())
                 .expect("The group is no longer active");
 
             // === Charlie updates and commits ===
@@ -363,13 +363,13 @@ fn managed_group_operations() {
                     Err(e) => panic!("Error performing self-update: {:?}", e),
                 };
             alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             charlie_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Check we didn't receive a Welcome message
@@ -406,13 +406,13 @@ fn managed_group_operations() {
             assert!(bob_group.is_active());
 
             let alice_events = alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             let bob_events = bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             charlie_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Check that we receive the correct event for Alice
@@ -489,10 +489,10 @@ fn managed_group_operations() {
                 .propose_remove_member(&key_store, 2)
                 .expect("Could not create proposal to remove Charlie");
             alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             charlie_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Create AddProposal and process it
@@ -500,10 +500,10 @@ fn managed_group_operations() {
                 .propose_add_member(&key_store, &bob_key_package)
                 .expect("Could not create proposal to add Bob");
             alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             charlie_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Commit to the proposals and process it
@@ -511,10 +511,10 @@ fn managed_group_operations() {
                 .process_pending_proposals(&key_store)
                 .expect("Could not flush proposals");
             alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             charlie_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Make sure the group contains two members
@@ -556,7 +556,7 @@ fn managed_group_operations() {
                 .create_message(&key_store, message_alice)
                 .expect("Error creating application message");
             bob_group
-                .process_message(queued_message.clone())
+                .process_message(queued_message.clone().into())
                 .expect("The group is no longer active");
 
             // === Bob leaves the group ===
@@ -566,10 +566,10 @@ fn managed_group_operations() {
                 .expect("Could not leave group");
 
             alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Should fail because you cannot remove yourself from a group
@@ -588,10 +588,10 @@ fn managed_group_operations() {
             assert!(bob_group.is_active());
 
             let alice_events = alice_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
             let bob_events = bob_group
-                .process_message(queued_messages.clone())
+                .process_message(queued_messages.clone().into())
                 .expect("The group is no longer active");
 
             // Check that we receive the correct event for Bob
@@ -651,7 +651,7 @@ fn managed_group_operations() {
                 .expect("Could not add Bob");
 
             alice_group
-                .process_message(queued_messages)
+                .process_message(queued_messages.into())
                 .expect("Could not process messages");
 
             let bob_group = ManagedGroup::new_from_welcome(

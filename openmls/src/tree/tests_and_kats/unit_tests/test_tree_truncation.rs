@@ -4,7 +4,7 @@ use crate::{
     group::ManagedGroupConfig,
     node::{Node, NodeType},
     prelude::{KeyPackageBundle, LeafIndex},
-    test_utils::test_framework::{ActionType, ManagedTestSetup},
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
     tree::RatchetTree,
 };
 
@@ -75,7 +75,11 @@ fn test_truncation_after_removal() {
     let managed_group_config = ManagedGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
     for number_of_clients in test_group_sizes {
-        let setup = ManagedTestSetup::new(managed_group_config.clone(), number_of_clients);
+        let setup = ManagedTestSetup::new(
+            managed_group_config.clone(),
+            number_of_clients,
+            CodecUse::SerializedMessages,
+        );
 
         let group_id = setup
             .create_random_group(number_of_clients, Ciphersuite::default())
@@ -114,7 +118,11 @@ fn test_truncation_after_update() {
     let managed_group_config = ManagedGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
     for number_of_clients in test_group_sizes {
-        let setup = ManagedTestSetup::new(managed_group_config.clone(), number_of_clients);
+        let setup = ManagedTestSetup::new(
+            managed_group_config.clone(),
+            number_of_clients,
+            CodecUse::SerializedMessages,
+        );
 
         let group_id = setup
             .create_random_group(number_of_clients, Ciphersuite::default())
