@@ -81,11 +81,6 @@ impl MlsPlaintext {
     }
 
     #[cfg(test)]
-    pub(super) fn signature_mut(&mut self) -> &mut Signature {
-        &mut self.signature
-    }
-
-    #[cfg(test)]
     pub(super) fn unset_confirmation_tag(&mut self) {
         self.confirmation_tag = None;
     }
@@ -335,6 +330,18 @@ impl MlsPlaintext {
     pub fn authenticated_data(&self) -> &[u8] {
         self.authenticated_data.as_slice()
     }
+
+    #[cfg(test)]
+    pub(crate) fn invalidate_signature(&mut self) {
+        let mut modified_signature = self.signature().as_slice().to_vec();
+        modified_signature[0] ^= 0xFF;
+        self.signature.modify(&modified_signature);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_sender(&mut self, sender: Sender) {
+        self.sender = sender
+    }
 }
 
 // === Helper structs ===
@@ -508,6 +515,12 @@ impl<'a> VerifiableMlsPlaintext<'a> {
     /// Get the sender index as [`LeafIndex`].
     pub(crate) fn sender_index(&self) -> LeafIndex {
         self.tbs.sender.sender
+    }
+
+    /// Get the group id as [`GroupId`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.tbs.group_id
     }
 
     /// Set the serialized context before verifying the signature.

@@ -3,7 +3,7 @@
 //! that client perform certain MLS operations.
 use std::{cell::RefCell, collections::HashMap};
 
-use crate::{node::Node, prelude::*};
+use crate::{group::MlsMessageIn, node::Node, prelude::*};
 
 use super::{errors::ClientError, ActionType};
 
@@ -100,7 +100,7 @@ impl Client {
     /// Have the client process the given messages. Returns an error if an error
     /// occurs during message processing or if no group exists for one of the
     /// messages.
-    pub fn receive_messages_for_group(&self, message: &MlsMessage) -> Result<(), ClientError> {
+    pub fn receive_messages_for_group(&self, message: &MlsMessageIn) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
         let group_id = GroupId::from_slice(&message.group_id());
         let group_state = group_states
@@ -150,7 +150,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(MlsMessage, Option<Welcome>), ClientError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -175,7 +175,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -207,7 +207,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         target_indices: &[usize],
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
