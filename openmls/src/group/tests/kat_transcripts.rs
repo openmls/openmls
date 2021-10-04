@@ -18,7 +18,7 @@ use crate::{
     },
     messages::Commit,
     prelude::{
-        random_u32, random_u64, randombytes, LeafIndex, MlsPlaintext, MlsPlaintextCommitAuthData,
+        random_u32, random_u64, LeafIndex, MlsPlaintext, MlsPlaintextCommitAuthData,
         MlsPlaintextCommitContent, VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
@@ -48,11 +48,11 @@ pub struct TranscriptTestVector {
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTestVector {
     // Generate random values.
-    let group_id = GroupId::random();
+    let group_id = GroupId::random(ciphersuite);
     let epoch = random_u64();
-    let tree_hash_before = randombytes(ciphersuite.hash_length());
-    let confirmed_transcript_hash_before = randombytes(ciphersuite.hash_length());
-    let interim_transcript_hash_before = randombytes(ciphersuite.hash_length());
+    let tree_hash_before = ciphersuite.randombytes(ciphersuite.hash_length());
+    let confirmed_transcript_hash_before = ciphersuite.randombytes(ciphersuite.hash_length());
+    let interim_transcript_hash_before = ciphersuite.randombytes(ciphersuite.hash_length());
     let membership_key =
         MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
     let confirmation_key =
@@ -75,7 +75,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     .expect("Error creating group context");
     let mut commit = MlsPlaintext::new_commit(
         LeafIndex::from(random_u32()),
-        &randombytes(48),
+        &ciphersuite.randombytes(48),
         Commit {
             proposals: vec![].into(),
             path: None,

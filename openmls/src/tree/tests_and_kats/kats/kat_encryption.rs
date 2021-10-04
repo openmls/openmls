@@ -90,7 +90,7 @@ use crate::{
     tree::index::LeafIndex,
     tree::secret_tree::{SecretTree, SecretType},
     tree::*,
-    utils::{random_u64, randombytes},
+    utils::random_u64,
 };
 
 use itertools::izip;
@@ -265,7 +265,7 @@ pub fn generate_test_vector(
     ciphersuite: &'static Ciphersuite,
 ) -> EncryptionTestVector {
     let ciphersuite_name = ciphersuite.name();
-    let epoch_secret = randombytes(ciphersuite.hash_length());
+    let epoch_secret = ciphersuite.randombytes(ciphersuite.hash_length());
     let encryption_secret =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
     let encryption_secret_group =
@@ -277,7 +277,7 @@ pub fn generate_test_vector(
     let group_secret_tree = SecretTree::new(encryption_secret_group, LeafIndex::from(n_leaves));
 
     // Create sender_data_key/secret
-    let ciphertext = randombytes(77);
+    let ciphertext = ciphersuite.randombytes(77);
     let sender_data_key = sender_data_secret.derive_aead_key(&ciphertext);
     // Derive initial nonce from the key schedule using the ciphertext.
     let sender_data_nonce = sender_data_secret.derive_aead_nonce(ciphersuite, &ciphertext);

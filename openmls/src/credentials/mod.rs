@@ -3,7 +3,6 @@ mod errors;
 pub use codec::*;
 pub use errors::*;
 
-use evercrypt::prelude::SignatureError;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
@@ -180,7 +179,7 @@ impl CredentialBundle {
     }
 
     /// Sign a `msg` using the private key of the credential bundle.
-    pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, SignatureError> {
+    pub(crate) fn sign(&self, msg: &[u8]) -> Result<Signature, CryptoError> {
         self.signature_private_key.sign(msg)
     }
 }

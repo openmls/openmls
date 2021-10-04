@@ -56,7 +56,7 @@ fn test_failed_groupinfo_decryption() {
     for version in Config::supported_versions() {
         for ciphersuite in Config::supported_ciphersuites() {
             let epoch = GroupEpoch(123);
-            let group_id = GroupId::random();
+            let group_id = GroupId::random(ciphersuite);
             let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
@@ -76,7 +76,7 @@ fn test_failed_groupinfo_decryption() {
 
             // Generate key and nonce for the symmetric cipher.
             let welcome_key = AeadKey::random(ciphersuite);
-            let welcome_nonce = AeadNonce::random();
+            let welcome_nonce = AeadNonce::random(ciphersuite);
 
             // Generate receiver key pair.
             let receiver_key_pair =
