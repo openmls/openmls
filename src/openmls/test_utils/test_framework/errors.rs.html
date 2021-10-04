@@ -62,6 +62,13 @@
 <span id="62">62</span>
 <span id="63">63</span>
 <span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">group::ErrorEvent</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>};
 
@@ -95,7 +102,7 @@
 }
 
 <span class="doccomment">/// Errors that can occur when processing messages with the client.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ClientError</span> {
     <span class="ident">NoMatchingKeyPackage</span>,
     <span class="ident">NoMatchingCredential</span>,
@@ -107,6 +114,7 @@
     <span class="ident">ManagedGroupError</span>(<span class="ident">ManagedGroupError</span>),
     <span class="ident">GroupError</span>(<span class="ident">MlsGroupError</span>),
     <span class="ident">ErrorEvent</span>(<span class="ident">ErrorEvent</span>),
+    <span class="ident">TlsCodecError</span>(<span class="ident">tls_codec::Error</span>),
     <span class="ident">Unknown</span>,
 }
 
@@ -125,6 +133,12 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsGroupError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ClientError</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">MlsGroupError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">ClientError::GroupError</span>(<span class="ident">e</span>)
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">tls_codec::Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ClientError</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">tls_codec::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">ClientError::TlsCodecError</span>(<span class="ident">e</span>)
     }
 }
 </pre></div>

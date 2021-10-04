@@ -574,6 +574,43 @@
 <span id="574">574</span>
 <span id="575">575</span>
 <span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
 </pre><pre class="rust">
 <span class="doccomment">//! This crate provides a framework to set up clients and groups using the</span>
 <span class="doccomment">//! OpenMLS managed_group API. To use the framework, start by creating a new</span>
@@ -599,6 +636,7 @@
 <span class="doccomment">//! group states.</span>
 
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::MlsMessageIn</span>;
 <span class="doccomment">/// We allow dead code here due to the following issue:</span>
 <span class="doccomment">/// https://github.com/rust-lang/rust/issues/46379, which would otherwise create</span>
 <span class="doccomment">/// a lot of unused code warnings.</span>
@@ -608,6 +646,7 @@
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">client</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">messages</span>;
 
 <span class="kw">use</span> <span class="self">self</span><span class="ident">::client</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="self">self</span><span class="ident">::errors</span>::<span class="kw-2">*</span>;
@@ -644,6 +683,12 @@
     <span class="ident">Proposal</span>,
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CodecUse</span> {
+    <span class="ident">SerializedMessages</span>,
+    <span class="ident">StructMessages</span>,
+}
+
 <span class="doccomment">/// `ManagedTestSetup` is the main struct of the framework. It contains the</span>
 <span class="doccomment">/// state of all clients, as well as the global `KeyStore` containing the</span>
 <span class="doccomment">/// clients&#39; `CredentialBundles`. The `waiting_for_welcome` field acts as a</span>
@@ -658,6 +703,9 @@
     <span class="comment">// This maps key package hashes to client ids.</span>
     <span class="kw">pub</span> <span class="ident">waiting_for_welcome</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">default_mgc</span>: <span class="ident">ManagedGroupConfig</span>,
+    <span class="doccomment">/// Flag to indicate if messages should be serialized and de-serialized as</span>
+    <span class="doccomment">/// part of message distribution</span>
+    <span class="kw">pub</span> <span class="ident">use_codec</span>: <span class="ident">CodecUse</span>,
 }
 
 <span class="comment">// Some notes regarding the layout of the `ManagedTestSetup` implementation</span>
@@ -685,7 +733,11 @@
     <span class="doccomment">/// `ManagedGroupConfig` and the given number of clients. For lifetime</span>
     <span class="doccomment">/// reasons, `create_clients` has to be called in addition with the same</span>
     <span class="doccomment">/// number of clients.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">default_mgc</span>: <span class="ident">ManagedGroupConfig</span>, <span class="ident">number_of_clients</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">default_mgc</span>: <span class="ident">ManagedGroupConfig</span>,
+        <span class="ident">number_of_clients</span>: <span class="ident">usize</span>,
+        <span class="ident">use_codec</span>: <span class="ident">CodecUse</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">clients</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">number_of_clients</span> {
             <span class="kw">let</span> <span class="ident">identity</span> <span class="op">=</span> <span class="ident">i</span>.<span class="ident">to_be_bytes</span>().<span class="ident">to_vec</span>();
@@ -718,6 +770,7 @@
             <span class="ident">groups</span>,
             <span class="ident">waiting_for_welcome</span>,
             <span class="ident">default_mgc</span>,
+            <span class="ident">use_codec</span>,
         }
     }
 
@@ -745,6 +798,18 @@
     <span class="doccomment">/// will throw an error if no key package was previously created for the</span>
     <span class="doccomment">/// client by `get_fresh_key_package`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deliver_welcome</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">welcome</span>: <span class="ident">Welcome</span>, <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">Group</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SetupError</span><span class="op">&gt;</span> {
+        <span class="comment">// Serialize and de-serialize the Welcome if the bit was set.</span>
+        <span class="kw">let</span> <span class="ident">welcome</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">use_codec</span> {
+            <span class="ident">CodecUse::SerializedMessages</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">serialized_welcome</span> <span class="op">=</span> <span class="ident">welcome</span>
+                    .<span class="ident">tls_serialize_detached</span>()
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">ClientError::TlsCodecError</span>(<span class="ident">e</span>))<span class="question-mark">?</span>;
+                <span class="ident">Welcome::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">serialized_welcome</span>.<span class="ident">as_slice</span>())
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">ClientError::TlsCodecError</span>(<span class="ident">e</span>))<span class="question-mark">?</span>
+            }
+            <span class="ident">CodecUse::StructMessages</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">welcome</span>,
+        };
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">use_codec</span> <span class="op">=</span><span class="op">=</span> <span class="ident">CodecUse::SerializedMessages</span> {}
         <span class="kw">let</span> <span class="ident">clients</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">clients</span>.<span class="ident">borrow</span>();
         <span class="kw">for</span> <span class="ident">egs</span> <span class="kw">in</span> <span class="ident">welcome</span>.<span class="ident">secrets</span>() {
             <span class="macro">println!</span>(
@@ -775,15 +840,24 @@
         <span class="comment">// been removed from the group.</span>
         <span class="ident">sender_id</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Group</span>,
-        <span class="ident">message</span>: <span class="kw-2">&amp;</span><span class="ident">MlsMessage</span>,
+        <span class="ident">message</span>: <span class="kw-2">&amp;</span><span class="ident">MlsMessageOut</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="comment">// Test serialization if mandated by config</span>
+        <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">use_codec</span> {
+            <span class="ident">CodecUse::SerializedMessages</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">serialized_message</span> <span class="op">=</span>
+                    <span class="ident">MlsMessageIn::from</span>(<span class="ident">message</span>.<span class="ident">clone</span>()).<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
+                <span class="ident">MlsMessageIn::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">serialized_message</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>
+            }
+            <span class="ident">CodecUse::StructMessages</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsMessageIn::from</span>(<span class="ident">message</span>.<span class="ident">clone</span>()),
+        };
         <span class="kw">let</span> <span class="ident">clients</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">clients</span>.<span class="ident">borrow</span>();
         <span class="macro">println!</span>(<span class="string">&quot;Distributing and processing messages...&quot;</span>);
         <span class="comment">// Distribute message to all members.</span>
         <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">member_id</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">group</span>.<span class="ident">members</span> {
             <span class="macro">println!</span>(<span class="string">&quot;Index: {:?}, Id: {:?}&quot;</span>, <span class="ident">index</span>, <span class="ident">member_id</span>);
             <span class="kw">let</span> <span class="ident">member</span> <span class="op">=</span> <span class="ident">clients</span>.<span class="ident">get</span>(<span class="ident">member_id</span>).<span class="ident">unwrap</span>().<span class="ident">borrow</span>();
-            <span class="ident">member</span>.<span class="ident">receive_messages_for_group</span>(<span class="ident">message</span>)<span class="question-mark">?</span>;
+            <span class="ident">member</span>.<span class="ident">receive_messages_for_group</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>)<span class="question-mark">?</span>;
         }
         <span class="comment">// Get the current tree and figure out who&#39;s still in the group.</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">clients</span>.<span class="ident">get</span>(<span class="ident">sender_id</span>).<span class="ident">unwrap</span>().<span class="ident">borrow</span>();

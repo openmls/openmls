@@ -83,6 +83,8 @@
 <span id="83">83</span>
 <span id="84">84</span>
 <span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
@@ -152,6 +154,8 @@
         <span class="ident">Simple</span> {
             <span class="ident">MembershipTagMismatch</span> <span class="op">=</span>
                 <span class="string">&quot;A Proposal with an invalid membership tag was received.&quot;</span>,
+            <span class="ident">UnknownSender</span> <span class="op">=</span>
+                <span class="string">&quot;Could not retrieve credential for the given sender.&quot;</span>,
             <span class="ident">InvalidProposal</span> <span class="op">=</span>
                 <span class="string">&quot;The given proposal is invalid.&quot;</span>,
             <span class="ident">CommitWithInvalidProposals</span> <span class="op">=</span>
