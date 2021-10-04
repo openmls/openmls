@@ -64,9 +64,14 @@ fn proposal_queue_functions() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![], &[])
-                .expect("Could not create new GroupContext");
+        let group_context = GroupContext::new(
+            GroupId::random(ciphersuite),
+            GroupEpoch(0),
+            vec![],
+            vec![],
+            &[],
+        )
+        .expect("Could not create new GroupContext");
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
@@ -180,8 +185,14 @@ fn proposal_queue_order() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify().is_ok());
 
-        let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(0), vec![], vec![], &[]).unwrap();
+        let group_context = GroupContext::new(
+            GroupId::random(ciphersuite),
+            GroupEpoch(0),
+            vec![],
+            vec![],
+            &[],
+        )
+        .unwrap();
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {

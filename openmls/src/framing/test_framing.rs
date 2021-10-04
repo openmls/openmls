@@ -22,13 +22,19 @@ fn codec() {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),
         };
-        let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
+        let group_context = GroupContext::new(
+            GroupId::random(ciphersuite),
+            GroupEpoch(1),
+            vec![],
+            vec![],
+            &[],
+        )
+        .unwrap();
 
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
             serialized_context.as_slice(),
-            GroupId::random(),
+            GroupId::random(ciphersuite),
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
@@ -59,8 +65,14 @@ fn membership_tag() {
             ciphersuite.signature_scheme(),
         )
         .unwrap();
-        let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
+        let group_context = GroupContext::new(
+            GroupId::random(ciphersuite),
+            GroupEpoch(1),
+            vec![],
+            vec![],
+            &[],
+        )
+        .unwrap();
         let membership_key =
             MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
         let mut mls_plaintext = MlsPlaintext::new_application(

@@ -32,7 +32,6 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
-use crate::utils::randombytes;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
@@ -103,7 +102,7 @@ impl ExternalPskBundle {
     pub fn new(ciphersuite: &Ciphersuite, secret: Secret, psk_id: Vec<u8>) -> Self {
         Self {
             secret,
-            nonce: randombytes(ciphersuite.hash_length()),
+            nonce: ciphersuite.randombytes(ciphersuite.hash_length()),
             external_psk: ExternalPsk {
                 psk_id: psk_id.into(),
             },

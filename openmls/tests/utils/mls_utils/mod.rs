@@ -6,7 +6,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use evercrypt::prelude::*;
 use openmls::prelude::*;
 use rand::rngs::OsRng;
 use rand::RngCore;
@@ -270,8 +269,11 @@ pub fn random_usize() -> usize {
     OsRng.next_u64() as usize
 }
 
+/// No crypto randomness!
 pub fn randombytes(n: usize) -> Vec<u8> {
-    random_vec(n)
+    let mut out = vec![0u8; n];
+    OsRng.fill_bytes(&mut out);
+    out
 }
 
 #[test]
