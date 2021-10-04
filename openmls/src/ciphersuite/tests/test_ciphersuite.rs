@@ -115,7 +115,7 @@ fn test_signatures() {
             keypair
                 .verify(&signature, &payload)
                 .expect_err("error verifying signature"),
-            SignatureError::InvalidSignature
+            CryptoError::InvalidSignature
         );
     }
 }
@@ -186,7 +186,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // Too long to be valid (bytes will be left over after reading the
@@ -199,7 +199,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // Inaccurate length
@@ -211,7 +211,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // Wrong integer tag
@@ -223,7 +223,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // Scalar too long overall
@@ -235,7 +235,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // Scalar length encoding invalid
@@ -248,7 +248,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // Empty signature
@@ -259,7 +259,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // 1byte signature
@@ -270,7 +270,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 
     // Another signature too long variation
@@ -283,7 +283,7 @@ fn test_der_decoding() {
         signature
             .der_decode()
             .expect_err("invalid signature successfully decoded"),
-        SignatureError::DecodingError
+        CryptoError::SignatureDecodingError
     );
 }
 
@@ -312,7 +312,7 @@ fn test_der_encoding() {
     assert_eq!(
         Signature::der_encode(&empty_signature)
             .expect_err("successfully encoded invalid raw signature"),
-        SignatureError::EncodingError
+        CryptoError::SignatureEncodingError
     );
 
     // Signature too long
@@ -322,7 +322,7 @@ fn test_der_encoding() {
     assert_eq!(
         Signature::der_encode(&signature_too_long)
             .expect_err("successfully encoded invalid raw signature"),
-        SignatureError::EncodingError
+        CryptoError::SignatureEncodingError
     );
 
     // Scalar consisting only of 0x00
@@ -331,6 +331,6 @@ fn test_der_encoding() {
     assert_eq!(
         Signature::der_encode(&zero_scalar)
             .expect_err("successfully encoded invalid raw signature"),
-        SignatureError::EncodingError
+        CryptoError::SignatureEncodingError
     );
 }

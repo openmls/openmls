@@ -12,7 +12,6 @@ implement_error! {
             ConfigError(ConfigError) = "See `ConfigError` for details.",
             CryptoError(CryptoError) = "See `CryptoError` for details.",
             CodecError(TlsCodecError) = "See [`tls_codec::Error`] for details.",
-            SignatureError(SignatureError) = "Error while signing.",
         }
     }
 }
