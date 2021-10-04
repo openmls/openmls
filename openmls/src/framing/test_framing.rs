@@ -477,9 +477,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
 
     // Tamper with signature.
     let good_signature = commit.signature().clone();
-    let mut modified_signature = commit.signature().as_slice().to_vec();
-    modified_signature[0] ^= 0xFF;
-    commit.signature_mut().modify(&modified_signature);
+    commit.invalidate_signature();
     let encoded_commit = commit.tls_serialize_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
     let decoded_commit = group_alice.verify(input_commit);
