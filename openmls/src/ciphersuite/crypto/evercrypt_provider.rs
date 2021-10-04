@@ -177,14 +177,20 @@ pub(crate) fn verify_signature(
         Ok(dm) => dm,
         Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
     };
-    let processed_signature = if signature_mode == SignatureMode::P256 {
-        der_decode(signature)?
+    let valid = if signature_mode == SignatureMode::P256 {
+        verify(
+            signature_mode,
+            digest_mode,
+            pk,
+            &der_decode(signature)?,
+            data,
+        )
     } else {
-        signature
-    };
-    if verify(signature_mode, digest_mode, pk, processed_signature, data)
-        .map_err(|_| CryptoError::InvalidSignature)?
-    {
+        verify(signature_mode, digest_mode, pk, signature, data)
+    }
+    .map_err(|_| CryptoError::InvalidSignature)?;
+
+    if valid {
         Ok(())
     } else {
         Err(CryptoError::InvalidSignature)
@@ -211,7 +217,7 @@ pub(crate) fn sign(alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<
         .map_err(|_| CryptoError::CryptoLibraryError)?;
 
     if signature_mode == SignatureMode::P256 {
-        der_encode(signature)
+        der_encode(&signature)
     } else {
         Ok(signature)
     }
@@ -384,7 +390,7 @@ fn der_encode(raw_signature: &[u8]) -> Result<Vec<u8>, CryptoError> {
 /// This function takes a DER encoded ECDSA signature and decodes it to the
 /// bytes representing the concatenated scalars. If the decoding fails, it
 /// will throw a `CryptoError`.
-pub(crate) fn der_decode(signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
+pub(crate) fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
     // A small function to DER decode a single scalar.
     fn decode_scalar<R: Read>(mut buffer: R) -> Result<Vec<u8>, CryptoError> {
         // Check header bytes of encoded scalar.
@@ -448,24 +454,50 @@ pub(crate) fn der_decode(signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError>
         log::error!("Error while decoding DER encoded signature: Couldn't find SEQUENCE tag.");
         return Err(CryptoError::SignatureDecodingError);
     };
+
+    // At most 1 byte encoding the length of the scalars (short form DER
+    // length encoding). Length has to be encoded in the short form, as we
+    // expect the length not to exceed the maximum length of 70: Two times
+    // at most 32 (scalar value) + 1 byte integer tag + 1 byte length tag +
+    // at most 1 byte to indicating that the integer is unsigned.
+    let length = signature_bytes
+        .read_u8()
+        .map_err(|_| CryptoError::SignatureDecodingError)? as usize;
+    if length > 2 * (P256_SCALAR_LENGTH + 3) {
+        log::error!("Error while decoding DER encoded signature: Signature too long.");
+        return Err(CryptoError::SignatureDecodingError);
+    }
+
+    // The remaining bytes should be equal to the encoded length.
+    if signature_bytes.len() != length {
+        log::error!("Error while decoding DER encoded signature: Encoded length inaccurate.");
+        return Err(CryptoError::SignatureDecodingError);
+    }
+
+    let mut r = decode_scalar(&mut signature_bytes)?;
+    let mut s = decode_scalar(&mut signature_bytes)?;
+
+    // After reading the whole signature, nothing should be left.
+    debug_assert!(signature_bytes.is_empty());
+    if !signature_bytes.is_empty() {
+        return Err(CryptoError::SignatureDecodingError);
+    }
+
+    let mut out = Vec::with_capacity(2 * P256_SCALAR_LENGTH);
+    out.append(&mut r);
+    out.append(&mut s);
+    Ok(out)
 }
 
 #[test]
 fn test_der_codec() {
-    // Choosing a ciphersuite with an ECDSA signature scheme.
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap();
     let payload = vec![0u8];
-    let signature_scheme =
-        SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
-    let keypair =
-        SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
-    let signature = keypair.sign(&payload).expect("error creating signature");
+    let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
+    let (sk, pk) = signature_key_gen(signature_scheme).expect("error generating sig keypair");
+    let signature = sign(signature_scheme, &payload, &sk).expect("error creating signature");
 
     // Make sure that signatures are DER encoded and can be decoded to valid signatures
-    let decoded_signature = signature
-        .der_decode()
-        .expect("Error decoding valid signature.");
+    let decoded_signature = der_decode(&signature).expect("Error decoding valid signature.");
 
     verify(
         SignatureMode::P256,
@@ -473,7 +505,7 @@ fn test_der_codec() {
             DigestMode::try_from(SignatureScheme::ECDSA_SECP256R1_SHA256)
                 .expect("Couldn't get digest mode of P256"),
         ),
-        &keypair.public_key.value,
+        &pk,
         &decoded_signature,
         &payload,
     )
@@ -481,41 +513,32 @@ fn test_der_codec() {
 
     // Encoding a de-coded signature should yield the same string.
     let re_encoded_signature =
-        Signature::der_encode(&decoded_signature).expect("error encoding valid signature");
+        der_encode(&decoded_signature).expect("error encoding valid signature");
 
     assert_eq!(re_encoded_signature, signature);
 
     // Make sure that the signature still verifies.
-    keypair
-        .verify(&signature, &payload)
+    verify_signature(signature_scheme, &payload, &pk, &signature)
         .expect("error verifying signature");
 }
 
 #[test]
 fn test_der_decoding() {
-    // Choosing a ciphersuite with an ECDSA signature scheme.
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap();
     let payload = vec![0u8];
-    let signature_scheme =
-        SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
-    let keypair =
-        SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
-    let mut signature = keypair.sign(&payload).expect("error creating signature");
+    let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
+    let (sk, _) = signature_key_gen(signature_scheme).expect("error generating sig keypair");
+    let signature = sign(signature_scheme, &payload, &sk).expect("error creating signature");
 
     // Now we tamper with the original signature to make the decoding fail in
     // various ways.
-    let original_bytes = signature.value.as_slice().to_vec();
+    let original_bytes = signature.clone();
 
     // Wrong sequence tag
     let mut wrong_sequence_tag = original_bytes.clone();
     wrong_sequence_tag[0] ^= 0xFF;
-    signature.modify(&wrong_sequence_tag);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&wrong_sequence_tag).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
@@ -523,48 +546,36 @@ fn test_der_decoding() {
     // signature.)
     let mut too_long = original_bytes.clone();
     too_long.extend_from_slice(&original_bytes);
-    signature.modify(&too_long);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&too_long).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
     // Inaccurate length
     let mut inaccurate_length = original_bytes.clone();
     inaccurate_length[1] = 0x9F;
-    signature.modify(&inaccurate_length);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&inaccurate_length).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
     // Wrong integer tag
     let mut wrong_integer_tag = original_bytes.clone();
     wrong_integer_tag[2] ^= 0xFF;
-    signature.modify(&wrong_integer_tag);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&wrong_sequence_tag).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
     // Scalar too long overall
     let mut scalar_too_long = original_bytes.clone();
     scalar_too_long[3] = 0x9F;
-    signature.modify(&scalar_too_long);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&scalar_too_long).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
@@ -572,34 +583,25 @@ fn test_der_decoding() {
     let mut scalar_length_encoding = original_bytes.clone();
     scalar_length_encoding[3] = 0x21;
     scalar_length_encoding[4] = 0xFF;
-    signature.modify(&scalar_length_encoding);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&scalar_length_encoding).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
     // Empty signature
     let empty_signature = Vec::new();
-    signature.modify(&empty_signature);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&empty_signature).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
     // 1byte signature
     let one_byte_sig = vec![0x30];
-    signature.modify(&one_byte_sig);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&one_byte_sig).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 
@@ -607,32 +609,21 @@ fn test_der_decoding() {
     let mut signature_too_long_2 = original_bytes.clone();
     signature_too_long_2[1] += 0x01;
     signature_too_long_2.extend_from_slice(&[0]);
-    signature.modify(&signature_too_long_2);
 
     assert_eq!(
-        signature
-            .der_decode()
-            .expect_err("invalid signature successfully decoded"),
+        der_decode(&signature_too_long_2).expect_err("invalid signature successfully decoded"),
         CryptoError::SignatureDecodingError
     );
 }
 
 #[test]
 fn test_der_encoding() {
-    // Choosing a ciphersuite with an ECDSA signature scheme.
-    let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap();
     let payload = vec![0u8];
-    let signature_scheme =
-        SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
-    let keypair =
-        SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
+    let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
+    let (sk, _) = signature_key_gen(signature_scheme).expect("error generating sig keypair");
+    let signature = sign(signature_scheme, &payload, &sk).expect("error creating signature");
 
-    // Let's obtain a valid, raw signature first.
-    let signature = keypair.sign(&payload).expect("error creating signature");
-    let raw_signature = signature
-        .der_decode()
-        .expect("error decoding a valid siganture");
+    let raw_signature = der_decode(&signature).expect("error decoding a valid siganture");
 
     // Now let's try to der encode various incomplete parts of it.
 
@@ -640,8 +631,7 @@ fn test_der_encoding() {
     let empty_signature = Vec::new();
 
     assert_eq!(
-        Signature::der_encode(&empty_signature)
-            .expect_err("successfully encoded invalid raw signature"),
+        der_encode(&empty_signature).expect_err("successfully encoded invalid raw signature"),
         CryptoError::SignatureEncodingError
     );
 
@@ -650,8 +640,7 @@ fn test_der_encoding() {
     signature_too_long.extend_from_slice(&raw_signature);
 
     assert_eq!(
-        Signature::der_encode(&signature_too_long)
-            .expect_err("successfully encoded invalid raw signature"),
+        der_encode(&signature_too_long).expect_err("successfully encoded invalid raw signature"),
         CryptoError::SignatureEncodingError
     );
 
@@ -659,8 +648,7 @@ fn test_der_encoding() {
     let zero_scalar = vec![0x00; 2 * P256_SCALAR_LENGTH];
 
     assert_eq!(
-        Signature::der_encode(&zero_scalar)
-            .expect_err("successfully encoded invalid raw signature"),
+        der_encode(&zero_scalar).expect_err("successfully encoded invalid raw signature"),
         CryptoError::SignatureEncodingError
     );
 }
