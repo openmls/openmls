@@ -477,9 +477,10 @@ pub(crate) fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoEr
     let mut r = decode_scalar(&mut signature_bytes)?;
     let mut s = decode_scalar(&mut signature_bytes)?;
 
-    // After reading the whole signature, nothing should be left.
-    debug_assert!(signature_bytes.is_empty());
+    // If there are bytes remaining, the encoded length was larger than the
+    // length of the individual scalars..
     if !signature_bytes.is_empty() {
+        log::error!("Error while decoding DER encoded signature: Encoded overall length does not match the sum of scalar lengths.");
         return Err(CryptoError::SignatureDecodingError);
     }
 
