@@ -87,3 +87,35 @@ fn supported_ciphersuites() {
             .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }
+
+#[test]
+fn test_signatures() {
+    for ciphersuite in Config::supported_ciphersuites() {
+        // Test that valid signatures are properly verified.
+        let payload = vec![0u8];
+        let signature_scheme =
+            SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
+        let keypair =
+            SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
+        let mut signature = keypair.sign(&payload).expect("error creating signature");
+        println!("Done signing payload\n");
+        keypair
+            .verify(&signature, &payload)
+            .expect("error verifying signature");
+        println!("Done verifying payload\n");
+
+        // Tamper with signature such that verification fails. We choose a byte
+        // somewhere in the middle to make the verification fail, not the DER
+        // decoding (in the case of ECDSA signatures).
+        let mut modified_signature = signature.value.as_slice().to_vec();
+        modified_signature[20] ^= 0xFF;
+        signature.modify(&modified_signature);
+
+        assert_eq!(
+            keypair
+                .verify(&signature, &payload)
+                .expect_err("error verifying signature"),
+            CryptoError::InvalidSignature
+        );
+    }
+}

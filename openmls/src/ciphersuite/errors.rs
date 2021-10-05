@@ -17,5 +17,7 @@ implement_error! {
         UnsupportedKdf = "The requested KDF algorithm is not supported",
         InvalidLength = "The HKDF output is empty.",
         UnsupportedHashAlgorithm = "Unsupported hash algorithm",
+        SignatureEncodingError = "Error while encoding signature",
+        SignatureDecodingError = "Error while decoding signature",
     }
 }
