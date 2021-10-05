@@ -37,7 +37,8 @@ impl Client {
             .credentials
             .get(&ciphersuites[0])
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let mandatory_extensions = Vec::new();
+        let mandatory_extensions: Vec<Extension> =
+            vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
         let key_package: KeyPackage = self
             .key_store
             .generate_key_package_bundle(ciphersuites, credential, mandatory_extensions)
@@ -58,7 +59,8 @@ impl Client {
             .credentials
             .get(&ciphersuite.name())
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let mandatory_extensions = Vec::new();
+        let mandatory_extensions: Vec<Extension> =
+            vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
         let key_package: KeyPackage = self
             .key_store
             .generate_key_package_bundle(&[ciphersuite.name()], credential, mandatory_extensions)
@@ -98,7 +100,7 @@ impl Client {
     /// Have the client process the given messages. Returns an error if an error
     /// occurs during message processing or if no group exists for one of the
     /// messages.
-    pub fn receive_messages_for_group(&self, message: &MlsMessage) -> Result<(), ClientError> {
+    pub fn receive_messages_for_group(&self, message: &MlsMessageIn) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
         let group_id = GroupId::from_slice(&message.group_id());
         let group_state = group_states
@@ -149,7 +151,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(MlsMessage, Option<Welcome>), ClientError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -174,7 +176,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)
@@ -206,7 +208,7 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         target_indices: &[usize],
-    ) -> Result<(Vec<MlsMessage>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
             .get_mut(group_id)

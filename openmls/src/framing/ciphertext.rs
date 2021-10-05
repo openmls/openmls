@@ -48,7 +48,7 @@ impl MlsCiphertext {
         let (generation, (ratchet_key, mut ratchet_nonce)) =
             secret_tree.secret_for_encryption(ciphersuite, sender, secret_type)?;
         // Sample reuse guard uniformly at random.
-        let reuse_guard: ReuseGuard = ReuseGuard::from_random();
+        let reuse_guard: ReuseGuard = ReuseGuard::from_random(ciphersuite);
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload

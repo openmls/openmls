@@ -1,7 +1,7 @@
 //! Test decryption key index computation in larger trees.
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, ManagedTestSetup},
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
 };
 
 #[macro_use]
@@ -18,7 +18,7 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
     let managed_group_config =
         ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, false, callbacks);
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, CodecUse::StructMessages);
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
     let group_id = setup.create_random_group(10, ciphersuite).unwrap();
     let mut groups = setup.groups.borrow_mut();

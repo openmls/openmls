@@ -1,4 +1,9 @@
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    test_utils::test_framework::{
+        errors::ClientError, ActionType::Commit, CodecUse, ManagedTestSetup,
+    },
+};
 
 #[test]
 fn test_managed_group_persistence() {
@@ -268,3 +273,88 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
                 .unwrap()
     )
 });
+
+#[test]
+fn test_invalid_plaintext() {
+    let ciphersuite_name = Ciphersuite::default().name();
+    println!("Testing ciphersuite {:?}", ciphersuite_name);
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+
+    // Some basic setup functions for the managed group.
+    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let update_policy = UpdatePolicy::default();
+    let callbacks = ManagedGroupCallbacks::default();
+    let managed_group_config = ManagedGroupConfig::new(
+        handshake_message_format,
+        update_policy,
+        10,
+        0,
+        false,
+        callbacks,
+    );
+    let number_of_clients = 20;
+    let setup = ManagedTestSetup::new(
+        managed_group_config,
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
+    // Create a basic group with more than 4 members to create a tree with intermediate nodes.
+    let group_id = setup.create_random_group(10, ciphersuite).unwrap();
+    let mut groups = setup.groups.borrow_mut();
+    let group = groups.get_mut(&group_id).unwrap();
+
+    let (_, client_id) = &group
+        .members
+        .iter()
+        .find(|(index, _)| index == &0)
+        .unwrap()
+        .clone();
+
+    let clients = setup.clients.borrow();
+    let client = clients.get(client_id).unwrap().borrow();
+
+    let (mls_message, _welcome_option) = client
+        .self_update(Commit, &group_id, None)
+        .expect("error creating self update");
+
+    drop(client);
+    drop(clients);
+
+    // Tamper with the message such that signature verification fails
+    let mut msg_invalid_signature = mls_message.clone();
+    if let MlsMessageOut::Plaintext(ref mut pt) = msg_invalid_signature {
+        pt.invalidate_signature()
+    };
+
+    let error = setup
+        .distribute_to_members(client_id, group, &msg_invalid_signature)
+        .expect_err("No error when distributing message with invalid signature.");
+
+    assert_eq!(
+        ClientError::ManagedGroupError(ManagedGroupError::CredentialError(
+            CredentialError::InvalidSignature
+        )),
+        error
+    );
+
+    // Tamper with the message such that sender lookup fails
+    let mut msg_invalid_sender = mls_message.clone();
+    match &mut msg_invalid_sender {
+        MlsMessageOut::Plaintext(pt) => pt.set_sender(Sender {
+            sender_type: pt.sender().sender_type,
+            sender: LeafIndex::from(group.members.len() + 1),
+        }),
+        MlsMessageOut::Ciphertext(_) => panic!("This should be a plaintext!"),
+    };
+
+    let error = setup
+        .distribute_to_members(client_id, group, &msg_invalid_sender)
+        .expect_err("No error when distributing message with invalid signature.");
+
+    assert_eq!(
+        ClientError::ManagedGroupError(ManagedGroupError::InvalidMessage(
+            InvalidMessageError::UnknownSender
+        )),
+        error
+    )
+}

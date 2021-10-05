@@ -191,7 +191,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessage, Welcome), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Welcome), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -268,7 +268,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         members: &[usize],
-    ) -> Result<(MlsMessage, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -336,7 +336,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_package: &KeyPackage,
-    ) -> Result<MlsMessage, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -363,7 +363,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         member: usize,
-    ) -> Result<MlsMessage, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -388,7 +388,10 @@ impl ManagedGroup {
     }
 
     /// Leave the group
-    pub fn leave_group(&mut self, key_store: &KeyStore) -> Result<MlsMessage, ManagedGroupError> {
+    pub fn leave_group(
+        &mut self,
+        key_store: &KeyStore,
+    ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -442,20 +445,23 @@ impl ManagedGroup {
                 let aad = ciphertext.authenticated_data.clone();
                 (self.group.decrypt(&ciphertext)?, Some(aad))
             }
-            // If it is a plaintext message we just return it
+            // If it is a plaintext message we have to verify it first
             MlsMessageIn::Plaintext(unverified_plaintext) => {
+                // Get the proper context to verify the signature on the plaintext
                 let context = self
                     .group
                     .context()
                     .tls_serialize_detached()
                     .map_err(|e| MlsGroupError::CodecError(e))?;
-                let unverified_plaintext = unverified_plaintext.set_context(&context);
                 let members = self.indexed_members();
                 let credential = members
                     .get(&unverified_plaintext.sender_index())
                     .ok_or(InvalidMessageError::UnknownSender)?;
-                let plaintext: MlsPlaintext = unverified_plaintext.verify(credential)?;
-                // Verify signature & membership tag
+                // Verify the signature
+                let plaintext: MlsPlaintext = unverified_plaintext
+                    .set_context(&context)
+                    .verify(credential)?;
+                // Verify membership tag
                 // TODO #106: Support external senders
                 if plaintext.is_proposal()
                     && plaintext.sender().is_member()
@@ -596,7 +602,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         message: &[u8],
-    ) -> Result<MlsMessage, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -621,14 +627,14 @@ impl ManagedGroup {
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
 
-        Ok(MlsMessage::Ciphertext(ciphertext))
+        Ok(MlsMessageOut::Ciphertext(ciphertext))
     }
 
     /// Process pending proposals
     pub fn process_pending_proposals(
         &mut self,
         key_store: &KeyStore,
-    ) -> Result<(MlsMessage, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -763,7 +769,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(MlsMessage, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -828,7 +834,7 @@ impl ManagedGroup {
         &mut self,
         key_store: &KeyStore,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<MlsMessage, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
@@ -921,14 +927,14 @@ impl ManagedGroup {
     fn plaintext_to_mls_message(
         &mut self,
         plaintext: MlsPlaintext,
-    ) -> Result<MlsMessage, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, ManagedGroupError> {
         let msg = match self.configuration().handshake_message_format {
-            HandshakeMessageFormat::Plaintext => MlsMessage::Plaintext(plaintext),
+            HandshakeMessageFormat::Plaintext => MlsMessageOut::Plaintext(plaintext),
             HandshakeMessageFormat::Ciphertext => {
                 let ciphertext = self
                     .group
                     .encrypt(plaintext, self.configuration().padding_size())?;
-                MlsMessage::Ciphertext(ciphertext)
+                MlsMessageOut::Ciphertext(ciphertext)
             }
         };
         Ok(msg)
@@ -1108,9 +1114,19 @@ pub enum MlsMessageIn<'a> {
     Ciphertext(MlsCiphertext),
 }
 
+#[cfg(any(feature = "test-utils", test))]
+impl<'a> MlsMessageIn<'a> {
+    pub fn group_id(&self) -> &[u8] {
+        match self {
+            MlsMessageIn::Ciphertext(m) => m.group_id().as_slice(),
+            MlsMessageIn::Plaintext(m) => m.group_id().as_slice(),
+        }
+    }
+}
+
 /// Unified message type for output by the managed API
 #[derive(PartialEq, Debug, Clone)]
-pub enum MlsMessage {
+pub enum MlsMessageOut {
     /// An OpenMLS `MlsPlaintext`.
     Plaintext(MlsPlaintext),
 
@@ -1118,71 +1134,52 @@ pub enum MlsMessage {
     Ciphertext(MlsCiphertext),
 }
 
-impl From<MlsPlaintext> for MlsMessage {
+impl From<MlsPlaintext> for MlsMessageOut {
     fn from(mls_plaintext: MlsPlaintext) -> Self {
-        MlsMessage::Plaintext(mls_plaintext)
+        MlsMessageOut::Plaintext(mls_plaintext)
     }
 }
 
-impl From<MlsCiphertext> for MlsMessage {
+impl From<MlsCiphertext> for MlsMessageOut {
     fn from(mls_ciphertext: MlsCiphertext) -> Self {
-        MlsMessage::Ciphertext(mls_ciphertext)
+        MlsMessageOut::Ciphertext(mls_ciphertext)
     }
 }
 
-impl MlsMessage {
+impl MlsMessageOut {
     /// Get the group ID as plain byte vector.
     pub fn group_id(&self) -> &[u8] {
         match self {
-            MlsMessage::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessage::Plaintext(m) => m.group_id().as_slice(),
+            MlsMessageOut::Ciphertext(m) => m.group_id().as_slice(),
+            MlsMessageOut::Plaintext(m) => m.group_id().as_slice(),
         }
     }
 
     /// Get the epoch as plain u64.
     pub fn epoch(&self) -> u64 {
         match self {
-            MlsMessage::Ciphertext(m) => m.epoch.0,
-            MlsMessage::Plaintext(m) => m.epoch().0,
+            MlsMessageOut::Ciphertext(m) => m.epoch.0,
+            MlsMessageOut::Plaintext(m) => m.epoch().0,
         }
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
         match self {
-            MlsMessage::Ciphertext(m) => m.is_handshake_message(),
-            MlsMessage::Plaintext(m) => m.is_handshake_message(),
-        }
-    }
-}
-
-impl tls_codec::Size for MlsMessage {
-    #[inline]
-    fn tls_serialized_len(&self) -> usize {
-        match self {
-            MlsMessage::Plaintext(pt) => pt.tls_serialized_len(),
-            MlsMessage::Ciphertext(ct) => ct.tls_serialized_len(),
-        }
-    }
-}
-
-impl tls_codec::Serialize for MlsMessage {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        match self {
-            MlsMessage::Plaintext(pt) => pt.tls_serialize(writer),
-            MlsMessage::Ciphertext(ct) => ct.tls_serialize(writer),
+            MlsMessageOut::Ciphertext(m) => m.is_handshake_message(),
+            MlsMessageOut::Plaintext(m) => m.is_handshake_message(),
         }
     }
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl<'a> From<MlsMessage> for MlsMessageIn<'a> {
-    fn from(message: MlsMessage) -> Self {
+impl<'a> From<MlsMessageOut> for MlsMessageIn<'a> {
+    fn from(message: MlsMessageOut) -> Self {
         match message {
-            MlsMessage::Plaintext(pt) => {
+            MlsMessageOut::Plaintext(pt) => {
                 MlsMessageIn::Plaintext(VerifiableMlsPlaintext::from_plaintext(pt, None))
             }
-            MlsMessage::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
+            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
         }
     }
 }

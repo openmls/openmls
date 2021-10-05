@@ -32,7 +32,7 @@ use crate::{
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 use crate::{
-    group::{ManagedGroupCallbacks, ManagedGroupConfig, MlsMessage, UpdatePolicy},
+    group::{ManagedGroupCallbacks, ManagedGroupConfig, MlsMessageOut, UpdatePolicy},
     prelude::MlsPlaintextContentType,
     test_utils::{
         bytes_to_hex,
@@ -289,7 +289,7 @@ fn write_test_vector() {
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
-    use crate::extensions::RatchetTreeExtension;
+    use crate::{extensions::RatchetTreeExtension, test_utils::test_framework::CodecUse};
 
     // The test really only makes sense with two or more leaves
     if n_leaves <= 1 {
@@ -307,7 +307,11 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         false, // use_ratchet_tree_extension
         callbacks,
     );
-    let setup = ManagedTestSetup::new(managed_group_config, n_leaves as usize);
+    let setup = ManagedTestSetup::new(
+        managed_group_config,
+        n_leaves as usize,
+        CodecUse::SerializedMessages,
+    );
 
     // - I am the client with key package `my_key_package`
     // - I was added by the client at leaf index add_sender
@@ -435,7 +439,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let (message, _) = updater_group.self_update(&updater.key_store, None).unwrap();
 
     let update_path = match message {
-        MlsMessage::Plaintext(ref pt) => match pt.content() {
+        MlsMessageOut::Plaintext(ref pt) => match pt.content() {
             MlsPlaintextContentType::Commit(commit) => commit.path().as_ref().unwrap().clone(),
             _ => panic!("The message should not be anything but a commit."),
         },

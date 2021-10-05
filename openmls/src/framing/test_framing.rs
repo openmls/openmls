@@ -22,13 +22,19 @@ fn codec() {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),
         };
-        let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
+        let group_context = GroupContext::new(
+            GroupId::random(ciphersuite),
+            GroupEpoch(1),
+            vec![],
+            vec![],
+            &[],
+        )
+        .unwrap();
 
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
             serialized_context.as_slice(),
-            GroupId::random(),
+            GroupId::random(ciphersuite),
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
@@ -60,8 +66,14 @@ fn membership_tag() {
             ciphersuite.signature_scheme(),
         )
         .unwrap();
-        let group_context =
-            GroupContext::new(GroupId::random(), GroupEpoch(1), vec![], vec![], &[]).unwrap();
+        let group_context = GroupContext::new(
+            GroupId::random(ciphersuite),
+            GroupEpoch(1),
+            vec![],
+            vec![],
+            &[],
+        )
+        .unwrap();
         let membership_key =
             MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
         let mut mls_plaintext = MlsPlaintext::new_application(
@@ -466,9 +478,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
 
     // Tamper with signature.
     let good_signature = commit.signature().clone();
-    let mut modified_signature = commit.signature().as_slice().to_vec();
-    modified_signature[0] ^= 0xFF;
-    commit.signature_mut().modify(&modified_signature);
+    commit.invalidate_signature();
     let encoded_commit = commit.tls_serialize_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
     let decoded_commit = group_alice.verify(input_commit);
