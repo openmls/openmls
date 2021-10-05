@@ -7,7 +7,6 @@ implement_error! {
         Simple {
             UnsupportedCredentialType = "Unsupported credential type.",
             InvalidSignature = "Invalid signature.",
-            SignatureError = "Error while signing.",
         }
         Complex {
             ConfigError(ConfigError) = "See `ConfigError` for details.",
