@@ -11,19 +11,20 @@ use crate::prelude::*;
 #[test]
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
-    let extension_bytes = &[
+    let extension_bytes = [
         0u8, 1, 0, 0, 0, 17, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3,
-    ] as &[u8];
+    ];
+    let mut extension_bytes_mut = &extension_bytes[..];
 
     let ext = Extension::Capabilities(CapabilitiesExtension::default());
 
     // Check that decoding works
-    let capabilities_extension = Extension::tls_deserialize(&mut extension_bytes.clone()).unwrap();
+    let capabilities_extension = Extension::tls_deserialize(&mut extension_bytes_mut).unwrap();
     assert_eq!(ext, capabilities_extension);
 
     // Encoding creates the expected bytes.
     assert_eq!(
-        &extension_bytes[..],
+        extension_bytes,
         &capabilities_extension.tls_serialize_detached().unwrap()[..]
     );
 

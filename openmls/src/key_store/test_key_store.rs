@@ -67,11 +67,11 @@ ctest_ciphersuites!(key_storage, test(ciphersuite_name: CiphersuiteName) {
     )
     .expect("Error while creating credential.");
 
-    assert_eq!(ks.get_credential_bundle(cb_external.credential().signature_key()).is_none(), true);
+    assert!(ks.get_credential_bundle(cb_external.credential().signature_key()).is_none());
 
     let kpb_external = KeyPackageBundle::new(&[ciphersuite.name()], &cb_external, Vec::new())
         .expect("Error while generating key package.");
 
-    assert_eq!(ks.take_key_package_bundle(&kpb_external.key_package().hash()).is_none(), true);
+    assert!(ks.take_key_package_bundle(&kpb_external.key_package().hash()).is_none());
 
 });

@@ -366,8 +366,7 @@ impl TryFrom<u8> for ContentType {
             _ => Err(tls_codec::Error::DecodingError(format!(
                 "{} is not a valid content type",
                 value
-            ))
-            .into()),
+            ))),
         }
     }
 }

@@ -459,7 +459,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .find(|node_option| {
             if let Some(node) = node_option {
                 if let Some(key_package) = node.key_package() {
-                    if key_package.credential().identity() == &addee_id {
+                    if key_package.credential().identity() == addee_id {
                         return true;
                     }
                 }
@@ -487,14 +487,14 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         ratchet_tree_before: bytes_to_hex(&ratchet_tree_before),
 
         add_sender: adder_index as u32,
-        my_leaf_secret: bytes_to_hex(&my_leaf_secret.as_slice()),
+        my_leaf_secret: bytes_to_hex(my_leaf_secret.as_slice()),
 
         my_key_package: bytes_to_hex(
             &my_key_package
                 .tls_serialize_detached()
                 .expect("error serializing key package"),
         ),
-        my_path_secret: bytes_to_hex(&my_path_secret.path_secret.as_slice()),
+        my_path_secret: bytes_to_hex(my_path_secret.path_secret.as_slice()),
 
         // Computed values
         update_sender: updater_index as u32,
@@ -505,8 +505,8 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         ),
         update_group_context: bytes_to_hex(&group_context),
         tree_hash_before: bytes_to_hex(&tree_hash_before),
-        root_secret_after_add: bytes_to_hex(&root_secret_after_add.path_secret.as_slice()),
-        root_secret_after_update: bytes_to_hex(&root_secret_after_update.path_secret.as_slice()),
+        root_secret_after_add: bytes_to_hex(root_secret_after_add.path_secret.as_slice()),
+        root_secret_after_update: bytes_to_hex(root_secret_after_update.path_secret.as_slice()),
         ratchet_tree_after: bytes_to_hex(&ratchet_tree_after),
         tree_hash_after: bytes_to_hex(&tree_hash_after),
     }

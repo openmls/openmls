@@ -122,6 +122,8 @@ impl MlsPlaintextContentType {
     }
 }
 
+// This might get refactored with the TLS codec refactoring, just suppressing the warning for now
+#[allow(clippy::too_many_arguments)]
 pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     serialized_context: impl Into<Option<&'a [u8]>>,
     group_id: &GroupId,

@@ -19,7 +19,7 @@ implement_error! {
 
 impl From<ProposalOrRefTypeError> for tls_codec::Error {
     fn from(e: ProposalOrRefTypeError) -> Self {
-        tls_codec::Error::DecodingError(format!("{:?}", e)).into()
+        tls_codec::Error::DecodingError(format!("{:?}", e))
     }
 }
 
