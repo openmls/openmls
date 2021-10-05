@@ -708,7 +708,6 @@
 <span id="708">708</span>
 <span id="709">709</span>
 <span id="710">710</span>
-<span id="711">711</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
@@ -1078,8 +1077,7 @@
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
                 <span class="string">&quot;{} is not a valid content type&quot;</span>,
                 <span class="ident">value</span>
-            ))
-            .<span class="ident">into</span>()),
+            ))),
         }
     }
 }
