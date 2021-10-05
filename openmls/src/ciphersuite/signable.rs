@@ -54,9 +54,7 @@ pub trait Signable: Sized {
         Self::SignedOutput: SignedStruct<Self>,
     {
         let payload = self.unsigned_payload()?;
-        let signature = credential_bundle
-            .sign(&payload)
-            .map_err(|_| CredentialError::SignatureError)?;
+        let signature = credential_bundle.sign(&payload)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
 }
