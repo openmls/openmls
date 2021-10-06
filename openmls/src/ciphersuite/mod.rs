@@ -645,6 +645,7 @@ pub struct Ciphersuite {
     rng: Mutex<ChaCha20Rng>,
     hash: HashType,
     aead: AeadType,
+    version: ProtocolVersion,
 }
 
 impl std::fmt::Display for Ciphersuite {
@@ -698,6 +699,22 @@ fn aead_from_suite(ciphersuite_name: &CiphersuiteName) -> AeadType {
     }
 }
 
+#[inline(always)]
+fn version_from_suite(ciphersuite_name: &CiphersuiteName) -> ProtocolVersion {
+    match ciphersuite_name {
+        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => ProtocolVersion::Mls10,
+        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => ProtocolVersion::Mls10,
+        CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            ProtocolVersion::Mls10
+        }
+        CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448 => ProtocolVersion::Mls10,
+        CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => ProtocolVersion::Mls10,
+        CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            ProtocolVersion::Mls10
+        }
+    }
+}
+
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
     pub fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
@@ -708,6 +725,7 @@ impl Ciphersuite {
         let hpke_kem = kem_from_suite(&name)?;
         let hpke_kdf = hpke_kdf_from_suite(&name);
         let hpke_aead = hpke_aead_from_suite(&name);
+        let version = version_from_suite(&name);
         let rng = rand::init();
 
         Ok(Ciphersuite {
@@ -717,6 +735,7 @@ impl Ciphersuite {
             rng: Mutex::new(rng),
             hash: hash_from_suite(&name),
             aead: aead_from_suite(&name),
+            version,
         })
     }
 
@@ -734,6 +753,16 @@ impl Ciphersuite {
     /// Get the name of this ciphersuite.
     pub fn name(&self) -> CiphersuiteName {
         self.name
+    }
+
+    /// Get the MLS version of this ciphersuite.
+    pub fn version(&self) -> ProtocolVersion {
+        self.version
+    }
+
+    /// Get the hpke instance of this ciphersuite.
+    pub fn hpke(&self) -> &Hpke {
+        &self.hpke
     }
 
     /// Get the AEAD mode

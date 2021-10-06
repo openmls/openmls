@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::convert::TryFrom;
 use tls_codec::{
-    Serialize as TlsSerializeTrait, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize,
-    TlsVecU32,
+    Serialize as TlsSerializeTrait, Size, TlsByteVecU16, TlsByteVecU8, TlsDeserialize,
+    TlsSerialize, TlsSize, TlsVecU32,
 };
 
 use super::errors::*;
@@ -25,6 +25,7 @@ pub enum ProposalType {
     Remove = 3,
     Presharedkey = 4,
     Reinit = 5,
+    ExternalInit = 6,
 }
 
 impl TryFrom<u8> for ProposalType {
@@ -36,6 +37,7 @@ impl TryFrom<u8> for ProposalType {
             3 => Ok(ProposalType::Remove),
             4 => Ok(ProposalType::Presharedkey),
             5 => Ok(ProposalType::Reinit),
+            6 => Ok(ProposalType::ExternalInit),
             _ => Err("Unknown proposal type."),
         }
     }
@@ -103,6 +105,7 @@ pub enum Proposal {
     Remove(RemoveProposal),
     PreSharedKey(PreSharedKeyProposal),
     ReInit(ReInitProposal),
+    ExternalInit(ExternalInit),
 }
 
 impl Proposal {
@@ -113,6 +116,7 @@ impl Proposal {
             Proposal::Remove(ref _r) => ProposalType::Remove,
             Proposal::PreSharedKey(ref _p) => ProposalType::Presharedkey,
             Proposal::ReInit(ref _r) => ProposalType::Reinit,
+            Proposal::ExternalInit(ref _r) => ProposalType::ExternalInit,
         }
     }
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
@@ -566,4 +570,16 @@ pub struct ReInitProposal {
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: CiphersuiteName,
     pub(crate) extensions: TlsVecU32<Extension>,
+}
+
+/// ExternalInit proposal
+/// 11.1.6.
+/// struct {
+///     opaque kem_output<0..2^16-1>;
+/// } ExternalInit;
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+pub struct ExternalInitProposal {
+    kem_output: TlsByteVecU16,
 }

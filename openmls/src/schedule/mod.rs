@@ -114,7 +114,10 @@
 //! | `resumption_secret`     | "resumption"    |
 //! ```
 
+use crate::ciphersuite::HpkeCiphertext;
+use crate::config::Config;
 use crate::framing::MlsPlaintextTbmPayload;
+use crate::messages::PublicGroupState;
 use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
 use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
@@ -124,9 +127,11 @@ use crate::{
     messages::ConfirmationTag,
 };
 
+use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
+
+use hpke::HpkePublicKey;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 pub mod codec;
 pub mod errors;
@@ -209,6 +214,36 @@ impl InitSecret {
         InitSecret {
             secret: Secret::random(ciphersuite, version),
         }
+    }
+
+    /// Create an `InitSecret` and the corresponding `kem_output` from an
+    /// external public key and a public group state.
+    pub(crate) fn from_external_pub_and_group_state(
+        external_pub: &HpkePublicKey,
+        public_group_state: PublicGroupState,
+    ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
+        let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
+            .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
+        let serialized_pgs = public_group_state
+            .tls_serialize_detached()
+            .map_err(|_| KeyScheduleError::EncodingError)?;
+        let (kem_output, context) = ciphersuite
+            .hpke()
+            .setup_sender(external_pub, &serialized_pgs, None, None, None)
+            .map_err(|_| KeyScheduleError::HpkeError)?;
+        let version_string = match ciphersuite.version() {
+            ProtocolVersion::Reserved => Err(KeyScheduleError::UnsupportedCiphersuite)?,
+            ProtocolVersion::Mls10 => "MLS 1.0",
+            ProtocolVersion::Mls10Draft11 => "MLS 1.0 Draft 11",
+        };
+        let hpke_info = version_string.to_string() + " external init";
+        let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
+        Ok((
+            InitSecret {
+                secret: Secret::from_slice(&raw_init_secret, ciphersuite.version(), &ciphersuite),
+            },
+            kem_output,
+        ))
     }
 
     #[cfg(any(feature = "test-utils", test))]

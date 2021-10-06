@@ -8,8 +8,18 @@ implement_error! {
 
 implement_error! {
     pub enum KeyScheduleError {
-        InvalidState(ErrorState) =
-            "The requested operation is not valid on the key schedule state.",
+        Simple {
+            UnsupportedCiphersuite =
+                "The ciphersuite of the given public group state is not supported.",
+            HpkeError =
+                "Error while setting up HPKE keypair for external commit.",
+            EncodingError =
+                "Error while encoding public group state.",
+        }
+        Complex {
+            InvalidState(ErrorState) =
+                "The requested operation is not valid on the key schedule state.",
+        }
     }
 }
 
