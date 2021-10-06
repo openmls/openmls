@@ -37,7 +37,7 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
         .unwrap()
         .clone();
     setup
-        .remove_clients_by_index(ActionType::Commit, group, &remover_id, &[2])
+        .remove_clients_by_index(ActionType::Commit, group, remover_id, &[2])
         .unwrap();
 
     // Then we have the member at index 7 remove the one at index 3. This
@@ -53,7 +53,7 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
         .unwrap()
         .clone();
     setup
-        .remove_clients_by_index(ActionType::Commit, group, &remover_id, &[3])
+        .remove_clients_by_index(ActionType::Commit, group, remover_id, &[3])
         .unwrap();
 
     // Since the decryption failure doesn't cause a panic, but only an error

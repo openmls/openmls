@@ -23,11 +23,9 @@ impl tls_codec::Serialize for Credential {
                 basic_credential.tls_serialize(writer).map(|l| l + written)
             }
             // TODO #134: implement encoding for X509 certificates
-            MlsCredentialType::X509(_) => {
-                return Err(tls_codec::Error::EncodingError(
-                    "X509 certificates are not yet implemented.".to_string(),
-                ))
-            }
+            MlsCredentialType::X509(_) => Err(tls_codec::Error::EncodingError(
+                "X509 certificates are not yet implemented.".to_string(),
+            )),
         }
     }
 }

@@ -91,7 +91,7 @@ fn main() {
 
                     // Send a message to the group.
                     if let Some(msg) = op2.strip_prefix("send ") {
-                        client.send_msg(&msg, group_name.to_string()).unwrap();
+                        client.send_msg(msg, group_name.to_string()).unwrap();
                         stdout
                             .write_all(format!("sent message to {}\n\n", group_name).as_bytes())
                             .unwrap();

@@ -130,7 +130,7 @@ fn proposal_queue_functions() {
 
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_alice2];
 
-        let proposal_queue = ProposalQueue::from_proposals_by_reference(&ciphersuite, proposals);
+        let proposal_queue = ProposalQueue::from_proposals_by_reference(ciphersuite, proposals);
 
         // Test if proposals are all covered
         let valid_proposal_reference_list = &[
@@ -230,7 +230,7 @@ fn proposal_queue_order() {
         // This should set the order of the proposals.
         let proposals = &[&mls_plaintext_add_alice1, &mls_plaintext_add_bob1];
 
-        let proposal_queue = ProposalQueue::from_proposals_by_reference(&ciphersuite, proposals);
+        let proposal_queue = ProposalQueue::from_proposals_by_reference(ciphersuite, proposals);
 
         // Now let's iterate over the queue. This should be in order.
         let proposal_collection: Vec<&QueuedProposal> =

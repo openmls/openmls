@@ -85,7 +85,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
 
     let group_secrets_bytes = ciphersuite.hpke_open(
         &egs.encrypted_group_secrets,
-        &bob_key_package_bundle.private_key(),
+        bob_key_package_bundle.private_key(),
         &[],
         &[],
     ).expect("Could not decrypt group secrets");

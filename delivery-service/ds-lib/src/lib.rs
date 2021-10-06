@@ -250,15 +250,13 @@ impl<'a> tls_codec::Size for GroupMessage<'a> {
 
 impl<'a> tls_codec::Serialize for GroupMessage<'a> {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written;
+        let mut written = 0;
         written += match &self.msg {
             DsMlsMessage::Ciphertext(m) => {
-                written = MessageType::MlsCiphertext.tls_serialize(writer)?;
-                m.tls_serialize(writer)?
+                MessageType::MlsCiphertext.tls_serialize(writer)? + m.tls_serialize(writer)?
             }
             DsMlsMessage::Plaintext(m) => {
-                written = MessageType::MlsPlaintext.tls_serialize(writer)?;
-                m.tls_serialize(writer)?
+                MessageType::MlsPlaintext.tls_serialize(writer)? + m.tls_serialize(writer)?
             }
         };
         self.recipients.tls_serialize(writer).map(|l| l + written)

@@ -102,18 +102,15 @@ impl Client {
     /// messages.
     pub fn receive_messages_for_group(&self, message: &MlsMessageIn) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
-        let group_id = GroupId::from_slice(&message.group_id());
+        let group_id = GroupId::from_slice(message.group_id());
         let group_state = group_states
             .get_mut(&group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let message_in: MlsMessageIn = message.clone().into();
         let events = group_state.process_message(message_in)?;
         for event in events {
-            match event {
-                GroupEvent::Error(e) => {
-                    return Err(ClientError::ErrorEvent(e));
-                }
-                _ => {}
+            if let GroupEvent::Error(e) = event {
+                return Err(ClientError::ErrorEvent(e));
             }
         }
         Ok(())

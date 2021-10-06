@@ -82,10 +82,7 @@ macro_rules! unwrap_data {
 /// An HTTP conflict (409) is returned if a client with this name exists
 /// already.
 #[post("/clients/register")]
-async fn register_client<'a>(
-    mut body: Payload,
-    data: web::Data<Mutex<DsData<'a>>>,
-) -> impl Responder {
+async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -111,7 +108,7 @@ async fn register_client<'a>(
 
 /// Returns a list of clients with their names and IDs.
 #[get("/clients/list")]
-async fn list_clients<'a>(_req: HttpRequest, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
+async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     log::debug!("Listing clients");
     let data = unwrap_data!(data.lock());
 
@@ -132,7 +129,7 @@ async fn list_clients<'a>(_req: HttpRequest, data: web::Data<Mutex<DsData<'a>>>)
 
 /// Resets the server state.
 #[get("/reset")]
-async fn reset<'a>(_req: HttpRequest, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
+async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     log::debug!("Resetting server");
     let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();
@@ -145,9 +142,9 @@ async fn reset<'a>(_req: HttpRequest, data: web::Data<Mutex<DsData<'a>>>) -> imp
 /// This returns a serialised vector of `ClientKeyPackages` (see the `ds-lib`
 /// for details).
 #[get("/clients/key_packages/{id}")]
-async fn get_key_packages<'a>(
+async fn get_key_packages(
     web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData<'a>>>,
+    data: web::Data<Mutex<DsData<'_>>>,
 ) -> impl Responder {
     let data = unwrap_data!(data.lock());
 
@@ -170,7 +167,7 @@ async fn get_key_packages<'a>(
 /// This takes a serialised `Welcome` message and stores the message for all
 /// clients in the welcome message.
 #[post("/send/welcome")]
-async fn send_welcome<'a>(mut body: Payload, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
+async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -199,7 +196,7 @@ async fn send_welcome<'a>(mut body: Payload, data: web::Data<Mutex<DsData<'a>>>)
 /// handshake message this DS has seen, a 409 is returned and the message is not
 /// processed.
 #[post("/send/message")]
-async fn msg_send<'a>(mut body: Payload, data: web::Data<Mutex<DsData<'a>>>) -> impl Responder {
+async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -250,9 +247,9 @@ async fn msg_send<'a>(mut body: Payload, data: web::Data<Mutex<DsData<'a>>>) -> 
 /// details) the DS has stored for the given client.
 /// The messages are deleted on the DS when sent out.
 #[get("/recv/{id}")]
-async fn msg_recv<'a>(
+async fn msg_recv(
     web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData<'a>>>,
+    data: web::Data<Mutex<DsData<'_>>>,
 ) -> impl Responder {
     let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();
