@@ -10,7 +10,7 @@ use crate::{
 
 /// This tests serializing/deserializing MlsPlaintext
 #[test]
-fn codec() {
+fn codec_plaintext() {
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
             vec![7, 8, 9],
@@ -34,6 +34,7 @@ fn codec() {
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
             serialized_context.as_slice(),
+            WireFormat::MlsPlaintext,
             GroupId::random(ciphersuite),
             GroupEpoch(1u64),
             sender,
@@ -51,6 +52,79 @@ fn codec() {
             .set_context(&serialized_context)
             .verify(credential_bundle.credential())
             .unwrap();
+        assert_eq!(orig, copy);
+        assert!(!orig.is_handshake_message());
+    }
+}
+
+/// This tests serializing/deserializing MlsCiphertext
+#[test]
+fn codec_ciphertext() {
+    for ciphersuite in Config::supported_ciphersuites() {
+        let credential_bundle = CredentialBundle::new(
+            vec![7, 8, 9],
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let sender = Sender {
+            sender_type: SenderType::Member,
+            sender: LeafIndex::from(0u32),
+        };
+        let group_context = GroupContext::new(
+            GroupId::random(ciphersuite),
+            GroupEpoch(1),
+            vec![],
+            vec![],
+            &[],
+        )
+        .unwrap();
+
+        let serialized_context = group_context.tls_serialize_detached().unwrap();
+        let signature_input = MlsPlaintextTbs::new(
+            serialized_context.as_slice(),
+            WireFormat::MlsCiphertext,
+            GroupId::random(ciphersuite),
+            GroupEpoch(1u64),
+            sender,
+            vec![1, 2, 3].into(),
+            ContentType::Application,
+            MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+        );
+        let plaintext: MlsPlaintext = signature_input
+            .sign(&credential_bundle)
+            .expect("Signing failed.");
+
+        let mut key_schedule = KeySchedule::init(
+            ciphersuite,
+            JoinerSecret::random(ciphersuite, ProtocolVersion::default()),
+            None, // PSK
+        );
+
+        key_schedule
+            .add_context(&group_context)
+            .expect("Could not add context to key schedule");
+
+        let epoch_secrets = key_schedule
+            .epoch_secrets(false)
+            .expect("Could not generte epoch secrets");
+
+        let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
+
+        let orig = MlsCiphertext::try_from_plaintext(
+            &plaintext,
+            ciphersuite,
+            &group_context,
+            sender.to_leaf_index(),
+            &epoch_secrets,
+            &mut secret_tree,
+            0,
+        )
+        .expect("Could not encrypt MlsPlaintext.");
+
+        let enc = orig.tls_serialize_detached().unwrap();
+        let copy = MlsCiphertext::tls_deserialize(&mut enc.as_slice()).unwrap();
+
         assert_eq!(orig, copy);
         assert!(!orig.is_handshake_message());
     }
@@ -164,11 +238,17 @@ fn unknown_sender() {
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
-            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .create_add_proposal(
+                WireFormat::MlsPlaintext,
+                group_aad,
+                &alice_credential_bundle,
+                bob_key_package.clone(),
+            )
             .expect("Could not create proposal.");
 
         let (commit, _welcome_option, _kpb_option) = group_alice
             .create_commit(
+                WireFormat::MlsPlaintext,
                 group_aad,
                 &alice_credential_bundle,
                 &[&bob_add_proposal],
@@ -186,6 +266,7 @@ fn unknown_sender() {
 
         let charlie_add_proposal = group_alice
             .create_add_proposal(
+                WireFormat::MlsPlaintext,
                 group_aad,
                 &alice_credential_bundle,
                 charlie_key_package.clone(),
@@ -194,6 +275,7 @@ fn unknown_sender() {
 
         let (commit, welcome_option, _kpb_option) = group_alice
             .create_commit(
+                WireFormat::MlsPlaintext,
                 group_aad,
                 &alice_credential_bundle,
                 &[&charlie_add_proposal],
@@ -217,10 +299,16 @@ fn unknown_sender() {
 
         // Alice removes Bob
         let bob_remove_proposal = group_alice
-            .create_remove_proposal(group_aad, &alice_credential_bundle, LeafIndex::from(1usize))
+            .create_remove_proposal(
+                WireFormat::MlsPlaintext,
+                group_aad,
+                &alice_credential_bundle,
+                LeafIndex::from(1usize),
+            )
             .expect("Could not create proposal.");
         let (commit, _welcome_option, kpb_option) = group_alice
             .create_commit(
+                WireFormat::MlsPlaintext,
                 group_aad,
                 &alice_credential_bundle,
                 &[&bob_remove_proposal],
@@ -359,11 +447,17 @@ fn confirmation_tag_presence() {
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
-            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .create_add_proposal(
+                WireFormat::MlsPlaintext,
+                group_aad,
+                &alice_credential_bundle,
+                bob_key_package.clone(),
+            )
             .expect("Could not create proposal.");
 
         let (mut commit, _welcome_option, _kpb_option) = group_alice
             .create_commit(
+                WireFormat::MlsPlaintext,
                 group_aad,
                 &alice_credential_bundle,
                 &[&bob_add_proposal],
@@ -429,11 +523,12 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
 
     // Alice adds Bob
     let bob_add_proposal = group_alice
-        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .create_add_proposal(WireFormat::MlsPlaintext,group_aad, &alice_credential_bundle, bob_key_package.clone())
         .expect("Could not create proposal.");
 
     let (mut commit, _welcome, _kpb_option) = group_alice
         .create_commit(
+            WireFormat::MlsPlaintext,
             group_aad,
             &alice_credential_bundle,
             &[&bob_add_proposal],

@@ -177,6 +177,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 // KeyPackage.
                 let add_proposal = mls_group
                     .create_add_proposal(
+                        WireFormat::MlsPlaintext,
                         group_aad,
                         initial_credential_bundle,
                         next_member_key_package,
@@ -188,6 +189,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // proposals.
             let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
                 .create_commit(
+                    WireFormat::MlsPlaintext,
                     group_aad,
                     initial_credential_bundle,
                     &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),

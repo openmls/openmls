@@ -3,6 +3,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
+    group::WireFormat,
     key_packages::KeyPackageBundle,
     messages::{
         CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
@@ -54,9 +55,15 @@ fn test_pgs() {
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
-            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .create_add_proposal(
+                WireFormat::MlsPlaintext,
+                group_aad,
+                &alice_credential_bundle,
+                bob_key_package.clone(),
+            )
             .expect("Could not create proposal.");
         let (commit, _welcome_option, kpb_option) = match group_alice.create_commit(
+            WireFormat::MlsPlaintext,
             group_aad,
             &alice_credential_bundle,
             &[&bob_add_proposal],

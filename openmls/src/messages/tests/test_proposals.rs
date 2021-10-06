@@ -7,7 +7,7 @@ use crate::{
     extensions::{Extension, LifetimeExtension},
     framing::sender::{Sender, SenderType},
     framing::MlsPlaintext,
-    group::{GroupContext, GroupEpoch, GroupId},
+    group::{GroupContext, GroupEpoch, GroupId, WireFormat},
     key_packages::KeyPackageBundle,
     messages::proposals::{
         AddProposal, Proposal, ProposalOrRef, ProposalQueue, ProposalReference, ProposalType,
@@ -101,6 +101,7 @@ fn proposal_queue_functions() {
 
         // Frame proposals in MlsPlaintext
         let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
+            WireFormat::MlsPlaintext,
             LeafIndex::from(0u32),
             &[],
             proposal_add_alice1,
@@ -110,6 +111,7 @@ fn proposal_queue_functions() {
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_alice2 = MlsPlaintext::new_proposal(
+            WireFormat::MlsPlaintext,
             LeafIndex::from(1u32),
             &[],
             proposal_add_alice2,
@@ -119,6 +121,7 @@ fn proposal_queue_functions() {
         )
         .expect("Could not create proposal.");
         let _mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
+            WireFormat::MlsPlaintext,
             LeafIndex::from(1u32),
             &[],
             proposal_add_bob1,
@@ -209,6 +212,7 @@ fn proposal_queue_order() {
 
         // Frame proposals in MlsPlaintext
         let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
+            WireFormat::MlsPlaintext,
             LeafIndex::from(0u32),
             &[],
             proposal_add_alice1.clone(),
@@ -218,6 +222,7 @@ fn proposal_queue_order() {
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
+            WireFormat::MlsPlaintext,
             LeafIndex::from(1u32),
             &[],
             proposal_add_bob1.clone(),

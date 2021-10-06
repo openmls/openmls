@@ -188,11 +188,17 @@ fn test_update_path() {
 
         // === Alice adds Bob ===
         let bob_add_proposal = alice_group
-            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .create_add_proposal(
+                WireFormat::MlsPlaintext,
+                group_aad,
+                &alice_credential_bundle,
+                bob_key_package.clone(),
+            )
             .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = alice_group
             .create_commit(
+                WireFormat::MlsPlaintext,
                 group_aad,
                 &alice_credential_bundle,
                 epoch_proposals,
@@ -235,6 +241,7 @@ fn test_update_path() {
 
         let update_proposal_bob = group_bob
             .create_update_proposal(
+                WireFormat::MlsPlaintext,
                 &[],
                 &bob_credential_bundle,
                 bob_update_key_package_bundle.key_package().clone(),
@@ -242,6 +249,7 @@ fn test_update_path() {
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
             .create_commit(
+                WireFormat::MlsPlaintext,
                 &[],
                 &bob_credential_bundle,
                 &[&update_proposal_bob],
@@ -291,6 +299,7 @@ fn test_update_path() {
         };
 
         let mut broken_plaintext = MlsPlaintext::new_commit(
+            WireFormat::MlsPlaintext,
             mls_plaintext_commit.sender_index(),
             mls_plaintext_commit.authenticated_data(),
             broken_commit,
@@ -404,17 +413,18 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let psk_proposal = alice_group
-        .create_presharedkey_proposal(group_aad, &alice_credential_bundle, preshared_key_id)
+        .create_presharedkey_proposal(WireFormat::MlsPlaintext,group_aad, &alice_credential_bundle, preshared_key_id)
         .expect("Could not create PSK proposal");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .create_add_proposal(WireFormat::MlsPlaintext,group_aad, &alice_credential_bundle, bob_key_package.clone())
         .expect("Could not create proposal");
     let epoch_proposals = &[&bob_add_proposal, &psk_proposal];
     log::info!(" >>> Creating commit ...");
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
+            WireFormat::MlsPlaintext,
             group_aad,
             &alice_credential_bundle,
             epoch_proposals,
@@ -450,6 +460,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
+            WireFormat::MlsPlaintext,
             &[],
             &bob_credential_bundle,
             bob_update_key_package_bundle.key_package().clone(),
@@ -457,6 +468,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .expect("Could not create proposal.");
     let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
         .create_commit(
+            WireFormat::MlsPlaintext,
             &[],
             &bob_credential_bundle,
             &[&update_proposal_bob],

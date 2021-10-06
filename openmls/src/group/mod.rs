@@ -108,3 +108,12 @@ impl Default for MlsGroupConfig {
         }
     }
 }
+
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+#[repr(u8)]
+pub enum WireFormat {
+    MlsPlaintext = 1,
+    MlsCiphertext = 2,
+}

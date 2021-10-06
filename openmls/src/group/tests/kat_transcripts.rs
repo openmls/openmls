@@ -14,7 +14,7 @@ use crate::{
     credentials::{Credential, CredentialBundle, CredentialType},
     group::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
-        GroupId,
+        GroupId, WireFormat,
     },
     messages::Commit,
     prelude::{
@@ -74,6 +74,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     )
     .expect("Error creating group context");
     let mut commit = MlsPlaintext::new_commit(
+        WireFormat::MlsPlaintext,
         LeafIndex::from(random_u32()),
         &ciphersuite.randombytes(48),
         Commit {

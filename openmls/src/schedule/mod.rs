@@ -938,6 +938,7 @@ impl EpochSecrets {
     /// Derive `EpochSecrets` from an `EpochSecret`.
     /// If the `init_secret` argument is `true`, the init secret is derived and
     /// part of the `EpochSecrets`. Otherwise not.
+    #[cfg(any(feature = "test-utils", test))]
     fn new(epoch_secret: EpochSecret, init_secret: bool) -> Self {
         log::debug!(
             "Computing EpochSecrets from epoch secret with {}",

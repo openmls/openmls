@@ -191,6 +191,7 @@ fn build_handshake_messages(
         None, /* MLS version */
     ));
     let mut plaintext = MlsPlaintext::new_proposal(
+        WireFormat::MlsCiphertext,
         leaf,
         &[1, 2, 3, 4],
         Proposal::Remove(RemoveProposal { removed: 0 }),

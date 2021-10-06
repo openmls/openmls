@@ -141,6 +141,7 @@ impl MlsGroup {
     // } Add;
     pub fn create_add_proposal(
         &self,
+        wire_format: WireFormat,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
@@ -150,6 +151,7 @@ impl MlsGroup {
         };
         let proposal = Proposal::Add(add_proposal);
         MlsPlaintext::new_proposal(
+            wire_format,
             self.sender_index(),
             aad,
             proposal,
@@ -166,6 +168,7 @@ impl MlsGroup {
     // } Update;
     pub fn create_update_proposal(
         &self,
+        wire_format: WireFormat,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
@@ -173,6 +176,7 @@ impl MlsGroup {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::new_proposal(
+            wire_format,
             self.sender_index(),
             aad,
             proposal,
@@ -189,6 +193,7 @@ impl MlsGroup {
     // } Remove;
     pub fn create_remove_proposal(
         &self,
+        wire_format: WireFormat,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
@@ -198,6 +203,7 @@ impl MlsGroup {
         };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::new_proposal(
+            wire_format,
             self.sender_index(),
             aad,
             proposal,
@@ -214,6 +220,7 @@ impl MlsGroup {
     // } PreSharedKey;
     pub fn create_presharedkey_proposal(
         &self,
+        wire_format: WireFormat,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
@@ -221,6 +228,7 @@ impl MlsGroup {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::new_proposal(
+            wire_format,
             self.sender_index(),
             aad,
             proposal,
@@ -240,8 +248,10 @@ impl MlsGroup {
     //     ProposalID proposals<0..2^32-1>;
     //     optional<UpdatePath> path;
     // } Commit;
+    #[allow(clippy::too_many_arguments)]
     pub fn create_commit(
         &self,
+        wire_format: WireFormat,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[&MlsPlaintext],
@@ -250,6 +260,7 @@ impl MlsGroup {
         psk_fetcher_option: Option<PskFetcher>,
     ) -> CreateCommitResult {
         self.create_commit_internal(
+            wire_format,
             aad,
             credential_bundle,
             proposals_by_reference,

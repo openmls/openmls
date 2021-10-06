@@ -2,20 +2,14 @@ use super::*;
 
 use serde::{Deserialize, Serialize};
 
-/// Defines whether handshake messages (Proposals & Commits) are encrypted.
-/// Application are always encrypted regardless. `Plaintext`: Handshake messages
-/// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
-/// returned as MlsCiphertext messages
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum HandshakeMessageFormat {
-    Plaintext,
-    Ciphertext,
-}
 /// Specifies the configuration parameters for a managed group
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ManagedGroupConfig {
-    /// Defines whether handshake messages should be encrypted
-    pub(crate) handshake_message_format: HandshakeMessageFormat,
+    /// Defines whether handshake messages (Proposals & Commits) are encrypted.
+    /// Application are always encrypted regardless. `Plaintext`: Handshake messages
+    /// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
+    /// returned as MlsCiphertext messages
+    pub(crate) handshake_message_format: WireFormat,
     /// Defines the update policy
     pub(crate) update_policy: UpdatePolicy,
     /// Size of padding in bytes
@@ -31,7 +25,7 @@ pub struct ManagedGroupConfig {
 
 impl ManagedGroupConfig {
     pub fn new(
-        handshake_message_format: HandshakeMessageFormat,
+        handshake_message_format: WireFormat,
         update_policy: UpdatePolicy,
         padding_size: usize,
         number_of_resumption_secrets: usize,
@@ -59,7 +53,7 @@ impl ManagedGroupConfig {
 
     #[cfg(test)]
     pub fn test_default() -> Self {
-        let handshake_message_format = HandshakeMessageFormat::Plaintext;
+        let handshake_message_format = WireFormat::MlsPlaintext;
         let update_policy = UpdatePolicy::default();
         let callbacks = ManagedGroupCallbacks::default();
         Self::new(

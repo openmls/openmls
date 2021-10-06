@@ -68,11 +68,8 @@ fn auto_save(managed_group: &ManagedGroup) {
 #[test]
 fn managed_group_operations() {
     for ciphersuite in Config::supported_ciphersuites() {
-        for handshake_message_format in vec![
-            HandshakeMessageFormat::Plaintext,
-            HandshakeMessageFormat::Ciphertext,
-        ]
-        .into_iter()
+        for handshake_message_format in
+            vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
         {
             let group_id = GroupId::from_slice(b"Test Group");
 
@@ -707,7 +704,7 @@ fn test_empty_input_errors() {
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Plaintext,
+        WireFormat::MlsPlaintext,
         update_policy,
         0,
         0,
@@ -742,11 +739,8 @@ fn test_empty_input_errors() {
 #[test]
 fn managed_group_ratchet_tree_extension() {
     for ciphersuite in Config::supported_ciphersuites() {
-        for handshake_message_format in vec![
-            HandshakeMessageFormat::Plaintext,
-            HandshakeMessageFormat::Ciphertext,
-        ]
-        .into_iter()
+        for handshake_message_format in
+            vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
         {
             let group_id = GroupId::from_slice(b"Test Group");
 
@@ -785,7 +779,7 @@ fn managed_group_ratchet_tree_extension() {
                 .unwrap();
 
             let managed_group_config = ManagedGroupConfig::new(
-                handshake_message_format.clone(),
+                handshake_message_format,
                 update_policy.clone(),
                 0,
                 0,

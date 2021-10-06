@@ -7,8 +7,10 @@ use crate::group::*;
 use crate::messages::*;
 
 impl MlsGroup {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn create_commit_internal(
         &self,
+        wire_format: WireFormat,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[&MlsPlaintext],
@@ -68,6 +70,7 @@ impl MlsGroup {
 
         // Build MlsPlaintext
         let mut mls_plaintext = MlsPlaintext::new_commit(
+            wire_format,
             sender_index,
             aad,
             commit,
