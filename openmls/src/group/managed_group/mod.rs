@@ -232,6 +232,7 @@ impl ManagedGroup {
             true,
             None,
         )?;
+        log::error!("plaintext (foo): {:?}", commit);
 
         let welcome = match welcome_option {
             Some(welcome) => welcome,

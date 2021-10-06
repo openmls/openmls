@@ -106,8 +106,7 @@ impl Client {
         let group_state = group_states
             .get_mut(&group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let message_in: MlsMessageIn = message.clone().into();
-        let events = group_state.process_message(message_in)?;
+        let events = group_state.process_message(message.clone())?;
         for event in events {
             if let GroupEvent::Error(e) = event {
                 return Err(ClientError::ErrorEvent(e));
