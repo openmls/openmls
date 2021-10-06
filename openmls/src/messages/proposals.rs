@@ -105,7 +105,7 @@ pub enum Proposal {
     Remove(RemoveProposal),
     PreSharedKey(PreSharedKeyProposal),
     ReInit(ReInitProposal),
-    ExternalInit(ExternalInit),
+    ExternalInit(ExternalInitProposal),
 }
 
 impl Proposal {
@@ -340,6 +340,8 @@ impl<'a> ProposalQueue<'a> {
         let mut proposal_pool: HashMap<ProposalReference, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
 
+        let mut contains_external_init = false;
+
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: own_index,
@@ -393,6 +395,9 @@ impl<'a> ProposalQueue<'a> {
                 ProposalType::Reinit => {
                     // TODO #141: Only keep one ReInit
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
+                ProposalType::ExternalInit => {
+                    todo!()
                 }
             }
         }

@@ -11,6 +11,7 @@ pub enum GroupEvent {
     MemberUpdated(MemberUpdatedEvent),
     PskReceived(PskReceivedEvent),
     ReInit(ReInitEvent),
+    ExternalInit(ExternalInitEvent),
     ApplicationMessage(ApplicationMessageEvent),
     Error(ErrorEvent),
 }
@@ -132,6 +133,14 @@ impl PskReceivedEvent {
 pub struct ReInitEvent {
     aad: Vec<u8>,
     re_init_proposal: ReInitProposal,
+}
+
+/// Event that occurs when an `ExternalInit` is received.
+/// `new_member` contains the `Credential` of the new member.
+#[derive(Debug, PartialEq, Clone)]
+pub struct ExternalInitEvent {
+    aad: Vec<u8>,
+    new_member: Credential,
 }
 
 impl ReInitEvent {

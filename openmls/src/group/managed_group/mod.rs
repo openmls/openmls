@@ -975,6 +975,8 @@ impl ManagedGroup {
             Proposal::Update(_) => {}
             Proposal::PreSharedKey(_) => {}
             Proposal::ReInit(_) => {}
+            // TODO #133
+            Proposal::ExternalInit(_) => {}
         }
         true
     }
@@ -1079,6 +1081,7 @@ impl ManagedGroup {
             Proposal::ReInit(reinit_proposal) => {
                 GroupEvent::ReInit(ReInitEvent::new(self.aad.to_vec(), reinit_proposal.clone()))
             }
+            Proposal::ExternalInit(_) => todo!(),
         }
     }
 

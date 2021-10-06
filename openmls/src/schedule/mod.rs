@@ -114,7 +114,6 @@
 //! | `resumption_secret`     | "resumption"    |
 //! ```
 
-use crate::ciphersuite::HpkeCiphertext;
 use crate::config::Config;
 use crate::framing::MlsPlaintextTbmPayload;
 use crate::messages::PublicGroupState;
