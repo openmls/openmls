@@ -23,7 +23,6 @@ use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mut
 use tonic::{transport::Server, Request, Response, Status};
 
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
-// TODO(RLB) Convert this back to more specific `use` directives
 use mls_client::*;
 
 pub mod mls_client {
@@ -48,6 +47,9 @@ impl TryFrom<i32> for TestVectorType {
     }
 }
 
+/// This struct contains the state for a single MLS client. The interop client
+/// doesn't consider scenarios where a credential is re-used across groups, so
+/// this simple structure is sufficient.
 pub struct InteropGroup {
     group: MlsGroup,
     encrypt_handshake_messages: bool,
@@ -55,13 +57,21 @@ pub struct InteropGroup {
     own_kpbs: Vec<KeyPackageBundle>,
 }
 
+/// This is the main state struct of the interop client. It keeps track of the
+/// individual MLS clients, as well as pending key packages that it was told to
+/// create. It also contains a transaction id map, that maps the `u32`
+/// transaction ids to key package hashes.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
     pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackageBundle, CredentialBundle)>>,
+    /// Note that the client currently doesn't really use transaction ids and
+    /// instead relies on the KeyPackage hash in the Welcome message to identify
+    /// what key package to use when joining a group.
     transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>,
 }
 
 impl MlsClientImpl {
+    /// A simple constructor for `MlsClientImpl`.
     fn new() -> Self {
         MlsClientImpl {
             groups: Mutex::new(Vec::new()),
@@ -71,7 +81,7 @@ impl MlsClientImpl {
     }
 }
 
-fn to_status(e: MlsGroupError) -> Status {
+fn into_status(e: MlsGroupError) -> Status {
     let message = "managed group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }
@@ -100,7 +110,7 @@ fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
     }
 }
 
-fn to_bytes(obj: impl Serialize) -> Vec<u8> {
+fn into_bytes(obj: impl Serialize) -> Vec<u8> {
     serde_json::to_string_pretty(&obj)
         .expect("Error serializing test vectors")
         .as_bytes()
@@ -153,7 +163,7 @@ impl MlsClient for MlsClientImpl {
         let (type_msg, test_vector) = match TestVectorType::try_from(obj.test_vector_type) {
             Ok(TestVectorType::TreeMath) => {
                 let kat_treemath = kat_treemath::generate_test_vector(obj.n_leaves);
-                let kat_bytes = to_bytes(kat_treemath);
+                let kat_bytes = into_bytes(kat_treemath);
                 ("Tree math", kat_bytes)
             }
             Ok(TestVectorType::Encryption) => {
@@ -163,34 +173,34 @@ impl MlsClient for MlsClientImpl {
                     obj.n_leaves,
                     ciphersuite,
                 );
-                let kat_bytes = to_bytes(kat_encryption);
+                let kat_bytes = into_bytes(kat_encryption);
                 ("Encryption", kat_bytes)
             }
             Ok(TestVectorType::KeySchedule) => {
                 let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_key_schedule =
                     kat_key_schedule::generate_test_vector(obj.n_epochs as u64, ciphersuite);
-                let kat_bytes = to_bytes(kat_key_schedule);
+                let kat_bytes = into_bytes(kat_key_schedule);
                 ("Key Schedule", kat_bytes)
             }
             Ok(TestVectorType::Transcript) => {
                 let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_transcript = kat_transcripts::generate_test_vector(ciphersuite);
-                let kat_bytes = to_bytes(kat_transcript);
+                let kat_bytes = into_bytes(kat_transcript);
                 ("Transcript", kat_bytes)
             }
             Ok(TestVectorType::Treekem) => {
                 let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_tree_kem =
                     kat_tree_kem::generate_test_vector(obj.n_leaves as u32, ciphersuite);
-                let kat_bytes = to_bytes(kat_tree_kem);
+                let kat_bytes = into_bytes(kat_tree_kem);
                 ("TreeKEM", kat_bytes)
             }
             Ok(TestVectorType::Messages) => {
                 let ciphersuite: &'static Ciphersuite =
                     Config::supported_ciphersuites().as_ref().first().unwrap();
                 let kat_messages = kat_messages::generate_test_vector(ciphersuite);
-                let kat_bytes = to_bytes(kat_messages);
+                let kat_bytes = into_bytes(kat_messages);
                 ("Messages", kat_bytes)
             }
             Err(_) => {
@@ -394,7 +404,7 @@ impl MlsClient for MlsClientImpl {
             None,
             ProtocolVersion::default(),
         )
-        .map_err(|e| to_status(e))?;
+        .map_err(|e| into_status(e))?;
 
         let interop_group = InteropGroup {
             credential_bundle,
@@ -460,7 +470,7 @@ impl MlsClient for MlsClientImpl {
                 "No key package could be found for the given Welcome message.",
             ))?;
         let group =
-            MlsGroup::new_from_welcome(welcome, None, kpb, None).map_err(|e| to_status(e))?;
+            MlsGroup::new_from_welcome(welcome, None, kpb, None).map_err(|e| into_status(e))?;
 
         let interop_group = InteropGroup {
             credential_bundle,
@@ -484,7 +494,6 @@ impl MlsClient for MlsClientImpl {
             tonic::Code::Unimplemented,
             "external join is not yet supported by OpenMLS",
         ))
-        //Ok(Response::new(ExternalJoinResponse::default())) // TODO
     }
 
     async fn public_group_state(
@@ -495,7 +504,6 @@ impl MlsClient for MlsClientImpl {
             tonic::Code::Unimplemented,
             "exporting public group state is not yet supported by OpenMLS",
         ))
-        //Ok(Response::new(PublicGroupStateResponse::default())) // TODO
     }
 
     async fn state_auth(
@@ -539,7 +547,7 @@ impl MlsClient for MlsClientImpl {
                 &export_request.context,
                 export_request.key_length as usize,
             )
-            .map_err(|e| to_status(e))?;
+            .map_err(|e| into_status(e))?;
 
         Ok(Response::new(ExportResponse { exported_secret }))
     }
@@ -559,7 +567,6 @@ impl MlsClient for MlsClientImpl {
                     "unknown state_id",
                 ))?;
 
-        //let credential_bundle = key_store.get_credential_bundle(group.cre)
         let ciphertext = interop_group
             .group
             .create_application_message(
@@ -568,7 +575,7 @@ impl MlsClient for MlsClientImpl {
                 &interop_group.credential_bundle,
                 10,
             )
-            .map_err(|e| to_status(e))?
+            .map_err(|e| into_status(e))?
             .tls_serialize_detached()
             .map_err(|_| Status::aborted("failed to serialize ciphertext"))?;
         Ok(Response::new(ProtectResponse { ciphertext }))
@@ -594,20 +601,19 @@ impl MlsClient for MlsClientImpl {
         let application_data = interop_group
             .group
             .decrypt(&message)
-            .map_err(|e| to_status(e.into()))?
+            .map_err(|e| into_status(e.into()))?
             .as_application_message()
-            .map_err(|e| to_status(e.into()))?
+            .map_err(|e| into_status(e.into()))?
             .to_vec();
 
         Ok(Response::new(UnprotectResponse { application_data }))
-        //Ok(Response::new(UnprotectResponse::default()))
     }
 
     async fn store_psk(
         &self,
         _request: tonic::Request<StorePskRequest>,
     ) -> Result<tonic::Response<StorePskResponse>, tonic::Status> {
-        Ok(Response::new(StorePskResponse::default())) // TODO
+        Ok(Response::new(StorePskResponse::default()))
     }
 
     async fn add_proposal(
@@ -630,7 +636,7 @@ impl MlsClient for MlsClientImpl {
         let proposal = interop_group
             .group
             .create_add_proposal(&[], &interop_group.credential_bundle, key_package)
-            .map_err(|e| to_status(e))?;
+            .map_err(|e| into_status(e))?;
 
         let proposal = if interop_group.encrypt_handshake_messages {
             interop_group
@@ -674,7 +680,7 @@ impl MlsClient for MlsClientImpl {
                 &interop_group.credential_bundle,
                 key_package_bundle.key_package().clone(),
             )
-            .map_err(|e| to_status(e))?;
+            .map_err(|e| into_status(e))?;
 
         interop_group.own_kpbs.push(key_package_bundle);
 
@@ -715,7 +721,7 @@ impl MlsClient for MlsClientImpl {
                 &interop_group.credential_bundle,
                 LeafIndex::from(remove_proposal_request.removed as usize),
             )
-            .map_err(|e| to_status(e))?;
+            .map_err(|e| into_status(e))?;
 
         let proposal = if interop_group.encrypt_handshake_messages {
             interop_group
@@ -737,21 +743,21 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: tonic::Request<PskProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default())) // TODO
+        Ok(Response::new(ProposalResponse::default()))
     }
 
     async fn re_init_proposal(
         &self,
         _request: tonic::Request<ReInitProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default())) // TODO
+        Ok(Response::new(ProposalResponse::default()))
     }
 
     async fn app_ack_proposal(
         &self,
         _request: tonic::Request<AppAckProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default())) // TODO
+        Ok(Response::new(ProposalResponse::default()))
     }
 
     async fn commit(
@@ -828,7 +834,7 @@ impl MlsClient for MlsClientImpl {
                 false,
                 None,
             )
-            .map_err(|e| to_status(e))?;
+            .map_err(|e| into_status(e))?;
 
         if let Some(kpb) = option_kpb {
             interop_group.own_kpbs.push(kpb)
@@ -918,7 +924,7 @@ impl MlsClient for MlsClientImpl {
                 &interop_group.own_kpbs,
                 None,
             )
-            .map_err(|e| to_status(e))?;
+            .map_err(|e| into_status(e))?;
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,
@@ -940,8 +946,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = Opts::parse();
     pretty_env_logger::init();
 
-    // XXX(RLB): There's probably a more direct way to do this than building a string and then
-    // parsing it.
     let addr = format!("{}:{}", opts.host, opts.port).parse().unwrap();
     let mls_client_impl = MlsClientImpl::new();
 
