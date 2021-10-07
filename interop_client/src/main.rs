@@ -1,4 +1,4 @@
-//! This is a the OpenMLS client for the interop harness as described here:
+//! This is the OpenMLS client for the interop harness as described here:
 //! https://github.com/mlswg/mls-implementations/tree/master/interop
 //!
 //! It is based on the Mock client written by Richard Barnes.
