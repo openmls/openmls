@@ -536,8 +536,8 @@ impl RatchetTree {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
                     self.ciphersuite.hpke_seal_secret(
                         pk,
-                        &[],
                         group_context,
+                        &[],
                         &path_secret.path_secret,
                     )
                 })
