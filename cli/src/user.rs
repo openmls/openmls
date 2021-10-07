@@ -293,13 +293,26 @@ impl User {
         let add_proposal = group
             .mls_group
             .borrow()
-            .create_add_proposal(&group.group_aad, credentials, key_package)
+            .create_add_proposal(
+                WireFormat::MlsPlaintext,
+                &group.group_aad,
+                credentials,
+                key_package,
+            )
             .expect("Could not create proposal.");
         let proposals = vec![&add_proposal];
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
-            .create_commit(&group.group_aad, credentials, &proposals, &[], false, None)
+            .create_commit(
+                WireFormat::MlsPlaintext,
+                &group.group_aad,
+                credentials,
+                &proposals,
+                &[],
+                false,
+                None,
+            )
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
         group
