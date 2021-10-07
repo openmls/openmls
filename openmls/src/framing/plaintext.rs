@@ -109,6 +109,11 @@ impl MlsPlaintext {
     pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
         self.membership_tag = Some(tag);
     }
+
+    #[cfg(test)]
+    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
+        self.wire_format = wire_format;
+    }
 }
 
 impl MlsPlaintext {

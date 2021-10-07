@@ -130,6 +130,113 @@ fn codec_ciphertext() {
     }
 }
 
+/// This tests the correctness of wire format checks
+#[test]
+fn wire_format_checks() {
+    for ciphersuite in Config::supported_ciphersuites() {
+        let credential_bundle = CredentialBundle::new(
+            vec![7, 8, 9],
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+        )
+        .unwrap();
+        let sender = Sender {
+            sender_type: SenderType::Member,
+            sender: LeafIndex::from(0u32),
+        };
+        let group_context = GroupContext::new(
+            GroupId::from_slice(&[5, 5, 5]),
+            GroupEpoch(1),
+            vec![],
+            vec![],
+            &[],
+        )
+        .unwrap();
+
+        let serialized_context = group_context.tls_serialize_detached().unwrap();
+        let signature_input = MlsPlaintextTbs::new(
+            serialized_context.as_slice(),
+            WireFormat::MlsCiphertext,
+            GroupId::random(ciphersuite),
+            GroupEpoch(1u64),
+            sender,
+            vec![1, 2, 3].into(),
+            ContentType::Application,
+            MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+        );
+        let mut plaintext: MlsPlaintext = signature_input
+            .sign(&credential_bundle)
+            .expect("Signing failed.");
+
+        let mut key_schedule = KeySchedule::init(
+            ciphersuite,
+            JoinerSecret::random(ciphersuite, ProtocolVersion::default()),
+            None, // PSK
+        );
+
+        key_schedule
+            .add_context(&group_context)
+            .expect("Could not add context to key schedule");
+
+        let epoch_secrets = key_schedule
+            .epoch_secrets(false)
+            .expect("Could not generte epoch secrets");
+
+        let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
+
+        let mut ciphertext = MlsCiphertext::try_from_plaintext(
+            &plaintext,
+            ciphersuite,
+            &group_context,
+            sender.to_leaf_index(),
+            &epoch_secrets,
+            &mut secret_tree,
+            0,
+        )
+        .expect("Could not encrypt MlsPlaintext.");
+
+        // Decrypt the ciphertext and expect the correct wire format
+
+        let verifiable_plaintext = ciphertext
+            .to_plaintext(ciphersuite, &epoch_secrets, &mut secret_tree)
+            .expect("Could not decrypt MlsCiphertext.");
+
+        assert_eq!(
+            verifiable_plaintext.wire_format(),
+            WireFormat::MlsCiphertext
+        );
+
+        // Try to decrypt a ciphertext with the wrong wire format
+
+        ciphertext.set_wire_format(WireFormat::MlsPlaintext);
+
+        assert_eq!(
+            ciphertext
+                .to_plaintext(ciphersuite, &epoch_secrets, &mut secret_tree)
+                .expect_err("Could decrypt despite wrong wire format."),
+            MlsCiphertextError::WrongWireFormat
+        );
+
+        // Try to encrypt an MlsPlaintext with the wrong wire format
+
+        plaintext.set_wire_format(WireFormat::MlsPlaintext);
+
+        assert_eq!(
+            MlsCiphertext::try_from_plaintext(
+                &plaintext,
+                ciphersuite,
+                &group_context,
+                sender.to_leaf_index(),
+                &epoch_secrets,
+                &mut secret_tree,
+                0,
+            )
+            .expect_err("Could encrypt despite wrong wire format."),
+            MlsCiphertextError::WrongWireFormat
+        );
+    }
+}
+
 #[test]
 fn membership_tag() {
     for ciphersuite in Config::supported_ciphersuites() {

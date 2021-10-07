@@ -289,6 +289,11 @@ impl MlsCiphertext {
     pub fn epoch(&self) -> &GroupEpoch {
         &self.epoch
     }
+
+    #[cfg(test)]
+    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
+        self.wire_format = wire_format;
+    }
 }
 
 // === Helper structs ===
