@@ -71,7 +71,7 @@
 //!
 //! // Create a group with the previously generated credential and key package.
 //! let managed_group_config = ManagedGroupConfig::new(
-//!     HandshakeMessageFormat::Plaintext,
+//!     WireFormat::MlsPlaintext,
 //!     UpdatePolicy::default(),
 //!     0,
 //!     0,

@@ -72,7 +72,7 @@ fn codec_ciphertext() {
             sender: LeafIndex::from(0u32),
         };
         let group_context = GroupContext::new(
-            GroupId::random(ciphersuite),
+            GroupId::from_slice(&[5, 5, 5]),
             GroupEpoch(1),
             vec![],
             vec![],

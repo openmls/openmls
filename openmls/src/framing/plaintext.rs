@@ -549,6 +549,11 @@ impl<'a> VerifiableMlsPlaintext<'a> {
     pub fn payload(&self) -> &MlsPlaintextTbs<'a> {
         &self.tbs
     }
+
+    /// Get the wire format.
+    pub fn wire_format(&self) -> WireFormat {
+        self.tbs.wire_format
+    }
 }
 
 impl<'a> Signable for MlsPlaintextTbs<'a> {
