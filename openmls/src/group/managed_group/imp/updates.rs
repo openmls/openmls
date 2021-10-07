@@ -1,0 +1,115 @@
+use super::*;
+
+impl ManagedGroup {
+    /// Updates the own leaf node
+    ///
+    /// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally
+    /// be provided. If not, a new one will be created on the fly.
+    ///
+    /// If successful, it returns a `Vec` of
+    /// [`MlsMessage`] and an optional [`Welcome`] message if there were add
+    /// proposals in the queue of pending proposals.
+    pub fn self_update(
+        &mut self,
+        key_store: &KeyStore,
+        key_package_bundle_option: Option<KeyPackageBundle>,
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
+        if !self.active {
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
+        // Include pending proposals into Commit
+        let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
+
+        // Create Commit over all proposals. If a `KeyPackageBundle` was passed
+        // in, use it to create an update proposal by value. TODO #141
+        let (commit, welcome_option, kpb_option) = match key_package_bundle_option {
+            Some(kpb) => {
+                let update_proposal = Proposal::Update(UpdateProposal {
+                    key_package: kpb.key_package().clone(),
+                });
+                self.group.create_commit(
+                    &self.aad,
+                    &credential_bundle,
+                    &messages_to_commit,
+                    &[&update_proposal],
+                    true, /* force_self_update */
+                    None,
+                )?
+            }
+            None => {
+                self.group.create_commit(
+                    &self.aad,
+                    &credential_bundle,
+                    &messages_to_commit,
+                    &[],
+                    true, /* force_self_update */
+                    None,
+                )?
+            }
+        };
+
+        // Take the new KeyPackageBundle and save it for later
+        let kpb = kpb_option.ok_or_else(|| {
+            ManagedGroupError::LibraryError(
+                "We didn't get a key package for a full commit on self update.".into(),
+            )
+        })?;
+
+        self.own_kpbs.push(kpb);
+
+        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        // the configuration
+        let mls_message = self.plaintext_to_mls_message(commit)?;
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
+        Ok((mls_message, welcome_option))
+    }
+
+    /// Creates a proposal to update the own leaf node
+    pub fn propose_self_update(
+        &mut self,
+        key_store: &KeyStore,
+        key_package_bundle_option: Option<KeyPackageBundle>,
+    ) -> Result<MlsMessageOut, ManagedGroupError> {
+        if !self.active {
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        let credential = self.credential()?;
+        let credential_bundle = key_store
+            .get_credential_bundle(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
+        let tree = self.group.tree();
+        let existing_key_package = tree.own_key_package();
+        let key_package_bundle = match key_package_bundle_option {
+            Some(kpb) => kpb,
+            None => KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package)
+                .sign(&credential_bundle)?,
+        };
+
+        let update_proposal = self.group.create_update_proposal(
+            &self.aad,
+            &credential_bundle,
+            key_package_bundle.key_package().clone(),
+        )?;
+        drop(tree);
+
+        self.own_kpbs.push(key_package_bundle);
+
+        let mls_message = self.plaintext_to_mls_message(update_proposal)?;
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
+        Ok(mls_message)
+    }
+}
