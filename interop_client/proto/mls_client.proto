@@ -1,3 +1,5 @@
+// This was copied from https://github.com/mlswg/mls-implementations/blob/main/interop/proto/mls_client.proto
+
 syntax = "proto3";
 
 option go_package = "github.com/mlswg/mls-implementations/interop/proto";
