@@ -203,11 +203,17 @@ async fn test_group() {
 
     // With the key package we can build a proposal.
     let client2_add_proposal = group
-        .create_add_proposal(group_aad, &credentials[0], client2_key_package)
+        .create_add_proposal(
+            WireFormat::MlsPlaintext,
+            group_aad,
+            &credentials[0],
+            client2_key_package,
+        )
         .unwrap();
     let epoch_proposals_ref = vec![&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
         .create_commit(
+            WireFormat::MlsPlaintext,
             group_aad,
             &credentials[0],
             &epoch_proposals_ref,
