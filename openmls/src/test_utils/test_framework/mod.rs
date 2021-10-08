@@ -170,7 +170,6 @@ impl ManagedTestSetup {
         ciphersuite: &Ciphersuite,
     ) -> Result<KeyPackage, SetupError> {
         let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
-        println!("Storing key package with hash: {:?}", key_package.hash());
         self.waiting_for_welcome
             .borrow_mut()
             .insert(key_package.hash(), client.identity.clone());
@@ -198,10 +197,6 @@ impl ManagedTestSetup {
         if self.use_codec == CodecUse::SerializedMessages {}
         let clients = self.clients.borrow();
         for egs in welcome.secrets() {
-            println!(
-                "Trying to get key package with hash: {:?}",
-                egs.key_package_hash
-            );
             let client_id = self
                 .waiting_for_welcome
                 .borrow_mut()
@@ -238,10 +233,8 @@ impl ManagedTestSetup {
             CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
         };
         let clients = self.clients.borrow();
-        println!("Distributing and processing messages...");
         // Distribute message to all members.
-        for (index, member_id) in &group.members {
-            println!("Index: {:?}, Id: {:?}", index, member_id);
+        for (_index, member_id) in &group.members {
             let member = clients.get(member_id).unwrap().borrow();
             member.receive_messages_for_group(&message)?;
         }
@@ -254,10 +247,6 @@ impl ManagedTestSetup {
             .iter()
             .map(|(index, cred)| (*index, cred.identity().to_vec()))
             .collect();
-        println!("Members still in the group:");
-        for (index, member_id) in &group.members {
-            println!("Index: {:?}, Id: {:?}", index, member_id);
-        }
         group.public_tree = sender_group.export_ratchet_tree();
         group.exporter_secret = sender_group.export_secret("test", &[], 32)?;
         Ok(())
@@ -381,7 +370,6 @@ impl ManagedTestSetup {
 
         // Get new members to add to the group.
         let mut new_members = self.random_new_members_for_group(group, target_group_size - 1)?;
-        println!("Number of random new members: {:?}", new_members.len());
 
         // Add new members bit by bit.
         while !new_members.is_empty() {
@@ -584,7 +572,6 @@ impl ManagedTestSetup {
                             leaf_index = new_leaf_index;
                             identity = new_identity;
                         }
-                        println!("Index: {:?}, Identity: {:?}", leaf_index, identity,);
                         target_member_ids.push(identity);
                     }
                     self.remove_clients(action_type, group, &member_id, target_member_ids)?
