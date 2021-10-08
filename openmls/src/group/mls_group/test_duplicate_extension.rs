@@ -99,17 +99,10 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     let joiner_secret = group_secrets.joiner_secret;
 
     // Create key schedule
-    let presharedkeys = PreSharedKeys {
-        psks: match group_secrets.psks {
-            Some(psks) => psks.psks,
-            None => vec![].into(),
-        },
-    };
-
     let key_schedule = KeySchedule::init(
         ciphersuite,
         joiner_secret,
-        psk_output(ciphersuite, None, &presharedkeys).expect("Could not extract PSKs"),
+        psk_output(ciphersuite, None, &group_secrets.psks).expect("Could not extract PSKs"),
     );
 
     // Derive welcome key & noce from the key schedule
