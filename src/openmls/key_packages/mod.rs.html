@@ -558,6 +558,7 @@
 <span id="558">558</span>
 <span id="559">559</span>
 <span id="560">560</span>
+<span id="561">561</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">log::error</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
@@ -738,6 +739,7 @@
         <span class="comment">// Verify the signature on this key package.</span>
         <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">Verifiable</span><span class="op">&gt;</span><span class="ident">::verify_no_out</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">credential</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="macro">log::error!</span>(<span class="string">&quot;Key package signature is invalid.&quot;</span>);
+            <span class="macro">log::trace!</span>(<span class="string">&quot;Payload: {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">encoded</span>);
             <span class="ident">KeyPackageError::InvalidSignature</span>
         })
     }
