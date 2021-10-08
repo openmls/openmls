@@ -696,6 +696,7 @@ impl RatchetTree {
         let mut has_updates = false;
         let mut has_removes = false;
         let mut self_removed = false;
+        let mut kem_output = None;
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
@@ -737,6 +738,15 @@ impl RatchetTree {
             }
             // Blank the direct path of the removed member
             self.blank_member(removed);
+        }
+
+        // After validation, the proposal queue should only contain one
+        // ExternalInit proposal.
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
+            kem_output = queued_proposal
+                .proposal()
+                .as_externalinit()
+                .map(|eip| eip.kem_output().as_slice().to_vec())
         }
 
         // Process adds
@@ -783,6 +793,7 @@ impl RatchetTree {
         }
 
         Ok(ApplyProposalsValues {
+            kem_output,
             path_required,
             self_removed,
             invitation_list,
@@ -836,6 +847,7 @@ impl RatchetTree {
 
 /// This struct contain the return vallues of the `apply_proposals()` function
 pub struct ApplyProposalsValues {
+    pub kem_output: Option<Vec<u8>>,
     pub path_required: bool,
     pub self_removed: bool,
     pub invitation_list: Vec<(LeafIndex, AddProposal)>,

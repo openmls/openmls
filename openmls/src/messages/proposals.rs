@@ -146,6 +146,12 @@ impl Proposal {
             _ => None,
         }
     }
+    pub(crate) fn as_externalinit(&self) -> Option<ExternalInitProposal> {
+        match self {
+            Proposal::ExternalInit(ext_init) => Some(ext_init.clone()),
+            _ => None,
+        }
+    }
 }
 
 /// Reference to a Proposal. This can be used in Commit messages to reference
@@ -397,7 +403,12 @@ impl<'a> ProposalQueue<'a> {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 ProposalType::ExternalInit => {
-                    todo!()
+                    // Only consider the first external init proposal we find valid.
+                    if !contains_external_init {
+                        valid_proposals.insert(queued_proposal.proposal_reference());
+                        proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                        contains_external_init = true;
+                    }
                 }
             }
         }
@@ -587,4 +598,10 @@ pub struct ReInitProposal {
 )]
 pub struct ExternalInitProposal {
     kem_output: TlsByteVecU16,
+}
+
+impl ExternalInitProposal {
+    pub(crate) fn kem_output(&self) -> &TlsByteVecU16 {
+        &self.kem_output
+    }
 }

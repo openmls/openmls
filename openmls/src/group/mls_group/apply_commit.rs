@@ -42,6 +42,32 @@ impl MlsGroup {
             Err(_) => return Err(ApplyCommitError::MissingProposal),
         };
 
+        // TODO #133: Check if there is an ExternalInit proposal and if so,
+        // validate the following
+
+        // * External Commits MUST reference an Add Proposal that adds the
+        //   issuing new member to the group
+
+        // * External Commits MUST contain a path field (and is therefore a
+        //   "full" Commit)
+
+        // * External Commits MUST be signed by the new member. In particular,
+        //   the signature on the enclosing MLSPlaintext MUST verify using the
+        //   public key for the credential in the leaf_key_package of the path
+        //   field.
+
+        // * An external commit MUST reference no more than one ExternalInit
+        //   proposal, and the ExternalInit proposal MUST be supplied by value,
+        //   not by reference. When processing a Commit, both existing and new
+        //   members MUST use the external init secret as described in
+        //   {{external-initialization}}.
+
+        // * The sender type for the MLSPlaintext encapsulating the External
+        //   Commit MUST be new_member
+
+        // * If the Add Proposal is also issued by the new member, its member
+        // SenderType MUST be new_member
+
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
         // FIXME: #424 this is a copy of the nodes in the tree to reset the original state.
@@ -102,12 +128,47 @@ impl MlsGroup {
             &zero_commit_secret
         };
 
-        let joiner_secret = JoinerSecret::new(
-            commit_secret,
+        let init_secret = if let Some(kem_output) = apply_proposals_values.kem_output {
+            let (external_priv, external_pub) = self
+                .epoch_secrets()
+                .external_secret()
+                .derive_external_keypair(ciphersuite)
+                .into_keys();
+
+            let group_id = self.group_id().clone();
+            let epoch = self.context().epoch();
+            let tree_hash = self.tree().tree_hash().into();
+            let interim_transcript_hash = self.interim_transcript_hash().into();
+            let extensions = self.extensions().into();
+
+            let serialized_pgs_tbs = PublicGroupStateTbs {
+                group_id: &group_id,
+                epoch: &epoch,
+                tree_hash: &tree_hash,
+                interim_transcript_hash: &interim_transcript_hash,
+                extensions: &extensions,
+                external_pub: &external_pub,
+            }
+            .tls_serialize_detached()?;
+
+            let context = ciphersuite
+                .hpke()
+                .setup_receiver(
+                    &kem_output,
+                    &external_priv,
+                    &serialized_pgs_tbs,
+                    None,
+                    None,
+                    None,
+                )
+                .map_err(|_| KeyScheduleError::HpkeError)?;
+        } else {
             self.epoch_secrets
                 .init_secret()
-                .ok_or(ApplyCommitError::InitSecretNotFound)?,
-        );
+                .ok_or(ApplyCommitError::InitSecretNotFound)?
+        };
+
+        let joiner_secret = JoinerSecret::new(commit_secret, init_secret);
 
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
