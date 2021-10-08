@@ -355,7 +355,7 @@ impl RatchetTree {
         // Decrypt the secret and derive path secrets
         let secret_bytes =
             self.ciphersuite
-                .hpke_open(hpke_ciphertext, private_key, &[], group_context)?;
+                .hpke_open(hpke_ciphertext, private_key, group_context, &[])?;
         let path_secret =
             Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
@@ -536,8 +536,8 @@ impl RatchetTree {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
                     self.ciphersuite.hpke_seal_secret(
                         pk,
-                        &[],
                         group_context,
+                        &[],
                         &path_secret.path_secret,
                     )
                 })
@@ -748,7 +748,7 @@ impl RatchetTree {
                 proposal.as_add().unwrap()
             })
             .collect();
-        let has_adds = !add_proposals.is_empty();
+
         // Extract KeyPackages from proposals
         let key_packages: Vec<&KeyPackage> =
             add_proposals.iter().map(|a| a.key_package()).collect();
@@ -775,7 +775,7 @@ impl RatchetTree {
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes || !has_adds;
+        let path_required = has_updates || has_removes;
 
         // If members were removed, truncate the tree.
         if has_removes {

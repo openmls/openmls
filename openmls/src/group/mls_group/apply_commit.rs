@@ -17,6 +17,11 @@ impl MlsGroup {
 
         // Verify epoch
         if mls_plaintext.epoch() != &self.group_context.epoch {
+            log::error!(
+                "Epoch mismatch. Got {:?}, expected {:?}",
+                mls_plaintext.epoch(),
+                self.group_context.epoch
+            );
             return Err(ApplyCommitError::EpochMismatch);
         }
 
