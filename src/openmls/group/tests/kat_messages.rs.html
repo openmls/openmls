@@ -537,7 +537,6 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
-<span id="540">540</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # Known Answer Tests for the encoding and decoding of various structs of the</span>
 <span class="doccomment">//! MLS spec</span>
@@ -848,8 +847,7 @@
     <span class="kw">let</span> <span class="ident">tv_group_secrets</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">tv</span>.<span class="ident">group_secrets</span>);
     <span class="kw">let</span> <span class="ident">gs</span> <span class="op">=</span> <span class="ident">GroupSecrets::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tv_group_secrets</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">my_group_secrets</span> <span class="op">=</span>
-        <span class="ident">GroupSecrets::new_encoded</span>(<span class="kw-2">&amp;</span><span class="ident">gs</span>.<span class="ident">joiner_secret</span>, <span class="ident">gs</span>.<span class="ident">path_secret</span>.<span class="ident">as_ref</span>(), <span class="ident">gs</span>.<span class="ident">psks</span>.<span class="ident">as_ref</span>())
-            .<span class="ident">unwrap</span>();
+        <span class="ident">GroupSecrets::new_encoded</span>(<span class="kw-2">&amp;</span><span class="ident">gs</span>.<span class="ident">joiner_secret</span>, <span class="ident">gs</span>.<span class="ident">path_secret</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;</span><span class="ident">gs</span>.<span class="ident">psks</span>).<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="ident">tv_group_secrets</span> <span class="op">!</span><span class="op">=</span> <span class="ident">my_group_secrets</span> {
         <span class="macro">log::error!</span>(<span class="string">&quot;  GroupSecrets encoding mismatch&quot;</span>);
         <span class="macro">log::debug!</span>(<span class="string">&quot;    Encoded: {:x?}&quot;</span>, <span class="ident">my_group_secrets</span>);
