@@ -748,7 +748,7 @@ impl RatchetTree {
                 proposal.as_add().unwrap()
             })
             .collect();
-        let has_adds = !add_proposals.is_empty();
+
         // Extract KeyPackages from proposals
         let key_packages: Vec<&KeyPackage> =
             add_proposals.iter().map(|a| a.key_package()).collect();
@@ -775,7 +775,7 @@ impl RatchetTree {
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes || !has_adds;
+        let path_required = has_updates || has_removes;
 
         // If members were removed, truncate the tree.
         if has_removes {
