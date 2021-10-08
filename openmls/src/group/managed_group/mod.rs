@@ -225,8 +225,7 @@ impl ManagedGroup {
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            self.managed_group_config.handshake_message_format,
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
@@ -306,8 +305,7 @@ impl ManagedGroup {
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            self.managed_group_config.handshake_message_format,
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             proposals_by_reference,
             proposals_by_value,
@@ -350,8 +348,7 @@ impl ManagedGroup {
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let add_proposal = self.group.create_add_proposal(
-            self.managed_group_config.handshake_message_format,
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             key_package.clone(),
         )?;
@@ -380,8 +377,7 @@ impl ManagedGroup {
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
-            self.managed_group_config.handshake_message_format,
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             LeafIndex::from(member),
         )?;
@@ -409,8 +405,7 @@ impl ManagedGroup {
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
-            self.managed_group_config.handshake_message_format,
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             self.group.tree().own_node_index(),
         )?;
@@ -657,8 +652,7 @@ impl ManagedGroup {
         // Create Commit over all pending proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            self.managed_group_config.handshake_message_format,
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             &messages_to_commit,
             &[],
@@ -799,8 +793,7 @@ impl ManagedGroup {
                     key_package: kpb.key_package().clone(),
                 });
                 self.group.create_commit(
-                    self.managed_group_config.handshake_message_format,
-                    &self.aad,
+                    self.framing_parameters(),
                     &credential_bundle,
                     &messages_to_commit,
                     &[&update_proposal],
@@ -810,8 +803,7 @@ impl ManagedGroup {
             }
             None => {
                 self.group.create_commit(
-                    self.managed_group_config.handshake_message_format,
-                    &self.aad,
+                    self.framing_parameters(),
                     &credential_bundle,
                     &messages_to_commit,
                     &[],
@@ -864,8 +856,7 @@ impl ManagedGroup {
         };
 
         let update_proposal = self.group.create_update_proposal(
-            self.managed_group_config.handshake_message_format,
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             key_package_bundle.key_package().clone(),
         )?;
@@ -1113,6 +1104,14 @@ impl ManagedGroup {
             }
         }
         indexed_members
+    }
+
+    /// Group framing parameters
+    fn framing_parameters(&self) -> FramingParameters {
+        FramingParameters::new(
+            &self.aad,
+            self.managed_group_config.handshake_message_format,
+        )
     }
 }
 

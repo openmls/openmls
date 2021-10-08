@@ -35,7 +35,7 @@ impl MlsCiphertext {
         log::debug!("MlsCiphertext::try_from_plaintext");
         log::trace!("  ciphersuite: {}", ciphersuite);
         // Check the plaintext has the correct wire format
-        if mls_plaintext.wire_format() == WireFormat::MlsPlaintext {
+        if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
             return Err(MlsCiphertextError::WrongWireFormat);
         }
         // Serialize the content AAD

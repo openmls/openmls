@@ -13,6 +13,7 @@ use crate::{
         AddProposal, Proposal, ProposalOrRef, ProposalQueue, ProposalReference, ProposalType,
         QueuedProposal, RemoveProposal,
     },
+    prelude::FramingParameters,
     schedule::MembershipKey,
     tree::index::*,
 };
@@ -23,6 +24,8 @@ use crate::{
 #[test]
 fn proposal_queue_functions() {
     for ciphersuite in Config::supported_ciphersuites() {
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
         // Define identities
         let alice_credential_bundle = CredentialBundle::new(
             "Alice".into(),
@@ -101,9 +104,8 @@ fn proposal_queue_functions() {
 
         // Frame proposals in MlsPlaintext
         let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
-            WireFormat::MlsPlaintext,
+            framing_parameters,
             LeafIndex::from(0u32),
-            &[],
             proposal_add_alice1,
             &alice_credential_bundle,
             &group_context,
@@ -111,9 +113,8 @@ fn proposal_queue_functions() {
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_alice2 = MlsPlaintext::new_proposal(
-            WireFormat::MlsPlaintext,
+            framing_parameters,
             LeafIndex::from(1u32),
-            &[],
             proposal_add_alice2,
             &alice_credential_bundle,
             &group_context,
@@ -121,9 +122,8 @@ fn proposal_queue_functions() {
         )
         .expect("Could not create proposal.");
         let _mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
-            WireFormat::MlsPlaintext,
+            framing_parameters,
             LeafIndex::from(1u32),
-            &[],
             proposal_add_bob1,
             &alice_credential_bundle,
             &group_context,
@@ -160,6 +160,8 @@ fn proposal_queue_functions() {
 #[test]
 fn proposal_queue_order() {
     for ciphersuite in Config::supported_ciphersuites() {
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
         // Define identities
         let alice_credential_bundle = CredentialBundle::new(
             "Alice".into(),
@@ -212,9 +214,8 @@ fn proposal_queue_order() {
 
         // Frame proposals in MlsPlaintext
         let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
-            WireFormat::MlsPlaintext,
+            framing_parameters,
             LeafIndex::from(0u32),
-            &[],
             proposal_add_alice1.clone(),
             &alice_credential_bundle,
             &group_context,
@@ -222,9 +223,8 @@ fn proposal_queue_order() {
         )
         .expect("Could not create proposal.");
         let mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
-            WireFormat::MlsPlaintext,
+            framing_parameters,
             LeafIndex::from(1u32),
-            &[],
             proposal_add_bob1.clone(),
             &alice_credential_bundle,
             &group_context,

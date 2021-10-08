@@ -190,10 +190,10 @@ fn build_handshake_messages(
         group.ciphersuite(),
         None, /* MLS version */
     ));
+    let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
     let mut plaintext = MlsPlaintext::new_proposal(
-        WireFormat::MlsCiphertext,
+        framing_parameters,
         leaf,
-        &[1, 2, 3, 4],
         Proposal::Remove(RemoveProposal { removed: 0 }),
         credential_bundle,
         group.context(),
@@ -614,7 +614,9 @@ fn read_test_vectors() {
 
     // mlspp test vectors
     let tv_files = [
-        /* mlspp test vectors are not compatible for now
+        /* 
+        mlspp test vectors are not compatible for now because thei don't implement
+        the new wire_format field in framing yet. This is tracked in #495.
         "test_vectors/mlspp/mlspp_encryption_1_10.json",
         "test_vectors/mlspp/mlspp_encryption_2_10.json",
         "test_vectors/mlspp/mlspp_encryption_3_10.json",

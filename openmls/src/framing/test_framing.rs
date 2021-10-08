@@ -292,6 +292,7 @@ fn membership_tag() {
 fn unknown_sender() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
         // Define credential bundles
         let alice_credential_bundle = CredentialBundle::new(
@@ -346,8 +347,7 @@ fn unknown_sender() {
         // Alice adds Bob
         let bob_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
             )
@@ -355,8 +355,7 @@ fn unknown_sender() {
 
         let (commit, _welcome_option, _kpb_option) = group_alice
             .create_commit(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 &[&bob_add_proposal],
                 &[],
@@ -373,8 +372,7 @@ fn unknown_sender() {
 
         let charlie_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 charlie_key_package.clone(),
             )
@@ -382,8 +380,7 @@ fn unknown_sender() {
 
         let (commit, welcome_option, _kpb_option) = group_alice
             .create_commit(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 &[&charlie_add_proposal],
                 &[],
@@ -407,16 +404,14 @@ fn unknown_sender() {
         // Alice removes Bob
         let bob_remove_proposal = group_alice
             .create_remove_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 LeafIndex::from(1usize),
             )
             .expect("Could not create proposal.");
         let (commit, _welcome_option, kpb_option) = group_alice
             .create_commit(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 &[&bob_remove_proposal],
                 &[],
@@ -515,6 +510,7 @@ fn unknown_sender() {
 fn confirmation_tag_presence() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
         // Define credential bundles
         let alice_credential_bundle = CredentialBundle::new(
@@ -555,8 +551,7 @@ fn confirmation_tag_presence() {
         // Alice adds Bob
         let bob_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
             )
@@ -564,8 +559,7 @@ fn confirmation_tag_presence() {
 
         let (mut commit, _welcome_option, _kpb_option) = group_alice
             .create_commit(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 &[&bob_add_proposal],
                 &[],
@@ -591,6 +585,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -630,13 +625,15 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
 
     // Alice adds Bob
     let bob_add_proposal = group_alice
-        .create_add_proposal(WireFormat::MlsPlaintext,group_aad, &alice_credential_bundle, bob_key_package.clone())
-        .expect("Could not create proposal.");
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone()
+        ).expect("Could not create proposal.");
 
     let (mut commit, _welcome, _kpb_option) = group_alice
         .create_commit(
-            WireFormat::MlsPlaintext,
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
             &[&bob_add_proposal],
             &[],

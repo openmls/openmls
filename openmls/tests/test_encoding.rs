@@ -84,6 +84,8 @@ fn test_update_proposal_encoding() {
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -108,8 +110,7 @@ fn test_update_proposal_encoding() {
 
         let update = group_state
             .create_update_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().clone(),
             )
@@ -136,6 +137,8 @@ fn test_add_proposal_encoding() {
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -161,8 +164,7 @@ fn test_add_proposal_encoding() {
         // Adds
         let add = group_state
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().clone(),
             )
@@ -189,6 +191,8 @@ fn test_remove_proposal_encoding() {
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -197,12 +201,7 @@ fn test_remove_proposal_encoding() {
             .unwrap();
 
         let remove = group_state
-            .create_remove_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
-                credential_bundle,
-                LeafIndex::from(1u32),
-            )
+            .create_remove_proposal(framing_parameters, credential_bundle, LeafIndex::from(1u32))
             .expect("Could not create proposal.");
         let remove_encoded = remove
             .tls_serialize_detached()
@@ -226,6 +225,8 @@ fn test_commit_encoding() {
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let alice_credential_bundle = alice
@@ -253,8 +254,7 @@ fn test_commit_encoding() {
         // Alice updates her own leaf
         let update = group_state
             .create_update_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 alice_credential_bundle,
                 alice_key_package_bundle.key_package().clone(),
             )
@@ -270,8 +270,7 @@ fn test_commit_encoding() {
             .unwrap();
         let add = group_state
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 alice_credential_bundle,
                 charlie_key_package.clone(),
             )
@@ -280,8 +279,7 @@ fn test_commit_encoding() {
         // Alice removes Bob
         let remove = group_state
             .create_remove_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 alice_credential_bundle,
                 LeafIndex::from(2u32),
             )
@@ -290,8 +288,7 @@ fn test_commit_encoding() {
         let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
             .create_commit(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 alice_credential_bundle,
                 proposals,
                 &[],
@@ -318,6 +315,8 @@ fn test_welcome_message_encoding() {
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -337,8 +336,7 @@ fn test_welcome_message_encoding() {
             .unwrap();
         let add = group_state
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 credential_bundle,
                 charlie_key_package.clone(),
             )
@@ -347,8 +345,7 @@ fn test_welcome_message_encoding() {
         let proposals = &[&add];
         let (commit, welcome_option, key_package_bundle_option) = group_state
             .create_commit(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 credential_bundle,
                 proposals,
                 &[],

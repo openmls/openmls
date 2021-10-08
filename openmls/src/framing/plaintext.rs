@@ -120,9 +120,8 @@ impl MlsPlaintext {
     /// Convenience function for creating an `MlsPlaintext`.
     #[inline]
     fn new(
-        wire_format: WireFormat,
+        framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        authenticated_data: &[u8],
         payload: MlsPlaintextContentType,
         content_type: ContentType,
         credential_bundle: &CredentialBundle,
@@ -131,11 +130,11 @@ impl MlsPlaintext {
         let serialized_context = context.tls_serialize_detached()?;
         let mls_plaintext = MlsPlaintextTbs::new(
             serialized_context.as_slice(),
-            wire_format,
+            framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
             Sender::member(sender_index),
-            authenticated_data.into(),
+            framing_parameters.aad().into(),
             content_type,
             payload,
         );
@@ -143,12 +142,10 @@ impl MlsPlaintext {
     }
 
     /// Create message with membership tag
-    #[allow(clippy::too_many_arguments)]
     #[inline]
     fn new_with_membership_tag(
-        wire_format: WireFormat,
+        framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        authenticated_data: &[u8],
         payload: MlsPlaintextContentType,
         content_type: ContentType,
         credential_bundle: &CredentialBundle,
@@ -156,9 +153,8 @@ impl MlsPlaintext {
         membership_key: &MembershipKey,
     ) -> Result<Self, MlsPlaintextError> {
         let mut mls_plaintext = Self::new(
-            wire_format,
+            framing_parameters,
             sender_index,
-            authenticated_data,
             payload,
             content_type,
             credential_bundle,
@@ -171,18 +167,16 @@ impl MlsPlaintext {
     /// This constructor builds an `MlsPlaintext` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
     pub fn new_proposal(
-        wire_format: WireFormat,
+        framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        authenticated_data: &[u8],
         proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
     ) -> Result<Self, MlsPlaintextError> {
         Self::new_with_membership_tag(
-            wire_format,
+            framing_parameters,
             sender_index,
-            authenticated_data,
             MlsPlaintextContentType::Proposal(proposal),
             ContentType::Proposal,
             credential_bundle,
@@ -194,17 +188,15 @@ impl MlsPlaintext {
     /// This constructor builds an `MlsPlaintext` containing a Commit.
     /// The sender type is always `SenderType::Member`.
     pub fn new_commit(
-        wire_format: WireFormat,
+        framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        authenticated_data: &[u8],
         commit: Commit,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
     ) -> Result<Self, MlsPlaintextError> {
         Self::new(
-            wire_format,
+            framing_parameters,
             sender_index,
-            authenticated_data,
             MlsPlaintextContentType::Commit(commit),
             ContentType::Commit,
             credential_bundle,
@@ -222,10 +214,11 @@ impl MlsPlaintext {
         context: &GroupContext,
         membership_key: &MembershipKey,
     ) -> Result<Self, MlsPlaintextError> {
+        let framing_parameters =
+            FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
         Self::new_with_membership_tag(
-            WireFormat::MlsCiphertext,
+            framing_parameters,
             sender_index,
-            authenticated_data,
             MlsPlaintextContentType::Application(application_message.into()),
             ContentType::Application,
             credential_bundle,
@@ -570,6 +563,10 @@ impl<'a> Signable for MlsPlaintextTbs<'a> {
 }
 
 impl<'a> MlsPlaintextTbs<'a> {
+    // We allow a higher number of arguments here, because they
+    // are used to buld a struct. Grouping them in another struct would
+    // not solve the problem. Using FramingParameters here is also not efficient
+    // because the aad is not a reference anymore.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         serialized_context: impl Into<Option<&'a [u8]>>,

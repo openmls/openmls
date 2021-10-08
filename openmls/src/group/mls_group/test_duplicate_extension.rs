@@ -43,6 +43,8 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     };
 
     let group_id = [5, 6, 7, 8];
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
@@ -55,13 +57,16 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(WireFormat::MlsPlaintext,group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone()
+        )
         .expect("Could not create proposal.");
     let epoch_proposals = &[&bob_add_proposal];
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            WireFormat::MlsPlaintext,
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
             epoch_proposals,
             &[],

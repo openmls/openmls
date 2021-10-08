@@ -4,6 +4,8 @@ use openmls::prelude::*;
 fn create_commit_optional_path() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
         // Define identities
         let alice_credential_bundle = CredentialBundle::new(
@@ -65,8 +67,7 @@ fn create_commit_optional_path() {
         // on the Commit
         let bob_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
             )
@@ -74,8 +75,7 @@ fn create_commit_optional_path() {
         let epoch_proposals = vec![bob_add_proposal];
         let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 &(epoch_proposals.iter().collect::<Vec<&MlsPlaintext>>()),
                 &[],
@@ -98,8 +98,7 @@ fn create_commit_optional_path() {
         // not fail, only committing that proposal should fail
         let bob_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
             )
@@ -107,8 +106,7 @@ fn create_commit_optional_path() {
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 epoch_proposals,
                 &[],
@@ -150,8 +148,7 @@ fn create_commit_optional_path() {
         // Alice updates
         let alice_update_proposal = group_alice
             .create_update_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 alice_update_key_package.clone(),
             )
@@ -160,8 +157,7 @@ fn create_commit_optional_path() {
 
         // Only UpdateProposal
         let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice.create_commit(
-            WireFormat::MlsPlaintext,
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
             proposals,
             &[],
@@ -193,6 +189,8 @@ fn create_commit_optional_path() {
 fn basic_group_setup() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
         // Define credential bundles
         let alice_credential_bundle = CredentialBundle::new(
@@ -233,15 +231,13 @@ fn basic_group_setup() {
         // Alice adds Bob
         let bob_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
             )
             .expect("Could not create proposal.");
         let _commit = match group_alice.create_commit(
-            WireFormat::MlsPlaintext,
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
             &[&bob_add_proposal],
             &[],
@@ -270,6 +266,8 @@ fn basic_group_setup() {
 fn group_operations() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
         // Define credential bundles
         let alice_credential_bundle = CredentialBundle::new(
@@ -325,8 +323,7 @@ fn group_operations() {
         // === Alice adds Bob ===
         let bob_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
             )
@@ -334,8 +331,7 @@ fn group_operations() {
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
             .create_commit(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 epoch_proposals,
                 &[],
@@ -405,15 +401,13 @@ fn group_operations() {
 
         let update_proposal_bob = group_bob
             .create_update_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 &bob_credential_bundle,
                 bob_update_key_package_bundle.key_package().clone(),
             )
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
-            WireFormat::MlsPlaintext,
-            &[],
+            framing_parameters,
             &bob_credential_bundle,
             &[&update_proposal_bob],
             &[],
@@ -462,15 +456,13 @@ fn group_operations() {
 
         let update_proposal_alice = group_alice
             .create_update_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 &alice_credential_bundle,
                 alice_update_key_package_bundle.key_package().clone(),
             )
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
-            WireFormat::MlsPlaintext,
-            &[],
+            framing_parameters,
             &alice_credential_bundle,
             &[&update_proposal_alice],
             &[],
@@ -517,15 +509,13 @@ fn group_operations() {
 
         let update_proposal_bob = group_bob
             .create_update_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 &bob_credential_bundle,
                 bob_update_key_package_bundle.key_package().clone(),
             )
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
-            WireFormat::MlsPlaintext,
-            &[],
+            framing_parameters,
             &alice_credential_bundle,
             &[&update_proposal_bob],
             &[],
@@ -580,8 +570,7 @@ fn group_operations() {
 
         let add_charlie_proposal_bob = group_bob
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 &bob_credential_bundle,
                 charlie_key_package,
             )
@@ -589,8 +578,7 @@ fn group_operations() {
 
         let (mls_plaintext_commit, welcome_for_charlie_option, kpb_option) = match group_bob
             .create_commit(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 &bob_credential_bundle,
                 &[&add_charlie_proposal_bob],
                 &[],
@@ -677,15 +665,13 @@ fn group_operations() {
 
         let update_proposal_charlie = group_charlie
             .create_update_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 &charlie_credential_bundle,
                 charlie_update_key_package_bundle.key_package().clone(),
             )
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
-            WireFormat::MlsPlaintext,
-            &[],
+            framing_parameters,
             &charlie_credential_bundle,
             &[&update_proposal_charlie],
             &[],
@@ -737,15 +723,13 @@ fn group_operations() {
         // === Charlie removes Bob ===
         let remove_bob_proposal_charlie = group_charlie
             .create_remove_proposal(
-                WireFormat::MlsPlaintext,
-                &[],
+                framing_parameters,
                 &charlie_credential_bundle,
                 LeafIndex::from(1u32),
             )
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
-            WireFormat::MlsPlaintext,
-            &[],
+            framing_parameters,
             &charlie_credential_bundle,
             &[&remove_bob_proposal_charlie],
             &[],

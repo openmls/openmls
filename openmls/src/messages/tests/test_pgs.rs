@@ -8,6 +8,7 @@ use crate::{
     messages::{
         CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
     },
+    prelude::FramingParameters,
 };
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
@@ -16,6 +17,7 @@ use crate::{
 fn test_pgs() {
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
         // Define credential bundles
         let alice_credential_bundle = CredentialBundle::new(
@@ -56,15 +58,13 @@ fn test_pgs() {
         // Alice adds Bob
         let bob_add_proposal = group_alice
             .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
             )
             .expect("Could not create proposal.");
         let (commit, _welcome_option, kpb_option) = match group_alice.create_commit(
-            WireFormat::MlsPlaintext,
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
             &[&bob_add_proposal],
             &[],
