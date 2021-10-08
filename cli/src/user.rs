@@ -290,23 +290,19 @@ impl User {
             None => return Err(format!("No group with name {} known.", group)),
         };
         let credentials = &self.identity.borrow().credential;
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(&group.group_aad, WireFormat::MlsPlaintext);
         let add_proposal = group
             .mls_group
             .borrow()
-            .create_add_proposal(
-                WireFormat::MlsPlaintext,
-                &group.group_aad,
-                credentials,
-                key_package,
-            )
+            .create_add_proposal(framing_parameters, credentials, key_package)
             .expect("Could not create proposal.");
         let proposals = vec![&add_proposal];
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
             .create_commit(
-                WireFormat::MlsPlaintext,
-                &group.group_aad,
+                framing_parameters,
                 credentials,
                 &proposals,
                 &[],

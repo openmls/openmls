@@ -163,6 +163,7 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = b"MyFirstGroup";
     let group_aad = b"MyFirstGroup AAD";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
     let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
     let mut group = MlsGroup::new(
         group_id,
@@ -203,18 +204,12 @@ async fn test_group() {
 
     // With the key package we can build a proposal.
     let client2_add_proposal = group
-        .create_add_proposal(
-            WireFormat::MlsPlaintext,
-            group_aad,
-            &credentials[0],
-            client2_key_package,
-        )
+        .create_add_proposal(framing_parameters, &credentials[0], client2_key_package)
         .unwrap();
     let epoch_proposals_ref = vec![&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
         .create_commit(
-            WireFormat::MlsPlaintext,
-            group_aad,
+            framing_parameters,
             &credentials[0],
             &epoch_proposals_ref,
             &[],
