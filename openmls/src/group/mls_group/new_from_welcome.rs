@@ -50,17 +50,10 @@ impl MlsGroup {
         let joiner_secret = group_secrets.joiner_secret;
 
         // Create key schedule
-        let presharedkeys = PreSharedKeys {
-            psks: match group_secrets.psks {
-                Some(psks) => psks.psks,
-                None => vec![].into(),
-            },
-        };
-
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
             joiner_secret,
-            psk_output(ciphersuite, psk_fetcher_option, &presharedkeys)?,
+            psk_output(ciphersuite, psk_fetcher_option, &group_secrets.psks)?,
         );
 
         // Derive welcome key & nonce from the key schedule
