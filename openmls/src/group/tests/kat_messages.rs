@@ -307,8 +307,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     let tv_group_secrets = hex_to_bytes(&tv.group_secrets);
     let gs = GroupSecrets::tls_deserialize(&mut tv_group_secrets.as_slice()).unwrap();
     let my_group_secrets =
-        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), gs.psks.as_ref())
-            .unwrap();
+        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), &gs.psks).unwrap();
     if tv_group_secrets != my_group_secrets {
         log::error!("  GroupSecrets encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_group_secrets);

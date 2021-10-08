@@ -308,14 +308,14 @@ impl From<Secret> for PathSecret {
 pub(crate) struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
-    pub(crate) psks: Option<PreSharedKeys>,
+    pub(crate) psks: PreSharedKeys,
 }
 
 #[derive(TlsSerialize, TlsSize)]
 struct EncodedGroupSecrets<'a> {
     pub(crate) joiner_secret: &'a JoinerSecret,
     pub(crate) path_secret: Option<&'a PathSecret>,
-    pub(crate) psks: Option<&'a PreSharedKeys>,
+    pub(crate) psks: &'a PreSharedKeys,
 }
 
 impl GroupSecrets {
@@ -323,12 +323,12 @@ impl GroupSecrets {
     pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
         path_secret: Option<&'a PathSecret>,
-        psks: impl Into<Option<&'a PreSharedKeys>>,
+        psks: &'a PreSharedKeys,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         EncodedGroupSecrets {
             joiner_secret,
             path_secret,
-            psks: psks.into(),
+            psks,
         }
         .tls_serialize_detached()
     }
@@ -367,7 +367,7 @@ impl GroupSecrets {
             Some(&PathSecret {
                 path_secret: Secret::random(ciphersuite, version),
             }),
-            Some(&psks),
+            &psks,
         )
     }
 }
