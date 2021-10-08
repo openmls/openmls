@@ -287,20 +287,6 @@ pub struct PathSecret {
     pub(crate) path_secret: Secret,
 }
 
-#[cfg(any(feature = "test-utils", test))]
-impl PathSecret {
-    /// Update the ciphersuite and MLS version of this path secret.
-    /// Ideally we wouldn't need this function but the way decoding works right
-    /// now this is the easiest for now.
-    pub(crate) fn config(
-        &mut self,
-        ciphersuite: &'static Ciphersuite,
-        mls_version: ProtocolVersion,
-    ) {
-        self.path_secret.config(ciphersuite, mls_version);
-    }
-}
-
 impl From<Secret> for PathSecret {
     fn from(path_secret: Secret) -> Self {
         Self { path_secret }
