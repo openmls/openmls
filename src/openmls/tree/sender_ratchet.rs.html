@@ -187,10 +187,10 @@
                 <span class="kw">let</span> <span class="ident">new_secret</span> <span class="op">=</span>
                     <span class="self">self</span>.<span class="ident">ratchet_secret</span>(<span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>());
                 <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">push</span>(<span class="ident">new_secret</span>);
+                <span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
             }
             <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">secret</span>, <span class="ident">generation</span>);
-            <span class="self">self</span>.<span class="ident">generation</span> <span class="op">=</span> <span class="ident">generation</span>;
             <span class="prelude-val">Ok</span>(<span class="ident">ratchet_secrets</span>)
         }
     }
