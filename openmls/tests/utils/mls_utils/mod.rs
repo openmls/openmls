@@ -151,6 +151,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         .unwrap();
         let mut proposal_list = Vec::new();
         let group_aad = b"";
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
         initial_group_member
             .group_states
             .borrow_mut()
@@ -177,7 +179,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 // KeyPackage.
                 let add_proposal = mls_group
                     .create_add_proposal(
-                        group_aad,
+                        framing_parameters,
                         initial_credential_bundle,
                         next_member_key_package,
                     )
@@ -188,7 +190,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // proposals.
             let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
                 .create_commit(
-                    group_aad,
+                    framing_parameters,
                     initial_credential_bundle,
                     &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                     &[],

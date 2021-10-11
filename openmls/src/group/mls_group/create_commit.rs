@@ -9,7 +9,7 @@ use crate::messages::*;
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
         &self,
-        aad: &[u8],
+        framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[&MlsPlaintext],
         proposals_by_value: &[&Proposal],
@@ -68,8 +68,8 @@ impl MlsGroup {
 
         // Build MlsPlaintext
         let mut mls_plaintext = MlsPlaintext::new_commit(
+            framing_parameters,
             sender_index,
-            aad,
             commit,
             credential_bundle,
             &self.group_context,

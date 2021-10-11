@@ -30,7 +30,7 @@ fn test_managed_group_persistence() {
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Plaintext,
+        WireFormat::MlsPlaintext,
         update_policy,
         0,     // padding_size
         0,     // number_of_resumption_secrets
@@ -123,7 +123,7 @@ fn remover() {
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let mut managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Ciphertext,
+        WireFormat::MlsCiphertext,
         update_policy,
         0,     // padding_size
         0,     // number_of_resumption_secrets
@@ -239,7 +239,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Plaintext,
+        WireFormat::MlsPlaintext,
         update_policy,
         0, // padding_size
         0, // number_of_resumption_secrets
@@ -281,7 +281,7 @@ fn test_invalid_plaintext() {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(

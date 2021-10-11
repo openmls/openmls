@@ -6,7 +6,7 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::GroupEpoch,
+    group::{GroupEpoch, WireFormat},
     messages::{Commit, GroupInfo, GroupSecrets, PublicGroupState},
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
@@ -133,16 +133,18 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let joiner_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
 
+    let framing_parameters = FramingParameters::new(b"aad", WireFormat::MlsCiphertext);
+
     let add_proposal_pt = group
         .create_add_proposal(
-            b"aad",
+            framing_parameters,
             &credential_bundle,
             joiner_key_package_bundle.key_package().clone(),
         )
         .unwrap();
     let (commit_pt, welcome_option, _option_kpb) = group
         .create_commit(
-            b"aad",
+            framing_parameters,
             &credential_bundle,
             &[&add_proposal_pt],
             &[],

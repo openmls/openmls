@@ -12,6 +12,7 @@ use std::convert::TryFrom;
 /// Service.
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 pub struct MlsCiphertext {
+    pub(crate) wire_format: WireFormat,
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,
@@ -33,6 +34,10 @@ impl MlsCiphertext {
     ) -> Result<MlsCiphertext, MlsCiphertextError> {
         log::debug!("MlsCiphertext::try_from_plaintext");
         log::trace!("  ciphersuite: {}", ciphersuite);
+        // Check the plaintext has the correct wire format
+        if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
+            return Err(MlsCiphertextError::WrongWireFormat);
+        }
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: context.group_id().clone(),
@@ -96,6 +101,7 @@ impl MlsCiphertext {
                 MlsCiphertextError::EncryptionError
             })?;
         Ok(MlsCiphertext {
+            wire_format: WireFormat::MlsCiphertext,
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
             content_type: *mls_plaintext.content_type(),
@@ -114,6 +120,10 @@ impl MlsCiphertext {
         secret_tree: &mut SecretTree,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
+        // Check the ciphertext has the correct wire format
+        if self.wire_format != WireFormat::MlsCiphertext {
+            return Err(MlsCiphertextError::WrongWireFormat);
+        }
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
@@ -197,7 +207,7 @@ impl MlsCiphertext {
 
         let verifiable = VerifiableMlsPlaintext::new(
             MlsPlaintextTbs::new(
-                None,
+                self.wire_format,
                 self.group_id.clone(),
                 self.epoch,
                 sender,
@@ -277,6 +287,11 @@ impl MlsCiphertext {
     /// Returns the `epoch` in the `MlsCiphertext`.
     pub fn epoch(&self) -> &GroupEpoch {
         &self.epoch
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
+        self.wire_format = wire_format;
     }
 }
 

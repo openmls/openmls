@@ -12,7 +12,7 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config =

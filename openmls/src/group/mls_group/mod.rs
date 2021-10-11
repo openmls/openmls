@@ -141,7 +141,8 @@ impl MlsGroup {
     // } Add;
     pub fn create_add_proposal(
         &self,
-        aad: &[u8],
+        framing_parameters: FramingParameters,
+
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
     ) -> Result<MlsPlaintext, MlsGroupError> {
@@ -150,8 +151,8 @@ impl MlsGroup {
         };
         let proposal = Proposal::Add(add_proposal);
         MlsPlaintext::new_proposal(
+            framing_parameters,
             self.sender_index(),
-            aad,
             proposal,
             credential_bundle,
             self.context(),
@@ -166,15 +167,15 @@ impl MlsGroup {
     // } Update;
     pub fn create_update_proposal(
         &self,
-        aad: &[u8],
+        framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::new_proposal(
+            framing_parameters,
             self.sender_index(),
-            aad,
             proposal,
             credential_bundle,
             self.context(),
@@ -189,7 +190,7 @@ impl MlsGroup {
     // } Remove;
     pub fn create_remove_proposal(
         &self,
-        aad: &[u8],
+        framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
     ) -> Result<MlsPlaintext, MlsGroupError> {
@@ -198,8 +199,8 @@ impl MlsGroup {
         };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::new_proposal(
+            framing_parameters,
             self.sender_index(),
-            aad,
             proposal,
             credential_bundle,
             self.context(),
@@ -214,15 +215,15 @@ impl MlsGroup {
     // } PreSharedKey;
     pub fn create_presharedkey_proposal(
         &self,
-        aad: &[u8],
+        framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::new_proposal(
+            framing_parameters,
             self.sender_index(),
-            aad,
             proposal,
             credential_bundle,
             self.context(),
@@ -242,7 +243,7 @@ impl MlsGroup {
     // } Commit;
     pub fn create_commit(
         &self,
-        aad: &[u8],
+        framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[&MlsPlaintext],
         proposals_by_value: &[&Proposal],
@@ -250,7 +251,7 @@ impl MlsGroup {
         psk_fetcher_option: Option<PskFetcher>,
     ) -> CreateCommitResult {
         self.create_commit_internal(
-            aad,
+            framing_parameters,
             credential_bundle,
             proposals_by_reference,
             proposals_by_value,

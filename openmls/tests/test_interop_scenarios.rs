@@ -12,7 +12,7 @@ mod utils;
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
 fn default_managed_group_config() -> ManagedGroupConfig {
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     ManagedGroupConfig::new(

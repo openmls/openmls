@@ -13,7 +13,6 @@
 //! * update path with empty exclusion list.
 
 use crate::ciphersuite::Ciphersuite;
-use crate::group::HandshakeMessageFormat;
 #[cfg(test)]
 use crate::test_utils::{read, write};
 use crate::{
@@ -289,14 +288,16 @@ fn write_test_vector() {
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
-    use crate::{extensions::RatchetTreeExtension, test_utils::test_framework::CodecUse};
+    use crate::{
+        extensions::RatchetTreeExtension, group::WireFormat, test_utils::test_framework::CodecUse,
+    };
 
     // The test really only makes sense with two or more leaves
     if n_leaves <= 1 {
         panic!("test vector can only be generated with two or more members")
     }
     // Set up a group with `n_leaves` members.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(

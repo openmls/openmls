@@ -149,6 +149,7 @@ fn test_update_path() {
     for ciphersuite in Config::supported_ciphersuites() {
         // Basic group setup.
         let group_aad = b"Alice's test group";
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
         // Define credential bundles
         let alice_credential_bundle = CredentialBundle::new(
@@ -188,12 +189,16 @@ fn test_update_path() {
 
         // === Alice adds Bob ===
         let bob_add_proposal = alice_group
-            .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+            .create_add_proposal(
+                framing_parameters,
+                &alice_credential_bundle,
+                bob_key_package.clone(),
+            )
             .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = alice_group
             .create_commit(
-                group_aad,
+                framing_parameters,
                 &alice_credential_bundle,
                 epoch_proposals,
                 &[],
@@ -235,14 +240,14 @@ fn test_update_path() {
 
         let update_proposal_bob = group_bob
             .create_update_proposal(
-                &[],
+                framing_parameters,
                 &bob_credential_bundle,
                 bob_update_key_package_bundle.key_package().clone(),
             )
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
             .create_commit(
-                &[],
+                framing_parameters,
                 &bob_credential_bundle,
                 &[&update_proposal_bob],
                 &[],
@@ -291,8 +296,8 @@ fn test_update_path() {
         };
 
         let mut broken_plaintext = MlsPlaintext::new_commit(
+            framing_parameters,
             mls_plaintext_commit.sender_index(),
-            mls_plaintext_commit.authenticated_data(),
             broken_commit,
             &bob_credential_bundle,
             group_bob.context(),
@@ -351,6 +356,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
 
     // Basic group setup.
     let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -404,18 +410,24 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let psk_proposal = alice_group
-        .create_presharedkey_proposal(group_aad, &alice_credential_bundle, preshared_key_id)
-        .expect("Could not create PSK proposal");
+        .create_presharedkey_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            preshared_key_id
+        ).expect("Could not create PSK proposal");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
-        .expect("Could not create proposal");
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone()
+        ).expect("Could not create proposal");
     let epoch_proposals = &[&bob_add_proposal, &psk_proposal];
     log::info!(" >>> Creating commit ...");
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
             epoch_proposals,
             &[],
@@ -450,14 +462,14 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
-            &[],
+           framing_parameters,
             &bob_credential_bundle,
             bob_update_key_package_bundle.key_package().clone(),
         )
         .expect("Could not create proposal.");
     let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
         .create_commit(
-            &[],
+            framing_parameters,
             &bob_credential_bundle,
             &[&update_proposal_bob],
             &[],
