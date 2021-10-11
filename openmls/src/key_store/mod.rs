@@ -70,14 +70,7 @@
 //!     .unwrap();
 //!
 //! // Create a group with the previously generated credential and key package.
-//! let managed_group_config = ManagedGroupConfig::new(
-//!     WireFormat::MlsPlaintext,
-//!     UpdatePolicy::default(),
-//!     0,
-//!     0,
-//!     false, // use_ratchet_tree_extension
-//!     ManagedGroupCallbacks::default(),
-//! );
+//! let managed_group_config = ManagedGroupConfig::new();
 //!
 //! let alice_group = ManagedGroup::new(
 //!     &key_store,

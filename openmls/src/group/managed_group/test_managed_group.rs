@@ -27,16 +27,7 @@ fn test_managed_group_persistence() {
         .unwrap();
 
     // Define the managed group configuration
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsPlaintext,
-        update_policy,
-        0,     // padding_size
-        0,     // number_of_resumption_secrets
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::new().with_wire_format(WireFormat::MlsPlaintext);
 
     // === Alice creates a group ===
 
@@ -119,17 +110,7 @@ fn remover() {
         .unwrap();
 
     // Define the managed group configuration
-
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let mut managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsCiphertext,
-        update_policy,
-        0,     // padding_size
-        0,     // number_of_resumption_secrets
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::new();
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
@@ -173,7 +154,7 @@ fn remover() {
         .expect("The group is no longer active");
 
     let charlie_callbacks = ManagedGroupCallbacks::default();
-    managed_group_config.set_callbacks(&charlie_callbacks);
+    let managed_group_config = managed_group_config.with_callbacks(charlie_callbacks);
     let mut charlie_group = ManagedGroup::new_from_welcome(
         &key_store,
         &managed_group_config,
@@ -236,16 +217,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         .unwrap();
 
     // Define the managed group configuration
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsPlaintext,
-        update_policy,
-        0, // padding_size
-        0, // number_of_resumption_secrets
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::new().with_wire_format(WireFormat::MlsPlaintext);
 
     // === Alice creates a group ===
     let alice_group = ManagedGroup::new(
@@ -281,17 +253,10 @@ fn test_invalid_plaintext() {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let handshake_message_format = WireFormat::MlsPlaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        handshake_message_format,
-        update_policy,
-        10,
-        0,
-        false,
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::new()
+        .with_wire_format(WireFormat::MlsPlaintext)
+        .with_padding_size(10);
+
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(
         managed_group_config,

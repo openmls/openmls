@@ -9,7 +9,7 @@ pub struct ManagedGroupConfig {
     /// Application are always encrypted regardless. `Plaintext`: Handshake messages
     /// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
     /// returned as MlsCiphertext messages
-    pub(crate) handshake_message_format: WireFormat,
+    pub(crate) wire_format: WireFormat,
     /// Defines the update policy
     pub(crate) update_policy: UpdatePolicy,
     /// Size of padding in bytes
@@ -24,46 +24,89 @@ pub struct ManagedGroupConfig {
 }
 
 impl ManagedGroupConfig {
-    pub fn new(
-        handshake_message_format: WireFormat,
-        update_policy: UpdatePolicy,
-        padding_size: usize,
-        number_of_resumption_secrets: usize,
-        use_ratchet_tree_extension: bool,
-        callbacks: ManagedGroupCallbacks,
-    ) -> Self {
+    /// Creates a new ManagedGroupConfig with default values.
+    /// Use the `with_*()` builder functions to set different values for
+    /// the properties.
+    pub fn new() -> Self {
         ManagedGroupConfig {
-            handshake_message_format,
-            update_policy,
-            padding_size,
-            number_of_resumption_secrets,
-            use_ratchet_tree_extension,
-            callbacks,
+            wire_format: WireFormat::MlsCiphertext,
+            update_policy: UpdatePolicy::default(),
+            padding_size: 0,
+            number_of_resumption_secrets: 0,
+            use_ratchet_tree_extension: false,
+            callbacks: ManagedGroupCallbacks::default(),
         }
     }
-    pub fn padding_size(&self) -> usize {
-        self.padding_size
+    /// Sets the `wire_format` property of the ManagedGroupConfig.
+    pub fn with_wire_format(mut self, wire_format: WireFormat) -> Self {
+        self.wire_format = wire_format;
+        self
     }
-    pub fn callbacks(&self) -> &ManagedGroupCallbacks {
-        &self.callbacks
+    /// Sets the `update_policy` property of the ManagedGroupConfig.
+    pub fn with_update_policy(mut self, update_policy: UpdatePolicy) -> Self {
+        self.update_policy = update_policy;
+        self
     }
-    pub(crate) fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
-        self.callbacks = *callbacks;
+    /// Sets the `padding_size` property of the ManagedGroupConfig.
+    pub fn with_padding_size(mut self, padding_size: usize) -> Self {
+        self.padding_size = padding_size;
+        self
+    }
+    /// Sets the `number_of_resumption_secrets` property of the ManagedGroupConfig.
+    pub fn with_number_of_resumtion_secrets(mut self, number_of_resumption_secrets: usize) -> Self {
+        self.number_of_resumption_secrets = number_of_resumption_secrets;
+        self
+    }
+    /// Sets the `use_ratchet_tree_extension` property of the ManagedGroupConfig.
+    pub fn with_use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
+        self.use_ratchet_tree_extension = use_ratchet_tree_extension;
+        self
+    }
+    /// Sets the `callbacks` property of the ManagedGroupConfig.
+    pub fn with_callbacks(mut self, callbacks: ManagedGroupCallbacks) -> Self {
+        self.callbacks = callbacks;
+        self
     }
 
     #[cfg(test)]
     pub fn test_default() -> Self {
-        let handshake_message_format = WireFormat::MlsPlaintext;
-        let update_policy = UpdatePolicy::default();
-        let callbacks = ManagedGroupCallbacks::default();
-        Self::new(
-            handshake_message_format,
-            update_policy,
-            0,
-            0,
-            true,
-            callbacks,
-        )
+        Self::new().with_wire_format(WireFormat::MlsPlaintext)
+    }
+
+    /// Gets the [`ManagedGroupConfig`] wire format.
+    pub fn wire_format(&self) -> WireFormat {
+        self.wire_format
+    }
+
+    /// Get a reference to the [`ManagedGroupConfig`] padding size.
+    pub fn padding_size(&self) -> usize {
+        self.padding_size
+    }
+
+    /// Get a reference to the [`ManagedGroupConfig`] update policy.
+    pub fn update_policy(&self) -> &UpdatePolicy {
+        &self.update_policy
+    }
+
+    /// Get a reference to the [`ManagedGroupConfig`] number of resumption secrets.
+    pub fn number_of_resumption_secrets(&self) -> &usize {
+        &self.number_of_resumption_secrets
+    }
+
+    /// Get a reference to the [`ManagedGroupConfig`] use ratchet tree extension.
+    pub fn use_ratchet_tree_extension(&self) -> &bool {
+        &self.use_ratchet_tree_extension
+    }
+
+    /// Get a reference to the [`ManagedGroupConfig`] use rcallbacks.
+    pub fn callbacks(&self) -> &ManagedGroupCallbacks {
+        &self.callbacks
+    }
+}
+
+impl Default for ManagedGroupConfig {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

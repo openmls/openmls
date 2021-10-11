@@ -68,9 +68,7 @@ fn auto_save(managed_group: &ManagedGroup) {
 #[test]
 fn managed_group_operations() {
     for ciphersuite in Config::supported_ciphersuites() {
-        for handshake_message_format in
-            vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
-        {
+        for wire_format in vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter() {
             let group_id = GroupId::from_slice(b"Test Group");
 
             let key_store = KeyStore::default();
@@ -111,19 +109,13 @@ fn managed_group_operations() {
 
             // Define the managed group configuration
 
-            let update_policy = UpdatePolicy::default();
             let callbacks = ManagedGroupCallbacks::new()
                 .with_validate_add(validate_add)
                 .with_validate_remove(validate_remove)
                 .with_auto_save(auto_save);
-            let managed_group_config = ManagedGroupConfig::new(
-                handshake_message_format,
-                update_policy,
-                0,
-                0,
-                false, // use_ratchet_tree_extension
-                callbacks,
-            );
+            let managed_group_config = ManagedGroupConfig::new()
+                .with_wire_format(wire_format)
+                .with_callbacks(callbacks);
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
@@ -701,16 +693,10 @@ fn test_empty_input_errors() {
         .unwrap();
 
     // Define the managed group configuration
-    let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsPlaintext,
-        update_policy,
-        0,
-        0,
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::new()
+        .with_wire_format(WireFormat::MlsPlaintext)
+        .with_callbacks(callbacks);
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
@@ -739,14 +725,8 @@ fn test_empty_input_errors() {
 #[test]
 fn managed_group_ratchet_tree_extension() {
     for ciphersuite in Config::supported_ciphersuites() {
-        for handshake_message_format in
-            vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
-        {
+        for wire_format in vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter() {
             let group_id = GroupId::from_slice(b"Test Group");
-
-            // Define the managed group configuration
-
-            let update_policy = UpdatePolicy::default();
 
             // === Positive case: using the ratchet tree extension ===
 
@@ -778,14 +758,9 @@ fn managed_group_ratchet_tree_extension() {
                 .generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![])
                 .unwrap();
 
-            let managed_group_config = ManagedGroupConfig::new(
-                handshake_message_format,
-                update_policy.clone(),
-                0,
-                0,
-                true, // use_ratchet_tree_extension
-                ManagedGroupCallbacks::default(),
-            );
+            let managed_group_config = ManagedGroupConfig::new()
+                .with_wire_format(wire_format)
+                .with_use_ratchet_tree_extension(true);
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
@@ -838,14 +813,7 @@ fn managed_group_ratchet_tree_extension() {
                 .generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![])
                 .unwrap();
 
-            let managed_group_config = ManagedGroupConfig::new(
-                handshake_message_format,
-                update_policy,
-                0,
-                0,
-                false, // use_ratchet_tree_extension
-                ManagedGroupCallbacks::default(),
-            );
+            let managed_group_config = ManagedGroupConfig::new().with_wire_format(wire_format);
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(

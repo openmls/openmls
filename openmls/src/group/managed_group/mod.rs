@@ -931,7 +931,7 @@ impl ManagedGroup {
         &mut self,
         plaintext: MlsPlaintext,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
-        let msg = match self.configuration().handshake_message_format {
+        let msg = match self.configuration().wire_format() {
             WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(plaintext),
             WireFormat::MlsCiphertext => {
                 let ciphertext = self
@@ -1108,10 +1108,7 @@ impl ManagedGroup {
 
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
-        FramingParameters::new(
-            &self.aad,
-            self.managed_group_config.handshake_message_format,
-        )
+        FramingParameters::new(&self.aad, self.managed_group_config.wire_format)
     }
 }
 
