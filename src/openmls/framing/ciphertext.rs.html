@@ -331,6 +331,21 @@
 <span id="331">331</span>
 <span id="332">332</span>
 <span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{
     <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteSliceU16</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>,
@@ -346,6 +361,7 @@
 <span class="doccomment">/// Service.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsCiphertext</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
@@ -367,6 +383,10 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
         <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, <span class="ident">ciphersuite</span>);
+        <span class="comment">// Check the plaintext has the correct wire format</span>
+        <span class="kw">if</span> <span class="ident">mls_plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsCiphertextError::WrongWireFormat</span>);
+        }
         <span class="comment">// Serialize the content AAD</span>
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
@@ -430,6 +450,7 @@
                 <span class="ident">MlsCiphertextError::EncryptionError</span>
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">MlsCiphertext</span> {
+            <span class="ident">wire_format</span>: <span class="ident">WireFormat::MlsCiphertext</span>,
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
             <span class="ident">content_type</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
@@ -448,6 +469,10 @@
         <span class="ident">secret_tree</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SecretTree</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
+        <span class="comment">// Check the ciphertext has the correct wire format</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">wire_format</span> <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsCiphertextError::WrongWireFormat</span>);
+        }
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
         <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
             .<span class="ident">sender_data_secret</span>()
@@ -531,7 +556,7 @@
 
         <span class="kw">let</span> <span class="ident">verifiable</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::new</span>(
             <span class="ident">MlsPlaintextTbs::new</span>(
-                <span class="prelude-val">None</span>,
+                <span class="self">self</span>.<span class="ident">wire_format</span>,
                 <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
                 <span class="self">self</span>.<span class="ident">epoch</span>,
                 <span class="ident">sender</span>,
@@ -611,6 +636,11 @@
     <span class="doccomment">/// Returns the `epoch` in the `MlsCiphertext`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupEpoch</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch</span>
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">set_wire_format</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) {
+        <span class="self">self</span>.<span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">wire_format</span>;
     }
 }
 

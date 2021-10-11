@@ -313,6 +313,8 @@
 <span id="313">313</span>
 <span id="314">314</span>
 <span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # Known Answer Tests for the transcript hashes</span>
 <span class="doccomment">//!</span>
@@ -330,12 +332,12 @@
     <span class="ident">credentials</span>::{<span class="ident">Credential</span>, <span class="ident">CredentialBundle</span>, <span class="ident">CredentialType</span>},
     <span class="ident">group</span>::{
         <span class="ident">update_confirmed_transcript_hash</span>, <span class="ident">update_interim_transcript_hash</span>, <span class="ident">GroupContext</span>, <span class="ident">GroupEpoch</span>,
-        <span class="ident">GroupId</span>,
+        <span class="ident">GroupId</span>, <span class="ident">WireFormat</span>,
     },
     <span class="ident">messages::Commit</span>,
     <span class="ident">prelude</span>::{
-        <span class="ident">random_u32</span>, <span class="ident">random_u64</span>, <span class="ident">LeafIndex</span>, <span class="ident">MlsPlaintext</span>, <span class="ident">MlsPlaintextCommitAuthData</span>,
-        <span class="ident">MlsPlaintextCommitContent</span>, <span class="ident">VerifiableMlsPlaintext</span>,
+        <span class="ident">random_u32</span>, <span class="ident">random_u64</span>, <span class="ident">FramingParameters</span>, <span class="ident">LeafIndex</span>, <span class="ident">MlsPlaintext</span>,
+        <span class="ident">MlsPlaintextCommitAuthData</span>, <span class="ident">MlsPlaintextCommitContent</span>, <span class="ident">VerifiableMlsPlaintext</span>,
     },
     <span class="ident">schedule</span>::{<span class="ident">ConfirmationKey</span>, <span class="ident">MembershipKey</span>},
     <span class="ident">test_utils</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
@@ -389,9 +391,11 @@
         <span class="kw-2">&amp;</span>[], <span class="comment">// extensions</span>
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error creating group context&quot;</span>);
+    <span class="kw">let</span> <span class="ident">aad</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="number">48</span>);
+    <span class="kw">let</span> <span class="ident">framing_parameters</span> <span class="op">=</span> <span class="ident">FramingParameters::new</span>(<span class="kw-2">&amp;</span><span class="ident">aad</span>, <span class="ident">WireFormat::MlsPlaintext</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_commit</span>(
+        <span class="ident">framing_parameters</span>,
         <span class="ident">LeafIndex::from</span>(<span class="ident">random_u32</span>()),
-        <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="number">48</span>),
         <span class="ident">Commit</span> {
             <span class="ident">proposals</span>: <span class="macro">vec!</span>[].<span class="ident">into</span>(),
             <span class="ident">path</span>: <span class="prelude-val">None</span>,

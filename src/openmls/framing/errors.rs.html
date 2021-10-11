@@ -50,6 +50,7 @@
 <span id="50">50</span>
 <span id="51">51</span>
 <span id="52">52</span>
+<span id="53">53</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
@@ -83,6 +84,7 @@
             <span class="ident">GenerationOutOfBound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a ratcheting secret for the given sender and generation.&quot;</span>,
             <span class="ident">EncryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occurred while encrypting.&quot;</span>,
             <span class="ident">DecryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occurred while decrypting.&quot;</span>,
+            <span class="ident">WrongWireFormat</span> <span class="op">=</span> <span class="string">&quot;The WireFormat was MLSPlaintext.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;MlsPlaintext error&quot;</span>,

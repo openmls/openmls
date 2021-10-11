@@ -108,6 +108,15 @@
 <span id="108">108</span>
 <span id="109">109</span>
 <span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
 </pre><pre class="rust">
 <span class="doccomment">//! Group APIs for MLS</span>
 <span class="doccomment">//!</span>
@@ -218,6 +227,15 @@
             <span class="ident">additional_as_epochs</span>: <span class="number">0</span>,
         }
     }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WireFormat</span> {
+    <span class="ident">MlsPlaintext</span> <span class="op">=</span> <span class="number">1</span>,
+    <span class="ident">MlsCiphertext</span> <span class="op">=</span> <span class="number">2</span>,
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

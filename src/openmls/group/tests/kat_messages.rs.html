@@ -537,6 +537,8 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # Known Answer Tests for the encoding and decoding of various structs of the</span>
 <span class="doccomment">//! MLS spec</span>
@@ -546,7 +548,7 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Signable</span>,
-    <span class="ident">group::GroupEpoch</span>,
+    <span class="ident">group</span>::{<span class="ident">GroupEpoch</span>, <span class="ident">WireFormat</span>},
     <span class="ident">messages</span>::{<span class="ident">Commit</span>, <span class="ident">GroupInfo</span>, <span class="ident">GroupSecrets</span>, <span class="ident">PublicGroupState</span>},
     <span class="ident">messages</span>::{<span class="ident">ConfirmationTag</span>, <span class="ident">GroupInfoPayload</span>},
     <span class="ident">node::Node</span>,
@@ -673,16 +675,18 @@
     <span class="kw">let</span> <span class="ident">joiner_key_package_bundle</span> <span class="op">=</span>
         <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite_name</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">Vec::new</span>()).<span class="ident">unwrap</span>();
 
+    <span class="kw">let</span> <span class="ident">framing_parameters</span> <span class="op">=</span> <span class="ident">FramingParameters::new</span>(<span class="string">b&quot;aad&quot;</span>, <span class="ident">WireFormat::MlsCiphertext</span>);
+
     <span class="kw">let</span> <span class="ident">add_proposal_pt</span> <span class="op">=</span> <span class="ident">group</span>
         .<span class="ident">create_add_proposal</span>(
-            <span class="string">b&quot;aad&quot;</span>,
+            <span class="ident">framing_parameters</span>,
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">joiner_key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(),
         )
         .<span class="ident">unwrap</span>();
     <span class="kw">let</span> (<span class="ident">commit_pt</span>, <span class="ident">welcome_option</span>, <span class="ident">_option_kpb</span>) <span class="op">=</span> <span class="ident">group</span>
         .<span class="ident">create_commit</span>(
-            <span class="string">b&quot;aad&quot;</span>,
+            <span class="ident">framing_parameters</span>,
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">add_proposal_pt</span>],
             <span class="kw-2">&amp;</span>[],

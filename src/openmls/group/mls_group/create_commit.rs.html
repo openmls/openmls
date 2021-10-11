@@ -261,7 +261,7 @@
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_commit_internal</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">framing_parameters</span>: <span class="ident">FramingParameters</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">proposals_by_reference</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>],
         <span class="ident">proposals_by_value</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">Proposal</span>],
@@ -320,8 +320,8 @@
 
         <span class="comment">// Build MlsPlaintext</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_commit</span>(
+            <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
-            <span class="ident">aad</span>,
             <span class="ident">commit</span>,
             <span class="ident">credential_bundle</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>,

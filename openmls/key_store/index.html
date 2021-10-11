@@ -59,7 +59,7 @@ issue #337.</p>
 
 <span class="comment">// Create a group with the previously generated credential and key package.</span>
 <span class="kw">let</span> <span class="ident">managed_group_config</span> <span class="op">=</span> <span class="ident">ManagedGroupConfig::new</span>(
-    <span class="ident">HandshakeMessageFormat::Plaintext</span>,
+    <span class="ident">WireFormat::MlsPlaintext</span>,
     <span class="ident">UpdatePolicy::default</span>(),
     <span class="number">0</span>,
     <span class="number">0</span>,

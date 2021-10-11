@@ -1184,6 +1184,16 @@
 <span id="1184">1184</span>
 <span id="1185">1185</span>
 <span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
 </pre><pre class="rust">
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -1412,7 +1422,7 @@
         <span class="comment">// Create Commit over all proposals</span>
         <span class="comment">// TODO #141</span>
         <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">proposals_by_reference</span>,
             <span class="ident">proposals_by_value</span>,
@@ -1492,7 +1502,7 @@
         <span class="comment">// Create Commit over all proposals</span>
         <span class="comment">// TODO #141</span>
         <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">proposals_by_reference</span>,
             <span class="ident">proposals_by_value</span>,
@@ -1534,9 +1544,11 @@
             .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">group</span>
-                .<span class="ident">create_add_proposal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>, <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="ident">key_package</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_add_proposal</span>(
+            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
+            <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
+            <span class="ident">key_package</span>.<span class="ident">clone</span>(),
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">add_proposal</span>)<span class="question-mark">?</span>;
 
@@ -1562,7 +1574,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_remove_proposal</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">LeafIndex::from</span>(<span class="ident">member</span>),
         )<span class="question-mark">?</span>;
@@ -1590,7 +1602,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_remove_proposal</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">own_node_index</span>(),
         )<span class="question-mark">?</span>;
@@ -1837,7 +1849,7 @@
         <span class="comment">// Create Commit over all pending proposals</span>
         <span class="comment">// TODO #141</span>
         <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
             <span class="kw-2">&amp;</span>[],
@@ -1978,7 +1990,7 @@
                     <span class="ident">key_package</span>: <span class="ident">kpb</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(),
                 });
                 <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+                    <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
                     <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
                     <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
                     <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">update_proposal</span>],
@@ -1988,7 +2000,7 @@
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+                    <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
                     <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
                     <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
                     <span class="kw-2">&amp;</span>[],
@@ -2041,7 +2053,7 @@
         };
 
         <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_update_proposal</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(),
         )<span class="question-mark">?</span>;
@@ -2117,8 +2129,8 @@
         <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">handshake_message_format</span> {
-            <span class="ident">HandshakeMessageFormat::Plaintext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">plaintext</span>),
-            <span class="ident">HandshakeMessageFormat::Ciphertext</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">WireFormat::MlsPlaintext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">plaintext</span>),
+            <span class="ident">WireFormat::MlsCiphertext</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="self">self</span>
                     .<span class="ident">group</span>
                     .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>())<span class="question-mark">?</span>;
@@ -2289,6 +2301,14 @@
             }
         }
         <span class="ident">indexed_members</span>
+    }
+
+    <span class="doccomment">/// Group framing parameters</span>
+    <span class="kw">fn</span> <span class="ident">framing_parameters</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">FramingParameters</span> {
+        <span class="ident">FramingParameters::new</span>(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
+            <span class="self">self</span>.<span class="ident">managed_group_config</span>.<span class="ident">handshake_message_format</span>,
+        )
     }
 }
 

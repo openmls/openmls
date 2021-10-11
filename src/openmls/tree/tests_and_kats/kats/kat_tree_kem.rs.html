@@ -533,6 +533,7 @@
 <span id="533">533</span>
 <span id="534">534</span>
 <span id="535">535</span>
+<span id="536">536</span>
 </pre><pre class="rust">
 <span class="doccomment">//! TreeKEM test vectors</span>
 <span class="doccomment">//!</span>
@@ -549,7 +550,6 @@
 <span class="doccomment">//! * update path with empty exclusion list.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite::Ciphersuite</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group::HandshakeMessageFormat</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utils</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -825,14 +825,16 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_test_vector</span>(<span class="ident">n_leaves</span>: <span class="ident">u32</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TreeKemTestVector</span> {
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">extensions::RatchetTreeExtension</span>, <span class="ident">test_utils::test_framework::CodecUse</span>};
+    <span class="kw">use</span> <span class="kw">crate</span>::{
+        <span class="ident">extensions::RatchetTreeExtension</span>, <span class="ident">group::WireFormat</span>, <span class="ident">test_utils::test_framework::CodecUse</span>,
+    };
 
     <span class="comment">// The test really only makes sense with two or more leaves</span>
     <span class="kw">if</span> <span class="ident">n_leaves</span> <span class="op">&lt;</span><span class="op">=</span> <span class="number">1</span> {
         <span class="macro">panic!</span>(<span class="string">&quot;test vector can only be generated with two or more members&quot;</span>)
     }
     <span class="comment">// Set up a group with `n_leaves` members.</span>
-    <span class="kw">let</span> <span class="ident">handshake_message_format</span> <span class="op">=</span> <span class="ident">HandshakeMessageFormat::Plaintext</span>;
+    <span class="kw">let</span> <span class="ident">handshake_message_format</span> <span class="op">=</span> <span class="ident">WireFormat::MlsPlaintext</span>;
     <span class="kw">let</span> <span class="ident">update_policy</span> <span class="op">=</span> <span class="ident">UpdatePolicy::default</span>();
     <span class="kw">let</span> <span class="ident">callbacks</span> <span class="op">=</span> <span class="ident">ManagedGroupCallbacks::default</span>();
     <span class="kw">let</span> <span class="ident">managed_group_config</span> <span class="op">=</span> <span class="ident">ManagedGroupConfig::new</span>(
