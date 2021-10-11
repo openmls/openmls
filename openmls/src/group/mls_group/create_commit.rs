@@ -7,7 +7,6 @@ use crate::group::*;
 use crate::messages::*;
 
 impl MlsGroup {
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn create_commit_internal(
         &self,
         framing_parameters: FramingParameters,

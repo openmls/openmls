@@ -33,7 +33,6 @@ fn codec_plaintext() {
 
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
-            serialized_context.as_slice(),
             WireFormat::MlsPlaintext,
             GroupId::random(ciphersuite),
             GroupEpoch(1u64),
@@ -41,7 +40,8 @@ fn codec_plaintext() {
             vec![1, 2, 3].into(),
             ContentType::Application,
             MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
-        );
+        )
+        .with_context(serialized_context.as_slice());
         let orig: MlsPlaintext = signature_input
             .sign(&credential_bundle)
             .expect("Signing failed.");
@@ -82,7 +82,6 @@ fn codec_ciphertext() {
 
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
-            serialized_context.as_slice(),
             WireFormat::MlsCiphertext,
             GroupId::random(ciphersuite),
             GroupEpoch(1u64),
@@ -90,7 +89,8 @@ fn codec_ciphertext() {
             vec![1, 2, 3].into(),
             ContentType::Application,
             MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
-        );
+        )
+        .with_context(serialized_context.as_slice());
         let plaintext: MlsPlaintext = signature_input
             .sign(&credential_bundle)
             .expect("Signing failed.");
@@ -155,7 +155,6 @@ fn wire_format_checks() {
 
         let serialized_context = group_context.tls_serialize_detached().unwrap();
         let signature_input = MlsPlaintextTbs::new(
-            serialized_context.as_slice(),
             WireFormat::MlsCiphertext,
             GroupId::random(ciphersuite),
             GroupEpoch(1u64),
@@ -163,7 +162,8 @@ fn wire_format_checks() {
             vec![1, 2, 3].into(),
             ContentType::Application,
             MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
-        );
+        )
+        .with_context(serialized_context.as_slice());
         let mut plaintext: MlsPlaintext = signature_input
             .sign(&credential_bundle)
             .expect("Signing failed.");

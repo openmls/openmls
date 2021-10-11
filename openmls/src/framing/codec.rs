@@ -18,7 +18,6 @@ impl<'a> tls_codec::Deserialize for VerifiableMlsPlaintext<'a> {
 
         let verifiable = VerifiableMlsPlaintext::new(
             MlsPlaintextTbs::new(
-                None,
                 wire_format,
                 group_id,
                 epoch,

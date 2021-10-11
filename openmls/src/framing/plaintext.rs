@@ -129,7 +129,6 @@ impl MlsPlaintext {
     ) -> Result<Self, MlsPlaintextError> {
         let serialized_context = context.tls_serialize_detached()?;
         let mls_plaintext = MlsPlaintextTbs::new(
-            serialized_context.as_slice(),
             framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
@@ -137,7 +136,8 @@ impl MlsPlaintext {
             framing_parameters.aad().into(),
             content_type,
             payload,
-        );
+        )
+        .with_context(serialized_context.as_slice());
         Ok(mls_plaintext.sign(credential_bundle)?)
     }
 
@@ -518,11 +518,20 @@ impl<'a> VerifiableMlsPlaintext<'a> {
         let signature = mls_plaintext.signature.clone();
         let membership_tag = mls_plaintext.membership_tag.clone();
         let confirmation_tag = mls_plaintext.confirmation_tag.clone();
-        Self {
-            tbs: MlsPlaintextTbs::new_from(mls_plaintext, serialized_context),
-            signature,
-            confirmation_tag,
-            membership_tag,
+
+        match serialized_context.into() {
+            Some(context) => Self {
+                tbs: MlsPlaintextTbs::from_plaintext(mls_plaintext).with_context(context),
+                signature,
+                confirmation_tag,
+                membership_tag,
+            },
+            None => Self {
+                tbs: MlsPlaintextTbs::from_plaintext(mls_plaintext),
+                signature,
+                confirmation_tag,
+                membership_tag,
+            },
         }
     }
 
@@ -563,13 +572,10 @@ impl<'a> Signable for MlsPlaintextTbs<'a> {
 }
 
 impl<'a> MlsPlaintextTbs<'a> {
-    // We allow a higher number of arguments here, because they
-    // are used to buld a struct. Grouping them in another struct would
-    // not solve the problem. Using FramingParameters here is also not efficient
-    // because the aad is not a reference anymore.
-    #[allow(clippy::too_many_arguments)]
+    /// Create an MlsPlaintextTbs from an existing values.
+    /// Note that if you would like to add a serialized context, you
+    /// should subsequently call [`with_context`].
     pub(crate) fn new(
-        serialized_context: impl Into<Option<&'a [u8]>>,
         wire_format: WireFormat,
         group_id: GroupId,
         epoch: GroupEpoch,
@@ -579,8 +585,8 @@ impl<'a> MlsPlaintextTbs<'a> {
         payload: MlsPlaintextContentType,
     ) -> Self {
         MlsPlaintextTbs {
+            serialized_context: None,
             wire_format,
-            serialized_context: serialized_context.into(),
             group_id,
             epoch,
             sender,
@@ -589,17 +595,20 @@ impl<'a> MlsPlaintextTbs<'a> {
             payload,
         }
     }
+    /// Adds a serialized context to MlsPlaintextTbs.
+    /// This consumes the original struct and can be used as a builder function.
+    pub(crate) fn with_context(mut self, serialized_context: &'a [u8]) -> Self {
+        self.serialized_context = Some(serialized_context);
+        self
+    }
 
     /// Create a new signable MlsPlaintext from an existing MlsPlaintext.
     /// This consumes the existing plaintext.
     /// To get the `MlsPlaintext` back use `sign`.
-    fn new_from(
-        mls_plaintext: MlsPlaintext,
-        serialized_context: impl Into<Option<&'a [u8]>>,
-    ) -> Self {
+    fn from_plaintext(mls_plaintext: MlsPlaintext) -> Self {
         MlsPlaintextTbs {
             wire_format: mls_plaintext.wire_format,
-            serialized_context: serialized_context.into(),
+            serialized_context: None,
             group_id: mls_plaintext.group_id,
             epoch: mls_plaintext.epoch,
             sender: mls_plaintext.sender,
