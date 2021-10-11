@@ -121,7 +121,7 @@ impl MlsCiphertext {
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
         // Check the ciphertext has the correct wire format
-        if self.wire_format == WireFormat::MlsPlaintext {
+        if self.wire_format != WireFormat::MlsCiphertext {
             return Err(MlsCiphertextError::WrongWireFormat);
         }
         // Derive key from the key schedule using the ciphertext.
