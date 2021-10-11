@@ -57,10 +57,10 @@ impl SenderRatchet {
                 let new_secret =
                     self.ratchet_secret(ciphersuite, self.past_secrets.last().unwrap());
                 self.past_secrets.push(new_secret);
+                self.generation += 1;
             }
             let secret = self.past_secrets.last().unwrap();
             let ratchet_secrets = self.derive_key_nonce(ciphersuite, secret, generation);
-            self.generation = generation;
             Ok(ratchet_secrets)
         }
     }
