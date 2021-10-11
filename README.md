@@ -4,6 +4,7 @@
 [![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)](https://openmls.github.io/openmls/openmls/index.html)
 [![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]
+[![Docs][docs-main-badge]][docs-main-link]
 ![Rust Version][rustc-image]
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
@@ -103,6 +104,8 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
 [rustc-image]: https://img.shields.io/badge/rustc-1.50+-blue.svg
+[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg
+[docs-main-link]: https://openmls.tech/openmls/openmls/index.html
 
 [hkdf]: https://docs.rs/hkdf/
 [sha2]: https://docs.rs/sha2
