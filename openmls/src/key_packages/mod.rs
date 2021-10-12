@@ -1,7 +1,6 @@
 use log::error;
-use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::random::OpenMlsRand;
 use openmls_traits::types::SignatureScheme;
+use openmls_traits::OpenMlsSecurity;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsSize, TlsVecU32};
 
 use crate::ciphersuite::signable::Signable;
@@ -143,7 +142,7 @@ impl KeyPackage {
     /// * verify that all mandatory extensions are present
     /// * make sure that the lifetime is valid
     /// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise
-    pub fn verify(&self, backend: &impl OpenMlsCrypto) -> Result<(), KeyPackageError> {
+    pub fn verify(&self, backend: &impl OpenMlsSecurity) -> Result<(), KeyPackageError> {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
         for extension in self.payload.extensions.iter() {
@@ -186,7 +185,7 @@ impl KeyPackage {
     }
 
     /// Compute the hash of the encoding of this key package.
-    pub fn hash(&self, backend: &impl OpenMlsCrypto) -> Vec<u8> {
+    pub fn hash(&self, backend: &impl OpenMlsSecurity) -> Vec<u8> {
         // FIXME: remove unwrap
         let bytes = self.tls_serialize_detached().unwrap();
         self.payload.ciphersuite.hash(backend, &bytes)
@@ -221,7 +220,7 @@ impl KeyPackage {
     /// `init_key`.
     fn new(
         ciphersuite_name: CiphersuiteName,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
@@ -290,12 +289,11 @@ impl KeyPackageBundlePayload {
     /// To get a key package bundle sign the `KeyPackageBundlePayload`.
     pub(crate) fn from_rekeyed_key_package(
         key_package: &KeyPackage,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Self {
         let leaf_secret = Secret::random(
             key_package.ciphersuite(),
-            rng,
+            backend,
             key_package.protocol_version(),
         );
         Self::from_key_package_and_leaf_secret(leaf_secret, key_package, backend)
@@ -307,7 +305,7 @@ impl KeyPackageBundlePayload {
     pub fn from_key_package_and_leaf_secret(
         leaf_secret: Secret,
         key_package: &KeyPackage,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Self {
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
         let (private_key, public_key) = key_package
@@ -384,14 +382,12 @@ impl KeyPackageBundle {
     pub fn new(
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
         Self::new_with_version(
             ProtocolVersion::default(),
             ciphersuites,
-            rng,
             backend,
             credential_bundle,
             extensions,
@@ -409,8 +405,7 @@ impl KeyPackageBundle {
     pub fn new_with_version(
         version: ProtocolVersion,
         ciphersuites: &[CiphersuiteName],
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
@@ -421,7 +416,7 @@ impl KeyPackageBundle {
         }
         debug_assert!(!ciphersuites.is_empty());
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_secret = Secret::random(ciphersuite, rng, version);
+        let leaf_secret = Secret::random(ciphersuite, backend, version);
         Self::new_from_leaf_secret(
             ciphersuites,
             backend,
@@ -446,7 +441,7 @@ impl KeyPackageBundle {
     /// Returns a new `KeyPackageBundle`.
     pub fn new_with_keypair(
         ciphersuites: &[CiphersuiteName],
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         credential_bundle: &CredentialBundle,
         mut extensions: Vec<Extension>,
         key_pair: HpkeKeyPair,
@@ -543,7 +538,7 @@ impl KeyPackageBundle {
 impl KeyPackageBundle {
     fn new_from_leaf_secret(
         ciphersuites: &[CiphersuiteName],
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
         leaf_secret: Secret,
@@ -593,7 +588,7 @@ impl KeyPackageBundle {
 /// described in 5.4 Ratchet Tree Evolution
 pub(crate) fn derive_leaf_node_secret(
     leaf_secret: &Secret,
-    backend: &impl OpenMlsCrypto,
+    backend: &impl OpenMlsSecurity,
 ) -> Secret {
     // FIXME: remove unwrap
     leaf_secret.derive_secret(backend, "node").unwrap()

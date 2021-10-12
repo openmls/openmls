@@ -6,9 +6,8 @@
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 use hpke::prelude::*;
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    random::OpenMlsRand,
     types::{AeadType, HashType, SignatureScheme},
+    OpenMlsSecurity,
 };
 pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -24,21 +23,16 @@ pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
 mod ciphersuites;
 mod codec;
 mod errors;
-pub mod rand;
 pub mod signable;
 
 mod ser;
 
-use crate::{
-    ciphersuite::rand::random_vec,
-    config::{Config, ConfigError, ProtocolVersion},
-};
+use crate::config::{Config, ConfigError, ProtocolVersion};
 
 use ciphersuites::*;
-// use crypto::*;
 pub(crate) use errors::*;
 
-use self::{rand::random_array, signable::SignedStruct};
+use self::signable::SignedStruct;
 
 #[cfg(test)]
 mod tests;
@@ -230,7 +224,7 @@ impl Secret {
     /// This default random initialiser uses the default Secret length of `hash_length`.
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
-        rng: &mut impl OpenMlsRand,
+        crypto: &impl OpenMlsSecurity,
         version: impl Into<Option<ProtocolVersion>>,
     ) -> Self {
         let mls_version = version.into().unwrap_or_default();
@@ -240,7 +234,7 @@ impl Secret {
             mls_version
         );
         Secret {
-            value: random_vec(rng, ciphersuite.hash_length()),
+            value: crypto.random_vec(ciphersuite.hash_length()),
             mls_version,
             ciphersuite,
         }
@@ -271,7 +265,7 @@ impl Secret {
     /// HKDF extract where `self` is `salt`.
     pub(crate) fn hkdf_extract<'a>(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         ikm_option: impl Into<Option<&'a Secret>>,
     ) -> Self {
         log::trace!("HKDF extract with {:?}", self.ciphersuite.name);
@@ -317,7 +311,7 @@ impl Secret {
     /// HKDF expand where `self` is `prk`.
     pub(crate) fn hkdf_expand(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         info: &[u8],
         okm_len: usize,
     ) -> Result<Self, CryptoError> {
@@ -338,7 +332,7 @@ impl Secret {
     /// `label` and a `context`.
     pub(crate) fn kdf_expand_label(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         label: &str,
         context: &[u8],
         length: usize,
@@ -360,7 +354,7 @@ impl Secret {
     /// `label` and an empty `context`.
     pub(crate) fn derive_secret(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         label: &str,
     ) -> Result<Secret, CryptoError> {
         log_crypto!(
@@ -434,7 +428,7 @@ impl Mac {
     /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
     /// HMAC that is also used in HKDF.
     /// Compute the HMAC on `salt` with key `ikm`.
-    pub(crate) fn new(backend: &impl OpenMlsCrypto, salt: &Secret, ikm: &[u8]) -> Self {
+    pub(crate) fn new(backend: &impl OpenMlsSecurity, salt: &Secret, ikm: &[u8]) -> Self {
         Mac {
             mac_value: salt
                 .hkdf_extract(
@@ -463,9 +457,9 @@ pub struct ReuseGuard {
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
-    pub fn from_random(rng: &mut impl OpenMlsRand) -> Self {
+    pub fn from_random(crypto: &impl OpenMlsSecurity) -> Self {
         Self {
-            value: random_array(&mut *rng),
+            value: crypto.random_array(),
         }
     }
 }
@@ -621,7 +615,7 @@ impl Ciphersuite {
     }
 
     /// Hash `payload` and return the digest.
-    pub(crate) fn hash(&self, backend: &impl OpenMlsCrypto, payload: &[u8]) -> Vec<u8> {
+    pub(crate) fn hash(&self, backend: &impl OpenMlsSecurity, payload: &[u8]) -> Vec<u8> {
         // XXX: remove unwrap
         backend.hash(self.hash, payload).unwrap()
     }
@@ -736,7 +730,7 @@ impl AeadKey {
     /// Encrypt a payload under the AeadKey given a nonce.
     pub(crate) fn aead_seal(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         msg: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
@@ -755,7 +749,7 @@ impl AeadKey {
     /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
     pub(crate) fn aead_open(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         ciphertext: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
@@ -786,7 +780,7 @@ impl AeadNonce {
     /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
     /// TODO: This panics if another thread holding the rng panics.
     #[cfg(test)]
-    pub fn random(rng: &mut impl OpenMlsRand) -> Self {
+    pub fn random(rng: &impl OpenMlsSecurity) -> Self {
         AeadNonce {
             value: random_array(rng),
         }
@@ -818,7 +812,7 @@ impl SignatureKeypair {
     /// Returns a `Result` with a `Signature` or a `CryptoError`.
     pub fn sign(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         payload: &[u8],
     ) -> Result<Signature, CryptoError> {
         self.private_key.sign(backend, payload)
@@ -828,7 +822,7 @@ impl SignatureKeypair {
     /// public key.
     pub fn verify(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         signature: &Signature,
         payload: &[u8],
     ) -> Result<(), CryptoError> {
@@ -844,11 +838,10 @@ impl SignatureKeypair {
 impl SignatureKeypair {
     pub(crate) fn new(
         signature_scheme: SignatureScheme,
-        backend: &impl OpenMlsCrypto,
-        rng: &mut impl OpenMlsRand,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<SignatureKeypair, CryptoError> {
         let (sk, pk) = backend
-            .signature_key_gen(signature_scheme, rng)
+            .signature_key_gen(signature_scheme)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(SignatureKeypair {
@@ -877,7 +870,7 @@ impl SignaturePublicKey {
     /// public key.
     pub fn verify(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         signature: &Signature,
         payload: &[u8],
     ) -> Result<(), CryptoError> {
@@ -900,7 +893,7 @@ impl SignaturePrivateKey {
     /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         payload: &[u8],
     ) -> Result<Signature, CryptoError> {
         match backend.sign(self.signature_scheme, payload, &self.value) {
@@ -908,29 +901,6 @@ impl SignaturePrivateKey {
             Err(_) => Err(CryptoError::CryptoLibraryError),
         }
     }
-
-    // /// Convert the key into a byte vector
-    // pub(crate) fn into_bytes(mut self) -> Vec<u8> {
-    //     let mut out = Vec::with_capacity(2 /* scheme */ + self.value.len());
-    //     out.extend_from_slice(&(self.signature_scheme as u16).to_be_bytes());
-    //     out.append(&mut self.value);
-    //     out
-    // }
-
-    // /// Create a new key from bytes generated with [`Self::into_bytes`].
-    // pub(crate) fn from_bytes(raw: &[u8]) -> Result<Self, String> {
-    //     if raw.len() < 2 {
-    //         return Err("Invalid PrivateKey".to_string());
-    //     }
-    //     let mut scheme = [0u8; 2];
-    //     scheme.clone_from_slice(&raw[0..2]);
-    //     let signature_scheme = SignatureScheme::try_from(u16::from_be_bytes(scheme))?;
-    //     let value = raw[2..].to_vec();
-    //     Ok(Self {
-    //         signature_scheme,
-    //         value,
-    //     })
-    // }
 }
 
 #[cfg(test)]
@@ -954,7 +924,7 @@ pub(crate) fn aead_key_gen(alg: openmls_traits::types::AeadType) -> Vec<u8> {
 
 #[cfg(test)]
 mod unit_tests {
-    use crate::test_utils::OpenMlsTestRand;
+    use rust_crypto::RustCrypto;
 
     use super::*;
 
@@ -963,9 +933,9 @@ mod unit_tests {
     /// state.
     #[test]
     fn test_xor() {
-        let mut rng = OpenMlsTestRand::new();
-        let reuse_guard: ReuseGuard = ReuseGuard::from_random(&mut rng);
-        let original_nonce = AeadNonce::random(&mut rng);
+        let crypto = &RustCrypto::default();
+        let reuse_guard: ReuseGuard = ReuseGuard::from_random(crypto);
+        let original_nonce = AeadNonce::random(crypto);
         let mut nonce = original_nonce.clone();
         nonce.xor_with_reuse_guard(&reuse_guard);
         assert_ne!(

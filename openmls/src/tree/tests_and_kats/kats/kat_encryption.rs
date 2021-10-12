@@ -132,8 +132,8 @@ pub struct EncryptionTestVector {
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: &Ciphersuite,
-    rng: &mut impl OpenMlsRand,
-    backend: &impl OpenMlsCrypto,
+    
+    backend: &impl OpenMlsSecurity,
 ) -> (MlsGroup, CredentialBundle) {
     use openmls_traits::types::SignatureScheme;
 
@@ -173,8 +173,8 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: &Ciphersuite,
-    rng: &mut impl OpenMlsRand,
-    backend: &impl OpenMlsCrypto,
+    
+    backend: &impl OpenMlsSecurity,
     group_id: &GroupId,
 ) -> MlsGroup {
     use openmls_traits::types::SignatureScheme;
@@ -214,8 +214,8 @@ fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
-    rng: &mut impl OpenMlsRand,
-    backend: &impl OpenMlsCrypto,
+    
+    backend: &impl OpenMlsSecurity,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -261,8 +261,8 @@ fn build_application_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
-    rng: &mut impl OpenMlsRand,
-    backend: &impl OpenMlsCrypto,
+    
+    backend: &impl OpenMlsSecurity,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -309,7 +309,7 @@ pub fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
     ciphersuite: &'static Ciphersuite,
-    rng: &mut impl OpenMlsRand,
+    
 ) -> EncryptionTestVector {
     use rust_crypto::RustCrypto;
 
@@ -434,7 +434,7 @@ fn write_test_vectors() {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test_vector: EncryptionTestVector,
-    rng: &mut impl OpenMlsRand,
+    
 ) -> Result<(), EncTestVectorError> {
     use rust_crypto::RustCrypto;
     use tls_codec::{Deserialize, Serialize};

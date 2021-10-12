@@ -127,8 +127,8 @@ impl ManagedTestSetup {
         default_mgc: ManagedGroupConfig,
         number_of_clients: usize,
         use_codec: CodecUse,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Self {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
@@ -179,8 +179,8 @@ impl ManagedTestSetup {
         &self,
         client: &Client,
         ciphersuite: &Ciphersuite,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<KeyPackage, SetupError> {
         let key_package = client.get_fresh_key_package(&[ciphersuite.name()], rng, backend)?;
         self.waiting_for_welcome
@@ -197,7 +197,7 @@ impl ManagedTestSetup {
     /// client by `get_fresh_key_package`.
     pub fn deliver_welcome(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         welcome: Welcome,
         group: &Group,
     ) -> Result<(), SetupError> {
@@ -236,7 +236,7 @@ impl ManagedTestSetup {
     /// also verifies that all members of that group agree on the public tree.
     pub fn distribute_to_members(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         // We need the sender to know a group member that we know can not have
         // been removed from the group.
         sender_id: &[u8],
@@ -279,9 +279,9 @@ impl ManagedTestSetup {
     /// above tests fail.
     pub fn check_group_states(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         group: &mut Group,
-        rng: &mut impl OpenMlsRand,
+        
     ) {
         let clients = self.clients.borrow();
         let mut messages = Vec::new();
@@ -356,8 +356,8 @@ impl ManagedTestSetup {
     pub fn create_group(
         &self,
         ciphersuite: &Ciphersuite,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<GroupId, SetupError> {
         // Pick a random group creator.
         let clients = self.clients.borrow();
@@ -397,8 +397,8 @@ impl ManagedTestSetup {
         &self,
         target_group_size: usize,
         ciphersuite: &Ciphersuite,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<GroupId, SetupError> {
         // Create the initial group.
         let group_id = self.create_group(ciphersuite, rng, backend)?;
@@ -437,8 +437,8 @@ impl ManagedTestSetup {
         group: &mut Group,
         client_id: &[u8],
         key_package_bundle_option: Option<KeyPackageBundle>,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let client = clients
@@ -471,8 +471,8 @@ impl ManagedTestSetup {
         group: &mut Group,
         adder_id: &[u8],
         addees: Vec<Vec<u8>>,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let adder = clients
@@ -517,8 +517,8 @@ impl ManagedTestSetup {
         group: &mut Group,
         remover_id: &[u8],
         target_indices: &[usize],
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let remover = clients
@@ -554,8 +554,8 @@ impl ManagedTestSetup {
         group: &mut Group,
         remover_id: &[u8],
         target_members: Vec<Vec<u8>>,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let mut target_indices = Vec::new();
         for target in &target_members {
@@ -583,8 +583,8 @@ impl ManagedTestSetup {
     pub fn perform_random_operation(
         &self,
         group: &mut Group,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         // Who's going to do it?
         let member_id = group.random_group_member();

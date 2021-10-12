@@ -74,7 +74,6 @@ pub trait OpenMlsCrypto {
     fn signature_key_gen(
         &self,
         alg: SignatureScheme,
-        rng: &mut impl OpenMlsRand,
     ) -> Result<(Vec<u8>, Vec<u8>), CryptoError>;
 
     /// Verify the signature

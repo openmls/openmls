@@ -15,7 +15,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<Self, WelcomeError> {
         log::debug!("MlsGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
@@ -215,7 +215,7 @@ impl MlsGroup {
     pub(crate) fn find_key_package_from_welcome_secrets(
         key_package: &KeyPackage,
         welcome_secrets: &[EncryptedGroupSecrets],
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Option<EncryptedGroupSecrets> {
         for egs in welcome_secrets {
             if key_package.hash(backend).as_slice() == egs.key_package_hash.as_slice() {

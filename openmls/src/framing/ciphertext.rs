@@ -1,4 +1,4 @@
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand};
+use openmls_traits::OpenMlsSecurity;
 use tls_codec::{
     Deserialize, Serialize, Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8,
     TlsDeserialize, TlsSerialize, TlsSize,
@@ -27,8 +27,7 @@ impl MlsCiphertext {
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
         ciphersuite: &Ciphersuite,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         context: &GroupContext,
         sender: LeafIndex,
         epoch_secrets: &EpochSecrets,
@@ -56,7 +55,7 @@ impl MlsCiphertext {
         let (generation, (ratchet_key, mut ratchet_nonce)) =
             secret_tree.secret_for_encryption(ciphersuite, backend, sender, secret_type)?;
         // Sample reuse guard uniformly at random.
-        let reuse_guard: ReuseGuard = ReuseGuard::from_random(rng);
+        let reuse_guard: ReuseGuard = ReuseGuard::from_random(backend);
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload
@@ -122,7 +121,7 @@ impl MlsCiphertext {
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {

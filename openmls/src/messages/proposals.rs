@@ -157,7 +157,7 @@ pub struct ProposalReference {
 impl ProposalReference {
     pub(crate) fn from_proposal(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         proposal: &Proposal,
     ) -> Result<Self, tls_codec::Error> {
         let encoded = proposal.tls_serialize_detached()?;
@@ -180,7 +180,7 @@ impl<'a> QueuedProposal<'a> {
     /// Creates a new `QueuedProposal` from an `MlsPlaintext`
     pub(crate) fn from_mls_plaintext(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         mls_plaintext: &'a MlsPlaintext,
     ) -> Result<Self, QueuedProposalError> {
         debug_assert!(mls_plaintext.content_type() == &ContentType::Proposal);
@@ -199,7 +199,7 @@ impl<'a> QueuedProposal<'a> {
     /// Creates a new `QueuedProposal` from a `Proposal` and `Sender`
     pub(crate) fn from_proposal_and_sender(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         proposal: &'a Proposal,
         sender: Sender,
     ) -> Result<Self, QueuedProposalError> {
@@ -245,7 +245,7 @@ impl<'a> ProposalQueue<'a> {
     /// don't need filtering
     pub(crate) fn from_proposals_by_reference(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         proposals: &'a [&MlsPlaintext],
     ) -> Self {
         let mut proposal_queue = ProposalQueue::default();
@@ -262,7 +262,7 @@ impl<'a> ProposalQueue<'a> {
     /// don't need filtering
     pub(crate) fn from_committed_proposals(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         committed_proposals: &'a [ProposalOrRef],
         proposals_by_reference: &[&'a MlsPlaintext],
         sender: Sender,
@@ -324,7 +324,7 @@ impl<'a> ProposalQueue<'a> {
     /// own node were included
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         proposals_by_reference: &'a [&MlsPlaintext],
         proposals_by_value: &'a [&Proposal],
         own_index: LeafIndex,

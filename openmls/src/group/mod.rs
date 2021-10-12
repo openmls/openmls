@@ -17,7 +17,7 @@ use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;
 
-use openmls_traits::random::OpenMlsRand;
+use openmls_traits::OpenMlsSecurity;
 pub(crate) use serde::{Deserialize, Serialize};
 
 pub use errors::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError, WelcomeError};
@@ -36,9 +36,9 @@ pub struct GroupId {
 }
 
 impl GroupId {
-    pub fn random(rng: &mut impl OpenMlsRand) -> Self {
+    pub fn random(rng: &impl OpenMlsSecurity) -> Self {
         Self {
-            value: rand::random_vec(rng, 16).into(),
+            value: rng.random_vec(16).into(),
         }
     }
     pub fn from_slice(bytes: &[u8]) -> Self {

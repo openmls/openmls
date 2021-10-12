@@ -101,7 +101,7 @@ impl ExternalPskBundle {
     /// Create a new bundle
     pub fn new(
         ciphersuite: &Ciphersuite,
-        rng: &mut impl OpenMlsRand,
+        
         secret: Secret,
         psk_id: Vec<u8>,
     ) -> Self {
@@ -270,7 +270,7 @@ impl PskSecret {
     /// Create a new `PskSecret` from PSK IDs and PSKs
     pub fn new(
         ciphersuite: &'static Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         psk_ids: &[PreSharedKeyId],
         psks: &[Secret],
     ) -> Result<Self, PskSecretError> {

@@ -48,7 +48,7 @@ impl TestClient {
     pub(crate) fn find_key_package_bundle(
         &self,
         key_package: &KeyPackage,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Option<KeyPackageBundle> {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles

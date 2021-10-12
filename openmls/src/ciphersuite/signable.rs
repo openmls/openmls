@@ -50,7 +50,7 @@ pub trait Signable: Sized {
     /// Returns a `Signature`.
     fn sign(
         self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         credential_bundle: &CredentialBundle,
     ) -> Result<Self::SignedOutput, CredentialError>
     where
@@ -86,7 +86,7 @@ pub trait Verifiable: Sized {
     /// `CredentialError::InvalidSignature` otherwise.
     fn verify<T>(
         self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         credential: &Credential,
     ) -> Result<T, CredentialError>
     where
@@ -105,7 +105,7 @@ pub trait Verifiable: Sized {
     /// `CredentialError::InvalidSignature` otherwise.
     fn verify_no_out(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         credential: &Credential,
     ) -> Result<(), CredentialError> {
         let payload = self.unsigned_payload()?;

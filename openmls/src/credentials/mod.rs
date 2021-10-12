@@ -3,7 +3,7 @@ mod errors;
 pub use codec::*;
 pub use errors::*;
 
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::SignatureScheme};
+use openmls_traits::{types::SignatureScheme, OpenMlsSecurity};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
@@ -59,7 +59,7 @@ impl Credential {
     /// in a credential.
     pub fn verify(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         payload: &[u8],
         signature: &Signature,
     ) -> Result<(), CredentialError> {
@@ -120,7 +120,7 @@ pub struct BasicCredential {
 impl BasicCredential {
     pub fn verify(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         payload: &[u8],
         signature: &Signature,
     ) -> Result<(), CredentialError> {
@@ -165,11 +165,10 @@ impl CredentialBundle {
         identity: Vec<u8>,
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<Self, CredentialError> {
         let (private_key, public_key) =
-            SignatureKeypair::new(signature_scheme, backend, rng)?.into_tuple();
+            SignatureKeypair::new(signature_scheme, backend)?.into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity: identity.into(),
@@ -195,7 +194,7 @@ impl CredentialBundle {
     /// Sign a `msg` using the private key of the credential bundle.
     pub(crate) fn sign(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         msg: &[u8],
     ) -> Result<Signature, CryptoError> {
         self.signature_private_key.sign(backend, msg)

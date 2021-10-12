@@ -44,7 +44,7 @@ pub(crate) fn derive_tree_secret(
     node: u32,
     generation: u32,
     length: usize,
-    backend: &impl OpenMlsCrypto,
+    backend: &impl OpenMlsSecurity,
 ) -> Secret {
     log::debug!(
         "Derive tree secret with label \"{}\" for node {} in generation {} of length {}",
@@ -122,7 +122,7 @@ impl SecretTree {
     fn initialize_sender_ratchets(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         index: LeafIndex,
     ) -> Result<(), SecretTreeError> {
         log::trace!(
@@ -205,7 +205,7 @@ impl SecretTree {
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         index: LeafIndex,
         secret_type: SecretType,
         generation: u32,
@@ -233,7 +233,7 @@ impl SecretTree {
     pub(crate) fn secret_for_encryption(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         index: LeafIndex,
         secret_type: SecretType,
     ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
@@ -280,7 +280,7 @@ impl SecretTree {
     fn derive_down(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         index_in_tree: NodeIndex,
     ) {
         log::debug!(

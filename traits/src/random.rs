@@ -3,6 +3,7 @@
 //! The [`OpenMlsRand`] trait defines the functionality required by OpenMLS to
 //! source randomness.
 
-use rand::{CryptoRng, RngCore};
-
-pub trait OpenMlsRand: RngCore + CryptoRng {}
+pub trait OpenMlsRand {
+    fn random_array<const N: usize>(&self) -> [u8; N];
+    fn random_vec(&self, len: usize) -> Vec<u8>;
+}

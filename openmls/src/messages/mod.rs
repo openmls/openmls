@@ -252,7 +252,7 @@ impl GroupInfo {
     pub(crate) fn re_sign(
         self,
         credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<Self, CredentialError> {
         self.payload.sign(backend, credential_bundle)
     }
@@ -410,7 +410,7 @@ impl PublicGroupState {
     pub(crate) fn new(
         mls_group: &MlsGroup,
         credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<Self, CredentialError> {
         let ciphersuite = mls_group.ciphersuite();
         let (_external_priv, external_pub) = mls_group

@@ -71,8 +71,8 @@ impl MlsGroup {
     pub fn new(
         id: &[u8],
         ciphersuite_name: CiphersuiteName,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+
+        backend: &impl OpenMlsSecurity,
         key_package_bundle: KeyPackageBundle,
         config: MlsGroupConfig,
         psk_option: impl Into<Option<PskSecret>>,
@@ -100,7 +100,7 @@ impl MlsGroup {
         let joiner_secret = JoinerSecret::new(
             backend,
             commit_secret,
-            &InitSecret::random(ciphersuite, rng, version),
+            &InitSecret::random(ciphersuite, version),
         );
 
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_option);
@@ -129,7 +129,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<Self, MlsGroupError> {
         Ok(Self::new_from_welcome_internal(
             welcome,
@@ -153,7 +153,7 @@ impl MlsGroup {
 
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
@@ -180,7 +180,7 @@ impl MlsGroup {
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
@@ -205,7 +205,7 @@ impl MlsGroup {
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let remove_proposal = RemoveProposal {
             removed: removed_index.into(),
@@ -232,7 +232,7 @@ impl MlsGroup {
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
@@ -265,8 +265,8 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+
+        backend: &impl OpenMlsSecurity,
     ) -> CreateCommitResult {
         self.create_commit_internal(
             framing_parameters,
@@ -275,7 +275,6 @@ impl MlsGroup {
             proposals_by_value,
             force_self_update,
             psk_fetcher_option,
-            rng,
             backend,
         )
     }
@@ -287,7 +286,7 @@ impl MlsGroup {
         proposals: &[&MlsPlaintext],
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(), MlsGroupError> {
         Ok(self.apply_commit_internal(
             mls_plaintext,
@@ -305,8 +304,8 @@ impl MlsGroup {
         msg: &[u8],
         credential_bundle: &CredentialBundle,
         padding_size: usize,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsCiphertext, MlsGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
             self.sender_index(),
@@ -317,7 +316,7 @@ impl MlsGroup {
             self.epoch_secrets().membership_key(),
             backend,
         )?;
-        self.encrypt(mls_plaintext, padding_size, rng, backend)
+        self.encrypt(mls_plaintext, padding_size, backend)
     }
 
     // Encrypt an MlsPlaintext into an MlsCiphertext
@@ -325,14 +324,12 @@ impl MlsGroup {
         &mut self,
         mls_plaintext: MlsPlaintext,
         padding_size: usize,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsCiphertext, MlsGroupError> {
         log::trace!("{:?}", mls_plaintext.confirmation_tag());
         MlsCiphertext::try_from_plaintext(
             &mls_plaintext,
             self.ciphersuite,
-            rng,
             backend,
             self.context(),
             self.sender_index(),
@@ -347,7 +344,7 @@ impl MlsGroup {
     pub fn decrypt(
         &mut self,
         mls_ciphertext: &MlsCiphertext,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let mls_plaintext = mls_ciphertext.to_plaintext(
             self.ciphersuite(),
@@ -362,7 +359,7 @@ impl MlsGroup {
     pub fn verify(
         &self,
         verifiable: VerifiableMlsPlaintext,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         // Verify the signature on the plaintext.
         let tree = self.tree();
@@ -386,7 +383,7 @@ impl MlsGroup {
     /// Verify the membership tag an MlsPlaintext
     pub fn verify_membership_tag(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         mls_plaintext: &MlsPlaintext,
     ) -> Result<(), MlsGroupError> {
         let serialized_context = self.context().tls_serialize_detached()?;
@@ -403,7 +400,7 @@ impl MlsGroup {
     /// Exporter
     pub fn export_secret(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         label: &str,
         context: &[u8],
         key_length: usize,
@@ -474,7 +471,7 @@ impl MlsGroup {
     /// Export the `PublicGroupState`
     pub fn export_public_group_state(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, CredentialError> {
         PublicGroupState::new(self, credential_bundle, backend)
@@ -530,7 +527,7 @@ pub type PskFetcher =
 
 pub(crate) fn update_confirmed_transcript_hash(
     ciphersuite: &Ciphersuite,
-    backend: &impl OpenMlsCrypto,
+    backend: &impl OpenMlsSecurity,
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, tls_codec::Error> {
@@ -543,7 +540,7 @@ pub(crate) fn update_confirmed_transcript_hash(
 
 pub(crate) fn update_interim_transcript_hash(
     ciphersuite: &Ciphersuite,
-    backend: &impl OpenMlsCrypto,
+    backend: &impl OpenMlsSecurity,
     mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, tls_codec::Error> {
@@ -556,7 +553,7 @@ pub(crate) fn update_interim_transcript_hash(
 
 fn psk_output(
     ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCrypto,
+    backend: &impl OpenMlsSecurity,
     psk_fetcher_option: Option<PskFetcher>,
     presharedkeys: &PreSharedKeys,
 ) -> Result<Option<PskSecret>, PskError> {

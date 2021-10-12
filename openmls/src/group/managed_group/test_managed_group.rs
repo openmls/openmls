@@ -17,8 +17,8 @@ fn generate_credential_bundle(
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_scheme: SignatureScheme,
-    rng: &mut impl OpenMlsRand,
-    backend: &impl OpenMlsCrypto,
+    
+    backend: &impl OpenMlsSecurity,
 ) -> Result<Credential, CredentialError> {
     let cb = CredentialBundle::new(identity, credential_type, signature_scheme, rng, backend)?;
     let credential = cb.credential().clone();
@@ -31,8 +31,8 @@ fn generate_key_package_bundle(
     ciphersuites: &[CiphersuiteName],
     credential: &Credential,
     extensions: Vec<Extension>,
-    rng: &mut impl OpenMlsRand,
-    backend: &impl OpenMlsCrypto,
+    
+    backend: &impl OpenMlsSecurity,
 ) -> Result<KeyPackage, KeyPackageError> {
     let credential_bundle = key_store.read(credential.signature_key()).unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, rng, backend, extensions)?;

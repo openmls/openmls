@@ -73,7 +73,7 @@ pub struct TreeKemTestVector {
 
 pub fn run_test_vector(
     test_vector: TreeKemTestVector,
-    rng: &mut impl OpenMlsRand,
+    
 ) -> Result<(), TreeKemTestVectorError> {
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
@@ -315,7 +315,7 @@ fn write_test_vector() {
 pub fn generate_test_vector(
     n_leaves: u32,
     ciphersuite: &'static Ciphersuite,
-    rng: &mut impl OpenMlsRand,
+    
 ) -> TreeKemTestVector {
     use openmls_traits::key_store::OpenMlsKeyStore;
 

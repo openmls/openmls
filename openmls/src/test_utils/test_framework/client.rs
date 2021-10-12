@@ -31,8 +31,8 @@ impl Client {
     pub fn get_fresh_key_package(
         &self,
         ciphersuites: &[CiphersuiteName],
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<KeyPackage, ClientError> {
         if ciphersuites.is_empty() {
             return Err(ClientError::NoCiphersuite);
@@ -68,8 +68,8 @@ impl Client {
         group_id: GroupId,
         managed_group_config: ManagedGroupConfig,
         ciphersuite: &Ciphersuite,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(), ClientError> {
         let credential = self
             .credentials
@@ -111,7 +111,7 @@ impl Client {
     /// support the ciphersuite, or if an error occurs processing the `Welcome`.
     pub fn join_group(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         managed_group_config: ManagedGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
@@ -134,7 +134,7 @@ impl Client {
     /// messages.
     pub fn receive_messages_for_group(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsSecurity,
         message: &MlsMessageIn,
     ) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
@@ -183,8 +183,8 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_package_bundle_option: Option<KeyPackageBundle>,
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
@@ -217,8 +217,8 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
@@ -253,8 +253,8 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         target_indices: &[usize],
-        rng: &mut impl OpenMlsRand,
-        backend: &impl OpenMlsCrypto,
+        
+        backend: &impl OpenMlsSecurity,
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.borrow_mut();
         let group = groups
