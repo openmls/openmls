@@ -11,8 +11,6 @@ use tls_codec::{
     TlsSerialize, TlsSize, TlsVecU32,
 };
 
-pub mod rand;
-
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to
 /// `/clients/register`.

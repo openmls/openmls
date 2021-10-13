@@ -2,6 +2,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
 use openmls::prelude::*;
+use rust_crypto::RustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -34,17 +35,20 @@ pub struct User {
     pub(crate) groups: RefCell<HashMap<Vec<u8>, Group>>,
     pub(crate) identity: RefCell<Identity>,
     backend: Backend,
+    crypto: RustCrypto,
 }
 
 impl User {
     /// Create a new user with the given name and a fresh set of credentials.
     pub fn new(username: String) -> Self {
+        let crypto = RustCrypto::default();
         let out = Self {
             username: username.clone(),
             groups: RefCell::new(HashMap::new()),
             contacts: HashMap::new(),
-            identity: RefCell::new(Identity::new(CIPHERSUITE, username.as_bytes())),
+            identity: RefCell::new(Identity::new(CIPHERSUITE, &crypto, username.as_bytes())),
             backend: Backend::default(),
+            crypto,
         };
 
         match out.backend.register_client(&out) {
@@ -58,7 +62,7 @@ impl User {
     /// Get the key packages fo this user.
     pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
         vec![(
-            self.identity.borrow().kpb.key_package().hash(),
+            self.identity.borrow().kpb.key_package().hash(&self.crypto),
             self.identity.borrow().kpb.key_package().clone(),
         )]
     }
@@ -91,6 +95,7 @@ impl User {
             msg.as_bytes(),
             &self.identity.borrow().credential,
             PADDING_SIZE,
+            &self.crypto,
         ) {
             Ok(m) => m,
             Err(e) => return Err(format!("{}", e)),
@@ -135,17 +140,19 @@ impl User {
                         }
                     };
                     let msg = match message {
-                        DsMlsMessage::Ciphertext(ctxt) => match group.decrypt(&ctxt) {
-                            Ok(msg) => msg,
-                            Err(e) => {
-                                log::error!(
-                                    "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
-                                    e
-                                );
-                                continue;
+                        DsMlsMessage::Ciphertext(ctxt) => {
+                            match group.decrypt(&ctxt, &self.crypto) {
+                                Ok(msg) => msg,
+                                Err(e) => {
+                                    log::error!(
+                                        "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
+                                        e
+                                    );
+                                    continue;
+                                }
                             }
-                        },
-                        DsMlsMessage::Plaintext(msg) => match group.verify(msg) {
+                        }
+                        DsMlsMessage::Plaintext(msg) => match group.verify(msg, &self.crypto) {
                             Ok(msg) => msg,
                             Err(e) => {
                                 log::error!(
@@ -192,6 +199,7 @@ impl User {
                                     .collect::<Vec<&MlsPlaintext>>()),
                                 &[], // TODO: store key packages.
                                 None,
+                                &self.crypto,
                             ) {
                                 Ok(_) => (),
                                 Err(e) => {
@@ -236,11 +244,12 @@ impl User {
         let group_id = name.as_bytes();
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
-        let kpb = self.identity.borrow_mut().update();
+        let kpb = self.identity.borrow_mut().update(&self.crypto);
         let config = MlsGroupConfig::default();
         let mls_group = MlsGroup::new(
             group_id,
             CIPHERSUITE,
+            &self.crypto,
             kpb,
             config,
             None, /* Initial PSK */
@@ -295,7 +304,7 @@ impl User {
         let add_proposal = group
             .mls_group
             .borrow()
-            .create_add_proposal(framing_parameters, credentials, key_package)
+            .create_add_proposal(framing_parameters, credentials, key_package, &self.crypto)
             .expect("Could not create proposal.");
         let proposals = vec![&add_proposal];
         let (commit, welcome_msg, _kpb) = group
@@ -308,13 +317,14 @@ impl User {
                 &[],
                 false,
                 None,
+                &self.crypto,
             )
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
         group
             .mls_group
             .borrow_mut()
-            .apply_commit(&commit, &[&add_proposal], &[], None)
+            .apply_commit(&commit, &[&add_proposal], &[], None, &self.crypto)
             .expect("error applying commit");
 
         // Send Welcome to the client.
@@ -352,10 +362,13 @@ impl User {
     fn join_group(&self, welcome: Welcome) -> Result<(), String> {
         log::debug!("{} joining group ...", self.username);
 
-        let kpb = self.identity.borrow_mut().update();
+        let kpb = self.identity.borrow_mut().update(&self.crypto);
         let mls_group = match MlsGroup::new_from_welcome(
-            welcome, None, /* no public tree here, has to be in the extension */
-            kpb, None, /* PSK fetcher */
+            welcome,
+            None, /* no public tree here, has to be in the extension */
+            kpb,
+            None, /* PSK fetcher */
+            &self.crypto,
         ) {
             Ok(g) => g,
             Err(e) => {

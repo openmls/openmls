@@ -1,6 +1,5 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
-use ds_lib::rand::DsRand;
 use openmls_traits::types::SignatureScheme;
 use rust_crypto::RustCrypto;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
@@ -42,19 +41,16 @@ async fn test_list_clients() {
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let crypto = &RustCrypto::default();
-    let mut rng = DsRand::new();
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
-        &mut rng,
         crypto,
     )
     .unwrap();
     let client_id = credential_bundle.credential().identity().to_vec();
     let client_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &mut rng, crypto, vec![])
-            .unwrap();
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
     let client_key_package = vec![(
         client_key_package_bundle.key_package().hash(crypto),
         client_key_package_bundle.key_package().clone(),
@@ -121,7 +117,6 @@ async fn test_list_clients() {
 #[actix_rt::test]
 async fn test_group() {
     let crypto = &RustCrypto::default();
-    let mut rng = DsRand::new();
     let data = web::Data::new(Mutex::new(DsData::default()));
     let mut app = test::init_service(
         App::new()
@@ -146,13 +141,11 @@ async fn test_group() {
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
             SignatureScheme::from(ciphersuite),
-            &mut rng,
             crypto,
         )
         .unwrap();
         let client_key_package =
-            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &mut rng, crypto, vec![])
-                .unwrap();
+            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(
@@ -181,7 +174,6 @@ async fn test_group() {
     let mut group = MlsGroup::new(
         group_id,
         group_ciphersuite,
-        &mut rng,
         crypto,
         key_package_bundles.remove(0),
         MlsGroupConfig::default(),
@@ -219,7 +211,12 @@ async fn test_group() {
 
     // With the key package we can build a proposal.
     let client2_add_proposal = group
-        .create_add_proposal(framing_parameters, &credentials[0], client2_key_package, crypto)
+        .create_add_proposal(
+            framing_parameters,
+            &credentials[0],
+            client2_key_package,
+            crypto,
+        )
         .unwrap();
     let epoch_proposals_ref = vec![&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
@@ -230,7 +227,6 @@ async fn test_group() {
             &[],
             false,
             None,
-            &mut rng,
             crypto,
         )
         .expect("Error creating commit");
@@ -293,14 +289,7 @@ async fn test_group() {
     // === Client2 sends a message to the group ===
     let client2_message = b"Thanks for adding me Client1.";
     let mls_ciphertext = group_on_client2
-        .create_application_message(
-            &[],
-            &client2_message[..],
-            &credentials[1],
-            0,
-            &mut rng,
-            crypto,
-        )
+        .create_application_message(&[], &client2_message[..], &credentials[1], 0, crypto)
         .unwrap();
 
     // Send mls_ciphertext to the group
