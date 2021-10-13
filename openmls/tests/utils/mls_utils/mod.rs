@@ -9,9 +9,8 @@ use std::collections::HashMap;
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
 use openmls::prelude::*;
-use openmls::test_utils::OpenMlsTestRand;
-use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::SignatureScheme;
+use openmls_traits::OpenMlsSecurity;
 use rust_crypto::RustCrypto;
 
 /// Configuration of a client meant to be used in a test setup.
@@ -71,7 +70,6 @@ const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>> = HashMap::new();
@@ -88,7 +86,6 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
                 SignatureScheme::from(ciphersuite),
-                &mut rng,
                 &crypto,
             )
             .unwrap();
@@ -106,7 +103,6 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
                     &[ciphersuite],
                     &credential_bundle,
-                    &mut rng,
                     &crypto,
                     mandatory_extensions,
                 )
@@ -157,7 +153,6 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         let mls_group = MlsGroup::new(
             &group_id.to_be_bytes(),
             group_config.ciphersuite,
-            &mut rng,
             &crypto,
             initial_key_package_bundle,
             group_config.config,
@@ -213,7 +208,6 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     &[],
                     true, /* Set this to true to populate the tree a little bit. */
                     None, /* PSKs are not supported here */
-                    &mut rng,
                     &crypto,
                 )
                 .unwrap();

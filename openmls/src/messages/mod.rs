@@ -7,7 +7,7 @@ use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::OpenMlsSecurity;
 use serde::{Deserialize, Serialize};
 
 mod codec;
@@ -351,25 +351,24 @@ impl GroupSecrets {
     #[cfg(any(feature = "test-utils", test))]
     pub fn random_encoded(
         ciphersuite: &'static Ciphersuite,
-        rng: &mut impl openmls_traits::random::OpenMlsRand,
+        backend: &impl OpenMlsSecurity,
         version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let psk_id = PreSharedKeyId::new(
             External,
-            Psk::External(ExternalPsk::new(crate::ciphersuite::rand::random_vec(
-                rng,
-                ciphersuite.hash_length(),
-            ))),
-            crate::ciphersuite::rand::random_vec(rng, ciphersuite.hash_length()),
+            Psk::External(ExternalPsk::new(
+                backend.random_vec(ciphersuite.hash_length()),
+            )),
+            backend.random_vec(ciphersuite.hash_length()),
         );
         let psks = PreSharedKeys {
             psks: vec![psk_id].into(),
         };
 
         GroupSecrets::new_encoded(
-            &JoinerSecret::random(ciphersuite, rng, version),
+            &JoinerSecret::random(ciphersuite, backend, version),
             Some(&PathSecret {
-                path_secret: Secret::random(ciphersuite, rng, version),
+                path_secret: Secret::random(ciphersuite, backend, version),
             }),
             &psks,
         )

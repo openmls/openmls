@@ -32,6 +32,7 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
+use openmls_traits::OpenMlsSecurity;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
@@ -101,13 +102,13 @@ impl ExternalPskBundle {
     /// Create a new bundle
     pub fn new(
         ciphersuite: &Ciphersuite,
-        
+        backend: &impl OpenMlsSecurity,
         secret: Secret,
         psk_id: Vec<u8>,
     ) -> Self {
         Self {
             secret,
-            nonce: crate::ciphersuite::rand::random_vec(rng, ciphersuite.hash_length()),
+            nonce: backend.random_vec(ciphersuite.hash_length()),
             external_psk: ExternalPsk {
                 psk_id: psk_id.into(),
             },
@@ -311,7 +312,7 @@ impl PskSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &mut impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }

@@ -10,14 +10,12 @@ use crate::{
         CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
     },
     prelude::FramingParameters,
-    test_utils::OpenMlsTestRand,
 };
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
 /// signed
 #[test]
 fn test_pgs() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
@@ -28,7 +26,6 @@ fn test_pgs() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -36,7 +33,6 @@ fn test_pgs() {
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -45,7 +41,6 @@ fn test_pgs() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -55,7 +50,6 @@ fn test_pgs() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -66,7 +60,6 @@ fn test_pgs() {
         let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
-            &mut rng,
             &crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
@@ -91,7 +84,6 @@ fn test_pgs() {
             &[],
             true,
             None,
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,

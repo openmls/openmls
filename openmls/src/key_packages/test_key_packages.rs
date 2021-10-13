@@ -2,12 +2,10 @@ use rust_crypto::RustCrypto;
 use tls_codec::Deserialize;
 
 use crate::config::*;
-use crate::test_utils::OpenMlsTestRand;
 use crate::{extensions::*, key_packages::*};
 
 #[test]
 fn generate_key_package() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -15,7 +13,6 @@ fn generate_key_package() {
             vec![1, 2, 3],
             CredentialType::Basic,
             ciphersuite.name().into(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -25,7 +22,6 @@ fn generate_key_package() {
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
-            &mut rng,
             &crypto,
             vec![lifetime_extension],
         )
@@ -38,7 +34,6 @@ fn generate_key_package() {
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
-            &mut rng,
             &crypto,
             vec![lifetime_extension],
         )
@@ -51,7 +46,6 @@ fn generate_key_package() {
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
-            &mut rng,
             &crypto,
             vec![lifetime_extension.clone(), lifetime_extension],
         );
@@ -61,7 +55,6 @@ fn generate_key_package() {
 
 #[test]
 fn test_codec() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -70,14 +63,12 @@ fn test_codec() {
             id,
             CredentialType::Basic,
             ciphersuite.name().into(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
         let mut kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -96,7 +87,6 @@ fn test_codec() {
 
 #[test]
 fn key_package_id_extension() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -105,14 +95,12 @@ fn key_package_id_extension() {
             id,
             CredentialType::Basic,
             ciphersuite.name().into(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
-            &mut rng,
             &crypto,
             vec![Extension::LifeTime(LifetimeExtension::new(60))],
         )
@@ -136,7 +124,6 @@ fn key_package_id_extension() {
 #[test]
 fn test_mismatch() {
     // === KeyPackageBundle negative test ===
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
 
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -146,19 +133,12 @@ fn test_mismatch() {
         vec![1, 2, 3],
         CredentialType::Basic,
         signature_scheme,
-        &mut rng,
         &crypto,
     )
     .expect("Could not create credential bundle");
 
     assert_eq!(
-        KeyPackageBundle::new(
-            &[ciphersuite_name],
-            &credential_bundle,
-            &mut rng,
-            &crypto,
-            vec![],
-        ),
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, vec![],),
         Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch)
     );
 
@@ -171,17 +151,11 @@ fn test_mismatch() {
         vec![1, 2, 3],
         CredentialType::Basic,
         signature_scheme,
-        &mut rng,
         &crypto,
     )
     .expect("Could not create credential bundle");
 
-    assert!(KeyPackageBundle::new(
-        &[ciphersuite_name],
-        &credential_bundle,
-        &mut rng,
-        &crypto,
-        vec![]
-    )
-    .is_ok());
+    assert!(
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, vec![]).is_ok()
+    );
 }

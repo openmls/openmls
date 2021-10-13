@@ -94,6 +94,7 @@ use crate::{
 };
 
 use itertools::izip;
+use rust_crypto::RustCrypto;
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -132,7 +133,6 @@ pub struct EncryptionTestVector {
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: &Ciphersuite,
-    
     backend: &impl OpenMlsSecurity,
 ) -> (MlsGroup, CredentialBundle) {
     use openmls_traits::types::SignatureScheme;
@@ -141,14 +141,12 @@ fn group(
         "Kreator".into(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite.name()),
-        rng,
         backend,
     )
     .unwrap();
     let key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &credential_bundle,
-        rng,
         backend,
         Vec::new(),
     )
@@ -158,7 +156,6 @@ fn group(
         MlsGroup::new(
             &group_id,
             ciphersuite.name(),
-            rng,
             backend,
             key_package_bundle,
             MlsGroupConfig::default(),
@@ -173,7 +170,6 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: &Ciphersuite,
-    
     backend: &impl OpenMlsSecurity,
     group_id: &GroupId,
 ) -> MlsGroup {
@@ -183,14 +179,12 @@ fn receiver_group(
         "Receiver".into(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite.name()),
-        rng,
         backend,
     )
     .unwrap();
     let key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &credential_bundle,
-        rng,
         backend,
         Vec::new(),
     )
@@ -198,7 +192,6 @@ fn receiver_group(
     MlsGroup::new(
         group_id.as_slice(),
         ciphersuite.name(),
-        rng,
         backend,
         key_package_bundle,
         MlsGroupConfig::default(),
@@ -214,7 +207,6 @@ fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
-    
     backend: &impl OpenMlsSecurity,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
@@ -223,7 +215,7 @@ fn build_handshake_messages(
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
         group.ciphersuite(),
-        rng,
+        backend,
         None, /* MLS version */
     ));
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
@@ -241,7 +233,6 @@ fn build_handshake_messages(
     let ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         group.ciphersuite(),
-        rng,
         backend,
         group.context(),
         leaf,
@@ -261,7 +252,6 @@ fn build_application_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
-    
     backend: &impl OpenMlsSecurity,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
@@ -270,7 +260,7 @@ fn build_application_messages(
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
         group.ciphersuite(),
-        rng,
+        backend,
         None, /* MLS version */
     ));
     let mut plaintext = MlsPlaintext::new_application(
@@ -287,7 +277,6 @@ fn build_application_messages(
     let ciphertext = match MlsCiphertext::try_from_plaintext(
         &plaintext,
         group.ciphersuite(),
-        rng,
         backend,
         group.context(),
         leaf,
@@ -309,27 +298,24 @@ pub fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
     ciphersuite: &'static Ciphersuite,
-    
 ) -> EncryptionTestVector {
-    use rust_crypto::RustCrypto;
-
-    use crate::ciphersuite::rand::random_vec;
+    use openmls_traits::random::OpenMlsRand;
 
     let ciphersuite_name = ciphersuite.name();
     let crypto = RustCrypto::default();
-    let epoch_secret = random_vec(rng, ciphersuite.hash_length());
+    let epoch_secret = crypto.random_vec(ciphersuite.hash_length());
     let encryption_secret =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
     let encryption_secret_group =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
     let encryption_secret_bytes = encryption_secret.as_slice().to_vec();
-    let sender_data_secret = SenderDataSecret::random(ciphersuite, rng);
+    let sender_data_secret = SenderDataSecret::random(ciphersuite, &crypto);
     let sender_data_secret_bytes = sender_data_secret.as_slice();
     let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(n_leaves));
     let group_secret_tree = SecretTree::new(encryption_secret_group, LeafIndex::from(n_leaves));
 
     // Create sender_data_key/secret
-    let ciphertext = random_vec(rng, 77);
+    let ciphertext = crypto.random_vec(77);
     let sender_data_key = sender_data_secret.derive_aead_key(&crypto, &ciphertext);
     // Derive initial nonce from the key schedule using the ciphertext.
     let sender_data_nonce = sender_data_secret.derive_aead_nonce(ciphersuite, &crypto, &ciphertext);
@@ -339,7 +325,7 @@ pub fn generate_test_vector(
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let (mut group, credential_bundle) = group(ciphersuite, rng, &crypto);
+    let (mut group, credential_bundle) = group(ciphersuite, &crypto);
     *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
         sender_data_secret_bytes,
         ProtocolVersion::default(),
@@ -366,7 +352,7 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
-                build_application_messages(leaf, &mut group, &credential_bundle, rng, &crypto);
+                build_application_messages(leaf, &mut group, &credential_bundle, &crypto);
             println!("Sender Group: {:?}", group);
             application.push(RatchetStep {
                 key: application_key_string,
@@ -389,7 +375,7 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) =
-                build_handshake_messages(leaf, &mut group, &credential_bundle, rng, &crypto);
+                build_handshake_messages(leaf, &mut group, &credential_bundle, &crypto);
 
             handshake.push(RatchetStep {
                 key: handshake_key_string,
@@ -417,13 +403,12 @@ pub fn generate_test_vector(
 
 #[test]
 fn write_test_vectors() {
-    let mut rng = OpenMlsTestRand::new();
     let mut tests = Vec::new();
     const NUM_GENERATIONS: u32 = 20;
 
     for ciphersuite in Config::supported_ciphersuites() {
         for n_leaves in 1u32..20 {
-            let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite, &mut rng);
+            let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite);
             tests.push(test);
         }
     }
@@ -432,11 +417,7 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn run_test_vector(
-    test_vector: EncryptionTestVector,
-    
-) -> Result<(), EncTestVectorError> {
-    use rust_crypto::RustCrypto;
+pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
     let crypto = RustCrypto::default();
@@ -554,12 +535,8 @@ pub fn run_test_vector(
             let mls_ciphertext_application =
                 MlsCiphertext::tls_deserialize(&mut ctxt_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
-            let mut group = receiver_group(
-                ciphersuite,
-                rng,
-                &crypto,
-                &mls_ciphertext_application.group_id,
-            );
+            let mut group =
+                receiver_group(ciphersuite, &crypto, &mls_ciphertext_application.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
                 ProtocolVersion::default(),
@@ -666,12 +643,8 @@ pub fn run_test_vector(
             let mls_ciphertext_handshake =
                 MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MLSCiphertext");
-            let mut group = receiver_group(
-                ciphersuite,
-                rng,
-                &crypto,
-                &mls_ciphertext_handshake.group_id,
-            );
+            let mut group =
+                receiver_group(ciphersuite, &crypto, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 &hex_to_bytes(&test_vector.sender_data_secret),
                 ProtocolVersion::default(),
@@ -703,11 +676,10 @@ pub fn run_test_vector(
 
 #[test]
 fn read_test_vectors() {
-    let mut rng = OpenMlsTestRand::new();
     let tests: Vec<EncryptionTestVector> = read("test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, &mut rng) {
+        match run_test_vector(test_vector) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking encryption test vector.\n{:?}", e),
         }
@@ -725,7 +697,7 @@ fn read_test_vectors() {
     ];
     for &tv_file in tv_files.iter() {
         let tv: EncryptionTestVector = read(tv_file);
-        run_test_vector(tv, &mut rng).expect("Error while checking key schedule test vector.");
+        run_test_vector(tv).expect("Error while checking key schedule test vector.");
     }
 
     log::trace!("Finished test vector verification");

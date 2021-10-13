@@ -1,10 +1,9 @@
 use rust_crypto::RustCrypto;
 
-use crate::{test_utils::OpenMlsTestRand, tree::*};
+use crate::tree::*;
 
 #[test]
 fn test_parent_hash() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of leaf nodes in the tree
@@ -18,18 +17,12 @@ fn test_parent_hash() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
-                &mut rng,
                 &crypto,
             )
             .unwrap();
-            let key_package_bundle = KeyPackageBundle::new(
-                &[ciphersuite.name()],
-                &credential_bundle,
-                &mut rng,
-                &crypto,
-                vec![],
-            )
-            .unwrap();
+            let key_package_bundle =
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -60,7 +53,7 @@ fn test_parent_hash() {
                 let (_private_key, public_key) = ciphersuite
                     .derive_hpke_keypair(&Secret::random(
                         ciphersuite,
-                        &mut rng,
+                        &crypto,
                         None, /* MLS version */
                     ))
                     .into_keys();

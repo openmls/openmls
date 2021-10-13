@@ -7,13 +7,11 @@ use crate::{
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
     prelude::*,
     schedule::psk::*,
-    test_utils::OpenMlsTestRand,
     tree::{TreeError, UpdatePath, UpdatePathNode},
 };
 
 #[test]
 fn test_mls_group_persistence() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
@@ -22,7 +20,6 @@ fn test_mls_group_persistence() {
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
         &crypto,
     )
     .unwrap();
@@ -31,7 +28,6 @@ fn test_mls_group_persistence() {
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &alice_credential_bundle,
-        &mut rng,
         &crypto,
         Vec::new(),
     )
@@ -42,7 +38,6 @@ fn test_mls_group_persistence() {
     let alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
-        &mut rng,
         &crypto,
         alice_key_package_bundle,
         MlsGroupConfig::default(),
@@ -67,12 +62,11 @@ fn test_mls_group_persistence() {
 
 #[test]
 fn test_failed_groupinfo_decryption() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for version in Config::supported_versions() {
         for ciphersuite in Config::supported_ciphersuites() {
             let epoch = GroupEpoch(123);
-            let group_id = GroupId::random(&mut rng);
+            let group_id = GroupId::random(&crypto);
             let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
@@ -92,11 +86,11 @@ fn test_failed_groupinfo_decryption() {
 
             // Generate key and nonce for the symmetric cipher.
             let welcome_key = AeadKey::random(ciphersuite);
-            let welcome_nonce = AeadNonce::random(&mut rng);
+            let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
             let receiver_key_pair =
-                ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &mut rng, None));
+                ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &crypto, None));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
@@ -111,7 +105,6 @@ fn test_failed_groupinfo_decryption() {
                 "Alice".into(),
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
-                &mut rng,
                 &crypto,
             )
             .unwrap();
@@ -122,7 +115,6 @@ fn test_failed_groupinfo_decryption() {
             let key_package_bundle = KeyPackageBundle::new(
                 &[ciphersuite.name()],
                 &alice_credential_bundle,
-                &mut rng,
                 &crypto,
                 vec![],
             )
@@ -175,7 +167,6 @@ fn test_failed_groupinfo_decryption() {
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 fn test_update_path() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Basic group setup.
@@ -187,7 +178,6 @@ fn test_update_path() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -195,7 +185,6 @@ fn test_update_path() {
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -204,7 +193,6 @@ fn test_update_path() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -213,7 +201,6 @@ fn test_update_path() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -225,7 +212,6 @@ fn test_update_path() {
         let mut alice_group = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
-            &mut rng,
             &crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
@@ -252,7 +238,6 @@ fn test_update_path() {
                 &[],
                 false,
                 None,
-                &mut rng,
                 &crypto,
             )
             .expect("Error creating commit");
@@ -288,7 +273,6 @@ fn test_update_path() {
         let bob_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -310,7 +294,6 @@ fn test_update_path() {
                 &[],
                 false, /* force self update */
                 None,
-                &mut rng,
                 &crypto,
             )
             .unwrap();
@@ -402,7 +385,6 @@ fn test_update_path() {
 
 // Test several scenarios when PSKs are used in a group
 ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     fn psk_fetcher(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>> {
         let psk_id = vec![1u8, 2, 3];
@@ -435,7 +417,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
+
         &crypto,
     )
     .unwrap();
@@ -443,18 +425,18 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
+
         &crypto,
     )
     .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, &mut rng, &crypto, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle,  &crypto, Vec::new())
             .unwrap();
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &mut rng, &crypto, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle,  &crypto, Vec::new())
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -462,10 +444,10 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let group_id = [1, 2, 3, 4];
     let psk_id = vec![1u8, 2, 3];
 
-    let secret = Secret::random(ciphersuite, &mut rng, None /* MLS version */);
+    let secret = Secret::random(ciphersuite,  &crypto, None /* MLS version */);
     let external_psk_bundle = ExternalPskBundle::new(
         ciphersuite,
-        &mut rng,
+        &crypto,
         secret,
         psk_id,
     );
@@ -479,7 +461,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
-        &mut rng,
+
         &crypto,
         alice_key_package_bundle,
         MlsGroupConfig::default(),
@@ -516,7 +498,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             &[],
             false,
             Some(psk_fetcher),
-            &mut rng,
+
             &crypto,
         )
         .expect("Error creating commit");
@@ -544,7 +526,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &mut rng, &crypto, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle,  &crypto, Vec::new())
             .unwrap();
 
     let update_proposal_bob = group_bob
@@ -563,7 +545,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             &[],
             false, /* force self update */
             None,
-            &mut rng,
+
             &crypto,
         )
         .unwrap();

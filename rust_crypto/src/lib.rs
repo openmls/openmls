@@ -25,6 +25,7 @@ use p256::{
 use rand::{RngCore, SeedableRng};
 use sha2::{Digest, Sha256, Sha512};
 
+#[derive(Debug)]
 pub struct RustCrypto {
     rng: RwLock<rand_chacha::ChaCha20Rng>,
     values: RwLock<HashMap<u64, Vec<u8>>>,

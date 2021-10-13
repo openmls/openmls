@@ -7,7 +7,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
-use crate::{prelude::*, test_utils::OpenMlsTestRand};
+use crate::prelude::*;
 
 #[test]
 fn capabilities() {
@@ -79,7 +79,6 @@ fn lifetime() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = &RustCrypto::default();
 
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
@@ -94,7 +93,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
         crypto,
     )
     .unwrap();
@@ -102,7 +100,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
         crypto,
     )
     .unwrap();
@@ -111,7 +108,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let alice_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             crypto,
             Vec::new(),
         )
@@ -120,7 +116,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let bob_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             crypto,
             Vec::new(),
         )
@@ -137,7 +132,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
-        &mut rng,
         crypto,
         alice_key_package_bundle,
         config,
@@ -159,7 +153,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             &[],
             false,
             None,
-            &mut rng,
             crypto,
         )
         .expect("Error creating commit");
@@ -193,11 +186,11 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, &mut rng, crypto, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, crypto, Vec::new())
             .unwrap();
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &mut rng, crypto, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, crypto, Vec::new())
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -210,7 +203,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
-        &mut rng,
         crypto,
         alice_key_package_bundle,
         config,
@@ -232,7 +224,6 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             &[],
             false,
             None,
-            &mut rng,
             crypto,
         )
         .expect("Error creating commit");

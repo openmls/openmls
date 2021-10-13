@@ -1,6 +1,5 @@
 use rust_crypto::RustCrypto;
 
-use crate::test_utils::OpenMlsTestRand;
 use crate::tree::sender_ratchet::SenderRatchet;
 
 use crate::config::Config;
@@ -8,12 +7,11 @@ use crate::prelude::{LeafIndex, Secret};
 
 #[test]
 fn test_ratchet_generations() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = &RustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let leaf0 = LeafIndex::from(0usize);
-        let secret = Secret::random(ciphersuite, &mut rng, Config::supported_versions()[0]);
+        let secret = Secret::random(ciphersuite, crypto, Config::supported_versions()[0]);
         let mut linear_ratchet = SenderRatchet::new(leaf0, &secret);
         let mut testratchet = SenderRatchet::new(leaf0, &secret);
 

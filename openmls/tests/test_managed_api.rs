@@ -1,18 +1,12 @@
 use openmls::{
     prelude::*,
-    test_utils::{
-        test_framework::{ActionType, CodecUse, ManagedTestSetup},
-        OpenMlsTestRand,
-    },
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
 };
-use rust_crypto::RustCrypto;
 
 mod utils;
 
 #[test]
 fn test_managed_api() {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     // Some basic setup functions for the managed group.
     let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
@@ -30,14 +24,10 @@ fn test_managed_api() {
         managed_group_config,
         number_of_clients,
         CodecUse::SerializedMessages,
-        &mut rng,
-        &crypto,
     );
 
     for ciphersuite in Config::supported_ciphersuites() {
-        let group_id = setup
-            .create_random_group(3, ciphersuite, &mut rng, &crypto)
-            .unwrap();
+        let group_id = setup.create_random_group(3, ciphersuite).unwrap();
         let mut groups = setup.groups.borrow_mut();
         let group = groups.get_mut(&group_id).unwrap();
 
@@ -45,31 +35,17 @@ fn test_managed_api() {
         let (_, adder_id) = group.members[0].clone();
         let new_members = setup.random_new_members_for_group(group, 2).unwrap();
         setup
-            .add_clients(
-                ActionType::Commit,
-                group,
-                &adder_id,
-                new_members,
-                &mut rng,
-                &crypto,
-            )
+            .add_clients(ActionType::Commit, group, &adder_id, new_members)
             .unwrap();
 
         // Remove a member
         let (_, remover_id) = group.members[2].clone();
         let (_, target_id) = group.members[3].clone();
         setup
-            .remove_clients(
-                ActionType::Commit,
-                group,
-                &remover_id,
-                vec![target_id],
-                &mut rng,
-                &crypto,
-            )
+            .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .unwrap();
 
         // Check that all group members agree on the same group state.
-        setup.check_group_states(&crypto, group, &mut rng);
+        setup.check_group_states(group);
     }
 }

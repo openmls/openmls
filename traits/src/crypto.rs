@@ -2,10 +2,7 @@
 //!
 //! This trait defines all cryptographic functions used by OpenMLS.
 
-use crate::{
-    random::OpenMlsRand,
-    types::{AeadType, CryptoError, HashType, SignatureScheme},
-};
+use crate::types::{AeadType, CryptoError, HashType, SignatureScheme};
 
 pub trait OpenMlsCrypto {
     /// Check whether the [`SignatureScheme`] is supported or not.
@@ -71,10 +68,7 @@ pub trait OpenMlsCrypto {
     ///
     /// Returns an error if the [`SignatureScheme`] is not supported or the key
     /// generation fails.
-    fn signature_key_gen(
-        &self,
-        alg: SignatureScheme,
-    ) -> Result<(Vec<u8>, Vec<u8>), CryptoError>;
+    fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError>;
 
     /// Verify the signature
     ///

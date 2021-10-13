@@ -8,17 +8,18 @@
 use std::convert::TryFrom;
 
 use crate::{
-    ciphersuite::{rand::random_vec, Ciphersuite, CiphersuiteName},
+    ciphersuite::{Ciphersuite, CiphersuiteName},
     config::{Config, ProtocolVersion},
     group::{GroupContext, GroupEpoch, GroupId},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
-    test_utils::{bytes_to_hex, hex_to_bytes, OpenMlsTestRand},
+    test_utils::{bytes_to_hex, hex_to_bytes},
 };
 
 #[cfg(test)]
 use crate::test_utils::{read, write};
 
 use hpke::HpkeKeyPair;
+use openmls_traits::random::OpenMlsRand;
 use rust_crypto::RustCrypto;
 use serde::{self, Deserialize, Serialize};
 
@@ -75,11 +76,10 @@ fn generate(
     GroupContext,
     HpkeKeyPair,
 ) {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
-    let tree_hash = random_vec(&mut rng, ciphersuite.hash_length());
-    let commit_secret = CommitSecret::random(ciphersuite, &mut rng);
-    let psk_secret = PskSecret::random(ciphersuite, &mut rng);
+    let tree_hash = crypto.random_vec(ciphersuite.hash_length());
+    let commit_secret = CommitSecret::random(ciphersuite, &crypto);
+    let psk_secret = PskSecret::random(ciphersuite, &crypto);
     let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret);
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
@@ -89,7 +89,7 @@ fn generate(
     );
     let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 
-    let confirmed_transcript_hash = random_vec(&mut rng, ciphersuite.hash_length());
+    let confirmed_transcript_hash = crypto.random_vec(ciphersuite.hash_length());
 
     let group_context = GroupContext::new(
         GroupId::from_slice(group_id),
@@ -127,12 +127,12 @@ pub fn generate_test_vector(
     ciphersuite: &'static Ciphersuite,
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
-    let mut rng = OpenMlsTestRand::new();
+    let crypto = RustCrypto::default();
 
     // Set up setting.
-    let mut init_secret = InitSecret::random(ciphersuite, &mut rng, ProtocolVersion::default());
+    let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default());
     let initial_init_secret = init_secret.clone();
-    let group_id = random_vec(&mut rng, 16);
+    let group_id = crypto.random_vec(16);
 
     let mut epochs = Vec::new();
 

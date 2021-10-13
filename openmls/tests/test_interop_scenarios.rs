@@ -1,11 +1,7 @@
 use openmls::{
     prelude::*,
-    test_utils::{
-        test_framework::{ActionType, CodecUse, ManagedTestSetup},
-        OpenMlsTestRand,
-    },
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
 };
-use rust_crypto::RustCrypto;
 
 #[macro_use]
 mod utils;
@@ -35,8 +31,6 @@ fn default_managed_group_config() -> ManagedGroupConfig {
 // A->B: Welcome
 // ***:  Verify group state
 ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let number_of_clients = 2;
@@ -44,13 +38,11 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
         default_managed_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
-        &mut rng,
-        &crypto,
     );
 
     // Create a group with a random creator.
     let group_id = setup
-        .create_group(ciphersuite, &mut rng,&crypto)
+        .create_group(ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
@@ -61,11 +53,11 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
     let bob_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id, &mut rng, &crypto)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
         .expect("Error adding Bob");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(&crypto, group, &mut rng);
+    setup.check_group_states(group);
 });
 
 // # 3-party join
@@ -77,8 +69,6 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
 // A->C: Welcome
 // ***:  Verify group state
 ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -87,13 +77,11 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
         default_managed_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
-        &mut rng,
-        &crypto,
     );
 
     // Create a group with a random creator.
     let group_id = setup
-        .create_group(ciphersuite, &mut rng, &crypto)
+        .create_group(ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
@@ -105,18 +93,18 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id, &mut rng, &crypto)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
         .expect("Error adding Bob");
 
     // A vector including Charly's id.
     let charly_id = setup.random_new_members_for_group(group, 1).unwrap();
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, charly_id, &mut rng, &crypto)
+        .add_clients(ActionType::Commit, group, &alice_id, charly_id)
         .expect("Error adding Charly");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(&crypto, group, &mut rng);
+    setup.check_group_states(group);
 });
 
 // # Multiple joins at once
@@ -127,8 +115,6 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
 // A->C: Welcome
 // ***:  Verify group state
 ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -137,13 +123,11 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
         default_managed_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
-        &mut rng,
-        &crypto,
     );
 
     // Create a group with a random creator.
     let group_id = setup
-        .create_group(ciphersuite, &mut rng, &crypto)
+        .create_group(ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
@@ -155,11 +139,11 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id, &mut rng, &crypto)
+        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id)
         .expect("Error adding Bob and Charly");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(&crypto, group, &mut rng);
+    setup.check_group_states(group);
 });
 
 // TODO #192, #286, #289: The external join test should go here.
@@ -171,8 +155,6 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
 // A->B: Update, Commit
 // ***:  Verify group state
 ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -181,13 +163,11 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
         default_managed_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
-        &mut rng,
-        &crypto,
     );
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
-        .create_random_group(2, ciphersuite, &mut rng, &crypto)
+        .create_random_group(2, ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
@@ -196,11 +176,11 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
 
     // Let Alice create an update with a self-generated KeyPackageBundle.
     setup
-        .self_update(ActionType::Commit, group, &alice_id, None, &mut rng, &crypto)
+        .self_update(ActionType::Commit, group, &alice_id, None)
         .expect("Error self-updating.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(&crypto, group, &mut rng);
+    setup.check_group_states(group);
 });
 
 // # Remove
@@ -212,8 +192,6 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
 // A->B: Remove(B), Commit
 // ***:  Verify group state
 ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -222,13 +200,11 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
         default_managed_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
-        &mut rng,
-        &crypto,
     );
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
-        .create_random_group(2, ciphersuite, &mut rng, &crypto)
+        .create_random_group(2, ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
@@ -238,11 +214,11 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
 
     // Have alice remove Bob.
     setup
-        .remove_clients(ActionType::Commit, group, &alice_id, vec![bob_id], &mut rng, &crypto)
+        .remove_clients(ActionType::Commit, group, &alice_id, vec![bob_id])
         .expect("Error removing Bob from the group.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(&crypto, group, &mut rng);
+    setup.check_group_states(group);
 });
 
 // TODO #141, #284: The external PSK, resumption and re-init tests should go
@@ -257,8 +233,6 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
 // * While the group size is >1, a randomly-chosen group member removes a
 //   randomly-chosen other group member
 ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -268,15 +242,13 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
         default_managed_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
-        &mut rng,
-        &crypto,
     );
 
     // Create a group with all available clients. The process includes creating
     // a one-person group and then adding new members in bunches of up to 5,
     // each bunch by a random group member.
     let group_id = setup
-        .create_random_group(number_of_clients, ciphersuite, &mut rng, &crypto)
+        .create_random_group(number_of_clients, ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
@@ -287,7 +259,7 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
     // delivered to each member.
     for (_, member_id) in &group_members {
         setup
-            .self_update(ActionType::Commit, group, member_id, None, &mut rng, &crypto)
+            .self_update(ActionType::Commit, group, member_id, None)
             .expect("Error while updating group.")
     }
 
@@ -299,12 +271,12 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
             target_id = group.random_group_member();
         }
         setup
-            .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id], &mut rng, &crypto)
+            .remove_clients(ActionType::Commit, group, &remover_id, vec![target_id])
             .expect("Error while removing group member.");
         group_members = group.members.clone();
-        setup.check_group_states(&crypto, group, &mut rng);
+        setup.check_group_states(group);
     }
 
     // Check that group members agree on a group state.
-    setup.check_group_states(&crypto, group, &mut rng);
+    setup.check_group_states(group);
 });

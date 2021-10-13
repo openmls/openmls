@@ -16,7 +16,6 @@ use crate::{
     },
     prelude::FramingParameters,
     schedule::MembershipKey,
-    test_utils::OpenMlsTestRand,
     tree::index::*,
 };
 
@@ -25,7 +24,6 @@ use crate::{
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Framing parameters
@@ -35,7 +33,6 @@ fn proposal_queue_functions() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -43,7 +40,6 @@ fn proposal_queue_functions() {
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -56,7 +52,6 @@ fn proposal_queue_functions() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -64,7 +59,6 @@ fn proposal_queue_functions() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -73,7 +67,6 @@ fn proposal_queue_functions() {
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions,
         )
@@ -81,14 +74,9 @@ fn proposal_queue_functions() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify(&crypto).is_ok());
 
-        let group_context = GroupContext::new(
-            GroupId::random(&mut rng),
-            GroupEpoch(0),
-            vec![],
-            vec![],
-            &[],
-        )
-        .expect("Could not create new GroupContext");
+        let group_context =
+            GroupContext::new(GroupId::random(&crypto), GroupEpoch(0), vec![], vec![], &[])
+                .expect("Could not create new GroupContext");
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
@@ -123,7 +111,7 @@ fn proposal_queue_functions() {
             proposal_add_alice1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &crypto, None)),
             &crypto,
         )
         .expect("Could not create proposal.");
@@ -133,7 +121,7 @@ fn proposal_queue_functions() {
             proposal_add_alice2,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &crypto, None)),
             &crypto,
         )
         .expect("Could not create proposal.");
@@ -143,7 +131,7 @@ fn proposal_queue_functions() {
             proposal_add_bob1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, &mut rng, None)),
+            &MembershipKey::from_secret(Secret::random(ciphersuite, &crypto, None)),
             &crypto,
         )
         .expect("Could not create proposal.");
@@ -177,7 +165,6 @@ fn proposal_queue_functions() {
 /// Test, that we the ProposalQueue is iterated in the right order.
 #[test]
 fn proposal_queue_order() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Framing parameters
@@ -187,7 +174,6 @@ fn proposal_queue_order() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .expect("Could not create CredentialBundle");
@@ -195,7 +181,6 @@ fn proposal_queue_order() {
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .expect("Could not create CredentialBundle");
@@ -204,7 +189,6 @@ fn proposal_queue_order() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -212,7 +196,6 @@ fn proposal_queue_order() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -221,7 +204,6 @@ fn proposal_queue_order() {
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -229,14 +211,9 @@ fn proposal_queue_order() {
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify(&crypto).is_ok());
 
-        let group_context = GroupContext::new(
-            GroupId::random(&mut rng),
-            GroupEpoch(0),
-            vec![],
-            vec![],
-            &[],
-        )
-        .unwrap();
+        let group_context =
+            GroupContext::new(GroupId::random(&crypto), GroupEpoch(0), vec![], vec![], &[])
+                .unwrap();
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
@@ -260,7 +237,7 @@ fn proposal_queue_order() {
             &group_context,
             &MembershipKey::from_secret(Secret::random(
                 ciphersuite,
-                &mut rng,
+                &crypto,
                 None, /* MLS version */
             )),
             &crypto,
@@ -274,7 +251,7 @@ fn proposal_queue_order() {
             &group_context,
             &MembershipKey::from_secret(Secret::random(
                 ciphersuite,
-                &mut rng,
+                &crypto,
                 None, /* MLS version */
             )),
             &crypto,

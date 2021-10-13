@@ -1,5 +1,4 @@
 use log::{debug, trace};
-use openmls_traits::crypto::OpenMlsCrypto;
 use psk::{PreSharedKeys, PskSecret};
 
 mod apply_commit;
@@ -71,7 +70,6 @@ impl MlsGroup {
     pub fn new(
         id: &[u8],
         ciphersuite_name: CiphersuiteName,
-
         backend: &impl OpenMlsSecurity,
         key_package_bundle: KeyPackageBundle,
         config: MlsGroupConfig,
@@ -100,7 +98,7 @@ impl MlsGroup {
         let joiner_secret = JoinerSecret::new(
             backend,
             commit_secret,
-            &InitSecret::random(ciphersuite, version),
+            &InitSecret::random(ciphersuite, backend, version),
         );
 
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_option);

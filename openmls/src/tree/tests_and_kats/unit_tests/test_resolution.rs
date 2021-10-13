@@ -2,10 +2,7 @@ use rust_crypto::RustCrypto;
 
 use crate::{
     group::ManagedGroupConfig,
-    test_utils::{
-        test_framework::{ActionType, CodecUse, ManagedTestSetup},
-        OpenMlsTestRand,
-    },
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
     tree::*,
 };
 
@@ -13,7 +10,6 @@ use crate::{
 /// works as intended.
 #[test]
 fn test_exclusion_list() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of nodes in the tree
@@ -35,18 +31,12 @@ fn test_exclusion_list() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
-                &mut rng,
                 &crypto,
             )
             .unwrap();
-            let key_package_bundle = KeyPackageBundle::new(
-                &[ciphersuite.name()],
-                &credential_bundle,
-                &mut rng,
-                &crypto,
-                vec![],
-            )
-            .unwrap();
+            let key_package_bundle =
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -102,7 +92,6 @@ fn test_exclusion_list() {
 /// parent hashes
 #[test]
 fn test_original_child_resolution() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of leaf nodes in the tree
@@ -122,18 +111,12 @@ fn test_original_child_resolution() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
-                &mut rng,
                 &crypto,
             )
             .unwrap();
-            let key_package_bundle = KeyPackageBundle::new(
-                &[ciphersuite.name()],
-                &credential_bundle,
-                &mut rng,
-                &crypto,
-                vec![],
-            )
-            .unwrap();
+            let key_package_bundle =
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -178,7 +161,7 @@ fn test_original_child_resolution() {
         let (_private_key, public_key) = ciphersuite
             .derive_hpke_keypair(&Secret::random(
                 ciphersuite,
-                &mut rng,
+                &crypto,
                 None, /* MLS version */
             ))
             .into_keys();
@@ -216,8 +199,6 @@ fn test_original_child_resolution() {
 /// of a parent node higher up in the tree.
 #[test]
 fn test_exclusion_for_parent_nodes() {
-    let mut rng = OpenMlsTestRand::new();
-    let crypto = RustCrypto::default();
     // Create a large tree members.
     let managed_group_config = ManagedGroupConfig::test_default();
 
@@ -228,13 +209,9 @@ fn test_exclusion_for_parent_nodes() {
         managed_group_config,
         number_of_clients,
         CodecUse::SerializedMessages,
-        &mut rng,
-        &crypto,
     );
 
-    let group_id = setup
-        .create_group(Ciphersuite::default(), &mut rng, &crypto)
-        .unwrap();
+    let group_id = setup.create_group(Ciphersuite::default()).unwrap();
 
     let mut groups = setup.groups.borrow_mut();
     let group = groups.get_mut(&group_id).unwrap();
@@ -250,14 +227,7 @@ fn test_exclusion_for_parent_nodes() {
     // Have one client add all the other clients, such that only the direct path
     // of the group creator is non-blank.
     setup
-        .add_clients(
-            ActionType::Commit,
-            group,
-            &group_creator_id,
-            addees,
-            &mut rng,
-            &crypto,
-        )
+        .add_clients(ActionType::Commit, group, &group_creator_id, addees)
         .unwrap();
 
     // Now we have two clients in the right tree half do an update. This is such
@@ -268,27 +238,13 @@ fn test_exclusion_for_parent_nodes() {
     let (_, updater_id) = group.members[12].clone();
 
     setup
-        .self_update(
-            ActionType::Commit,
-            group,
-            &updater_id,
-            None,
-            &mut rng,
-            &crypto,
-        )
+        .self_update(ActionType::Commit, group, &updater_id, None)
         .unwrap();
 
     let (_, updater_id) = group.members[8].clone();
 
     setup
-        .self_update(
-            ActionType::Commit,
-            group,
-            &updater_id,
-            None,
-            &mut rng,
-            &crypto,
-        )
+        .self_update(ActionType::Commit, group, &updater_id, None)
         .unwrap();
 
     // Now we add the final group member, which should lead to an unmerged leaf
@@ -305,13 +261,6 @@ fn test_exclusion_for_parent_nodes() {
     // root. If there is an error, it will be bubbled up by the test framework,
     // triggering the `expect` and thus failing the test.
     setup
-        .add_clients(
-            ActionType::Commit,
-            group,
-            &group_creator_id,
-            addees,
-            &mut rng,
-            &crypto,
-        )
+        .add_clients(ActionType::Commit, group, &group_creator_id, addees)
         .expect("Error when adding new client to group.")
 }

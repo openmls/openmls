@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 use crate::test_utils::{read, write};
 
 use crate::{
-    ciphersuite::{rand::random_vec, signable::Verifiable, Ciphersuite, CiphersuiteName, Secret},
+    ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret},
     config::{Config, ProtocolVersion},
     credentials::{Credential, CredentialBundle, CredentialType},
     group::{
@@ -22,10 +22,10 @@ use crate::{
         MlsPlaintextCommitAuthData, MlsPlaintextCommitContent, VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
-    test_utils::{bytes_to_hex, hex_to_bytes, OpenMlsTestRand},
+    test_utils::{bytes_to_hex, hex_to_bytes},
 };
 
-use openmls_traits::types::SignatureScheme;
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme};
 use rust_crypto::RustCrypto;
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
@@ -49,22 +49,21 @@ pub struct TranscriptTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTestVector {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     // Generate random values.
-    let group_id = GroupId::random(&mut rng);
+    let group_id = GroupId::random(&crypto);
     let epoch = random_u64();
-    let tree_hash_before = random_vec(&mut rng, ciphersuite.hash_length());
-    let confirmed_transcript_hash_before = random_vec(&mut rng, ciphersuite.hash_length());
-    let interim_transcript_hash_before = random_vec(&mut rng, ciphersuite.hash_length());
+    let tree_hash_before = crypto.random_vec(ciphersuite.hash_length());
+    let confirmed_transcript_hash_before = crypto.random_vec(ciphersuite.hash_length());
+    let interim_transcript_hash_before = crypto.random_vec(ciphersuite.hash_length());
     let membership_key = MembershipKey::from_secret(Secret::random(
         ciphersuite,
-        &mut rng,
+        &crypto,
         None, /* MLS version */
     ));
     let confirmation_key = ConfirmationKey::from_secret(Secret::random(
         ciphersuite,
-        &mut rng,
+        &crypto,
         None, /* MLS version */
     ));
 
@@ -73,7 +72,6 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         b"client".to_vec(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite.name()),
-        &mut rng,
         &crypto,
     )
     .unwrap();
@@ -85,7 +83,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &[], // extensions
     )
     .expect("Error creating group context");
-    let aad = random_vec(&mut rng, 48);
+    let aad = crypto.random_vec(48);
     let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
     let mut commit = MlsPlaintext::new_commit(
         framing_parameters,

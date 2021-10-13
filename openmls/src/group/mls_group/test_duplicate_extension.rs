@@ -1,15 +1,12 @@
 //! # Ratchet tree extensions unit test
 use super::*;
 
-use crate::{
-    messages::GroupSecrets, prelude::*, schedule::KeySchedule, test_utils::OpenMlsTestRand,
-};
+use crate::{messages::GroupSecrets, prelude::*, schedule::KeySchedule};
 use rust_crypto::RustCrypto;
 use tls_codec::Deserialize;
 
 // This tests the ratchet tree extension to test if the duplicate detection works
 ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
@@ -22,7 +19,6 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
         &crypto,
     )
     .unwrap();
@@ -30,18 +26,17 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
         &crypto,
     )
     .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, &mut rng, &crypto, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, &crypto, Vec::new())
             .unwrap();
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &mut rng, &crypto, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &crypto, Vec::new())
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -56,7 +51,6 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
-        &mut rng,
         &crypto,
         alice_key_package_bundle,
         config,
@@ -83,7 +77,6 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
             &[],
             false,
             None,
-            &mut rng,
             &crypto,
         )
         .expect("Error creating commit");

@@ -2,23 +2,21 @@
 
 use openmls::ciphersuite::signable::Signable;
 use openmls::prelude::*;
-use openmls::test_utils::OpenMlsTestRand;
 use rust_crypto::RustCrypto;
 
 #[macro_use]
 mod utils;
 
 ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteName) {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let id = vec![1, 2, 3];
     let credential_bundle =
-        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.signature_scheme(), &mut rng, &crypto).unwrap();
+        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.signature_scheme(),&crypto).unwrap();
     let kpb =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &mut rng, &crypto, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle,&crypto, Vec::new()).unwrap();
 
     // After creation, the signature should be ok.
     assert!(kpb.key_package().verify(&crypto).is_ok());

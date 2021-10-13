@@ -7,7 +7,7 @@ use crate::key_packages::*;
 use crate::schedule::psk::*;
 use crate::tree::index::*;
 
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::OpenMlsSecurity;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::convert::TryFrom;

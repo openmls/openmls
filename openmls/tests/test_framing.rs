@@ -1,11 +1,10 @@
-use openmls::{prelude::*, test_utils::OpenMlsTestRand};
+use openmls::prelude::*;
 mod utils;
 use rust_crypto::RustCrypto;
 use utils::mls_utils::*;
 
 #[test]
 fn padding() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     // Create a test config for a single client supporting all possible
     // ciphersuites.
@@ -54,7 +53,6 @@ fn padding() {
                         &message,
                         credential_bundle,
                         padding_size,
-                        &mut rng,
                         &crypto,
                     )
                     .unwrap();

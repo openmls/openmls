@@ -1,8 +1,6 @@
 //! Test utilities
 #![allow(dead_code)]
 
-use openmls_traits::random::OpenMlsRand;
-use rand::{CryptoRng, RngCore, SeedableRng};
 use serde::{self, de::DeserializeOwned, Serialize};
 use std::{
     fs::File,

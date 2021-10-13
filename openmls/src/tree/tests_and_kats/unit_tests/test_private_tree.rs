@@ -1,13 +1,13 @@
 //! Unit test for PrivateTree
 
+use openmls_traits::OpenMlsSecurity;
 use rust_crypto::RustCrypto;
 
 use super::test_util::*;
 use crate::{
-    ciphersuite::{rand::random_vec, *},
+    ciphersuite::*,
     credentials::*,
     key_packages::*,
-    test_utils::OpenMlsTestRand,
     tree::{
         index::{LeafIndex, NodeIndex},
         private_tree::*,
@@ -16,24 +16,16 @@ use crate::{
 
 // Common setup for tests.
 fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex, Vec<NodeIndex>) {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let credential_bundle = CredentialBundle::new(
         "username".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &mut rng,
         &crypto,
     )
     .unwrap();
-    let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &credential_bundle,
-        &mut rng,
-        &crypto,
-        vec![],
-    )
-    .unwrap();
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![]).unwrap();
     let own_index = LeafIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 
@@ -46,14 +38,14 @@ fn test_private_tree(
     direct_path: &[NodeIndex],
     public_keys: &[HpkePublicKey],
     ciphersuite: &Ciphersuite,
+    crypto: &impl OpenMlsSecurity,
 ) {
-    let mut rng = OpenMlsTestRand::new();
     // Check that we can encrypt to a public key.
     let path_index = 15;
     let index = direct_path[path_index];
     let public_key = &public_keys[path_index];
     let private_key = private_tree.path_keys().get(index).unwrap();
-    let data = random_vec(&mut rng, 55);
+    let data = crypto.random_vec(55);
     let info = b"PrivateTree Test Info";
     let aad = b"PrivateTree Test AAD";
 
@@ -85,6 +77,12 @@ fn create_private_tree_from_secret() {
 
         assert_eq!(public_keys.len(), direct_path.len());
 
-        test_private_tree(&private_tree, &direct_path, &public_keys, ciphersuite);
+        test_private_tree(
+            &private_tree,
+            &direct_path,
+            &public_keys,
+            ciphersuite,
+            &crypto,
+        );
     }
 }

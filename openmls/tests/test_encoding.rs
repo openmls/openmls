@@ -1,4 +1,4 @@
-use openmls::{ciphersuite::signable::Verifiable, prelude::*, test_utils::OpenMlsTestRand};
+use openmls::{ciphersuite::signable::Verifiable, prelude::*};
 pub mod utils;
 use rust_crypto::RustCrypto;
 use tls_codec::{Deserialize, Serialize};
@@ -51,7 +51,6 @@ fn create_encoding_test_setup() -> TestSetup {
 #[test]
 /// This test tests encoding and decoding of application messages.
 fn test_application_message_encoding() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
@@ -68,7 +67,7 @@ fn test_application_message_encoding() {
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
-                .create_application_message(&aad, &message, credential_bundle, 0, &mut rng, &crypto)
+                .create_application_message(&aad, &message, credential_bundle, 0, &crypto)
                 .unwrap();
             let encrypted_message_bytes = encrypted_message.tls_serialize_detached().unwrap();
             let encrypted_message_decoded =
@@ -84,7 +83,6 @@ fn test_application_message_encoding() {
 #[test]
 /// This test tests encoding and decoding of update proposals.
 fn test_update_proposal_encoding() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
@@ -109,7 +107,6 @@ fn test_update_proposal_encoding() {
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions,
         )
@@ -142,7 +139,6 @@ fn test_update_proposal_encoding() {
 #[test]
 /// This test tests encoding and decoding of add proposals.
 fn test_add_proposal_encoding() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
@@ -167,7 +163,6 @@ fn test_add_proposal_encoding() {
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions,
         )
@@ -215,7 +210,12 @@ fn test_remove_proposal_encoding() {
             .unwrap();
 
         let remove = group_state
-            .create_remove_proposal(framing_parameters, credential_bundle, LeafIndex::from(1u32), &crypto)
+            .create_remove_proposal(
+                framing_parameters,
+                credential_bundle,
+                LeafIndex::from(1u32),
+                &crypto,
+            )
             .expect("Could not create proposal.");
         let remove_encoded = remove
             .tls_serialize_detached()
@@ -236,7 +236,6 @@ fn test_remove_proposal_encoding() {
 /// This test tests encoding and decoding of commit messages.
 #[test]
 fn test_commit_encoding() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
@@ -261,7 +260,6 @@ fn test_commit_encoding() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             alice_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -315,7 +313,6 @@ fn test_commit_encoding() {
                 &[],
                 true,
                 None,
-                &mut rng,
                 &crypto,
             )
             .unwrap();
@@ -335,7 +332,6 @@ fn test_commit_encoding() {
 
 #[test]
 fn test_welcome_message_encoding() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
@@ -377,7 +373,6 @@ fn test_welcome_message_encoding() {
                 &[],
                 true,
                 None,
-                &mut rng,
                 &crypto,
             )
             .unwrap();

@@ -1,4 +1,4 @@
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::OpenMlsSecurity;
 
 use crate::{
     ciphersuite::Signature,

@@ -1,9 +1,8 @@
-use openmls::{prelude::*, test_utils::OpenMlsTestRand};
+use openmls::prelude::*;
 use rust_crypto::RustCrypto;
 
 #[test]
 fn create_commit_optional_path() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
@@ -15,7 +14,6 @@ fn create_commit_optional_path() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -23,7 +21,6 @@ fn create_commit_optional_path() {
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -36,7 +33,6 @@ fn create_commit_optional_path() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -45,7 +41,6 @@ fn create_commit_optional_path() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -55,7 +50,6 @@ fn create_commit_optional_path() {
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions,
         )
@@ -68,7 +62,6 @@ fn create_commit_optional_path() {
         let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
-            &mut rng,
             &crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
@@ -97,7 +90,6 @@ fn create_commit_optional_path() {
                 &[],
                 true, /* force self-update */
                 None, /* No PSK fetcher */
-                &mut rng,
                 &crypto,
             ) {
             Ok(c) => c,
@@ -131,7 +123,6 @@ fn create_commit_optional_path() {
                 &[],
                 false, /* don't force selfupdate */
                 None,  /* PSK fetcher */
-                &mut rng,
                 &crypto,
             ) {
             Ok(c) => c,
@@ -186,7 +177,6 @@ fn create_commit_optional_path() {
             &[],
             false, /* force self update */
             None,  /* PSK fetcher */
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,
@@ -213,7 +203,6 @@ fn create_commit_optional_path() {
 
 #[test]
 fn basic_group_setup() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
@@ -225,7 +214,6 @@ fn basic_group_setup() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -233,7 +221,6 @@ fn basic_group_setup() {
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -242,7 +229,6 @@ fn basic_group_setup() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -252,7 +238,6 @@ fn basic_group_setup() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             Vec::new(),
         )
@@ -263,7 +248,6 @@ fn basic_group_setup() {
         let group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
-            &mut rng,
             &crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
@@ -288,7 +272,6 @@ fn basic_group_setup() {
             &[],
             true,
             None, /* PSK fetcher */
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,
@@ -311,7 +294,6 @@ fn basic_group_setup() {
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
 fn group_operations() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
@@ -323,7 +305,6 @@ fn group_operations() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -331,7 +312,6 @@ fn group_operations() {
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -349,7 +329,6 @@ fn group_operations() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -358,7 +337,6 @@ fn group_operations() {
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -370,7 +348,6 @@ fn group_operations() {
         let mut group_alice = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
-            &mut rng,
             &crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
@@ -397,7 +374,6 @@ fn group_operations() {
                 &[],
                 false,
                 None, /* PSK fetcher */
-                &mut rng,
                 &crypto,
             )
             .expect("Error creating commit");
@@ -444,14 +420,7 @@ fn group_operations() {
         // === Alice sends a message to Bob ===
         let message_alice = [1, 2, 3];
         let mls_ciphertext_alice = group_alice
-            .create_application_message(
-                &[],
-                &message_alice,
-                &alice_credential_bundle,
-                0,
-                &mut rng,
-                &crypto,
-            )
+            .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, &crypto)
             .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, &crypto) {
             Ok(mls_plaintext) => mls_plaintext,
@@ -466,7 +435,6 @@ fn group_operations() {
         let bob_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -487,7 +455,6 @@ fn group_operations() {
             &[],
             false, /* force self update */
             None,  /* PSK fetcher */
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,
@@ -528,7 +495,6 @@ fn group_operations() {
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -549,7 +515,6 @@ fn group_operations() {
             &[],
             false, /* force self update */
             None,  /* PSK fetcher */
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,
@@ -588,7 +553,6 @@ fn group_operations() {
         let bob_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &bob_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -609,7 +573,6 @@ fn group_operations() {
             &[],
             false, /* force self update */
             None,  /* PSK fetcher */
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,
@@ -649,7 +612,6 @@ fn group_operations() {
             "Charlie".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
-            &mut rng,
             &crypto,
         )
         .unwrap();
@@ -657,7 +619,6 @@ fn group_operations() {
         let charlie_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &charlie_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -681,7 +642,6 @@ fn group_operations() {
                 &[],
                 false, /* force self update */
                 None,  /* PSK fetcher */
-                &mut rng,
                 &crypto,
             ) {
             Ok(c) => c,
@@ -743,7 +703,6 @@ fn group_operations() {
                 &message_charlie,
                 &charlie_credential_bundle,
                 0,
-                &mut rng,
                 &crypto,
             )
             .unwrap();
@@ -769,7 +728,6 @@ fn group_operations() {
         let charlie_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &charlie_credential_bundle,
-            &mut rng,
             &crypto,
             mandatory_extensions.clone(),
         )
@@ -790,7 +748,6 @@ fn group_operations() {
             &[],
             false, /* force self update */
             None,  /* PSK fetcher */
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,
@@ -854,7 +811,6 @@ fn group_operations() {
             &[],
             false, /* force self update */
             None,  /* PSK fetcher */
-            &mut rng,
             &crypto,
         ) {
             Ok(c) => c,

@@ -3,19 +3,17 @@ use rust_crypto::RustCrypto;
 
 use crate::ciphersuite::*;
 use crate::config::Config;
-use crate::test_utils::OpenMlsTestRand;
 
 // Spot test to make sure hpke seal/open work.
 #[test]
 fn test_hpke_seal_open() {
-    let mut rng = OpenMlsTestRand::new();
-
+    let crypto = RustCrypto::default();
     // Test through ciphersuites.
     for ciphersuite in Config::supported_ciphersuites() {
         println!("Test {:?}", ciphersuite.name());
         println!("Ciphersuite {:?}", ciphersuite);
         let plaintext = &[1, 2, 3];
-        let kp = ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &mut rng, None));
+        let kp = ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &crypto, None));
         let ciphertext = ciphersuite.hpke_seal(kp.public_key(), &[], &[], plaintext);
         let decrypted_payload = ciphersuite
             .hpke_open(&ciphertext, kp.private_key(), &[], &[])
@@ -51,12 +49,10 @@ fn test_hpke_seal_open() {
 
 #[test]
 fn test_sign_verify() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = &RustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
-        let keypair =
-            SignatureKeypair::new(ciphersuite.signature_scheme(), crypto, &mut rng).unwrap();
+        let keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), crypto).unwrap();
         let payload = &[1, 2, 3];
         let signature = keypair.sign(crypto, payload).unwrap();
         assert!(keypair.verify(crypto, &signature, payload).is_ok());
@@ -65,7 +61,6 @@ fn test_sign_verify() {
 
 #[test]
 fn supported_ciphersuites() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = &RustCrypto::default();
 
     const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
@@ -85,9 +80,8 @@ fn supported_ciphersuites() {
         let ciphersuite = Ciphersuite::new(*ciphersuite_name)
             .expect("Could not instantiate a Ciphersuite object.");
         // Create signature keypair
-        let _signature_keypair =
-            SignatureKeypair::new(ciphersuite.signature_scheme(), crypto, &mut rng)
-                .expect("Could not create signature keypair.");
+        let _signature_keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), crypto)
+            .expect("Could not create signature keypair.");
     }
 
     for ciphersuite_name in UNSUPPORTED_CIPHERSUITE_NAMES {
@@ -96,14 +90,13 @@ fn supported_ciphersuites() {
             .expect_err("Could instantiate a Ciphersuite object with an unsupported ciphersuite.");
         // Create signature keypair
         let _signature_keypair =
-            SignatureKeypair::new(SignatureScheme::from(*ciphersuite_name), crypto, &mut rng)
+            SignatureKeypair::new(SignatureScheme::from(*ciphersuite_name), crypto)
                 .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }
 
 #[test]
 fn test_signatures() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = &RustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
@@ -111,7 +104,7 @@ fn test_signatures() {
         let payload = vec![0u8];
         let signature_scheme =
             SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
-        let keypair = SignatureKeypair::new(signature_scheme, crypto, &mut rng)
+        let keypair = SignatureKeypair::new(signature_scheme, crypto)
             .expect("error generating signature keypair");
         let mut signature = keypair
             .sign(crypto, &payload)

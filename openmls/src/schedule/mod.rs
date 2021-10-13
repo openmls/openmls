@@ -124,8 +124,7 @@ use crate::{
     messages::ConfirmationTag,
 };
 
-use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::random::OpenMlsRand;
+use openmls_traits::OpenMlsSecurity;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
@@ -177,10 +176,7 @@ impl CommitSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(
-        ciphersuite: &'static Ciphersuite,
-        rng: &mut impl openmls_traits::random::OpenMlsRand,
-    ) -> Self {
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }
@@ -216,11 +212,11 @@ impl InitSecret {
     /// Sample a fresh, random `InitSecret` for the creation of a new group.
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
-        
+        backend: &impl OpenMlsSecurity,
         version: ProtocolVersion,
     ) -> Self {
         InitSecret {
-            secret: Secret::random(ciphersuite, rng, version),
+            secret: Secret::random(ciphersuite, backend, version),
         }
     }
 
@@ -293,11 +289,11 @@ impl JoinerSecret {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
-        
+        backend: &impl OpenMlsSecurity,
         version: ProtocolVersion,
     ) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng, version),
+            secret: Secret::random(ciphersuite, backend, version),
         }
     }
 }
@@ -557,7 +553,7 @@ impl EncryptionSecret {
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
     #[doc(hidden)]
-    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &mut impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
         EncryptionSecret {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }
@@ -893,7 +889,7 @@ impl SenderDataSecret {
 
     #[cfg(any(feature = "test-utils", test))]
     #[doc(hidden)]
-    pub fn random(ciphersuite: &'static Ciphersuite, rng: &mut impl OpenMlsRand) -> Self {
+    pub fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }

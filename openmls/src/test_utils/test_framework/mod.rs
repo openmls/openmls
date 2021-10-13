@@ -28,10 +28,9 @@ use crate::group::MlsMessageIn;
 /// a lot of unused code warnings.
 use crate::{node::Node, prelude::*};
 use ::rand::{rngs::OsRng, RngCore};
-use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
-use openmls_traits::random::OpenMlsRand;
 use openmls_traits::types::SignatureScheme;
+use rust_crypto::RustCrypto;
 use std::{cell::RefCell, collections::HashMap};
 
 pub mod client;
@@ -127,35 +126,29 @@ impl ManagedTestSetup {
         default_mgc: ManagedGroupConfig,
         number_of_clients: usize,
         use_codec: CodecUse,
-        
-        backend: &impl OpenMlsSecurity,
     ) -> Self {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
             // For now, everyone supports all ciphersuites.
-            let _ciphersuites = Config::supported_ciphersuite_names();
-            let key_store = memory_keystore::KeyStore::default();
+            let crypto = RustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
                 let cb = CredentialBundle::new(
                     identity.clone(),
                     CredentialType::Basic,
                     SignatureScheme::from(*ciphersuite),
-                    rng,
-                    backend,
+                    &crypto,
                 )
                 .unwrap();
                 let credential = cb.credential().clone();
-                key_store
-                    .store(cb.credential().signature_key(), &cb)
-                    .unwrap();
+                crypto.store(cb.credential().signature_key(), &cb).unwrap();
                 credentials.insert(*ciphersuite, credential);
             }
             let client = Client {
                 identity: identity.clone(),
                 credentials,
-                key_store,
+                crypto,
                 groups: RefCell::new(HashMap::new()),
             };
             clients.insert(identity, RefCell::new(client));
@@ -179,13 +172,11 @@ impl ManagedTestSetup {
         &self,
         client: &Client,
         ciphersuite: &Ciphersuite,
-        
-        backend: &impl OpenMlsSecurity,
     ) -> Result<KeyPackage, SetupError> {
-        let key_package = client.get_fresh_key_package(&[ciphersuite.name()], rng, backend)?;
+        let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
         self.waiting_for_welcome
             .borrow_mut()
-            .insert(key_package.hash(backend), client.identity.clone());
+            .insert(key_package.hash(&client.crypto), client.identity.clone());
         Ok(key_package)
     }
 
@@ -195,12 +186,7 @@ impl ManagedTestSetup {
     /// distribute the commit adding the members to the group. This function
     /// will throw an error if no key package was previously created for the
     /// client by `get_fresh_key_package`.
-    pub fn deliver_welcome(
-        &self,
-        backend: &impl OpenMlsSecurity,
-        welcome: Welcome,
-        group: &Group,
-    ) -> Result<(), SetupError> {
+    pub fn deliver_welcome(&self, welcome: Welcome, group: &Group) -> Result<(), SetupError> {
         // Serialize and de-serialize the Welcome if the bit was set.
         let welcome = match self.use_codec {
             CodecUse::SerializedMessages => {
@@ -222,7 +208,6 @@ impl ManagedTestSetup {
                 .ok_or(SetupError::NoFreshKeyPackage)?;
             let client = clients.get(&client_id).unwrap().borrow();
             client.join_group(
-                backend,
                 group.group_config.clone(),
                 welcome.clone(),
                 Some(group.public_tree.clone()),
@@ -236,7 +221,6 @@ impl ManagedTestSetup {
     /// also verifies that all members of that group agree on the public tree.
     pub fn distribute_to_members(
         &self,
-        backend: &impl OpenMlsSecurity,
         // We need the sender to know a group member that we know can not have
         // been removed from the group.
         sender_id: &[u8],
@@ -256,7 +240,7 @@ impl ManagedTestSetup {
         // Distribute message to all members.
         for (_index, member_id) in &group.members {
             let member = clients.get(member_id).unwrap().borrow();
-            member.receive_messages_for_group(backend, &message)?;
+            member.receive_messages_for_group(&message)?;
         }
         // Get the current tree and figure out who's still in the group.
         let sender = clients.get(sender_id).unwrap().borrow();
@@ -268,7 +252,7 @@ impl ManagedTestSetup {
             .map(|(index, cred)| (*index, cred.identity().to_vec()))
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
-        group.exporter_secret = sender_group.export_secret(backend, "test", &[], 32)?;
+        group.exporter_secret = sender_group.export_secret(&sender.crypto, "test", &[], 32)?;
         Ok(())
     }
 
@@ -277,12 +261,7 @@ impl ManagedTestSetup {
     /// each group member encrypt an application message and delivers all of
     /// these messages to all other members. This function panics if any of the
     /// above tests fail.
-    pub fn check_group_states(
-        &self,
-        backend: &impl OpenMlsSecurity,
-        group: &mut Group,
-        
-    ) {
+    pub fn check_group_states(&self, group: &mut Group) {
         let clients = self.clients.borrow();
         let mut messages = Vec::new();
         for (_, m_id) in &group.members {
@@ -292,18 +271,20 @@ impl ManagedTestSetup {
             if let Some(group_state) = group_states.get_mut(&group.group_id) {
                 assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
                 assert_eq!(
-                    group_state.export_secret(backend, "test", &[], 32).unwrap(),
+                    group_state
+                        .export_secret(&m.crypto, "test", &[], 32)
+                        .unwrap(),
                     group.exporter_secret
                 );
                 let message = group_state
-                    .create_message(&m.key_store, rng, backend, "Hello World!".as_bytes())
+                    .create_message(&m.crypto, "Hello World!".as_bytes())
                     .expect("Error composing message while checking group states.");
                 messages.push((m_id.clone(), message));
             };
         }
         drop(clients);
         for (sender_id, message) in messages {
-            self.distribute_to_members(backend, &sender_id, group, &message)
+            self.distribute_to_members(&sender_id, group, &message)
                 .expect("Error sending messages to clients while checking group states.");
         }
     }
@@ -353,12 +334,7 @@ impl ManagedTestSetup {
     /// does not support the given ciphersuite. TODO #310: Fix to always work
     /// reliably, probably by introducing a mapping from ciphersuite to the set
     /// of client ids supporting it.
-    pub fn create_group(
-        &self,
-        ciphersuite: &Ciphersuite,
-        
-        backend: &impl OpenMlsSecurity,
-    ) -> Result<GroupId, SetupError> {
+    pub fn create_group(&self, ciphersuite: &Ciphersuite) -> Result<GroupId, SetupError> {
         // Pick a random group creator.
         let clients = self.clients.borrow();
         let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
@@ -368,17 +344,11 @@ impl ManagedTestSetup {
         let mut groups = self.groups.borrow_mut();
         let group_id = GroupId::from_slice(&groups.len().to_string().into_bytes());
 
-        group_creator.create_group(
-            group_id.clone(),
-            self.default_mgc.clone(),
-            ciphersuite,
-            rng,
-            backend,
-        )?;
+        group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite)?;
         let creator_groups = group_creator.groups.borrow();
         let group = creator_groups.get(&group_id).unwrap();
         let public_tree = group.export_ratchet_tree();
-        let exporter_secret = group.export_secret(backend, "test", &[], 32)?;
+        let exporter_secret = group.export_secret(&group_creator.crypto, "test", &[], 32)?;
         let member_ids = vec![(0, group_creator_id)];
         let group = Group {
             group_id: group_id.clone(),
@@ -397,11 +367,9 @@ impl ManagedTestSetup {
         &self,
         target_group_size: usize,
         ciphersuite: &Ciphersuite,
-        
-        backend: &impl OpenMlsSecurity,
     ) -> Result<GroupId, SetupError> {
         // Create the initial group.
-        let group_id = self.create_group(ciphersuite, rng, backend)?;
+        let group_id = self.create_group(ciphersuite)?;
 
         let mut groups = self.groups.borrow_mut();
         let group = groups.get_mut(&group_id).unwrap();
@@ -416,14 +384,7 @@ impl ManagedTestSetup {
             // Add between 1 and 5 new members.
             let number_of_adds = ((OsRng.next_u32() as usize) % 5 % new_members.len()) + 1;
             let members_to_add = new_members.drain(0..number_of_adds).collect();
-            self.add_clients(
-                ActionType::Commit,
-                group,
-                &adder_id,
-                members_to_add,
-                rng,
-                backend,
-            )?;
+            self.add_clients(ActionType::Commit, group, &adder_id, members_to_add)?;
         }
         Ok(group_id)
     }
@@ -437,24 +398,17 @@ impl ManagedTestSetup {
         group: &mut Group,
         client_id: &[u8],
         key_package_bundle_option: Option<KeyPackageBundle>,
-        
-        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let client = clients
             .get(client_id)
             .ok_or(SetupError::UnknownClientId)?
             .borrow();
-        let (messages, welcome_option) = client.self_update(
-            action_type,
-            &group.group_id,
-            key_package_bundle_option,
-            rng,
-            backend,
-        )?;
-        self.distribute_to_members(backend, &client.identity, group, &messages)?;
+        let (messages, welcome_option) =
+            client.self_update(action_type, &group.group_id, key_package_bundle_option)?;
+        self.distribute_to_members(&client.identity, group, &messages)?;
         if let Some(welcome) = welcome_option {
-            self.deliver_welcome(backend, welcome, group)?;
+            self.deliver_welcome(welcome, group)?;
         }
         Ok(())
     }
@@ -471,8 +425,6 @@ impl ManagedTestSetup {
         group: &mut Group,
         adder_id: &[u8],
         addees: Vec<Vec<u8>>,
-        
-        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let adder = clients
@@ -492,17 +444,16 @@ impl ManagedTestSetup {
                 .get(addee_id)
                 .ok_or(SetupError::UnknownClientId)?
                 .borrow();
-            let key_package =
-                self.get_fresh_key_package(&addee, &group.ciphersuite, rng, backend)?;
+            let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite)?;
             key_packages.push(key_package);
         }
         let (messages, welcome_option) =
-            adder.add_members(action_type, &group.group_id, &key_packages, rng, backend)?;
+            adder.add_members(action_type, &group.group_id, &key_packages)?;
         for message in &messages {
-            self.distribute_to_members(backend, adder_id, group, message)?;
+            self.distribute_to_members(adder_id, group, message)?;
         }
         if let Some(welcome) = welcome_option {
-            self.deliver_welcome(backend, welcome, group)?;
+            self.deliver_welcome(welcome, group)?;
         }
         Ok(())
     }
@@ -517,8 +468,6 @@ impl ManagedTestSetup {
         group: &mut Group,
         remover_id: &[u8],
         target_indices: &[usize],
-        
-        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let clients = self.clients.borrow();
         let remover = clients
@@ -534,12 +483,12 @@ impl ManagedTestSetup {
             return Err(SetupError::ClientNotInGroup);
         }
         let (messages, welcome_option) =
-            remover.remove_members(action_type, &group.group_id, &target_indices, rng, backend)?;
+            remover.remove_members(action_type, &group.group_id, &target_indices)?;
         for message in &messages {
-            self.distribute_to_members(backend, remover_id, group, message)?;
+            self.distribute_to_members(remover_id, group, message)?;
         }
         if let Some(welcome) = welcome_option {
-            self.deliver_welcome(backend, welcome, group)?;
+            self.deliver_welcome(welcome, group)?;
         }
         Ok(())
     }
@@ -554,8 +503,6 @@ impl ManagedTestSetup {
         group: &mut Group,
         remover_id: &[u8],
         target_members: Vec<Vec<u8>>,
-        
-        backend: &impl OpenMlsSecurity,
     ) -> Result<(), SetupError> {
         let mut target_indices = Vec::new();
         for target in &target_members {
@@ -566,26 +513,14 @@ impl ManagedTestSetup {
                 .ok_or(SetupError::ClientNotInGroup)?;
             target_indices.push(*index);
         }
-        self.remove_clients_by_index(
-            action_type,
-            group,
-            remover_id,
-            &target_indices,
-            rng,
-            backend,
-        )?;
+        self.remove_clients_by_index(action_type, group, remover_id, &target_indices)?;
         Ok(())
     }
 
     /// This function picks a random member of group `group` and has them
     /// perform a random commit- or proposal action. TODO #133: This won't work
     /// yet due to the missing proposal validation.
-    pub fn perform_random_operation(
-        &self,
-        group: &mut Group,
-        
-        backend: &impl OpenMlsSecurity,
-    ) -> Result<(), SetupError> {
+    pub fn perform_random_operation(&self, group: &mut Group) -> Result<(), SetupError> {
         // Who's going to do it?
         let member_id = group.random_group_member();
         println!("Member performing the operation: {:?}", member_id);
@@ -605,7 +540,7 @@ impl ManagedTestSetup {
                     "Perfoming a self-update with action type: {:?}",
                     action_type
                 );
-                self.self_update(action_type, group, &member_id, None, rng, backend)?;
+                self.self_update(action_type, group, &member_id, None)?;
             }
             1 => {
                 // If it's a single-member group, don't remove anyone.
@@ -645,14 +580,7 @@ impl ManagedTestSetup {
                         }
                         target_member_ids.push(identity);
                     }
-                    self.remove_clients(
-                        action_type,
-                        group,
-                        &member_id,
-                        target_member_ids,
-                        rng,
-                        backend,
-                    )?
+                    self.remove_clients(action_type, group, &member_id, target_member_ids)?
                 };
             }
             2 => {
@@ -668,7 +596,7 @@ impl ManagedTestSetup {
                         action_type, new_member_ids
                     );
                     // Have the adder add them to the group.
-                    self.add_clients(action_type, group, &member_id, new_member_ids, rng, backend)?;
+                    self.add_clients(action_type, group, &member_id, new_member_ids)?;
                 }
             }
             _ => return Err(SetupError::Unknown),

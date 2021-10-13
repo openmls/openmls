@@ -782,7 +782,7 @@ impl AeadNonce {
     #[cfg(test)]
     pub fn random(rng: &impl OpenMlsSecurity) -> Self {
         AeadNonce {
-            value: random_array(rng),
+            value: rng.random_array(),
         }
     }
 

@@ -447,7 +447,7 @@ impl ManagedGroup {
     pub fn process_message(
         &mut self,
         message: MlsMessageIn,
-        backedn: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsSecurity,
     ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -621,7 +621,6 @@ impl ManagedGroup {
     pub fn create_message(
         &mut self,
         backend: &impl OpenMlsSecurity,
-
         message: &[u8],
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -643,7 +642,6 @@ impl ManagedGroup {
             message,
             &credential_bundle,
             self.configuration().padding_size(),
-            rng,
             backend,
         )?;
 
@@ -678,7 +676,6 @@ impl ManagedGroup {
             &[],
             true,
             None,
-            rng,
             backend,
         )?;
 
@@ -689,7 +686,7 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.plaintext_to_mls_message(commit, rng, backend)?;
+        let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -702,7 +699,7 @@ impl ManagedGroup {
     /// Exports a secret from the current epoch
     pub fn export_secret(
         &self,
-
+        backend: &impl OpenMlsSecurity,
         label: &str,
         context: &[u8],
         key_length: usize,
@@ -796,7 +793,6 @@ impl ManagedGroup {
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsSecurity,
-
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
@@ -825,7 +821,6 @@ impl ManagedGroup {
                     &[&update_proposal],
                     true, /* force_self_update */
                     None,
-                    rng,
                     backend,
                 )?
             }
@@ -837,7 +832,6 @@ impl ManagedGroup {
                     &[],
                     true, /* force_self_update */
                     None,
-                    rng,
                     backend,
                 )?
             }
@@ -854,7 +848,7 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.plaintext_to_mls_message(commit, rng, backend)?;
+        let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -866,7 +860,6 @@ impl ManagedGroup {
     pub fn propose_self_update(
         &mut self,
         backend: &impl OpenMlsSecurity,
-
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -882,12 +875,10 @@ impl ManagedGroup {
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
-            None => KeyPackageBundlePayload::from_rekeyed_key_package(
-                existing_key_package,
-                rng,
-                backend,
-            )
-            .sign(backend, &credential_bundle)?,
+            None => {
+                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)
+                    .sign(backend, &credential_bundle)?
+            }
         };
 
         let update_proposal = self.group.create_update_proposal(
@@ -900,7 +891,7 @@ impl ManagedGroup {
 
         self.own_kpbs.push(key_package_bundle);
 
-        let mls_message = self.plaintext_to_mls_message(update_proposal, rng, backend)?;
+        let mls_message = self.plaintext_to_mls_message(update_proposal, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -1043,7 +1034,7 @@ impl ManagedGroup {
     fn prepare_events(
         &self,
         ciphersuite: &Ciphersuite,
-
+        backend: &impl OpenMlsSecurity,
         proposals: &[ProposalOrRef],
         sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,

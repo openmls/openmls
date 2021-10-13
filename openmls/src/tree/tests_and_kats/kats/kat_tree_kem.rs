@@ -14,8 +14,6 @@
 
 use crate::ciphersuite::Ciphersuite;
 #[cfg(test)]
-use crate::test_utils::OpenMlsTestRand;
-#[cfg(test)]
 use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
@@ -41,7 +39,6 @@ use crate::{
     },
 };
 
-use openmls_traits::random::OpenMlsRand;
 use rust_crypto::RustCrypto;
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -71,10 +68,7 @@ pub struct TreeKemTestVector {
     pub tree_hash_after: String,
 }
 
-pub fn run_test_vector(
-    test_vector: TreeKemTestVector,
-    
-) -> Result<(), TreeKemTestVectorError> {
+pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
     let crypto = RustCrypto::default();
@@ -104,7 +98,6 @@ pub fn run_test_vector(
         "username".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        rng,
         &crypto,
     )
     .unwrap();
@@ -286,24 +279,22 @@ pub fn run_test_vector(
 
 #[test]
 fn read_test_vector() {
-    let mut rng = OpenMlsTestRand::new();
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {
-        run_test_vector(test_vector, &mut rng).expect("error while checking tree kem test vector.");
+        run_test_vector(test_vector).expect("error while checking tree kem test vector.");
     }
 }
 
 #[test]
 fn write_test_vector() {
-    let mut rng = OpenMlsTestRand::new();
     let mut tests = Vec::new();
     const NUM_LEAVES: u32 = 20;
 
     for ciphersuite in Config::supported_ciphersuites() {
         for n_leaves in 2..NUM_LEAVES {
             log::trace!(" Creating test vector with {:?} leaves ...", n_leaves);
-            let test = generate_test_vector(n_leaves, ciphersuite, &mut rng);
+            let test = generate_test_vector(n_leaves, ciphersuite);
             tests.push(test);
         }
     }
@@ -312,11 +303,7 @@ fn write_test_vector() {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn generate_test_vector(
-    n_leaves: u32,
-    ciphersuite: &'static Ciphersuite,
-    
-) -> TreeKemTestVector {
+pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
     use openmls_traits::key_store::OpenMlsKeyStore;
 
     use crate::{
@@ -346,8 +333,6 @@ pub fn generate_test_vector(
         managed_group_config,
         n_leaves as usize,
         CodecUse::SerializedMessages,
-        rng,
-        &crypto,
     );
 
     // - I am the client with key package `my_key_package`
@@ -362,7 +347,7 @@ pub fn generate_test_vector(
     // To reach that state, we create a group of `n_leaves` members and remove a
     // member from a random position.
     let group_id = setup
-        .create_random_group(n_leaves as usize, ciphersuite, rng, &crypto)
+        .create_random_group(n_leaves as usize, ciphersuite)
         .unwrap();
 
     let mut groups = setup.groups.borrow_mut();
@@ -388,8 +373,6 @@ pub fn generate_test_vector(
             group,
             &remover_id,
             &[target_index as usize],
-            rng,
-            &crypto,
         )
         .unwrap();
 
@@ -416,10 +399,10 @@ pub fn generate_test_vector(
     let addee = clients.get(&addee_id).unwrap().borrow();
 
     let my_key_package = setup
-        .get_fresh_key_package(&addee, &group.ciphersuite, rng, &crypto)
+        .get_fresh_key_package(&addee, &group.ciphersuite)
         .unwrap();
 
-    let kpb: KeyPackageBundle = addee.key_store.read(&my_key_package.hash(&crypto)).unwrap();
+    let kpb: KeyPackageBundle = addee.crypto.read(&my_key_package.hash(&crypto)).unwrap();
     let my_leaf_secret = kpb.leaf_secret();
 
     let (messages, welcome) = adder
@@ -427,19 +410,15 @@ pub fn generate_test_vector(
             ActionType::Commit,
             &group.group_id,
             &[my_key_package.clone()],
-            rng,
-            &crypto,
         )
         .unwrap();
 
     // It's only going to be a single message, since we only add one member.
     setup
-        .distribute_to_members(&crypto, &adder.identity, group, &messages[0])
+        .distribute_to_members(&adder.identity, group, &messages[0])
         .unwrap();
 
-    setup
-        .deliver_welcome(&crypto, welcome.unwrap(), group)
-        .unwrap();
+    setup.deliver_welcome(welcome.unwrap(), group).unwrap();
 
     let addee_groups = addee.groups.borrow();
     let addee_group = addee_groups.get(&group_id).unwrap();
@@ -480,9 +459,7 @@ pub fn generate_test_vector(
         .tls_serialize_detached()
         .expect("error serializing group context");
 
-    let (message, _) = updater_group
-        .self_update(&updater.key_store, rng, &crypto, None)
-        .unwrap();
+    let (message, _) = updater_group.self_update(&updater.crypto, None).unwrap();
 
     let update_path = match message {
         MlsMessageOut::Plaintext(ref pt) => match pt.content() {
@@ -500,7 +477,7 @@ pub fn generate_test_vector(
     drop(clients);
 
     setup
-        .distribute_to_members(&crypto, &updater_id, group, &message)
+        .distribute_to_members(&updater_id, group, &message)
         .unwrap();
 
     // The update was sent, now we get the right state variables again

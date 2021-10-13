@@ -1,20 +1,18 @@
+use openmls_traits::random::OpenMlsRand;
 use rust_crypto::RustCrypto;
 
-use crate::ciphersuite::rand::random_vec;
 use crate::schedule::EncryptionSecret;
 
 use crate::config::Config;
-use crate::test_utils::OpenMlsTestRand;
 use crate::tree::{secret_tree::*, *};
 use std::collections::HashMap;
 
 // This tests the boundaries of the generations from a SecretTree
 #[test]
 fn test_boundaries() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
-        let encryption_secret = EncryptionSecret::random(ciphersuite, &mut rng);
+        let encryption_secret = EncryptionSecret::random(ciphersuite, &crypto);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
         let secret_type = SecretType::ApplicationSecret;
         assert!(secret_tree
@@ -74,7 +72,7 @@ fn test_boundaries() {
             ),
             Err(SecretTreeError::IndexOutOfBounds)
         );
-        let encryption_secret = EncryptionSecret::random(ciphersuite, &mut rng);
+        let encryption_secret = EncryptionSecret::random(ciphersuite, &crypto);
         let mut largetree = SecretTree::new(encryption_secret, LeafIndex::from(100_000u32));
         assert!(largetree
             .secret_for_decryption(ciphersuite, &crypto, LeafIndex::from(0u32), secret_type, 0)
@@ -114,14 +112,13 @@ fn test_boundaries() {
 // values are unique.
 #[test]
 fn increment_generation() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     const SIZE: usize = 100;
     const MAX_GENERATIONS: usize = 10;
 
     for ciphersuite in Config::supported_ciphersuites() {
         let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
-        let encryption_secret = EncryptionSecret::random(ciphersuite, &mut rng);
+        let encryption_secret = EncryptionSecret::random(ciphersuite, &crypto);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(SIZE as u32));
         for i in 0..SIZE {
             assert_eq!(
@@ -172,7 +169,6 @@ fn increment_generation() {
 
 #[test]
 fn secret_tree() {
-    let mut rng = OpenMlsTestRand::new();
     let crypto = RustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let leaf_index = 0u32;
@@ -180,7 +176,7 @@ fn secret_tree() {
     let n_leaves = 10u32;
     let mut secret_tree = SecretTree::new(
         EncryptionSecret::from_slice(
-            &random_vec(&mut rng, ciphersuite.hash_length())[..],
+            &crypto.random_vec(ciphersuite.hash_length())[..],
             ProtocolVersion::default(),
             ciphersuite,
         ),

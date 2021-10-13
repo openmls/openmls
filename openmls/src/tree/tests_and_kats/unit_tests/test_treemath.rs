@@ -2,7 +2,6 @@ use openmls_traits::types::SignatureScheme;
 use rust_crypto::RustCrypto;
 
 use crate::config::*;
-use crate::test_utils::OpenMlsTestRand;
 use crate::tree::index::{LeafIndex, NodeIndex};
 use crate::tree::treemath::{descendants, descendants_alt, TreeMathError};
 use crate::tree::{treemath, *};
@@ -35,25 +34,16 @@ fn test_dir_path() {
 fn test_tree_hash() {
     let crypto = RustCrypto::default();
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
-        let mut rng = OpenMlsTestRand::new();
         let crypto = RustCrypto::default();
         let signature_scheme = SignatureScheme::from(ciphersuite_name);
         let credential_bundle = CredentialBundle::new(
             id.to_vec(),
             CredentialType::Basic,
             signature_scheme,
-            &mut rng,
             &crypto,
         )
         .unwrap();
-        KeyPackageBundle::new(
-            &[ciphersuite_name],
-            &credential_bundle,
-            &mut rng,
-            &crypto,
-            Vec::new(),
-        )
-        .unwrap()
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new()).unwrap()
     }
 
     for ciphersuite in Config::supported_ciphersuites() {
