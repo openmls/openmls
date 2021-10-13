@@ -69,7 +69,11 @@ impl<'a> ParentHashInput<'a> {
             original_child_resolution,
         })
     }
-    pub(crate) fn hash(&self, ciphersuite: &Ciphersuite, backend: &impl OpenMlsSecurity) -> Vec<u8> {
+    pub(crate) fn hash(
+        &self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsSecurity,
+    ) -> Vec<u8> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }
@@ -116,7 +120,11 @@ impl<'a> ParentNodeTreeHashInput<'a> {
             right_hash,
         }
     }
-    pub(crate) fn hash(&self, ciphersuite: &Ciphersuite, backend: &impl OpenMlsSecurity) -> Vec<u8> {
+    pub(crate) fn hash(
+        &self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsSecurity,
+    ) -> Vec<u8> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }

@@ -432,7 +432,7 @@ impl RatchetTree {
 
         // Replace the init key in the current KeyPackage
         let key_package_bundle_unsigned =
-            KeyPackageBundlePayload::from_rekeyed_key_package(own_key_package,  backend);
+            KeyPackageBundlePayload::from_rekeyed_key_package(own_key_package, backend);
         // FIXME: #419 THIS IS UNNECESSARY
         let key_package_bundle = key_package_bundle_unsigned.sign(backend, credential_bundle)?;
 

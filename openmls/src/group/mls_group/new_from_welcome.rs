@@ -56,7 +56,12 @@ impl MlsGroup {
             ciphersuite,
             backend,
             joiner_secret,
-            psk_output(ciphersuite, backend, psk_fetcher_option, &group_secrets.psks)?,
+            psk_output(
+                ciphersuite,
+                backend,
+                psk_fetcher_option,
+                &group_secrets.psks,
+            )?,
         );
 
         // Derive welcome key & nonce from the key schedule

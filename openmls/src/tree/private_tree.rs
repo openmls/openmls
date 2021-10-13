@@ -202,7 +202,11 @@ impl PrivateTree {
     /// `path_secret[n] = DeriveSecret(path_secret[n-1], "path")`
     ///
     /// Returns a path secret that's a `CommitSecret`.
-    fn generate_commit_secret(&mut self, ciphersuite: &Ciphersuite, backend: &impl OpenMlsSecurity) {
+    fn generate_commit_secret(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsSecurity,
+    ) {
         let path_secret = self.path_secrets.last().unwrap();
         self.commit_secret = Some(CommitSecret::new(
             ciphersuite,
