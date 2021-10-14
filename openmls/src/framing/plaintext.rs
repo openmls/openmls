@@ -320,14 +320,19 @@ impl MlsPlaintext {
         self.content_type.is_proposal()
     }
 
+    /// Returns `true` if this is a commit message and `false` otherwise.
+    pub(crate) fn is_commit(&self) -> bool {
+        self.content_type.is_commit()
+    }
+
     /// Get the group ID.
     pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
 
-    /// Get the group ID.
-    pub fn epoch(&self) -> &GroupEpoch {
-        &self.epoch
+    /// Get the group epoch.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
     }
 
     /// Set the confirmation tag.
@@ -395,11 +400,17 @@ impl From<&MlsPlaintextContentType> for ContentType {
 }
 
 impl ContentType {
+    /// Returns `true` if this is a handshake message and `false` otherwise.
     pub(crate) fn is_handshake_message(&self) -> bool {
         self == &ContentType::Proposal || self == &ContentType::Commit
     }
+    /// Returns `true` if this is a proposal message and `false` otherwise.
     pub(crate) fn is_proposal(&self) -> bool {
         self == &ContentType::Proposal
+    }
+    /// Returns `true` if this is a commit message and `false` otherwise.
+    pub(crate) fn is_commit(&self) -> bool {
+        self == &ContentType::Commit
     }
 }
 
@@ -409,6 +420,12 @@ pub enum MlsPlaintextContentType {
     Application(TlsByteVecU32),
     Proposal(Proposal),
     Commit(Commit),
+}
+
+impl From<MlsPlaintext> for MlsPlaintextContentType {
+    fn from(plaintext: MlsPlaintext) -> Self {
+        plaintext.content
+    }
 }
 
 /// 9.1 Content Authentication

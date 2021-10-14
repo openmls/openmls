@@ -6,6 +6,7 @@ mod resumption;
 mod ser;
 #[cfg(test)]
 mod test_managed_group;
+pub mod validation;
 
 #[cfg(any(feature = "test-utils", test))]
 use crate::messages::PathSecret;

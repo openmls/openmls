@@ -74,6 +74,8 @@ implement_error! {
                 "A commit contained an invalid proposal.",
             InvalidApplicationMessage =
                 "The application message is invalid.",
+            WrongEpoch = "The epoch does not match the group's epoch.",
+            MissingConfirmationTag = "The confirmation tag is missing in the Commit message.",
         }
         Complex {
             InvalidCiphertext(MlsCiphertextError) =
