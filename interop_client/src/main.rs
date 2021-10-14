@@ -52,7 +52,7 @@ impl TryFrom<i32> for TestVectorType {
 /// this simple structure is sufficient.
 pub struct InteropGroup {
     group: MlsGroup,
-    encrypt_handshake_messages: bool,
+    wire_format: WireFormat,
     credential_bundle: CredentialBundle,
     own_kpbs: Vec<KeyPackageBundle>,
 }
@@ -124,6 +124,14 @@ pub fn write(file_name: &str, payload: &[u8]) {
     };
     file.write_all(payload)
         .expect("Error writing test vector file");
+}
+
+// A helper function translating the bool in the protobuf to OpenMLS' WireFormat
+pub fn wire_format(encrypt: bool) -> WireFormat {
+    match encrypt {
+        false => WireFormat::MlsPlaintext,
+        true => WireFormat::MlsCiphertext,
+    }
 }
 
 #[tonic::async_trait]
@@ -406,9 +414,11 @@ impl MlsClient for MlsClientImpl {
         )
         .map_err(|e| into_status(e))?;
 
+        let wire_format = wire_format(create_group_request.encrypt_handshake);
+
         let interop_group = InteropGroup {
             credential_bundle,
-            encrypt_handshake_messages: create_group_request.encrypt_handshake,
+            wire_format,
             group,
             own_kpbs: Vec::new(),
         };
@@ -474,7 +484,7 @@ impl MlsClient for MlsClientImpl {
 
         let interop_group = InteropGroup {
             credential_bundle,
-            encrypt_handshake_messages: join_group_request.encrypt_handshake,
+            wire_format: wire_format(join_group_request.encrypt_handshake),
             group,
             own_kpbs: Vec::new(),
         };
@@ -633,22 +643,26 @@ impl MlsClient for MlsClientImpl {
         let key_package =
             KeyPackage::tls_deserialize(&mut add_proposal_request.key_package.as_slice())
                 .map_err(|_| Status::aborted("failed to deserialize key package"))?;
+        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
         let proposal = interop_group
             .group
-            .create_add_proposal(&[], &interop_group.credential_bundle, key_package)
+            .create_add_proposal(
+                framing_parameters,
+                &interop_group.credential_bundle,
+                key_package,
+            )
             .map_err(|e| into_status(e))?;
 
-        let proposal = if interop_group.encrypt_handshake_messages {
-            interop_group
+        let proposal = match interop_group.wire_format {
+            WireFormat::MlsPlaintext => proposal
+                .tls_serialize_detached()
+                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
+            WireFormat::MlsCiphertext => interop_group
                 .group
                 .encrypt(proposal, 10)
                 .map_err(|_| Status::aborted("failed to encrypt proposal"))?
                 .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?
-        } else {
-            proposal
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?
+                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
         };
 
         Ok(Response::new(ProposalResponse { proposal }))
@@ -673,10 +687,11 @@ impl MlsClient for MlsClientImpl {
             vec![],
         )
         .unwrap();
+        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
         let proposal = interop_group
             .group
             .create_update_proposal(
-                &[],
+                framing_parameters,
                 &interop_group.credential_bundle,
                 key_package_bundle.key_package().clone(),
             )
@@ -684,17 +699,16 @@ impl MlsClient for MlsClientImpl {
 
         interop_group.own_kpbs.push(key_package_bundle);
 
-        let proposal = if interop_group.encrypt_handshake_messages {
-            interop_group
+        let proposal = match interop_group.wire_format {
+            WireFormat::MlsCiphertext => interop_group
                 .group
                 .encrypt(proposal, 10)
                 .map_err(|_| Status::aborted("failed to encrypt proposal"))?
                 .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?
-        } else {
-            proposal
+                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
+            WireFormat::MlsPlaintext => proposal
                 .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?
+                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
         };
 
         Ok(Response::new(ProposalResponse { proposal }))
@@ -714,26 +728,27 @@ impl MlsClient for MlsClientImpl {
                 "unknown state_id",
             ))?;
 
+        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
+
         let proposal = interop_group
             .group
             .create_remove_proposal(
-                &[],
+                framing_parameters,
                 &interop_group.credential_bundle,
                 LeafIndex::from(remove_proposal_request.removed as usize),
             )
             .map_err(|e| into_status(e))?;
 
-        let proposal = if interop_group.encrypt_handshake_messages {
-            interop_group
+        let proposal = match interop_group.wire_format {
+            WireFormat::MlsCiphertext => interop_group
                 .group
                 .encrypt(proposal, 10)
                 .map_err(|_| Status::aborted("failed to encrypt proposal"))?
                 .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?
-        } else {
-            proposal
+                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
+            WireFormat::MlsPlaintext => proposal
                 .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?
+                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
         };
 
         Ok(Response::new(ProposalResponse { proposal }))
@@ -777,19 +792,22 @@ impl MlsClient for MlsClientImpl {
 
         let mut proposal_plaintexts = Vec::new();
         for bytes in &commit_request.by_reference {
-            let pt = if interop_group.encrypt_handshake_messages {
-                let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
-                    .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                interop_group
-                    .group
-                    .decrypt(&ct)
-                    .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
-            } else {
-                let credential = interop_group.credential_bundle.credential();
-                VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                    .verify(credential)
-                    .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
+            let pt = match interop_group.wire_format {
+                WireFormat::MlsCiphertext => {
+                    let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+                    interop_group
+                        .group
+                        .decrypt(&ct)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
+                }
+                WireFormat::MlsPlaintext => {
+                    let credential = interop_group.credential_bundle.credential();
+                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                        .verify(credential)
+                        .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
+                }
             };
             proposal_plaintexts.push(pt);
         }
@@ -800,19 +818,22 @@ impl MlsClient for MlsClientImpl {
 
         let mut plaintexts = Vec::new();
         for bytes in &commit_request.by_reference {
-            let pt = if interop_group.encrypt_handshake_messages {
-                let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
-                    .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                interop_group
-                    .group
-                    .decrypt(&ct)
-                    .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
-            } else {
-                let credential = interop_group.credential_bundle.credential();
-                VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                    .verify(credential)
-                    .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
+            let pt = match interop_group.wire_format {
+                WireFormat::MlsCiphertext => {
+                    let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+                    interop_group
+                        .group
+                        .decrypt(&ct)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
+                }
+                WireFormat::MlsPlaintext => {
+                    let credential = interop_group.credential_bundle.credential();
+                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                        .verify(credential)
+                        .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
+                }
             };
             plaintexts.push(pt);
         }
@@ -824,10 +845,12 @@ impl MlsClient for MlsClientImpl {
             };
         }
 
+        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
+
         let (commit, option_welcome, option_kpb) = interop_group
             .group
             .create_commit(
-                &[],
+                framing_parameters,
                 &interop_group.credential_bundle,
                 &proposals_by_reference,
                 &proposals_by_value,
@@ -840,17 +863,16 @@ impl MlsClient for MlsClientImpl {
             interop_group.own_kpbs.push(kpb)
         }
 
-        let commit = if interop_group.encrypt_handshake_messages {
-            interop_group
+        let commit = match interop_group.wire_format {
+            WireFormat::MlsCiphertext => interop_group
                 .group
                 .encrypt(commit, 10)
                 .map_err(|_| Status::aborted("failed to encrypt commit"))?
                 .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize commit"))?
-        } else {
-            commit
+                .map_err(|_| Status::aborted("failed to serialize commit"))?,
+            WireFormat::MlsPlaintext => commit
                 .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize commit"))?
+                .map_err(|_| Status::aborted("failed to serialize commit"))?,
         };
 
         let welcome = if let Some(welcome) = option_welcome {
@@ -878,36 +900,45 @@ impl MlsClient for MlsClientImpl {
                 "unknown state_id",
             ))?;
 
-        let commit = if interop_group.encrypt_handshake_messages {
-            let ct = MlsCiphertext::tls_deserialize(&mut handle_commit_request.commit.as_slice())
-                .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-            interop_group
-                .group
-                .decrypt(&ct)
-                .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
-        } else {
-            let credential = interop_group.credential_bundle.credential();
-            VerifiableMlsPlaintext::tls_deserialize(&mut handle_commit_request.commit.as_slice())
-                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                .verify(credential)
-                .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
-        };
-
-        let mut proposal_plaintexts = Vec::new();
-        for bytes in &handle_commit_request.proposal {
-            let pt = if interop_group.encrypt_handshake_messages {
-                let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
-                    .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+        let commit = match interop_group.wire_format {
+            WireFormat::MlsCiphertext => {
+                let ct =
+                    MlsCiphertext::tls_deserialize(&mut handle_commit_request.commit.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                 interop_group
                     .group
                     .decrypt(&ct)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
-            } else {
+            }
+            WireFormat::MlsPlaintext => {
                 let credential = interop_group.credential_bundle.credential();
-                VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                    .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                    .verify(credential)
-                    .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
+                VerifiableMlsPlaintext::tls_deserialize(
+                    &mut handle_commit_request.commit.as_slice(),
+                )
+                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                .verify(credential)
+                .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
+            }
+        };
+
+        let mut proposal_plaintexts = Vec::new();
+        for bytes in &handle_commit_request.proposal {
+            let pt = match interop_group.wire_format {
+                WireFormat::MlsCiphertext => {
+                    let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+                    interop_group
+                        .group
+                        .decrypt(&ct)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
+                }
+                WireFormat::MlsPlaintext => {
+                    let credential = interop_group.credential_bundle.credential();
+                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
+                        .verify(credential)
+                        .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
+                }
             };
             proposal_plaintexts.push(pt);
         }
