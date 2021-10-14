@@ -1,0 +1,38 @@
+name: Interop tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: openmls
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Build and run interop_client
+        run: cargo run --verbose
+        working_directory: ./openmls/interop_client
+      - uses: actions/checkout@v2
+        with:
+          repository: mlswg/mls-implementations
+          path: mls-implementations
+      - name: Copy config.json to interop test runner
+        run: cp ./openmls/interop_client/config.json ./mls-implementations/interop
+      - name: Build and run test runner
+        run: make run-test
+        working_directory: ./mls-implementations/interop
