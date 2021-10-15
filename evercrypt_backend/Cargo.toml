@@ -1,0 +1,14 @@
+[package]
+name = "evercrypt_backend"
+authors = ["OpenMLS Authors"]
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+openmls_traits = { version = "0.1", path = "../traits" }
+evercrypt = { version = "0.0.10", features = ["serialization"] }
+memory_keystore = { version = "0.1", path = "../memory_keystore" }
+rand = "0.8"
+rand_chacha = { version = "0.3" }
+hpke = { version = "0.0.11", package = "hpke-rs", features = ["hazmat", "serialization"] }
+log = { version = "0.4", features = ["std"] }
