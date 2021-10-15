@@ -15,6 +15,7 @@ uuid = { version = "0.8", features = ["v4"] }
 rand = "0.8"
 getrandom = "0.2"
 openmls_rust_crypto = { path = "../openmls_rust_crypto", optional = true }
+evercrypt_backend = { path = "../evercrypt_backend", optional = true }
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
@@ -25,7 +26,7 @@ tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
 
 [features]
 default = []
-test-utils = ["itertools", "openmls_rust_crypto"]
+test-utils = ["itertools", "openmls_rust_crypto", "evercrypt_backend"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 

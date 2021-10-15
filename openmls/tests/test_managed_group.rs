@@ -84,6 +84,17 @@ fn auto_save(managed_group: &ManagedGroup) {
         .expect("Could not write group state to file");
 }
 
+#[cfg(all(target_arch = "x86_64", not(target_os = "macos")))]
+use evercrypt_backend::OpenMlsEvercrypt;
+#[cfg(all(target_arch = "x86_64", not(target_os = "macos")))]
+fn crypto() -> impl OpenMlsCryptoProvider {
+    OpenMlsEvercrypt::default()
+}
+
+#[cfg(any(not(target_arch = "x86_64"), target_os = "macos"))]
+fn crypto() -> impl OpenMlsCryptoProvider {
+    OpenMlsRustCrypto::default()
+}
 /// This test simulates various group operations like Add, Update, Remove in a
 /// small group
 ///  - Alice creates a group
@@ -100,7 +111,7 @@ fn auto_save(managed_group: &ManagedGroup) {
 ///  - Test auto-save
 #[test]
 fn managed_group_operations() {
-    let crypto = OpenMlsRustCrypto::default();
+    let crypto = crypto();
     for ciphersuite in Config::supported_ciphersuites() {
         for handshake_message_format in
             vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
