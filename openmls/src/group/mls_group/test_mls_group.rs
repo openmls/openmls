@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Serialize;
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 
 #[test]
 fn test_mls_group_persistence() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
     // Define credential bundles
@@ -62,7 +62,7 @@ fn test_mls_group_persistence() {
 
 #[test]
 fn test_failed_groupinfo_decryption() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for version in Config::supported_versions() {
         for ciphersuite in Config::supported_ciphersuites() {
             let epoch = GroupEpoch(123);
@@ -167,7 +167,7 @@ fn test_failed_groupinfo_decryption() {
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 fn test_update_path() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Basic group setup.
         let group_aad = b"Alice's test group";
@@ -385,7 +385,7 @@ fn test_update_path() {
 
 // Test several scenarios when PSKs are used in a group
 ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     fn psk_fetcher(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>> {
         let psk_id = vec![1u8, 2, 3];
         let secret = Secret::from_slice(&[6, 6, 6], ProtocolVersion::Mls10, ciphersuite);

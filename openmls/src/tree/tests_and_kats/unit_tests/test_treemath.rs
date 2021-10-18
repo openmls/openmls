@@ -1,5 +1,5 @@
 use openmls_traits::types::SignatureScheme;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::config::*;
 use crate::tree::index::{LeafIndex, NodeIndex};
@@ -32,9 +32,9 @@ fn test_dir_path() {
 
 #[test]
 fn test_tree_hash() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
-        let crypto = RustCrypto::default();
+        let crypto = OpenMlsRustCrypto::default();
         let signature_scheme = SignatureScheme::from(ciphersuite_name);
         let credential_bundle = CredentialBundle::new(
             id.to_vec(),

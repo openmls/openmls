@@ -14,7 +14,7 @@ openmls_traits = { version = "0.1", path = "../traits" }
 uuid = { version = "0.8", features = ["v4"] }
 rand = "0.8"
 getrandom = "0.2"
-rust_crypto = { path = "../rust_crypto", optional = true }
+openmls_rust_crypto = { path = "../openmls_rust_crypto", optional = true }
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
@@ -27,7 +27,7 @@ hpke = { version = "0.0.11", package = "hpke-rs", default-features = false, feat
 [features]
 # Default to the RustCrypto backend right now.
 default = []
-test-utils = ["itertools", "rust_crypto"]
+test-utils = ["itertools", "openmls_rust_crypto"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 

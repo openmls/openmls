@@ -1,5 +1,5 @@
 //! Unit tests for the ciphersuites.
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::ciphersuite::*;
 use crate::config::Config;
@@ -7,7 +7,7 @@ use crate::config::Config;
 // Spot test to make sure hpke seal/open work.
 #[test]
 fn test_hpke_seal_open() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     // Test through ciphersuites.
     for ciphersuite in Config::supported_ciphersuites() {
         println!("Test {:?}", ciphersuite.name());
@@ -49,7 +49,7 @@ fn test_hpke_seal_open() {
 
 #[test]
 fn test_sign_verify() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), crypto).unwrap();
@@ -61,7 +61,7 @@ fn test_sign_verify() {
 
 #[test]
 fn supported_ciphersuites() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
@@ -97,7 +97,7 @@ fn supported_ciphersuites() {
 
 #[test]
 fn test_signatures() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         // Test that valid signatures are properly verified.

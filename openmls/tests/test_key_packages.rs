@@ -2,13 +2,13 @@
 
 use openmls::ciphersuite::signable::Signable;
 use openmls::prelude::*;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 #[macro_use]
 mod utils;
 
 ctest_ciphersuites!(key_package_generation, test(ciphersuite_name: CiphersuiteName) {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

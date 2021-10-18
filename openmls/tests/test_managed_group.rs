@@ -2,7 +2,7 @@ use openmls::{group::EmptyInputError, prelude::*};
 
 use lazy_static::lazy_static;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use std::fs::File;
 
 lazy_static! {
@@ -103,7 +103,7 @@ fn auto_save(managed_group: &ManagedGroup) {
 ///  - Test auto-save
 #[test]
 fn managed_group_operations() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         for handshake_message_format in
             vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
@@ -735,7 +735,7 @@ fn managed_group_operations() {
 
 #[test]
 fn test_empty_input_errors() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -791,7 +791,7 @@ fn test_empty_input_errors() {
 // This tests the ratchet tree extension usage flag in the configuration
 #[test]
 fn managed_group_ratchet_tree_extension() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         for handshake_message_format in
             vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()

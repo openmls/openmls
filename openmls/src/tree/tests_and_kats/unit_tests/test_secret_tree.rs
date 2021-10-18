@@ -1,5 +1,5 @@
 use openmls_traits::random::OpenMlsRand;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::schedule::EncryptionSecret;
 
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 // This tests the boundaries of the generations from a SecretTree
 #[test]
 fn test_boundaries() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let encryption_secret = EncryptionSecret::random(ciphersuite, &crypto);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
@@ -112,7 +112,7 @@ fn test_boundaries() {
 // values are unique.
 #[test]
 fn increment_generation() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     const SIZE: usize = 100;
     const MAX_GENERATIONS: usize = 10;
 
@@ -169,7 +169,7 @@ fn increment_generation() {
 
 #[test]
 fn secret_tree() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let leaf_index = 0u32;
     let generation = 0;

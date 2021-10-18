@@ -16,7 +16,7 @@ use crate::{
 };
 
 use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
 
@@ -50,7 +50,7 @@ pub struct MessagesTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite_name = ciphersuite.name();
     let credential_bundle = CredentialBundle::new(
         b"OpenMLS rocks".to_vec(),

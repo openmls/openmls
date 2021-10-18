@@ -94,7 +94,7 @@ use crate::{
 };
 
 use itertools::izip;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -302,7 +302,7 @@ pub fn generate_test_vector(
     use openmls_traits::random::OpenMlsRand;
 
     let ciphersuite_name = ciphersuite.name();
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let epoch_secret = crypto.rand_provider().random_vec(ciphersuite.hash_length());
     let encryption_secret =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
@@ -420,7 +420,7 @@ fn write_test_vectors() {
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);

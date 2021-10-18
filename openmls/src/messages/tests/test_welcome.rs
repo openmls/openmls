@@ -9,14 +9,14 @@ use crate::{
     tree::index::LeafIndex,
 };
 
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 macro_rules! test_welcome_msg {
     ($name:ident, $ciphersuite:expr, $version:expr) => {
         #[test]
         fn $name() {
-            let crypto = RustCrypto::default();
+            let crypto = OpenMlsRustCrypto::default();
             // We use this dummy group info in all test cases.
             let group_info = GroupInfoPayload::new(
                 GroupId::random(&crypto),

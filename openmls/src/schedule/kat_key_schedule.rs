@@ -20,7 +20,7 @@ use crate::test_utils::{read, write};
 
 use hpke::HpkeKeyPair;
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
 
 use super::CommitSecret;
@@ -76,7 +76,7 @@ fn generate(
     GroupContext,
     HpkeKeyPair,
 ) {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let tree_hash = crypto.rand_provider().random_vec(ciphersuite.hash_length());
     let commit_secret = CommitSecret::random(ciphersuite, &crypto);
     let psk_secret = PskSecret::random(ciphersuite, &crypto);
@@ -127,7 +127,7 @@ pub fn generate_test_vector(
     ciphersuite: &'static Ciphersuite,
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     // Set up setting.
     let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default());
@@ -235,7 +235,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             return Ok(());
         }
     };
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     log::debug!("Testing test vector for ciphersuite {:?}", ciphersuite);
     log::trace!("  {:?}", test_vector);
 

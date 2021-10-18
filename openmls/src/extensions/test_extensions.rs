@@ -2,7 +2,7 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
@@ -79,7 +79,7 @@ fn lifetime() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();

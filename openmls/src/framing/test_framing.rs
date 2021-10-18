@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::framing::*;
@@ -12,7 +12,7 @@ use crate::{
 /// This tests serializing/deserializing MlsPlaintext
 #[test]
 fn codec_plaintext() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
@@ -59,7 +59,7 @@ fn codec_plaintext() {
 /// This tests serializing/deserializing MlsCiphertext
 #[test]
 fn codec_ciphertext() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
@@ -137,7 +137,7 @@ fn codec_ciphertext() {
 /// This tests the correctness of wire format checks
 #[test]
 fn wire_format_checks() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
@@ -249,7 +249,7 @@ fn wire_format_checks() {
 
 #[test]
 fn membership_tag() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
@@ -301,7 +301,7 @@ fn membership_tag() {
 
 #[test]
 fn unknown_sender() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
@@ -546,7 +546,7 @@ fn unknown_sender() {
 
 #[test]
 fn confirmation_tag_presence() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
@@ -635,7 +635,7 @@ fn confirmation_tag_presence() {
 }
 
 ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: CiphersuiteName) {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();

@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
     group::ManagedGroupConfig,
@@ -10,7 +10,7 @@ use crate::{
 /// works as intended.
 #[test]
 fn test_exclusion_list() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of nodes in the tree
         const NODES: usize = 31;
@@ -92,7 +92,7 @@ fn test_exclusion_list() {
 /// parent hashes
 #[test]
 fn test_original_child_resolution() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of leaf nodes in the tree
         const NODES: usize = 10;

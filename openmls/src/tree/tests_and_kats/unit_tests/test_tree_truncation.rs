@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
     ciphersuite::Ciphersuite,
@@ -12,7 +12,7 @@ use crate::{
 
 #[test]
 fn test_trim() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     // Build a list of nodes, for which we need credentials and key package bundles
     let mut nodes = vec![];
     let mut key_package_bundles = vec![];

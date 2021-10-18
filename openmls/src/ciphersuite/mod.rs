@@ -936,7 +936,7 @@ pub(crate) fn aead_key_gen(alg: openmls_traits::types::AeadType) -> Vec<u8> {
 
 #[cfg(test)]
 mod unit_tests {
-    use rust_crypto::RustCrypto;
+    use openmls_rust_crypto::OpenMlsRustCrypto;
 
     use super::*;
 
@@ -945,7 +945,7 @@ mod unit_tests {
     /// state.
     #[test]
     fn test_xor() {
-        let crypto = &RustCrypto::default();
+        let crypto = &OpenMlsRustCrypto::default();
         let reuse_guard: ReuseGuard = ReuseGuard::from_random(crypto);
         let original_nonce = AeadNonce::random(crypto);
         let mut nonce = original_nonce.clone();

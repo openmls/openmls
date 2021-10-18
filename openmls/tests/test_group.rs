@@ -1,9 +1,9 @@
 use openmls::prelude::*;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 #[test]
 fn create_commit_optional_path() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
         // Framing parameters
@@ -203,7 +203,7 @@ fn create_commit_optional_path() {
 
 #[test]
 fn basic_group_setup() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
         // Framing parameters
@@ -294,7 +294,7 @@ fn basic_group_setup() {
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
 fn group_operations() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
         // Framing parameters

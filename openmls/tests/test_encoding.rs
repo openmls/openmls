@@ -1,6 +1,6 @@
 use openmls::{ciphersuite::signable::Verifiable, prelude::*};
 pub mod utils;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 use utils::mls_utils::*;
 
@@ -51,7 +51,7 @@ fn create_encoding_test_setup() -> TestSetup {
 #[test]
 /// This test tests encoding and decoding of application messages.
 fn test_application_message_encoding() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
@@ -83,7 +83,7 @@ fn test_application_message_encoding() {
 #[test]
 /// This test tests encoding and decoding of update proposals.
 fn test_update_proposal_encoding() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
@@ -139,7 +139,7 @@ fn test_update_proposal_encoding() {
 #[test]
 /// This test tests encoding and decoding of add proposals.
 fn test_add_proposal_encoding() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
@@ -196,7 +196,7 @@ fn test_add_proposal_encoding() {
 #[test]
 /// This test tests encoding and decoding of remove proposals.
 fn test_remove_proposal_encoding() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
@@ -236,7 +236,7 @@ fn test_remove_proposal_encoding() {
 /// This test tests encoding and decoding of commit messages.
 #[test]
 fn test_commit_encoding() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
@@ -332,7 +332,7 @@ fn test_commit_encoding() {
 
 #[test]
 fn test_welcome_message_encoding() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();

@@ -2,7 +2,7 @@
 //!
 //! This trait defines all cryptographic functions used by OpenMLS.
 
-use crate::types::{AeadType, CryptoError, HashType, SignatureScheme};
+use crate::{random::OpenMlsRand, types::{AeadType, CryptoError, HashType, SignatureScheme}};
 
 pub trait OpenMlsCrypto {
     /// Check whether the [`SignatureScheme`] is supported or not.

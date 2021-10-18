@@ -1,5 +1,5 @@
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
     prelude::*,
@@ -44,7 +44,7 @@ fn generate_key_package_bundle(
 
 #[test]
 fn test_managed_group_persistence() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -111,7 +111,7 @@ fn test_managed_group_persistence() {
 // issues a RemoveProposal and another members issues the next Commit.
 #[test]
 fn remover() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -250,7 +250,7 @@ fn remover() {
 
 ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let group_id = GroupId::from_slice(b"Test Group");

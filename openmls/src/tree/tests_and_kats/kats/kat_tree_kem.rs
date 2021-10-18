@@ -39,7 +39,7 @@ use crate::{
     },
 };
 
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, TlsVecU32};
@@ -71,7 +71,7 @@ pub struct TreeKemTestVector {
 pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
@@ -311,7 +311,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         test_utils::test_framework::CodecUse,
     };
 
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     // The test really only makes sense with two or more leaves
     if n_leaves <= 1 {

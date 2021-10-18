@@ -2,12 +2,12 @@
 use super::*;
 
 use crate::{messages::GroupSecrets, prelude::*, schedule::KeySchedule};
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Deserialize;
 
 // This tests the ratchet tree extension to test if the duplicate detection works
 ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 

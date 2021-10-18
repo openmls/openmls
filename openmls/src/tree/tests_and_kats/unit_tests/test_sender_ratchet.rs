@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::tree::sender_ratchet::SenderRatchet;
 
@@ -7,7 +7,7 @@ use crate::prelude::{LeafIndex, Secret};
 
 #[test]
 fn test_ratchet_generations() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let leaf0 = LeafIndex::from(0usize);

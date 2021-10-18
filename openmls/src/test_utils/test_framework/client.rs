@@ -3,8 +3,8 @@
 //! that client perform certain MLS operations.
 use std::{cell::RefCell, collections::HashMap};
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
-use rust_crypto::RustCrypto;
 
 use crate::{group::MlsMessageIn, node::Node, prelude::*};
 
@@ -20,7 +20,7 @@ pub struct Client {
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
     pub credentials: HashMap<CiphersuiteName, Credential>,
-    pub crypto: RustCrypto,
+    pub crypto: OpenMlsRustCrypto,
     pub groups: RefCell<HashMap<GroupId, ManagedGroup>>,
 }
 
@@ -55,7 +55,10 @@ impl Client {
         )
         .unwrap();
         let kp = kpb.key_package().clone();
-        self.crypto.store(&kp.hash(&self.crypto), &kpb).unwrap();
+        self.crypto
+            .key_store_provider()
+            .store(&kp.hash(&self.crypto), &kpb)
+            .unwrap();
         Ok(kp)
     }
 
@@ -72,16 +75,13 @@ impl Client {
             .credentials
             .get(&ciphersuite.name())
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        println!(" >> 1");
         let mandatory_extensions: Vec<Extension> =
             vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
-        println!(" >> 2");
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ClientError::NoMatchingCredential)?;
-        println!(" >> 3");
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
@@ -89,21 +89,18 @@ impl Client {
             mandatory_extensions,
         )
         .unwrap();
-        println!(" >> 4");
         let key_package = kpb.key_package().clone();
         self.crypto
+            .key_store_provider()
             .store(&key_package.hash(&self.crypto), &kpb)
             .unwrap();
-        println!(" >> 4.5");
         let group_state = ManagedGroup::new(
             &self.crypto,
             &managed_group_config,
             group_id.clone(),
             &key_package.hash(&self.crypto),
         )?;
-        println!(" >> 5");
         self.groups.borrow_mut().insert(group_id, group_state);
-        println!(" >> 6");
         Ok(())
     }
 

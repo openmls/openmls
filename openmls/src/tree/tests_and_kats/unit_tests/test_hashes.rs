@@ -1,10 +1,10 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::tree::*;
 
 #[test]
 fn test_parent_hash() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of leaf nodes in the tree
         const NODES: usize = 31;

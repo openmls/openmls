@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Deserialize;
 
 use crate::config::*;
@@ -6,7 +6,7 @@ use crate::{extensions::*, key_packages::*};
 
 #[test]
 fn generate_key_package() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let credential_bundle = CredentialBundle::new(
@@ -55,7 +55,7 @@ fn generate_key_package() {
 
 #[test]
 fn test_codec() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
@@ -87,7 +87,7 @@ fn test_codec() {
 
 #[test]
 fn key_package_id_extension() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
         let id = vec![1, 2, 3];
@@ -124,7 +124,7 @@ fn key_package_id_extension() {
 #[test]
 fn test_mismatch() {
     // === KeyPackageBundle negative test ===
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
 
     let ciphersuite_name = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;

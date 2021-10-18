@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
 /// signed
 #[test]
 fn test_pgs() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let group_aad = b"Alice's test group";
         let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);

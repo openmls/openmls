@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 /// other PSK-related structs
 #[test]
 fn test_pre_shared_key_proposal_codec() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     // ReInit
     let psk = PreSharedKeyId {
         psk_type: PskType::Reinit,
@@ -56,7 +56,7 @@ fn test_pre_shared_key_proposal_codec() {
 /// other PSK-related structs
 #[test]
 fn test_reinit_proposal_codec() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let orig = ReInitProposal {
             group_id: GroupId::random(&crypto),

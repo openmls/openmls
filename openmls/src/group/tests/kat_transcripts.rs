@@ -26,7 +26,7 @@ use crate::{
 };
 
 use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
 
@@ -49,7 +49,7 @@ pub struct TranscriptTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTestVector {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     // Generate random values.
     let group_id = GroupId::random(&crypto);
     let epoch = random_u64();
@@ -169,7 +169,7 @@ fn write_test_vectors() {
 pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), TranscriptTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
         Ok(cs) => cs,
         Err(_) => {

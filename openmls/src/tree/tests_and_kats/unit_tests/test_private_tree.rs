@@ -1,7 +1,7 @@
 //! Unit test for PrivateTree
 
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::test_util::*;
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
 
 // Common setup for tests.
 fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex, Vec<NodeIndex>) {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let credential_bundle = CredentialBundle::new(
         "username".into(),
         CredentialType::Basic,
@@ -60,7 +60,7 @@ fn test_private_tree(
 fn create_private_tree_from_secret() {
     use crate::config::*;
     const PATH_LENGTH: usize = 33;
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         let (key_package_bundle, own_index, direct_path) = setup(ciphersuite, PATH_LENGTH);
 

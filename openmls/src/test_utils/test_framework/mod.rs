@@ -28,9 +28,10 @@ use crate::group::MlsMessageIn;
 /// a lot of unused code warnings.
 use crate::{node::Node, prelude::*};
 use ::rand::{rngs::OsRng, RngCore};
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
-use rust_crypto::RustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 use std::{cell::RefCell, collections::HashMap};
 
 pub mod client;
@@ -131,7 +132,7 @@ impl ManagedTestSetup {
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
             // For now, everyone supports all ciphersuites.
-            let crypto = RustCrypto::default();
+            let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
                 let cb = CredentialBundle::new(
@@ -142,7 +143,10 @@ impl ManagedTestSetup {
                 )
                 .unwrap();
                 let credential = cb.credential().clone();
-                crypto.store(cb.credential().signature_key(), &cb).unwrap();
+                crypto
+                    .key_store_provider()
+                    .store(cb.credential().signature_key(), &cb)
+                    .unwrap();
                 credentials.insert(*ciphersuite, credential);
             }
             let client = Client {

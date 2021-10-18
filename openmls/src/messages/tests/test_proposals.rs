@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -24,7 +24,7 @@ use crate::{
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[test]
 fn proposal_queue_functions() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Framing parameters
         let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
@@ -165,7 +165,7 @@ fn proposal_queue_functions() {
 /// Test, that we the ProposalQueue is iterated in the right order.
 #[test]
 fn proposal_queue_order() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Framing parameters
         let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
@@ -305,7 +305,7 @@ fn proposal_queue_order() {
 /// decoded values are the same as the original
 #[test]
 fn proposals_codec() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite =
         &Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap();
 

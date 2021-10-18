@@ -1,11 +1,11 @@
 use openmls::prelude::*;
 mod utils;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use utils::mls_utils::*;
 
 #[test]
 fn padding() {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {

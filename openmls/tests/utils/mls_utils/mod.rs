@@ -11,7 +11,7 @@ use ::rand::RngCore;
 use openmls::prelude::*;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -70,7 +70,7 @@ const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
-    let crypto = RustCrypto::default();
+    let crypto = OpenMlsRustCrypto::default();
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.

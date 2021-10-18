@@ -1,4 +1,4 @@
-use rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
     ciphersuite::{Ciphersuite, Secret},
@@ -7,7 +7,7 @@ use crate::{
 
 #[test]
 fn secret_init() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
     let csuite = Ciphersuite::default();
 
     // These two secrets must be incompatible
@@ -22,7 +22,7 @@ fn secret_init() {
 #[test]
 #[should_panic]
 fn secret_incompatible() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
     let csuite = Ciphersuite::default();
 
     // These two secrets must be incompatible
