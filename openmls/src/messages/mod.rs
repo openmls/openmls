@@ -7,7 +7,7 @@ use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 
 mod codec;
@@ -252,7 +252,7 @@ impl GroupInfo {
     pub(crate) fn re_sign(
         self,
         credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
         self.payload.sign(backend, credential_bundle)
     }
@@ -351,15 +351,21 @@ impl GroupSecrets {
     #[cfg(any(feature = "test-utils", test))]
     pub fn random_encoded(
         ciphersuite: &'static Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {
+        use openmls_traits::random::OpenMlsRand;
+
         let psk_id = PreSharedKeyId::new(
             External,
             Psk::External(ExternalPsk::new(
-                backend.random_vec(ciphersuite.hash_length()),
+                backend
+                    .rand_provider()
+                    .random_vec(ciphersuite.hash_length()),
             )),
-            backend.random_vec(ciphersuite.hash_length()),
+            backend
+                .rand_provider()
+                .random_vec(ciphersuite.hash_length()),
         );
         let psks = PreSharedKeys {
             psks: vec![psk_id].into(),
@@ -409,7 +415,7 @@ impl PublicGroupState {
     pub(crate) fn new(
         mls_group: &MlsGroup,
         credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
         let ciphersuite = mls_group.ciphersuite();
         let (_external_priv, external_pub) = mls_group

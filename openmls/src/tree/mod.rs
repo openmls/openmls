@@ -21,7 +21,7 @@ pub(crate) use errors::*;
 pub use hashes::*;
 use index::*;
 use node::*;
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::OpenMlsCryptoProvider;
 use private_tree::PrivateTree;
 use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
@@ -62,7 +62,7 @@ implement_persistence!(RatchetTree, mls_version, nodes, private_tree);
 
 impl RatchetTree {
     /// Create a new `RatchetTree` with only the "self" member as first node.
-    pub(crate) fn new(backend: &impl OpenMlsSecurity, kpb: KeyPackageBundle) -> RatchetTree {
+    pub(crate) fn new(backend: &impl OpenMlsCryptoProvider, kpb: KeyPackageBundle) -> RatchetTree {
         // Create an initial, empty tree
         let mut tree = Self {
             ciphersuite: kpb.key_package().ciphersuite(),
@@ -95,7 +95,7 @@ impl RatchetTree {
     /// bundle `kpb`. The client's node must be in the list of nodes and the list
     /// of nodes must contain all nodes of the tree, including intermediates.
     pub(crate) fn new_from_nodes(
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
     ) -> Result<RatchetTree, TreeError> {
@@ -264,7 +264,7 @@ impl RatchetTree {
     /// > parent of its predecessor.
     pub(crate) fn update_path(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         sender: LeafIndex,
         update_path: &UpdatePath,
         group_context: &[u8],
@@ -402,7 +402,7 @@ impl RatchetTree {
     /// Update the private tree with the new `KeyPackageBundle`.
     pub(crate) fn replace_private_tree(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         key_package_bundle: &KeyPackageBundle,
         group_context: &[u8],
     ) -> Option<&CommitSecret> {
@@ -424,7 +424,7 @@ impl RatchetTree {
         credential_bundle: &CredentialBundle,
         group_context: &[u8],
         new_leaves_indexes: HashSet<&LeafIndex>,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(UpdatePath, KeyPackageBundle), TreeError> {
         // Generate new keypair
         let own_index = self.own_node_index();
@@ -469,7 +469,7 @@ impl RatchetTree {
     /// `key_package` and `leaf_secret`.
     fn replace_private_tree_(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         leaf_secret: &Secret,
         key_package: &KeyPackage,
         group_context: &[u8],
@@ -491,7 +491,7 @@ impl RatchetTree {
     /// `leaf_secret` only.
     fn replace_private_tree_path_(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         leaf_secret: &Secret,
         group_context: &[u8],
         new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
@@ -711,7 +711,7 @@ impl RatchetTree {
     /// current epoch
     pub fn apply_proposals(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: ProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeError> {

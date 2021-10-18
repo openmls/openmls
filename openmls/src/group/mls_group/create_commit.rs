@@ -1,4 +1,4 @@
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::ciphersuite::signable::Signable;
 use crate::config::Config;
@@ -17,7 +17,7 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
@@ -240,7 +240,7 @@ impl PlaintextSecret {
         invited_members: Vec<(LeafIndex, AddProposal)>,
         provisional_tree: &RatchetTree,
         presharedkeys: &PreSharedKeys,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Vec<Self>, MlsGroupError> {
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {

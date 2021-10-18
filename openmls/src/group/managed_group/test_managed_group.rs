@@ -1,4 +1,4 @@
-use openmls_traits::{types::SignatureScheme, OpenMlsSecurity};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use rust_crypto::RustCrypto;
 
 use crate::{
@@ -9,27 +9,36 @@ use crate::{
 };
 
 fn generate_credential_bundle(
-    key_store: &impl OpenMlsSecurity,
+    key_store: &impl OpenMlsCryptoProvider,
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_scheme: SignatureScheme,
 ) -> Result<Credential, CredentialError> {
     let cb = CredentialBundle::new(identity, credential_type, signature_scheme, key_store)?;
     let credential = cb.credential().clone();
-    key_store.store(credential.signature_key(), &cb).unwrap();
+    key_store
+        .key_store_provider()
+        .store(credential.signature_key(), &cb)
+        .unwrap();
     Ok(credential)
 }
 
 fn generate_key_package_bundle(
-    key_store: &impl OpenMlsSecurity,
+    key_store: &impl OpenMlsCryptoProvider,
     ciphersuites: &[CiphersuiteName],
     credential: &Credential,
     extensions: Vec<Extension>,
 ) -> Result<KeyPackage, KeyPackageError> {
-    let credential_bundle = key_store.read(credential.signature_key()).unwrap();
+    let credential_bundle = key_store
+        .key_store_provider()
+        .read(credential.signature_key())
+        .unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, key_store, extensions)?;
     let kp = kpb.key_package().clone();
-    key_store.store(&kp.hash(key_store), &kpb).unwrap();
+    key_store
+        .key_store_provider()
+        .store(&kp.hash(key_store), &kpb)
+        .unwrap();
     Ok(kp)
 }
 

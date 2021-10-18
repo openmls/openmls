@@ -124,7 +124,7 @@ use crate::{
     messages::ConfirmationTag,
 };
 
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
@@ -156,7 +156,7 @@ impl Default for CommitSecret {
 impl CommitSecret {
     pub(crate) fn new(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         path_secret: &Secret,
     ) -> Self {
         // FIXME: remove unwrap
@@ -176,7 +176,10 @@ impl CommitSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
+    pub(crate) fn random(
+        ciphersuite: &'static Ciphersuite,
+        rng: &impl OpenMlsCryptoProvider,
+    ) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }
@@ -202,7 +205,7 @@ pub(crate) struct InitSecret {
 
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: EpochSecret) -> Self {
         // FIXME: remove unwrap
         let secret = epoch_secret.secret.derive_secret(backend, "init").unwrap();
         log_crypto!(trace, "Init secret: {:x?}", secret);
@@ -212,7 +215,7 @@ impl InitSecret {
     /// Sample a fresh, random `InitSecret` for the creation of a new group.
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
     ) -> Self {
         InitSecret {
@@ -250,7 +253,7 @@ impl JoinerSecret {
     /// partial commit. TODO: For now, this takes a reference to a
     /// `CommitSecret` as input. This should change with #224.
     pub(crate) fn new<'a>(
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         commit_secret_option: impl Into<Option<&'a CommitSecret>>,
         init_secret: &InitSecret,
     ) -> Self {
@@ -289,7 +292,7 @@ impl JoinerSecret {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
     ) -> Self {
         Self {
@@ -316,7 +319,7 @@ impl KeySchedule {
     /// Initialize the key schedule and return it.
     pub(crate) fn init(
         ciphersuite: &'static Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         joiner_secret: JoinerSecret,
         psk: impl Into<Option<PskSecret>>,
     ) -> Self {
@@ -344,7 +347,7 @@ impl KeySchedule {
     /// Note that this has to be called before the context is added.
     pub(crate) fn welcome(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<WelcomeSecret, KeyScheduleError> {
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!("Trying to derive a welcome secret while not in the initial state.");
@@ -360,7 +363,7 @@ impl KeySchedule {
     /// Add the group context to the key schedule.
     pub(crate) fn add_context(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         group_context: &GroupContext,
     ) -> Result<(), KeyScheduleError> {
         log::trace!("Adding context to key schedule. {:?}", group_context);
@@ -392,7 +395,7 @@ impl KeySchedule {
     /// part of the `EpochSecrets`. Otherwise not.
     pub(crate) fn epoch_secrets(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         init_secret: bool,
     ) -> Result<EpochSecrets, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
@@ -419,7 +422,7 @@ impl IntermediateSecret {
     /// Derive an `IntermediateSecret` from a `JoinerSecret` and an optional
     /// PSK.
     fn new(
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         joiner_secret: &JoinerSecret,
         psk: Option<PskSecret>,
     ) -> Self {
@@ -438,7 +441,7 @@ pub(crate) struct WelcomeSecret {
 
 impl WelcomeSecret {
     /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
-    fn new(backend: &impl OpenMlsSecurity, intermediate_secret: &IntermediateSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, intermediate_secret: &IntermediateSecret) -> Self {
         // FIXME: remove unwrap
         let secret = intermediate_secret
             .secret
@@ -452,7 +455,7 @@ impl WelcomeSecret {
     /// consuming it in the process.
     pub(crate) fn derive_welcome_key_nonce(
         self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> (AeadKey, AeadNonce) {
         let welcome_nonce = self.derive_aead_nonce(backend);
         let welcome_key = self.derive_aead_key(backend);
@@ -460,7 +463,7 @@ impl WelcomeSecret {
     }
 
     /// Derive a new AEAD key from a `WelcomeSecret`.
-    fn derive_aead_key(&self, backend: &impl OpenMlsSecurity) -> AeadKey {
+    fn derive_aead_key(&self, backend: &impl OpenMlsCryptoProvider) -> AeadKey {
         log::trace!(
             "WelcomeSecret.derive_aead_key with {}",
             self.secret.ciphersuite()
@@ -473,7 +476,7 @@ impl WelcomeSecret {
     }
 
     /// Derive a new AEAD nonce from a `WelcomeSecret`.
-    fn derive_aead_nonce(&self, backend: &impl OpenMlsSecurity) -> AeadNonce {
+    fn derive_aead_nonce(&self, backend: &impl OpenMlsCryptoProvider) -> AeadNonce {
         let nonce_secret = self
             .secret
             .hkdf_expand(
@@ -502,7 +505,7 @@ impl EpochSecret {
     /// Derive an `EpochSecret` from a `JoinerSecret`
     fn new(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         intermediate_secret: IntermediateSecret,
         group_context: &GroupContext,
     ) -> Self {
@@ -529,7 +532,7 @@ pub(crate) struct EncryptionSecret {
 
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         // FIXME: remove unwrap
         EncryptionSecret {
             secret: epoch_secret
@@ -553,7 +556,10 @@ impl EncryptionSecret {
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
     #[doc(hidden)]
-    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
+    pub(crate) fn random(
+        ciphersuite: &'static Ciphersuite,
+        rng: &impl OpenMlsCryptoProvider,
+    ) -> Self {
         EncryptionSecret {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }
@@ -587,7 +593,7 @@ pub(crate) struct ExporterSecret {
 
 impl ExporterSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         // FIXME: remove unwrap
         let secret = epoch_secret
             .secret
@@ -607,7 +613,7 @@ impl ExporterSecret {
     pub(crate) fn derive_exported_secret(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         label: &str,
         context: &[u8],
         key_length: usize,
@@ -634,7 +640,7 @@ pub(crate) struct AuthenticationSecret {
 
 impl AuthenticationSecret {
     /// Derive an `AuthenticationSecret` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         // FIXME: remove unwrap
         let secret = epoch_secret
             .secret
@@ -663,7 +669,7 @@ pub(crate) struct ExternalSecret {
 
 impl ExternalSecret {
     /// Derive an `ExternalSecret` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         // FIXME: remove unwrap
         let secret = epoch_secret
             .secret
@@ -692,7 +698,7 @@ pub struct ConfirmationKey {
 
 impl ConfirmationKey {
     /// Derive an `ConfirmationKey` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         log::debug!("Computing confirmation key.");
         log_crypto!(
             trace,
@@ -717,7 +723,7 @@ impl ConfirmationKey {
     /// ```
     pub fn tag(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         confirmed_transcript_hash: &[u8],
     ) -> ConfirmationTag {
         log::debug!("Computing confirmation tag.");
@@ -746,7 +752,7 @@ pub struct MembershipKey {
 
 impl MembershipKey {
     /// Derive an `MembershipKey` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         // FIXME: remove unwrap
         let secret = epoch_secret
             .secret
@@ -764,7 +770,7 @@ impl MembershipKey {
     /// ```
     pub(crate) fn tag(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         tbm_payload: MlsPlaintextTbmPayload,
     ) -> Result<MembershipTag, tls_codec::Error> {
         Ok(MembershipTag(Mac::new(
@@ -794,7 +800,7 @@ pub struct ResumptionSecret {
 
 impl ResumptionSecret {
     /// Derive an `ResumptionSecret` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         // FIXME: remove unwrap
         let secret = epoch_secret
             .secret
@@ -829,7 +835,7 @@ pub(crate) struct SenderDataSecret {
 
 impl SenderDataSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: &EpochSecret) -> Self {
+    fn new(backend: &impl OpenMlsCryptoProvider, epoch_secret: &EpochSecret) -> Self {
         // FIXME: remove unwrap
         let secret = epoch_secret
             .secret
@@ -841,7 +847,7 @@ impl SenderDataSecret {
     /// Derive a new AEAD key from a `SenderDataSecret`.
     pub(crate) fn derive_aead_key(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         ciphertext: &[u8],
     ) -> AeadKey {
         let ciphertext_sample = ciphertext_sample(self.secret.ciphersuite(), ciphertext);
@@ -866,7 +872,7 @@ impl SenderDataSecret {
     pub(crate) fn derive_aead_nonce(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         ciphertext: &[u8],
     ) -> AeadNonce {
         let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
@@ -889,7 +895,7 @@ impl SenderDataSecret {
 
     #[cfg(any(feature = "test-utils", test))]
     #[doc(hidden)]
-    pub fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
+    pub fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }
@@ -1021,7 +1027,11 @@ impl EpochSecrets {
     /// Derive `EpochSecrets` from an `EpochSecret`.
     /// If the `init_secret` argument is `true`, the init secret is derived and
     /// part of the `EpochSecrets`. Otherwise not.
-    fn new(backend: &impl OpenMlsSecurity, epoch_secret: EpochSecret, init_secret: bool) -> Self {
+    fn new(
+        backend: &impl OpenMlsCryptoProvider,
+        epoch_secret: EpochSecret,
+        init_secret: bool,
+    ) -> Self {
         log::debug!(
             "Computing EpochSecrets from epoch secret with {}",
             epoch_secret.secret.ciphersuite()

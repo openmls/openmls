@@ -3,7 +3,7 @@
 //! that client perform certain MLS operations.
 use std::{cell::RefCell, collections::HashMap};
 
-use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use rust_crypto::RustCrypto;
 
 use crate::{group::MlsMessageIn, node::Node, prelude::*};
@@ -44,6 +44,7 @@ impl Client {
             vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
@@ -77,6 +78,7 @@ impl Client {
         println!(" >> 2");
         let credential_bundle: CredentialBundle = self
             .crypto
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ClientError::NoMatchingCredential)?;
         println!(" >> 3");

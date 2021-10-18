@@ -15,7 +15,7 @@ use crate::{
     utils::*,
 };
 
-use openmls_traits::{random::OpenMlsRand, types::SignatureScheme};
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use rust_crypto::RustCrypto;
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
@@ -85,13 +85,16 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let group_info = GroupInfoPayload::new(
         group_id.clone(),
         GroupEpoch(0),
-        crypto.random_vec(ciphersuite.hash_length()),
-        crypto.random_vec(ciphersuite.hash_length()),
+        crypto.rand_provider().random_vec(ciphersuite.hash_length()),
+        crypto.rand_provider().random_vec(ciphersuite.hash_length()),
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
         ))],
         ConfirmationTag(Mac {
-            mac_value: crypto.random_vec(ciphersuite.hash_length()).into(),
+            mac_value: crypto
+                .rand_provider()
+                .random_vec(ciphersuite.hash_length())
+                .into(),
         }),
         LeafIndex::from(random_u32()),
     );
@@ -121,9 +124,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let psk_id = PreSharedKeyId::new(
         PskType::External,
         Psk::External(ExternalPsk::new(
-            crypto.random_vec(ciphersuite.hash_length()),
+            crypto.rand_provider().random_vec(ciphersuite.hash_length()),
         )),
-        crypto.random_vec(ciphersuite.hash_length()),
+        crypto.rand_provider().random_vec(ciphersuite.hash_length()),
     );
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);

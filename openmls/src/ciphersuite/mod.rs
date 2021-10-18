@@ -6,8 +6,10 @@
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 use hpke::prelude::*;
 use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    random::OpenMlsRand,
     types::{AeadType, HashType, SignatureScheme},
-    OpenMlsSecurity,
+    OpenMlsCryptoProvider,
 };
 pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -224,7 +226,7 @@ impl Secret {
     /// This default random initialiser uses the default Secret length of `hash_length`.
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
-        crypto: &impl OpenMlsSecurity,
+        crypto: &impl OpenMlsCryptoProvider,
         version: impl Into<Option<ProtocolVersion>>,
     ) -> Self {
         let mls_version = version.into().unwrap_or_default();
@@ -234,7 +236,7 @@ impl Secret {
             mls_version
         );
         Secret {
-            value: crypto.random_vec(ciphersuite.hash_length()),
+            value: crypto.rand_provider().random_vec(ciphersuite.hash_length()),
             mls_version,
             ciphersuite,
         }
@@ -265,7 +267,7 @@ impl Secret {
     /// HKDF extract where `self` is `salt`.
     pub(crate) fn hkdf_extract<'a>(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         ikm_option: impl Into<Option<&'a Secret>>,
     ) -> Self {
         log::trace!("HKDF extract with {:?}", self.ciphersuite.name);
@@ -297,6 +299,7 @@ impl Secret {
             //      module has to ensure to check that the backend supports
             //      all required functions before doing anything.
             value: backend
+                .crypto_provider()
                 .hkdf_extract(
                     self.ciphersuite.hash,
                     self.value.as_slice(),
@@ -311,11 +314,12 @@ impl Secret {
     /// HKDF expand where `self` is `prk`.
     pub(crate) fn hkdf_expand(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         info: &[u8],
         okm_len: usize,
     ) -> Result<Self, CryptoError> {
         let key = backend
+            .crypto_provider()
             .hkdf_expand(self.ciphersuite.hash, &self.value, info, okm_len)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
         if key.is_empty() {
@@ -332,7 +336,7 @@ impl Secret {
     /// `label` and a `context`.
     pub(crate) fn kdf_expand_label(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         label: &str,
         context: &[u8],
         length: usize,
@@ -354,7 +358,7 @@ impl Secret {
     /// `label` and an empty `context`.
     pub(crate) fn derive_secret(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         label: &str,
     ) -> Result<Secret, CryptoError> {
         log_crypto!(
@@ -428,7 +432,7 @@ impl Mac {
     /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
     /// HMAC that is also used in HKDF.
     /// Compute the HMAC on `salt` with key `ikm`.
-    pub(crate) fn new(backend: &impl OpenMlsSecurity, salt: &Secret, ikm: &[u8]) -> Self {
+    pub(crate) fn new(backend: &impl OpenMlsCryptoProvider, salt: &Secret, ikm: &[u8]) -> Self {
         Mac {
             mac_value: salt
                 .hkdf_extract(
@@ -457,9 +461,9 @@ pub struct ReuseGuard {
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
-    pub fn from_random(crypto: &impl OpenMlsSecurity) -> Self {
+    pub fn from_random(crypto: &impl OpenMlsCryptoProvider) -> Self {
         Self {
-            value: crypto.random_array(),
+            value: crypto.rand_provider().random_array(),
         }
     }
 }
@@ -615,9 +619,9 @@ impl Ciphersuite {
     }
 
     /// Hash `payload` and return the digest.
-    pub(crate) fn hash(&self, backend: &impl OpenMlsSecurity, payload: &[u8]) -> Vec<u8> {
+    pub(crate) fn hash(&self, backend: &impl OpenMlsCryptoProvider, payload: &[u8]) -> Vec<u8> {
         // XXX: remove unwrap
-        backend.hash(self.hash, payload).unwrap()
+        backend.crypto_provider().hash(self.hash, payload).unwrap()
     }
 
     /// Get the length of the used hash algorithm.
@@ -730,12 +734,13 @@ impl AeadKey {
     /// Encrypt a payload under the AeadKey given a nonce.
     pub(crate) fn aead_seal(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         msg: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
         backend
+            .crypto_provider()
             .aead_encrypt(
                 self.aead_mode,
                 self.value.as_slice(),
@@ -749,12 +754,13 @@ impl AeadKey {
     /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
     pub(crate) fn aead_open(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         ciphertext: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
         backend
+            .crypto_provider()
             .aead_decrypt(
                 self.aead_mode,
                 self.value.as_slice(),
@@ -780,9 +786,9 @@ impl AeadNonce {
     /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
     /// TODO: This panics if another thread holding the rng panics.
     #[cfg(test)]
-    pub fn random(rng: &impl OpenMlsSecurity) -> Self {
+    pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
         AeadNonce {
-            value: rng.random_array(),
+            value: rng.rand_provider().random_array(),
         }
     }
 
@@ -812,7 +818,7 @@ impl SignatureKeypair {
     /// Returns a `Result` with a `Signature` or a `CryptoError`.
     pub fn sign(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         payload: &[u8],
     ) -> Result<Signature, CryptoError> {
         self.private_key.sign(backend, payload)
@@ -822,7 +828,7 @@ impl SignatureKeypair {
     /// public key.
     pub fn verify(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         signature: &Signature,
         payload: &[u8],
     ) -> Result<(), CryptoError> {
@@ -838,9 +844,10 @@ impl SignatureKeypair {
 impl SignatureKeypair {
     pub(crate) fn new(
         signature_scheme: SignatureScheme,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<SignatureKeypair, CryptoError> {
         let (sk, pk) = backend
+            .crypto_provider()
             .signature_key_gen(signature_scheme)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
@@ -870,14 +877,16 @@ impl SignaturePublicKey {
     /// public key.
     pub fn verify(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         signature: &Signature,
         payload: &[u8],
     ) -> Result<(), CryptoError> {
         backend
+            .crypto_provider()
             .supports(self.signature_scheme)
             .map_err(|_| CryptoError::UnsupportedSignatureScheme)?;
         backend
+            .crypto_provider()
             .verify_signature(
                 self.signature_scheme,
                 payload,
@@ -893,10 +902,13 @@ impl SignaturePrivateKey {
     /// Returns a `Result` with a `Signature` or a `SignatureError`.
     pub fn sign(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         payload: &[u8],
     ) -> Result<Signature, CryptoError> {
-        match backend.sign(self.signature_scheme, payload, &self.value) {
+        match backend
+            .crypto_provider()
+            .sign(self.signature_scheme, payload, &self.value)
+        {
             Ok(s) => Ok(Signature { value: s.into() }),
             Err(_) => Err(CryptoError::CryptoLibraryError),
         }

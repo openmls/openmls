@@ -1,7 +1,7 @@
 use openmls::{group::EmptyInputError, prelude::*};
 
 use lazy_static::lazy_static;
-use openmls_traits::{types::SignatureScheme, OpenMlsSecurity};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use rust_crypto::RustCrypto;
 use std::fs::File;
 
@@ -42,11 +42,14 @@ fn generate_credential_bundle(
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_scheme: SignatureScheme,
-    backend: &impl OpenMlsSecurity,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> Result<Credential, CredentialError> {
     let cb = CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
     let credential = cb.credential().clone();
-    backend.store(credential.signature_key(), &cb).unwrap();
+    backend
+        .key_store_provider()
+        .store(credential.signature_key(), &cb)
+        .unwrap();
     Ok(credential)
 }
 
@@ -54,12 +57,18 @@ fn generate_key_package_bundle(
     ciphersuites: &[CiphersuiteName],
     credential: &Credential,
     extensions: Vec<Extension>,
-    backend: &impl OpenMlsSecurity,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageError> {
-    let credential_bundle = backend.read(credential.signature_key()).unwrap();
+    let credential_bundle = backend
+        .key_store_provider()
+        .read(credential.signature_key())
+        .unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
-    backend.store(&kp.hash(backend), &kpb).unwrap();
+    backend
+        .key_store_provider()
+        .store(&kp.hash(backend), &kpb)
+        .unwrap();
     Ok(kp)
 }
 

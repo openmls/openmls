@@ -304,7 +304,7 @@ fn write_test_vector() {
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
-    use openmls_traits::key_store::OpenMlsKeyStore;
+    use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
     use crate::{
         extensions::RatchetTreeExtension, group::WireFormat, prelude::KeyPackageBundle,
@@ -402,7 +402,11 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .get_fresh_key_package(&addee, &group.ciphersuite)
         .unwrap();
 
-    let kpb: KeyPackageBundle = addee.crypto.read(&my_key_package.hash(&crypto)).unwrap();
+    let kpb: KeyPackageBundle = addee
+        .crypto
+        .key_store_provider()
+        .read(&my_key_package.hash(&crypto))
+        .unwrap();
     let my_leaf_secret = kpb.leaf_secret();
 
     let (messages, welcome) = adder

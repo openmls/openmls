@@ -1,4 +1,4 @@
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{
     Deserialize, Serialize, Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8,
     TlsDeserialize, TlsSerialize, TlsSize,
@@ -27,7 +27,7 @@ impl MlsCiphertext {
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         context: &GroupContext,
         sender: LeafIndex,
         epoch_secrets: &EpochSecrets,
@@ -121,7 +121,7 @@ impl MlsCiphertext {
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {

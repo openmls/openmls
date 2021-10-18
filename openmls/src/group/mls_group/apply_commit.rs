@@ -12,7 +12,7 @@ impl MlsGroup {
         proposals_by_reference: &[&MlsPlaintext],
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.ciphersuite();
 

@@ -8,7 +8,7 @@ mod ser;
 mod test_managed_group;
 
 use crate::credentials::CredentialBundle;
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
@@ -101,7 +101,7 @@ impl ManagedGroup {
     /// `key_package_hash` from the `backend`. Throws an error if no
     /// `KeyPackageBundle` can be found.
     pub fn new(
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         managed_group_config: &ManagedGroupConfig,
         group_id: GroupId,
         key_package_hash: &[u8],
@@ -109,9 +109,11 @@ impl ManagedGroup {
         // TODO #141
         let kph = key_package_hash.to_vec();
         let key_package_bundle: KeyPackageBundle = backend
+            .key_store_provider()
             .read(&kph)
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         backend
+            .key_store_provider()
             .delete(&kph)
             .map_err(|_| ManagedGroupError::KeyStoreError)?;
         let group_config = MlsGroupConfig {
@@ -149,7 +151,7 @@ impl ManagedGroup {
 
     /// Creates a new group from a `Welcome` message
     pub fn new_from_welcome(
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         managed_group_config: &ManagedGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
@@ -159,7 +161,11 @@ impl ManagedGroup {
         let key_package_bundle = welcome
             .secrets()
             .iter()
-            .find_map(|egs| backend.read(&egs.key_package_hash.as_slice().to_vec()))
+            .find_map(|egs| {
+                backend
+                    .key_store_provider()
+                    .read(&egs.key_package_hash.as_slice().to_vec())
+            })
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141
         let group =
@@ -194,7 +200,7 @@ impl ManagedGroup {
     /// [`MlsMessage`] and a [`Welcome`] message.
     pub fn add_members(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, Welcome), ManagedGroupError> {
         if !self.active {
@@ -224,6 +230,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -273,7 +280,7 @@ impl ManagedGroup {
     /// proposals in the queue of pending proposals.
     pub fn remove_members(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         members: &[usize],
     ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
@@ -305,6 +312,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -342,7 +350,7 @@ impl ManagedGroup {
     /// Creates proposals to add members to the group
     pub fn propose_add_member(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
 
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
@@ -352,6 +360,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -373,7 +382,7 @@ impl ManagedGroup {
     /// Creates proposals to remove members from the group
     pub fn propose_remove_member(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         member: usize,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -382,6 +391,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -403,7 +413,7 @@ impl ManagedGroup {
     /// Leave the group
     pub fn leave_group(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -411,6 +421,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -447,7 +458,7 @@ impl ManagedGroup {
     pub fn process_message(
         &mut self,
         message: MlsMessageIn,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -620,7 +631,7 @@ impl ManagedGroup {
     /// and incoming messages from the DS must be processed afterwards.
     pub fn create_message(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         message: &[u8],
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -634,6 +645,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -654,7 +666,7 @@ impl ManagedGroup {
     /// Process pending proposals
     pub fn process_pending_proposals(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -664,6 +676,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -699,7 +712,7 @@ impl ManagedGroup {
     /// Exports a secret from the current epoch
     pub fn export_secret(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         label: &str,
         context: &[u8],
         key_length: usize,
@@ -792,7 +805,7 @@ impl ManagedGroup {
     /// proposals in the queue of pending proposals.
     pub fn self_update(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
@@ -801,6 +814,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -859,7 +873,7 @@ impl ManagedGroup {
     /// Creates a proposal to update the own leaf node
     pub fn propose_self_update(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -868,6 +882,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
+            .key_store_provider()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -939,7 +954,7 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn tree_hash(&self, backend: &impl OpenMlsSecurity) -> Vec<u8> {
+    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
         self.group.tree().tree_hash(backend)
     }
 
@@ -957,7 +972,7 @@ impl ManagedGroup {
     fn plaintext_to_mls_message(
         &mut self,
         plaintext: MlsPlaintext,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         let msg = match self.configuration().handshake_message_format {
             WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(plaintext),
@@ -1034,7 +1049,7 @@ impl ManagedGroup {
     fn prepare_events(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         proposals: &[ProposalOrRef],
         sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,

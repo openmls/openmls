@@ -24,7 +24,7 @@
 use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
 
 use super::*;
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
 use tls_codec::{Serialize, Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -127,7 +127,7 @@ impl MlsPlaintext {
         content_type: ContentType,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
         let serialized_context = context.tls_serialize_detached()?;
         let mls_plaintext = MlsPlaintextTbs::new(
@@ -153,7 +153,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
         let mut mls_plaintext = Self::new(
             framing_parameters,
@@ -181,7 +181,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
         Self::new_with_membership_tag(
             framing_parameters,
@@ -203,7 +203,7 @@ impl MlsPlaintext {
         commit: Commit,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
         Self::new(
             framing_parameters,
@@ -225,7 +225,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
@@ -267,7 +267,7 @@ impl MlsPlaintext {
     /// This should be used after signing messages from group members.
     pub(crate) fn set_membership_tag(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), MlsPlaintextError> {
@@ -292,7 +292,7 @@ impl MlsPlaintext {
     // TODO #133: Include this in the validation
     pub fn verify_membership(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), MlsPlaintextError> {

@@ -52,7 +52,7 @@ impl PrivateTree {
     /// will only be derived in a further step. The HPKE private key is
     /// derived from the leaf secret contained in the KeyPackageBundle.
     pub(crate) fn from_leaf_secret(
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafIndex,
         leaf_secret: &Secret,
     ) -> Self {
@@ -77,7 +77,7 @@ impl PrivateTree {
     /// The private key is derived from the leaf secret.
     pub(crate) fn new_with_keys(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafIndex,
         leaf_secret: &Secret,
         path: &[NodeIndex],
@@ -124,7 +124,7 @@ impl PrivateTree {
     pub(crate) fn generate_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         leaf_secret: &Secret,
         path: &[NodeIndex],
     ) -> Vec<HpkePublicKey> {
@@ -154,7 +154,7 @@ impl PrivateTree {
     pub(crate) fn continue_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         start_secret: PathSecret,
         path: &[NodeIndex],
     ) -> Vec<HpkePublicKey> {
@@ -167,7 +167,7 @@ impl PrivateTree {
     fn derive_path_secrets(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         path_secrets: Vec<PathSecret>,
         path: &[NodeIndex],
     ) -> Vec<HpkePublicKey> {
@@ -205,7 +205,7 @@ impl PrivateTree {
     fn generate_commit_secret(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) {
         let path_secret = self.path_secrets.last().unwrap();
         self.commit_secret = Some(CommitSecret::new(
@@ -229,7 +229,7 @@ impl PrivateTree {
     fn generate_path_keypairs(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         path: &[NodeIndex],
     ) -> Vec<HpkePublicKey> {
         let hash_len = ciphersuite.hash_length();

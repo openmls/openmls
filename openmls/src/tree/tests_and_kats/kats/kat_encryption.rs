@@ -133,7 +133,7 @@ pub struct EncryptionTestVector {
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: &Ciphersuite,
-    backend: &impl OpenMlsSecurity,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> (MlsGroup, CredentialBundle) {
     use openmls_traits::types::SignatureScheme;
 
@@ -170,7 +170,7 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: &Ciphersuite,
-    backend: &impl OpenMlsSecurity,
+    backend: &impl OpenMlsCryptoProvider,
     group_id: &GroupId,
 ) -> MlsGroup {
     use openmls_traits::types::SignatureScheme;
@@ -207,7 +207,7 @@ fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
-    backend: &impl OpenMlsSecurity,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -252,7 +252,7 @@ fn build_application_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
-    backend: &impl OpenMlsSecurity,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -303,7 +303,7 @@ pub fn generate_test_vector(
 
     let ciphersuite_name = ciphersuite.name();
     let crypto = RustCrypto::default();
-    let epoch_secret = crypto.random_vec(ciphersuite.hash_length());
+    let epoch_secret = crypto.rand_provider().random_vec(ciphersuite.hash_length());
     let encryption_secret =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
     let encryption_secret_group =
@@ -315,7 +315,7 @@ pub fn generate_test_vector(
     let group_secret_tree = SecretTree::new(encryption_secret_group, LeafIndex::from(n_leaves));
 
     // Create sender_data_key/secret
-    let ciphertext = crypto.random_vec(77);
+    let ciphertext = crypto.rand_provider().random_vec(77);
     let sender_data_key = sender_data_secret.derive_aead_key(&crypto, &ciphertext);
     // Derive initial nonce from the key schedule using the ciphertext.
     let sender_data_nonce = sender_data_secret.derive_aead_nonce(ciphersuite, &crypto, &ciphertext);

@@ -72,7 +72,7 @@ impl<'a> ParentHashInput<'a> {
     pub(crate) fn hash(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Vec<u8> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
@@ -92,7 +92,7 @@ impl<'a> LeafNodeHashInput<'a> {
             key_package,
         }
     }
-    pub fn hash(&self, ciphersuite: &Ciphersuite, backend: &impl OpenMlsSecurity) -> Vec<u8> {
+    pub fn hash(&self, ciphersuite: &Ciphersuite, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }
@@ -123,7 +123,7 @@ impl<'a> ParentNodeTreeHashInput<'a> {
     pub(crate) fn hash(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Vec<u8> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
@@ -164,12 +164,12 @@ impl RatchetTree {
     /// for the parent hash extension
     pub(crate) fn set_parent_hashes(
         &mut self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         index: LeafIndex,
     ) -> Vec<u8> {
         // Recursive helper function used to calculate parent hashes
         fn node_parent_hash(
-            backend: &impl OpenMlsSecurity,
+            backend: &impl OpenMlsCryptoProvider,
             tree: &mut RatchetTree,
             index: NodeIndex,
             former_index: NodeIndex,
@@ -224,7 +224,7 @@ impl RatchetTree {
     /// hash has successfully been verified and `false` otherwise.
     pub fn verify_parent_hash(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         index: NodeIndex,
         node: &Node,
     ) -> Result<(), ParentHashError> {
@@ -284,7 +284,7 @@ impl RatchetTree {
     /// hashes have successfully been verified and `false` otherwise.
     pub fn verify_parent_hashes(
         &self,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(), ParentHashError> {
         for (index, node) in self.nodes.iter().enumerate() {
             if NodeIndex::from(index).is_parent() && node.is_full_parent() {
@@ -297,10 +297,10 @@ impl RatchetTree {
     // === Tree hash ===
 
     /// Computes and returns the tree hash
-    pub(crate) fn tree_hash(&self, backend: &impl OpenMlsSecurity) -> Vec<u8> {
+    pub(crate) fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
         // Recursive helper function to the tree hashes for a node
         fn node_hash(
-            backend: &impl OpenMlsSecurity,
+            backend: &impl OpenMlsCryptoProvider,
             tree: &RatchetTree,
             index: NodeIndex,
         ) -> Vec<u8> {

@@ -32,7 +32,7 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
@@ -102,13 +102,15 @@ impl ExternalPskBundle {
     /// Create a new bundle
     pub fn new(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         secret: Secret,
         psk_id: Vec<u8>,
     ) -> Self {
         Self {
             secret,
-            nonce: backend.random_vec(ciphersuite.hash_length()),
+            nonce: backend
+                .rand_provider()
+                .random_vec(ciphersuite.hash_length()),
             external_psk: ExternalPsk {
                 psk_id: psk_id.into(),
             },
@@ -271,7 +273,7 @@ impl PskSecret {
     /// Create a new `PskSecret` from PSK IDs and PSKs
     pub fn new(
         ciphersuite: &'static Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         psk_ids: &[PreSharedKeyId],
         psks: &[Secret],
     ) -> Result<Self, PskSecretError> {
@@ -312,7 +314,10 @@ impl PskSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsSecurity) -> Self {
+    pub(crate) fn random(
+        ciphersuite: &'static Ciphersuite,
+        rng: &impl OpenMlsCryptoProvider,
+    ) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }

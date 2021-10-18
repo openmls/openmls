@@ -30,7 +30,7 @@ impl SenderRatchet {
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         generation: u32,
     ) -> Result<RatchetSecrets, SecretTreeError> {
         // If generation is too distant in the future
@@ -69,7 +69,7 @@ impl SenderRatchet {
     pub fn secret_for_encryption(
         &mut self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> (u32, RatchetSecrets) {
         let current_path_secret = match self.past_secrets.last() {
             Some(secret) => secret.clone(),
@@ -96,7 +96,7 @@ impl SenderRatchet {
     fn ratchet_secret(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         secret: &Secret,
     ) -> Secret {
         derive_tree_secret(
@@ -112,7 +112,7 @@ impl SenderRatchet {
     fn derive_key_nonce(
         &self,
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
         secret: &Secret,
         generation: u32,
     ) -> RatchetSecrets {

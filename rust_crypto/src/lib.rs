@@ -16,7 +16,7 @@ use openmls_traits::{
     key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue},
     random::OpenMlsRand,
     types::{AeadType, CryptoError, HashType, SignatureScheme},
-    OpenMlsSecurity,
+    OpenMlsCryptoProvider,
 };
 use p256::{
     ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
@@ -31,7 +31,23 @@ pub struct RustCrypto {
     values: RwLock<HashMap<u64, Vec<u8>>>,
 }
 
-impl OpenMlsSecurity for RustCrypto {}
+impl OpenMlsCryptoProvider for RustCrypto {
+    type CryptoProvider = Self;
+    type RandProvider = Self;
+    type KeyStoreProvider = Self;
+
+    fn crypto_provider(&self) -> &Self::CryptoProvider {
+        self
+    }
+
+    fn rand_provider(&self) -> &Self::RandProvider {
+        self
+    }
+
+    fn key_store_provider(&self) -> &Self::KeyStoreProvider {
+        self
+    }
+}
 
 impl Default for RustCrypto {
     fn default() -> Self {

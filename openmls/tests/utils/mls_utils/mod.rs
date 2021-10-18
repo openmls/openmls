@@ -10,7 +10,7 @@ use ::rand::rngs::OsRng;
 use ::rand::RngCore;
 use openmls::prelude::*;
 use openmls_traits::types::SignatureScheme;
-use openmls_traits::OpenMlsSecurity;
+use openmls_traits::OpenMlsCryptoProvider;
 use rust_crypto::RustCrypto;
 
 /// Configuration of a client meant to be used in a test setup.
@@ -47,7 +47,7 @@ impl TestClient {
     pub(crate) fn find_key_package_bundle(
         &self,
         key_package: &KeyPackage,
-        backend: &impl OpenMlsSecurity,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Option<KeyPackageBundle> {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles
