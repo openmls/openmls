@@ -17,7 +17,7 @@ fn generate_credential_bundle(
     let cb = CredentialBundle::new(identity, credential_type, signature_scheme, key_store)?;
     let credential = cb.credential().clone();
     key_store
-        .key_store_provider()
+        .key_store()
         .store(credential.signature_key(), &cb)
         .unwrap();
     Ok(credential)
@@ -30,13 +30,13 @@ fn generate_key_package_bundle(
     extensions: Vec<Extension>,
 ) -> Result<KeyPackage, KeyPackageError> {
     let credential_bundle = key_store
-        .key_store_provider()
+        .key_store()
         .read(credential.signature_key())
         .unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, key_store, extensions)?;
     let kp = kpb.key_package().clone();
     key_store
-        .key_store_provider()
+        .key_store()
         .store(&kp.hash(key_store), &kpb)
         .unwrap();
     Ok(kp)

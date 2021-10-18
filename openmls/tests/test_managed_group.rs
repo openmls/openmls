@@ -47,7 +47,7 @@ fn generate_credential_bundle(
     let cb = CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
     let credential = cb.credential().clone();
     backend
-        .key_store_provider()
+        .key_store()
         .store(credential.signature_key(), &cb)
         .unwrap();
     Ok(credential)
@@ -60,13 +60,13 @@ fn generate_key_package_bundle(
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageError> {
     let credential_bundle = backend
-        .key_store_provider()
+        .key_store()
         .read(credential.signature_key())
         .unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
     backend
-        .key_store_provider()
+        .key_store()
         .store(&kp.hash(backend), &kpb)
         .unwrap();
     Ok(kp)

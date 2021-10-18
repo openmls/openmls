@@ -109,7 +109,7 @@ impl ExternalPskBundle {
         Self {
             secret,
             nonce: backend
-                .rand_provider()
+                .rand()
                 .random_vec(ciphersuite.hash_length()),
             external_psk: ExternalPsk {
                 psk_id: psk_id.into(),

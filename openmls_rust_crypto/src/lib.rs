@@ -18,15 +18,15 @@ impl OpenMlsCryptoProvider for OpenMlsRustCrypto {
     type RandProvider = RustCrypto;
     type KeyStoreProvider = MemoryKeyStore;
 
-    fn crypto_provider(&self) -> &Self::CryptoProvider {
+    fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
     }
 
-    fn rand_provider(&self) -> &Self::RandProvider {
+    fn rand(&self) -> &Self::RandProvider {
         &self.crypto
     }
 
-    fn key_store_provider(&self) -> &Self::KeyStoreProvider {
+    fn key_store(&self) -> &Self::KeyStoreProvider {
         &self.key_store
     }
 }

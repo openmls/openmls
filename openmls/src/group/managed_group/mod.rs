@@ -109,11 +109,11 @@ impl ManagedGroup {
         // TODO #141
         let kph = key_package_hash.to_vec();
         let key_package_bundle: KeyPackageBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(&kph)
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         backend
-            .key_store_provider()
+            .key_store()
             .delete(&kph)
             .map_err(|_| ManagedGroupError::KeyStoreError)?;
         let group_config = MlsGroupConfig {
@@ -163,7 +163,7 @@ impl ManagedGroup {
             .iter()
             .find_map(|egs| {
                 backend
-                    .key_store_provider()
+                    .key_store()
                     .read(&egs.key_package_hash.as_slice().to_vec())
             })
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
@@ -230,7 +230,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -312,7 +312,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -360,7 +360,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -391,7 +391,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -421,7 +421,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -645,7 +645,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -676,7 +676,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -814,7 +814,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
@@ -882,7 +882,7 @@ impl ManagedGroup {
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 

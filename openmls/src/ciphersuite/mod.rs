@@ -236,7 +236,7 @@ impl Secret {
             mls_version
         );
         Secret {
-            value: crypto.rand_provider().random_vec(ciphersuite.hash_length()),
+            value: crypto.rand().random_vec(ciphersuite.hash_length()),
             mls_version,
             ciphersuite,
         }
@@ -299,7 +299,7 @@ impl Secret {
             //      module has to ensure to check that the backend supports
             //      all required functions before doing anything.
             value: backend
-                .crypto_provider()
+                .crypto()
                 .hkdf_extract(
                     self.ciphersuite.hash,
                     self.value.as_slice(),
@@ -319,7 +319,7 @@ impl Secret {
         okm_len: usize,
     ) -> Result<Self, CryptoError> {
         let key = backend
-            .crypto_provider()
+            .crypto()
             .hkdf_expand(self.ciphersuite.hash, &self.value, info, okm_len)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
         if key.is_empty() {
@@ -463,7 +463,7 @@ impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
     pub fn from_random(crypto: &impl OpenMlsCryptoProvider) -> Self {
         Self {
-            value: crypto.rand_provider().random_array(),
+            value: crypto.rand().random_array(),
         }
     }
 }
@@ -621,7 +621,7 @@ impl Ciphersuite {
     /// Hash `payload` and return the digest.
     pub(crate) fn hash(&self, backend: &impl OpenMlsCryptoProvider, payload: &[u8]) -> Vec<u8> {
         // XXX: remove unwrap
-        backend.crypto_provider().hash(self.hash, payload).unwrap()
+        backend.crypto().hash(self.hash, payload).unwrap()
     }
 
     /// Get the length of the used hash algorithm.
@@ -740,7 +740,7 @@ impl AeadKey {
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
         backend
-            .crypto_provider()
+            .crypto()
             .aead_encrypt(
                 self.aead_mode,
                 self.value.as_slice(),
@@ -760,7 +760,7 @@ impl AeadKey {
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
         backend
-            .crypto_provider()
+            .crypto()
             .aead_decrypt(
                 self.aead_mode,
                 self.value.as_slice(),
@@ -788,7 +788,7 @@ impl AeadNonce {
     #[cfg(test)]
     pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
         AeadNonce {
-            value: rng.rand_provider().random_array(),
+            value: rng.rand().random_array(),
         }
     }
 
@@ -847,7 +847,7 @@ impl SignatureKeypair {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<SignatureKeypair, CryptoError> {
         let (sk, pk) = backend
-            .crypto_provider()
+            .crypto()
             .signature_key_gen(signature_scheme)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
@@ -882,11 +882,11 @@ impl SignaturePublicKey {
         payload: &[u8],
     ) -> Result<(), CryptoError> {
         backend
-            .crypto_provider()
+            .crypto()
             .supports(self.signature_scheme)
             .map_err(|_| CryptoError::UnsupportedSignatureScheme)?;
         backend
-            .crypto_provider()
+            .crypto()
             .verify_signature(
                 self.signature_scheme,
                 payload,
@@ -906,7 +906,7 @@ impl SignaturePrivateKey {
         payload: &[u8],
     ) -> Result<Signature, CryptoError> {
         match backend
-            .crypto_provider()
+            .crypto()
             .sign(self.signature_scheme, payload, &self.value)
         {
             Ok(s) => Ok(Signature { value: s.into() }),

@@ -360,11 +360,11 @@ impl GroupSecrets {
             External,
             Psk::External(ExternalPsk::new(
                 backend
-                    .rand_provider()
+                    .rand()
                     .random_vec(ciphersuite.hash_length()),
             )),
             backend
-                .rand_provider()
+                .rand()
                 .random_vec(ciphersuite.hash_length()),
         );
         let psks = PreSharedKeys {

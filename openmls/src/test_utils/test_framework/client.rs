@@ -44,7 +44,7 @@ impl Client {
             vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
@@ -56,7 +56,7 @@ impl Client {
         .unwrap();
         let kp = kpb.key_package().clone();
         self.crypto
-            .key_store_provider()
+            .key_store()
             .store(&kp.hash(&self.crypto), &kpb)
             .unwrap();
         Ok(kp)
@@ -79,7 +79,7 @@ impl Client {
             vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
-            .key_store_provider()
+            .key_store()
             .read(credential.signature_key())
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
@@ -91,7 +91,7 @@ impl Client {
         .unwrap();
         let key_package = kpb.key_package().clone();
         self.crypto
-            .key_store_provider()
+            .key_store()
             .store(&key_package.hash(&self.crypto), &kpb)
             .unwrap();
         let group_state = ManagedGroup::new(

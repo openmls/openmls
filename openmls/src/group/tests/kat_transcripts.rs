@@ -53,11 +53,11 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     // Generate random values.
     let group_id = GroupId::random(&crypto);
     let epoch = random_u64();
-    let tree_hash_before = crypto.rand_provider().random_vec(ciphersuite.hash_length());
+    let tree_hash_before = crypto.rand().random_vec(ciphersuite.hash_length());
     let confirmed_transcript_hash_before =
-        crypto.rand_provider().random_vec(ciphersuite.hash_length());
+        crypto.rand().random_vec(ciphersuite.hash_length());
     let interim_transcript_hash_before =
-        crypto.rand_provider().random_vec(ciphersuite.hash_length());
+        crypto.rand().random_vec(ciphersuite.hash_length());
     let membership_key = MembershipKey::from_secret(Secret::random(
         ciphersuite,
         &crypto,
@@ -85,7 +85,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &[], // extensions
     )
     .expect("Error creating group context");
-    let aad = crypto.rand_provider().random_vec(48);
+    let aad = crypto.rand().random_vec(48);
     let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
     let mut commit = MlsPlaintext::new_commit(
         framing_parameters,

@@ -85,14 +85,14 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let group_info = GroupInfoPayload::new(
         group_id.clone(),
         GroupEpoch(0),
-        crypto.rand_provider().random_vec(ciphersuite.hash_length()),
-        crypto.rand_provider().random_vec(ciphersuite.hash_length()),
+        crypto.rand().random_vec(ciphersuite.hash_length()),
+        crypto.rand().random_vec(ciphersuite.hash_length()),
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
         ))],
         ConfirmationTag(Mac {
             mac_value: crypto
-                .rand_provider()
+                .rand()
                 .random_vec(ciphersuite.hash_length())
                 .into(),
         }),
@@ -124,9 +124,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let psk_id = PreSharedKeyId::new(
         PskType::External,
         Psk::External(ExternalPsk::new(
-            crypto.rand_provider().random_vec(ciphersuite.hash_length()),
+            crypto.rand().random_vec(ciphersuite.hash_length()),
         )),
-        crypto.rand_provider().random_vec(ciphersuite.hash_length()),
+        crypto.rand().random_vec(ciphersuite.hash_length()),
     );
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);

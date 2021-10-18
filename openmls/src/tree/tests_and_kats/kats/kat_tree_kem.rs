@@ -404,7 +404,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     let kpb: KeyPackageBundle = addee
         .crypto
-        .key_store_provider()
+        .key_store()
         .read(&my_key_package.hash(&crypto))
         .unwrap();
     let my_leaf_secret = kpb.leaf_secret();

@@ -176,7 +176,7 @@ fn secret_tree() {
     let n_leaves = 10u32;
     let mut secret_tree = SecretTree::new(
         EncryptionSecret::from_slice(
-            &crypto.rand_provider().random_vec(ciphersuite.hash_length())[..],
+            &crypto.rand().random_vec(ciphersuite.hash_length())[..],
             ProtocolVersion::default(),
             ciphersuite,
         ),

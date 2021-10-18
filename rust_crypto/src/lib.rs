@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::RwLock};
+use std::sync::RwLock;
 
 use aes_gcm::{
     aead::{Aead, Payload},

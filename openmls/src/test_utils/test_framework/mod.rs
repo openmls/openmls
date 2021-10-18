@@ -144,7 +144,7 @@ impl ManagedTestSetup {
                 .unwrap();
                 let credential = cb.credential().clone();
                 crypto
-                    .key_store_provider()
+                    .key_store()
                     .store(cb.credential().signature_key(), &cb)
                     .unwrap();
                 credentials.insert(*ciphersuite, credential);
