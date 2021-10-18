@@ -605,3 +605,11 @@ impl ExternalInitProposal {
         &self.kem_output
     }
 }
+
+impl From<Vec<u8>> for ExternalInitProposal {
+    fn from(kem_output: Vec<u8>) -> Self {
+        ExternalInitProposal {
+            kem_output: kem_output.into(),
+        }
+    }
+}

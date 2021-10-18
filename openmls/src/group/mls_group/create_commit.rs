@@ -15,6 +15,7 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
+        init_secret: Option<InitSecret>,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
         // Filter proposals
@@ -97,7 +98,7 @@ impl MlsGroup {
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
             &extensions,
-        )?;
+        );
 
         let joiner_secret = JoinerSecret::new(
             provisional_tree.commit_secret(),

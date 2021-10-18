@@ -19,7 +19,10 @@ use crate::utils::*;
 
 pub(crate) use serde::{Deserialize, Serialize};
 
-pub use errors::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError, WelcomeError};
+pub use errors::{
+    ApplyCommitError, CreateCommitError, ExporterError, ExternalInitError, MlsGroupError,
+    WelcomeError,
+};
 pub use group_context::*;
 pub use managed_group::*;
 pub use mls_group::*;

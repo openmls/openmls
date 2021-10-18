@@ -90,8 +90,7 @@ fn generate(
         tree_hash.to_vec(),
         confirmed_transcript_hash.clone(),
         &[], // Extensions
-    )
-    .unwrap();
+    );
 
     key_schedule.add_context(&group_context).unwrap();
     let epoch_secrets = key_schedule.epoch_secrets(true).unwrap();
@@ -276,8 +275,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             tree_hash.to_vec(),
             confirmed_transcript_hash.clone(),
             &[], // Extensions
-        )
-        .expect("Error creating group context");
+        );
 
         let expected_group_context = hex_to_bytes(&epoch.group_context);
         let group_context_serialized = group_context.tls_serialize_detached().unwrap();

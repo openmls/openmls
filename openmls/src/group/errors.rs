@@ -47,6 +47,8 @@ implement_error! {
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            ExternalInitError(ExternalInitError) =
+                "See [`TreeError`](crate::tree::TreeError) for details.",
         }
     }
 }
@@ -168,6 +170,31 @@ implement_error! {
         Complex {
             PskSecretError(PskSecretError) =
                 "An error occured when concatenating the PSKs.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum ExternalInitError {
+        Simple {
+            NoPskFetcherProvided =
+                "A PSK was needed, but no PSK fetcher function was provided.",
+            UnknownSigner =
+                "Could not find the signer in the given tree.",
+            InvalidPublicGroupState =
+                "Invalid PublicGroupState signature.",
+        }
+        Complex {
+            ParentHashMismatch(ParentHashError) =
+                "The parent hash verification failed.",
+            InvalidRatchetTree(TreeError) =
+                "Invalid ratchet tree.",
+            UnsupportedCiphersuite(ConfigError) =
+                "Ciphersuite specified in PublicGroupState is not supported.",
+            RatchetTreeError(WelcomeError) =
+                "Error while creating RatchetTree.",
+            KeyScheduleError(KeyScheduleError) =
+                "Error while initializing key schedule.",
         }
     }
 }

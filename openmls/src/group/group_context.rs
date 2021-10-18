@@ -8,7 +8,7 @@ impl GroupContext {
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
         extensions: &[Extension],
-    ) -> Result<Self, tls_codec::Error> {
+    ) -> Self {
         let group_context = GroupContext {
             group_id,
             epoch,
@@ -16,7 +16,7 @@ impl GroupContext {
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
             extensions: extensions.into(),
         };
-        Ok(group_context)
+        group_context
     }
     /// Create the `GroupContext` needed upon creation of a new group.
     pub fn create_initial_group_context(
@@ -24,7 +24,7 @@ impl GroupContext {
         group_id: GroupId,
         tree_hash: Vec<u8>,
         extensions: &[Extension],
-    ) -> Result<Self, tls_codec::Error> {
+    ) -> Self {
         Self::new(
             group_id,
             GroupEpoch(0),

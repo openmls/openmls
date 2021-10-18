@@ -128,47 +128,25 @@ impl MlsGroup {
             &zero_commit_secret
         };
 
-        let init_secret = if let Some(kem_output) = apply_proposals_values.kem_output {
-            let (external_priv, external_pub) = self
+        // If we got a kem_output back from `apply_proposals`, then there has
+        // been an external init and we need to decrypt the kem_output to obtain
+        // the init secret instead of deriving it from the epoch secret.
+        let joiner_secret = if let Some(kem_output) = apply_proposals_values.kem_output {
+            let (external_priv, _public_key) = self
                 .epoch_secrets()
                 .external_secret()
                 .derive_external_keypair(ciphersuite)
                 .into_keys();
-
-            let group_id = self.group_id().clone();
-            let epoch = self.context().epoch();
-            let tree_hash = self.tree().tree_hash().into();
-            let interim_transcript_hash = self.interim_transcript_hash().into();
-            let extensions = self.extensions().into();
-
-            let serialized_pgs_tbs = PublicGroupStateTbs {
-                group_id: &group_id,
-                epoch: &epoch,
-                tree_hash: &tree_hash,
-                interim_transcript_hash: &interim_transcript_hash,
-                extensions: &extensions,
-                external_pub: &external_pub,
-            }
-            .tls_serialize_detached()?;
-
-            let context = ciphersuite
-                .hpke()
-                .setup_receiver(
-                    &kem_output,
-                    &external_priv,
-                    &serialized_pgs_tbs,
-                    None,
-                    None,
-                    None,
-                )
-                .map_err(|_| KeyScheduleError::HpkeError)?;
+            let init_secret =
+                InitSecret::from_kem_output(ciphersuite, &external_priv, &kem_output)?;
+            JoinerSecret::new(commit_secret, &init_secret)
         } else {
-            self.epoch_secrets
+            let init_secret = self
+                .epoch_secrets
                 .init_secret()
-                .ok_or(ApplyCommitError::InitSecretNotFound)?
+                .ok_or(ApplyCommitError::InitSecretNotFound)?;
+            JoinerSecret::new(commit_secret, init_secret)
         };
-
-        let joiner_secret = JoinerSecret::new(commit_secret, init_secret);
 
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
@@ -190,7 +168,7 @@ impl MlsGroup {
             provisional_tree.tree_hash(),
             confirmed_transcript_hash.clone(),
             &extensions,
-        )?;
+        );
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(

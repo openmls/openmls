@@ -73,61 +73,12 @@ impl MlsGroup {
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
-        // First check the extensions to see if the tree is in there.
-        let mut ratchet_tree_extensions = group_info
-            .extensions()
-            .iter()
-            .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-            .collect::<Vec<&Extension>>();
-
-        let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
-            None
-        } else if ratchet_tree_extensions.len() == 1 {
-            let extension = ratchet_tree_extensions
-                .pop()
-                // Unwrappig here is safe because we know we only have one element
-                .unwrap()
-                .as_ratchet_tree_extension()
-                // Unwrapping here is safe, because we know the extension type already
-                .unwrap()
-                // We clone the nodes here upon extraction, so that we don't have to clone
-                // them later when we build the tree
-                .clone();
-            Some(extension)
-        } else {
-            // Throw an error if there is more than one ratchet tree extension.
-            // This shouldn't be the case anyway, because extensions are checked
-            // for uniqueness anyway when decoding them.
-            // We have to see if this makes problems later as it's not something
-            // required by the spec right now.
-            return Err(WelcomeError::DuplicateRatchetTreeExtension);
-        };
-
-        // Set nodes either from the extension or from the `nodes_option`.
-        // If we got a ratchet tree extension in the welcome, we enable it for
-        // this group. Note that this is not strictly necessary. But there's
-        // currently no other mechanism to enable the extension.
-        let (nodes, enable_ratchet_tree_extension) = match ratchet_tree_extension {
-            Some(tree) => (tree.into_vector(), true),
-            None => {
-                if let Some(nodes) = nodes_option {
-                    (nodes, false)
-                } else {
-                    return Err(WelcomeError::MissingRatchetTree);
-                }
-            }
-        };
-
-        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes)?;
-
-        // Verify tree hash
-        let tree_hash = tree.tree_hash();
-        if tree_hash != group_info.tree_hash() {
-            return Err(WelcomeError::TreeHashMismatch);
-        }
-
-        // Verify parent hashes
-        tree.verify_parent_hashes()?;
+        let (mut tree, use_ratchet_tree_extension) = Self::tree_from_extension_or_nodes(
+            group_info.tree_hash(),
+            nodes_option,
+            group_info.extensions(),
+            key_package_bundle,
+        )?;
 
         // Verify GroupInfo signature
         let signer_node = tree.nodes[group_info.signer_index()].clone();
@@ -169,11 +120,11 @@ impl MlsGroup {
         let group_context = GroupContext::new(
             group_info.group_id().clone(),
             group_info.epoch(),
-            tree_hash,
+            group_info.tree_hash().to_vec(),
             group_info.confirmed_transcript_hash().to_vec(),
             // TODO #186: Implement extensions
             &[],
-        )?;
+        );
         // TODO #141: Implement PSK
         key_schedule.add_context(&group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(true)?;
@@ -205,7 +156,7 @@ impl MlsGroup {
                 secret_tree: RefCell::new(secret_tree),
                 tree: RefCell::new(tree),
                 interim_transcript_hash,
-                use_ratchet_tree_extension: enable_ratchet_tree_extension,
+                use_ratchet_tree_extension,
                 mls_version,
             })
         }
@@ -223,5 +174,75 @@ impl MlsGroup {
             }
         }
         None
+    }
+
+    /// This is a helper function that takes an `Extension` slice and optionally
+    /// a vector of nodes, as well as `KeyPackageBundle` and returns a
+    /// RatchetTree, as well as an boolean indicating if the ratchet tree came
+    /// from an extension. This function also verifies the `tree_hash` against
+    /// the given `reference_tree_hash` and verifies the parent hashes of the
+    /// newly created tree. Returns a WelcomeError if there is more than one
+    /// RatchetTreeExtension or if no ratchet tree can be found.
+    pub(crate) fn tree_from_extension_or_nodes(
+        reference_tree_hash: &[u8],
+        nodes_option: Option<Vec<Option<Node>>>,
+        extensions: &[Extension],
+        key_package_bundle: KeyPackageBundle,
+    ) -> Result<(RatchetTree, bool), WelcomeError> {
+        // First check the extensions to see if the tree is in there.
+        let mut ratchet_tree_extensions = extensions
+            .iter()
+            .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
+            .collect::<Vec<&Extension>>();
+
+        let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
+            None
+        } else if ratchet_tree_extensions.len() == 1 {
+            let extension = ratchet_tree_extensions
+                .pop()
+                // Unwrappig here is safe because we know we only have one element
+                .unwrap()
+                .as_ratchet_tree_extension()
+                // Unwrapping here is safe, because we know the extension type already
+                .unwrap()
+                // We clone the nodes here upon extraction, so that we don't have to clone
+                // them later when we build the tree
+                .clone();
+            Some(extension)
+        } else {
+            // Throw an error if there is more than one ratchet tree extension.
+            // This shouldn't be the case anyway, because extensions are checked
+            // for uniqueness anyway when decoding them.
+            // We have to see if this makes problems later as it's not something
+            // required by the spec right now.
+            return Err(WelcomeError::DuplicateRatchetTreeExtension);
+        };
+
+        // Set nodes either from the extension or from the `nodes_option`.
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there's
+        // currently no other mechanism to enable the extension.
+        let (nodes, enable_ratchet_tree_extension) = match ratchet_tree_extension {
+            Some(tree) => (tree.into_vector(), true),
+            None => {
+                if let Some(nodes) = nodes_option {
+                    (nodes, false)
+                } else {
+                    return Err(WelcomeError::MissingRatchetTree);
+                }
+            }
+        };
+        let tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes)?;
+
+        // Verify tree hash
+        let tree_hash = tree.tree_hash();
+        if tree_hash != reference_tree_hash {
+            return Err(WelcomeError::TreeHashMismatch);
+        }
+
+        // Verify parent hashes
+        tree.verify_parent_hashes()?;
+
+        Ok((tree, enable_ratchet_tree_extension))
     }
 }

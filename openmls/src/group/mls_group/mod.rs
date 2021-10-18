@@ -3,6 +3,7 @@ use psk::{PreSharedKeys, PskSecret};
 
 mod apply_commit;
 mod create_commit;
+mod new_from_external_init;
 mod new_from_welcome;
 #[cfg(test)]
 mod test_duplicate_extension;
@@ -88,7 +89,7 @@ impl MlsGroup {
             group_id,
             tree.tree_hash(),
             &extensions,
-        )?;
+        );
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
@@ -129,6 +130,35 @@ impl MlsGroup {
             nodes_option,
             kpb,
             psk_fetcher_option,
+        )?)
+    }
+
+    /// Join a group from a welcome message. This function requires a
+    /// `PublicGroupState`, as well as the corresponding public tree `nodes`.
+    /// Otherwise it creates an `ExternalInit` proposal and commits it. The
+    /// commit is created in the same way as in `create_commit`, which it why it
+    /// requires the same inputs (aad, proposals by value and reference, etc.).
+    /// It returns the new `MlsGroup` object, as well as the `MlsPlaintext`
+    /// containing the commit.
+    pub fn new_from_external_init(
+        nodes: Option<Vec<Option<Node>>>,
+        kpb: KeyPackageBundle,
+        psk_fetcher_option: Option<PskFetcher>,
+        aad: &[u8],
+        credential_bundle: &CredentialBundle,
+        proposals_by_reference: &[&MlsPlaintext],
+        proposals_by_value: &[&Proposal],
+        public_group_state: &PublicGroupState,
+    ) -> Result<(Self, MlsPlaintext), MlsGroupError> {
+        Ok(Self::new_from_external_init_internal(
+            nodes,
+            kpb,
+            psk_fetcher_option,
+            aad,
+            credential_bundle,
+            proposals_by_reference,
+            proposals_by_value,
+            public_group_state,
         )?)
     }
 
@@ -256,6 +286,7 @@ impl MlsGroup {
             proposals_by_value,
             force_self_update,
             psk_fetcher_option,
+            None,
         )
     }
 

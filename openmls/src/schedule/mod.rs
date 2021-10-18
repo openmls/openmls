@@ -128,7 +128,7 @@ use crate::{
 
 use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
-use hpke::HpkePublicKey;
+use hpke::{HpkePrivateKey, HpkePublicKey};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 
@@ -199,6 +199,19 @@ pub(crate) struct InitSecret {
     secret: Secret,
 }
 
+/// Creates a string from the given MLS `ProtocolVersion` for the computation of
+/// the `init_secret` when creating or processing a commit with an external init
+/// proposal.
+fn hpke_info_from_version(version: ProtocolVersion) -> String {
+    match version {
+        ProtocolVersion::Reserved => "Reserved",
+        ProtocolVersion::Mls10 => "MLS 1.0",
+        ProtocolVersion::Mls10Draft11 => "MLS 1.0 Draft 11",
+    }
+    .to_string()
+        + " external init"
+}
+
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
     fn new(epoch_secret: EpochSecret) -> Self {
@@ -215,27 +228,35 @@ impl InitSecret {
         }
     }
 
+    /// Create an `InitSecret` from a `kem_output` and an `HpkePrivateKey`
+    /// external public key and a public group state.
+    pub(crate) fn from_kem_output(
+        ciphersuite: &'static Ciphersuite,
+        external_priv: &HpkePrivateKey,
+        kem_output: &[u8],
+    ) -> Result<Self, KeyScheduleError> {
+        let context = ciphersuite
+            .hpke()
+            .setup_receiver(kem_output, external_priv, &[], None, None, None)
+            .map_err(|_| KeyScheduleError::HpkeError)?;
+        let hpke_info = hpke_info_from_version(ciphersuite.version());
+        let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
+        Ok(InitSecret {
+            secret: Secret::from_slice(&raw_init_secret, ciphersuite.version(), &ciphersuite),
+        })
+    }
+
     /// Create an `InitSecret` and the corresponding `kem_output` from an
     /// external public key and a public group state.
-    pub(crate) fn from_external_pub_and_group_state(
+    pub(crate) fn from_external_pub(
+        ciphersuite: &'static Ciphersuite,
         external_pub: &HpkePublicKey,
-        public_group_state: PublicGroupState,
     ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
-        let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
-            .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
-        let serialized_pgs = public_group_state
-            .tls_serialize_detached()
-            .map_err(|_| KeyScheduleError::EncodingError)?;
         let (kem_output, context) = ciphersuite
             .hpke()
-            .setup_sender(external_pub, &serialized_pgs, None, None, None)
+            .setup_sender(external_pub, &[], None, None, None)
             .map_err(|_| KeyScheduleError::HpkeError)?;
-        let version_string = match ciphersuite.version() {
-            ProtocolVersion::Reserved => Err(KeyScheduleError::UnsupportedCiphersuite)?,
-            ProtocolVersion::Mls10 => "MLS 1.0",
-            ProtocolVersion::Mls10Draft11 => "MLS 1.0 Draft 11",
-        };
-        let hpke_info = version_string.to_string() + " external init";
+        let hpke_info = hpke_info_from_version(ciphersuite.version());
         let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
         Ok((
             InitSecret {
