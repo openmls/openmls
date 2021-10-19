@@ -330,8 +330,10 @@ impl MlsGroup {
             backend,
             self.context(),
             self.sender_index(),
-            self.epoch_secrets(),
-            &mut self.secret_tree_mut(),
+            Secrets {
+                epoch_secrets: self.epoch_secrets(),
+                secret_tree: &mut self.secret_tree_mut(),
+            },
             padding_size,
         )
         .map_err(MlsGroupError::MlsCiphertextError)

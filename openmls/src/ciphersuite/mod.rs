@@ -450,7 +450,6 @@ impl Mac {
 pub struct AeadKey {
     aead_mode: AeadType,
     value: Vec<u8>,
-    mac_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
@@ -511,7 +510,6 @@ pub struct SignaturePublicKey {
 
 #[derive(Debug, Clone)]
 pub struct SignatureKeypair {
-    signature_scheme: SignatureScheme,
     private_key: SignaturePrivateKey,
     public_key: SignaturePublicKey,
 }
@@ -711,7 +709,6 @@ impl AeadKey {
         AeadKey {
             aead_mode: secret.ciphersuite.aead,
             value: secret.value,
-            mac_len: secret.ciphersuite.mac_length(),
         }
     }
 
@@ -721,7 +718,6 @@ impl AeadKey {
         AeadKey {
             aead_mode: ciphersuite.aead(),
             value: aead_key_gen(ciphersuite.aead(), rng),
-            mac_len: ciphersuite.mac_length(),
         }
     }
 
@@ -852,7 +848,6 @@ impl SignatureKeypair {
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(SignatureKeypair {
-            signature_scheme,
             private_key: SignaturePrivateKey {
                 value: sk.to_vec(),
                 signature_scheme,

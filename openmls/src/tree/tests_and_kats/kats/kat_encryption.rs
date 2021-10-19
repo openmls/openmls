@@ -236,8 +236,10 @@ fn build_handshake_messages(
         backend,
         group.context(),
         leaf,
-        group.epoch_secrets(),
-        &mut group.secret_tree_mut(),
+        Secrets {
+            epoch_secrets: group.epoch_secrets(),
+            secret_tree: &mut group.secret_tree_mut(),
+        },
         0,
     )
     .expect("Could not create MlsCiphertext");
@@ -280,8 +282,10 @@ fn build_application_messages(
         backend,
         group.context(),
         leaf,
-        group.epoch_secrets(),
-        &mut group.secret_tree_mut(),
+        Secrets {
+            epoch_secrets: group.epoch_secrets(),
+            secret_tree: &mut group.secret_tree_mut(),
+        },
         0,
     ) {
         Ok(c) => c,

@@ -125,8 +125,10 @@ fn codec_ciphertext() {
             &crypto,
             &group_context,
             sender.to_leaf_index(),
-            &epoch_secrets,
-            &mut secret_tree,
+            Secrets {
+                epoch_secrets: &epoch_secrets,
+                secret_tree: &mut secret_tree,
+            },
             0,
         )
         .expect("Could not encrypt MlsPlaintext.");
@@ -205,8 +207,10 @@ fn wire_format_checks() {
             &crypto,
             &group_context,
             sender.to_leaf_index(),
-            &epoch_secrets,
-            &mut secret_tree,
+            Secrets {
+                epoch_secrets: &epoch_secrets,
+                secret_tree: &mut secret_tree,
+            },
             0,
         )
         .expect("Could not encrypt MlsPlaintext.");
@@ -244,8 +248,10 @@ fn wire_format_checks() {
                 &crypto,
                 &group_context,
                 sender.to_leaf_index(),
-                &epoch_secrets,
-                &mut secret_tree,
+                Secrets {
+                    epoch_secrets: &epoch_secrets,
+                    secret_tree: &mut secret_tree,
+                },
                 0,
             )
             .expect_err("Could encrypt despite wrong wire format."),
@@ -506,8 +512,10 @@ fn unknown_sender() {
             crypto,
             group_alice.context(),
             LeafIndex::from(1usize),
-            group_alice.epoch_secrets(),
-            &mut group_alice.secret_tree_mut(),
+            Secrets {
+                epoch_secrets: group_alice.epoch_secrets(),
+                secret_tree: &mut group_alice.secret_tree_mut(),
+            },
             0,
         )
         .expect("Encryption error");
@@ -543,8 +551,10 @@ fn unknown_sender() {
             crypto,
             group_alice.context(),
             LeafIndex::from(99usize),
-            group_alice.epoch_secrets(),
-            &mut secret_tree,
+            Secrets {
+                epoch_secrets: group_alice.epoch_secrets(),
+                secret_tree: &mut secret_tree,
+            },
             0,
         )
         .expect("Encryption error");

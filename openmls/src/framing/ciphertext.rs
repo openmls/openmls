@@ -22,6 +22,11 @@ pub struct MlsCiphertext {
     pub(crate) ciphertext: TlsByteVecU32,
 }
 
+pub(crate) struct Secrets<'a> {
+    pub(crate) epoch_secrets: &'a EpochSecrets,
+    pub(crate) secret_tree: &'a mut SecretTree,
+}
+
 impl MlsCiphertext {
     /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
@@ -30,8 +35,7 @@ impl MlsCiphertext {
         backend: &impl OpenMlsCryptoProvider,
         context: &GroupContext,
         sender: LeafIndex,
-        epoch_secrets: &EpochSecrets,
-        secret_tree: &mut SecretTree,
+        secrets: Secrets,
         padding_size: usize,
     ) -> Result<MlsCiphertext, MlsCiphertextError> {
         log::debug!("MlsCiphertext::try_from_plaintext");
@@ -52,8 +56,9 @@ impl MlsCiphertext {
         // Extract generation and key material for encryption
         let secret_type = SecretType::try_from(mls_plaintext)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
-        let (generation, (ratchet_key, mut ratchet_nonce)) =
-            secret_tree.secret_for_encryption(ciphersuite, backend, sender, secret_type)?;
+        let (generation, (ratchet_key, mut ratchet_nonce)) = secrets
+            .secret_tree
+            .secret_for_encryption(ciphersuite, backend, sender, secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::from_random(backend);
         // Prepare the nonce by xoring with the reuse guard.
@@ -75,14 +80,15 @@ impl MlsCiphertext {
                 MlsCiphertextError::EncryptionError
             })?;
         // Derive the sender data key from the key schedule using the ciphertext.
-        let sender_data_key = epoch_secrets
+        let sender_data_key = secrets
+            .epoch_secrets
             .sender_data_secret()
             .derive_aead_key(backend, &ciphertext);
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce =
-            epoch_secrets
-                .sender_data_secret()
-                .derive_aead_nonce(ciphersuite, backend, &ciphertext);
+        let sender_data_nonce = secrets
+            .epoch_secrets
+            .sender_data_secret()
+            .derive_aead_nonce(ciphersuite, backend, &ciphertext);
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MlsSenderDataAad::new(
