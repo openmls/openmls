@@ -3,7 +3,7 @@
 //!
 //! It is based on the Mock client written by Richard Barnes.
 
-use clap::Clap;
+use clap::Parser;
 use openmls::{
     ciphersuite::signable::Verifiable,
     group::tests::{
@@ -963,7 +963,7 @@ impl MlsClient for MlsClientImpl {
     }
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct Opts {
     #[clap(short, long, default_value = "[::1]")]
     host: String,
