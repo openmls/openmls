@@ -27,5 +27,5 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: Build interop_client
-        run: cargo build --verbose
+      - name: Run interop client test script
+        run: python test_with_runner.py
