@@ -1,8 +1,8 @@
 use openmls::{group::EmptyInputError, prelude::*};
 
 use lazy_static::lazy_static;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use std::fs::File;
 
 lazy_static! {
@@ -65,10 +65,7 @@ fn generate_key_package_bundle(
         .unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
-    backend
-        .key_store()
-        .store(&kp.hash(backend), &kpb)
-        .unwrap();
+    backend.key_store().store(&kp.hash(backend), &kpb).unwrap();
     Ok(kp)
 }
 

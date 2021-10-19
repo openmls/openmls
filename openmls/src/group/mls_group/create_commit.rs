@@ -10,8 +10,8 @@ use crate::messages::*;
 
 /// Wrapper for proposals by value and reference.
 pub struct Proposals<'a> {
-    pub proposals_by_reference: &'a[&'a MlsPlaintext],
-    pub proposals_by_value: &'a[&'a Proposal],
+    pub proposals_by_reference: &'a [&'a MlsPlaintext],
+    pub proposals_by_value: &'a [&'a Proposal],
 }
 
 impl MlsGroup {

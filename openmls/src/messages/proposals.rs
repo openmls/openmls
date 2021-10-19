@@ -1,7 +1,6 @@
 use crate::{
-    ciphersuite::*, config::ProtocolVersion, extensions::Extension, framing::*,
-    group::mls_group::create_commit::Proposals, group::GroupId, key_packages::*, schedule::psk::*,
-    tree::index::*,
+    ciphersuite::*, config::ProtocolVersion, extensions::Extension, framing::*, group::GroupId,
+    key_packages::*, schedule::psk::*, tree::index::*,
 };
 
 use openmls_traits::OpenMlsCryptoProvider;

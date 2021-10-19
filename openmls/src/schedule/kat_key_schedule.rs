@@ -19,8 +19,8 @@ use crate::{
 use crate::test_utils::{read, write};
 
 use hpke::HpkeKeyPair;
-use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 
 use super::CommitSecret;

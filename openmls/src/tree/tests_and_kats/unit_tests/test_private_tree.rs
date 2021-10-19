@@ -1,7 +1,7 @@
 //! Unit test for PrivateTree
 
-use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 
 use super::test_util::*;
 use crate::{

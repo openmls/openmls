@@ -223,8 +223,10 @@ impl MlsCiphertext {
                 self.epoch,
                 sender,
                 self.authenticated_data.clone(),
-                self.content_type,
-                mls_ciphertext_content.content,
+                Payload {
+                    payload: mls_ciphertext_content.content,
+                    content_type: self.content_type,
+                },
             ),
             mls_ciphertext_content.signature,
             mls_ciphertext_content.confirmation_tag,

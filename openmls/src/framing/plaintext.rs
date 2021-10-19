@@ -71,6 +71,11 @@ pub struct MlsPlaintext {
     membership_tag: Option<MembershipTag>,
 }
 
+pub(crate) struct Payload {
+    pub(crate) payload: MlsPlaintextContentType,
+    pub(crate) content_type: ContentType,
+}
+
 // This block only has pub(super) getters.
 impl MlsPlaintext {
     pub(super) fn signature(&self) -> &Signature {
@@ -123,8 +128,7 @@ impl MlsPlaintext {
     fn new(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        payload: MlsPlaintextContentType,
-        content_type: ContentType,
+        payload: Payload,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
@@ -136,7 +140,6 @@ impl MlsPlaintext {
             context.epoch(),
             Sender::member(sender_index),
             framing_parameters.aad().into(),
-            content_type,
             payload,
         )
         .with_context(serialized_context.as_slice());
@@ -148,8 +151,7 @@ impl MlsPlaintext {
     fn new_with_membership_tag(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        payload: MlsPlaintextContentType,
-        content_type: ContentType,
+        payload: Payload,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
@@ -159,7 +161,6 @@ impl MlsPlaintext {
             framing_parameters,
             sender_index,
             payload,
-            content_type,
             credential_bundle,
             context,
             backend,
@@ -186,8 +187,10 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             framing_parameters,
             sender_index,
-            MlsPlaintextContentType::Proposal(proposal),
-            ContentType::Proposal,
+            Payload {
+                payload: MlsPlaintextContentType::Proposal(proposal),
+                content_type: ContentType::Proposal,
+            },
             credential_bundle,
             context,
             membership_key,
@@ -208,8 +211,10 @@ impl MlsPlaintext {
         Self::new(
             framing_parameters,
             sender_index,
-            MlsPlaintextContentType::Commit(commit),
-            ContentType::Commit,
+            Payload {
+                payload: MlsPlaintextContentType::Commit(commit),
+                content_type: ContentType::Commit,
+            },
             credential_bundle,
             context,
             backend,
@@ -232,8 +237,10 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             framing_parameters,
             sender_index,
-            MlsPlaintextContentType::Application(application_message.into()),
-            ContentType::Application,
+            Payload {
+                payload: MlsPlaintextContentType::Application(application_message.into()),
+                content_type: ContentType::Application,
+            },
             credential_bundle,
             context,
             membership_key,
@@ -597,8 +604,7 @@ impl<'a> MlsPlaintextTbs<'a> {
         epoch: GroupEpoch,
         sender: Sender,
         authenticated_data: TlsByteVecU32,
-        content_type: ContentType,
-        payload: MlsPlaintextContentType,
+        payload: Payload,
     ) -> Self {
         MlsPlaintextTbs {
             serialized_context: None,
@@ -607,8 +613,8 @@ impl<'a> MlsPlaintextTbs<'a> {
             epoch,
             sender,
             authenticated_data,
-            content_type,
-            payload,
+            content_type: payload.content_type,
+            payload: payload.payload,
         }
     }
     /// Adds a serialized context to MlsPlaintextTbs.

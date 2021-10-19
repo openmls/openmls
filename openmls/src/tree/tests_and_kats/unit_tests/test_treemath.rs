@@ -1,5 +1,5 @@
-use openmls_traits::types::SignatureScheme;
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::SignatureScheme;
 
 use crate::config::*;
 use crate::tree::index::{LeafIndex, NodeIndex};

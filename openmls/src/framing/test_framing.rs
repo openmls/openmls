@@ -38,8 +38,10 @@ fn codec_plaintext() {
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
-            ContentType::Application,
-            MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            Payload {
+                content_type: ContentType::Application,
+                payload: MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            },
         )
         .with_context(serialized_context.as_slice());
         let orig: MlsPlaintext = signature_input
@@ -90,8 +92,10 @@ fn codec_ciphertext() {
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
-            ContentType::Application,
-            MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            Payload {
+                payload: MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+                content_type: ContentType::Application,
+            },
         )
         .with_context(serialized_context.as_slice());
         let plaintext: MlsPlaintext = signature_input
@@ -168,8 +172,10 @@ fn wire_format_checks() {
             GroupEpoch(1u64),
             sender,
             vec![1, 2, 3].into(),
-            ContentType::Application,
-            MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            Payload {
+                content_type: ContentType::Application,
+                payload: MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            },
         )
         .with_context(serialized_context.as_slice());
         let mut plaintext: MlsPlaintext = signature_input

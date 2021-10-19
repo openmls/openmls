@@ -1,5 +1,5 @@
-use openmls_traits::random::OpenMlsRand;
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::random::OpenMlsRand;
 
 use crate::schedule::EncryptionSecret;
 
