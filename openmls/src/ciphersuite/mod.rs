@@ -717,10 +717,10 @@ impl AeadKey {
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn random(ciphersuite: &Ciphersuite) -> Self {
+    pub fn random(ciphersuite: &Ciphersuite, rng: &impl OpenMlsRand) -> Self {
         AeadKey {
             aead_mode: ciphersuite.aead(),
-            value: aead_key_gen(ciphersuite.aead()),
+            value: aead_key_gen(ciphersuite.aead(), rng),
             mac_len: ciphersuite.mac_length(),
         }
     }
@@ -916,21 +916,16 @@ impl SignaturePrivateKey {
 }
 
 #[cfg(test)]
-pub(crate) fn aead_key_gen(alg: openmls_traits::types::AeadType) -> Vec<u8> {
+pub(crate) fn aead_key_gen(
+    alg: openmls_traits::types::AeadType,
+    rng: &impl OpenMlsRand,
+) -> Vec<u8> {
     use ::rand::{rngs::OsRng, RngCore};
 
     match alg {
-        openmls_traits::types::AeadType::Aes128Gcm => {
-            let mut k = [0u8; 16];
-            OsRng.fill_bytes(&mut k);
-            k.into()
-        }
+        openmls_traits::types::AeadType::Aes128Gcm => rng.random_vec(16).unwrap(),
         openmls_traits::types::AeadType::Aes256Gcm
-        | openmls_traits::types::AeadType::ChaCha20Poly1305 => {
-            let mut k = [0u8; 32];
-            OsRng.fill_bytes(&mut k);
-            k.into()
-        }
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 => rng.random_vec(32).unwrap(),
     }
 }
 

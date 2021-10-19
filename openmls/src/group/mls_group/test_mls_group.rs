@@ -1,4 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::Serialize;
 
 use crate::{
@@ -85,7 +86,7 @@ fn test_failed_groupinfo_decryption() {
             );
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::random(ciphersuite);
+            let welcome_key = AeadKey::random(ciphersuite, crypto.rand());
             let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.

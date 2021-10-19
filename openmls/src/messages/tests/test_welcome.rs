@@ -10,6 +10,7 @@ use crate::{
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Deserialize, Serialize};
 
 macro_rules! test_welcome_msg {
@@ -43,7 +44,7 @@ macro_rules! test_welcome_msg {
                 .expect("Error signing GroupInfo");
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::random($ciphersuite);
+            let welcome_key = AeadKey::random($ciphersuite, crypto.rand());
             let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
