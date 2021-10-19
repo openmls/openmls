@@ -1,7 +1,8 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
+use openmls::group::create_commit::Proposals;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
-use rust_crypto::RustCrypto;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
 
 #[actix_rt::test]
@@ -40,7 +41,7 @@ async fn test_list_clients() {
     // Add a client.
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,
@@ -116,7 +117,7 @@ async fn test_list_clients() {
 
 #[actix_rt::test]
 async fn test_group() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
     let data = web::Data::new(Mutex::new(DsData::default()));
     let mut app = test::init_service(
         App::new()
@@ -218,7 +219,7 @@ async fn test_group() {
             crypto,
         )
         .unwrap();
-    let proposals_by_reference = vec![&client2_add_proposal];
+    let proposals_by_reference = &[&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
         .create_commit(
             framing_parameters,

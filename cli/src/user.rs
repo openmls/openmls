@@ -1,8 +1,8 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
-use openmls::prelude::*;
-use rust_crypto::RustCrypto;
+use openmls::{group::create_commit::Proposals, prelude::*};
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -35,13 +35,13 @@ pub struct User {
     pub(crate) groups: RefCell<HashMap<Vec<u8>, Group>>,
     pub(crate) identity: RefCell<Identity>,
     backend: Backend,
-    crypto: RustCrypto,
+    crypto: OpenMlsRustCrypto,
 }
 
 impl User {
     /// Create a new user with the given name and a fresh set of credentials.
     pub fn new(username: String) -> Self {
-        let crypto = RustCrypto::default();
+        let crypto = OpenMlsRustCrypto::default();
         let out = Self {
             username: username.clone(),
             groups: RefCell::new(HashMap::new()),

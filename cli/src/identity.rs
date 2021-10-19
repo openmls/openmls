@@ -1,8 +1,8 @@
 use std::mem::replace;
 
 use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
-use rust_crypto::RustCrypto;
 
 pub struct Identity {
     pub(crate) kpb: KeyPackageBundle,
@@ -10,7 +10,7 @@ pub struct Identity {
 }
 
 impl Identity {
-    pub(crate) fn new(ciphersuite: CiphersuiteName, crypto: &RustCrypto, id: &[u8]) -> Self {
+    pub(crate) fn new(ciphersuite: CiphersuiteName, crypto: &OpenMlsRustCrypto, id: &[u8]) -> Self {
         let credential_bundle = CredentialBundle::new(
             id.to_vec(),
             CredentialType::Basic,
@@ -28,7 +28,7 @@ impl Identity {
 
     /// Update the key package bundle in this identity.
     /// The function returns the old `KeyPackageBundle`.
-    pub fn update(&mut self, crypto: &RustCrypto) -> KeyPackageBundle {
+    pub fn update(&mut self, crypto: &OpenMlsRustCrypto) -> KeyPackageBundle {
         let ciphersuite = self.kpb.key_package().ciphersuite_name();
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &self.credential, crypto, vec![]).unwrap();

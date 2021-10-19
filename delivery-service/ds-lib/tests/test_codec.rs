@@ -1,12 +1,12 @@
 use ds_lib::{self, *};
 use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
-use rust_crypto::RustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 #[test]
 fn test_client_info() {
-    let crypto = &RustCrypto::default();
+    let crypto = &OpenMlsRustCrypto::default();
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let credential_bundle = CredentialBundle::new(

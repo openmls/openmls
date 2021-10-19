@@ -16,4 +16,4 @@ tls_codec = "0.1.4"
 openmls = { path = "../openmls" }
 ds-lib = { path = "../delivery-service/ds-lib" }
 openmls_traits = { version = "0.1", path = "../traits" }
-rust_crypto = { path = "../rust_crypto" }
+openmls_rust_crypto = { path = "../openmls_rust_crypto" }
