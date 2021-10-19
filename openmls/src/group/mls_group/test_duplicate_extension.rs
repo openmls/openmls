@@ -73,8 +73,10 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         .create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference: epoch_proposals,
+                proposals_by_value: &[],
+            },
             false,
             None,
             &crypto,

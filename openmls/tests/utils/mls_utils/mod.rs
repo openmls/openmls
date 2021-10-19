@@ -8,10 +8,11 @@ use std::collections::HashMap;
 
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
+use openmls::group::create_commit::Proposals;
 use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -204,8 +205,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .create_commit(
                     framing_parameters,
                     initial_credential_bundle,
-                    &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
-                    &[],
+                    Proposals {
+                        proposals_by_reference: &(proposal_list
+                            .iter()
+                            .collect::<Vec<&MlsPlaintext>>()),
+                        proposals_by_value: &[],
+                    },
                     true, /* Set this to true to populate the tree a little bit. */
                     None, /* PSKs are not supported here */
                     &crypto,

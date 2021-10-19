@@ -4,7 +4,7 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
-    group::GroupEpoch,
+    group::{create_commit::Proposals, GroupEpoch},
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
     prelude::*,
     schedule::psk::*,
@@ -235,8 +235,10 @@ fn test_update_path() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                epoch_proposals,
-                &[],
+                Proposals {
+                    proposals_by_reference: epoch_proposals,
+                    proposals_by_value: &[],
+                },
                 false,
                 None,
                 &crypto,
@@ -291,8 +293,10 @@ fn test_update_path() {
             .create_commit(
                 framing_parameters,
                 &bob_credential_bundle,
-                &[&update_proposal_bob],
-                &[],
+                Proposals {
+                    proposals_by_reference: &[&update_proposal_bob],
+                    proposals_by_value: &[],
+                },
                 false, /* force self update */
                 None,
                 &crypto,
@@ -495,8 +499,10 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference: epoch_proposals,
+                proposals_by_value: &[],
+            },
             false,
             Some(psk_fetcher),
 
@@ -542,8 +548,10 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .create_commit(
             framing_parameters,
             &bob_credential_bundle,
-            &[&update_proposal_bob],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&update_proposal_bob],
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,
 

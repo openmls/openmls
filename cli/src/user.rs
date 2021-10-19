@@ -313,8 +313,10 @@ impl User {
             .create_commit(
                 framing_parameters,
                 credentials,
-                &proposals,
-                &[],
+                Proposals {
+                    proposals_by_reference: &proposals,
+                    proposals_by_value: &[],
+                },
                 false,
                 None,
                 &self.crypto,

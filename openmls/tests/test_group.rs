@@ -1,4 +1,4 @@
-use openmls::prelude::*;
+use openmls::{group::create_commit::Proposals, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 #[test]
@@ -86,8 +86,12 @@ fn create_commit_optional_path() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                &(epoch_proposals.iter().collect::<Vec<&MlsPlaintext>>()),
-                &[],
+                Proposals {
+                    proposals_by_reference: &(epoch_proposals
+                        .iter()
+                        .collect::<Vec<&MlsPlaintext>>()),
+                    proposals_by_value: &[],
+                },
                 true, /* force self-update */
                 None, /* No PSK fetcher */
                 &crypto,
@@ -119,8 +123,10 @@ fn create_commit_optional_path() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                epoch_proposals,
-                &[],
+                Proposals {
+                    proposals_by_reference: epoch_proposals,
+                    proposals_by_value: &[],
+                },
                 false, /* don't force selfupdate */
                 None,  /* PSK fetcher */
                 &crypto,
@@ -173,8 +179,10 @@ fn create_commit_optional_path() {
         let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice.create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            proposals,
-            &[],
+            Proposals {
+                proposals_by_reference: proposals,
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,  /* PSK fetcher */
             &crypto,
@@ -268,8 +276,10 @@ fn basic_group_setup() {
         let _commit = match group_alice.create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            &[&bob_add_proposal],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&bob_add_proposal],
+                proposals_by_value: &[],
+            },
             true,
             None, /* PSK fetcher */
             &crypto,
@@ -370,8 +380,10 @@ fn group_operations() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                epoch_proposals,
-                &[],
+                Proposals {
+                    proposals_by_reference: epoch_proposals,
+                    proposals_by_value: &[],
+                },
                 false,
                 None, /* PSK fetcher */
                 &crypto,
@@ -451,8 +463,10 @@ fn group_operations() {
         let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
             framing_parameters,
             &bob_credential_bundle,
-            &[&update_proposal_bob],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&update_proposal_bob],
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,  /* PSK fetcher */
             &crypto,
@@ -511,8 +525,10 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            &[&update_proposal_alice],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&update_proposal_alice],
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,  /* PSK fetcher */
             &crypto,
@@ -569,8 +585,10 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            &[&update_proposal_bob],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&update_proposal_bob],
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,  /* PSK fetcher */
             &crypto,
@@ -638,8 +656,10 @@ fn group_operations() {
             .create_commit(
                 framing_parameters,
                 &bob_credential_bundle,
-                &[&add_charlie_proposal_bob],
-                &[],
+                Proposals {
+                    proposals_by_reference: &[&add_charlie_proposal_bob],
+                    proposals_by_value: &[],
+                },
                 false, /* force self update */
                 None,  /* PSK fetcher */
                 &crypto,
@@ -744,8 +764,10 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             framing_parameters,
             &charlie_credential_bundle,
-            &[&update_proposal_charlie],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&update_proposal_charlie],
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,  /* PSK fetcher */
             &crypto,
@@ -807,8 +829,10 @@ fn group_operations() {
         let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
             framing_parameters,
             &charlie_credential_bundle,
-            &[&remove_bob_proposal_charlie],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&remove_bob_proposal_charlie],
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,  /* PSK fetcher */
             &crypto,

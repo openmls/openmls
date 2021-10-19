@@ -7,7 +7,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
-use crate::prelude::*;
+use crate::{group::create_commit::Proposals, prelude::*};
 
 #[test]
 fn capabilities() {
@@ -144,13 +144,15 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let bob_add_proposal = alice_group
         .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let epoch_proposals = &[&bob_add_proposal];
+    let proposals_by_reference = &[&bob_add_proposal];
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value: &[],
+            },
             false,
             None,
             crypto,
@@ -158,7 +160,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         .expect("Error creating commit");
 
     alice_group
-        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, crypto)
+        .apply_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
         .expect("error applying commit");
 
     let bob_group = match MlsGroup::new_from_welcome(
@@ -215,13 +217,15 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let bob_add_proposal = alice_group
         .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let epoch_proposals = &[&bob_add_proposal];
+    let proposals_by_reference = &[&bob_add_proposal];
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value: &[],
+            },
             false,
             None,
             crypto,
@@ -229,7 +233,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         .expect("Error creating commit");
 
     alice_group
-        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, crypto)
+        .apply_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
         .expect("error applying commit");
 
     let error = MlsGroup::new_from_welcome(

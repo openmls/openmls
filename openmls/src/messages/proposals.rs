@@ -1,11 +1,8 @@
-use crate::ciphersuite::*;
-use crate::config::ProtocolVersion;
-use crate::extensions::Extension;
-use crate::framing::*;
-use crate::group::GroupId;
-use crate::key_packages::*;
-use crate::schedule::psk::*;
-use crate::tree::index::*;
+use crate::{
+    ciphersuite::*, config::ProtocolVersion, extensions::Extension, framing::*,
+    group::mls_group::create_commit::Proposals, group::GroupId, key_packages::*, schedule::psk::*,
+    tree::index::*,
+};
 
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};

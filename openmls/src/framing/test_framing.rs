@@ -1,3 +1,4 @@
+use mls_group::create_commit::Proposals;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
@@ -384,8 +385,10 @@ fn unknown_sender() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                &[&bob_add_proposal],
-                &[],
+                Proposals {
+                    proposals_by_reference: &[&bob_add_proposal],
+                    proposals_by_value: &[],
+                },
                 false,
                 None,
                 crypto,
@@ -411,8 +414,10 @@ fn unknown_sender() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                &[&charlie_add_proposal],
-                &[],
+                Proposals {
+                    proposals_by_reference: &[&charlie_add_proposal],
+                    proposals_by_value: &[],
+                },
                 false,
                 None,
                 crypto,
@@ -445,8 +450,10 @@ fn unknown_sender() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                &[&bob_remove_proposal],
-                &[],
+                Proposals {
+                    proposals_by_reference: &[&bob_remove_proposal],
+                    proposals_by_value: &[],
+                },
                 false,
                 None,
                 crypto,
@@ -613,8 +620,10 @@ fn confirmation_tag_presence() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                &[&bob_add_proposal],
-                &[],
+                Proposals {
+                    proposals_by_reference: &[&bob_add_proposal],
+                    proposals_by_value: &[],
+                },
                 false,
                 None,
                 crypto,
@@ -697,8 +706,10 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            &[&bob_add_proposal],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&bob_add_proposal],
+                proposals_by_value: &[],
+            },
             false,
             None,
 

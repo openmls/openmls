@@ -1,4 +1,4 @@
-use openmls::{ciphersuite::signable::Verifiable, prelude::*};
+use openmls::{ciphersuite::signable::Verifiable, group::create_commit::Proposals, prelude::*};
 pub mod utils;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
@@ -309,8 +309,10 @@ fn test_commit_encoding() {
             .create_commit(
                 framing_parameters,
                 alice_credential_bundle,
-                proposals,
-                &[],
+                Proposals {
+                    proposals_by_reference: proposals,
+                    proposals_by_value: &[],
+                },
                 true,
                 None,
                 &crypto,
@@ -369,8 +371,10 @@ fn test_welcome_message_encoding() {
             .create_commit(
                 framing_parameters,
                 credential_bundle,
-                proposals,
-                &[],
+                Proposals {
+                    proposals_by_reference: proposals,
+                    proposals_by_value: &[],
+                },
                 true,
                 None,
                 &crypto,

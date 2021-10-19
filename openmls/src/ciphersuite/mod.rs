@@ -920,8 +920,6 @@ pub(crate) fn aead_key_gen(
     alg: openmls_traits::types::AeadType,
     rng: &impl OpenMlsRand,
 ) -> Vec<u8> {
-    use ::rand::{rngs::OsRng, RngCore};
-
     match alg {
         openmls_traits::types::AeadType::Aes128Gcm => rng.random_vec(16).unwrap(),
         openmls_traits::types::AeadType::Aes256Gcm

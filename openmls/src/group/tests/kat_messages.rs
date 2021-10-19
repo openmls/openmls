@@ -6,7 +6,7 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{GroupEpoch, WireFormat},
+    group::{mls_group::create_commit::Proposals, GroupEpoch, WireFormat},
     messages::{Commit, GroupInfo, GroupSecrets, PublicGroupState},
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
@@ -15,8 +15,8 @@ use crate::{
     utils::*,
 };
 
-use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
 
@@ -93,7 +93,8 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         ConfirmationTag(Mac {
             mac_value: crypto
                 .rand()
-                .random_vec(ciphersuite.hash_length()).unwrap()
+                .random_vec(ciphersuite.hash_length())
+                .unwrap()
                 .into(),
         }),
         LeafIndex::from(random_u32()),
@@ -161,8 +162,10 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         .create_commit(
             framing_parameters,
             &credential_bundle,
-            &[&add_proposal_pt],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&add_proposal_pt],
+                proposals_by_value: &[],
+            },
             true,
             None,
             &crypto,

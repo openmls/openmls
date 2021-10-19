@@ -8,7 +8,7 @@
 pub mod errors;
 mod group_context;
 mod managed_group;
-mod mls_group;
+pub mod mls_group;
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests;

@@ -218,13 +218,15 @@ async fn test_group() {
             crypto,
         )
         .unwrap();
-    let epoch_proposals_ref = vec![&client2_add_proposal];
+    let proposals_by_reference = vec![&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
         .create_commit(
             framing_parameters,
             &credentials[0],
-            &epoch_proposals_ref,
-            &[],
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value: &[],
+            },
             false,
             None,
             crypto,

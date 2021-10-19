@@ -2,7 +2,7 @@ use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
 mod apply_commit;
-mod create_commit;
+pub mod create_commit;
 mod new_from_welcome;
 #[cfg(test)]
 mod test_duplicate_extension;
@@ -13,12 +13,14 @@ use crate::ciphersuite::signable::Verifiable;
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
-use crate::group::*;
-use crate::key_packages::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 use crate::{ciphersuite::*, config::ProtocolVersion};
+use crate::{
+    group::{mls_group::create_commit::Proposals, *},
+    key_packages::*,
+};
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -259,18 +261,15 @@ impl MlsGroup {
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[&MlsPlaintext],
-        proposals_by_value: &[&Proposal],
+        proposals: Proposals,
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
-
         backend: &impl OpenMlsCryptoProvider,
     ) -> CreateCommitResult {
         self.create_commit_internal(
             framing_parameters,
             credential_bundle,
-            proposals_by_reference,
-            proposals_by_value,
+            proposals,
             force_self_update,
             psk_fetcher_option,
             backend,

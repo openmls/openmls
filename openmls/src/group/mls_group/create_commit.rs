@@ -8,18 +8,25 @@ use crate::group::mls_group::*;
 use crate::group::*;
 use crate::messages::*;
 
+/// Wrapper for proposals by value and reference.
+pub struct Proposals<'a> {
+    pub proposals_by_reference: &'a[&'a MlsPlaintext],
+    pub proposals_by_value: &'a[&'a Proposal],
+}
+
 impl MlsGroup {
     pub(crate) fn create_commit_internal(
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[&MlsPlaintext],
-        proposals_by_value: &[&Proposal],
+        proposals: Proposals,
         force_self_update: bool,
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
+        let proposals_by_reference = proposals.proposals_by_reference;
+        let proposals_by_value = proposals.proposals_by_value;
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,

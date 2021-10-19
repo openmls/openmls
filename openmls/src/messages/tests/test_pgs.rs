@@ -4,7 +4,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
-    group::WireFormat,
+    group::{create_commit::Proposals, WireFormat},
     key_packages::KeyPackageBundle,
     messages::{
         CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
@@ -80,8 +80,10 @@ fn test_pgs() {
         let (commit, _welcome_option, kpb_option) = match group_alice.create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            &[&bob_add_proposal],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&bob_add_proposal],
+                proposals_by_value: &[],
+            },
             true,
             None,
             &crypto,

@@ -15,7 +15,7 @@ use crate::{
     credentials::Credential,
     error::ErrorString,
     framing::*,
-    group::*,
+    group::{mls_group::create_commit::Proposals, *},
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
     prelude::KeyPackageBundlePayload,
@@ -239,8 +239,10 @@ impl ManagedGroup {
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             self.framing_parameters(),
             &credential_bundle,
-            proposals_by_reference,
-            proposals_by_value,
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value,
+            },
             true,
             None,
             backend,
@@ -321,8 +323,10 @@ impl ManagedGroup {
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             self.framing_parameters(),
             &credential_bundle,
-            proposals_by_reference,
-            proposals_by_value,
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value,
+            },
             false,
             None,
             backend,
@@ -685,8 +689,10 @@ impl ManagedGroup {
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
             self.framing_parameters(),
             &credential_bundle,
-            &messages_to_commit,
-            &[],
+            Proposals {
+                proposals_by_reference: &messages_to_commit,
+                proposals_by_value: &[],
+            },
             true,
             None,
             backend,
@@ -831,8 +837,10 @@ impl ManagedGroup {
                 self.group.create_commit(
                     self.framing_parameters(),
                     &credential_bundle,
-                    &messages_to_commit,
-                    &[&update_proposal],
+                    Proposals {
+                        proposals_by_reference: &messages_to_commit,
+                        proposals_by_value: &[&update_proposal],
+                    },
                     true, /* force_self_update */
                     None,
                     backend,
@@ -842,8 +850,10 @@ impl ManagedGroup {
                 self.group.create_commit(
                     self.framing_parameters(),
                     &credential_bundle,
-                    &messages_to_commit,
-                    &[],
+                    Proposals {
+                        proposals_by_reference: &messages_to_commit,
+                        proposals_by_value: &[],
+                    },
                     true, /* force_self_update */
                     None,
                     backend,
