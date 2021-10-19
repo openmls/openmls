@@ -77,7 +77,7 @@ fn generate(
     HpkeKeyPair,
 ) {
     let crypto = OpenMlsRustCrypto::default();
-    let tree_hash = crypto.rand().random_vec(ciphersuite.hash_length());
+    let tree_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
     let commit_secret = CommitSecret::random(ciphersuite, &crypto);
     let psk_secret = PskSecret::random(ciphersuite, &crypto);
     let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret);
@@ -89,7 +89,7 @@ fn generate(
     );
     let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 
-    let confirmed_transcript_hash = crypto.rand().random_vec(ciphersuite.hash_length());
+    let confirmed_transcript_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
 
     let group_context = GroupContext::new(
         GroupId::from_slice(group_id),
@@ -132,7 +132,7 @@ pub fn generate_test_vector(
     // Set up setting.
     let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default());
     let initial_init_secret = init_secret.clone();
-    let group_id = crypto.rand().random_vec(16);
+    let group_id = crypto.rand().random_vec(16).unwrap();
 
     let mut epochs = Vec::new();
 

@@ -244,17 +244,21 @@ impl OpenMlsCrypto for RustCrypto {
 }
 
 impl OpenMlsRand for RustCrypto {
-    fn random_array<const N: usize>(&self) -> [u8; N] {
-        let mut rng = self.rng.write().unwrap();
+    type Error = &'static str;
+
+    fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
+        let mut rng = self.rng.write().map_err(|_| "Rng lock is poisoned.")?;
         let mut out = [0u8; N];
-        rng.fill_bytes(&mut out);
-        out
+        rng.try_fill_bytes(&mut out)
+            .map_err(|_| "Unable to collect enough randomness.")?;
+        Ok(out)
     }
 
-    fn random_vec(&self, len: usize) -> Vec<u8> {
-        let mut rng = self.rng.write().unwrap();
+    fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
+        let mut rng = self.rng.write().map_err(|_| "Rng lock is poisoned.")?;
         let mut out = vec![0u8; len];
-        rng.fill_bytes(&mut out);
-        out
+        rng.try_fill_bytes(&mut out)
+            .map_err(|_| "Unable to collect enough randomness.")?;
+        Ok(out)
     }
 }

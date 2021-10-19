@@ -39,7 +39,7 @@ pub struct GroupId {
 impl GroupId {
     pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
-            value: rng.rand().random_vec(16).into(),
+            value: rng.rand().random_vec(16).unwrap().into(),
         }
     }
     pub fn from_slice(bytes: &[u8]) -> Self {

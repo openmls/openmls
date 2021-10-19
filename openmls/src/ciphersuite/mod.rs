@@ -236,7 +236,7 @@ impl Secret {
             mls_version
         );
         Secret {
-            value: crypto.rand().random_vec(ciphersuite.hash_length()),
+            value: crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
             mls_version,
             ciphersuite,
         }
@@ -463,7 +463,7 @@ impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
     pub fn from_random(crypto: &impl OpenMlsCryptoProvider) -> Self {
         Self {
-            value: crypto.rand().random_array(),
+            value: crypto.rand().random_array().unwrap(),
         }
     }
 }
@@ -788,7 +788,7 @@ impl AeadNonce {
     #[cfg(test)]
     pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
         AeadNonce {
-            value: rng.rand().random_array(),
+            value: rng.rand().random_array().unwrap(),
         }
     }
 

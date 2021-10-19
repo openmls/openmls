@@ -17,7 +17,12 @@ pub trait OpenMlsCryptoProvider: Send + Sync {
     type RandProvider: random::OpenMlsRand;
     type KeyStoreProvider: key_store::OpenMlsKeyStore;
 
+    /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;
+
+    /// Get the randomness provider.
     fn rand(&self) -> &Self::RandProvider;
+
+    /// Get the key store provider.
     fn key_store(&self) -> &Self::KeyStoreProvider;
 }

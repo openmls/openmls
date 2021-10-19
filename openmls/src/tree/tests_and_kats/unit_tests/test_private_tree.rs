@@ -45,7 +45,7 @@ fn test_private_tree(
     let index = direct_path[path_index];
     let public_key = &public_keys[path_index];
     let private_key = private_tree.path_keys().get(index).unwrap();
-    let data = crypto.rand().random_vec(55);
+    let data = crypto.rand().random_vec(55).unwrap();
     let info = b"PrivateTree Test Info";
     let aad = b"PrivateTree Test AAD";
 
