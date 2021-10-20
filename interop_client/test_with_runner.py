@@ -3,6 +3,7 @@
 import subprocess
 import os
 import atexit
+import shlex
 
 import socket
 
@@ -16,10 +17,10 @@ def cleanup():
     subprocess.run(['rm','-rf', 'mls-implementations'])
 
 # Register that function to be run at exit.
-atexit.register(cleanup)
+#atexit.register(cleanup)
 
-# Compile and run the interop client
-interop_client_p = subprocess.Popen(['cargo', 'run', '--release'])
+# Compile and run the interop client, but suppress output. For now, we're only interested in the output of the test runner.
+interop_client_p = subprocess.Popen(['cargo', 'run', '--release'], stdout=subprocess.DEVNULL)
 
 sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 
@@ -39,6 +40,10 @@ subprocess.run(['cp', 'config.json', 'mls-implementations/interop/test-runner'])
 
 # Change into the test runner dir.
 os.chdir("./mls-implementations/interop/test-runner")
+
+# Increase the timeout set by the runner
+subprocess.run(['sed', '-i', 's/time.Second/time.Second * 10/g', 'main.go'])
+
 # Get the required go modules
 subprocess.run(['go', 'get'])
 # Build the test runner
