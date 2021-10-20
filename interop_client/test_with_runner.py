@@ -17,7 +17,7 @@ def cleanup():
     subprocess.run(['rm','-rf', 'mls-implementations'])
 
 # Register that function to be run at exit.
-#atexit.register(cleanup)
+atexit.register(cleanup)
 
 # Compile and run the interop client, but suppress output. For now, we're only interested in the output of the test runner.
 interop_client_p = subprocess.Popen(['cargo', 'run', '--release'], stdout=subprocess.DEVNULL)
