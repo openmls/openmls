@@ -26,4 +26,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run interop client test script
-        run: test_with_runner.py
+        run: ./test_with_runner.py
