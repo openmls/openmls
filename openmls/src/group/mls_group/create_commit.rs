@@ -23,7 +23,7 @@ impl MlsGroup {
             ciphersuite,
             proposals_by_reference,
             proposals_by_value,
-            self.tree().own_node_index(),
+            Some(self.tree().own_node_index()),
             self.tree().leaf_count(),
         )?;
 

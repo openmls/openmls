@@ -128,7 +128,7 @@ use crate::{
 
 use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
-use hpke::{HpkePrivateKey, HpkePublicKey};
+use hpke::HpkePrivateKey;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 
@@ -246,15 +246,16 @@ impl InitSecret {
         })
     }
 
-    /// Create an `InitSecret` and the corresponding `kem_output` from an
-    /// external public key and a public group state.
-    pub(crate) fn from_external_pub(
-        ciphersuite: &'static Ciphersuite,
-        external_pub: &HpkePublicKey,
+    /// Create an `InitSecret` and the corresponding `kem_output` from a public
+    /// group state.
+    pub(crate) fn from_public_group_state(
+        public_group_state: &PublicGroupState,
     ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
+        let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
+            .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
         let (kem_output, context) = ciphersuite
             .hpke()
-            .setup_sender(external_pub, &[], None, None, None)
+            .setup_sender(&public_group_state.external_pub, &[], None, None, None)
             .map_err(|_| KeyScheduleError::HpkeError)?;
         let hpke_info = hpke_info_from_version(ciphersuite.version());
         let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());

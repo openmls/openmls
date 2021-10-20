@@ -10,7 +10,7 @@ mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
 
-use crate::ciphersuite::signable::Verifiable;
+use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
@@ -150,16 +150,17 @@ impl MlsGroup {
         proposals_by_value: &[&Proposal],
         public_group_state: &PublicGroupState,
     ) -> Result<(Self, MlsPlaintext), MlsGroupError> {
-        Ok(Self::new_from_external_init_internal(
-            nodes,
-            kpb,
-            psk_fetcher_option,
-            aad,
-            credential_bundle,
-            proposals_by_reference,
-            proposals_by_value,
-            public_group_state,
-        )?)
+        todo!()
+        //Ok(Self::new_from_external_init_internal(
+        //    nodes,
+        //    kpb,
+        //    psk_fetcher_option,
+        //    aad,
+        //    credential_bundle,
+        //    proposals_by_reference,
+        //    proposals_by_value,
+        //    public_group_state,
+        //)?)
     }
 
     // === Create handshake messages ===

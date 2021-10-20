@@ -320,13 +320,17 @@ impl<'a> ProposalQueue<'a> {
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
+    /// If an `own_index` is passed, the `SenderType::Member` is used.
+    /// Otherwise, an external init is assumed and the `SenderType::NewMember`
+    /// is used.
+    ///
     /// Return a `ProposalQueue` a bool that indicates whether Updates for the
     /// own node were included
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
         proposals_by_reference: &'a [&MlsPlaintext],
         proposals_by_value: &'a [&Proposal],
-        own_index: LeafIndex,
+        own_index_option: Option<LeafIndex>,
         tree_size: LeafIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
         #[derive(Clone)]
@@ -348,9 +352,15 @@ impl<'a> ProposalQueue<'a> {
 
         let mut contains_external_init = false;
 
-        let sender = Sender {
-            sender_type: SenderType::Member,
-            sender: own_index,
+        let sender = match own_index_option {
+            Some(index) => Sender {
+                sender_type: SenderType::Member,
+                sender: index,
+            },
+            None => Sender {
+                sender_type: SenderType::NewMember,
+                sender: LeafIndex::from(0u32),
+            },
         };
 
         // Aggregate both proposal types to a common iterator
@@ -377,8 +387,10 @@ impl<'a> ProposalQueue<'a> {
                 }
                 ProposalType::Update => {
                     let sender_index = queued_proposal.sender.sender.as_usize();
-                    if sender_index != own_index.as_usize() {
-                        members[sender_index].updates.push(queued_proposal.clone());
+                    if let Some(index) = own_index_option {
+                        if sender_index != index.as_usize() {
+                            members[sender_index].updates.push(queued_proposal.clone());
+                        }
                     } else {
                         contains_own_updates = true;
                     }
