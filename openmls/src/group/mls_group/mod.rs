@@ -464,7 +464,8 @@ impl MlsGroup {
         &self,
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, CredentialError> {
-        PublicGroupState::new(self, credential_bundle)
+        let pgs_tbs = PublicGroupStateTbs::new(self, credential_bundle);
+        pgs_tbs.sign(credential_bundle)
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
