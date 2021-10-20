@@ -25,7 +25,5 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - name: Run interop client test script
-        run: python test_with_runner.py
+        run: test_with_runner.py
