@@ -9,12 +9,13 @@ mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
 
-use crate::ciphersuite::signable::Verifiable;
+use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
+use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
@@ -434,7 +435,7 @@ impl MlsGroup {
         &self,
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, CredentialError> {
-        let pgs_tbs = PublicGroupStateTbs::new(self, credential_bundle);
+        let pgs_tbs = PublicGroupStateTbs::new(self);
         pgs_tbs.sign(credential_bundle)
     }
 

@@ -3,10 +3,12 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
+    credentials::{CredentialBundle, CredentialType},
     group::WireFormat,
     key_packages::KeyPackageBundle,
     messages::{
-        CredentialBundle, CredentialType, LeafIndex, MlsGroup, MlsGroupConfig, PublicGroupState,
+        public_group_state::{PublicGroupState, VerifiablePublicGroupState},
+        LeafIndex, MlsGroup, MlsGroupConfig,
     },
     prelude::FramingParameters,
 };
@@ -91,16 +93,15 @@ fn test_pgs() {
         // Make sure Alice is the signer
         assert_eq!(pgs.signer_index, LeafIndex::from(0u32));
 
-        // Verify the signature
-        assert!(pgs
-            .verify_no_out(alice_credential_bundle.credential())
-            .is_ok());
-
-        // Test codec
+        // Test codec and verification
         let encoded = pgs.tls_serialize_detached().expect("Could not encode");
-        let decoded =
-            PublicGroupState::tls_deserialize(&mut encoded.as_slice()).expect("Could not decode");
+        let verifiable_pgs = VerifiablePublicGroupState::tls_deserialize(&mut encoded.as_slice())
+            .expect("Could not decode");
 
-        assert_eq!(decoded, pgs);
+        let pgs_decoded: PublicGroupState = verifiable_pgs
+            .verify(alice_credential_bundle.credential())
+            .expect("error verifiying public group state");
+
+        assert_eq!(pgs, pgs_decoded)
     }
 }

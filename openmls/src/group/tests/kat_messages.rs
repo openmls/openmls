@@ -7,7 +7,7 @@
 use crate::{
     ciphersuite::signable::Signable,
     group::{GroupEpoch, WireFormat},
-    messages::{Commit, GroupInfo, GroupSecrets, PublicGroupState},
+    messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
     prelude::*,
@@ -339,7 +339,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // PublicGroupState
     let tv_public_group_state = hex_to_bytes(&tv.public_group_state);
     let my_public_group_state =
-        PublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
+        VerifiablePublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
             .unwrap()
             .tls_serialize_detached()
             .unwrap();
