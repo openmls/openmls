@@ -101,7 +101,20 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
 </pre><pre class="rust">
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::Signature</span>,
     <span class="ident">credentials</span>::{<span class="ident">Credential</span>, <span class="ident">CredentialBundle</span>, <span class="ident">CredentialError</span>},
@@ -152,13 +165,14 @@
     <span class="doccomment">/// Returns a `Signature`.</span>
     <span class="kw">fn</span> <span class="ident">sign</span>(
         <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="ident">::SignedOutput</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="self">Self</span><span class="ident">::SignedOutput</span>: <span class="ident">SignedStruct</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
     {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unsigned_payload</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">credential_bundle</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">credential_bundle</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span><span class="ident">::SignedOutput::from_payload</span>(<span class="self">self</span>, <span class="ident">signature</span>))
     }
 }
@@ -185,12 +199,16 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and</span>
     <span class="doccomment">/// `CredentialError::InvalidSignature` otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span>
+    <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(
+        <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">T</span>: <span class="ident">VerifiedStruct</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
     {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unsigned_payload</span>()<span class="question-mark">?</span>;
-        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>())<span class="question-mark">?</span>;
+        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">T::from_verifiable</span>(<span class="self">self</span>, <span class="ident">T::SealingType::default</span>()))
     }
 
@@ -200,9 +218,13 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns `Ok(())` if the signature is valid and</span>
     <span class="doccomment">/// `CredentialError::InvalidSignature` otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">verify_no_out</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CredentialError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify_no_out</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CredentialError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unsigned_payload</span>()<span class="question-mark">?</span>;
-        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>())
+        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>())
     }
 }
 </pre></div>

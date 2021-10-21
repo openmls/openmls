@@ -51,6 +51,7 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::io::Read</span>;
 
@@ -97,11 +98,12 @@
             <span class="ident">encoded</span>,
         };
 
-        <span class="kw">if</span> <span class="ident">kp</span>.<span class="ident">verify_no_out</span>(<span class="ident">kp</span>.<span class="ident">credential</span>()).<span class="ident">is_err</span>() {
-            <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Error verifying a key package after decoding\n{:?}&quot;</span>, <span class="ident">kp</span>);
-            <span class="macro">log::error!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">msg</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="ident">msg</span>));
-        }
+        <span class="comment">// FIXME: Was this necessary? If so, add verification of key packages again after deserializing.</span>
+        <span class="comment">// if kp.verify_no_out(kp.credential()).is_err() {</span>
+        <span class="comment">//     let msg = format!(&quot;Error verifying a key package after decoding\n{:?}&quot;, kp);</span>
+        <span class="comment">//     log::error!(&quot;{}&quot;, msg);</span>
+        <span class="comment">//     return Err(tls_codec::Error::DecodingError(msg));</span>
+        <span class="comment">// }</span>
         <span class="prelude-val">Ok</span>(<span class="ident">kp</span>)
     }
 }

@@ -315,6 +315,32 @@
 <span id="315">315</span>
 <span id="316">316</span>
 <span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # Known Answer Tests for the transcript hashes</span>
 <span class="doccomment">//!</span>
@@ -327,7 +353,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utils</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">signable::Verifiable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">CiphersuiteName</span>, <span class="ident">Secret</span>, <span class="ident">SignatureScheme</span>},
+    <span class="ident">ciphersuite</span>::{<span class="ident">signable::Verifiable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">CiphersuiteName</span>, <span class="ident">Secret</span>},
     <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>},
     <span class="ident">credentials</span>::{<span class="ident">Credential</span>, <span class="ident">CredentialBundle</span>, <span class="ident">CredentialType</span>},
     <span class="ident">group</span>::{
@@ -343,6 +369,8 @@
     <span class="ident">test_utils</span>::{<span class="ident">bytes_to_hex</span>, <span class="ident">hex_to_bytes</span>},
 };
 
+<span class="kw">use</span> <span class="ident">openmls_rust_crypto::OpenMlsRustCrypto</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">random::OpenMlsRand</span>, <span class="ident">types::SignatureScheme</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span> <span class="kw">as</span> <span class="ident">TlsDeserialize</span>, <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>};
 
@@ -365,22 +393,32 @@
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_test_vector</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TranscriptTestVector</span> {
+    <span class="kw">let</span> <span class="ident">crypto</span> <span class="op">=</span> <span class="ident">OpenMlsRustCrypto::default</span>();
     <span class="comment">// Generate random values.</span>
-    <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::random</span>(<span class="ident">ciphersuite</span>);
+    <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::random</span>(<span class="kw-2">&amp;</span><span class="ident">crypto</span>);
     <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">random_u64</span>();
-    <span class="kw">let</span> <span class="ident">tree_hash_before</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
-    <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_before</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
-    <span class="kw">let</span> <span class="ident">interim_transcript_hash_before</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>());
-    <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span>
-        <span class="ident">MembershipKey::from_secret</span>(<span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>));
-    <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span>
-        <span class="ident">ConfirmationKey::from_secret</span>(<span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>));
+    <span class="kw">let</span> <span class="ident">tree_hash_before</span> <span class="op">=</span> <span class="ident">crypto</span>.<span class="ident">rand</span>().<span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_before</span> <span class="op">=</span>
+        <span class="ident">crypto</span>.<span class="ident">rand</span>().<span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">interim_transcript_hash_before</span> <span class="op">=</span>
+        <span class="ident">crypto</span>.<span class="ident">rand</span>().<span class="ident">random_vec</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>()).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::from_secret</span>(<span class="ident">Secret::random</span>(
+        <span class="ident">ciphersuite</span>,
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
+        <span class="prelude-val">None</span>, <span class="comment">/* MLS version */</span>
+    ));
+    <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">ConfirmationKey::from_secret</span>(<span class="ident">Secret::random</span>(
+        <span class="ident">ciphersuite</span>,
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
+        <span class="prelude-val">None</span>, <span class="comment">/* MLS version */</span>
+    ));
 
     <span class="comment">// Build plaintext commit message.</span>
     <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
         <span class="string">b&quot;client&quot;</span>.<span class="ident">to_vec</span>(),
         <span class="ident">CredentialType::Basic</span>,
         <span class="ident">SignatureScheme::from</span>(<span class="ident">ciphersuite</span>.<span class="ident">name</span>()),
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
     )
     .<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
@@ -391,7 +429,7 @@
         <span class="kw-2">&amp;</span>[], <span class="comment">// extensions</span>
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error creating group context&quot;</span>);
-    <span class="kw">let</span> <span class="ident">aad</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">randombytes</span>(<span class="number">48</span>);
+    <span class="kw">let</span> <span class="ident">aad</span> <span class="op">=</span> <span class="ident">crypto</span>.<span class="ident">rand</span>().<span class="ident">random_vec</span>(<span class="number">48</span>).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">framing_parameters</span> <span class="op">=</span> <span class="ident">FramingParameters::new</span>(<span class="kw-2">&amp;</span><span class="ident">aad</span>, <span class="ident">WireFormat::MlsPlaintext</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_commit</span>(
         <span class="ident">framing_parameters</span>,
@@ -402,26 +440,33 @@
         },
         <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
         <span class="kw-2">&amp;</span><span class="ident">context</span>,
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
     )
     .<span class="ident">unwrap</span>();
 
     <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
         <span class="ident">ciphersuite</span>,
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
         <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">interim_transcript_hash_before</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating confirmed transcript hash&quot;</span>);
-    <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>);
+    <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>);
     <span class="ident">commit</span>.<span class="ident">set_confirmation_tag</span>(<span class="ident">confirmation_tag</span>);
 
     <span class="kw">let</span> <span class="ident">interim_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
         <span class="ident">ciphersuite</span>,
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
         <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitAuthData::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>,
     )
     .<span class="ident">expect</span>(<span class="string">&quot;Error updating interim transcript hash&quot;</span>);
     <span class="ident">commit</span>
-        .<span class="ident">set_membership_tag</span>(<span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="ident">membership_key</span>)
+        .<span class="ident">set_membership_tag</span>(
+            <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
+            <span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
+            <span class="kw-2">&amp;</span><span class="ident">membership_key</span>,
+        )
         .<span class="ident">expect</span>(<span class="string">&quot;Error adding membership tag&quot;</span>);
     <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">credential_bundle</span>
         .<span class="ident">credential</span>()
@@ -468,6 +513,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">TranscriptTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TranscriptTestVectorError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span>
         <span class="ident">CiphersuiteName::try_from</span>(<span class="ident">test_vector</span>.<span class="ident">cipher_suite</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid ciphersuite&quot;</span>);
+    <span class="kw">let</span> <span class="ident">crypto</span> <span class="op">=</span> <span class="ident">OpenMlsRustCrypto::default</span>();
     <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Config::ciphersuite</span>(<span class="ident">ciphersuite</span>) {
         <span class="prelude-val">Ok</span>(<span class="ident">cs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cs</span>,
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -530,11 +576,15 @@
     }
     <span class="kw">let</span> <span class="ident">commit</span>: <span class="ident">MlsPlaintext</span> <span class="op">=</span> <span class="ident">commit</span>
         .<span class="ident">set_context</span>(<span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>())
-        .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">credential</span>)
+        .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="ident">credential</span>)
         .<span class="ident">expect</span>(<span class="string">&quot;Invalid signature on MlsPlaintext commit&quot;</span>);
 
     <span class="kw">if</span> <span class="ident">commit</span>
-        .<span class="ident">verify_membership</span>(<span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="ident">membership_key</span>)
+        .<span class="ident">verify_membership</span>(
+            <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
+            <span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
+            <span class="kw-2">&amp;</span><span class="ident">membership_key</span>,
+        )
         .<span class="ident">is_err</span>()
     {
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
@@ -547,7 +597,7 @@
     <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_after</span> <span class="op">=</span>
         <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">confirmed_transcript_hash_after</span>);
 
-    <span class="kw">let</span> <span class="ident">my_confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>);
+    <span class="kw">let</span> <span class="ident">my_confirmation_tag</span> <span class="op">=</span> <span class="ident">confirmation_key</span>.<span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash_after</span>);
     <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">my_confirmation_tag</span>
         <span class="op">!</span><span class="op">=</span> <span class="ident">commit</span>
             .<span class="ident">confirmation_tag</span>()
@@ -565,6 +615,7 @@
     <span class="comment">// Compute new transcript hashes.</span>
     <span class="kw">let</span> <span class="ident">my_confirmed_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
         <span class="ident">ciphersuite</span>,
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
         <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">interim_transcript_hash_before</span>,
     )
@@ -583,6 +634,7 @@
 
     <span class="kw">let</span> <span class="ident">my_interim_transcript_hash_after</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
         <span class="ident">ciphersuite</span>,
+        <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
         <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitAuthData::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">commit</span>).<span class="ident">unwrap</span>(),
         <span class="kw-2">&amp;</span><span class="ident">my_confirmed_transcript_hash_after</span>,
     )

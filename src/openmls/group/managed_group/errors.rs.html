@@ -83,8 +83,6 @@
 <span id="83">83</span>
 <span id="84">84</span>
 <span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
@@ -97,14 +95,13 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::framing::MlsCiphertextError</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::group</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>};
 
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::key_store::KeyStoreError</span>;
-
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ManagedGroupError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">NoMatchingCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.&quot;</span>,
             <span class="ident">NoMatchingKeyPackageBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.&quot;</span>,
             <span class="ident">PoisonedCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.&quot;</span>,
+            <span class="ident">KeyStoreError</span> <span class="op">=</span> <span class="string">&quot;Error performing key store operation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">LibraryError</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
@@ -123,7 +120,6 @@
                 <span class="string">&quot;See [`ExporterError`](`crate::group::ExporterError`) for details&quot;</span>,
             <span class="ident">EmptyInput</span>(<span class="ident">EmptyInputError</span>) <span class="op">=</span>
                 <span class="string">&quot;Empty input. Additional detail is provided.&quot;</span>,
-            <span class="ident">KeyStoreError</span>(<span class="ident">KeyStoreError</span>) <span class="op">=</span> <span class="string">&quot;See [`KeyStoreError`](`crate::key_store::KeyStoreError`) for details&quot;</span>,
             <span class="ident">InvalidMessage</span>(<span class="ident">InvalidMessageError</span>) <span class="op">=</span> <span class="string">&quot;The message could not be processed.&quot;</span>,
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details&quot;</span>,
         }

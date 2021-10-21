@@ -598,6 +598,16 @@
 <span id="598">598</span>
 <span id="599">599</span>
 <span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
 </pre><pre class="rust">
 <span class="doccomment">//! This crate provides a framework to set up clients and groups using the</span>
 <span class="doccomment">//! OpenMLS managed_group API. To use the framework, start by creating a new</span>
@@ -628,7 +638,11 @@
 <span class="doccomment">/// https://github.com/rust-lang/rust/issues/46379, which would otherwise create</span>
 <span class="doccomment">/// a lot of unused code warnings.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node::Node</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::OsRng</span>, <span class="ident">RngCore</span>};
+<span class="kw">use</span> <span class="ident">::rand</span>::{<span class="ident">rngs::OsRng</span>, <span class="ident">RngCore</span>};
+<span class="kw">use</span> <span class="ident">openmls_rust_crypto::OpenMlsRustCrypto</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::key_store::OpenMlsKeyStore</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::types::SignatureScheme</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cell::RefCell</span>, <span class="ident">collections::HashMap</span>};
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">client</span>;
@@ -729,23 +743,27 @@
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">number_of_clients</span> {
             <span class="kw">let</span> <span class="ident">identity</span> <span class="op">=</span> <span class="ident">i</span>.<span class="ident">to_be_bytes</span>().<span class="ident">to_vec</span>();
             <span class="comment">// For now, everyone supports all ciphersuites.</span>
-            <span class="kw">let</span> <span class="ident">_ciphersuites</span> <span class="op">=</span> <span class="ident">Config::supported_ciphersuite_names</span>();
-            <span class="kw">let</span> <span class="ident">key_store</span> <span class="op">=</span> <span class="ident">KeyStore::default</span>();
+            <span class="kw">let</span> <span class="ident">crypto</span> <span class="op">=</span> <span class="ident">OpenMlsRustCrypto::default</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">credentials</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
             <span class="kw">for</span> <span class="ident">ciphersuite</span> <span class="kw">in</span> <span class="ident">Config::supported_ciphersuite_names</span>() {
-                <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">key_store</span>
-                    .<span class="ident">generate_credential_bundle</span>(
-                        <span class="ident">identity</span>.<span class="ident">clone</span>(),
-                        <span class="ident">CredentialType::Basic</span>,
-                        <span class="ident">SignatureScheme::from</span>(<span class="kw-2">*</span><span class="ident">ciphersuite</span>),
-                    )
+                <span class="kw">let</span> <span class="ident">cb</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
+                    <span class="ident">identity</span>.<span class="ident">clone</span>(),
+                    <span class="ident">CredentialType::Basic</span>,
+                    <span class="ident">SignatureScheme::from</span>(<span class="kw-2">*</span><span class="ident">ciphersuite</span>),
+                    <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
+                )
+                .<span class="ident">unwrap</span>();
+                <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">cb</span>.<span class="ident">credential</span>().<span class="ident">clone</span>();
+                <span class="ident">crypto</span>
+                    .<span class="ident">key_store</span>()
+                    .<span class="ident">store</span>(<span class="ident">cb</span>.<span class="ident">credential</span>().<span class="ident">signature_key</span>(), <span class="kw-2">&amp;</span><span class="ident">cb</span>)
                     .<span class="ident">unwrap</span>();
                 <span class="ident">credentials</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">ciphersuite</span>, <span class="ident">credential</span>);
             }
             <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">Client</span> {
                 <span class="ident">identity</span>: <span class="ident">identity</span>.<span class="ident">clone</span>(),
                 <span class="ident">credentials</span>,
-                <span class="ident">key_store</span>,
+                <span class="ident">crypto</span>,
                 <span class="ident">groups</span>: <span class="ident">RefCell::new</span>(<span class="ident">HashMap::new</span>()),
             };
             <span class="ident">clients</span>.<span class="ident">insert</span>(<span class="ident">identity</span>, <span class="ident">RefCell::new</span>(<span class="ident">client</span>));
@@ -773,7 +791,7 @@
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">get_fresh_key_package</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite</span>.<span class="ident">name</span>()])<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">waiting_for_welcome</span>
             .<span class="ident">borrow_mut</span>()
-            .<span class="ident">insert</span>(<span class="ident">key_package</span>.<span class="ident">hash</span>(), <span class="ident">client</span>.<span class="ident">identity</span>.<span class="ident">clone</span>());
+            .<span class="ident">insert</span>(<span class="ident">key_package</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">client</span>.<span class="ident">crypto</span>), <span class="ident">client</span>.<span class="ident">identity</span>.<span class="ident">clone</span>());
         <span class="prelude-val">Ok</span>(<span class="ident">key_package</span>)
     }
 
@@ -849,7 +867,7 @@
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">index</span>, <span class="ident">cred</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">index</span>, <span class="ident">cred</span>.<span class="ident">identity</span>().<span class="ident">to_vec</span>()))
             .<span class="ident">collect</span>();
         <span class="ident">group</span>.<span class="ident">public_tree</span> <span class="op">=</span> <span class="ident">sender_group</span>.<span class="ident">export_ratchet_tree</span>();
-        <span class="ident">group</span>.<span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">sender_group</span>.<span class="ident">export_secret</span>(<span class="string">&quot;test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">32</span>)<span class="question-mark">?</span>;
+        <span class="ident">group</span>.<span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">sender_group</span>.<span class="ident">export_secret</span>(<span class="kw-2">&amp;</span><span class="ident">sender</span>.<span class="ident">crypto</span>, <span class="string">&quot;test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">32</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -868,11 +886,13 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">group_state</span>) <span class="op">=</span> <span class="ident">group_states</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">group</span>.<span class="ident">group_id</span>) {
                 <span class="macro">assert_eq!</span>(<span class="ident">group_state</span>.<span class="ident">export_ratchet_tree</span>(), <span class="ident">group</span>.<span class="ident">public_tree</span>);
                 <span class="macro">assert_eq!</span>(
-                    <span class="ident">group_state</span>.<span class="ident">export_secret</span>(<span class="string">&quot;test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">32</span>).<span class="ident">unwrap</span>(),
+                    <span class="ident">group_state</span>
+                        .<span class="ident">export_secret</span>(<span class="kw-2">&amp;</span><span class="ident">m</span>.<span class="ident">crypto</span>, <span class="string">&quot;test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">32</span>)
+                        .<span class="ident">unwrap</span>(),
                     <span class="ident">group</span>.<span class="ident">exporter_secret</span>
                 );
                 <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">group_state</span>
-                    .<span class="ident">create_message</span>(<span class="kw-2">&amp;</span><span class="ident">m</span>.<span class="ident">key_store</span>, <span class="string">&quot;Hello World!&quot;</span>.<span class="ident">as_bytes</span>())
+                    .<span class="ident">create_message</span>(<span class="kw-2">&amp;</span><span class="ident">m</span>.<span class="ident">crypto</span>, <span class="string">&quot;Hello World!&quot;</span>.<span class="ident">as_bytes</span>())
                     .<span class="ident">expect</span>(<span class="string">&quot;Error composing message while checking group states.&quot;</span>);
                 <span class="ident">messages</span>.<span class="ident">push</span>((<span class="ident">m_id</span>.<span class="ident">clone</span>(), <span class="ident">message</span>));
             };
@@ -943,7 +963,7 @@
         <span class="kw">let</span> <span class="ident">creator_groups</span> <span class="op">=</span> <span class="ident">group_creator</span>.<span class="ident">groups</span>.<span class="ident">borrow</span>();
         <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">creator_groups</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">group_id</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">public_tree</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">export_ratchet_tree</span>();
-        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">export_secret</span>(<span class="string">&quot;test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">32</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">export_secret</span>(<span class="kw-2">&amp;</span><span class="ident">group_creator</span>.<span class="ident">crypto</span>, <span class="string">&quot;test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">32</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">member_ids</span> <span class="op">=</span> <span class="macro">vec!</span>[(<span class="number">0</span>, <span class="ident">group_creator_id</span>)];
         <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">Group</span> {
             <span class="ident">group_id</span>: <span class="ident">group_id</span>.<span class="ident">clone</span>(),
@@ -1078,7 +1098,7 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SetupError::ClientNotInGroup</span>);
         }
         <span class="kw">let</span> (<span class="ident">messages</span>, <span class="ident">welcome_option</span>) <span class="op">=</span>
-            <span class="ident">remover</span>.<span class="ident">remove_members</span>(<span class="ident">action_type</span>, <span class="kw-2">&amp;</span><span class="ident">group</span>.<span class="ident">group_id</span>, <span class="ident">target_indices</span>)<span class="question-mark">?</span>;
+            <span class="ident">remover</span>.<span class="ident">remove_members</span>(<span class="ident">action_type</span>, <span class="kw-2">&amp;</span><span class="ident">group</span>.<span class="ident">group_id</span>, <span class="kw-2">&amp;</span><span class="ident">target_indices</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> <span class="ident">message</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">messages</span> {
             <span class="self">self</span>.<span class="ident">distribute_to_members</span>(<span class="ident">remover_id</span>, <span class="ident">group</span>, <span class="ident">message</span>)<span class="question-mark">?</span>;
         }

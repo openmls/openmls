@@ -899,6 +899,29 @@
 <span id="899">899</span>
 <span id="900">900</span>
 <span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite::signable::Signable</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
@@ -923,6 +946,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">hashes</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">index</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">node</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">private_tree::PrivateTree</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Size</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
 
@@ -963,7 +987,7 @@
 
 <span class="kw">impl</span> <span class="ident">RatchetTree</span> {
     <span class="doccomment">/// Create a new `RatchetTree` with only the &quot;self&quot; member as first node.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">RatchetTree</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">RatchetTree</span> {
         <span class="comment">// Create an initial, empty tree</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">Self</span> {
             <span class="ident">ciphersuite</span>: <span class="ident">kpb</span>.<span class="ident">key_package</span>().<span class="ident">ciphersuite</span>(),
@@ -973,7 +997,7 @@
         };
         <span class="comment">// Add our own node</span>
         <span class="kw">let</span> (<span class="ident">index</span>, <span class="ident">_credential</span>) <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">add_node</span>(<span class="ident">kpb</span>.<span class="ident">key_package</span>());
-        <span class="ident">tree</span>.<span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">index</span>, <span class="ident">kpb</span>.<span class="ident">leaf_secret</span>());
+        <span class="ident">tree</span>.<span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">backend</span>, <span class="ident">index</span>, <span class="ident">kpb</span>.<span class="ident">leaf_secret</span>());
         <span class="ident">tree</span>
     }
 
@@ -996,6 +1020,7 @@
     <span class="doccomment">/// bundle `kpb`. The client&#39;s node must be in the list of nodes and the list</span>
     <span class="doccomment">/// of nodes must contain all nodes of the tree, including intermediates.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_nodes</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">node_options</span>: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RatchetTree</span>, <span class="ident">TreeError</span><span class="op">&gt;</span> {
@@ -1020,7 +1045,8 @@
         }
 
         <span class="kw">let</span> <span class="ident">own_node_index</span> <span class="op">=</span> <span class="ident">own_node_index</span>.<span class="ident">ok_or</span>(<span class="ident">TreeError::InvalidArguments</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">own_node_index</span>, <span class="ident">kpb</span>.<span class="ident">leaf_secret</span>());
+        <span class="kw">let</span> <span class="ident">private_tree</span> <span class="op">=</span>
+            <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">backend</span>, <span class="ident">own_node_index</span>, <span class="ident">kpb</span>.<span class="ident">leaf_secret</span>());
 
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">ciphersuite</span>: <span class="ident">kpb</span>.<span class="ident">leaf_secret</span>().<span class="ident">ciphersuite</span>(),
@@ -1163,6 +1189,7 @@
     <span class="doccomment">/// &gt; parent of its predecessor.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_path</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">update_path</span>: <span class="kw-2">&amp;</span><span class="ident">UpdatePath</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
@@ -1261,9 +1288,12 @@
         <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span>
             <span class="ident">Secret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">secret_bytes</span>, <span class="ident">ProtocolVersion::default</span>(), <span class="self">self</span>.<span class="ident">ciphersuite</span>).<span class="ident">into</span>();
         <span class="comment">// Derive new path secrets and generate keypairs</span>
-        <span class="kw">let</span> <span class="ident">new_path_public_keys</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">private_tree</span>
-                .<span class="ident">continue_path_secrets</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>, <span class="ident">path_secret</span>, <span class="kw-2">&amp;</span><span class="ident">common_path</span>);
+        <span class="kw">let</span> <span class="ident">new_path_public_keys</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">private_tree</span>.<span class="ident">continue_path_secrets</span>(
+            <span class="self">self</span>.<span class="ident">ciphersuite</span>,
+            <span class="ident">backend</span>,
+            <span class="ident">path_secret</span>,
+            <span class="kw-2">&amp;</span><span class="ident">common_path</span>,
+        );
 
         <span class="comment">// Extract public keys from UpdatePath</span>
         <span class="kw">let</span> <span class="ident">update_path_public_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">update_path</span>
@@ -1285,7 +1315,7 @@
         <span class="self">self</span>.<span class="ident">merge_public_keys</span>(<span class="kw-2">&amp;</span><span class="ident">new_path_public_keys</span>, <span class="kw-2">&amp;</span><span class="ident">common_path</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">sender</span>] <span class="op">=</span> <span class="ident">Node::new_leaf</span>(<span class="prelude-val">Some</span>(<span class="ident">update_path</span>.<span class="ident">leaf_key_package</span>.<span class="ident">clone</span>()));
         <span class="comment">// Calculate and set the parent hashes</span>
-        <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">sender</span>);
+        <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">sender</span>);
 
         <span class="comment">// TODO: Do we really want to return the commit secret here?</span>
 
@@ -1297,10 +1327,12 @@
     <span class="doccomment">/// Update the private tree with the new `KeyPackageBundle`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">replace_private_tree</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageBundle</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CommitSecret</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">_path_option</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">replace_private_tree_</span>(
+            <span class="ident">backend</span>,
             <span class="ident">key_package_bundle</span>.<span class="ident">leaf_secret</span>(),
             <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>(),
             <span class="ident">group_context</span>,
@@ -1317,6 +1349,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">new_leaves_indexes</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">UpdatePath</span>, <span class="ident">KeyPackageBundle</span>), <span class="ident">TreeError</span><span class="op">&gt;</span> {
         <span class="comment">// Generate new keypair</span>
         <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>();
@@ -1324,9 +1357,9 @@
 
         <span class="comment">// Replace the init key in the current KeyPackage</span>
         <span class="kw">let</span> <span class="ident">key_package_bundle_unsigned</span> <span class="op">=</span>
-            <span class="ident">KeyPackageBundlePayload::from_rekeyed_key_package</span>(<span class="ident">own_key_package</span>);
+            <span class="ident">KeyPackageBundlePayload::from_rekeyed_key_package</span>(<span class="ident">own_key_package</span>, <span class="ident">backend</span>);
         <span class="comment">// FIXME: #419 THIS IS UNNECESSARY</span>
-        <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_package_bundle_unsigned</span>.<span class="ident">sign</span>(<span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_package_bundle_unsigned</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Replace the private tree with a new one based on the new key package</span>
         <span class="comment">// bundle and store the key package in the own node.</span>
@@ -1334,6 +1367,7 @@
         <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">own_index</span>] <span class="op">=</span> <span class="ident">Node::new_leaf</span>(<span class="prelude-val">Some</span>(<span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>()));
         <span class="kw">let</span> <span class="ident">path_nodes</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">replace_private_tree_path_</span>(
+                <span class="ident">backend</span>,
                 <span class="ident">key_package_bundle</span>.<span class="ident">leaf_secret</span>(),
                 <span class="ident">group_context</span>,
                 <span class="prelude-val">Some</span>(<span class="ident">new_leaves_indexes</span>), <span class="comment">/* with update path */</span>
@@ -1341,10 +1375,10 @@
             .<span class="ident">ok_or</span>(<span class="ident">TreeError::InvalidTree</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Compute the parent hash extension and update the KeyPackage and sign it</span>
-        <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">own_index</span>);
+        <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">own_index</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_package_bundle_unsigned</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">unsigned</span>();
         <span class="ident">key_package_bundle_unsigned</span>.<span class="ident">update_parent_hash</span>(<span class="kw-2">&amp;</span><span class="ident">parent_hash</span>);
-        <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_package_bundle_unsigned</span>.<span class="ident">sign</span>(<span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_package_bundle_unsigned</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Use new key package</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">UpdatePath::new</span>(<span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(), <span class="ident">path_nodes</span>);
@@ -1360,6 +1394,7 @@
     <span class="doccomment">/// `key_package` and `leaf_secret`.</span>
     <span class="kw">fn</span> <span class="ident">replace_private_tree_</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">leaf_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
         <span class="ident">key_package</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
@@ -1368,8 +1403,12 @@
         <span class="kw">let</span> <span class="ident">own_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">own_node_index</span>();
         <span class="comment">// Update own leaf node with the new values</span>
         <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">own_index</span>] <span class="op">=</span> <span class="ident">Node::new_leaf</span>(<span class="prelude-val">Some</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>()));
-        <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">replace_private_tree_path_</span>(<span class="ident">leaf_secret</span>, <span class="ident">group_context</span>, <span class="ident">new_leaves_indexes_option</span>);
+        <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">replace_private_tree_path_</span>(
+            <span class="ident">backend</span>,
+            <span class="ident">leaf_secret</span>,
+            <span class="ident">group_context</span>,
+            <span class="ident">new_leaves_indexes_option</span>,
+        );
         <span class="ident">update_path_nodes</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">nodes</span><span class="op">|</span> <span class="ident">UpdatePath::new</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">nodes</span>))
     }
 
@@ -1377,6 +1416,7 @@
     <span class="doccomment">/// `leaf_secret` only.</span>
     <span class="kw">fn</span> <span class="ident">replace_private_tree_path_</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">leaf_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">new_leaves_indexes_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -1386,14 +1426,19 @@
         <span class="kw">let</span> <span class="ident">direct_path_root</span> <span class="op">=</span> <span class="ident">treemath::leaf_direct_path</span>(<span class="ident">own_index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;replace_private_tree: Error when computing direct path.&quot;</span>);
         <span class="comment">// Update private tree and merge corresponding public keys.</span>
-        <span class="kw">let</span> (<span class="ident">private_tree</span>, <span class="ident">new_public_keys</span>) <span class="op">=</span>
-            <span class="ident">PrivateTree::new_with_keys</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>, <span class="ident">own_index</span>, <span class="ident">leaf_secret</span>, <span class="kw-2">&amp;</span><span class="ident">direct_path_root</span>);
+        <span class="kw">let</span> (<span class="ident">private_tree</span>, <span class="ident">new_public_keys</span>) <span class="op">=</span> <span class="ident">PrivateTree::new_with_keys</span>(
+            <span class="self">self</span>.<span class="ident">ciphersuite</span>,
+            <span class="ident">backend</span>,
+            <span class="ident">own_index</span>,
+            <span class="ident">leaf_secret</span>,
+            <span class="kw-2">&amp;</span><span class="ident">direct_path_root</span>,
+        );
         <span class="self">self</span>.<span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">private_tree</span>;
 
         <span class="self">self</span>.<span class="ident">merge_public_keys</span>(<span class="kw-2">&amp;</span><span class="ident">new_public_keys</span>, <span class="kw-2">&amp;</span><span class="ident">direct_path_root</span>)
             .<span class="ident">unwrap</span>();
 
-        <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">own_index</span>);
+        <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">own_index</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_leaves_indexes</span>) <span class="op">=</span> <span class="ident">new_leaves_indexes_option</span> {
             <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">encrypt_to_copath</span>(<span class="ident">new_public_keys</span>, <span class="ident">group_context</span>, <span class="ident">new_leaves_indexes</span>)
@@ -1591,6 +1636,7 @@
     <span class="doccomment">/// current epoch</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_proposals</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">proposal_queue</span>: <span class="ident">ProposalQueue</span>,
         <span class="ident">updates_key_package_bundles</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ApplyProposalsValues</span>, <span class="ident">TreeError</span><span class="op">&gt;</span> {
@@ -1623,7 +1669,7 @@
                 };
                 <span class="comment">// Update the private tree with new values</span>
                 <span class="self">self</span>.<span class="ident">private_tree</span> <span class="op">=</span>
-                    <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">sender_index</span>, <span class="ident">own_kpb</span>.<span class="ident">leaf_secret</span>());
+                    <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">backend</span>, <span class="ident">sender_index</span>, <span class="ident">own_kpb</span>.<span class="ident">leaf_secret</span>());
             }
         }
 

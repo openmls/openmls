@@ -309,6 +309,31 @@
 <span id="309">309</span>
 <span id="310">310</span>
 <span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
 </pre><pre class="rust">
 <span class="doccomment">//! 7.4. Parent Hash</span>
 <span class="doccomment">//!</span>
@@ -381,9 +406,13 @@
             <span class="ident">original_child_resolution</span>,
         })
     }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>();
-        <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>)
+        <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>)
     }
 }
 
@@ -400,9 +429,9 @@
             <span class="ident">key_package</span>,
         }
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>();
-        <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>)
+        <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>)
     }
 }
 
@@ -428,9 +457,13 @@
             <span class="ident">right_hash</span>,
         }
     }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>();
-        <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">payload</span>)
+        <span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>)
     }
 }
 
@@ -466,9 +499,14 @@
 
     <span class="doccomment">/// Computes the parent hashes for a leaf node and returns the parent hash</span>
     <span class="doccomment">/// for the parent hash extension</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_parent_hashes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">index</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_parent_hashes</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">index</span>: <span class="ident">LeafIndex</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="comment">// Recursive helper function used to calculate parent hashes</span>
         <span class="kw">fn</span> <span class="ident">node_parent_hash</span>(
+            <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
             <span class="ident">tree</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RatchetTree</span>,
             <span class="ident">index</span>: <span class="ident">NodeIndex</span>,
             <span class="ident">former_index</span>: <span class="ident">NodeIndex</span>,
@@ -492,7 +530,7 @@
                 <span class="comment">// It is ok to use `unwrap()` here, since we already checked that the index is</span>
                 <span class="comment">// not the root</span>
                 <span class="kw">let</span> <span class="ident">parent</span> <span class="op">=</span> <span class="ident">treemath::parent</span>(<span class="ident">index</span>, <span class="ident">tree_size</span>).<span class="ident">unwrap</span>();
-                <span class="ident">node_parent_hash</span>(<span class="ident">tree</span>, <span class="ident">parent</span>, <span class="ident">index</span>)
+                <span class="ident">node_parent_hash</span>(<span class="ident">backend</span>, <span class="ident">tree</span>, <span class="ident">parent</span>, <span class="ident">index</span>)
             };
             <span class="comment">// If the current node is a parent, replace the parent hash in that node</span>
             <span class="kw">let</span> <span class="ident">current_node</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tree</span>.<span class="ident">nodes</span>[<span class="ident">index</span>];
@@ -508,7 +546,7 @@
                     <span class="comment">// FIXME: remove unwrap.</span>
                     <span class="comment">// It is ok to use `unwrap()` here, since we can be sure the node is not blank</span>
                     .<span class="ident">unwrap</span>()
-                    .<span class="ident">hash</span>(<span class="ident">tree</span>.<span class="ident">ciphersuite</span>)
+                    .<span class="ident">hash</span>(<span class="ident">tree</span>.<span class="ident">ciphersuite</span>, <span class="ident">backend</span>)
             <span class="comment">// Otherwise we reached the leaf level, just return the hash</span>
             } <span class="kw">else</span> {
                 <span class="ident">parent_hash</span>
@@ -516,12 +554,17 @@
         }
         <span class="comment">// The same index is used for the former index here, since that parameter is</span>
         <span class="comment">// ignored when starting with a leaf node</span>
-        <span class="ident">node_parent_hash</span>(<span class="self">self</span>, <span class="ident">index</span>.<span class="ident">into</span>(), <span class="ident">index</span>.<span class="ident">into</span>())
+        <span class="ident">node_parent_hash</span>(<span class="ident">backend</span>, <span class="self">self</span>, <span class="ident">index</span>.<span class="ident">into</span>(), <span class="ident">index</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Verify the parent hash of a tree node. Returns `Ok(())` if the parent</span>
     <span class="doccomment">/// hash has successfully been verified and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>, <span class="ident">node</span>: <span class="kw-2">&amp;</span><span class="ident">Node</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ParentHashError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hash</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">index</span>: <span class="ident">NodeIndex</span>,
+        <span class="ident">node</span>: <span class="kw-2">&amp;</span><span class="ident">Node</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ParentHashError</span><span class="op">&gt;</span> {
         <span class="comment">// &quot;Let L and R be the left and right children of P, respectively&quot;</span>
         <span class="kw">let</span> <span class="ident">left</span> <span class="op">=</span> <span class="ident">treemath::left</span>(<span class="ident">index</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ParentHashError::InputNotParentNode</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">treemath::right</span>(<span class="ident">index</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>()).<span class="ident">unwrap</span>();
@@ -531,8 +574,8 @@
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParentHashError::InputNotParentNode</span>),
         };
         <span class="comment">// Current hash with right child resolution</span>
-        <span class="kw">let</span> <span class="ident">current_hash_right</span> <span class="op">=</span>
-            <span class="ident">ParentHashInput::new</span>(<span class="self">self</span>, <span class="ident">index</span>, <span class="ident">right</span>, <span class="ident">parent_hash_field</span>)<span class="question-mark">?</span>.<span class="ident">hash</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>);
+        <span class="kw">let</span> <span class="ident">current_hash_right</span> <span class="op">=</span> <span class="ident">ParentHashInput::new</span>(<span class="self">self</span>, <span class="ident">index</span>, <span class="ident">right</span>, <span class="ident">parent_hash_field</span>)<span class="question-mark">?</span>
+            .<span class="ident">hash</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>, <span class="ident">backend</span>);
 
         <span class="comment">// &quot;If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the</span>
         <span class="comment">// check passes&quot;</span>
@@ -560,7 +603,7 @@
         <span class="kw">let</span> <span class="ident">current_hash_left</span> <span class="op">=</span> <span class="ident">ParentHashInput::new</span>(<span class="self">self</span>, <span class="ident">index</span>, <span class="ident">left</span>, <span class="ident">parent_hash_field</span>)
             <span class="comment">// Unwrapping here is safe, since we can be sure the node is not blank</span>
             .<span class="ident">unwrap</span>()
-            .<span class="ident">hash</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>);
+            .<span class="ident">hash</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>, <span class="ident">backend</span>);
 
         <span class="comment">// &quot;If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the</span>
         <span class="comment">// check passes&quot;</span>
@@ -576,10 +619,13 @@
 
     <span class="doccomment">/// Verify the parent hashes of the tree nodes. Returns `true` if all parent</span>
     <span class="doccomment">/// hashes have successfully been verified and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hashes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ParentHashError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_parent_hashes</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ParentHashError</span><span class="op">&gt;</span> {
         <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">node</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">if</span> <span class="ident">NodeIndex::from</span>(<span class="ident">index</span>).<span class="ident">is_parent</span>() <span class="op">&amp;&amp;</span> <span class="ident">node</span>.<span class="ident">is_full_parent</span>() {
-                <span class="self">self</span>.<span class="ident">verify_parent_hash</span>(<span class="ident">NodeIndex::from</span>(<span class="ident">index</span>), <span class="ident">node</span>)<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">verify_parent_hash</span>(<span class="ident">backend</span>, <span class="ident">NodeIndex::from</span>(<span class="ident">index</span>), <span class="ident">node</span>)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -588,37 +634,41 @@
     <span class="comment">// === Tree hash ===</span>
 
     <span class="doccomment">/// Computes and returns the tree hash</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="comment">// Recursive helper function to the tree hashes for a node</span>
-        <span class="kw">fn</span> <span class="ident">node_hash</span>(<span class="ident">tree</span>: <span class="kw-2">&amp;</span><span class="ident">RatchetTree</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">node_hash</span>(
+            <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+            <span class="ident">tree</span>: <span class="kw-2">&amp;</span><span class="ident">RatchetTree</span>,
+            <span class="ident">index</span>: <span class="ident">NodeIndex</span>,
+        ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
             <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">tree</span>.<span class="ident">nodes</span>[<span class="ident">index</span>];
             <span class="comment">// Depending on the node type, we calculate the hash differently</span>
             <span class="kw">match</span> <span class="ident">node</span>.<span class="ident">node_type</span> {
                 <span class="comment">// For leaf nodes we just need the index and the KeyPackage</span>
                 <span class="ident">NodeType::Leaf</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">leaf_node_hash</span> <span class="op">=</span> <span class="ident">LeafNodeHashInput::new</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">key_package</span>);
-                    <span class="ident">leaf_node_hash</span>.<span class="ident">hash</span>(<span class="ident">tree</span>.<span class="ident">ciphersuite</span>)
+                    <span class="ident">leaf_node_hash</span>.<span class="ident">hash</span>(<span class="ident">tree</span>.<span class="ident">ciphersuite</span>, <span class="ident">backend</span>)
                 }
                 <span class="comment">// For parent nodes we need the hash of the two children as well</span>
                 <span class="ident">NodeType::Parent</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// Unwrapping here is safe, because parent nodes always have children</span>
                     <span class="kw">let</span> <span class="ident">left</span> <span class="op">=</span> <span class="ident">treemath::left</span>(<span class="ident">index</span>).<span class="ident">unwrap</span>();
-                    <span class="kw">let</span> <span class="ident">left_hash</span> <span class="op">=</span> <span class="ident">node_hash</span>(<span class="ident">tree</span>, <span class="ident">left</span>);
+                    <span class="kw">let</span> <span class="ident">left_hash</span> <span class="op">=</span> <span class="ident">node_hash</span>(<span class="ident">backend</span>, <span class="ident">tree</span>, <span class="ident">left</span>);
                     <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">treemath::right</span>(<span class="ident">index</span>, <span class="ident">tree</span>.<span class="ident">leaf_count</span>()).<span class="ident">unwrap</span>();
-                    <span class="kw">let</span> <span class="ident">right_hash</span> <span class="op">=</span> <span class="ident">node_hash</span>(<span class="ident">tree</span>, <span class="ident">right</span>);
+                    <span class="kw">let</span> <span class="ident">right_hash</span> <span class="op">=</span> <span class="ident">node_hash</span>(<span class="ident">backend</span>, <span class="ident">tree</span>, <span class="ident">right</span>);
                     <span class="kw">let</span> <span class="ident">parent_node_hash</span> <span class="op">=</span> <span class="ident">ParentNodeTreeHashInput::new</span>(
                         <span class="ident">index</span>.<span class="ident">as_u32</span>(),
                         <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">node</span>,
                         <span class="ident">TlsSliceU8</span>(<span class="kw-2">&amp;</span><span class="ident">left_hash</span>),
                         <span class="ident">TlsSliceU8</span>(<span class="kw-2">&amp;</span><span class="ident">right_hash</span>),
                     );
-                    <span class="ident">parent_node_hash</span>.<span class="ident">hash</span>(<span class="ident">tree</span>.<span class="ident">ciphersuite</span>)
+                    <span class="ident">parent_node_hash</span>.<span class="ident">hash</span>(<span class="ident">tree</span>.<span class="ident">ciphersuite</span>, <span class="ident">backend</span>)
                 }
             }
         }
         <span class="comment">// We start with the root and traverse the tree downwards</span>
         <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="ident">treemath::root</span>(<span class="self">self</span>.<span class="ident">leaf_count</span>());
-        <span class="ident">node_hash</span>(<span class="self">self</span>, <span class="ident">root</span>)
+        <span class="ident">node_hash</span>(<span class="ident">backend</span>, <span class="self">self</span>, <span class="ident">root</span>)
     }
 }
 </pre></div>

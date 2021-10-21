@@ -749,6 +749,28 @@
 <span id="749">749</span>
 <span id="750">750</span>
 <span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
 </pre><pre class="rust">
 <span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
@@ -776,6 +798,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ciphersuite::signable</span>::{<span class="ident">Signable</span>, <span class="ident">SignedStruct</span>, <span class="ident">Verifiable</span>, <span class="ident">VerifiedStruct</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
@@ -820,6 +843,11 @@
     <span class="ident">signature</span>: <span class="ident">Signature</span>,
     <span class="ident">confirmation_tag</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span>,
     <span class="ident">membership_tag</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MembershipTag</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Payload</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">payload</span>: <span class="ident">MlsPlaintextContentType</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
 }
 
 <span class="comment">// This block only has pub(super) getters.</span>
@@ -874,10 +902,10 @@
     <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">framing_parameters</span>: <span class="ident">FramingParameters</span>,
         <span class="ident">sender_index</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">payload</span>: <span class="ident">MlsPlaintextContentType</span>,
-        <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
+        <span class="ident">payload</span>: <span class="ident">Payload</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintextTbs::new</span>(
@@ -886,11 +914,10 @@
             <span class="ident">context</span>.<span class="ident">epoch</span>(),
             <span class="ident">Sender::member</span>(<span class="ident">sender_index</span>),
             <span class="ident">framing_parameters</span>.<span class="ident">aad</span>().<span class="ident">into</span>(),
-            <span class="ident">content_type</span>,
             <span class="ident">payload</span>,
         )
         .<span class="ident">with_context</span>(<span class="ident">serialized_context</span>.<span class="ident">as_slice</span>());
-        <span class="prelude-val">Ok</span>(<span class="ident">mls_plaintext</span>.<span class="ident">sign</span>(<span class="ident">credential_bundle</span>)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">mls_plaintext</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Create message with membership tag</span>
@@ -898,21 +925,25 @@
     <span class="kw">fn</span> <span class="ident">new_with_membership_tag</span>(
         <span class="ident">framing_parameters</span>: <span class="ident">FramingParameters</span>,
         <span class="ident">sender_index</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">payload</span>: <span class="ident">MlsPlaintextContentType</span>,
-        <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
+        <span class="ident">payload</span>: <span class="ident">Payload</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="self">Self</span><span class="ident">::new</span>(
             <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
             <span class="ident">payload</span>,
-            <span class="ident">content_type</span>,
             <span class="ident">credential_bundle</span>,
             <span class="ident">context</span>,
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">set_membership_tag</span>(<span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>, <span class="ident">membership_key</span>)<span class="question-mark">?</span>;
+        <span class="ident">mls_plaintext</span>.<span class="ident">set_membership_tag</span>(
+            <span class="ident">backend</span>,
+            <span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>,
+            <span class="ident">membership_key</span>,
+        )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">mls_plaintext</span>)
     }
 
@@ -925,15 +956,19 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="self">Self</span><span class="ident">::new_with_membership_tag</span>(
             <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
-            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>),
-            <span class="ident">ContentType::Proposal</span>,
+            <span class="ident">Payload</span> {
+                <span class="ident">payload</span>: <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>),
+                <span class="ident">content_type</span>: <span class="ident">ContentType::Proposal</span>,
+            },
             <span class="ident">credential_bundle</span>,
             <span class="ident">context</span>,
             <span class="ident">membership_key</span>,
+            <span class="ident">backend</span>,
         )
     }
 
@@ -945,14 +980,18 @@
         <span class="ident">commit</span>: <span class="ident">Commit</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="self">Self</span><span class="ident">::new</span>(
             <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
-            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>),
-            <span class="ident">ContentType::Commit</span>,
+            <span class="ident">Payload</span> {
+                <span class="ident">payload</span>: <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>),
+                <span class="ident">content_type</span>: <span class="ident">ContentType::Commit</span>,
+            },
             <span class="ident">credential_bundle</span>,
             <span class="ident">context</span>,
+            <span class="ident">backend</span>,
         )
     }
 
@@ -965,17 +1004,21 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">framing_parameters</span> <span class="op">=</span>
             <span class="ident">FramingParameters::new</span>(<span class="ident">authenticated_data</span>, <span class="ident">WireFormat::MlsCiphertext</span>);
         <span class="self">Self</span><span class="ident">::new_with_membership_tag</span>(
             <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
-            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_message</span>.<span class="ident">into</span>()),
-            <span class="ident">ContentType::Application</span>,
+            <span class="ident">Payload</span> {
+                <span class="ident">payload</span>: <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_message</span>.<span class="ident">into</span>()),
+                <span class="ident">content_type</span>: <span class="ident">ContentType::Application</span>,
+            },
             <span class="ident">credential_bundle</span>,
             <span class="ident">context</span>,
             <span class="ident">membership_key</span>,
+            <span class="ident">backend</span>,
         )
     }
 
@@ -1005,13 +1048,14 @@
     <span class="doccomment">/// This should be used after signing messages from group members.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_membership_tag</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">serialized_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">tbs_payload</span> <span class="op">=</span> <span class="ident">encode_tbs</span>(<span class="self">self</span>, <span class="ident">serialized_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">tbm_payload</span> <span class="op">=</span>
             <span class="ident">MlsPlaintextTbmPayload::new</span>(<span class="kw-2">&amp;</span><span class="ident">tbs_payload</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">confirmation_tag</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">membership_tag</span> <span class="op">=</span> <span class="ident">membership_key</span>.<span class="ident">tag</span>(<span class="ident">tbm_payload</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">membership_tag</span> <span class="op">=</span> <span class="ident">membership_key</span>.<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="ident">tbm_payload</span>)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.<span class="ident">membership_tag</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">membership_tag</span>);
         <span class="prelude-val">Ok</span>(())
@@ -1029,6 +1073,7 @@
     <span class="comment">// TODO #133: Include this in the validation</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_membership</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">serialized_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
@@ -1038,7 +1083,7 @@
         <span class="kw">let</span> <span class="ident">tbs_payload</span> <span class="op">=</span> <span class="ident">encode_tbs</span>(<span class="self">self</span>, <span class="ident">serialized_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">tbm_payload</span> <span class="op">=</span>
             <span class="ident">MlsPlaintextTbmPayload::new</span>(<span class="kw-2">&amp;</span><span class="ident">tbs_payload</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">confirmation_tag</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">expected_membership_tag</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">membership_key</span>.<span class="ident">tag</span>(<span class="ident">tbm_payload</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">expected_membership_tag</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">membership_key</span>.<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="ident">tbm_payload</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify the membership tag</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">membership_tag</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">membership_tag</span> {
@@ -1333,8 +1378,7 @@
         <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
         <span class="ident">sender</span>: <span class="ident">Sender</span>,
         <span class="ident">authenticated_data</span>: <span class="ident">TlsByteVecU32</span>,
-        <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
-        <span class="ident">payload</span>: <span class="ident">MlsPlaintextContentType</span>,
+        <span class="ident">payload</span>: <span class="ident">Payload</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">MlsPlaintextTbs</span> {
             <span class="ident">serialized_context</span>: <span class="prelude-val">None</span>,
@@ -1343,8 +1387,8 @@
             <span class="ident">epoch</span>,
             <span class="ident">sender</span>,
             <span class="ident">authenticated_data</span>,
-            <span class="ident">content_type</span>,
-            <span class="ident">payload</span>,
+            <span class="ident">content_type</span>: <span class="ident">payload</span>.<span class="ident">content_type</span>,
+            <span class="ident">payload</span>: <span class="ident">payload</span>.<span class="ident">payload</span>,
         }
     }
     <span class="doccomment">/// Adds a serialized context to MlsPlaintextTbs.</span>

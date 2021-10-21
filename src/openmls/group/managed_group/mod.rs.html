@@ -1194,6 +1194,63 @@
 <span id="1194">1194</span>
 <span id="1195">1195</span>
 <span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
+<span id="1227">1227</span>
+<span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
+<span id="1231">1231</span>
+<span id="1232">1232</span>
+<span id="1233">1233</span>
+<span id="1234">1234</span>
+<span id="1235">1235</span>
+<span id="1236">1236</span>
+<span id="1237">1237</span>
+<span id="1238">1238</span>
+<span id="1239">1239</span>
+<span id="1240">1240</span>
+<span id="1241">1241</span>
+<span id="1242">1242</span>
+<span id="1243">1243</span>
+<span id="1244">1244</span>
+<span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
+<span id="1248">1248</span>
+<span id="1249">1249</span>
+<span id="1250">1250</span>
+<span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
 </pre><pre class="rust">
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -1204,17 +1261,16 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_managed_group</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::messages::PathSecret</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credentials::CredentialBundle</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable</span>::{<span class="ident">Signable</span>, <span class="ident">Verifiable</span>},
     <span class="ident">credentials::Credential</span>,
     <span class="ident">error::ErrorString</span>,
     <span class="ident">framing</span>::<span class="kw-2">*</span>,
-    <span class="ident">group</span>::<span class="kw-2">*</span>,
+    <span class="ident">group</span>::{<span class="ident">mls_group::create_commit::Proposals</span>, <span class="kw-2">*</span>},
     <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>},
-    <span class="ident">key_store::KeyStore</span>,
     <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">Welcome</span>},
     <span class="ident">prelude::KeyPackageBundlePayload</span>,
     <span class="ident">schedule::ResumptionSecret</span>,
@@ -1296,18 +1352,24 @@
 
     <span class="doccomment">/// Creates a new group from scratch with only the creator as a member. This</span>
     <span class="doccomment">/// function removes the `KeyPackageBundle` corresponding to the</span>
-    <span class="doccomment">/// `key_package_hash` from the `key_store`. Throws an error if no</span>
+    <span class="doccomment">/// `key_package_hash` from the `backend`. Throws an error if no</span>
     <span class="doccomment">/// `KeyPackageBundle` can be found.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">managed_group_config</span>: <span class="kw-2">&amp;</span><span class="ident">ManagedGroupConfig</span>,
         <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
         <span class="ident">key_package_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// TODO #141</span>
-        <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">take_key_package_bundle</span>(<span class="ident">key_package_hash</span>)
+        <span class="kw">let</span> <span class="ident">kph</span> <span class="op">=</span> <span class="ident">key_package_hash</span>.<span class="ident">to_vec</span>();
+        <span class="kw">let</span> <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="ident">kph</span>)
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingKeyPackageBundle</span>)<span class="question-mark">?</span>;
+        <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="ident">kph</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ManagedGroupError::KeyStoreError</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">group_config</span> <span class="op">=</span> <span class="ident">MlsGroupConfig</span> {
             <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">managed_group_config</span>.<span class="ident">use_ratchet_tree_extension</span>,
             ..<span class="ident">Default::default</span>()
@@ -1315,6 +1377,7 @@
         <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new</span>(
             <span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
             <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">ciphersuite_name</span>(),
+            <span class="ident">backend</span>,
             <span class="ident">key_package_bundle</span>,
             <span class="ident">group_config</span>,
             <span class="prelude-val">None</span>, <span class="comment">/* Initial PSK */</span>
@@ -1342,7 +1405,7 @@
 
     <span class="doccomment">/// Creates a new group from a `Welcome` message</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_welcome</span>(
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">managed_group_config</span>: <span class="kw-2">&amp;</span><span class="ident">ManagedGroupConfig</span>,
         <span class="ident">welcome</span>: <span class="ident">Welcome</span>,
         <span class="ident">ratchet_tree</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -1352,10 +1415,15 @@
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">welcome</span>
             .<span class="ident">secrets</span>()
             .<span class="ident">iter</span>()
-            .<span class="ident">find_map</span>(<span class="op">|</span><span class="ident">egs</span><span class="op">|</span> <span class="ident">key_store</span>.<span class="ident">take_key_package_bundle</span>(<span class="ident">egs</span>.<span class="ident">key_package_hash</span>.<span class="ident">as_slice</span>()))
+            .<span class="ident">find_map</span>(<span class="op">|</span><span class="ident">egs</span><span class="op">|</span> {
+                <span class="ident">backend</span>
+                    .<span class="ident">key_store</span>()
+                    .<span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="ident">egs</span>.<span class="ident">key_package_hash</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>())
+            })
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingKeyPackageBundle</span>)<span class="question-mark">?</span>;
         <span class="comment">// TODO #141</span>
-        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new_from_welcome</span>(<span class="ident">welcome</span>, <span class="ident">ratchet_tree</span>, <span class="ident">key_package_bundle</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span>
+            <span class="ident">MlsGroup::new_from_welcome</span>(<span class="ident">welcome</span>, <span class="ident">ratchet_tree</span>, <span class="ident">key_package_bundle</span>, <span class="prelude-val">None</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">managed_group</span> <span class="op">=</span> <span class="ident">ManagedGroup</span> {
             <span class="ident">managed_group_config</span>: <span class="ident">managed_group_config</span>.<span class="ident">clone</span>(),
@@ -1386,7 +1454,7 @@
     <span class="doccomment">/// [`MlsMessage`] and a [`Welcome`] message.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackage</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="ident">Welcome</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
@@ -1415,8 +1483,9 @@
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all proposals</span>
@@ -1424,10 +1493,13 @@
         <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
             <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-            <span class="ident">proposals_by_reference</span>,
-            <span class="ident">proposals_by_value</span>,
+            <span class="ident">Proposals</span> {
+                <span class="ident">proposals_by_reference</span>,
+                <span class="ident">proposals_by_value</span>,
+            },
             <span class="bool-val">true</span>,
             <span class="prelude-val">None</span>,
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
         <span class="macro">log::error!</span>(<span class="string">&quot;plaintext (foo): {:?}&quot;</span>, <span class="ident">commit</span>);
 
@@ -1447,7 +1519,7 @@
 
         <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
@@ -1464,7 +1536,7 @@
     <span class="doccomment">/// proposals in the queue of pending proposals.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="ident">usize</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
@@ -1495,8 +1567,9 @@
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all proposals</span>
@@ -1504,10 +1577,13 @@
         <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
             <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-            <span class="ident">proposals_by_reference</span>,
-            <span class="ident">proposals_by_value</span>,
+            <span class="ident">Proposals</span> {
+                <span class="ident">proposals_by_reference</span>,
+                <span class="ident">proposals_by_value</span>,
+            },
             <span class="bool-val">false</span>,
             <span class="prelude-val">None</span>,
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// It has to be a full Commit and we have to save the KeyPackageBundle for later</span>
@@ -1521,7 +1597,7 @@
 
         <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
@@ -1532,7 +1608,8 @@
     <span class="doccomment">/// Creates proposals to add members to the group</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_add_member</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+
         <span class="ident">key_package</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
@@ -1540,17 +1617,19 @@
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_add_proposal</span>(
             <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">key_package</span>.<span class="ident">clone</span>(),
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">add_proposal</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">add_proposal</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
@@ -1561,7 +1640,7 @@
     <span class="doccomment">/// Creates proposals to remove members from the group</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_remove_member</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">member</span>: <span class="ident">usize</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
@@ -1569,17 +1648,19 @@
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_remove_proposal</span>(
             <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">LeafIndex::from</span>(<span class="ident">member</span>),
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">remove_proposal</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">remove_proposal</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
@@ -1590,24 +1671,26 @@
     <span class="doccomment">/// Leave the group</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">leave_group</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_remove_proposal</span>(
             <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">own_node_index</span>(),
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">remove_proposal</span>)
+        <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">remove_proposal</span>, <span class="ident">backend</span>)
     }
 
     <span class="doccomment">/// Gets the current list of members</span>
@@ -1633,6 +1716,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_message</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GroupEvent</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
@@ -1643,7 +1727,7 @@
             <span class="comment">// If it is a ciphertext we decrypt it and return the plaintext message</span>
             <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">aad</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>();
-                (<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>)<span class="question-mark">?</span>, <span class="prelude-val">Some</span>(<span class="ident">aad</span>))
+                (<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>, <span class="prelude-val">Some</span>(<span class="ident">aad</span>))
             }
             <span class="comment">// If it is a plaintext message we have to verify it first</span>
             <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">unverified_plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -1660,12 +1744,15 @@
                 <span class="comment">// Verify the signature</span>
                 <span class="kw">let</span> <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span> <span class="op">=</span> <span class="ident">unverified_plaintext</span>
                     .<span class="ident">set_context</span>(<span class="kw-2">&amp;</span><span class="ident">context</span>)
-                    .<span class="ident">verify</span>(<span class="ident">credential</span>)<span class="question-mark">?</span>;
+                    .<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="ident">credential</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Verify membership tag</span>
                 <span class="comment">// TODO #106: Support external senders</span>
                 <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">is_proposal</span>()
                     <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>().<span class="ident">is_member</span>()
-                    <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">verify_membership_tag</span>(<span class="kw-2">&amp;</span><span class="ident">plaintext</span>).<span class="ident">is_err</span>()
+                    <span class="op">&amp;&amp;</span> <span class="self">self</span>
+                        .<span class="ident">group</span>
+                        .<span class="ident">verify_membership_tag</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">plaintext</span>)
+                        .<span class="ident">is_err</span>()
                 {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::InvalidMessage</span>(
                         <span class="ident">InvalidMessageError::MembershipTagMismatch</span>,
@@ -1711,13 +1798,14 @@
                 <span class="comment">// TODO #141</span>
                 <span class="kw">match</span> <span class="self">self</span>
                     .<span class="ident">group</span>
-                    .<span class="ident">apply_commit</span>(<span class="kw-2">&amp;</span><span class="ident">plaintext</span>, <span class="ident">proposals</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>, <span class="prelude-val">None</span>)
+                    .<span class="ident">apply_commit</span>(<span class="kw-2">&amp;</span><span class="ident">plaintext</span>, <span class="ident">proposals</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>, <span class="prelude-val">None</span>, <span class="ident">backend</span>)
                 {
                     <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="comment">// Since the Commit was applied without errors, we can collect</span>
                         <span class="comment">// all proposals from the Commit and generate events</span>
                         <span class="ident">events</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">prepare_events</span>(
                             <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
+                            <span class="ident">backend</span>,
                             <span class="ident">commit</span>.<span class="ident">proposals</span>.<span class="ident">as_slice</span>(),
                             <span class="ident">plaintext</span>.<span class="ident">sender_index</span>(),
                             <span class="kw-2">&amp;</span><span class="ident">indexed_members</span>,
@@ -1746,6 +1834,7 @@
                             <span class="comment">// Prepare events</span>
                             <span class="ident">events</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">prepare_events</span>(
                                 <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
+                                <span class="ident">backend</span>,
                                 <span class="ident">commit</span>.<span class="ident">proposals</span>.<span class="ident">as_slice</span>(),
                                 <span class="ident">plaintext</span>.<span class="ident">sender_index</span>(),
                                 <span class="kw-2">&amp;</span><span class="ident">indexed_members</span>,
@@ -1800,7 +1889,7 @@
     <span class="doccomment">/// and incoming messages from the DS must be processed afterwards.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_message</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">message</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
@@ -1813,8 +1902,9 @@
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_application_message</span>(
@@ -1822,6 +1912,7 @@
             <span class="ident">message</span>,
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>(),
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
@@ -1833,7 +1924,7 @@
     <span class="doccomment">/// Process pending proposals</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_pending_proposals</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
@@ -1842,8 +1933,9 @@
         <span class="kw">let</span> <span class="ident">messages_to_commit</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_proposals</span>.<span class="ident">iter</span>().<span class="ident">collect</span>();
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all pending proposals</span>
@@ -1851,10 +1943,13 @@
         <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
             <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-            <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
-            <span class="kw-2">&amp;</span>[],
+            <span class="ident">Proposals</span> {
+                <span class="ident">proposals_by_reference</span>: <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
+                <span class="ident">proposals_by_value</span>: <span class="kw-2">&amp;</span>[],
+            },
             <span class="bool-val">true</span>,
             <span class="prelude-val">None</span>,
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// If it was a full Commit, we have to save the KeyPackageBundle for later</span>
@@ -1864,7 +1959,7 @@
 
         <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
@@ -1877,12 +1972,15 @@
     <span class="doccomment">/// Exports a secret from the current epoch</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_secret</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active</span> {
-            <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">export_secret</span>(<span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>)
+            <span class="prelude-val">Ok</span>(<span class="self">self</span>
+                .<span class="ident">group</span>
+                .<span class="ident">export_secret</span>(<span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>))
         }
@@ -1967,7 +2065,7 @@
     <span class="doccomment">/// proposals in the queue of pending proposals.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">self_update</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
@@ -1975,8 +2073,9 @@
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Include pending proposals into Commit</span>
@@ -1992,20 +2091,26 @@
                 <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
                     <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
                     <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
-                    <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">update_proposal</span>],
+                    <span class="ident">Proposals</span> {
+                        <span class="ident">proposals_by_reference</span>: <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
+                        <span class="ident">proposals_by_value</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">update_proposal</span>],
+                    },
                     <span class="bool-val">true</span>, <span class="comment">/* force_self_update */</span>
                     <span class="prelude-val">None</span>,
+                    <span class="ident">backend</span>,
                 )<span class="question-mark">?</span>
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(
                     <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
                     <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
-                    <span class="kw-2">&amp;</span>[],
+                    <span class="ident">Proposals</span> {
+                        <span class="ident">proposals_by_reference</span>: <span class="kw-2">&amp;</span><span class="ident">messages_to_commit</span>,
+                        <span class="ident">proposals_by_value</span>: <span class="kw-2">&amp;</span>[],
+                    },
                     <span class="bool-val">true</span>, <span class="comment">/* force_self_update */</span>
                     <span class="prelude-val">None</span>,
+                    <span class="ident">backend</span>,
                 )<span class="question-mark">?</span>
             }
         };
@@ -2021,7 +2126,7 @@
 
         <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
@@ -2032,7 +2137,7 @@
     <span class="doccomment">/// Creates a proposal to update the own leaf node</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_self_update</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">key_store</span>: <span class="kw-2">&amp;</span><span class="ident">KeyStore</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
@@ -2040,28 +2145,32 @@
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">key_store</span>
-            .<span class="ident">get_credential_bundle</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">key_store</span>()
+            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>();
         <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">own_key_package</span>();
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">key_package_bundle_option</span> {
             <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kpb</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">KeyPackageBundlePayload::from_rekeyed_key_package</span>(<span class="ident">existing_key_package</span>)
-                .<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">KeyPackageBundlePayload::from_rekeyed_key_package</span>(<span class="ident">existing_key_package</span>, <span class="ident">backend</span>)
+                    .<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)<span class="question-mark">?</span>
+            }
         };
 
         <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_update_proposal</span>(
             <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
             <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
             <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(),
+            <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
         <span class="ident">drop</span>(<span class="ident">tree</span>);
 
         <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">key_package_bundle</span>);
 
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">update_proposal</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">update_proposal</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
         <span class="self">self</span>.<span class="ident">auto_save</span>();
@@ -2099,7 +2208,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_path_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Ref</span><span class="op">&lt;</span>[<span class="ident">PathSecret</span>]<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_path_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Ref</span><span class="op">&lt;</span>[<span class="kw">crate</span><span class="ident">::messages::PathSecret</span>]<span class="op">&gt;</span> {
         <span class="ident">Ref::map</span>(<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>(), <span class="op">|</span><span class="ident">tree</span><span class="op">|</span> <span class="ident">tree</span>.<span class="ident">private_tree</span>().<span class="ident">path_secrets</span>())
     }
 
@@ -2109,8 +2218,8 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">tree_hash</span>()
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">tree_hash</span>(<span class="ident">backend</span>)
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
@@ -2127,13 +2236,14 @@
     <span class="kw">fn</span> <span class="ident">plaintext_to_mls_message</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">handshake_message_format</span> {
             <span class="ident">WireFormat::MlsPlaintext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">plaintext</span>),
             <span class="ident">WireFormat::MlsCiphertext</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">group</span>
-                    .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>())<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span>
+                    <span class="self">self</span>.<span class="ident">group</span>
+                        .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>(), <span class="ident">backend</span>)<span class="question-mark">?</span>;
                 <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ciphertext</span>)
             }
         };
@@ -2203,6 +2313,7 @@
     <span class="kw">fn</span> <span class="ident">prepare_events</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">proposals</span>: <span class="kw-2">&amp;</span>[<span class="ident">ProposalOrRef</span>],
         <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">indexed_members</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">Credential</span><span class="op">&gt;</span>,
@@ -2215,8 +2326,11 @@
             .<span class="ident">iter</span>()
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span><span class="op">&gt;</span>();
         <span class="comment">// Build a proposal queue for easier searching</span>
-        <span class="kw">let</span> <span class="ident">pending_proposals_queue</span> <span class="op">=</span>
-            <span class="ident">ProposalQueue::from_proposals_by_reference</span>(<span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="ident">pending_proposals_list</span>);
+        <span class="kw">let</span> <span class="ident">pending_proposals_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue::from_proposals_by_reference</span>(
+            <span class="ident">ciphersuite</span>,
+            <span class="ident">backend</span>,
+            <span class="kw-2">&amp;</span><span class="ident">pending_proposals_list</span>,
+        );
         <span class="kw">for</span> <span class="ident">proposal_or_ref</span> <span class="kw">in</span> <span class="ident">proposals</span> {
             <span class="kw">match</span> <span class="ident">proposal_or_ref</span> {
                 <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
