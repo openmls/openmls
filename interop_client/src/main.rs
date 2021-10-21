@@ -18,9 +18,15 @@ use openmls::{
         kat_treemath,
     },
 };
+
+use openmls::group::mls_group::create_commit::Proposals;
+
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
+
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::SignatureScheme;
 
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
 use mls_client::*;
@@ -68,6 +74,7 @@ pub struct MlsClientImpl {
     /// instead relies on the KeyPackage hash in the Welcome message to identify
     /// what key package to use when joining a group.
     transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>,
+    crypto_provider: OpenMlsRustCrypto,
 }
 
 impl MlsClientImpl {
@@ -77,6 +84,7 @@ impl MlsClientImpl {
             groups: Mutex::new(Vec::new()),
             pending_key_packages: Mutex::new(HashMap::new()),
             transaction_id_map: Mutex::new(HashMap::new()),
+            crypto_provider: OpenMlsRustCrypto::default(),
         }
     }
 }
@@ -398,15 +406,22 @@ impl MlsClient for MlsClientImpl {
             "OpenMLS".bytes().collect(),
             CredentialType::Basic,
             SignatureScheme::from(ciphersuite),
+            &self.crypto_provider,
         )
         .unwrap();
-        let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, vec![]).unwrap();
+        let key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite],
+            &credential_bundle,
+            &self.crypto_provider,
+            vec![],
+        )
+        .unwrap();
         let mut config = MlsGroupConfig::default();
         config.add_ratchet_tree_extension = true;
         let group = MlsGroup::new(
             &create_group_request.group_id,
             ciphersuite,
+            &self.crypto_provider,
             key_package_bundle,
             config,
             None,
@@ -441,17 +456,23 @@ impl MlsClient for MlsClientImpl {
             "OpenMLS".bytes().collect(),
             CredentialType::Basic,
             SignatureScheme::from(ciphersuite.name()),
+            &self.crypto_provider,
         )
         .unwrap();
-        let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
+        let key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &credential_bundle,
+            &self.crypto_provider,
+            vec![],
+        )
+        .unwrap();
         let key_package = key_package_bundle.key_package().clone();
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
-        transaction_id_map.insert(transaction_id, key_package.hash());
+        transaction_id_map.insert(transaction_id, key_package.hash(&self.crypto_provider));
 
         self.pending_key_packages.lock().unwrap().insert(
-            key_package_bundle.key_package().hash(),
+            key_package_bundle.key_package().hash(&self.crypto_provider),
             (key_package_bundle, credential_bundle),
         );
 
@@ -479,8 +500,8 @@ impl MlsClient for MlsClientImpl {
                 tonic::Code::NotFound,
                 "No key package could be found for the given Welcome message.",
             ))?;
-        let group =
-            MlsGroup::new_from_welcome(welcome, None, kpb, None).map_err(|e| into_status(e))?;
+        let group = MlsGroup::new_from_welcome(welcome, None, kpb, None, &self.crypto_provider)
+            .map_err(|e| into_status(e))?;
 
         let interop_group = InteropGroup {
             credential_bundle,
@@ -553,6 +574,7 @@ impl MlsClient for MlsClientImpl {
         let exported_secret = interop_group
             .group
             .export_secret(
+                &self.crypto_provider,
                 &export_request.label,
                 &export_request.context,
                 export_request.key_length as usize,
@@ -584,6 +606,7 @@ impl MlsClient for MlsClientImpl {
                 &protect_request.application_data,
                 &interop_group.credential_bundle,
                 10,
+                &self.crypto_provider,
             )
             .map_err(|e| into_status(e))?
             .tls_serialize_detached()
@@ -610,7 +633,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
         let application_data = interop_group
             .group
-            .decrypt(&message)
+            .decrypt(&message, &self.crypto_provider)
             .map_err(|e| into_status(e.into()))?
             .as_application_message()
             .map_err(|e| into_status(e.into()))?
@@ -650,6 +673,7 @@ impl MlsClient for MlsClientImpl {
                 framing_parameters,
                 &interop_group.credential_bundle,
                 key_package,
+                &self.crypto_provider,
             )
             .map_err(|e| into_status(e))?;
 
@@ -659,7 +683,7 @@ impl MlsClient for MlsClientImpl {
                 .map_err(|_| Status::aborted("failed to serialize proposal"))?,
             WireFormat::MlsCiphertext => interop_group
                 .group
-                .encrypt(proposal, 10)
+                .encrypt(proposal, 10, &self.crypto_provider)
                 .map_err(|_| Status::aborted("failed to encrypt proposal"))?
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize proposal"))?,
@@ -684,6 +708,7 @@ impl MlsClient for MlsClientImpl {
         let key_package_bundle = KeyPackageBundle::new(
             &[interop_group.group.ciphersuite().name()],
             &interop_group.credential_bundle,
+            &self.crypto_provider,
             vec![],
         )
         .unwrap();
@@ -694,6 +719,7 @@ impl MlsClient for MlsClientImpl {
                 framing_parameters,
                 &interop_group.credential_bundle,
                 key_package_bundle.key_package().clone(),
+                &self.crypto_provider,
             )
             .map_err(|e| into_status(e))?;
 
@@ -702,7 +728,7 @@ impl MlsClient for MlsClientImpl {
         let proposal = match interop_group.wire_format {
             WireFormat::MlsCiphertext => interop_group
                 .group
-                .encrypt(proposal, 10)
+                .encrypt(proposal, 10, &self.crypto_provider)
                 .map_err(|_| Status::aborted("failed to encrypt proposal"))?
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize proposal"))?,
@@ -736,13 +762,14 @@ impl MlsClient for MlsClientImpl {
                 framing_parameters,
                 &interop_group.credential_bundle,
                 LeafIndex::from(remove_proposal_request.removed as usize),
+                &self.crypto_provider,
             )
             .map_err(|e| into_status(e))?;
 
         let proposal = match interop_group.wire_format {
             WireFormat::MlsCiphertext => interop_group
                 .group
-                .encrypt(proposal, 10)
+                .encrypt(proposal, 10, &self.crypto_provider)
                 .map_err(|_| Status::aborted("failed to encrypt proposal"))?
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize proposal"))?,
@@ -798,14 +825,14 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                     interop_group
                         .group
-                        .decrypt(&ct)
+                        .decrypt(&ct, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
                     let credential = interop_group.credential_bundle.credential();
                     VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                        .verify(credential)
+                        .verify(&self.crypto_provider, credential)
                         .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
                 }
             };
@@ -824,14 +851,14 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                     interop_group
                         .group
-                        .decrypt(&ct)
+                        .decrypt(&ct, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
                     let credential = interop_group.credential_bundle.credential();
                     VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                        .verify(credential)
+                        .verify(&self.crypto_provider, credential)
                         .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
                 }
             };
@@ -853,11 +880,12 @@ impl MlsClient for MlsClientImpl {
                 framing_parameters,
                 &interop_group.credential_bundle,
                 Proposals {
-                    &proposals_by_reference,
-                    &proposals_by_value,
+                    proposals_by_reference: &proposals_by_reference,
+                    proposals_by_value: &proposals_by_value,
                 },
                 false,
                 None,
+                &self.crypto_provider,
             )
             .map_err(|e| into_status(e))?;
 
@@ -868,7 +896,7 @@ impl MlsClient for MlsClientImpl {
         let commit = match interop_group.wire_format {
             WireFormat::MlsCiphertext => interop_group
                 .group
-                .encrypt(commit, 10)
+                .encrypt(commit, 10, &self.crypto_provider)
                 .map_err(|_| Status::aborted("failed to encrypt commit"))?
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize commit"))?,
@@ -909,7 +937,7 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                 interop_group
                     .group
-                    .decrypt(&ct)
+                    .decrypt(&ct, &self.crypto_provider)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             }
             WireFormat::MlsPlaintext => {
@@ -918,7 +946,7 @@ impl MlsClient for MlsClientImpl {
                     &mut handle_commit_request.commit.as_slice(),
                 )
                 .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                .verify(credential)
+                .verify(&self.crypto_provider, credential)
                 .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
             }
         };
@@ -931,14 +959,14 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                     interop_group
                         .group
-                        .decrypt(&ct)
+                        .decrypt(&ct, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
                     let credential = interop_group.credential_bundle.credential();
                     VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                        .verify(credential)
+                        .verify(&self.crypto_provider, credential)
                         .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
                 }
             };
@@ -956,6 +984,7 @@ impl MlsClient for MlsClientImpl {
                 &proposals_by_reference,
                 &interop_group.own_kpbs,
                 None,
+                &self.crypto_provider,
             )
             .map_err(|e| into_status(e))?;
 
