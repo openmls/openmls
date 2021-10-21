@@ -36,23 +36,23 @@ while sock.connect_ex(('::1', 50051)) != 0:
         exit(1)
 
 # Clone the mls-implementations repo to build the test runner.
-subprocess.run(
+subprocess.check_call(
     ['git', 'clone', 'https://github.com/mlswg/mls-implementations.git'])
 
 # Copy the config.json to the place where the test runner expects it.
-subprocess.run(
+subprocess.check_call(
     ['cp', 'config.json', 'mls-implementations/interop/test-runner'])
 
 # Change into the test runner dir.
 os.chdir("./mls-implementations/interop/test-runner")
 
 # Increase the timeout set by the runner
-subprocess.run(['sed', '-i', 's/time.Second/time.Second * 10/g', 'main.go'])
+subprocess.check_call(['sed', '-i', 's/time.Second/time.Second * 10/g', 'main.go'])
 
 # Get the required go modules
-subprocess.run(['go', 'get'])
+subprocess.check_call(['go', 'get'])
 # Build the test runner
-subprocess.run(['go', 'build'])
+subprocess.check_call(['go', 'build'])
 
 # Run the test runner
 test_runner_output = subprocess.check_output(['./test-runner'])
