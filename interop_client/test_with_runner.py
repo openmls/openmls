@@ -4,6 +4,8 @@ import subprocess
 import os
 import atexit
 
+import shutil
+
 import socket
 
 owd = os.getcwd()
@@ -40,8 +42,8 @@ subprocess.check_call(
     ['git', 'clone', 'https://github.com/mlswg/mls-implementations.git'])
 
 # Copy the config.json to the place where the test runner expects it.
-subprocess.check_call(
-    ['cp', 'config.json', 'mls-implementations/interop/test-runner'])
+shutil.copyfile(
+    'config.json', 'mls-implementations/interop/test-runner/config.json')
 
 # Change into the test runner dir.
 os.chdir("./mls-implementations/interop/test-runner")

@@ -29,4 +29,3 @@ The script requires
 * `cargo` to compile the `interop_client`
 * `git` to checkout the code of the test runner
 * `go` to compile the `test-runner`
-* `cp` to copy the `config.json` where the test runner can use it.
