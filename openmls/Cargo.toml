@@ -25,7 +25,6 @@ tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
 hpke = { version = "0.0.11", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization", "rust-crypto"] }
 
 [features]
-# Default to the RustCrypto backend right now.
 default = []
 test-utils = ["itertools", "openmls_rust_crypto"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
@@ -38,7 +37,6 @@ itertools = "0.10"
 test_macros = { path = "../test_macros" }
 openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
-rand_chacha = "0.3"
 
 [[bench]]
 name = "benchmark"
