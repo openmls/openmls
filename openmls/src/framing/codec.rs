@@ -11,7 +11,7 @@ impl<'a> tls_codec::Deserialize for VerifiableMlsPlaintext<'a> {
         let sender = Sender::tls_deserialize(bytes)?;
         let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
         let content_type = ContentType::tls_deserialize(bytes)?;
-        let content = MlsPlaintextContentType::deserialize(content_type, bytes)?;
+        let payload = MlsPlaintextContentType::deserialize(content_type, bytes)?;
         let signature = Signature::tls_deserialize(bytes)?;
         let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
         let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
@@ -23,8 +23,10 @@ impl<'a> tls_codec::Deserialize for VerifiableMlsPlaintext<'a> {
                 epoch,
                 sender,
                 authenticated_data,
-                content_type,
-                content,
+                Payload {
+                    payload,
+                    content_type,
+                },
             ),
             signature,
             confirmation_tag,

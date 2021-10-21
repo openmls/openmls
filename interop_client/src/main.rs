@@ -852,8 +852,10 @@ impl MlsClient for MlsClientImpl {
             .create_commit(
                 framing_parameters,
                 &interop_group.credential_bundle,
-                &proposals_by_reference,
-                &proposals_by_value,
+                Proposals {
+                    &proposals_by_reference,
+                    &proposals_by_value,
+                },
                 false,
                 None,
             )

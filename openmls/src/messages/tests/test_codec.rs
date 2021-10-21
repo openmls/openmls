@@ -1,7 +1,7 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::Ciphersuite,
     config::Config,
     group::{GroupEpoch, GroupId},
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
@@ -12,12 +12,12 @@ use crate::{
 /// other PSK-related structs
 #[test]
 fn test_pre_shared_key_proposal_codec() {
-    let ciphersuite = Ciphersuite::default();
+    let crypto = OpenMlsRustCrypto::default();
     // ReInit
     let psk = PreSharedKeyId {
         psk_type: PskType::Reinit,
         psk: Psk::Reinit(ReinitPsk {
-            psk_group_id: GroupId::random(ciphersuite),
+            psk_group_id: GroupId::random(&crypto),
             psk_epoch: GroupEpoch(1234),
         }),
         psk_nonce: vec![1, 2, 3].into(),
@@ -42,7 +42,7 @@ fn test_pre_shared_key_proposal_codec() {
     let psk = PreSharedKeyId {
         psk_type: PskType::Branch,
         psk: Psk::Branch(BranchPsk {
-            psk_group_id: GroupId::random(ciphersuite),
+            psk_group_id: GroupId::random(&crypto),
             psk_epoch: GroupEpoch(1234),
         }),
         psk_nonce: vec![1, 2, 3].into(),
@@ -56,10 +56,10 @@ fn test_pre_shared_key_proposal_codec() {
 /// other PSK-related structs
 #[test]
 fn test_reinit_proposal_codec() {
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite_name in Config::supported_ciphersuite_names() {
-        let ciphersuite = Config::ciphersuite(*ciphersuite_name).unwrap();
         let orig = ReInitProposal {
-            group_id: GroupId::random(ciphersuite),
+            group_id: GroupId::random(&crypto),
             version: ProtocolVersion::default(),
             ciphersuite: *ciphersuite_name,
             extensions: vec![].into(),

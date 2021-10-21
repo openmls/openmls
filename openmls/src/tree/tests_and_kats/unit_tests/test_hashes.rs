@@ -1,7 +1,10 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use crate::tree::*;
 
 #[test]
 fn test_parent_hash() {
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of leaf nodes in the tree
         const NODES: usize = 31;
@@ -14,10 +17,12 @@ fn test_parent_hash() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
+                &crypto,
             )
             .unwrap();
             let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -37,16 +42,20 @@ fn test_parent_hash() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes).unwrap();
 
-        assert!(tree.verify_parent_hashes().is_ok());
+        assert!(tree.verify_parent_hashes(&crypto).is_ok());
 
         // Populate the parent nodes with fake values
         for index in 0..tree.tree_size().as_usize() {
             // Filter out leaf nodes
             if NodeIndex::from(index).is_parent() {
                 let (_private_key, public_key) = ciphersuite
-                    .derive_hpke_keypair(&Secret::random(ciphersuite, None /* MLS version */))
+                    .derive_hpke_keypair(&Secret::random(
+                        ciphersuite,
+                        &crypto,
+                        None, /* MLS version */
+                    ))
                     .into_keys();
                 let parent_node = ParentNode::new(public_key, &[], &[]);
                 let node = Node {
@@ -59,13 +68,13 @@ fn test_parent_hash() {
         }
 
         // Compute the recursive parent_hash for the first member
-        let original_parent_hash = tree.set_parent_hashes(LeafIndex::from(0usize));
+        let original_parent_hash = tree.set_parent_hashes(&crypto, LeafIndex::from(0usize));
 
         // Swap two leaf nodes in the left & right part of the tree
         tree.nodes.swap(15, 47);
 
         // Compute the parent hash again to verify it has changed
-        let leaf_swap_parent_hash = tree.set_parent_hashes(LeafIndex::from(0usize));
+        let leaf_swap_parent_hash = tree.set_parent_hashes(&crypto, LeafIndex::from(0usize));
 
         assert!(leaf_swap_parent_hash != original_parent_hash);
     }
