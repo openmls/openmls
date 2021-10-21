@@ -9,14 +9,13 @@ use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
 use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError};
 
-use crate::key_store::KeyStoreError;
-
 implement_error! {
     pub enum ManagedGroupError {
         Simple {
             NoMatchingCredentialBundle = "Couldn't find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.",
             NoMatchingKeyPackageBundle = "Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.",
             PoisonedCredentialBundle = "Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.",
+            KeyStoreError = "Error performing key store operation.",
         }
         Complex {
             LibraryError(ErrorString) =
@@ -35,7 +34,6 @@ implement_error! {
                 "See [`ExporterError`](`crate::group::ExporterError`) for details",
             EmptyInput(EmptyInputError) =
                 "Empty input. Additional detail is provided.",
-            KeyStoreError(KeyStoreError) = "See [`KeyStoreError`](`crate::key_store::KeyStoreError`) for details",
             InvalidMessage(InvalidMessageError) = "The message could not be processed.",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
         }

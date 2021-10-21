@@ -7,6 +7,7 @@ use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 
 mod codec;
@@ -251,8 +252,9 @@ impl GroupInfo {
     pub(crate) fn re_sign(
         self,
         credential_bundle: &CredentialBundle,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
-        self.payload.sign(credential_bundle)
+        self.payload.sign(backend, credential_bundle)
     }
 }
 
@@ -349,23 +351,32 @@ impl GroupSecrets {
     #[cfg(any(feature = "test-utils", test))]
     pub fn random_encoded(
         ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {
+        use openmls_traits::random::OpenMlsRand;
+
         let psk_id = PreSharedKeyId::new(
             External,
             Psk::External(ExternalPsk::new(
-                ciphersuite.randombytes(ciphersuite.hash_length()),
+                backend
+                    .rand()
+                    .random_vec(ciphersuite.hash_length())
+                    .unwrap(),
             )),
-            ciphersuite.randombytes(ciphersuite.hash_length()),
+            backend
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .unwrap(),
         );
         let psks = PreSharedKeys {
             psks: vec![psk_id].into(),
         };
 
         GroupSecrets::new_encoded(
-            &JoinerSecret::random(ciphersuite, version),
+            &JoinerSecret::random(ciphersuite, backend, version),
             Some(&PathSecret {
-                path_secret: Secret::random(ciphersuite, version),
+                path_secret: Secret::random(ciphersuite, backend, version),
             }),
             &psks,
         )
@@ -406,6 +417,7 @@ impl PublicGroupState {
     pub(crate) fn new(
         mls_group: &MlsGroup,
         credential_bundle: &CredentialBundle,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
         let ciphersuite = mls_group.ciphersuite();
         let (_external_priv, external_pub) = mls_group
@@ -416,7 +428,7 @@ impl PublicGroupState {
 
         let group_id = mls_group.group_id().clone();
         let epoch = mls_group.context().epoch();
-        let tree_hash = mls_group.tree().tree_hash().into();
+        let tree_hash = mls_group.tree().tree_hash(backend).into();
         let interim_transcript_hash = mls_group.interim_transcript_hash().into();
         let extensions = mls_group.extensions().into();
 
@@ -428,7 +440,7 @@ impl PublicGroupState {
             extensions: &extensions,
             external_pub: &external_pub,
         };
-        let signature = pgstbs.sign(credential_bundle)?;
+        let signature = pgstbs.sign(backend, credential_bundle)?;
         Ok(Self {
             ciphersuite: ciphersuite.name(),
             group_id,

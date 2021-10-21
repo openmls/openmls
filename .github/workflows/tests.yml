@@ -38,9 +38,6 @@ jobs:
           rustup target install aarch64-apple-ios
       - name: Tests
         run: cargo test --verbose
-      - name: Build w/ Evercrypt
-        if: matrix.os != 'macos-latest'
-        run: cargo build --release --verbose --no-default-features --features="evercrypt-backend"
       - name: Apple Silicon Build
         if: matrix.os == 'macos-latest'
         run: |
