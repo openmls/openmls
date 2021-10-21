@@ -28,7 +28,5 @@ The script requires
 
 * `cargo` to compile the `interop_client`
 * `git` to checkout the code of the test runner
-* `sed` to increase the timeout for test vector read/write operations (necessary
-  until https://github.com/mlswg/mls-implementations/pull/53 is merged)
 * `go` to compile the `test-runner`
 * `cp` to copy the `config.json` where the test runner can use it.

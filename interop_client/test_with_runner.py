@@ -46,9 +46,6 @@ subprocess.check_call(
 # Change into the test runner dir.
 os.chdir("./mls-implementations/interop/test-runner")
 
-# Increase the timeout set by the runner
-subprocess.check_call(['sed', '-i', 's/time.Second/time.Second * 10/g', 'main.go'])
-
 # Get the required go modules
 subprocess.check_call(['go', 'get'])
 # Build the test runner
