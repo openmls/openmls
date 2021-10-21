@@ -8,3 +8,5 @@ description = "Types to interact with the OpenMLS DS."
 [dependencies]
 openmls = { path = "../../openmls" }
 tls_codec = "0.1.4"
+openmls_traits = { version = "0.1", path = "../../traits" }
+openmls_rust_crypto = { path = "../../openmls_rust_crypto" }

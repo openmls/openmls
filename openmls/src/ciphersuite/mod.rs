@@ -5,13 +5,18 @@
 
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 use hpke::prelude::*;
-use rand_chacha::ChaCha20Rng;
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    random::OpenMlsRand,
+    types::{AeadType, HashType, SignatureScheme},
+    OpenMlsCryptoProvider,
+};
 pub(crate) use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-use std::{hash::Hash, sync::Mutex};
+use std::hash::Hash;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 // re-export for other parts of the library when we can use it
@@ -19,23 +24,17 @@ pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
 
 mod ciphersuites;
 mod codec;
-mod crypto;
 mod errors;
-mod rand;
 pub mod signable;
 
 mod ser;
 
-use crate::{
-    ciphersuite::rand::random_vec,
-    config::{Config, ConfigError, ProtocolVersion},
-};
+use crate::config::{Config, ConfigError, ProtocolVersion};
 
 use ciphersuites::*;
-use crypto::*;
 pub(crate) use errors::*;
 
-use self::{rand::random_array, signable::SignedStruct};
+use self::signable::SignedStruct;
 
 #[cfg(test)]
 mod tests;
@@ -70,55 +69,6 @@ pub enum CiphersuiteName {
 
 implement_enum_display!(CiphersuiteName);
 
-/// SignatureScheme according to IANA TLS parameters
-#[allow(non_camel_case_types)]
-#[allow(clippy::upper_case_acronyms)]
-#[derive(
-    Copy,
-    Hash,
-    Eq,
-    PartialEq,
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsSerialize,
-    TlsSize,
-)]
-#[repr(u16)]
-pub enum SignatureScheme {
-    /// ECDSA_SECP256R1_SHA256
-    ECDSA_SECP256R1_SHA256 = 0x0403,
-    /// ECDSA_SECP521R1_SHA512
-    ECDSA_SECP521R1_SHA512 = 0x0603,
-    /// ED25519
-    ED25519 = 0x0807,
-    /// ED448
-    ED448 = 0x0808,
-}
-
-impl SignatureScheme {
-    /// Create a new signature key pair and return it.
-    pub(crate) fn new_keypair(&self) -> Result<SignatureKeypair, CryptoError> {
-        SignatureKeypair::new(*self)
-    }
-}
-
-impl TryFrom<u16> for SignatureScheme {
-    type Error = String;
-
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        match value {
-            0x0403 => Ok(SignatureScheme::ECDSA_SECP256R1_SHA256),
-            0x0603 => Ok(SignatureScheme::ECDSA_SECP521R1_SHA512),
-            0x0807 => Ok(SignatureScheme::ED25519),
-            0x0808 => Ok(SignatureScheme::ED448),
-            _ => Err(format!("Unsupported SignatureScheme: {}", value)),
-        }
-    }
-}
-
 impl From<CiphersuiteName> for SignatureScheme {
     fn from(ciphersuite_name: CiphersuiteName) -> Self {
         match ciphersuite_name {
@@ -138,91 +88,6 @@ impl From<CiphersuiteName> for SignatureScheme {
             CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 SignatureScheme::ED448
             }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[repr(u16)]
-/// AEAD types
-pub enum AeadType {
-    /// AES GCM 128
-    Aes128Gcm = 0x0001,
-
-    /// AES GCM 256
-    Aes256Gcm = 0x0002,
-
-    /// ChaCha20 Poly1305
-    ChaCha20Poly1305 = 0x0003,
-
-    /// HPKE Export-only
-    HpkeExport = 0xFFFF,
-}
-
-impl AeadType {
-    /// Get the tag size of the [`AeadType`] in bytes.
-    ///
-    /// Note that the function returns `0` for unknown lengths such as the
-    /// [`AeadType::HpkeExport`] type.
-    pub const fn tag_size(&self) -> usize {
-        match self {
-            AeadType::Aes128Gcm => 16,
-            AeadType::Aes256Gcm => 16,
-            AeadType::ChaCha20Poly1305 => 16,
-            AeadType::HpkeExport => 0,
-        }
-    }
-
-    /// Get the key size of the [`AeadType`] in bytes.
-    ///
-    /// Note that the function returns `0` for unknown lengths such as the
-    /// [`AeadType::HpkeExport`] type.
-    pub const fn key_size(&self) -> usize {
-        match self {
-            AeadType::Aes128Gcm => 16,
-            AeadType::Aes256Gcm => 32,
-            AeadType::ChaCha20Poly1305 => 32,
-            AeadType::HpkeExport => 0,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-/// Hash types
-pub enum HashType {
-    Sha1 = 0x02,
-    Sha2_224 = 0x03,
-    Sha2_256 = 0x04,
-    Sha2_384 = 0x05,
-    Sha2_512 = 0x06,
-    Sha3_224 = 0x07,
-    Sha3_256 = 0x08,
-    Sha3_384 = 0x09,
-    Sha3_512 = 0x0A,
-    Shake_128 = 0x0B,
-    Shake_256 = 0x0C,
-}
-
-impl HashType {
-    /// Returns the output size of a hash by [`HashType`].
-    ///
-    /// Note that it will return `0` for variable lenght output types such as shake.
-    #[inline]
-    pub const fn size(&self) -> usize {
-        match self {
-            HashType::Sha1 => 20,
-            HashType::Sha2_224 => 28,
-            HashType::Sha2_256 => 32,
-            HashType::Sha2_384 => 48,
-            HashType::Sha2_512 => 64,
-            HashType::Sha3_224 => 28,
-            HashType::Sha3_256 => 32,
-            HashType::Sha3_384 => 48,
-            HashType::Sha3_512 => 64,
-            HashType::Shake_128 => 0,
-            HashType::Shake_256 => 0,
         }
     }
 }
@@ -359,11 +224,9 @@ impl PartialEq for Secret {
 impl Secret {
     /// Randomly sample a fresh `Secret`.
     /// This default random initialiser uses the default Secret length of `hash_length`.
-    ///
-    /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
-    /// TODO: This panics if another thread holding the rng panics.
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
+        crypto: &impl OpenMlsCryptoProvider,
         version: impl Into<Option<ProtocolVersion>>,
     ) -> Self {
         let mls_version = version.into().unwrap_or_default();
@@ -372,9 +235,8 @@ impl Secret {
             ciphersuite.name,
             mls_version
         );
-        let mut rng = ciphersuite.rng.lock().unwrap();
         Secret {
-            value: random_vec(&mut *rng, ciphersuite.hash_length()),
+            value: crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
             mls_version,
             ciphersuite,
         }
@@ -403,7 +265,11 @@ impl Secret {
     }
 
     /// HKDF extract where `self` is `salt`.
-    pub(crate) fn hkdf_extract<'a>(&self, ikm_option: impl Into<Option<&'a Secret>>) -> Self {
+    pub(crate) fn hkdf_extract<'a>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ikm_option: impl Into<Option<&'a Secret>>,
+    ) -> Self {
         log::trace!("HKDF extract with {:?}", self.ciphersuite.name);
         log_crypto!(trace, "  salt: {:x?}", self.value);
         let zero_secret = Self::zero(self.ciphersuite, self.mls_version);
@@ -432,20 +298,30 @@ impl Secret {
             //      when introducing the crypto object. In that case this
             //      module has to ensure to check that the backend supports
             //      all required functions before doing anything.
-            value: hkdf_extract(
-                self.ciphersuite.hash,
-                self.value.as_slice(),
-                ikm.value.as_slice(),
-            )
-            .unwrap(),
+            value: backend
+                .crypto()
+                .hkdf_extract(
+                    self.ciphersuite.hash,
+                    self.value.as_slice(),
+                    ikm.value.as_slice(),
+                )
+                .unwrap(),
             mls_version: self.mls_version,
             ciphersuite: self.ciphersuite,
         }
     }
 
     /// HKDF expand where `self` is `prk`.
-    pub(crate) fn hkdf_expand(&self, info: &[u8], okm_len: usize) -> Result<Self, CryptoError> {
-        let key = hkdf_expand(self.ciphersuite.hash, &self.value, info, okm_len)?;
+    pub(crate) fn hkdf_expand(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        info: &[u8],
+        okm_len: usize,
+    ) -> Result<Self, CryptoError> {
+        let key = backend
+            .crypto()
+            .hkdf_expand(self.ciphersuite.hash, &self.value, info, okm_len)
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
         if key.is_empty() {
             return Err(CryptoError::InvalidLength);
         }
@@ -460,6 +336,7 @@ impl Secret {
     /// `label` and a `context`.
     pub(crate) fn kdf_expand_label(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         label: &str,
         context: &[u8],
         length: usize,
@@ -474,12 +351,16 @@ impl Secret {
         let info = KdfLabel::serialized_label(context, full_label, length)?;
         log::trace!("  serialized context: {:x?}", info);
         log_crypto!(trace, "  secret: {:x?}", self.value);
-        self.hkdf_expand(&info, length)
+        self.hkdf_expand(backend, &info, length)
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
-    pub(crate) fn derive_secret(&self, label: &str) -> Result<Secret, CryptoError> {
+    pub(crate) fn derive_secret(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        label: &str,
+    ) -> Result<Secret, CryptoError> {
         log_crypto!(
             trace,
             "derive secret from {:x?} with label {} and {:?}",
@@ -487,7 +368,7 @@ impl Secret {
             label,
             self.ciphersuite.name()
         );
-        self.kdf_expand_label(label, &[], self.ciphersuite.hash_length())
+        self.kdf_expand_label(backend, label, &[], self.ciphersuite.hash_length())
     }
 
     /// Update the ciphersuite and MLS version of this secret.
@@ -551,10 +432,13 @@ impl Mac {
     /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
     /// HMAC that is also used in HKDF.
     /// Compute the HMAC on `salt` with key `ikm`.
-    pub(crate) fn new(salt: &Secret, ikm: &[u8]) -> Self {
+    pub(crate) fn new(backend: &impl OpenMlsCryptoProvider, salt: &Secret, ikm: &[u8]) -> Self {
         Mac {
             mac_value: salt
-                .hkdf_extract(&Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite))
+                .hkdf_extract(
+                    backend,
+                    &Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite),
+                )
                 .value
                 .into(),
         }
@@ -566,7 +450,6 @@ impl Mac {
 pub struct AeadKey {
     aead_mode: AeadType,
     value: Vec<u8>,
-    mac_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
@@ -577,13 +460,9 @@ pub struct ReuseGuard {
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
-    ///
-    /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
-    /// TODO: This panics if another thread holding the rng panics.
-    pub fn from_random(ciphersuite: &Ciphersuite) -> Self {
-        let mut rng = ciphersuite.rng.lock().unwrap();
+    pub fn from_random(crypto: &impl OpenMlsCryptoProvider) -> Self {
         Self {
-            value: random_array(&mut *rng),
+            value: crypto.rand().random_array().unwrap(),
         }
     }
 }
@@ -616,7 +495,7 @@ impl<T> SignedStruct<T> for Signature {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct SignaturePrivateKey {
     signature_scheme: SignatureScheme,
@@ -631,7 +510,6 @@ pub struct SignaturePublicKey {
 
 #[derive(Debug, Clone)]
 pub struct SignatureKeypair {
-    signature_scheme: SignatureScheme,
     private_key: SignaturePrivateKey,
     public_key: SignaturePublicKey,
 }
@@ -641,8 +519,6 @@ pub struct Ciphersuite {
     name: CiphersuiteName,
     signature_scheme: SignatureScheme,
     hpke: Hpke,
-    // The rng really must not be accessed concurrently
-    rng: Mutex<ChaCha20Rng>,
     hash: HashType,
     aead: AeadType,
 }
@@ -708,13 +584,11 @@ impl Ciphersuite {
         let hpke_kem = kem_from_suite(&name)?;
         let hpke_kdf = hpke_kdf_from_suite(&name);
         let hpke_aead = hpke_aead_from_suite(&name);
-        let rng = rand::init();
 
         Ok(Ciphersuite {
             name,
             signature_scheme,
             hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
-            rng: Mutex::new(rng),
             hash: hash_from_suite(&name),
             aead: aead_from_suite(&name),
         })
@@ -743,9 +617,9 @@ impl Ciphersuite {
     }
 
     /// Hash `payload` and return the digest.
-    pub(crate) fn hash(&self, payload: &[u8]) -> Vec<u8> {
+    pub(crate) fn hash(&self, backend: &impl OpenMlsCryptoProvider, payload: &[u8]) -> Vec<u8> {
         // XXX: remove unwrap
-        hash(self.hash, payload).unwrap()
+        backend.crypto().hash(self.hash, payload).unwrap()
     }
 
     /// Get the length of the used hash algorithm.
@@ -766,25 +640,6 @@ impl Ciphersuite {
     /// Returns the length of the nonce in the AEAD.
     pub(crate) const fn aead_nonce_length(&self) -> usize {
         NONCE_BYTES
-    }
-
-    /// Get random bytes.
-    ///
-    /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
-    /// TODO: This panics if another thread holding the rng panics.
-    pub(crate) fn randombytes(&self, n: usize) -> Vec<u8> {
-        let mut rng = self.rng.lock().unwrap();
-        random_vec(&mut *rng, n)
-    }
-
-    /// Reseed the rng.
-    /// XXX: This is actually initializing a new rng right now.
-    ///
-    /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
-    /// TODO: This panics if another thread holding the rng panics.
-    pub fn reseed(&self) {
-        let mut rng = self.rng.lock().unwrap();
-        *rng = rand::init();
     }
 
     /// HPKE single-shot encryption of `ptxt` to `pk_r`, using `info` and `aad`.
@@ -854,17 +709,15 @@ impl AeadKey {
         AeadKey {
             aead_mode: secret.ciphersuite.aead,
             value: secret.value,
-            mac_len: secret.ciphersuite.mac_length(),
         }
     }
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn random(ciphersuite: &Ciphersuite) -> Self {
+    pub fn random(ciphersuite: &Ciphersuite, rng: &impl OpenMlsRand) -> Self {
         AeadKey {
             aead_mode: ciphersuite.aead(),
-            value: aead_key_gen(ciphersuite.aead()),
-            mac_len: ciphersuite.mac_length(),
+            value: aead_key_gen(ciphersuite.aead(), rng),
         }
     }
 
@@ -877,33 +730,41 @@ impl AeadKey {
     /// Encrypt a payload under the AeadKey given a nonce.
     pub(crate) fn aead_seal(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         msg: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
-        aead_encrypt(
-            self.aead_mode,
-            self.value.as_slice(),
-            msg,
-            &nonce.value,
-            aad,
-        )
+        backend
+            .crypto()
+            .aead_encrypt(
+                self.aead_mode,
+                self.value.as_slice(),
+                msg,
+                &nonce.value,
+                aad,
+            )
+            .map_err(|_| CryptoError::CryptoLibraryError)
     }
 
     /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
     pub(crate) fn aead_open(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         ciphertext: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
-        aead_decrypt(
-            self.aead_mode,
-            self.value.as_slice(),
-            ciphertext,
-            &nonce.value,
-            aad,
-        )
+        backend
+            .crypto()
+            .aead_decrypt(
+                self.aead_mode,
+                self.value.as_slice(),
+                ciphertext,
+                &nonce.value,
+                aad,
+            )
+            .map_err(|_| CryptoError::AeadDecryptionError)
     }
 }
 
@@ -921,11 +782,10 @@ impl AeadNonce {
     /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
     /// TODO: This panics if another thread holding the rng panics.
     #[cfg(test)]
-    pub fn random(ciphersuite: &Ciphersuite) -> Self {
-        let mut nonce = [0u8; NONCE_BYTES];
-        let mut rng = ciphersuite.rng.lock().unwrap();
-        nonce.clone_from_slice(random_vec(&mut *rng, NONCE_BYTES).as_slice());
-        AeadNonce { value: nonce }
+    pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
+        AeadNonce {
+            value: rng.rand().random_array().unwrap(),
+        }
     }
 
     /// Get a slice to the nonce value.
@@ -952,14 +812,23 @@ impl AeadNonce {
 impl SignatureKeypair {
     /// Sign the `payload` byte slice with this signature key.
     /// Returns a `Result` with a `Signature` or a `CryptoError`.
-    pub fn sign(&self, payload: &[u8]) -> Result<Signature, CryptoError> {
-        self.private_key.sign(payload)
+    pub fn sign(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        payload: &[u8],
+    ) -> Result<Signature, CryptoError> {
+        self.private_key.sign(backend, payload)
     }
 
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
-    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), CryptoError> {
-        self.public_key.verify(signature, payload)
+    pub fn verify(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        signature: &Signature,
+        payload: &[u8],
+    ) -> Result<(), CryptoError> {
+        self.public_key.verify(backend, signature, payload)
     }
 
     /// Get the private and public key objects
@@ -969,11 +838,16 @@ impl SignatureKeypair {
 }
 
 impl SignatureKeypair {
-    pub(crate) fn new(signature_scheme: SignatureScheme) -> Result<SignatureKeypair, CryptoError> {
-        let (sk, pk) = signature_key_gen(signature_scheme)?;
+    pub(crate) fn new(
+        signature_scheme: SignatureScheme,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<SignatureKeypair, CryptoError> {
+        let (sk, pk) = backend
+            .crypto()
+            .signature_key_gen(signature_scheme)
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(SignatureKeypair {
-            signature_scheme,
             private_key: SignaturePrivateKey {
                 value: sk.to_vec(),
                 signature_scheme,
@@ -989,7 +863,6 @@ impl SignatureKeypair {
 impl SignaturePublicKey {
     /// Create a new signature public key from raw key bytes.
     pub fn new(bytes: Vec<u8>, signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
-        supports(signature_scheme)?;
         Ok(Self {
             value: bytes,
             signature_scheme,
@@ -997,45 +870,82 @@ impl SignaturePublicKey {
     }
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
-    pub fn verify(&self, signature: &Signature, payload: &[u8]) -> Result<(), CryptoError> {
-        supports(self.signature_scheme)?;
-        verify_signature(
-            self.signature_scheme,
-            payload,
-            &self.value,
-            signature.value.as_slice(),
-        )
+    pub fn verify(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        signature: &Signature,
+        payload: &[u8],
+    ) -> Result<(), CryptoError> {
+        backend
+            .crypto()
+            .supports(self.signature_scheme)
+            .map_err(|_| CryptoError::UnsupportedSignatureScheme)?;
+        backend
+            .crypto()
+            .verify_signature(
+                self.signature_scheme,
+                payload,
+                &self.value,
+                signature.value.as_slice(),
+            )
+            .map_err(|_| CryptoError::InvalidSignature)
     }
 }
 
 impl SignaturePrivateKey {
     /// Sign the `payload` byte slice with this signature key.
     /// Returns a `Result` with a `Signature` or a `SignatureError`.
-    pub fn sign(&self, payload: &[u8]) -> Result<Signature, CryptoError> {
-        match sign(self.signature_scheme, payload, &self.value) {
+    pub fn sign(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        payload: &[u8],
+    ) -> Result<Signature, CryptoError> {
+        match backend
+            .crypto()
+            .sign(self.signature_scheme, payload, &self.value)
+        {
             Ok(s) => Ok(Signature { value: s.into() }),
-            Err(e) => Err(e),
+            Err(_) => Err(CryptoError::CryptoLibraryError),
         }
     }
 }
 
-/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
-/// it has changed, xoring it again and testing that it's back in its original
-/// state.
-#[test]
-fn test_xor() {
-    let ciphersuite = Ciphersuite::default();
-    let reuse_guard: ReuseGuard = ReuseGuard::from_random(Ciphersuite::default());
-    let original_nonce = AeadNonce::random(ciphersuite);
-    let mut nonce = original_nonce.clone();
-    nonce.xor_with_reuse_guard(&reuse_guard);
-    assert_ne!(
-        original_nonce, nonce,
-        "xoring with reuse_guard did not change the nonce"
-    );
-    nonce.xor_with_reuse_guard(&reuse_guard);
-    assert_eq!(
-        original_nonce, nonce,
-        "xoring twice changed the original value"
-    );
+#[cfg(test)]
+pub(crate) fn aead_key_gen(
+    alg: openmls_traits::types::AeadType,
+    rng: &impl OpenMlsRand,
+) -> Vec<u8> {
+    match alg {
+        openmls_traits::types::AeadType::Aes128Gcm => rng.random_vec(16).unwrap(),
+        openmls_traits::types::AeadType::Aes256Gcm
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 => rng.random_vec(32).unwrap(),
+    }
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use openmls_rust_crypto::OpenMlsRustCrypto;
+
+    use super::*;
+
+    /// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
+    /// it has changed, xoring it again and testing that it's back in its original
+    /// state.
+    #[test]
+    fn test_xor() {
+        let crypto = &OpenMlsRustCrypto::default();
+        let reuse_guard: ReuseGuard = ReuseGuard::from_random(crypto);
+        let original_nonce = AeadNonce::random(crypto);
+        let mut nonce = original_nonce.clone();
+        nonce.xor_with_reuse_guard(&reuse_guard);
+        assert_ne!(
+            original_nonce, nonce,
+            "xoring with reuse_guard did not change the nonce"
+        );
+        nonce.xor_with_reuse_guard(&reuse_guard);
+        assert_eq!(
+            original_nonce, nonce,
+            "xoring twice changed the original value"
+        );
+    }
 }
