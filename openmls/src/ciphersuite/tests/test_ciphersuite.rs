@@ -138,7 +138,7 @@ fn test_signatures() {
         // Tamper with signature such that verification fails. We choose a byte
         // somewhere in the middle to make the verification fail, not the DER
         // decoding (in the case of ECDSA signatures).
-        let mut modified_signature = signature.value.as_slice().to_vec();
+        let mut modified_signature = signature.as_slice().to_vec();
         modified_signature[20] ^= 0xFF;
         signature.modify(&modified_signature);
 
