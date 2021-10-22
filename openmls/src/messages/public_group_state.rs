@@ -1,3 +1,9 @@
+//! This module contains the types and implementations for the
+//! `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec. The
+//! `PublicGroupState` implements type-enforced verification in the same way as
+//! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
+//!
+//! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
 use hpke::HpkePublicKey;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Serialize, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
@@ -12,10 +18,7 @@ use crate::{
     tree::index::LeafIndex,
 };
 
-/// This module contains the types and implementations for the
-/// `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec.
-
-/// PublicGroupState
+/// PublicGroupState as defined in the MLS specification as follows:
 ///
 /// ```text
 /// struct {
@@ -29,7 +32,9 @@ use crate::{
 ///     uint32 signer_index;
 ///     opaque signature<0..2^16-1>;
 /// } PublicGroupState;
-/// ```
+///
+/// A `PublicGroupState` can be created by verifying a
+/// `VerifiablePublicGroupState`. ```
 #[derive(PartialEq, Debug, TlsSerialize, TlsSize)]
 pub struct PublicGroupState {
     pub(crate) ciphersuite: CiphersuiteName,
@@ -43,6 +48,13 @@ pub struct PublicGroupState {
     pub(crate) signature: Signature,
 }
 
+/// The `VerifiablePublicGroupState` represents a `PublicGroupState` of which
+/// the signature has not been verified. It implements the `Verifiable` trait
+/// and can thus be turned into a `PublicGroupState` by calling `verify(...)`
+/// with the `Credential` corresponding to the `CredentialBundle` of the signer.
+/// When receiving a serialized "PublicGroupState", it can thus only be
+/// deserialized into a `VerifiablePublicGroupState`, which can then be turned
+/// into a `PublicGroupState` as described above.
 #[derive(Debug, Clone, TlsSize, TlsDeserialize, TlsSerialize)]
 pub struct VerifiablePublicGroupState {
     tbs: PublicGroupStateTbs,
