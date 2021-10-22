@@ -1,9 +1,9 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This module represents the key schedule as introduced in Section 8 of the MLS specification. The key schedule evolves in epochs, where in each epoch new key material is injected."><meta name="keywords" content="rust, rustlang, rust-lang, schedule"><title>openmls::schedule - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a><h2 class="location">Module schedule</h2><div class="sidebar-elems"><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></div><div id="sidebar-vars" data-name="schedule" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input"name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="in-band">Module <a href="../index.html">openmls</a>::<wbr><a class="mod" href="#">schedule</a><button id="copy-path" onclick="copy_path(this)" title="copy path"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item import" title="Copy item import to clipboard"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../src/openmls/schedule/mod.rs.html#1-1078" title="goto source code">[src]</a></span></h1><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module represents the key schedule as introduced in Section 8 of the
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This module represents the key schedule as introduced in Section 8 of the MLS specification. The key schedule evolves in epochs, where in each epoch new key material is injected."><meta name="keywords" content="rust, rustlang, rust-lang, schedule"><title>openmls::schedule - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a><h2 class="location">Module schedule</h2><div class="sidebar-elems"><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></div><div id="sidebar-vars" data-name="schedule" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="in-band">Module <a href="../index.html">openmls</a>::<wbr><a class="mod" href="#">schedule</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../src/openmls/schedule/mod.rs.html#1-1078" title="goto source code">[src]</a></span></h1><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module represents the key schedule as introduced in Section 8 of the
 MLS specification. The key schedule evolves in epochs, where in each epoch
 new key material is injected.</p>
 <p>The flow of the key schedule is as follows (from Section 8 of the MLS
 specification):</p>
-<div class="example-wrap"><pre class="language-text">                 init_secret_[n-1]
+<div class="example-wrap"><pre class="language-text"><code>                 init_secret_[n-1]
                         |
                         V
    commit_secret -&gt; KDF.Extract
@@ -33,7 +33,7 @@ psk_secret (or 0) -&gt; KDF.Extract (= intermediary_secret)
                   DeriveSecret(., &quot;init&quot;)
                         |
                         V
-                  init_secret_[n]</pre></div>
+                  init_secret_[n]</code></pre></div>
 <p>Each of the secrets in the key schedule (with exception of the
 welcome_secret) is represented by its own struct to ensure that the keys are
 not confused with one-another and/or that the schedule is not derived
@@ -45,9 +45,9 @@ must never be the case within a key schedule. The actual key schedule is
 therefore only the second half starting with the <code>joiner_secret</code>, which
 indeed is what happens when starting a group from a welcome message.</p>
 <p>The <code>joiner_secret</code> is computed as</p>
-<div class="example-wrap"><pre class="language-text">    DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), &quot;joiner&quot;)</pre></div>
+<div class="example-wrap"><pre class="language-text"><code>    DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), &quot;joiner&quot;)</code></pre></div>
 <p>or</p>
-<div class="example-wrap"><pre class="language-text">                 init_secret_[n-1]
+<div class="example-wrap"><pre class="language-text"><code>                 init_secret_[n-1]
                         |
                         V
    commit_secret -&gt; KDF.Extract
@@ -56,13 +56,13 @@ indeed is what happens when starting a group from a welcome message.</p>
                   DeriveSecret(., &quot;joiner&quot;)
                         |
                         V
-                   joiner_secret</pre></div>
+                   joiner_secret</code></pre></div>
 <p>The remainder of the key schedule then starts with the <code>joiner_secret</code> and
 <code>psk_secret</code>. Note that the following graph also adds the <code>GroupContext_[n]</code>
 as input, which is omitted in the spec.
 Further note that the derivation of the secrets from the <code>epoch_secret</code> is
 simplified here.</p>
-<div class="example-wrap"><pre class="language-text">                   joiner_secret
+<div class="example-wrap"><pre class="language-text"><code>                   joiner_secret
                         |
                         V
 psk_secret (or 0) -&gt; KDF.Extract
@@ -78,9 +78,9 @@ GroupContext_[n] -&gt; ExpandWithLabel(., &quot;epoch&quot;, GroupContext_[n], K
                         |
                         v
                 DeriveSecret(., &lt;label&gt;)
-                    = &lt;secret&gt;</pre></div>
+                    = &lt;secret&gt;</code></pre></div>
 <p>with</p>
-<div class="example-wrap"><pre class="language-text">| secret                  | label           |
+<div class="example-wrap"><pre class="language-text"><code>| secret                  | label           |
 |:------------------------|:----------------|
 | `init_secret`           | &quot;init&quot;          |
 | `sender_data_secret`    | &quot;sender data&quot;   |
@@ -90,7 +90,7 @@ GroupContext_[n] -&gt; ExpandWithLabel(., &quot;epoch&quot;, GroupContext_[n], K
 | `external_secret`       | &quot;external&quot;      |
 | `confirmation_key`      | &quot;confirm&quot;       |
 | `membership_key`        | &quot;membership&quot;    |
-| `resumption_secret`     | &quot;resumption&quot;    |</pre></div></div></details><h2 id="reexports" class="section-header"><a href="#reexports">Re-exports</a></h2>
+| `resumption_secret`     | &quot;resumption&quot;    |</code></pre></div></div></details><h2 id="reexports" class="section-header"><a href="#reexports">Re-exports</a></h2>
 <div class="item-table"><div class="item-left import-item"><code>pub use errors::<a class="enum" href="errors/enum.ErrorState.html" title="enum openmls::schedule::errors::ErrorState">ErrorState</a>;</code></div><div class="item-right docblock-short"></div><div class="item-left import-item"><code>pub use errors::<a class="enum" href="errors/enum.KeyScheduleError.html" title="enum openmls::schedule::errors::KeyScheduleError">KeyScheduleError</a>;</code></div><div class="item-right docblock-short"></div><div class="item-left import-item"><code>pub use errors::<a class="enum" href="errors/enum.PskSecretError.html" title="enum openmls::schedule::errors::PskSecretError">PskSecretError</a>;</code></div><div class="item-right docblock-short"></div></div><h2 id="modules" class="section-header"><a href="#modules">Modules</a></h2>
 <div class="item-table"><div class="item-left module-item"><a class="mod" href="codec/index.html" title="openmls::schedule::codec mod">codec</a></div><div class="item-right docblock-short"></div><div class="item-left module-item"><a class="mod" href="errors/index.html" title="openmls::schedule::errors mod">errors</a></div><div class="item-right docblock-short"></div><div class="item-left module-item"><a class="mod" href="kat_key_schedule/index.html" title="openmls::schedule::kat_key_schedule mod">kat_key_schedule</a></div><div class="item-right docblock-short"><p>Known Answer Tests for the key schedule</p>
 </div></div><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2>
