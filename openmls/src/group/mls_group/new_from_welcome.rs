@@ -1,4 +1,5 @@
 use log::debug;
+use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::Deserialize;
 
 use crate::ciphersuite::signable::Verifiable;
@@ -41,13 +42,16 @@ impl MlsGroup {
             return Err(e);
         }
 
-        let group_secrets_bytes = ciphersuite.hpke_open(
-            backend.crypto(),
-            &egs.encrypted_group_secrets,
-            key_package_bundle.private_key(),
-            &[],
-            &[],
-        )?;
+        let group_secrets_bytes = backend
+            .crypto()
+            .hpke_open(
+                ciphersuite.hpke_config(),
+                &egs.encrypted_group_secrets,
+                key_package_bundle.private_key().as_slice(),
+                &[],
+                &[],
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)?;
         let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())?
             .config(ciphersuite, mls_version);
         let joiner_secret = group_secrets.joiner_secret;

@@ -5,13 +5,27 @@ use super::*;
 /// A simple wrapper for HPKE public keys using `Vec<u8>` for (de)serializing.
 #[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct HpkePublicKey {
-    pub(crate) value: Vec<u8>,
+    value: Vec<u8>,
+}
+
+impl HpkePublicKey {
+    /// Get the raw byte value as slice.
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.value.as_slice()
+    }
 }
 
 /// A simple wrapper for HPKE private keys using `Vec<u8>` for (de)serializing.
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct HpkePrivateKey {
-    pub(crate) value: Vec<u8>,
+    value: Vec<u8>,
+}
+
+impl HpkePrivateKey {
+    /// Get the raw byte value as slice.
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.value.as_slice()
+    }
 }
 
 impl From<Vec<u8>> for HpkePublicKey {

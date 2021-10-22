@@ -5,9 +5,7 @@
 
 use crate::config::{Config, ConfigError, ProtocolVersion};
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
-use openmls_traits::types::{
-    HpkeAeadType, HpkeCiphertext, HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair,
-};
+use openmls_traits::types::{HpkeAeadType, HpkeConfig, HpkeKdfType, HpkeKemType};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -153,68 +151,9 @@ impl Ciphersuite {
         self.aead.nonce_size()
     }
 
-    /// HPKE single-shot encryption of `ptxt` to `pk_r`, using `info` and `aad`.
-    pub(crate) fn hpke_seal(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        pk_r: &HpkePublicKey,
-        info: &[u8],
-        aad: &[u8],
-        ptxt: &[u8],
-    ) -> HpkeCiphertext {
-        crypto.hpke_seal(
-            HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead),
-            pk_r.value.as_slice(),
-            info,
-            aad,
-            ptxt,
-        )
-    }
-
-    /// HPKE single-shot encryption specifically to seal a Secret `secret` to
-    /// `pk_r`, using `info` and `aad`.
-    pub(crate) fn hpke_seal_secret(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        pk_r: &HpkePublicKey,
-        info: &[u8],
-        aad: &[u8],
-        secret: &Secret,
-    ) -> HpkeCiphertext {
-        self.hpke_seal(crypto, pk_r, info, aad, &secret.value)
-    }
-
-    /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and
-    /// `aad`.
-    pub(crate) fn hpke_open(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        input: &HpkeCiphertext,
-        sk_r: &HpkePrivateKey,
-        info: &[u8],
-        aad: &[u8],
-    ) -> Result<Vec<u8>, CryptoError> {
-        crypto
-            .hpke_open(
-                HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead),
-                input,
-                sk_r.value.as_slice(),
-                info,
-                aad,
-            )
-            .map_err(|_| CryptoError::HpkeDecryptionError)
-    }
-
-    /// Derive a new HPKE keypair from a given Secret.
-    pub(crate) fn derive_hpke_keypair(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        ikm: &Secret,
-    ) -> HpkeKeyPair {
-        crypto.derive_hpke_keypair(
-            HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead),
-            &ikm.value,
-        )
+    /// Build an [`HpkeConfi`] for this cipher suite.
+    pub(crate) fn hpke_config(&self) -> HpkeConfig {
+        HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead)
     }
 }
 
