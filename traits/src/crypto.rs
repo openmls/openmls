@@ -2,7 +2,9 @@
 //!
 //! This trait defines all cryptographic functions used by OpenMLS.
 
-use crate::types::{AeadType, CryptoError, HashType, SignatureScheme};
+use crate::types::{
+    AeadType, CryptoError, HashType, HpkeCiphertext, HpkeConfig, HpkeKeyPair, SignatureScheme,
+};
 
 pub trait OpenMlsCrypto {
     /// Check whether the [`SignatureScheme`] is supported or not.
@@ -87,4 +89,30 @@ pub trait OpenMlsCrypto {
     /// Returns an error if the [`SignatureScheme`] is not supported or an error
     /// occurs during signature generation.
     fn sign(&self, alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError>;
+
+    // === HPKE === //
+
+    /// HPKE single-shot encryption of `ptxt` to `pk_r`, using `info` and `aad`.
+    fn hpke_seal(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+        ptxt: &[u8],
+    ) -> HpkeCiphertext;
+
+    /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and
+    /// `aad`.
+    fn hpke_open(
+        &self,
+        config: HpkeConfig,
+        input: &HpkeCiphertext,
+        sk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>, CryptoError>;
+
+    /// Derive a new HPKE keypair from a given input key material.
+    fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> HpkeKeyPair;
 }

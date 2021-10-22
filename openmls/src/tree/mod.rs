@@ -21,6 +21,8 @@ pub(crate) use errors::*;
 pub use hashes::*;
 use index::*;
 use node::*;
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::HpkeCiphertext;
 use openmls_traits::OpenMlsCryptoProvider;
 use private_tree::PrivateTree;
 use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
@@ -357,9 +359,13 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret_bytes =
-            self.ciphersuite
-                .hpke_open(hpke_ciphertext, private_key, group_context, &[])?;
+        let secret_bytes = self.ciphersuite.hpke_open(
+            backend.crypto(),
+            hpke_ciphertext,
+            private_key,
+            group_context,
+            &[],
+        )?;
         let path_secret =
             Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
@@ -516,7 +522,12 @@ impl RatchetTree {
         self.set_parent_hashes(backend, own_index);
         if let Some(new_leaves_indexes) = new_leaves_indexes_option {
             let update_path_nodes = self
-                .encrypt_to_copath(new_public_keys, group_context, new_leaves_indexes)
+                .encrypt_to_copath(
+                    backend.crypto(),
+                    new_public_keys,
+                    group_context,
+                    new_leaves_indexes,
+                )
                 .unwrap();
             Some(update_path_nodes)
         } else {
@@ -527,6 +538,7 @@ impl RatchetTree {
     /// Encrypt the path secrets to the co path and return the update path.
     fn encrypt_to_copath(
         &self,
+        crypto: &impl OpenMlsCrypto,
         public_keys: Vec<HpkePublicKey>,
         group_context: &[u8],
         new_leaves_indexes: HashSet<&LeafIndex>,
@@ -557,6 +569,7 @@ impl RatchetTree {
                 .map(|&index| {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
                     self.ciphersuite.hpke_seal_secret(
+                        crypto,
                         pk,
                         group_context,
                         &[],
