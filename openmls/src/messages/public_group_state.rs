@@ -32,9 +32,10 @@ use crate::{
 ///     uint32 signer_index;
 ///     opaque signature<0..2^16-1>;
 /// } PublicGroupState;
+/// ```
 ///
 /// A `PublicGroupState` can be created by verifying a
-/// `VerifiablePublicGroupState`. ```
+/// `VerifiablePublicGroupState`.
 #[derive(PartialEq, Debug, TlsSerialize, TlsSize)]
 pub struct PublicGroupState {
     pub(crate) ciphersuite: CiphersuiteName,
