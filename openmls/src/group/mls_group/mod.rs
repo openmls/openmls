@@ -9,18 +9,18 @@ mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
 
-use crate::ciphersuite::signable::Verifiable;
+use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
+use crate::group::mls_group::create_commit::Proposals;
+use crate::group::*;
+use crate::key_packages::*;
+use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 use crate::{ciphersuite::*, config::ProtocolVersion};
-use crate::{
-    group::{mls_group::create_commit::Proposals, *},
-    key_packages::*,
-};
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -473,7 +473,8 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, CredentialError> {
-        PublicGroupState::new(self, credential_bundle, backend)
+        let pgs_tbs = PublicGroupStateTbs::new(backend, self);
+        pgs_tbs.sign(backend, credential_bundle)
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
