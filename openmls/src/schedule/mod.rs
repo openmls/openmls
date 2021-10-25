@@ -1032,6 +1032,21 @@ impl EpochSecrets {
             resumption_secret,
         }
     }
+    /// This function initializes the `EpochSecrets` from an all-zero
+    /// epoch-secret with the exception of the `init_secret`, which is populated
+    /// with the given `InitSecret`. This is meant to be used in the case of an
+    /// external init.
+    pub(crate) fn with_init_secret(init_secret: InitSecret) -> Self {
+        let epoch_secret = EpochSecret {
+            secret: Secret::zero(
+                init_secret.secret.ciphersuite(),
+                init_secret.secret.version(),
+            ),
+        };
+        let mut epoch_secrets = Self::new(epoch_secret, false);
+        epoch_secrets.init_secret = Some(init_secret);
+        epoch_secrets
+    }
 
     #[cfg(any(feature = "test-utils", test))]
     #[doc(hidden)]

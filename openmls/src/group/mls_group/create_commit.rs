@@ -18,12 +18,22 @@ impl MlsGroup {
         init_secret: Option<InitSecret>,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
+
+        // If an init secret is given, we consider this an external commit. In
+        // particular, if this is an external commit, we don't have an index
+        // (yet).
+        let own_index = if init_secret.is_none() {
+            None
+        } else {
+            Some(self.tree().own_node_index())
+        };
+
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             proposals_by_reference,
             proposals_by_value,
-            Some(self.tree().own_node_index()),
+            own_index,
             self.tree().leaf_count(),
         )?;
 

@@ -90,10 +90,41 @@ impl RatchetTree {
         }
     }
 
+    /// Generate a new `RatchetTree` from `Node`s, as well as the given
+    /// `Ciphersuite`. This initializes the `PrivateTree` to empty with the
+    /// `own_index` set to 0. This function performs no validation on the nodes
+    /// of the tree or its structure.
+    pub(crate) fn new_from_nodes(
+        ciphersuite: &'static Ciphersuite,
+        node_options: &[Option<Node>],
+    ) -> Self {
+        // Build a full set of nodes for the tree based on the potentially incomplete
+        // input nodes.
+        let mut nodes: Vec<Node> = Vec::with_capacity(node_options.len());
+        for (i, node_option) in node_options.iter().enumerate() {
+            if let Some(node) = node_option.clone() {
+                nodes.push(node);
+            } else if NodeIndex::from(i).is_leaf() {
+                nodes.push(Node::new_leaf(None));
+            } else {
+                nodes.push(Node::new_blank_parent_node());
+            }
+        }
+
+        let private_tree = PrivateTree::new(0u32.into());
+
+        Self {
+            ciphersuite,
+            mls_version: ciphersuite.version(),
+            nodes,
+            private_tree,
+        }
+    }
+
     /// Generate a new `RatchetTree` from `Node`s with the client's key package
     /// bundle `kpb`. The client's node must be in the list of nodes and the list
     /// of nodes must contain all nodes of the tree, including intermediates.
-    pub(crate) fn new_from_nodes(
+    pub(crate) fn new_from_nodes_and_kpb(
         kpb: KeyPackageBundle,
         node_options: &[Option<Node>],
     ) -> Result<RatchetTree, TreeError> {

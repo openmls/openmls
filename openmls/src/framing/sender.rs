@@ -60,6 +60,11 @@ pub struct Sender {
 }
 // Public functions
 impl Sender {
+    /// Returns true if the `sender_type` is `SenderType::NewMember`. Otherwise
+    /// returns false.
+    pub fn is_new_member(&self) -> bool {
+        self.sender_type == SenderType::NewMember
+    }
     pub fn is_member(&self) -> bool {
         self.sender_type == SenderType::Member
     }

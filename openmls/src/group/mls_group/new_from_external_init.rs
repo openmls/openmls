@@ -14,6 +14,16 @@ use crate::group::ExternalInitError;
 
 use super::{MlsGroup, PskFetcher};
 
+pub type ExternalInitResult = Result<
+    (
+        MlsGroup,
+        MlsPlaintext,
+        Option<Welcome>,
+        Option<KeyPackageBundle>,
+    ),
+    ExternalInitError,
+>;
+
 impl MlsGroup {
     pub(crate) fn new_from_external_init_internal(
         nodes_option: Option<Vec<Option<Node>>>,
@@ -22,10 +32,15 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         proposals_by_reference: Vec<MlsPlaintext>,
-        proposals_by_value: Vec<Proposal>,
+        mut proposals_by_value: Vec<Proposal>,
         verifiable_public_group_state: VerifiablePublicGroupState,
-    ) -> Result<(Self, MlsPlaintext), ExternalInitError> {
-        // Create a RatchetTree from the given nodes.
+    ) -> ExternalInitResult {
+        // Create a RatchetTree from the given nodes. TODO: It turns out we
+        // can't just re-use the tree creation logic from the group-from-welcome
+        // logic here, because that expects us to already be in the tree. If we
+        // want to share code here, this is going to have to be rewritten.
+        // Rewrite this as a constructor in RatchetTree that doesn't care if we
+        // have our own KPB in there, then do additional checks in the Welcome.
         let (tree, use_ratchet_tree_extension) = MlsGroup::tree_from_extension_or_nodes(
             verifiable_public_group_state.payload().tree_hash.as_slice(),
             nodes_option,
@@ -55,40 +70,51 @@ impl MlsGroup {
 
         let external_init_proposal = ExternalInitProposal::from(kem_output);
 
-        //proposals_by_value.push(Proposal::ExternalInit(external_init_proposal));
+        proposals_by_value.push(Proposal::ExternalInit(external_init_proposal));
+
+        let add_proposal = AddProposal {
+            key_package: key_package_bundle.key_package().clone(),
+        };
+
+        proposals_by_value.push(Proposal::Add(add_proposal));
+
         let pbv_references: Vec<&Proposal> = proposals_by_value.iter().map(|p| p).collect();
         let pbr_references: Vec<&MlsPlaintext> = proposals_by_reference.iter().map(|p| p).collect();
 
-        todo!()
+        // Leaving he confirmed_transcript_hash empty for now. It will later be
+        // set using the interim transcrip hash from the PGS.
+        let group_context = GroupContext::new(
+            pgs.group_id,
+            pgs.epoch,
+            pgs.tree_hash.as_slice().to_vec(),
+            vec![],
+            pgs.extensions.as_slice(),
+        );
 
-        // Filter proposals
-        //let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
-        //    ciphersuite,
-        //    &pbr_references,
-        //    &pbv_references,
-        //    Some(self.tree().own_node_index()),
-        //    self.tree().leaf_count(),
-        //)?;
+        let epoch_secrets = EpochSecrets::with_init_secret(init_secret);
+        let secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), tree.leaf_count());
 
-        //// Leaving he confirmed_transcript_hash empty for now. It will later be
-        //// set using the interim transcrip hash from the PGS.
-        //let group_context = GroupContext::new(
-        //    public_group_state.group_id,
-        //    public_group_state.epoch,
-        //    public_group_state.tree_hash.as_slice().to_vec(),
-        //    vec![],
-        //    public_group_state.extensions.as_slice(),
-        //);
+        let group = MlsGroup {
+            ciphersuite,
+            group_context,
+            epoch_secrets,
+            secret_tree: RefCell::new(secret_tree),
+            tree: RefCell::new(tree),
+            interim_transcript_hash: pgs.interim_transcript_hash.into_vec(),
+            use_ratchet_tree_extension,
+            mls_version: ciphersuite.version(),
+        };
 
-        //let group = MlsGroup {
-        //    ciphersuite,
-        //    group_context,
-        //    epoch_secrets,
-        //    secret_tree: todo!(),
-        //    tree: todo!(),
-        //    interim_transcript_hash: todo!(),
-        //    use_ratchet_tree_extension,
-        //    mls_version: todo!(),
-        //};
+        // Immediately create the commit to add ourselves to the group.
+        let (mls_plaintext, option_welcome, option_kpb) = group.create_commit(
+            aad,
+            credential_bundle,
+            &pbr_references,
+            &pbv_references,
+            true, // force self-update
+            psk_fetcher_option,
+        )?;
+
+        Ok((group, mls_plaintext, option_welcome, option_kpb))
     }
 }

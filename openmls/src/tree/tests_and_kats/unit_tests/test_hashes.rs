@@ -37,7 +37,7 @@ fn test_parent_hash() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes_and_kpb(key_package_bundle, &nodes).unwrap();
 
         assert!(tree.verify_parent_hashes().is_ok());
 

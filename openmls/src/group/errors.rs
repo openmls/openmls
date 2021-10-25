@@ -47,8 +47,6 @@ implement_error! {
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
-            ExternalInitError(ExternalInitError) =
-                "See [`TreeError`](crate::tree::TreeError) for details.",
         }
     }
 }
@@ -195,6 +193,10 @@ implement_error! {
                 "Error while creating RatchetTree.",
             KeyScheduleError(KeyScheduleError) =
                 "Error while initializing key schedule.",
+            ProposalQueueError(ProposalQueueError) =
+                "Error while processing proposals.",
+            MlsGroupError(MlsGroupError) =
+                "Error while creating commit.",
         }
     }
 }

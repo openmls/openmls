@@ -232,7 +232,7 @@ impl MlsGroup {
                 }
             }
         };
-        let tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes)?;
+        let tree = RatchetTree::new_from_nodes_and_kpb(key_package_bundle, &nodes)?;
 
         // Verify tree hash
         let tree_hash = tree.tree_hash();
