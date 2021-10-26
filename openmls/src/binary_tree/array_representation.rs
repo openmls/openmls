@@ -2,7 +2,7 @@ use super::treemath::*;
 use super::NodeIndex;
 use super::TreeSize;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 /// A representation of a full, left-balanced binary tree that uses a simple
 /// vector to store nodes.
 pub(crate) struct ABinaryTree<T: Default + Clone> {
