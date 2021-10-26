@@ -13,9 +13,9 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
 
     // Some basic setup functions for the managed group.
     let managed_group_config =
-        ManagedGroupConfig::new()
-        .with_wire_format(WireFormat::MlsPlaintext)
-        .with_padding_size(10);
+        ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .padding_size(10).build();
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, CodecUse::StructMessages);
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.

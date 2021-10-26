@@ -63,7 +63,9 @@ fn test_managed_group_persistence() {
             .unwrap();
 
     // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::new().with_wire_format(WireFormat::MlsPlaintext);
+    let managed_group_config = ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .build();
 
     // === Alice creates a group ===
 
@@ -145,7 +147,7 @@ fn remover() {
             .unwrap();
 
     // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::new();
+    let mut managed_group_config = ManagedGroupConfig::default();
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
@@ -188,7 +190,7 @@ fn remover() {
         .expect("The group is no longer active");
 
     let charlie_callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = managed_group_config.with_callbacks(charlie_callbacks);
+    managed_group_config.set_callbacks(&charlie_callbacks);
     let mut charlie_group = ManagedGroup::new_from_welcome(
         crypto,
         &managed_group_config,
@@ -257,7 +259,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         .unwrap();
 
     // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::new().with_wire_format(WireFormat::MlsPlaintext);
+    let managed_group_config = ManagedGroupConfig::builder().wire_format(WireFormat::MlsPlaintext).build();
 
     // === Alice creates a group ===
     let alice_group = ManagedGroup::new(
@@ -295,9 +297,10 @@ fn test_invalid_plaintext() {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let managed_group_config = ManagedGroupConfig::new()
-        .with_wire_format(WireFormat::MlsPlaintext)
-        .with_padding_size(10);
+    let managed_group_config = ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .padding_size(10)
+        .build();
 
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(

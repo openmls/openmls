@@ -31,7 +31,7 @@ use crate::{
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 use crate::{
-    group::{ManagedGroupCallbacks, ManagedGroupConfig, MlsMessageOut},
+    group::{ManagedGroupCallbacks, MlsMessageOut},
     prelude::MlsPlaintextContentType,
     test_utils::{
         bytes_to_hex,
@@ -307,7 +307,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
     use crate::{
-        extensions::RatchetTreeExtension, group::WireFormat, prelude::KeyPackageBundle,
+        extensions::RatchetTreeExtension,
+        group::{ManagedGroupConfigBuilder, WireFormat},
+        prelude::KeyPackageBundle,
         test_utils::test_framework::CodecUse,
     };
 
@@ -319,9 +321,10 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     }
     // Set up a group with `n_leaves` members.
     let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new()
-        .with_wire_format(WireFormat::MlsPlaintext)
-        .with_callbacks(callbacks);
+    let managed_group_config = ManagedGroupConfigBuilder::new()
+        .wire_format(WireFormat::MlsPlaintext)
+        .callbacks(callbacks)
+        .build();
 
     let setup = ManagedTestSetup::new(
         managed_group_config,

@@ -12,9 +12,10 @@ mod utils;
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
 fn default_managed_group_config() -> ManagedGroupConfig {
-    ManagedGroupConfig::new()
-        .with_wire_format(WireFormat::MlsPlaintext)
-        .with_padding_size(10)
+    ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .padding_size(10)
+        .build()
 }
 
 // # 1:1 join

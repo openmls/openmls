@@ -24,54 +24,9 @@ pub struct ManagedGroupConfig {
 }
 
 impl ManagedGroupConfig {
-    /// Creates a new ManagedGroupConfig with default values.
-    /// Use the `with_*()` builder functions to set different values for
-    /// the properties.
-    pub fn new() -> Self {
-        ManagedGroupConfig {
-            wire_format: WireFormat::MlsCiphertext,
-            update_policy: UpdatePolicy::default(),
-            padding_size: 0,
-            number_of_resumption_secrets: 0,
-            use_ratchet_tree_extension: false,
-            callbacks: ManagedGroupCallbacks::default(),
-        }
-    }
-
-    /// Sets the `wire_format` property of the ManagedGroupConfig.
-    pub fn with_wire_format(mut self, wire_format: WireFormat) -> Self {
-        self.wire_format = wire_format;
-        self
-    }
-
-    /// Sets the `update_policy` property of the ManagedGroupConfig.
-    pub fn with_update_policy(mut self, update_policy: UpdatePolicy) -> Self {
-        self.update_policy = update_policy;
-        self
-    }
-
-    /// Sets the `padding_size` property of the ManagedGroupConfig.
-    pub fn with_padding_size(mut self, padding_size: usize) -> Self {
-        self.padding_size = padding_size;
-        self
-    }
-
-    /// Sets the `number_of_resumption_secrets` property of the ManagedGroupConfig.
-    pub fn with_number_of_resumtion_secrets(mut self, number_of_resumption_secrets: usize) -> Self {
-        self.number_of_resumption_secrets = number_of_resumption_secrets;
-        self
-    }
-
-    /// Sets the `use_ratchet_tree_extension` property of the ManagedGroupConfig.
-    pub fn with_use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
-        self.use_ratchet_tree_extension = use_ratchet_tree_extension;
-        self
-    }
-
-    /// Sets the `callbacks` property of the ManagedGroupConfig.
-    pub fn with_callbacks(mut self, callbacks: ManagedGroupCallbacks) -> Self {
-        self.callbacks = callbacks;
-        self
+    /// Returns a builder for [`ManagedGroupConfig`]
+    pub fn builder() -> ManagedGroupConfigBuilder {
+        ManagedGroupConfigBuilder::new()
     }
 
     /// Get the [`ManagedGroupConfig`] wire format.
@@ -104,15 +59,82 @@ impl ManagedGroupConfig {
         &self.callbacks
     }
 
+    /// Sets the callbacks
+    /// XXX: This will disappear once the new validation API is done
+    pub fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
+        self.callbacks = *callbacks;
+    }
+
     #[cfg(test)]
     pub fn test_default() -> Self {
-        Self::new().with_wire_format(WireFormat::MlsPlaintext)
+        Self::builder()
+            .wire_format(WireFormat::MlsPlaintext)
+            .build()
     }
 }
 
 impl Default for ManagedGroupConfig {
     fn default() -> Self {
-        Self::new()
+        ManagedGroupConfig {
+            wire_format: WireFormat::MlsCiphertext,
+            update_policy: UpdatePolicy::default(),
+            padding_size: 0,
+            number_of_resumption_secrets: 0,
+            use_ratchet_tree_extension: false,
+            callbacks: ManagedGroupCallbacks::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ManagedGroupConfigBuilder {
+    config: ManagedGroupConfig,
+}
+impl ManagedGroupConfigBuilder {
+    pub fn new() -> Self {
+        ManagedGroupConfigBuilder {
+            config: ManagedGroupConfig::default(),
+        }
+    }
+
+    /// Sets the `wire_format` property of the ManagedGroupConfig.
+    pub fn wire_format(mut self, wire_format: WireFormat) -> Self {
+        self.config.wire_format = wire_format;
+        self
+    }
+
+    /// Sets the `update_policy` property of the ManagedGroupConfig.
+    pub fn update_policy(mut self, update_policy: UpdatePolicy) -> Self {
+        self.config.update_policy = update_policy;
+        self
+    }
+
+    /// Sets the `padding_size` property of the ManagedGroupConfig.
+    pub fn padding_size(mut self, padding_size: usize) -> Self {
+        self.config.padding_size = padding_size;
+        self
+    }
+
+    /// Sets the `number_of_resumption_secrets` property of the ManagedGroupConfig.
+    pub fn number_of_resumtion_secrets(mut self, number_of_resumption_secrets: usize) -> Self {
+        self.config.number_of_resumption_secrets = number_of_resumption_secrets;
+        self
+    }
+
+    /// Sets the `use_ratchet_tree_extension` property of the ManagedGroupConfig.
+    pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
+        self.config.use_ratchet_tree_extension = use_ratchet_tree_extension;
+        self
+    }
+
+    /// Sets the `callbacks` property of the ManagedGroupConfig.
+    pub fn callbacks(mut self, callbacks: ManagedGroupCallbacks) -> Self {
+        self.config.callbacks = callbacks;
+        self
+    }
+
+    pub fn build(self) -> ManagedGroupConfig {
+        self.config
     }
 }
 

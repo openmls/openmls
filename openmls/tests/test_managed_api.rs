@@ -8,7 +8,9 @@ mod utils;
 #[test]
 fn test_managed_api() {
     // Some basic setup functions for the managed group.
-    let managed_group_config = ManagedGroupConfig::new().with_wire_format(WireFormat::MlsPlaintext);
+    let managed_group_config = ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .build();
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(
         managed_group_config,
