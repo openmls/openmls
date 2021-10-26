@@ -27,28 +27,27 @@ pub type ExternalInitResult = Result<
 impl MlsGroup {
     pub(crate) fn new_from_external_init_internal(
         nodes_option: Option<Vec<Option<Node>>>,
-        key_package_bundle: KeyPackageBundle,
         psk_fetcher_option: Option<PskFetcher>,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals_by_reference: Vec<MlsPlaintext>,
-        mut proposals_by_value: Vec<Proposal>,
+        proposals_by_reference: &[MlsPlaintext],
+        proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
     ) -> ExternalInitResult {
-        // Create a RatchetTree from the given nodes. TODO: It turns out we
-        // can't just re-use the tree creation logic from the group-from-welcome
-        // logic here, because that expects us to already be in the tree. If we
-        // want to share code here, this is going to have to be rewritten.
-        // Rewrite this as a constructor in RatchetTree that doesn't care if we
-        // have our own KPB in there, then do additional checks in the Welcome.
+        let ciphersuite = Config::ciphersuite(verifiable_public_group_state.payload().ciphersuite)?;
+
+        // Create a RatchetTree from the given nodes. We have to do this before
+        // verifying the PGS, since we need to find the Credential to verify the
+        // signature against.
         let (tree, use_ratchet_tree_extension) = MlsGroup::tree_from_extension_or_nodes(
+            ciphersuite,
             verifiable_public_group_state.payload().tree_hash.as_slice(),
             nodes_option,
             verifiable_public_group_state
                 .payload()
                 .extensions
                 .as_slice(),
-            key_package_bundle,
+            None,
         )?;
 
         // Verify the public group state using the credential of the signer.
@@ -64,22 +63,22 @@ impl MlsGroup {
             .verify(pgs_signer_credential)
             .map_err(|_| ExternalInitError::InvalidPublicGroupState)?;
 
-        let ciphersuite = Config::ciphersuite(pgs.ciphersuite)?;
-
         let (init_secret, kem_output) = InitSecret::from_public_group_state(&pgs)?;
 
-        let external_init_proposal = ExternalInitProposal::from(kem_output);
+        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
-        proposals_by_value.push(Proposal::ExternalInit(external_init_proposal));
+        let key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], credential_bundle, vec![])?;
 
-        let add_proposal = AddProposal {
+        let add_proposal = Proposal::Add(AddProposal {
             key_package: key_package_bundle.key_package().clone(),
-        };
+        });
 
-        proposals_by_value.push(Proposal::Add(add_proposal));
-
-        let pbv_references: Vec<&Proposal> = proposals_by_value.iter().map(|p| p).collect();
+        let mut pbv_references: Vec<&Proposal> = proposals_by_value.iter().map(|p| p).collect();
         let pbr_references: Vec<&MlsPlaintext> = proposals_by_reference.iter().map(|p| p).collect();
+
+        pbv_references.push(&add_proposal);
+        pbv_references.push(&external_init_proposal);
 
         // Leaving he confirmed_transcript_hash empty for now. It will later be
         // set using the interim transcrip hash from the PGS.

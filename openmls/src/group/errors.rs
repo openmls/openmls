@@ -7,6 +7,7 @@ use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
+use crate::key_packages::KeyPackageError;
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
@@ -196,6 +197,8 @@ implement_error! {
             ProposalQueueError(ProposalQueueError) =
                 "Error while processing proposals.",
             MlsGroupError(MlsGroupError) =
+                "Error while creating commit.",
+            KeyPackageError(KeyPackageError) =
                 "Error while creating commit.",
         }
     }

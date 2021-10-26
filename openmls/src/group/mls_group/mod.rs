@@ -8,6 +8,8 @@ mod new_from_welcome;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
+mod test_external_init;
+#[cfg(test)]
 mod test_mls_group;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
@@ -32,6 +34,8 @@ use std::io::{Error, Read, Write};
 
 use std::cell::RefMut;
 use tls_codec::Serialize as TlsSerializeTrait;
+
+use self::new_from_external_init::ExternalInitResult;
 
 use super::errors::{ExporterError, MlsGroupError, PskError};
 
@@ -141,26 +145,23 @@ impl MlsGroup {
     /// It returns the new `MlsGroup` object, as well as the `MlsPlaintext`
     /// containing the commit.
     pub fn new_from_external_init(
-        nodes: Option<Vec<Option<Node>>>,
-        kpb: KeyPackageBundle,
+        nodes_option: Option<Vec<Option<Node>>>,
         psk_fetcher_option: Option<PskFetcher>,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[&MlsPlaintext],
-        proposals_by_value: &[&Proposal],
-        public_group_state: &PublicGroupState,
-    ) -> Result<(Self, MlsPlaintext), MlsGroupError> {
-        todo!()
-        //Ok(Self::new_from_external_init_internal(
-        //    nodes,
-        //    kpb,
-        //    psk_fetcher_option,
-        //    aad,
-        //    credential_bundle,
-        //    proposals_by_reference,
-        //    proposals_by_value,
-        //    public_group_state,
-        //)?)
+        proposals_by_reference: &[MlsPlaintext],
+        proposals_by_value: &[Proposal],
+        verifiable_public_group_state: VerifiablePublicGroupState,
+    ) -> ExternalInitResult {
+        Self::new_from_external_init_internal(
+            nodes_option,
+            psk_fetcher_option,
+            aad,
+            credential_bundle,
+            proposals_by_reference,
+            proposals_by_value,
+            verifiable_public_group_state,
+        )
     }
 
     // === Create handshake messages ===
@@ -465,7 +466,7 @@ impl MlsGroup {
         &self,
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, CredentialError> {
-        let pgs_tbs = PublicGroupStateTbs::new(self, credential_bundle);
+        let pgs_tbs = PublicGroupStateTbs::new(self);
         pgs_tbs.sign(credential_bundle)
     }
 

@@ -1081,7 +1081,10 @@ impl ManagedGroup {
             Proposal::ReInit(reinit_proposal) => {
                 GroupEvent::ReInit(ReInitEvent::new(self.aad.to_vec(), reinit_proposal.clone()))
             }
-            Proposal::ExternalInit(_) => todo!(),
+            // ReInit proposal
+            Proposal::ExternalInit(_) => {
+                GroupEvent::ExternalInit(ExternalInitEvent::new(&self.aad))
+            }
         }
     }
 

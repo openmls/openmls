@@ -74,10 +74,11 @@ impl MlsGroup {
 
         // Build the ratchet tree
         let (mut tree, use_ratchet_tree_extension) = Self::tree_from_extension_or_nodes(
+            ciphersuite,
             group_info.tree_hash(),
             nodes_option,
             group_info.extensions(),
-            key_package_bundle,
+            Some(key_package_bundle),
         )?;
 
         // Verify GroupInfo signature
@@ -184,10 +185,11 @@ impl MlsGroup {
     /// newly created tree. Returns a WelcomeError if there is more than one
     /// RatchetTreeExtension or if no ratchet tree can be found.
     pub(crate) fn tree_from_extension_or_nodes(
+        ciphersuite: &'static Ciphersuite,
         reference_tree_hash: &[u8],
         nodes_option: Option<Vec<Option<Node>>>,
         extensions: &[Extension],
-        key_package_bundle: KeyPackageBundle,
+        key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(RatchetTree, bool), WelcomeError> {
         // First check the extensions to see if the tree is in there.
         let mut ratchet_tree_extensions = extensions
@@ -232,7 +234,11 @@ impl MlsGroup {
                 }
             }
         };
-        let tree = RatchetTree::new_from_nodes_and_kpb(key_package_bundle, &nodes)?;
+        let tree = if let Some(key_package_bundle) = key_package_bundle_option {
+            RatchetTree::new_with_key_package_bundle(key_package_bundle, &nodes)?
+        } else {
+            RatchetTree::new_from_nodes(ciphersuite, &nodes)
+        };
 
         // Verify tree hash
         let tree_hash = tree.tree_hash();

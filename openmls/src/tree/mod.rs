@@ -90,16 +90,41 @@ impl RatchetTree {
         }
     }
 
-    /// Generate a new `RatchetTree` from `Node`s, as well as the given
-    /// `Ciphersuite`. This initializes the `PrivateTree` to empty with the
-    /// `own_index` set to 0. This function performs no validation on the nodes
-    /// of the tree or its structure.
+    /// Generate a new `RatchetTree` from `Node`s and a `KeyPackageBundle`. If
+    /// the nodes don't contain a leaf with a `KeyPackage` corresponding to the
+    /// given `KeyPackageBundle`, this function returns an error.
+    pub(crate) fn new_with_key_package_bundle(
+        key_package_bundle: KeyPackageBundle,
+        node_options: &[Option<Node>],
+    ) -> Result<RatchetTree, TreeError> {
+        let ciphersuite = key_package_bundle.key_package().ciphersuite();
+        let mut tree = Self::new_from_nodes(ciphersuite, node_options);
+
+        let mut own_node_index = None;
+        for (i, node) in tree.nodes.iter().enumerate() {
+            if let Some(kp) = &node.key_package {
+                if key_package_bundle.key_package() == kp {
+                    // Unwrapping here is safe, because we know it is a leaf node
+                    own_node_index = Some(LeafIndex::try_from(NodeIndex::from(i)).unwrap());
+                }
+            }
+        }
+
+        let leaf_index = own_node_index.ok_or(TreeError::InvalidTree)?;
+        let leaf_secret = key_package_bundle.leaf_secret();
+        tree.private_tree = PrivateTree::from_leaf_secret(leaf_index, leaf_secret);
+
+        Ok(tree)
+    }
+
+    /// Generate a new `RatchetTree` from `Node`s, initializing the
+    /// `own_leaf_index` to 0 and the `PrivateTree` to empty.
     pub(crate) fn new_from_nodes(
         ciphersuite: &'static Ciphersuite,
         node_options: &[Option<Node>],
-    ) -> Self {
-        // Build a full set of nodes for the tree based on the potentially incomplete
-        // input nodes.
+    ) -> RatchetTree {
+        // Build a full set of nodes for the tree based on the potentially
+        // incomplete input nodes.
         let mut nodes: Vec<Node> = Vec::with_capacity(node_options.len());
         for (i, node_option) in node_options.iter().enumerate() {
             if let Some(node) = node_option.clone() {
@@ -111,52 +136,15 @@ impl RatchetTree {
             }
         }
 
-        let private_tree = PrivateTree::new(0u32.into());
+        let private_tree = PrivateTree::new(LeafIndex::from(0u32));
+        let mls_version = ciphersuite.version();
 
         Self {
             ciphersuite,
-            mls_version: ciphersuite.version(),
+            mls_version,
             nodes,
             private_tree,
         }
-    }
-
-    /// Generate a new `RatchetTree` from `Node`s with the client's key package
-    /// bundle `kpb`. The client's node must be in the list of nodes and the list
-    /// of nodes must contain all nodes of the tree, including intermediates.
-    pub(crate) fn new_from_nodes_and_kpb(
-        kpb: KeyPackageBundle,
-        node_options: &[Option<Node>],
-    ) -> Result<RatchetTree, TreeError> {
-        // Build a full set of nodes for the tree based on the potentially incomplete
-        // input nodes.
-        let mut nodes: Vec<Node> = Vec::with_capacity(node_options.len());
-        let mut own_node_index = None;
-        for (i, node_option) in node_options.iter().enumerate() {
-            if let Some(node) = node_option.clone() {
-                if let Some(kp) = &node.key_package {
-                    if kp == kpb.key_package() {
-                        // Unwrapping here is safe, because we know it is a leaf node
-                        own_node_index = Some(LeafIndex::try_from(NodeIndex::from(i)).unwrap());
-                    }
-                }
-                nodes.push(node);
-            } else if NodeIndex::from(i).is_leaf() {
-                nodes.push(Node::new_leaf(None));
-            } else {
-                nodes.push(Node::new_blank_parent_node());
-            }
-        }
-
-        let own_node_index = own_node_index.ok_or(TreeError::InvalidArguments)?;
-        let private_tree = PrivateTree::from_leaf_secret(own_node_index, kpb.leaf_secret());
-
-        Ok(Self {
-            ciphersuite: kpb.leaf_secret().ciphersuite(),
-            mls_version: kpb.leaf_secret().version(),
-            nodes,
-            private_tree,
-        })
     }
 
     /// Return a mutable reference to the `PrivateTree`.

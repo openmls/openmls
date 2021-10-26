@@ -1,6 +1,5 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::config::ProtocolVersion;
-use crate::credentials::*;
 use crate::extensions::*;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
@@ -507,7 +506,7 @@ pub(crate) struct PublicGroupStateTbs {
 impl PublicGroupStateTbs {
     /// Creates a new `PublicGroupStateTbs` struct from the current internal state
     /// of the group.
-    pub(crate) fn new(mls_group: &MlsGroup, credential_bundle: &CredentialBundle) -> Self {
+    pub(crate) fn new(mls_group: &MlsGroup) -> Self {
         let ciphersuite = mls_group.ciphersuite();
         let (_external_priv, external_pub) = mls_group
             .epoch_secrets()

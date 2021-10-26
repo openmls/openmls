@@ -46,7 +46,7 @@ fn test_trim() {
         println!("final number of nodes: {:?}", nodes.len());
 
         let key_package_bundle = key_package_bundles.remove(0);
-        let mut tree = RatchetTree::new_from_nodes_and_kpb(key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
 
         let size_untrimmed = tree.tree_size();
         println!("size untrimmed: {:?}", size_untrimmed);

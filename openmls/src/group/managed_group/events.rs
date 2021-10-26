@@ -135,14 +135,6 @@ pub struct ReInitEvent {
     re_init_proposal: ReInitProposal,
 }
 
-/// Event that occurs when an `ExternalInit` is received.
-/// `new_member` contains the `Credential` of the new member.
-#[derive(Debug, PartialEq, Clone)]
-pub struct ExternalInitEvent {
-    aad: Vec<u8>,
-    new_member: Credential,
-}
-
 impl ReInitEvent {
     pub(crate) fn new(aad: Vec<u8>, re_init_proposal: ReInitProposal) -> Self {
         Self {
@@ -252,5 +244,18 @@ impl Removal {
         } else {
             Self::TheyWereRemovedBy(leaver_credential, remover_credential)
         }
+    }
+}
+
+/// Event that occurs when an `ExternalInit` is received.
+/// `new_member` contains the `Credential` of the new member.
+#[derive(Debug, PartialEq, Clone)]
+pub struct ExternalInitEvent {
+    aad: Vec<u8>,
+}
+
+impl ExternalInitEvent {
+    pub(crate) fn new(aad: &[u8]) -> Self {
+        Self { aad: aad.to_vec() }
     }
 }
