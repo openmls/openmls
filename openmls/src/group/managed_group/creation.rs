@@ -5,18 +5,24 @@ impl ManagedGroup {
 
     /// Creates a new group from scratch with only the creator as a member. This
     /// function removes the `KeyPackageBundle` corresponding to the
-    /// `key_package_hash` from the `key_store`. Throws an error if no
+    /// `key_package_hash` from the `backend`. Throws an error if no
     /// `KeyPackageBundle` can be found.
     pub fn new(
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
         managed_group_config: &ManagedGroupConfig,
         group_id: GroupId,
         key_package_hash: &[u8],
     ) -> Result<Self, ManagedGroupError> {
         // TODO #141
-        let key_package_bundle = key_store
-            .take_key_package_bundle(key_package_hash)
+        let kph = key_package_hash.to_vec();
+        let key_package_bundle: KeyPackageBundle = backend
+            .key_store()
+            .read(&kph)
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
+        backend
+            .key_store()
+            .delete(&kph)
+            .map_err(|_| ManagedGroupError::KeyStoreError)?;
         let group_config = MlsGroupConfig {
             add_ratchet_tree_extension: managed_group_config.use_ratchet_tree_extension,
             ..Default::default()
@@ -24,6 +30,7 @@ impl ManagedGroup {
         let group = MlsGroup::new(
             group_id.as_slice(),
             key_package_bundle.key_package().ciphersuite_name(),
+            backend,
             key_package_bundle,
             group_config,
             None, /* Initial PSK */
@@ -51,7 +58,7 @@ impl ManagedGroup {
 
     /// Creates a new group from a `Welcome` message
     pub fn new_from_welcome(
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
         managed_group_config: &ManagedGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
@@ -61,10 +68,15 @@ impl ManagedGroup {
         let key_package_bundle = welcome
             .secrets()
             .iter()
-            .find_map(|egs| key_store.take_key_package_bundle(egs.key_package_hash.as_slice()))
+            .find_map(|egs| {
+                backend
+                    .key_store()
+                    .read(&egs.key_package_hash.as_slice().to_vec())
+            })
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141
-        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None)?;
+        let group =
+            MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None, backend)?;
 
         let managed_group = ManagedGroup {
             managed_group_config: managed_group_config.clone(),

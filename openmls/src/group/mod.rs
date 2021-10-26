@@ -8,7 +8,7 @@
 pub mod errors;
 mod group_context;
 mod managed_group;
-mod mls_group;
+pub mod mls_group;
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests;
@@ -17,6 +17,8 @@ use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;
 
+use openmls_traits::random::OpenMlsRand;
+use openmls_traits::OpenMlsCryptoProvider;
 pub(crate) use serde::{Deserialize, Serialize};
 
 pub use errors::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError, WelcomeError};
@@ -35,9 +37,9 @@ pub struct GroupId {
 }
 
 impl GroupId {
-    pub fn random(ciphersuite: &Ciphersuite) -> Self {
+    pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
-            value: ciphersuite.randombytes(16).into(),
+            value: rng.rand().random_vec(16).unwrap().into(),
         }
     }
     pub fn from_slice(bytes: &[u8]) -> Self {
@@ -107,4 +109,13 @@ impl Default for MlsGroupConfig {
             additional_as_epochs: 0,
         }
     }
+}
+
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+#[repr(u8)]
+pub enum WireFormat {
+    MlsPlaintext = 1,
+    MlsCiphertext = 2,
 }

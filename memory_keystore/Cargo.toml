@@ -1,0 +1,7 @@
+[package]
+name = "memory_keystore"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+openmls_traits = { version = "0.1", path = "../traits" }

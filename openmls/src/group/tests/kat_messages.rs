@@ -6,8 +6,8 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::GroupEpoch,
-    messages::{Commit, GroupInfo, GroupSecrets, PublicGroupState},
+    group::{create_commit::Proposals, GroupEpoch, WireFormat},
+    messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
     prelude::*,
@@ -15,6 +15,8 @@ use crate::{
     utils::*,
 };
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
 
@@ -48,24 +50,28 @@ pub struct MessagesTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite_name = ciphersuite.name();
     let credential_bundle = CredentialBundle::new(
         b"OpenMLS rocks".to_vec(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite_name),
+        &crypto,
     )
     .unwrap();
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
+            .unwrap();
     let capabilities = CapabilitiesExtension::default();
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let group_id = GroupId::random(ciphersuite);
+    let group_id = GroupId::random(&crypto);
     let config = MlsGroupConfig::default();
     let mut group = MlsGroup::new(
         group_id.as_slice(),
         ciphersuite_name,
+        &crypto,
         key_package_bundle,
         config,
         None,
@@ -79,23 +85,31 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let group_info = GroupInfoPayload::new(
         group_id.clone(),
         GroupEpoch(0),
-        ciphersuite.randombytes(ciphersuite.hash_length()),
-        ciphersuite.randombytes(ciphersuite.hash_length()),
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
         ))],
         ConfirmationTag(Mac {
-            mac_value: ciphersuite.randombytes(ciphersuite.hash_length()).into(),
+            mac_value: crypto
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .unwrap()
+                .into(),
         }),
         LeafIndex::from(random_u32()),
     );
-    let group_info = group_info.sign(&credential_bundle).unwrap();
-    let group_secrets = GroupSecrets::random_encoded(ciphersuite, ProtocolVersion::default());
-    let public_group_state = group.export_public_group_state(&credential_bundle).unwrap();
+    let group_info = group_info.sign(&crypto, &credential_bundle).unwrap();
+    let group_secrets =
+        GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
+    let public_group_state = group
+        .export_public_group_state(&crypto, &credential_bundle)
+        .unwrap();
 
     // Create some proposals
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
+            .unwrap();
     let key_package = key_package_bundle.key_package();
 
     let add_proposal = AddProposal {
@@ -111,9 +125,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let psk_id = PreSharedKeyId::new(
         PskType::External,
         Psk::External(ExternalPsk::new(
-            ciphersuite.randombytes(ciphersuite.hash_length()),
+            crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
         )),
-        ciphersuite.randombytes(ciphersuite.hash_length()),
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
     );
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);
@@ -131,23 +145,30 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     // We don't support app ack proposals yet.
     let app_ack_proposal = tls_codec::TlsByteVecU32::new(Vec::new());
     let joiner_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
+            .unwrap();
+
+    let framing_parameters = FramingParameters::new(b"aad", WireFormat::MlsCiphertext);
 
     let add_proposal_pt = group
         .create_add_proposal(
-            b"aad",
+            framing_parameters,
             &credential_bundle,
             joiner_key_package_bundle.key_package().clone(),
+            &crypto,
         )
         .unwrap();
     let (commit_pt, welcome_option, _option_kpb) = group
         .create_commit(
-            b"aad",
+            framing_parameters,
             &credential_bundle,
-            &[&add_proposal_pt],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&add_proposal_pt],
+                proposals_by_value: &[],
+            },
             true,
             None,
+            &crypto,
         )
         .unwrap();
     let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
@@ -157,9 +178,15 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     };
     let welcome = welcome_option.unwrap();
     let mls_ciphertext_application = group
-        .create_application_message(b"aad", b"msg", &credential_bundle, random_u8() as usize)
+        .create_application_message(
+            b"aad",
+            b"msg",
+            &credential_bundle,
+            random_u8() as usize,
+            &crypto,
+        )
         .unwrap();
-    let mls_plaintext_application = group.decrypt(&mls_ciphertext_application).unwrap();
+    let mls_plaintext_application = group.decrypt(&mls_ciphertext_application, &crypto).unwrap();
 
     let encryption_target = match random_u32() % 3 {
         0 => commit_pt.clone(),
@@ -169,7 +196,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     };
 
     let mls_ciphertext = group
-        .encrypt(encryption_target, random_u8() as usize)
+        .encrypt(encryption_target, random_u8() as usize, &crypto)
         .unwrap();
 
     MessagesTestVector {
@@ -337,7 +364,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // PublicGroupState
     let tv_public_group_state = hex_to_bytes(&tv.public_group_state);
     let my_public_group_state =
-        PublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
+        VerifiablePublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
             .unwrap()
             .tls_serialize_detached()
             .unwrap();

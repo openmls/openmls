@@ -3,6 +3,9 @@
 //! that client perform certain MLS operations.
 use std::{cell::RefCell, collections::HashMap};
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+
 use crate::{group::MlsMessageIn, node::Node, prelude::*};
 
 use super::{errors::ClientError, ActionType};
@@ -17,7 +20,7 @@ pub struct Client {
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
     pub credentials: HashMap<CiphersuiteName, Credential>,
-    pub key_store: KeyStore,
+    pub crypto: OpenMlsRustCrypto,
     pub groups: RefCell<HashMap<GroupId, ManagedGroup>>,
 }
 
@@ -39,11 +42,24 @@ impl Client {
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let mandatory_extensions: Vec<Extension> =
             vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
-        let key_package: KeyPackage = self
-            .key_store
-            .generate_key_package_bundle(ciphersuites, credential, mandatory_extensions)
+        let credential_bundle: CredentialBundle = self
+            .crypto
+            .key_store()
+            .read(credential.signature_key())
+            .ok_or(ClientError::NoMatchingCredential)?;
+        let kpb = KeyPackageBundle::new(
+            ciphersuites,
+            &credential_bundle,
+            &self.crypto,
+            mandatory_extensions,
+        )
+        .unwrap();
+        let kp = kpb.key_package().clone();
+        self.crypto
+            .key_store()
+            .store(&kp.hash(&self.crypto), &kpb)
             .unwrap();
-        Ok(key_package)
+        Ok(kp)
     }
 
     /// Create a group with the given `group_id`, `ciphersuite` and
@@ -61,15 +77,28 @@ impl Client {
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let mandatory_extensions: Vec<Extension> =
             vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
-        let key_package: KeyPackage = self
-            .key_store
-            .generate_key_package_bundle(&[ciphersuite.name()], credential, mandatory_extensions)
+        let credential_bundle: CredentialBundle = self
+            .crypto
+            .key_store()
+            .read(credential.signature_key())
+            .ok_or(ClientError::NoMatchingCredential)?;
+        let kpb = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &credential_bundle,
+            &self.crypto,
+            mandatory_extensions,
+        )
+        .unwrap();
+        let key_package = kpb.key_package().clone();
+        self.crypto
+            .key_store()
+            .store(&key_package.hash(&self.crypto), &kpb)
             .unwrap();
         let group_state = ManagedGroup::new(
-            &self.key_store,
+            &self.crypto,
             &managed_group_config,
             group_id.clone(),
-            &key_package.hash(),
+            &key_package.hash(&self.crypto),
         )?;
         self.groups.borrow_mut().insert(group_id, group_state);
         Ok(())
@@ -86,7 +115,7 @@ impl Client {
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
         let new_group: ManagedGroup = ManagedGroup::new_from_welcome(
-            &self.key_store,
+            &self.crypto,
             &managed_group_config,
             welcome,
             ratchet_tree,
@@ -106,7 +135,7 @@ impl Client {
         let group_state = group_states
             .get_mut(&group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let events = group_state.process_message(message.clone())?;
+        let events = group_state.process_message(message.clone(), &self.crypto)?;
         for event in events {
             if let GroupEvent::Error(e) = event {
                 return Err(ClientError::ErrorEvent(e));
@@ -153,9 +182,9 @@ impl Client {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
-            ActionType::Commit => group.self_update(&self.key_store, key_package_bundle_option)?,
+            ActionType::Commit => group.self_update(&self.crypto, key_package_bundle_option)?,
             ActionType::Proposal => (
-                group.propose_self_update(&self.key_store, key_package_bundle_option)?,
+                group.propose_self_update(&self.crypto, key_package_bundle_option)?,
                 None,
             ),
         };
@@ -179,13 +208,13 @@ impl Client {
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome) = group.add_members(&self.key_store, key_packages)?;
+                let (messages, welcome) = group.add_members(&self.crypto, key_packages)?;
                 (vec![messages], Some(welcome))
             }
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for key_package in key_packages {
-                    let message = group.propose_add_member(&self.key_store, key_package)?;
+                    let message = group.propose_add_member(&self.crypto, key_package)?;
                     messages.push(message);
                 }
                 (messages, None)
@@ -212,13 +241,13 @@ impl Client {
         let action_results = match action_type {
             ActionType::Commit => {
                 let (message, welcome_option) =
-                    group.remove_members(&self.key_store, target_indices)?;
+                    group.remove_members(&self.crypto, target_indices)?;
                 (vec![message], welcome_option)
             }
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for &target_index in target_indices {
-                    let message = group.propose_remove_member(&self.key_store, target_index)?;
+                    let message = group.propose_remove_member(&self.crypto, target_index)?;
                     messages.push(message);
                 }
                 (messages, None)

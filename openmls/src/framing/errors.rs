@@ -30,6 +30,7 @@ implement_error! {
             GenerationOutOfBound = "Couldn't find a ratcheting secret for the given sender and generation.",
             EncryptionError = "An error occurred while encrypting.",
             DecryptionError = "An error occurred while decrypting.",
+            WrongWireFormat = "The WireFormat was MLSPlaintext.",
         }
         Complex {
             PlaintextError(MlsPlaintextError) = "MlsPlaintext error",

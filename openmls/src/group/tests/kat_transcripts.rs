@@ -9,22 +9,24 @@ use std::convert::TryFrom;
 use crate::test_utils::{read, write};
 
 use crate::{
-    ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret, SignatureScheme},
+    ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret},
     config::{Config, ProtocolVersion},
     credentials::{Credential, CredentialBundle, CredentialType},
     group::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
-        GroupId,
+        GroupId, WireFormat,
     },
     messages::Commit,
     prelude::{
-        random_u32, random_u64, LeafIndex, MlsPlaintext, MlsPlaintextCommitAuthData,
-        MlsPlaintextCommitContent, VerifiableMlsPlaintext,
+        random_u32, random_u64, FramingParameters, LeafIndex, MlsPlaintext,
+        MlsPlaintextCommitAuthData, MlsPlaintextCommitContent, VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
     test_utils::{bytes_to_hex, hex_to_bytes},
 };
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
 
@@ -47,22 +49,32 @@ pub struct TranscriptTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTestVector {
+    let crypto = OpenMlsRustCrypto::default();
     // Generate random values.
-    let group_id = GroupId::random(ciphersuite);
+    let group_id = GroupId::random(&crypto);
     let epoch = random_u64();
-    let tree_hash_before = ciphersuite.randombytes(ciphersuite.hash_length());
-    let confirmed_transcript_hash_before = ciphersuite.randombytes(ciphersuite.hash_length());
-    let interim_transcript_hash_before = ciphersuite.randombytes(ciphersuite.hash_length());
-    let membership_key =
-        MembershipKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
-    let confirmation_key =
-        ConfirmationKey::from_secret(Secret::random(ciphersuite, None /* MLS version */));
+    let tree_hash_before = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
+    let confirmed_transcript_hash_before =
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
+    let interim_transcript_hash_before =
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
+    let membership_key = MembershipKey::from_secret(Secret::random(
+        ciphersuite,
+        &crypto,
+        None, /* MLS version */
+    ));
+    let confirmation_key = ConfirmationKey::from_secret(Secret::random(
+        ciphersuite,
+        &crypto,
+        None, /* MLS version */
+    ));
 
     // Build plaintext commit message.
     let credential_bundle = CredentialBundle::new(
         b"client".to_vec(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite.name()),
+        &crypto,
     )
     .unwrap();
     let context = GroupContext::new(
@@ -73,35 +85,44 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &[], // extensions
     )
     .expect("Error creating group context");
+    let aad = crypto.rand().random_vec(48).unwrap();
+    let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
     let mut commit = MlsPlaintext::new_commit(
+        framing_parameters,
         LeafIndex::from(random_u32()),
-        &ciphersuite.randombytes(48),
         Commit {
             proposals: vec![].into(),
             path: None,
         },
         &credential_bundle,
         &context,
+        &crypto,
     )
     .unwrap();
 
     let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
+        &crypto,
         &MlsPlaintextCommitContent::try_from(&commit).unwrap(),
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
-    let confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_after);
+    let confirmation_tag = confirmation_key.tag(&crypto, &confirmed_transcript_hash_after);
     commit.set_confirmation_tag(confirmation_tag);
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
         ciphersuite,
+        &crypto,
         &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
     commit
-        .set_membership_tag(&context.tls_serialize_detached().unwrap(), &membership_key)
+        .set_membership_tag(
+            &crypto,
+            &context.tls_serialize_detached().unwrap(),
+            &membership_key,
+        )
         .expect("Error adding membership tag");
     let credential = credential_bundle
         .credential()
@@ -148,6 +169,7 @@ fn write_test_vectors() {
 pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), TranscriptTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
         Ok(cs) => cs,
         Err(_) => {
@@ -210,11 +232,15 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     }
     let commit: MlsPlaintext = commit
         .set_context(&context.tls_serialize_detached().unwrap())
-        .verify(&credential)
+        .verify(&crypto, &credential)
         .expect("Invalid signature on MlsPlaintext commit");
 
     if commit
-        .verify_membership(&context.tls_serialize_detached().unwrap(), &membership_key)
+        .verify_membership(
+            &crypto,
+            &context.tls_serialize_detached().unwrap(),
+            &membership_key,
+        )
         .is_err()
     {
         if cfg!(test) {
@@ -227,7 +253,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     let confirmed_transcript_hash_after =
         hex_to_bytes(&test_vector.confirmed_transcript_hash_after);
 
-    let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_after);
+    let my_confirmation_tag = confirmation_key.tag(&crypto, &confirmed_transcript_hash_after);
     if &my_confirmation_tag
         != commit
             .confirmation_tag()
@@ -245,6 +271,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     // Compute new transcript hashes.
     let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
+        &crypto,
         &MlsPlaintextCommitContent::try_from(&commit).unwrap(),
         &interim_transcript_hash_before,
     )
@@ -263,6 +290,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
 
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         ciphersuite,
+        &crypto,
         &MlsPlaintextCommitAuthData::try_from(&commit).unwrap(),
         &my_confirmed_transcript_hash_after,
     )

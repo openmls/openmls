@@ -1,9 +1,11 @@
 use openmls::prelude::*;
 mod utils;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use utils::mls_utils::*;
 
 #[test]
 fn padding() {
+    let crypto = OpenMlsRustCrypto::default();
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -46,7 +48,13 @@ fn padding() {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
                 let mls_ciphertext = group_state
-                    .create_application_message(&aad, &message, credential_bundle, padding_size)
+                    .create_application_message(
+                        &aad,
+                        &message,
+                        credential_bundle,
+                        padding_size,
+                        &crypto,
+                    )
                     .unwrap();
                 let ciphertext = mls_ciphertext.ciphertext();
                 let length = ciphertext.len();

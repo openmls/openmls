@@ -1,11 +1,11 @@
 use crate::ciphersuite::{signable::*, *};
 use crate::config::ProtocolVersion;
-use crate::credentials::*;
 use crate::extensions::*;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
+use openmls_traits::OpenMlsCryptoProvider;
 
 use serde::{Deserialize, Serialize};
 
@@ -13,6 +13,7 @@ mod codec;
 
 pub mod errors;
 pub(crate) mod proposals;
+pub(crate) mod public_group_state;
 
 pub use codec::*;
 pub use errors::*;
@@ -24,6 +25,9 @@ use tls_codec::{
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+use crate::credentials::{CredentialBundle, CredentialError};
 
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
@@ -251,8 +255,9 @@ impl GroupInfo {
     pub(crate) fn re_sign(
         self,
         credential_bundle: &CredentialBundle,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
-        self.payload.sign(credential_bundle)
+        self.payload.sign(backend, credential_bundle)
     }
 }
 
@@ -349,144 +354,34 @@ impl GroupSecrets {
     #[cfg(any(feature = "test-utils", test))]
     pub fn random_encoded(
         ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {
+        use openmls_traits::random::OpenMlsRand;
+
         let psk_id = PreSharedKeyId::new(
             External,
             Psk::External(ExternalPsk::new(
-                ciphersuite.randombytes(ciphersuite.hash_length()),
+                backend
+                    .rand()
+                    .random_vec(ciphersuite.hash_length())
+                    .unwrap(),
             )),
-            ciphersuite.randombytes(ciphersuite.hash_length()),
+            backend
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .unwrap(),
         );
         let psks = PreSharedKeys {
             psks: vec![psk_id].into(),
         };
 
         GroupSecrets::new_encoded(
-            &JoinerSecret::random(ciphersuite, version),
+            &JoinerSecret::random(ciphersuite, backend, version),
             Some(&PathSecret {
-                path_secret: Secret::random(ciphersuite, version),
+                path_secret: Secret::random(ciphersuite, backend, version),
             }),
             &psks,
         )
-    }
-}
-
-/// PublicGroupState
-///
-/// ```text
-/// struct {
-///     CipherSuite cipher_suite;
-///     opaque group_id<0..255>;
-///     uint64 epoch;
-///     opaque tree_hash<0..255>;
-///     opaque interim_transcript_hash<0..255>;
-///     Extension extensions<0..2^32-1>;
-///     HPKEPublicKey external_pub;
-///     uint32 signer_index;
-///     opaque signature<0..2^16-1>;
-/// } PublicGroupState;
-/// ```
-#[derive(PartialEq, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
-pub struct PublicGroupState {
-    pub(crate) ciphersuite: CiphersuiteName,
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) tree_hash: TlsByteVecU8,
-    pub(crate) interim_transcript_hash: TlsByteVecU8,
-    pub(crate) extensions: TlsVecU32<Extension>,
-    pub(crate) external_pub: HpkePublicKey,
-    pub(crate) signer_index: LeafIndex,
-    pub(crate) signature: Signature,
-}
-
-impl PublicGroupState {
-    /// Creates a new `PublicGroupState` struct from the current internal state
-    /// of the group and signs it.
-    pub(crate) fn new(
-        mls_group: &MlsGroup,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<Self, CredentialError> {
-        let ciphersuite = mls_group.ciphersuite();
-        let (_external_priv, external_pub) = mls_group
-            .epoch_secrets()
-            .external_secret()
-            .derive_external_keypair(ciphersuite)
-            .into_keys();
-
-        let group_id = mls_group.group_id().clone();
-        let epoch = mls_group.context().epoch();
-        let tree_hash = mls_group.tree().tree_hash().into();
-        let interim_transcript_hash = mls_group.interim_transcript_hash().into();
-        let extensions = mls_group.extensions().into();
-
-        let pgstbs = PublicGroupStateTbs {
-            group_id: &group_id,
-            epoch: &epoch,
-            tree_hash: &tree_hash,
-            interim_transcript_hash: &interim_transcript_hash,
-            extensions: &extensions,
-            external_pub: &external_pub,
-        };
-        let signature = pgstbs.sign(credential_bundle)?;
-        Ok(Self {
-            ciphersuite: ciphersuite.name(),
-            group_id,
-            epoch,
-            tree_hash,
-            interim_transcript_hash,
-            extensions,
-            external_pub,
-            signer_index: mls_group.sender_index(),
-            signature,
-        })
-    }
-}
-
-impl Verifiable for PublicGroupState {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        PublicGroupStateTbs {
-            group_id: &self.group_id,
-            epoch: &self.epoch,
-            tree_hash: &self.tree_hash,
-            interim_transcript_hash: &self.interim_transcript_hash,
-            extensions: &self.extensions,
-            external_pub: &self.external_pub,
-        }
-        .tls_serialize_detached()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-}
-
-/// PublicGroupStateTBS
-///
-/// ```text
-/// struct {
-///     opaque group_id<0..255>;
-///     uint64 epoch;
-///     opaque tree_hash<0..255>;
-///     opaque interim_transcript_hash<0..255>;
-///     Extension extensions<0..2^32-1>;
-///     HPKEPublicKey external_pub;
-/// } PublicGroupStateTBS;
-/// ```
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct PublicGroupStateTbs<'a> {
-    pub(crate) group_id: &'a GroupId,
-    pub(crate) epoch: &'a GroupEpoch,
-    pub(crate) tree_hash: &'a TlsByteVecU8,
-    pub(crate) interim_transcript_hash: &'a TlsByteVecU8,
-    pub(crate) extensions: &'a TlsVecU32<Extension>,
-    pub(crate) external_pub: &'a HpkePublicKey,
-}
-
-impl<'a> Signable for PublicGroupStateTbs<'a> {
-    type SignedOutput = Signature;
-
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tls_serialize_detached()
     }
 }

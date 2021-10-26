@@ -1,21 +1,25 @@
-use ds_lib::*;
+use ds_lib::{self, *};
 use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::SignatureScheme;
 use tls_codec::{Deserialize, Serialize};
 
 #[test]
 fn test_client_info() {
+    let crypto = &OpenMlsRustCrypto::default();
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
+        crypto,
     )
     .unwrap();
     let client_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, vec![]).unwrap();
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
     let client_key_package = vec![(
-        client_key_package_bundle.key_package().hash(),
+        client_key_package_bundle.key_package().hash(crypto),
         client_key_package_bundle.key_package().clone(),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package);

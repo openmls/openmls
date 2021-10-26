@@ -6,12 +6,15 @@ impl ManagedGroup {
     /// Exports a secret from the current epoch
     pub fn export_secret(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         label: &str,
         context: &[u8],
         key_length: usize,
     ) -> Result<Vec<u8>, ManagedGroupError> {
         if self.active {
-            Ok(self.group.export_secret(label, context, key_length)?)
+            Ok(self
+                .group
+                .export_secret(backend, label, context, key_length)?)
         } else {
             Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error))
         }

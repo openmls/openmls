@@ -14,7 +14,7 @@ impl ManagedGroup {
     /// [`MlsMessage`] and a [`Welcome`] message.
     pub fn add_members(
         &mut self,
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, Welcome), ManagedGroupError> {
         if !self.active {
@@ -43,19 +43,23 @@ impl ManagedGroup {
             .collect::<Vec<&MlsPlaintext>>();
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
-            .get_credential_bundle(credential.signature_key())
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
-            proposals_by_reference,
-            proposals_by_value,
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value,
+            },
             true,
             None,
+            backend,
         )?;
         log::error!("plaintext (foo): {:?}", commit);
 
@@ -75,7 +79,7 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_message(commit)?;
+        let mls_messages = self.plaintext_to_mls_message(commit, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -92,7 +96,7 @@ impl ManagedGroup {
     /// proposals in the queue of pending proposals.
     pub fn remove_members(
         &mut self,
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
         members: &[usize],
     ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
@@ -123,19 +127,23 @@ impl ManagedGroup {
             .collect::<Vec<&MlsPlaintext>>();
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
-            .get_credential_bundle(credential.signature_key())
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #141
         let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
-            proposals_by_reference,
-            proposals_by_value,
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value,
+            },
             false,
             None,
+            backend,
         )?;
 
         // It has to be a full Commit and we have to save the KeyPackageBundle for later
@@ -149,7 +157,7 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.plaintext_to_mls_message(commit)?;
+        let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -160,7 +168,8 @@ impl ManagedGroup {
     /// Creates proposals to add members to the group
     pub fn propose_add_member(
         &mut self,
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
+
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -168,15 +177,19 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
-            .get_credential_bundle(credential.signature_key())
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
-        let add_proposal =
-            self.group
-                .create_add_proposal(&self.aad, &credential_bundle, key_package.clone())?;
+        let add_proposal = self.group.create_add_proposal(
+            self.framing_parameters(),
+            &credential_bundle,
+            key_package.clone(),
+            backend,
+        )?;
 
-        let mls_message = self.plaintext_to_mls_message(add_proposal)?;
+        let mls_message = self.plaintext_to_mls_message(add_proposal, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -187,7 +200,7 @@ impl ManagedGroup {
     /// Creates proposals to remove members from the group
     pub fn propose_remove_member(
         &mut self,
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
         member: usize,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -195,17 +208,19 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
-            .get_credential_bundle(credential.signature_key())
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             LeafIndex::from(member),
+            backend,
         )?;
 
-        let mls_message = self.plaintext_to_mls_message(remove_proposal)?;
+        let mls_message = self.plaintext_to_mls_message(remove_proposal, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -216,24 +231,26 @@ impl ManagedGroup {
     /// Leave the group
     pub fn leave_group(
         &mut self,
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
-            .get_credential_bundle(credential.signature_key())
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             self.group.tree().own_node_index(),
+            backend,
         )?;
 
-        self.plaintext_to_mls_message(remove_proposal)
+        self.plaintext_to_mls_message(remove_proposal, backend)
     }
 
     /// Gets the current list of members

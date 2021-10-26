@@ -13,17 +13,16 @@ mod ser;
 mod test_managed_group;
 mod updates;
 
-#[cfg(any(feature = "test-utils", test))]
-use crate::messages::PathSecret;
+use crate::credentials::CredentialBundle;
+use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     credentials::Credential,
     error::ErrorString,
     framing::*,
-    group::*,
+    group::{mls_group::create_commit::Proposals, *},
     key_packages::{KeyPackage, KeyPackageBundle},
-    key_store::KeyStore,
     messages::{proposals::*, Welcome},
     prelude::KeyPackageBundlePayload,
     schedule::ResumptionSecret,
@@ -158,6 +157,7 @@ impl ManagedGroup {
     pub fn group_id(&self) -> &GroupId {
         self.group.group_id()
     }
+
     /// Returns a list of proposal
     pub fn pending_proposals(&self) -> &[MlsPlaintext] {
         &self.pending_proposals
@@ -188,7 +188,7 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn export_path_secrets(&self) -> Ref<[PathSecret]> {
+    pub fn export_path_secrets(&self) -> Ref<[crate::messages::PathSecret]> {
         Ref::map(self.group.tree(), |tree| tree.private_tree().path_secrets())
     }
 
@@ -198,8 +198,8 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn tree_hash(&self) -> Vec<u8> {
-        self.group.tree().tree_hash()
+    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
+        self.group.tree().tree_hash(backend)
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -216,13 +216,14 @@ impl ManagedGroup {
     fn plaintext_to_mls_message(
         &mut self,
         plaintext: MlsPlaintext,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         let msg = match self.configuration().handshake_message_format {
-            HandshakeMessageFormat::Plaintext => MlsMessageOut::Plaintext(plaintext),
-            HandshakeMessageFormat::Ciphertext => {
-                let ciphertext = self
-                    .group
-                    .encrypt(plaintext, self.configuration().padding_size())?;
+            WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(plaintext),
+            WireFormat::MlsCiphertext => {
+                let ciphertext =
+                    self.group
+                        .encrypt(plaintext, self.configuration().padding_size(), backend)?;
                 MlsMessageOut::Ciphertext(ciphertext)
             }
         };
@@ -292,6 +293,7 @@ impl ManagedGroup {
     fn prepare_events(
         &self,
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         proposals: &[ProposalOrRef],
         sender: LeafIndex,
         indexed_members: &HashMap<LeafIndex, Credential>,
@@ -304,8 +306,11 @@ impl ManagedGroup {
             .iter()
             .collect::<Vec<&MlsPlaintext>>();
         // Build a proposal queue for easier searching
-        let pending_proposals_queue =
-            ProposalQueue::from_proposals_by_reference(ciphersuite, &pending_proposals_list);
+        let pending_proposals_queue = ProposalQueue::from_proposals_by_reference(
+            ciphersuite,
+            backend,
+            &pending_proposals_list,
+        );
         for proposal_or_ref in proposals {
             match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
@@ -390,6 +395,14 @@ impl ManagedGroup {
             }
         }
         indexed_members
+    }
+
+    /// Group framing parameters
+    fn framing_parameters(&self) -> FramingParameters {
+        FramingParameters::new(
+            &self.aad,
+            self.managed_group_config.handshake_message_format,
+        )
     }
 }
 

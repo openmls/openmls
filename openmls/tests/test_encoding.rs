@@ -1,5 +1,6 @@
-use openmls::{ciphersuite::signable::Verifiable, prelude::*};
+use openmls::{ciphersuite::signable::Verifiable, group::create_commit::Proposals, prelude::*};
 pub mod utils;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 use utils::mls_utils::*;
 
@@ -50,6 +51,7 @@ fn create_encoding_test_setup() -> TestSetup {
 #[test]
 /// This test tests encoding and decoding of application messages.
 fn test_application_message_encoding() {
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
@@ -65,7 +67,7 @@ fn test_application_message_encoding() {
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
-                .create_application_message(&aad, &message, credential_bundle, 0)
+                .create_application_message(&aad, &message, credential_bundle, 0, &crypto)
                 .unwrap();
             let encrypted_message_bytes = encrypted_message.tls_serialize_detached().unwrap();
             let encrypted_message_decoded =
@@ -81,9 +83,12 @@ fn test_application_message_encoding() {
 #[test]
 /// This test tests encoding and decoding of update proposals.
 fn test_update_proposal_encoding() {
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -102,15 +107,17 @@ fn test_update_proposal_encoding() {
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             credential_bundle,
+            &crypto,
             mandatory_extensions,
         )
         .unwrap();
 
         let update = group_state
             .create_update_proposal(
-                &[],
+                framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().clone(),
+                &crypto,
             )
             .expect("Could not create proposal.");
         let update_encoded = update
@@ -122,7 +129,7 @@ fn test_update_proposal_encoding() {
                 Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
             }
             .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(credential_bundle.credential())
+            .verify(&crypto, credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
 
         assert_eq!(update, update_decoded);
@@ -132,9 +139,12 @@ fn test_update_proposal_encoding() {
 #[test]
 /// This test tests encoding and decoding of add proposals.
 fn test_add_proposal_encoding() {
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -153,6 +163,7 @@ fn test_add_proposal_encoding() {
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             credential_bundle,
+            &crypto,
             mandatory_extensions,
         )
         .unwrap();
@@ -160,9 +171,10 @@ fn test_add_proposal_encoding() {
         // Adds
         let add = group_state
             .create_add_proposal(
-                &[],
+                framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().clone(),
+                &crypto,
             )
             .expect("Could not create proposal.");
         let add_encoded = add
@@ -174,7 +186,7 @@ fn test_add_proposal_encoding() {
                 Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
             }
             .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(credential_bundle.credential())
+            .verify(&crypto, credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
 
         assert_eq!(add, add_decoded);
@@ -184,9 +196,12 @@ fn test_add_proposal_encoding() {
 #[test]
 /// This test tests encoding and decoding of remove proposals.
 fn test_remove_proposal_encoding() {
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -195,7 +210,12 @@ fn test_remove_proposal_encoding() {
             .unwrap();
 
         let remove = group_state
-            .create_remove_proposal(&[], credential_bundle, LeafIndex::from(1u32))
+            .create_remove_proposal(
+                framing_parameters,
+                credential_bundle,
+                LeafIndex::from(1u32),
+                &crypto,
+            )
             .expect("Could not create proposal.");
         let remove_encoded = remove
             .tls_serialize_detached()
@@ -206,7 +226,7 @@ fn test_remove_proposal_encoding() {
                 Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
             }
             .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(credential_bundle.credential())
+            .verify(&crypto, credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
 
         assert_eq!(remove, remove_decoded);
@@ -216,9 +236,12 @@ fn test_remove_proposal_encoding() {
 /// This test tests encoding and decoding of commit messages.
 #[test]
 fn test_commit_encoding() {
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let alice_credential_bundle = alice
@@ -237,6 +260,7 @@ fn test_commit_encoding() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             alice_credential_bundle,
+            &crypto,
             mandatory_extensions.clone(),
         )
         .unwrap();
@@ -246,9 +270,10 @@ fn test_commit_encoding() {
         // Alice updates her own leaf
         let update = group_state
             .create_update_proposal(
-                &[],
+                framing_parameters,
                 alice_credential_bundle,
                 alice_key_package_bundle.key_package().clone(),
+                &crypto,
             )
             .expect("Could not create proposal.");
 
@@ -261,17 +286,37 @@ fn test_commit_encoding() {
             .pop()
             .unwrap();
         let add = group_state
-            .create_add_proposal(&[], alice_credential_bundle, charlie_key_package.clone())
+            .create_add_proposal(
+                framing_parameters,
+                alice_credential_bundle,
+                charlie_key_package.clone(),
+                &crypto,
+            )
             .expect("Could not create proposal.");
 
         // Alice removes Bob
         let remove = group_state
-            .create_remove_proposal(&[], alice_credential_bundle, LeafIndex::from(2u32))
+            .create_remove_proposal(
+                framing_parameters,
+                alice_credential_bundle,
+                LeafIndex::from(2u32),
+                &crypto,
+            )
             .expect("Could not create proposal.");
 
         let proposals = &[&add, &remove, &update];
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(&[], alice_credential_bundle, proposals, &[], true, None)
+            .create_commit(
+                framing_parameters,
+                alice_credential_bundle,
+                Proposals {
+                    proposals_by_reference: proposals,
+                    proposals_by_value: &[],
+                },
+                true,
+                None,
+                &crypto,
+            )
             .unwrap();
         let commit_encoded = commit.tls_serialize_detached().unwrap();
         let commit_decoded =
@@ -280,7 +325,7 @@ fn test_commit_encoding() {
                 Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
             }
             .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(alice_credential_bundle.credential())
+            .verify(&crypto, alice_credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
 
         assert_eq!(commit, commit_decoded);
@@ -289,9 +334,12 @@ fn test_commit_encoding() {
 
 #[test]
 fn test_welcome_message_encoding() {
+    let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients.get("alice").unwrap().borrow();
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -310,12 +358,27 @@ fn test_welcome_message_encoding() {
             .pop()
             .unwrap();
         let add = group_state
-            .create_add_proposal(&[], credential_bundle, charlie_key_package.clone())
+            .create_add_proposal(
+                framing_parameters,
+                credential_bundle,
+                charlie_key_package.clone(),
+                &crypto,
+            )
             .expect("Could not create proposal.");
 
         let proposals = &[&add];
         let (commit, welcome_option, key_package_bundle_option) = group_state
-            .create_commit(&[], credential_bundle, proposals, &[], true, None)
+            .create_commit(
+                framing_parameters,
+                credential_bundle,
+                Proposals {
+                    proposals_by_reference: proposals,
+                    proposals_by_value: &[],
+                },
+                true,
+                None,
+                &crypto,
+            )
             .unwrap();
         // Alice applies the commit
         assert!(group_state
@@ -323,7 +386,8 @@ fn test_welcome_message_encoding() {
                 &commit,
                 proposals,
                 &[key_package_bundle_option.unwrap()],
-                None
+                None,
+                &crypto
             )
             .is_ok());
 
@@ -342,7 +406,7 @@ fn test_welcome_message_encoding() {
         let charlie = test_clients.get("charlie").unwrap().borrow();
 
         let charlie_key_package_bundle = charlie
-            .find_key_package_bundle(&charlie_key_package)
+            .find_key_package_bundle(&charlie_key_package, &crypto)
             .unwrap();
 
         // This makes Charlie decode the internals of the Welcome message, for
@@ -352,6 +416,7 @@ fn test_welcome_message_encoding() {
             Some(group_state.tree().public_key_tree_copy()),
             charlie_key_package_bundle,
             None,
+            &crypto
         )
         .is_ok());
     }

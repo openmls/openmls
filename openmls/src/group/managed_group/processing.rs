@@ -10,6 +10,7 @@ impl ManagedGroup {
     pub fn process_message(
         &mut self,
         message: MlsMessageIn,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -20,7 +21,7 @@ impl ManagedGroup {
             // If it is a ciphertext we decrypt it and return the plaintext message
             MlsMessageIn::Ciphertext(ciphertext) => {
                 let aad = ciphertext.authenticated_data.clone();
-                (self.group.decrypt(&ciphertext)?, Some(aad))
+                (self.group.decrypt(&ciphertext, backend)?, Some(aad))
             }
             // If it is a plaintext message we have to verify it first
             MlsMessageIn::Plaintext(unverified_plaintext) => {
@@ -37,12 +38,15 @@ impl ManagedGroup {
                 // Verify the signature
                 let plaintext: MlsPlaintext = unverified_plaintext
                     .set_context(&context)
-                    .verify(credential)?;
+                    .verify(backend, credential)?;
                 // Verify membership tag
                 // TODO #106: Support external senders
                 if plaintext.is_proposal()
                     && plaintext.sender().is_member()
-                    && self.group.verify_membership_tag(&plaintext).is_err()
+                    && self
+                        .group
+                        .verify_membership_tag(backend, &plaintext)
+                        .is_err()
                 {
                     return Err(ManagedGroupError::InvalidMessage(
                         InvalidMessageError::MembershipTagMismatch,
@@ -88,13 +92,14 @@ impl ManagedGroup {
                 // TODO #141
                 match self
                     .group
-                    .apply_commit(&plaintext, proposals, &self.own_kpbs, None)
+                    .apply_commit(&plaintext, proposals, &self.own_kpbs, None, backend)
                 {
                     Ok(()) => {
                         // Since the Commit was applied without errors, we can collect
                         // all proposals from the Commit and generate events
                         events.append(&mut self.prepare_events(
                             self.ciphersuite(),
+                            backend,
                             commit.proposals.as_slice(),
                             plaintext.sender_index(),
                             &indexed_members,
@@ -123,6 +128,7 @@ impl ManagedGroup {
                             // Prepare events
                             events.append(&mut self.prepare_events(
                                 self.ciphersuite(),
+                                backend,
                                 commit.proposals.as_slice(),
                                 plaintext.sender_index(),
                                 &indexed_members,
@@ -165,5 +171,51 @@ impl ManagedGroup {
         self.auto_save();
 
         Ok(events)
+    }
+
+    /// Process pending proposals
+    pub fn process_pending_proposals(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
+        if !self.active {
+            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+        // Include pending proposals into Commit
+        let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
+
+        let credential = self.credential()?;
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
+            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+
+        // Create Commit over all pending proposals
+        // TODO #141
+        let (commit, welcome_option, kpb_option) = self.group.create_commit(
+            self.framing_parameters(),
+            &credential_bundle,
+            Proposals {
+                proposals_by_reference: &messages_to_commit,
+                proposals_by_value: &[],
+            },
+            true,
+            None,
+            backend,
+        )?;
+
+        // If it was a full Commit, we have to save the KeyPackageBundle for later
+        if let Some(kpb) = kpb_option {
+            self.own_kpbs.push(kpb);
+        }
+
+        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        // the configuration
+        let mls_message = self.plaintext_to_mls_message(commit, backend)?;
+
+        // Since the state of the group was changed, call the auto-save function
+        self.auto_save();
+
+        Ok((mls_message, welcome_option))
     }
 }

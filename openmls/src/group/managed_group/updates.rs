@@ -11,7 +11,7 @@ impl ManagedGroup {
     /// proposals in the queue of pending proposals.
     pub fn self_update(
         &mut self,
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
         if !self.active {
@@ -19,8 +19,9 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
-            .get_credential_bundle(credential.signature_key())
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         // Include pending proposals into Commit
@@ -34,22 +35,28 @@ impl ManagedGroup {
                     key_package: kpb.key_package().clone(),
                 });
                 self.group.create_commit(
-                    &self.aad,
+                    self.framing_parameters(),
                     &credential_bundle,
-                    &messages_to_commit,
-                    &[&update_proposal],
+                    Proposals {
+                        proposals_by_reference: &messages_to_commit,
+                        proposals_by_value: &[&update_proposal],
+                    },
                     true, /* force_self_update */
                     None,
+                    backend,
                 )?
             }
             None => {
                 self.group.create_commit(
-                    &self.aad,
+                    self.framing_parameters(),
                     &credential_bundle,
-                    &messages_to_commit,
-                    &[],
+                    Proposals {
+                        proposals_by_reference: &messages_to_commit,
+                        proposals_by_value: &[],
+                    },
                     true, /* force_self_update */
                     None,
+                    backend,
                 )?
             }
         };
@@ -65,7 +72,7 @@ impl ManagedGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.plaintext_to_mls_message(commit)?;
+        let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
@@ -76,7 +83,7 @@ impl ManagedGroup {
     /// Creates a proposal to update the own leaf node
     pub fn propose_self_update(
         &mut self,
-        key_store: &KeyStore,
+        backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
@@ -84,28 +91,32 @@ impl ManagedGroup {
         }
 
         let credential = self.credential()?;
-        let credential_bundle = key_store
-            .get_credential_bundle(credential.signature_key())
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let tree = self.group.tree();
         let existing_key_package = tree.own_key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
-            None => KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package)
-                .sign(&credential_bundle)?,
+            None => {
+                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)
+                    .sign(backend, &credential_bundle)?
+            }
         };
 
         let update_proposal = self.group.create_update_proposal(
-            &self.aad,
+            self.framing_parameters(),
             &credential_bundle,
             key_package_bundle.key_package().clone(),
+            backend,
         )?;
         drop(tree);
 
         self.own_kpbs.push(key_package_bundle);
 
-        let mls_message = self.plaintext_to_mls_message(update_proposal)?;
+        let mls_message = self.plaintext_to_mls_message(update_proposal, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
         self.auto_save();
