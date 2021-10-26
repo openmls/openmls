@@ -1,3 +1,6 @@
+//! This module contains an implementation of a binary tree based on an array
+//! representation.
+
 use super::treemath::*;
 use super::NodeIndex;
 use super::TreeSize;
