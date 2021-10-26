@@ -1,0 +1,9 @@
+[package]
+name = "openmls_rust_crypto"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+openmls_traits = { version = "0.1", path = "../traits" }
+rust_crypto = { version = "0.1", path = "../rust_crypto" }
+memory_keystore = { version = "0.1", path = "../memory_keystore" }

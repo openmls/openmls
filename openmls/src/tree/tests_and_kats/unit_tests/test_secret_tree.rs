@@ -1,3 +1,6 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::random::OpenMlsRand;
+
 use crate::schedule::EncryptionSecret;
 
 use crate::config::Config;
@@ -7,25 +10,33 @@ use std::collections::HashMap;
 // This tests the boundaries of the generations from a SecretTree
 #[test]
 fn test_boundaries() {
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
-        let encryption_secret = EncryptionSecret::random(ciphersuite);
+        let encryption_secret = EncryptionSecret::random(ciphersuite, &crypto);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(2u32));
         let secret_type = SecretType::ApplicationSecret;
         assert!(secret_tree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+            .secret_for_decryption(ciphersuite, &crypto, LeafIndex::from(0u32), secret_type, 0)
             .is_ok());
         assert!(secret_tree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(1u32), secret_type, 0)
+            .secret_for_decryption(ciphersuite, &crypto, LeafIndex::from(1u32), secret_type, 0)
             .is_ok());
         assert!(secret_tree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 1)
+            .secret_for_decryption(ciphersuite, &crypto, LeafIndex::from(0u32), secret_type, 1)
             .is_ok());
         assert!(secret_tree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 1_000)
+            .secret_for_decryption(
+                ciphersuite,
+                &crypto,
+                LeafIndex::from(0u32),
+                secret_type,
+                1_000
+            )
             .is_ok());
         assert_eq!(
             secret_tree.secret_for_decryption(
                 ciphersuite,
+                &crypto,
                 LeafIndex::from(1u32),
                 secret_type,
                 1001
@@ -33,30 +44,61 @@ fn test_boundaries() {
             Err(SecretTreeError::TooDistantInTheFuture)
         );
         assert!(secret_tree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 996)
+            .secret_for_decryption(
+                ciphersuite,
+                &crypto,
+                LeafIndex::from(0u32),
+                secret_type,
+                996
+            )
             .is_ok());
         assert_eq!(
-            secret_tree.secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 995),
+            secret_tree.secret_for_decryption(
+                ciphersuite,
+                &crypto,
+                LeafIndex::from(0u32),
+                secret_type,
+                995
+            ),
             Err(SecretTreeError::TooDistantInThePast)
         );
         assert_eq!(
-            secret_tree.secret_for_decryption(ciphersuite, LeafIndex::from(2u32), secret_type, 0),
+            secret_tree.secret_for_decryption(
+                ciphersuite,
+                &crypto,
+                LeafIndex::from(2u32),
+                secret_type,
+                0
+            ),
             Err(SecretTreeError::IndexOutOfBounds)
         );
-        let encryption_secret = EncryptionSecret::random(ciphersuite);
+        let encryption_secret = EncryptionSecret::random(ciphersuite, &crypto);
         let mut largetree = SecretTree::new(encryption_secret, LeafIndex::from(100_000u32));
         assert!(largetree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(0u32), secret_type, 0)
+            .secret_for_decryption(ciphersuite, &crypto, LeafIndex::from(0u32), secret_type, 0)
             .is_ok());
         assert!(largetree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(99_999u32), secret_type, 0)
+            .secret_for_decryption(
+                ciphersuite,
+                &crypto,
+                LeafIndex::from(99_999u32),
+                secret_type,
+                0
+            )
             .is_ok());
         assert!(largetree
-            .secret_for_decryption(ciphersuite, LeafIndex::from(99_999u32), secret_type, 1_000)
+            .secret_for_decryption(
+                ciphersuite,
+                &crypto,
+                LeafIndex::from(99_999u32),
+                secret_type,
+                1_000
+            )
             .is_ok());
         assert_eq!(
             largetree.secret_for_decryption(
                 ciphersuite,
+                &crypto,
                 LeafIndex::from(100_000u32),
                 secret_type,
                 0
@@ -70,12 +112,13 @@ fn test_boundaries() {
 // values are unique.
 #[test]
 fn increment_generation() {
+    let crypto = OpenMlsRustCrypto::default();
     const SIZE: usize = 100;
     const MAX_GENERATIONS: usize = 10;
 
     for ciphersuite in Config::supported_ciphersuites() {
         let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
-        let encryption_secret = EncryptionSecret::random(ciphersuite);
+        let encryption_secret = EncryptionSecret::random(ciphersuite, &crypto);
         let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(SIZE as u32));
         for i in 0..SIZE {
             assert_eq!(
@@ -92,6 +135,7 @@ fn increment_generation() {
                 let (next_gen, (handshake_key, handshake_nonce)) = secret_tree
                     .secret_for_encryption(
                         ciphersuite,
+                        &crypto,
                         LeafIndex::from(j as u32),
                         SecretType::HandshakeSecret,
                     )
@@ -106,6 +150,7 @@ fn increment_generation() {
                 let (next_gen, (application_key, application_nonce)) = secret_tree
                     .secret_for_encryption(
                         ciphersuite,
+                        &crypto,
                         LeafIndex::from(j as u32),
                         SecretType::ApplicationSecret,
                     )
@@ -124,13 +169,14 @@ fn increment_generation() {
 
 #[test]
 fn secret_tree() {
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let leaf_index = 0u32;
     let generation = 0;
     let n_leaves = 10u32;
     let mut secret_tree = SecretTree::new(
         EncryptionSecret::from_slice(
-            &ciphersuite.randombytes(ciphersuite.hash_length())[..],
+            &crypto.rand().random_vec(ciphersuite.hash_length()).unwrap()[..],
             ProtocolVersion::default(),
             ciphersuite,
         ),
@@ -140,6 +186,7 @@ fn secret_tree() {
     let (application_secret_key, application_secret_nonce) = secret_tree
         .secret_for_decryption(
             ciphersuite,
+            &crypto,
             LeafIndex::from(leaf_index),
             SecretType::ApplicationSecret,
             generation,

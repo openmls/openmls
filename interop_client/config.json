@@ -1,0 +1,13 @@
+{
+  "clients": [
+    "localhost:50051"
+  ],
+  "test_vectors": [
+    "tree_math",
+    "encryption",
+    "key_schedule",
+    "transcript",
+    "treekem",
+    "messages"
+  ]
+}

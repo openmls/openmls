@@ -26,7 +26,11 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients, CodecUse::StructMessages);
+    let setup = ManagedTestSetup::new(
+        default_managed_group_config(),
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
 
     // Create a group with a random creator.
     let group_id = setup
@@ -61,7 +65,11 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients, CodecUse::StructMessages);
+    let setup = ManagedTestSetup::new(
+        default_managed_group_config(),
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
 
     // Create a group with a random creator.
     let group_id = setup
@@ -103,7 +111,11 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients, CodecUse::StructMessages);
+    let setup = ManagedTestSetup::new(
+        default_managed_group_config(),
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
 
     // Create a group with a random creator.
     let group_id = setup
@@ -139,7 +151,11 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients, CodecUse::StructMessages);
+    let setup = ManagedTestSetup::new(
+        default_managed_group_config(),
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
@@ -172,7 +188,11 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients, CodecUse::StructMessages);
+    let setup = ManagedTestSetup::new(
+        default_managed_group_config(),
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
@@ -210,7 +230,11 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
 
     // "Large" is 20 for now.
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(default_managed_group_config(), number_of_clients, CodecUse::StructMessages);
+    let setup = ManagedTestSetup::new(
+        default_managed_group_config(),
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
 
     // Create a group with all available clients. The process includes creating
     // a one-person group and then adding new members in bunches of up to 5,

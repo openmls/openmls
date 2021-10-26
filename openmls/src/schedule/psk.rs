@@ -32,6 +32,7 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
+use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
@@ -99,10 +100,18 @@ pub struct ExternalPskBundle {
 
 impl ExternalPskBundle {
     /// Create a new bundle
-    pub fn new(ciphersuite: &Ciphersuite, secret: Secret, psk_id: Vec<u8>) -> Self {
+    pub fn new(
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        secret: Secret,
+        psk_id: Vec<u8>,
+    ) -> Self {
         Self {
             secret,
-            nonce: ciphersuite.randombytes(ciphersuite.hash_length()),
+            nonce: backend
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .unwrap(),
             external_psk: ExternalPsk {
                 psk_id: psk_id.into(),
             },
@@ -265,6 +274,7 @@ impl PskSecret {
     /// Create a new `PskSecret` from PSK IDs and PSKs
     pub fn new(
         ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         psk_ids: &[PreSharedKeyId],
         psks: &[Secret],
     ) -> Result<Self, PskSecretError> {
@@ -278,14 +288,19 @@ impl PskSecret {
         let mls_version = ProtocolVersion::default();
         for (index, psk) in psks.iter().enumerate() {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_input = zero_secret.hkdf_extract(psk);
+            let psk_input = zero_secret.hkdf_extract(backend, psk);
             let psk_label = PskLabel::new(&psk_ids[index], index as u16, psks.len() as u16)
                 .tls_serialize_detached()
                 .map_err(|_| PskSecretError::EncodingError)?;
 
             // FIXME: remove unwrap
             let psk_secret = psk_input
-                .kdf_expand_label("derived psk", &psk_label, ciphersuite.hash_length())
+                .kdf_expand_label(
+                    backend,
+                    "derived psk",
+                    &psk_label,
+                    ciphersuite.hash_length(),
+                )
                 .unwrap();
             secret.extend_from_slice(psk_secret.as_slice());
         }
@@ -300,9 +315,12 @@ impl PskSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: &'static Ciphersuite) -> Self {
+    pub(crate) fn random(
+        ciphersuite: &'static Ciphersuite,
+        rng: &impl OpenMlsCryptoProvider,
+    ) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, None /* MLS version */),
+            secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }
     }
 

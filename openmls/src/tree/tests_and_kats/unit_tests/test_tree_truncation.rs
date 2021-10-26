@@ -1,3 +1,5 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
@@ -10,6 +12,7 @@ use crate::{
 
 #[test]
 fn test_trim() {
+    let crypto = OpenMlsRustCrypto::default();
     // Build a list of nodes, for which we need credentials and key package bundles
     let mut nodes = vec![];
     let mut key_package_bundles = vec![];
@@ -22,10 +25,12 @@ fn test_trim() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
+                &crypto,
             )
             .unwrap();
             let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -46,7 +51,7 @@ fn test_trim() {
         println!("final number of nodes: {:?}", nodes.len());
 
         let key_package_bundle = key_package_bundles.remove(0);
-        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes).unwrap();
 
         let size_untrimmed = tree.tree_size();
         println!("size untrimmed: {:?}", size_untrimmed);

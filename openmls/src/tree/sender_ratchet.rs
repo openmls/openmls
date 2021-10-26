@@ -30,6 +30,7 @@ impl SenderRatchet {
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         generation: u32,
     ) -> Result<RatchetSecrets, SecretTreeError> {
         // If generation is too distant in the future
@@ -46,7 +47,7 @@ impl SenderRatchet {
             let window_index =
                 (self.past_secrets.len() as u32 - (self.generation - generation) - 1) as usize;
             let secret = self.past_secrets.get(window_index).unwrap().clone();
-            let ratchet_secrets = self.derive_key_nonce(ciphersuite, &secret, generation);
+            let ratchet_secrets = self.derive_key_nonce(ciphersuite, backend, &secret, generation);
             Ok(ratchet_secrets)
         // If generation is in the future
         } else {
@@ -55,24 +56,28 @@ impl SenderRatchet {
                     self.past_secrets.remove(0);
                 }
                 let new_secret =
-                    self.ratchet_secret(ciphersuite, self.past_secrets.last().unwrap());
+                    self.ratchet_secret(ciphersuite, backend, self.past_secrets.last().unwrap());
                 self.past_secrets.push(new_secret);
                 self.generation += 1;
             }
             let secret = self.past_secrets.last().unwrap();
-            let ratchet_secrets = self.derive_key_nonce(ciphersuite, secret, generation);
+            let ratchet_secrets = self.derive_key_nonce(ciphersuite, backend, secret, generation);
             Ok(ratchet_secrets)
         }
     }
     /// Gets a secret from the SenderRatchet and ratchets forward
-    pub fn secret_for_encryption(&mut self, ciphersuite: &Ciphersuite) -> (u32, RatchetSecrets) {
+    pub fn secret_for_encryption(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> (u32, RatchetSecrets) {
         let current_path_secret = match self.past_secrets.last() {
             Some(secret) => secret.clone(),
             None => {
                 panic!("Library error. PastSecrets should never be depleted in SenderRatchet.")
             }
         };
-        let next_path_secret = self.ratchet_secret(ciphersuite, &current_path_secret);
+        let next_path_secret = self.ratchet_secret(ciphersuite, backend, &current_path_secret);
         let generation = self.generation;
         // Check if we have too many secrets in `past_secrets`
         if self.past_secrets.len() >= OUT_OF_ORDER_TOLERANCE as usize {
@@ -84,23 +89,30 @@ impl SenderRatchet {
         self.generation += 1;
         (
             generation,
-            self.derive_key_nonce(ciphersuite, &current_path_secret, generation),
+            self.derive_key_nonce(ciphersuite, backend, &current_path_secret, generation),
         )
     }
     /// Computes the new secret
-    fn ratchet_secret(&self, ciphersuite: &Ciphersuite, secret: &Secret) -> Secret {
+    fn ratchet_secret(
+        &self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        secret: &Secret,
+    ) -> Secret {
         derive_tree_secret(
             secret,
             "secret",
             NodeIndex::from(self.index).as_u32(),
             self.generation,
             ciphersuite.hash_length(),
+            backend,
         )
     }
     /// Derives a key & nonce from a secret
     fn derive_key_nonce(
         &self,
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         secret: &Secret,
         generation: u32,
     ) -> RatchetSecrets {
@@ -111,6 +123,7 @@ impl SenderRatchet {
             tree_index,
             generation,
             ciphersuite.aead_nonce_length(),
+            backend,
         );
         let key = derive_tree_secret(
             secret,
@@ -118,6 +131,7 @@ impl SenderRatchet {
             tree_index,
             generation,
             ciphersuite.aead_key_length(),
+            backend,
         );
         (AeadKey::from_secret(key), AeadNonce::from_secret(nonce))
     }
