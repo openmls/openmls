@@ -29,8 +29,9 @@ pub mod error;
 
 #[cfg(any(feature = "test-utils", test))]
 #[macro_use]
-pub mod binary_tree;
 pub mod test_utils;
+
+pub mod binary_tree;
 
 pub mod ciphersuite;
 pub mod config;

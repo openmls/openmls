@@ -1,6 +1,6 @@
 use crate::binary_tree::NodeIndex;
 
-use super::{array_representation::*, FLBBinaryTree};
+use super::array_representation::*;
 
 #[test]
 fn test_tree_creation() {
@@ -51,12 +51,8 @@ fn test_node_addition() {
         let mut nodes: Vec<u32> = Vec::new();
 
         nodes.set_len(len + 1);
-        //let mut large_tree = ABinaryTree::new(&nodes).expect("Error while creating large tree.");
 
         assert_eq!(
-            //large_tree
-            //    .add_leaf(0)
-            //    .expect_err("No error while adding nodes when exceeding max tree size."),
             ABinaryTree::new(&nodes).expect_err("Error while creating large tree."),
             ABinaryTreeError::OutOfRange
         )

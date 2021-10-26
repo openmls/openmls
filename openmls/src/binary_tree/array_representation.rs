@@ -1,6 +1,6 @@
 use super::treemath::*;
-use super::FLBBinaryTree;
 use super::NodeIndex;
+use super::TreeSize;
 
 #[derive(Clone, Debug, PartialEq)]
 /// A representation of a full, left-balanced binary tree that uses a simple
@@ -11,19 +11,22 @@ pub(crate) struct ABinaryTree<T: Default + Clone> {
 
 impl<T: Default + Clone> ABinaryTree<T> {
     /// Check if a given index is still within the tree.
-    fn node_in_tree(&self, node_index: NodeIndex) -> Result<(), ABinaryTreeError> {
+    pub(crate) fn node_in_tree(&self, node_index: NodeIndex) -> Result<(), ABinaryTreeError> {
         node_in_tree(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)
     }
 }
 
-impl<T: Default + Clone> FLBBinaryTree<T> for ABinaryTree<T> {
-    type FLBBinaryTreeError = ABinaryTreeError;
-
-    fn new(nodes: &[T]) -> Result<Self, Self::FLBBinaryTreeError> {
+impl<T: Default + Clone> ABinaryTree<T> {
+    /// Create a tree from the given vector of nodes. The nodes are ordered in
+    /// the array-representation. Throws a `InvalidNumberOfNodes` error if the
+    /// number of nodes does not allow the creation of a full, left-balanced
+    /// binary tree and an `OutOfRange` error if the number of given nodes
+    /// exceeds the range of `NodeIndex`.
+    pub(crate) fn new(nodes: &[T]) -> Result<Self, ABinaryTreeError> {
         if nodes.len() > NodeIndex::max_value() as usize {
-            Err(Self::FLBBinaryTreeError::OutOfRange)
+            Err(ABinaryTreeError::OutOfRange)
         } else if nodes.len() % 2 != 1 {
-            Err(Self::FLBBinaryTreeError::InvalidNumberOfNodes)
+            Err(ABinaryTreeError::InvalidNumberOfNodes)
         } else {
             Ok(ABinaryTree {
                 nodes: nodes.to_vec(),
@@ -31,18 +34,30 @@ impl<T: Default + Clone> FLBBinaryTree<T> for ABinaryTree<T> {
         }
     }
 
-    fn node(&self, node_index: NodeIndex) -> std::option::Option<&T> {
+    /// Obtain a reference to the data contained in the `Node` at index
+    /// `node_index`, where the indexing corresponds to the array representation
+    /// of the underlying binary tree. Returns an error if the index is outside
+    /// of the tree.
+    pub(crate) fn node(&self, node_index: NodeIndex) -> std::option::Option<&T> {
         self.nodes.get(node_index as usize)
     }
 
-    fn node_mut(&mut self, node_index: NodeIndex) -> std::option::Option<&mut T> {
+    /// Obtain a mutable reference to the data contained in the `Node` at index
+    /// `node_index`, where the indexing corresponds to the array representation
+    /// of the underlying binary tree. Returns an error if the index is outside
+    /// of the tree.
+    pub(crate) fn node_mut(&mut self, node_index: NodeIndex) -> std::option::Option<&mut T> {
         self.nodes.get_mut(node_index as usize)
     }
 
-    fn add_leaf(&mut self, node: T) -> Result<(), Self::FLBBinaryTreeError> {
+    /// Adds the given node as a new leaf to right side of the tree. To keep
+    /// the tree full, a parent node is added using the `Default` constructor.
+    /// Returns an `OutOfRange` error if the number of nodes exceeds the range
+    /// of `NodeIndex`.
+    pub(crate) fn add_leaf(&mut self, node: T) -> Result<(), ABinaryTreeError> {
         // Prevent the tree from becoming too large.
         if self.nodes.len() > NodeIndex::max_value() as usize - 2 {
-            Err(Self::FLBBinaryTreeError::OutOfRange)
+            Err(ABinaryTreeError::OutOfRange)
         } else {
             self.nodes.push(T::default());
             self.nodes.push(node);
@@ -50,10 +65,12 @@ impl<T: Default + Clone> FLBBinaryTree<T> for ABinaryTree<T> {
         }
     }
 
-    fn remove(&mut self) -> Result<(), Self::FLBBinaryTreeError> {
+    /// Remove the two rightmost nodes of the tree. This will throw a
+    /// `NotEnoughNodes` error if there are not enough nodes to remove.
+    pub(crate) fn remove(&mut self) -> Result<(), ABinaryTreeError> {
         // Check that there are enough nodes to remove.
         if self.nodes.len() < 2 {
-            Err(Self::FLBBinaryTreeError::NotEnoughNodes)
+            Err(ABinaryTreeError::NotEnoughNodes)
         } else {
             self.nodes.pop();
             self.nodes.pop();
@@ -61,28 +78,46 @@ impl<T: Default + Clone> FLBBinaryTree<T> for ABinaryTree<T> {
         }
     }
 
-    fn size(&self) -> NodeIndex {
+    /// Return the number of nodes in the tree.
+    pub(crate) fn size(&self) -> NodeIndex {
         let len = self.nodes.len();
         debug_assert!(len <= u32::MAX as usize);
         self.nodes.len() as u32
     }
 
-    fn direct_path(
+    /// Return the number of leaves in the tree.
+    pub(crate) fn leaf_count(&self) -> TreeSize {
+        (self.size() + 1) / 2
+    }
+
+    /// Compute the direct path from the node with the given index to the root
+    /// node and return the vector of indices of the nodes on the direct path,
+    /// where the indexing corresponds to the array representation of the
+    /// underlying binary tree.
+    pub(crate) fn direct_path(
         &self,
         node_index: NodeIndex,
-    ) -> Result<Vec<NodeIndex>, Self::FLBBinaryTreeError> {
-        direct_path(node_index, self.size()).map_err(|_| Self::FLBBinaryTreeError::OutOfBounds)
+    ) -> Result<Vec<NodeIndex>, ABinaryTreeError> {
+        direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)
     }
 
-    fn copath(&self, node_index: NodeIndex) -> Result<Vec<NodeIndex>, Self::FLBBinaryTreeError> {
-        copath(node_index, self.size()).map_err(|_| Self::FLBBinaryTreeError::OutOfBounds)
+    /// Compute the copath path from the node with the given index to the root
+    /// node and return the vector of indices of the nodes on the copath, where
+    /// the indexing corresponds to the array representation of the underlying
+    /// binary tree.
+    pub(crate) fn copath(&self, node_index: NodeIndex) -> Result<Vec<NodeIndex>, ABinaryTreeError> {
+        copath(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)
     }
 
-    fn lowest_common_ancestor(
+    /// Compute the lowest common ancestor of the nodes with the given indices,
+    /// where the indexing corresponds to the array representation of the
+    /// underlying binary tree. Returns an `OutOfBounds` error if either of the
+    /// indices is out of the bounds of the tree.
+    pub(crate) fn lowest_common_ancestor(
         &self,
         node_index_1: NodeIndex,
         node_index_2: NodeIndex,
-    ) -> Result<NodeIndex, Self::FLBBinaryTreeError> {
+    ) -> Result<NodeIndex, ABinaryTreeError> {
         self.node_in_tree(node_index_1)?;
         self.node_in_tree(node_index_2)?;
         Ok(lowest_common_ancestor(node_index_1, node_index_2))
