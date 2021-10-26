@@ -87,7 +87,7 @@ impl tls_codec::Deserialize for &HpkePublicKey {
 }
 
 // A hopefully value independent implementation of [`PartialEq`] for HPKE private
-// keys.
+// keys. The compiler might still introduce secret dependent branching.
 impl PartialEq for HpkePrivateKey {
     fn eq(&self, other: &Self) -> bool {
         if self.value.len() != other.value.len() {
